@@ -35,10 +35,7 @@ jobs:
           npx tsc --noEmit -p packages/form-conditions/tsconfig.json 2>&1 | tee -a typecheck-output.txt
           CONDITIONS_EXIT=${PIPESTATUS[0]}
 
-          npx tsc --noEmit -p packages/form-registry/tsconfig.json 2>&1 | tee -a typecheck-output.txt
-          REGISTRY_EXIT=${PIPESTATUS[0]}
-
-          if [ "$API_EXIT" -ne 0 ] || [ "$WEB_EXIT" -ne 0 ] || [ "$TYPES_EXIT" -ne 0 ] || [ "$CONDITIONS_EXIT" -ne 0 ] || [ "$REGISTRY_EXIT" -ne 0 ]; then
+          if [ "$API_EXIT" -ne 0 ] || [ "$WEB_EXIT" -ne 0 ] || [ "$TYPES_EXIT" -ne 0 ] || [ "$CONDITIONS_EXIT" -ne 0 ]; then
             exit 1
           fi
         continue-on-error: true

@@ -19,7 +19,13 @@
     "migration:run": "npm run typeorm -- migration:run",
     "migration:revert": "npm run typeorm -- migration:revert",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "migration:create": "TS_NODE_PROJECT=apps/api/tsconfig.json typeorm-ts-node-commonjs migration:create",
+    "migration:create:help": "node -e \"console.log('Usage: npm run migration:create -- <path/to/migrations>/<migration-name>'); console.log('Example: npm run migration:create -- apps/api/src/database/migrations/AddFormSubmissionIndexes'); console.log('This creates an empty migration file; use migration:generate for diff-based migrations.');\"",
+    "migration:generate": "TS_NODE_PROJECT=apps/api/tsconfig.json typeorm-ts-node-commonjs migration:generate -d apps/api/typeorm.config.ts",
+    "migration:run": "TS_NODE_PROJECT=apps/api/tsconfig.json typeorm-ts-node-commonjs migration:run -d apps/api/typeorm.config.ts",
+    "migration:revert": "TS_NODE_PROJECT=apps/api/tsconfig.json typeorm-ts-node-commonjs migration:revert -d apps/api/typeorm.config.ts",
+    "migration:show": "TS_NODE_PROJECT=apps/api/tsconfig.json typeorm-ts-node-commonjs migration:show -d apps/api/typeorm.config.ts"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",

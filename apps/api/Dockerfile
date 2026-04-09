@@ -16,8 +16,6 @@ WORKDIR /app
 COPY --from=builder /app/dist/apps/api/ ./dist/
 COPY --from=builder /app/dist/packages/ ./packages/
 COPY --from=builder /app/node_modules/ ./node_modules/
-
-# Required for typeorm-ts-node-commonjs migration:run at runtime
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/tsconfig.base.json ./
 COPY --from=builder /app/apps/api/tsconfig.json ./apps/api/
