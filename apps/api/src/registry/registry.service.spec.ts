@@ -2,8 +2,8 @@ import { RegistryService, UnresolvableComponentError } from './registry.service'
 import { mergeEntry, hydrateStep, hydrateForm } from './resolution';
 import { CustomComponent } from './entities/custom-component.entity';
 import { BUILTIN_REGISTRY } from './builtins';
-import type { Block } from './types/block.type';
-import type { Primitive } from './types/primitive.type';
+import type { Block } from '@govtech-bb/form-types';
+import type { Primitive } from '@govtech-bb/form-types';
 import { Repository } from 'typeorm';
 
 function makeService(customComponents: Partial<CustomComponent>[] = []): RegistryService {

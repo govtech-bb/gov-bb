@@ -5,7 +5,7 @@ import NodeCache from 'node-cache';
 import { CustomComponent } from './entities/custom-component.entity';
 import { BUILTIN_REGISTRY, RegistryEntry } from './builtins';
 import { hydrateForm, Resolver, UnresolvableComponentError } from './resolution';
-import type { ServiceContract, ServiceContractRecipe } from './types/service-contract.type';
+import type { ServiceContract, ServiceContractRecipe } from '@govtech-bb/form-types';
 
 const CACHE_TTL_SECONDS = 60;
 const CACHE_LOADED_KEY = '__loaded__';
@@ -28,7 +28,7 @@ export class RegistryService implements IRegistryService {
   constructor(
     @InjectRepository(CustomComponent)
     private readonly customComponentRepo: Repository<CustomComponent>,
-  ) {}
+  ) { }
 
   async resolve(ref: string): Promise<RegistryEntry | null> {
     const builtin = this.builtins.get(ref);
