@@ -1,4 +1,4 @@
-import { CheckboxPrimitive } from "../../types";
+import { CheckboxPrimitive } from "@govtech-bb/form-types";
 
 export const Confirmation: CheckboxPrimitive = {
   fieldId: "confirmation",

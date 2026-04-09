@@ -1,4 +1,4 @@
-import type { TelPrimitive } from "../../types";
+import type { TelPrimitive } from "@govtech-bb/form-types";
 
 export const FaxNumber: TelPrimitive = {
     fieldId: "fax-number",
