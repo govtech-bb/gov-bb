@@ -14,11 +14,7 @@
         "name": "next"
       }
     ],
-    "types": [
-      "react",
-      "react-dom",
-      "node"
-    ]
+    "types": ["react", "react-dom", "node"]
   },
   "include": [
     "src/**/*.ts",
@@ -27,8 +23,5 @@
     "next.config.js",
     ".next/types/**/*.ts"
   ],
-  "exclude": [
-    "node_modules",
-    ".next"
-  ]
+  "exclude": ["node_modules", ".next"]
 }
