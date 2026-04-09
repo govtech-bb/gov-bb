@@ -1,4 +1,4 @@
-import { RadioPrimitive } from "../../types";
+import { RadioPrimitive } from "@govtech-bb/form-types";
 
 export const Sex: RadioPrimitive = {
   fieldId: "sex",

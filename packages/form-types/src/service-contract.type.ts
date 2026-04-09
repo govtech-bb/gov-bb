@@ -4,12 +4,12 @@ import type { Processor } from "./processor.type";
 export interface ServiceContract {
   formId: string;
   title: string;
-  description?: string; // Subtitle / additional information
+  description?: string;
   steps: FormStep[];
   processors?: Processor[];
   createdAt: Date;
   updatedAt: Date;
-  version: string; // Semantic versioning
+  version: string;
 }
 
 export interface ServiceContractRecipe {

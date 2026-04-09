@@ -1,4 +1,4 @@
-import { EmailPrimitive } from "../../types";
+import { EmailPrimitive } from "@govtech-bb/form-types";
 
 export const EmailAddress: EmailPrimitive = {
   fieldId: "email",

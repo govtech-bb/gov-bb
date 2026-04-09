@@ -1,7 +1,7 @@
-import type { Primitive, FieldOverrides } from './types/primitive.type';
-import type { Block } from './types/block.type';
-import type { FormStep, RecipeFormStep, RecipeFormStepField } from './types/form-step.type';
-import type { ServiceContract, ServiceContractRecipe } from './types/service-contract.type';
+import type { Primitive, FieldOverrides } from '@govtech-bb/form-types';
+import type { Block } from '@govtech-bb/form-types';
+import type { FormStep, RecipeFormStep, RecipeFormStepField } from '@govtech-bb/form-types';
+import type { ServiceContract, ServiceContractRecipe } from '@govtech-bb/form-types';
 import type { RegistryEntry } from './builtins';
 
 export type Resolver = (ref: string) => Promise<RegistryEntry | null>;
