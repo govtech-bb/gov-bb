@@ -19,6 +19,7 @@ COPY --from=builder /app/node_modules/ ./node_modules/
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/tsconfig.base.json ./
 COPY --from=builder /app/apps/api/tsconfig.json ./apps/api/
+COPY --from=builder /app/apps/api/typeorm.config.ts ./apps/api/
 COPY --from=builder /app/apps/api/src/database/ ./apps/api/src/database/
 
 ENV NODE_ENV=production
