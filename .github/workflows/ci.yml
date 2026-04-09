@@ -18,7 +18,7 @@ jobs:
         with:
           node-version: "20"
           cache: "npm"
-      - run: npm ci
+      - run: npm install
 
       - name: Run type check
         id: typecheck
@@ -440,7 +440,7 @@ jobs:
         with:
           node-version: "20"
           cache: "npm"
-      - run: npm ci
+      - run: npm install
 
       - name: Build all packages
         id: build
