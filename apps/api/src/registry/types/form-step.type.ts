@@ -9,7 +9,7 @@ export interface FormStep {
   stepId: string; // ID for the step
   title: string; // Title to display for the page
   description?: string; // Optional subheading to display
-  elements: Array<Primitive>; // Makes up the fields.
+  elements: Array<Primitive | Block>; // Makes up the fields.
   behaviours?: Array<Behaviour>; // Behaviour to apply on the step level.
 }
 
