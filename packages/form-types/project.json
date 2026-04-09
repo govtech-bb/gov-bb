@@ -1,7 +1,7 @@
 {
   "name": "form-types",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "govtech-bb/form-types/src",
+  "sourceRoot": "packages/form-types/src",
   "projectType": "library",
   "targets": {
     "build": {
@@ -10,16 +10,16 @@
         "{options.outputPath}"
       ],
       "options": {
-        "outputPath": "dist/govtech-bb/form-types",
-        "tsConfig": "govtech-bb/form-types/tsconfig.json",
-        "main": "govtech-bb/form-types/src/index.ts"
+        "outputPath": "dist/packages/form-types",
+        "tsConfig": "packages/form-types/tsconfig.json",
+        "main": "packages/form-types/src/index.ts"
       }
     },
     "lint": {
       "executor": "@nx/eslint:lint",
       "options": {
         "lintFilePatterns": [
-          "govtech-bb/form-types/**/*.ts"
+          "packages/form-types/**/*.ts"
         ]
       }
     }
