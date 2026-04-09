@@ -4,7 +4,6 @@
   "private": true,
   "dependencies": {
     "@govtech-bb/form-types": "*",
-    "@govtech-bb/form-conditions": "*",
-    "@govtech-bb/form-registry": "*"
+    "@govtech-bb/form-conditions": "*"
   }
 }

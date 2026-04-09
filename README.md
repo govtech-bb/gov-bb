@@ -23,7 +23,6 @@ apps/
 packages/
   form-types/       Shared TypeScript types
   form-conditions/  Condition evaluation logic
-  form-registry/    Component registry
 ```
 
 ## Scripts
@@ -115,7 +114,6 @@ Shared packages are available via these TypeScript path aliases (configured in `
 
 - `@govtech-bb/form-types`
 - `@govtech-bb/form-conditions`
-- `@govtech-bb/form-registry`
 
 ## Nx
 

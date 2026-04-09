@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { DatabaseModule } from './database/database.module';
+import { RegistryModule } from './registry/registry.module';
 import { configs } from './config';
 import { envValidationSchema } from './config/env.validation';
 
@@ -17,6 +18,7 @@ import { envValidationSchema } from './config/env.validation';
       },
     }),
     DatabaseModule,
+    RegistryModule,
   ],
   controllers: [AppController],
 })

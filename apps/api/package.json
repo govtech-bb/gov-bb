@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
+    "test": "jest --config jest.config.ts",
     "migration:generate": "typeorm-ts-node-commonjs migration:generate -d typeorm.config.ts",
     "migration:run": "typeorm-ts-node-commonjs migration:run -d typeorm.config.ts",
     "migration:revert": "typeorm-ts-node-commonjs migration:revert -d typeorm.config.ts",
@@ -10,12 +11,18 @@
   },
   "dependencies": {
     "@govtech-bb/form-conditions": "*",
-    "@govtech-bb/form-registry": "*",
     "@govtech-bb/form-types": "*",
     "@nestjs/config": "^4.0.3",
     "@nestjs/typeorm": "^11.0.0",
     "joi": "^18.0.2",
+    "node-cache": "^5.1.2",
     "pg": "^8.20.0",
     "typeorm": "^0.3.28"
+  },
+  "devDependencies": {
+    "@nestjs/testing": "^11.1.17",
+    "@types/jest": "^30.0.0",
+    "jest": "^30.3.0",
+    "ts-jest": "^29.4.6"
   }
 }

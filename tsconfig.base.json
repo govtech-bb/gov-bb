@@ -20,8 +20,7 @@
     "resolveJsonModule": true,
     "paths": {
       "@govtech-bb/form-types": ["packages/form-types/src/index.ts"],
-      "@govtech-bb/form-conditions": ["packages/form-conditions/src/index.ts"],
-      "@govtech-bb/form-registry": ["packages/form-registry/src/index.ts"]
+      "@govtech-bb/form-conditions": ["packages/form-conditions/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]
