@@ -1,4 +1,4 @@
-import { ValidationRule, Primitive } from "../../types";
+import { ValidationRule, Primitive } from "@govtech-bb/form-types";
 
 class ValidationBuilder {
   fieldId: string;

@@ -1,4 +1,4 @@
-import { Block } from "../../types";
+import { Block } from "@govtech-bb/form-types";
 import { DateOfBirth, FirstName, LastName, MiddleName, NationalIdNumber, Nationality, Sex, Title } from "../components";
 
 export const PersonalInformation: Block = {

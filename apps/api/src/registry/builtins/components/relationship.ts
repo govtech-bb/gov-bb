@@ -1,4 +1,4 @@
-import { SelectPrimitive } from "../../types";
+import { SelectPrimitive } from "@govtech-bb/form-types";
 
 export const Relationship: SelectPrimitive = {
   fieldId: "relationship",

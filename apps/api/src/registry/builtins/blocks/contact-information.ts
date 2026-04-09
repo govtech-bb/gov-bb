@@ -1,4 +1,4 @@
-import { Block } from "../../types";
+import { Block } from "@govtech-bb/form-types";
 import { EmailAddress, HomeTelephone, MobileTelephone, Telephone } from "../components";
 
 export const ContactInformation: Block = {

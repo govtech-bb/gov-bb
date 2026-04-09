@@ -1,4 +1,4 @@
-import type { TextPrimitive } from "../../types";
+import type { TextPrimitive } from "@govtech-bb/form-types";
 
 export const NationalIdNumber: TextPrimitive = {
     fieldId: "national-id-number",
