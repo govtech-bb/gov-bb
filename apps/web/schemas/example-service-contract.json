@@ -31,9 +31,21 @@
           "label": "First name",
           "htmlType": "text",
           "validations": [
-            { "required": { "value": true, "error": "First name is required" } },
-            { "pattern": { "value": "^\\s*[A-Za-zÀ-ÖØ-öø-ÿ](?:[A-Za-zÀ-ÖØ-öø-ÿ\\s'-]*[A-Za-zÀ-ÖØ-öø-ÿ])?\\s*$", "error": "First name must contain only letters, hyphens, or apostrophes" } },
-            { "minLength": { "value": 2, "error": "First name must be at least 2 characters" } }
+            {
+              "required": { "value": true, "error": "First name is required" }
+            },
+            {
+              "pattern": {
+                "value": "^\\s*[A-Za-zÀ-ÖØ-öø-ÿ](?:[A-Za-zÀ-ÖØ-öø-ÿ\\s'-]*[A-Za-zÀ-ÖØ-öø-ÿ])?\\s*$",
+                "error": "First name must contain only letters, hyphens, or apostrophes"
+              }
+            },
+            {
+              "minLength": {
+                "value": 2,
+                "error": "First name must be at least 2 characters"
+              }
+            }
           ],
           "metadata": { "pii": true, "sensitive": false }
         },
@@ -44,8 +56,18 @@
           "htmlType": "text",
           "validations": [
             { "required": { "value": false, "error": "" } },
-            { "pattern": { "value": "^\\s*[A-Za-zÀ-ÖØ-öø-ÿ](?:[A-Za-zÀ-ÖØ-öø-ÿ\\s'-]*[A-Za-zÀ-ÖØ-öø-ÿ])?\\s*$", "error": "Middle name must contain only letters, hyphens, or apostrophes" } },
-            { "minLength": { "value": 2, "error": "Middle name must be at least 2 characters" } }
+            {
+              "pattern": {
+                "value": "^\\s*[A-Za-zÀ-ÖØ-öø-ÿ](?:[A-Za-zÀ-ÖØ-öø-ÿ\\s'-]*[A-Za-zÀ-ÖØ-öø-ÿ])?\\s*$",
+                "error": "Middle name must contain only letters, hyphens, or apostrophes"
+              }
+            },
+            {
+              "minLength": {
+                "value": 2,
+                "error": "Middle name must be at least 2 characters"
+              }
+            }
           ],
           "metadata": { "pii": true, "sensitive": false }
         },
@@ -55,8 +77,18 @@
           "htmlType": "text",
           "validations": [
             { "required": { "value": true, "error": "Last name is required" } },
-            { "pattern": { "value": "^\\s*[A-Za-zÀ-ÖØ-öø-ÿ](?:[A-Za-zÀ-ÖØ-öø-ÿ\\s'-]*[A-Za-zÀ-ÖØ-öø-ÿ])?\\s*$", "error": "Last name must contain only letters, hyphens, or apostrophes" } },
-            { "minLength": { "value": 2, "error": "Last name must be at least 2 characters" } }
+            {
+              "pattern": {
+                "value": "^\\s*[A-Za-zÀ-ÖØ-öø-ÿ](?:[A-Za-zÀ-ÖØ-öø-ÿ\\s'-]*[A-Za-zÀ-ÖØ-öø-ÿ])?\\s*$",
+                "error": "Last name must contain only letters, hyphens, or apostrophes"
+              }
+            },
+            {
+              "minLength": {
+                "value": 2,
+                "error": "Last name must be at least 2 characters"
+              }
+            }
           ],
           "metadata": { "pii": true, "sensitive": false }
         },
@@ -65,8 +97,18 @@
           "label": "National Identification (ID) number",
           "htmlType": "text",
           "validations": [
-            { "required": { "value": true, "error": "National ID number is required" } },
-            { "pattern": { "value": "^\\d{6}-\\d{4}$", "error": "Enter a valid ID number (for example, 850101-0001)" } }
+            {
+              "required": {
+                "value": true,
+                "error": "National ID number is required"
+              }
+            },
+            {
+              "pattern": {
+                "value": "^\\d{6}-\\d{4}$",
+                "error": "Enter a valid ID number (for example, 850101-0001)"
+              }
+            }
           ],
           "skipValidationWhenShowHideOpen": "use-passport-instead",
           "metadata": { "pii": true, "sensitive": true }
@@ -75,9 +117,7 @@
           "fieldId": "passport-details",
           "label": "",
           "htmlType": "showHide",
-          "validations": [
-            { "required": { "value": false, "error": "" } }
-          ],
+          "validations": [{ "required": { "value": false, "error": "" } }],
           "showHide": {
             "summary": "Use passport number instead",
             "stateFieldId": "use-passport-instead",
@@ -89,8 +129,18 @@
                 "placeholder": "",
                 "htmlType": "text",
                 "validations": [
-                  { "required": { "value": true, "error": "Passport number is required" } },
-                  { "minLength": { "value": 6, "error": "Passport number must be at least 6 characters" } }
+                  {
+                    "required": {
+                      "value": true,
+                      "error": "Passport number is required"
+                    }
+                  },
+                  {
+                    "minLength": {
+                      "value": 6,
+                      "error": "Passport number must be at least 6 characters"
+                    }
+                  }
                 ],
                 "metadata": { "pii": true, "sensitive": true }
               }
@@ -103,7 +153,12 @@
           "label": "Email address",
           "htmlType": "email",
           "validations": [
-            { "required": { "value": true, "error": "Email address is required" } }
+            {
+              "required": {
+                "value": true,
+                "error": "Email address is required"
+              }
+            }
           ],
           "metadata": { "pii": true, "sensitive": false }
         },
@@ -112,8 +167,18 @@
           "label": "Telephone number",
           "htmlType": "tel",
           "validations": [
-            { "required": { "value": true, "error": "Telephone number is required" } },
-            { "pattern": { "value": "^\\d{3}[- ]?\\d{4}$|^(?:\\d{1,2}[- ]?)?\\d{3}[- ]?\\d{3}[- ]?\\d{4}$", "error": "Please enter a valid phone number (for example, 2345678, 1-246-234-5678, or 1 246 234 5678)" } }
+            {
+              "required": {
+                "value": true,
+                "error": "Telephone number is required"
+              }
+            },
+            {
+              "pattern": {
+                "value": "^\\d{3}[- ]?\\d{4}$|^(?:\\d{1,2}[- ]?)?\\d{3}[- ]?\\d{3}[- ]?\\d{4}$",
+                "error": "Please enter a valid phone number (for example, 2345678, 1-246-234-5678, or 1 246 234 5678)"
+              }
+            }
           ],
           "metadata": { "pii": true, "sensitive": false }
         }
@@ -128,8 +193,18 @@
           "label": "Business name",
           "htmlType": "text",
           "validations": [
-            { "required": { "value": true, "error": "Business name is required" } },
-            { "minLength": { "value": 5, "error": "Business name must be at least 5 characters" } }
+            {
+              "required": {
+                "value": true,
+                "error": "Business name is required"
+              }
+            },
+            {
+              "minLength": {
+                "value": 5,
+                "error": "Business name must be at least 5 characters"
+              }
+            }
           ],
           "metadata": { "pii": false, "sensitive": false }
         },
@@ -138,8 +213,18 @@
           "label": "Registration number",
           "htmlType": "text",
           "validations": [
-            { "required": { "value": true, "error": "Business registration number is required" } },
-            { "minLength": { "value": 5, "error": "Business registration number must be at least 5 characters" } }
+            {
+              "required": {
+                "value": true,
+                "error": "Business registration number is required"
+              }
+            },
+            {
+              "minLength": {
+                "value": 5,
+                "error": "Business registration number must be at least 5 characters"
+              }
+            }
           ],
           "metadata": { "pii": false, "sensitive": true }
         }
@@ -154,8 +239,18 @@
           "label": "Address line 1",
           "htmlType": "text",
           "validations": [
-            { "required": { "value": true, "error": "Address line 1 is required" } },
-            { "minLength": { "value": 5, "error": "Address must be at least 5 characters" } }
+            {
+              "required": {
+                "value": true,
+                "error": "Address line 1 is required"
+              }
+            },
+            {
+              "minLength": {
+                "value": 5,
+                "error": "Address must be at least 5 characters"
+              }
+            }
           ],
           "metadata": { "pii": true, "sensitive": false }
         },
@@ -194,7 +289,12 @@
           "hint": "For example, BB17004 (optional)",
           "htmlType": "text",
           "validations": [
-            { "pattern": { "value": "^BB\\\\d{5}$", "error": "Enter a valid postcode (for example, BB17004)" } }
+            {
+              "pattern": {
+                "value": "^BB\\\\d{5}$",
+                "error": "Enter a valid postcode (for example, BB17004)"
+              }
+            }
           ],
           "metadata": { "pii": true, "sensitive": false }
         }
@@ -212,7 +312,12 @@
           "placeholder": "",
           "validations": [
             { "required": { "value": true, "error": "Position is required" } },
-            { "minLength": { "value": 5, "error": "Position must be at least 5 characters" } }
+            {
+              "minLength": {
+                "value": 5,
+                "error": "Position must be at least 5 characters"
+              }
+            }
           ]
         }
       ]
@@ -226,8 +331,18 @@
           "label": "Address line 1",
           "htmlType": "text",
           "validations": [
-            { "required": { "value": true, "error": "Address line 1 is required" } },
-            { "minLength": { "value": 5, "error": "Address must be at least 5 characters" } }
+            {
+              "required": {
+                "value": true,
+                "error": "Address line 1 is required"
+              }
+            },
+            {
+              "minLength": {
+                "value": 5,
+                "error": "Address must be at least 5 characters"
+              }
+            }
           ],
           "metadata": { "pii": true, "sensitive": false }
         },
@@ -266,7 +381,12 @@
           "hint": "For example, BB17004 (optional)",
           "htmlType": "text",
           "validations": [
-            { "pattern": { "value": "^BB\\\\d{5}$", "error": "Enter a valid postcode (for example, BB17004)" } }
+            {
+              "pattern": {
+                "value": "^BB\\\\d{5}$",
+                "error": "Enter a valid postcode (for example, BB17004)"
+              }
+            }
           ],
           "metadata": { "pii": true, "sensitive": false }
         },
@@ -275,8 +395,15 @@
           "label": "When do you want the redirection to start?",
           "htmlType": "date",
           "validations": [
-            { "required": { "value": true, "error": "Start date is required" } },
-            { "futureOrToday": { "value": true, "error": "Start date must be today or later" } }
+            {
+              "required": { "value": true, "error": "Start date is required" }
+            },
+            {
+              "futureOrToday": {
+                "value": true,
+                "error": "Start date must be today or later"
+              }
+            }
           ]
         },
         {
@@ -286,7 +413,12 @@
           "htmlType": "date",
           "validations": [
             { "required": { "value": true, "error": "End date is required" } },
-            { "after": { "value": "redirection-start-date", "error": "End date must be after start date" } }
+            {
+              "after": {
+                "value": "redirection-start-date",
+                "error": "End date must be after start date"
+              }
+            }
           ]
         }
       ]
@@ -300,12 +432,17 @@
       "stepId": "declaration",
       "title": "Declaration",
       "elements": [
-	      {
+        {
           "fieldId": "confirmation",
           "label": "I confirm that my information is correct and I am happy for it to be verified. I understand that false details may lead to my application being rejected, and that the Government of Barbados will keep my information confidential.",
           "htmlType": "checkbox",
           "validations": [
-            { "required": { "value": true, "error": "You must confirm the declaration to continue" } }
+            {
+              "required": {
+                "value": true,
+                "error": "You must confirm the declaration to continue"
+              }
+            }
           ]
         },
         {
@@ -315,7 +452,12 @@
           "htmlType": "date",
           "validations": [
             { "required": { "value": true, "error": "Date is required" } },
-            { "pastOrToday": { "value": true, "error": "Date of declaration must be today or earlier" } }
+            {
+              "pastOrToday": {
+                "value": true,
+                "error": "Date of declaration must be today or earlier"
+              }
+            }
           ]
         }
       ]
