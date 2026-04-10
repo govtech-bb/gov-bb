@@ -1,3 +1,5 @@
+import "../styles/index.css";
+
 export const metadata = {
   title: "Modular Forms",
 };
