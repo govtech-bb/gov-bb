@@ -23,11 +23,11 @@
     "migration:show": "TS_NODE_PROJECT=apps/api/tsconfig.json typeorm-ts-node-commonjs migration:show -d apps/api/typeorm.config.ts"
   },
   "devDependencies": {
-    "@nestjs/cli": "^10.0.0",
-    "@nestjs/common": "^10.0.0",
+    "@nestjs/cli": "^11.0.0",
+    "@nestjs/common": "^11.0.0",
     "@nestjs/typeorm": "^11.0.0",
-    "@nestjs/core": "^10.0.0",
-    "@nestjs/platform-express": "^10.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/platform-express": "^11.0.0",
     "@nx/eslint": "^20.4.0",
     "@nx/eslint-plugin": "^20.4.0",
     "@nx/js": "^20.4.0",
