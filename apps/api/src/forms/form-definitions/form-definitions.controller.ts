@@ -1,6 +1,6 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import { FormDefinitionsService } from './form-definitions.service';
-import type { ServiceContract } from '../../registry/types/service-contract.type';
+import type { ServiceContract } from '@govtech-bb/form-types';
 
 @Controller('form-definitions')
 export class FormDefinitionsController {

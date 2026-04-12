@@ -3,7 +3,6 @@ import { Repository } from 'typeorm';
 import { FormDefinitionEntity } from '../../database/entities/form-definition.entity';
 import { RegistryService } from '../../registry/registry.service';
 import { FormDefinitionsService } from './form-definitions.service';
-import type { ServiceContract, ServiceContractRecipe } from '../../registry/types/service-contract.type';
 
 const MOCK_RECIPE = {
   formId: 'passport-renewal',

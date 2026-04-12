@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { FormDefinitionEntity } from '../../database/entities/form-definition.entity';
 import { RegistryService } from '../../registry/registry.service';
-import type { ServiceContract, ServiceContractRecipe } from '../../registry/types/service-contract.type';
+import type { ServiceContract, ServiceContractRecipe } from '@govtech-bb/form-types';
 
 @Injectable()
 export class FormDefinitionsService {
