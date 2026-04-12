@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { FormDefinitionEntity } from '../../database/entities/form-definition.entity';
 import { RegistryService } from '../../registry/registry.service';
-import type { ServiceContract, ServiceContractRecipe } from '@govtech-bb/form-types';
+import { AppError } from '../../common/errors';
+import type { ServiceContract } from '@govtech-bb/form-types';
 
 @Injectable()
 export class FormDefinitionsService {
@@ -20,11 +21,7 @@ export class FormDefinitionsService {
     });
 
     if (!entity) {
-      throw new NotFoundException(
-        version
-          ? `Form definition not found: formId=${formId}, version=${version}`
-          : `Form definition not found: formId=${formId}`,
-      );
+      throw AppError.notFound('Form definition', { formId, version });
     }
     return this.registryService.hydrateForm(entity.schema);
   }
