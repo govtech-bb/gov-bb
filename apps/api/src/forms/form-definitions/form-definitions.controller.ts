@@ -6,25 +6,11 @@ import type { ServiceContract } from '@govtech-bb/form-types';
 export class FormDefinitionsController {
   constructor(private readonly formDefinitionsService: FormDefinitionsService) {}
 
-  @Get(':id')
-  async getById(
-    @Param('id') id: string,
-    @Query('version') version?: string,
-  ): Promise<ServiceContract> {
-    if (version) {
-      return this.formDefinitionsService.findByFormIdAndVersion(id, version);
-    }
-    return this.formDefinitionsService.findById(id);
-  }
-
-  @Get('by-form-id/:formId')
-  async getByFormId(
+  @Get(':formId')
+  async get(
     @Param('formId') formId: string,
     @Query('version') version?: string,
   ): Promise<ServiceContract> {
-    if (version) {
-      return this.formDefinitionsService.findByFormIdAndVersion(formId, version);
-    }
-    return this.formDefinitionsService.findLatestByFormId(formId);
+    return this.formDefinitionsService.findByFormId({ formId, version });
   }
 }

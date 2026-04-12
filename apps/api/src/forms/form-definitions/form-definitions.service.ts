@@ -13,39 +13,19 @@ export class FormDefinitionsService {
     private readonly registryService: RegistryService,
   ) {}
 
-  async findById(id: string): Promise<ServiceContract> {
-    const entity = await this.formDefRepo.findOne({ where: { id } });
-    if (!entity) {
-      throw new NotFoundException(`Form definition not found: ${id}`);
-    }
-    return this.hydrate(entity);
-  }
-
-  async findByFormIdAndVersion(formId: string, version: string): Promise<ServiceContract> {
+  async findByFormId({ formId, version }: { formId: string; version?: string }): Promise<ServiceContract> {
     const entity = await this.formDefRepo.findOne({
-      where: { formId, version },
-    });
-    if (!entity) {
-      throw new NotFoundException(
-        `Form definition not found: formId=${formId}, version=${version}`,
-      );
-    }
-    return this.hydrate(entity);
-  }
-
-  async findLatestByFormId(formId: string): Promise<ServiceContract> {
-    const entity = await this.formDefRepo.findOne({
-      where: { formId },
+      where: { formId, ...(version && { version }) },
       order: { createdAt: 'DESC' },
     });
-    if (!entity) {
-      throw new NotFoundException(`Form definition not found: formId=${formId}`);
-    }
-    return this.hydrate(entity);
-  }
 
-  private async hydrate(entity: FormDefinitionEntity): Promise<ServiceContract> {
-    const recipe = entity.schema as unknown as ServiceContractRecipe;
-    return this.registryService.hydrateForm(recipe);
+    if (!entity) {
+      throw new NotFoundException(
+        version
+          ? `Form definition not found: formId=${formId}, version=${version}`
+          : `Form definition not found: formId=${formId}`,
+      );
+    }
+    return this.registryService.hydrateForm(entity.schema);
   }
 }
