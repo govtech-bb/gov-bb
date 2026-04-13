@@ -6,7 +6,7 @@ export interface FormStep {
   stepId: string;
   title: string;
   description?: string;
-  elements: Array<Primitive>;
+  elements: Array<Primitive | Block>;
   behaviours?: Array<Behaviour>;
 }
 
