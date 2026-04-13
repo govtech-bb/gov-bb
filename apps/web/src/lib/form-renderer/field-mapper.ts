@@ -4,13 +4,25 @@ import { FormStep, Primitive, ServiceContract } from "@govtech-bb/form-types";
 import { ClientServiceContract, ClientFormStep, ClientPrimitive } from "@web/types";
 
 export const mapContractToLocale = (contract: ServiceContract): ClientServiceContract => {
-  throw new Error("Not Implemented");
+  return {
+    ...contract,
+    steps: contract.steps.map(step => mapStepToLocale(step))
+  }
 }
 
 export const mapStepToLocale = (step: FormStep): ClientFormStep => {
-  throw new Error("Not Implemented");
+  return {
+    ...step,
+    fields: step.elements.map(el => mapFieldToLocale(el)),
+  }
 }
 
 export const mapFieldToLocale = (field: Primitive): ClientPrimitive => {
-  throw new Error("Not Implemented");
+  return {
+    ...field,
+    id: field.fieldId,
+    name: field.fieldId,
+    disabled: field.isDisabled ?? false,
+    hidden: field.isHidden ?? false,
+  }
 }

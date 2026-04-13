@@ -10,7 +10,7 @@ export interface ClientPrimitive {
   defaultValue?: unknown;
   disabled: boolean;
   hidden: boolean;
-  options: Option[];
+  options?: Option[];
   multiple?: boolean;
   validations?: ValidationRule;
 }
@@ -20,13 +20,13 @@ export interface ClientFormStep {
   title: string;
   description?: string;
   fields: ClientPrimitive[];
-  behaviours: Behaviour[];
+  behaviours?: Behaviour[];
 }
 
 export interface ClientServiceContract {
   formId: string;
   title: string;
-  description: string;
+  description?: string;
   steps: ClientFormStep[];
   createdAt: Date;
   updatedAt: Date;
