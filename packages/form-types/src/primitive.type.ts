@@ -33,7 +33,7 @@ export interface BasePrimitive {
   defaultValue?: any;
   value?: any;
   isDisabled?: boolean;
-  isVisible?: boolean;
+  isHidden?: boolean;
   behaviours?: Behaviour[];
   validations?: ValidationRule;
   metadata?: Partial<PrimitiveMetadata>;
@@ -101,7 +101,7 @@ export type FieldOverrides = Pick<
   | "validations"
   | "defaultValue"
   | "isDisabled"
-  | "isVisible"
+  | "isHidden"
   | "multiple"
   | "options"
 >;

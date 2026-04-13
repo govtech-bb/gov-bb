@@ -1,5 +1,4 @@
 import type { FieldOverrides, Primitive } from "./primitive.type";
-import type { Block } from "./block.type";
 import type { Behaviour } from "./behavior.type";
 
 export interface FormStep {
