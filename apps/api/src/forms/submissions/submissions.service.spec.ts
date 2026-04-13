@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
-import { Repository } from 'typeorm';
 import { FormSubmissionEntity, FormSubmissionStatus } from '../../database/entities/form-submission.entity';
+import { FormSubmissionRepository } from './form-submission.repository';
 import { SubmissionsService } from './submissions.service';
 
 function makeEntity(overrides: Partial<FormSubmissionEntity> = {}): FormSubmissionEntity {
@@ -19,15 +19,19 @@ function makeEntity(overrides: Partial<FormSubmissionEntity> = {}): FormSubmissi
   } as FormSubmissionEntity;
 }
 
-function makeMocks() {
-  const repo = {
-    findOne: jest.fn(),
-    create: jest.fn(),
-    save: jest.fn(),
-  } as unknown as jest.Mocked<Repository<FormSubmissionEntity>>;
+function makeMocks(existingEntity: FormSubmissionEntity | null = null, savedEntity?: FormSubmissionEntity) {
+  const txRepo = {
+    findOne: jest.fn().mockResolvedValue(existingEntity),
+    create: jest.fn().mockImplementation((data) => ({ ...data })),
+    save: jest.fn().mockResolvedValue(savedEntity ?? makeEntity()),
+  };
 
-  const service = new SubmissionsService(repo);
-  return { repo, service };
+  const submissionRepo = {
+    tx: jest.fn().mockImplementation((cb) => cb(txRepo)),
+  } as unknown as FormSubmissionRepository;
+
+  const service = new SubmissionsService(submissionRepo);
+  return { txRepo, submissionRepo, service };
 }
 
 const BASE_DTO = {
@@ -49,62 +53,51 @@ describe('SubmissionsService', () => {
       await expect(service.submit({ ...BASE_DTO, idempotencyKey: '   ' })).rejects.toThrow(BadRequestException);
     });
 
-    it('creates a new submission when key is not found', async () => {
-      const { repo, service } = makeMocks();
+    it('creates a new submission when key is unique', async () => {
       const created = makeEntity();
-      (repo.findOne as jest.Mock).mockResolvedValue(null);
-      (repo.create as jest.Mock).mockReturnValue(created);
-      (repo.save as jest.Mock).mockResolvedValue(created);
+      const { txRepo, service } = makeMocks(null, created);
 
       const result = await service.submit(BASE_DTO);
 
-      expect(repo.findOne).toHaveBeenCalledWith({ where: { idempotencyKey: 'key-abc' } });
-      expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({
+      expect(txRepo.create).toHaveBeenCalledWith(expect.objectContaining({
         idempotencyKey: 'key-abc',
         status: FormSubmissionStatus.SUBMITTED,
         submittedAt: expect.any(Date),
       }));
-      expect(repo.save).toHaveBeenCalledWith(created);
       expect(result.outcome).toBe('created');
       expect(result.data).toBe(created);
     });
 
-    it('returns outcome "duplicate" without reprocessing when key exists', async () => {
-      const { repo, service } = makeMocks();
+    it('returns outcome "duplicate" when key exists with non-processing status', async () => {
       const existing = makeEntity({ status: FormSubmissionStatus.COMPLETE });
-      (repo.findOne as jest.Mock).mockResolvedValue(existing);
+      const { txRepo, service } = makeMocks(existing);
 
       const result = await service.submit(BASE_DTO);
 
-      expect(repo.create).not.toHaveBeenCalled();
-      expect(repo.save).not.toHaveBeenCalled();
+      expect(txRepo.save).not.toHaveBeenCalled();
       expect(result.outcome).toBe('duplicate');
       expect(result.data).toBe(existing);
     });
 
     it('returns outcome "in_progress" when key exists with PROCESSING status', async () => {
-      const { repo, service } = makeMocks();
       const existing = makeEntity({ status: FormSubmissionStatus.PROCESSING });
-      (repo.findOne as jest.Mock).mockResolvedValue(existing);
+      const { txRepo, service } = makeMocks(existing);
 
       const result = await service.submit(BASE_DTO);
 
-      expect(repo.create).not.toHaveBeenCalled();
-      expect(repo.save).not.toHaveBeenCalled();
+      expect(txRepo.save).not.toHaveBeenCalled();
       expect(result.outcome).toBe('in_progress');
       expect(result.data).toBe(existing);
     });
 
     it('returns outcome "duplicate" for SUBMITTED status', async () => {
-      const { repo, service } = makeMocks();
-      (repo.findOne as jest.Mock).mockResolvedValue(makeEntity({ status: FormSubmissionStatus.SUBMITTED }));
+      const { service } = makeMocks(makeEntity({ status: FormSubmissionStatus.SUBMITTED }));
       const result = await service.submit(BASE_DTO);
       expect(result.outcome).toBe('duplicate');
     });
 
     it('returns outcome "duplicate" for ERROR status', async () => {
-      const { repo, service } = makeMocks();
-      (repo.findOne as jest.Mock).mockResolvedValue(makeEntity({ status: FormSubmissionStatus.ERROR }));
+      const { service } = makeMocks(makeEntity({ status: FormSubmissionStatus.ERROR }));
       const result = await service.submit(BASE_DTO);
       expect(result.outcome).toBe('duplicate');
     });

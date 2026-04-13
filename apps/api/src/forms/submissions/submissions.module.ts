@@ -1,13 +1,11 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { SubmissionsController } from './submissions.controller';
 import { SubmissionsService } from './submissions.service';
-import { FormSubmissionEntity } from '../../database/entities/form-submission.entity';
+import { FormSubmissionRepository } from './form-submission.repository';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([FormSubmissionEntity])],
   controllers: [SubmissionsController],
-  providers: [SubmissionsService],
+  providers: [SubmissionsService, FormSubmissionRepository],
   exports: [SubmissionsService],
 })
 export class SubmissionsModule {}
