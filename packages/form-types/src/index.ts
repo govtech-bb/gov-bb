@@ -14,6 +14,7 @@ export type {
   EmailPrimitive,
   CheckboxPrimitive,
   Primitive,
+  HtmlTypes,
 } from "./primitive.type";
 
 export type {

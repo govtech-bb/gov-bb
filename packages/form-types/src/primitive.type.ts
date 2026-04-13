@@ -34,7 +34,7 @@ export interface BasePrimitive {
   isDisabled?: boolean;
   isVisible?: boolean;
   behaviours?: Behaviour[];
-  validations?: Partial<ValidationRule>[];
+  validations?: ValidationRule;
   metadata?: Partial<PrimitiveMetadata>;
   options?: Array<Option>;
   multiple?: boolean;
@@ -66,6 +66,7 @@ export interface EmailPrimitive extends BasePrimitive {
 
 export interface CheckboxPrimitive extends BasePrimitive {
   htmlType: "checkbox";
+  options: Array<Option>;
 }
 
 export interface SelectPrimitive extends BasePrimitive {
@@ -88,6 +89,7 @@ export type Primitive =
   | BasePrimitive
   | SelectPrimitive
   | RadioPrimitive
+  | CheckboxPrimitive
   | FilePrimitive;
 
 export type FieldOverrides = Pick<
