@@ -5,7 +5,8 @@
   "dependencies": {
     "@govtech-bb/form-conditions": "*",
     "@govtech-bb/form-types": "*",
-    "@tanstack/react-form": "^1.29.0"
+    "@tanstack/react-form": "^1.29.0",
+    "zod": "^4.3.6"
   },
   "scripts": {
     "dev": "next dev",
