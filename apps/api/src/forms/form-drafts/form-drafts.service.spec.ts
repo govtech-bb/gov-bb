@@ -1,0 +1,198 @@
+import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { Repository } from 'typeorm';
+import { FormDraftEntity, DraftStatus } from '../../database/entities/form-draft.entity';
+import { FormDefinitionEntity } from '../../database/entities/form-definition.entity';
+import { FormDraftsService } from './form-drafts.service';
+
+function makeDraftRepo(
+  overrides: Partial<jest.Mocked<Repository<FormDraftEntity>>> = {},
+): jest.Mocked<Repository<FormDraftEntity>> {
+  return {
+    findOne: jest.fn(),
+    create: jest.fn(),
+    save: jest.fn(),
+    delete: jest.fn(),
+    ...overrides,
+  } as unknown as jest.Mocked<Repository<FormDraftEntity>>;
+}
+
+function makeFormDefRepo(
+  overrides: Partial<jest.Mocked<Repository<FormDefinitionEntity>>> = {},
+): jest.Mocked<Repository<FormDefinitionEntity>> {
+  return {
+    findOne: jest.fn(),
+    ...overrides,
+  } as unknown as jest.Mocked<Repository<FormDefinitionEntity>>;
+}
+
+function makeDraft(overrides: Partial<FormDraftEntity> = {}): FormDraftEntity {
+  return {
+    id: 'uuid-draft-1',
+    draftId: 'my-draft',
+    formId: 'passport-renewal',
+    formVersion: '1.0.0',
+    values: {},
+    lastActivePage: 0,
+    status: DraftStatus.ACTIVE,
+    lastActiveAt: new Date('2026-01-01'),
+    createdAt: new Date('2026-01-01'),
+    updatedAt: new Date('2026-01-01'),
+    ...overrides,
+  } as FormDraftEntity;
+}
+
+function makeFormDef(version = '1.0.0'): FormDefinitionEntity {
+  return {
+    id: 'uuid-def-1',
+    formId: 'passport-renewal',
+    version,
+    schema: {} as any,
+    publishedAt: null,
+    createdAt: new Date('2026-01-01'),
+    updatedAt: new Date('2026-01-01'),
+  } as FormDefinitionEntity;
+}
+
+describe('FormDraftsService', () => {
+  describe('create', () => {
+    it('pins the form version from the latest form definition', async () => {
+      const draftRepo = makeDraftRepo();
+      const formDefRepo = makeFormDefRepo();
+      const service = new FormDraftsService(draftRepo, formDefRepo);
+
+      draftRepo.findOne.mockResolvedValue(null);
+      formDefRepo.findOne.mockResolvedValue(makeFormDef('2.0.0'));
+      draftRepo.create.mockReturnValue(makeDraft({ formVersion: '2.0.0' }));
+      draftRepo.save.mockResolvedValue(makeDraft({ formVersion: '2.0.0' }));
+
+      const result = await service.create({ draftId: 'my-draft', formId: 'passport-renewal' });
+
+      expect(formDefRepo.findOne).toHaveBeenCalledWith({
+        where: { formId: 'passport-renewal' },
+        order: { createdAt: 'DESC' },
+      });
+      expect(draftRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ draftId: 'my-draft', formId: 'passport-renewal', formVersion: '2.0.0' }),
+      );
+      expect(result.formVersion).toBe('2.0.0');
+    });
+
+    it('pins the specified version when version is provided', async () => {
+      const draftRepo = makeDraftRepo();
+      const formDefRepo = makeFormDefRepo();
+      const service = new FormDraftsService(draftRepo, formDefRepo);
+
+      draftRepo.findOne.mockResolvedValue(null);
+      formDefRepo.findOne.mockResolvedValue(makeFormDef('1.0.0'));
+      draftRepo.create.mockReturnValue(makeDraft());
+      draftRepo.save.mockResolvedValue(makeDraft());
+
+      await service.create({ draftId: 'my-draft', formId: 'passport-renewal', version: '1.0.0' });
+
+      expect(formDefRepo.findOne).toHaveBeenCalledWith({
+        where: { formId: 'passport-renewal', version: '1.0.0' },
+        order: { createdAt: 'DESC' },
+      });
+    });
+
+    it('returns the existing draft without creating a duplicate when draftId already exists', async () => {
+      const draftRepo = makeDraftRepo();
+      const formDefRepo = makeFormDefRepo();
+      const service = new FormDraftsService(draftRepo, formDefRepo);
+
+      const existing = makeDraft();
+      draftRepo.findOne.mockResolvedValue(existing);
+
+      const result = await service.create({ draftId: 'my-draft', formId: 'passport-renewal' });
+
+      expect(result).toBe(existing);
+      expect(formDefRepo.findOne).not.toHaveBeenCalled();
+      expect(draftRepo.create).not.toHaveBeenCalled();
+      expect(draftRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when form definition does not exist', async () => {
+      const draftRepo = makeDraftRepo();
+      const formDefRepo = makeFormDefRepo();
+      const service = new FormDraftsService(draftRepo, formDefRepo);
+
+      draftRepo.findOne.mockResolvedValue(null);
+      formDefRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.create({ draftId: 'my-draft', formId: 'unknown-form' }),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('findById', () => {
+    it('returns the draft when found', async () => {
+      const draftRepo = makeDraftRepo();
+      const service = new FormDraftsService(draftRepo, makeFormDefRepo());
+
+      draftRepo.findOne.mockResolvedValue(makeDraft());
+
+      const result = await service.findById('my-draft');
+
+      expect(draftRepo.findOne).toHaveBeenCalledWith({ where: { draftId: 'my-draft' } });
+      expect(result.draftId).toBe('my-draft');
+    });
+
+    it('throws NotFoundException when draft is not found', async () => {
+      const draftRepo = makeDraftRepo();
+      const service = new FormDraftsService(draftRepo, makeFormDefRepo());
+
+      draftRepo.findOne.mockResolvedValue(null);
+
+      await expect(service.findById('unknown')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('update', () => {
+    it('updates values and lastActivePage and refreshes lastActiveAt', async () => {
+      const draftRepo = makeDraftRepo();
+      const draft = makeDraft();
+      draftRepo.findOne.mockResolvedValue(draft);
+      draftRepo.save.mockImplementation(async (d) => d as FormDraftEntity);
+      const service = new FormDraftsService(draftRepo, makeFormDefRepo());
+
+      await service.update('my-draft', { values: { name: 'John' }, lastActivePage: 2 });
+
+      expect(draftRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ values: { name: 'John' }, lastActivePage: 2 }),
+      );
+    });
+
+    it('throws BadRequestException when draft is abandoned', async () => {
+      const draftRepo = makeDraftRepo();
+      draftRepo.findOne.mockResolvedValue(makeDraft({ status: DraftStatus.ABANDONED }));
+      const service = new FormDraftsService(draftRepo, makeFormDefRepo());
+
+      await expect(service.update('my-draft', {})).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('abandon', () => {
+    it('sets draft status to abandoned', async () => {
+      const draftRepo = makeDraftRepo();
+      const draft = makeDraft();
+      draftRepo.findOne.mockResolvedValue(draft);
+      draftRepo.save.mockImplementation(async (d) => d as FormDraftEntity);
+      const service = new FormDraftsService(draftRepo, makeFormDefRepo());
+
+      await service.abandon('my-draft');
+
+      expect(draftRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ status: DraftStatus.ABANDONED }),
+      );
+    });
+
+    it('throws NotFoundException when draft is not found', async () => {
+      const draftRepo = makeDraftRepo();
+      draftRepo.findOne.mockResolvedValue(null);
+      const service = new FormDraftsService(draftRepo, makeFormDefRepo());
+
+      await expect(service.abandon('unknown')).rejects.toThrow(NotFoundException);
+    });
+  });
+});

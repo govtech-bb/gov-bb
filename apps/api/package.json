@@ -13,6 +13,7 @@
     "@govtech-bb/form-conditions": "*",
     "@govtech-bb/form-types": "*",
     "@nestjs/config": "^4.0.3",
+    "@nestjs/schedule": "^4.0.0",
     "@nestjs/typeorm": "^11.0.0",
     "joi": "^18.0.2",
     "node-cache": "^5.1.2",
