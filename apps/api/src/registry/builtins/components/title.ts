@@ -7,16 +7,19 @@ export const Title: SelectPrimitive = {
   options: [
     {
       label: "Mr",
-      value: "mr"
+      value: "mr",
     },
     {
       label: "Miss",
-      value: "miss"
+      value: "miss",
     },
     {
       label: "Mrs",
-      value: "mrs"
-    }
+      value: "mrs",
+    },
   ],
   multiple: false,
-}
+  ui: {
+    width: "short",
+  },
+};
