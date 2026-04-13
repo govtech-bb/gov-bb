@@ -13,7 +13,8 @@ export interface ClientPrimitive {
   options?: Option[];
   multiple?: boolean;
   validations?: ValidationRule;
-  onChange?(value: any): void; // Method called when a field's value is changed. Set via validations.
+  onChange?(value: any, formApi: any): void; // Method called when a field's value is changed. Set via validations.
+  onBlur?(value: any, formApi: any): void; // Method called when a field loses focus.
 }
 
 export interface ClientFormStep {
