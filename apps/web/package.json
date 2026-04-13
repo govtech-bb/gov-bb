@@ -2,6 +2,7 @@
   "name": "@govtech-bb/web",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
   "dependencies": {
     "@govtech-bb/form-types": "*",
     "@govtech-bb/form-conditions": "*"
