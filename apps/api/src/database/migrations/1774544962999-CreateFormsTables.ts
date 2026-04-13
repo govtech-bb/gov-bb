@@ -12,7 +12,7 @@ export class CreateFormsTables1774544962999 implements MigrationInterface {
       `CREATE TYPE "public"."form_submissions_status_enum" AS ENUM('draft', 'submitted', 'processing', 'complete', 'error')`,
     );
     await queryRunner.query(
-      `CREATE TABLE "form_submissions" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "idempotency_key" character varying(255) NOT NULL, "form_id" character varying(100) NOT NULL, "form_version" character varying(20) NOT NULL, "status" "public"."form_submissions_status_enum" NOT NULL, "values" jsonb NOT NULL, "meta" jsonb, "submitted_at" TIMESTAMP, "created_at" TIMESTAMP NOT NULL DEFAULT NOW(), "updated_at" TIMESTAMP NOT NULL DEFAULT NOW(), CONSTRAINT "UQ_form_submissions_idempotency_key" UNIQUE ("idempotency_key"), CONSTRAINT "PK_fb6e1e9f26cda31c358a8a1530e" PRIMARY KEY ("id"))`,
+      `CREATE TABLE "form_submissions" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "form_id" character varying(100) NOT NULL, "form_version" character varying(20) NOT NULL, "status" "public"."form_submissions_status_enum" NOT NULL, "values" jsonb NOT NULL, "meta" jsonb, "submitted_at" TIMESTAMP, "created_at" TIMESTAMP NOT NULL DEFAULT NOW(), "updated_at" TIMESTAMP NOT NULL DEFAULT NOW(), CONSTRAINT "PK_fb6e1e9f26cda31c358a8a1530e" PRIMARY KEY ("id"))`,
     );
   }
 
