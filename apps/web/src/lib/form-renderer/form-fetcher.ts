@@ -2,8 +2,8 @@
 
 import { ClientServiceContract } from "@web/types";
 import exampleServiceContract from "../../../contracts/example-service-contract.json"
-import masterServiceContract from "../../../contracts/master-contract.json"
-import { ServiceContract } from "@govtech-bb/form-types";
+import { serviceContractSchema } from "@govtech-bb/form-types";
+import { mapContractToLocale } from "./field-mapper";
 
 /* 
  The process is:
@@ -23,6 +23,7 @@ export const fetchContract = (id: string): ClientServiceContract => {
 }
 
 export const fetchExampleContract = (): ClientServiceContract => {
-  const contract: ServiceContract = exampleServiceContract;
-  const masterContract: ServiceContract = masterServiceContract;
+  const contract = serviceContractSchema.parse(exampleServiceContract)
+
+  return mapContractToLocale(contract);
 }

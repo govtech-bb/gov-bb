@@ -1,4 +1,4 @@
-import { Behaviour, HtmlTypes, Option, ValidationRule } from "@govtech-bb/form-types";
+import { Behaviour, DateTimeFormat, HtmlTypes, Option, ValidationRule } from "@govtech-bb/form-types";
 
 export interface ClientPrimitive {
   id: string;
@@ -29,8 +29,8 @@ export interface ClientServiceContract {
   title: string;
   description?: string;
   steps: ClientFormStep[];
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: DateTimeFormat;
+  updatedAt: DateTimeFormat;
   version: string;
 }
 
