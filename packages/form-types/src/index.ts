@@ -1,3 +1,22 @@
+export {
+  primitiveMetadataSchema,
+  htmlTypesSchema,
+  optionSchema,
+  basePrimitiveSchema,
+  textPrimitiveSchema,
+  textAreaPrimitiveSchema,
+  datePrimitiveSchema,
+  numberPrimitiveSchema,
+  telPrimitiveSchema,
+  emailPrimitiveSchema,
+  checkboxPrimitiveSchema,
+  selectPrimitiveSchema,
+  radioPrimitiveSchema,
+  filePrimitiveSchema,
+  primitiveSchema,
+  fieldOverridesSchema,
+} from "./primitive.type";
+
 export type {
   PrimitiveMetadata,
   BasePrimitive,
@@ -17,11 +36,26 @@ export type {
   HtmlTypes,
 } from "./primitive.type";
 
+export {
+  validationConfigSchema,
+  validationTypeSchema,
+  validationRuleSchema,
+} from "./validation.type";
+
 export type {
   ValidationConfig,
   ValidationType,
   ValidationRule,
 } from "./validation.type";
+
+export {
+  fieldConditionalOnBehaviourSchema,
+  stepConditionalOnBehaviourSchema,
+  repeatableBehaviourSchema,
+  fieldArrayBehaviourSchema,
+  sharedFieldsBehaviourSchema,
+  behaviourSchema,
+} from "./behavior.type";
 
 export type {
   Behaviour,
@@ -34,6 +68,14 @@ export type {
 
 export type { Block } from "./block.type";
 
+export {
+  formStepSchema,
+  recipeComponentFieldSchema,
+  recipeBlockFieldSchema,
+  recipeFormStepFieldSchema,
+  recipeFormStepSchema,
+} from "./form-step.type";
+
 export type {
   FormStep,
   RecipeFormStep,
@@ -42,7 +84,19 @@ export type {
   RecipeBlockField,
 } from "./form-step.type";
 
-export type { Processor } from "./processor.type";
+export {
+  processorSchema
+} from "./processor.type"
+
+export type {
+  Processor
+} from "./processor.type"
+
+export {
+  dateTimeFormatSchema,
+  serviceContractSchema,
+} from "./service-contract.type";
+
 
 export type {
   ServiceContract,

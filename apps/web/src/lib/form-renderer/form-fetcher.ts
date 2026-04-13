@@ -1,6 +1,9 @@
 // Responsible for fetching a form
 
 import { ClientServiceContract } from "@web/types";
+import exampleServiceContract from "../../../contracts/example-service-contract.json"
+import masterServiceContract from "../../../contracts/master-contract.json"
+import { ServiceContract } from "@govtech-bb/form-types";
 
 /* 
  The process is:
@@ -15,10 +18,11 @@ import { ClientServiceContract } from "@web/types";
  7. Returns data necessary for the form to render. (ClientServiceContract object)
 */
 
-export const fetchForm = (id: string): ClientServiceContract => {
+export const fetchContract = (id: string): ClientServiceContract => {
   throw new Error("Not Implemented");
 }
 
-export const fetchExampleForm = (): ClientServiceContract => {
-  throw new Error("Not Implemented");
+export const fetchExampleContract = (): ClientServiceContract => {
+  const contract: ServiceContract = exampleServiceContract;
+  const masterContract: ServiceContract = masterServiceContract;
 }
