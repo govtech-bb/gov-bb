@@ -14,4 +14,5 @@ export interface FieldValidation {
 export interface FormValidation {
   schema: ZodObject<Record<string, ZodType<unknown>>>;
   methods: Record<string, FieldValidationMethods>;
+  defaults: Record<string, unknown>;
 }
