@@ -3,8 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "dependencies": {
+    "@govtech-bb/form-conditions": "*",
     "@govtech-bb/form-types": "*",
-    "@govtech-bb/form-conditions": "*"
+    "@tanstack/react-form": "^1.29.0"
   },
   "scripts": {
     "dev": "next dev",
