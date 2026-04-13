@@ -21,6 +21,7 @@ export type HtmlTypes =
 export interface Option {
   label: string;
   value: string;
+  disabled?: boolean;
 }
 
 export interface BasePrimitive {
