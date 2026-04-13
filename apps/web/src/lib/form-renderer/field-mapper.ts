@@ -18,6 +18,8 @@ export const mapStepToLocale = (step: FormStep): ClientFormStep => {
 }
 
 export const mapFieldToLocale = (field: Primitive): ClientPrimitive => {
+  // If it is that we want `options` to be referenced, and accessible via some Key Value store.
+  // The logic to fetch, should be done in here.
   return {
     ...field,
     id: field.fieldId,

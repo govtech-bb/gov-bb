@@ -13,6 +13,7 @@ export interface ClientPrimitive {
   options?: Option[];
   multiple?: boolean;
   validations?: ValidationRule;
+  onChange?(value: any): void; // Method called when a field's value is changed. Set via validations.
 }
 
 export interface ClientFormStep {
@@ -32,3 +33,5 @@ export interface ClientServiceContract {
   updatedAt: Date;
   version: string;
 }
+
+export type FormValues = Record<string, any>
