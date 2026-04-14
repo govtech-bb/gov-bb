@@ -1,15 +1,14 @@
 import { ZodObject, ZodType } from "zod";
 
 export interface FieldValidationMethods {
-  onChange?(value: unknown, formApi: unknown): void;
-  onBlur?(value: unknown, formApi: unknown): void;
+  onChange?(value: unknown, formApi: unknown): void; // Method called when a field's value is changed. Set via validations.
+  onBlur?(value: unknown, formApi: unknown): void; // Method called when a field loses focus.
 }
 
 export interface FieldValidation {
-  zodSchema: ZodType<unknown>;
+  fieldSchema: ZodType<unknown>;
   methods: FieldValidationMethods;
 }
-
 
 export interface FormValidation {
   schema: ZodObject<Record<string, ZodType<unknown>>>;

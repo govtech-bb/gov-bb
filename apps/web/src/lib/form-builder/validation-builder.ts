@@ -3,9 +3,9 @@ import {
   ClientPrimitive,
   FieldValidation,
   FormValidation,
+  FieldValidationMethods,
 } from "@web/types";
 import z from "zod";
-import { FieldValidationMethods } from "../../types/validation.type";
 
 export const buildValidation = (
   contract: ClientServiceContract,
@@ -16,8 +16,8 @@ export const buildValidation = (
 
   for (const step of contract.steps) {
     for (const field of step.fields) {
-      const { zodSchema, methods } = buildFieldValidation(field);
-      shape[field.name] = zodSchema;
+      const { fieldSchema, methods } = buildFieldValidation(field);
+      shape[field.name] = fieldSchema;
       fieldValidationMethods[field.name] = methods;
       if (field.defaultValue) {
         defaults[field.id] = field.defaultValue;
@@ -36,12 +36,20 @@ export const buildFieldValidation = (
   field: ClientPrimitive,
 ): FieldValidation => {
   // TODO: Flesh this out based on field validation methods.
-  let schema: z.ZodType<unknown> = z.object({});
+  let fieldSchema: z.ZodType<unknown> = z.object({});
+  let methods = buildFieldValidationMethods(field);
   return {
-    zodSchema: schema,
-    methods: {
-      onBlur(value, formApi) {},
-      onChange(value, formApi) {},
-    },
+    fieldSchema,
+    methods,
+  };
+};
+
+// This allows us to recalculate the methods after restoring from cache.
+export const buildFieldValidationMethods = (
+  field: ClientPrimitive,
+): FieldValidationMethods => {
+  return {
+    onBlur(value, formApi) {},
+    onChange(value, formApi) {},
   };
 };
