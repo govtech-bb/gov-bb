@@ -97,6 +97,7 @@ export type {
 export {
   dateTimeFormatSchema,
   serviceContractSchema,
+  serviceContractRecipeSchema,
 } from "./service-contract.type";
 
 
