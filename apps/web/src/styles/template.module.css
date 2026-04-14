@@ -1,0 +1,118 @@
+/* stylelint-disable block-no-empty */
+/*
+	Global form-scoped variables:
+	Define shared design tokens here so all form elements inherit consistently.
+*/
+.formRoot {
+	/*
+		Root form container styles.
+		Add layout, spacing, typography defaults, and CSS variables/tokens here.
+	*/
+	--placeholder: ;
+}
+
+.formRoot .serviceTitle {
+	/*
+		Optional service header/banner shown above the main form title.
+		Use for accent border, color, and supporting intro text treatment.
+	*/
+	--placeholder: ;
+}
+
+.formRoot h1 {
+	/*
+		Primary form heading.
+		Define display size, weight, and outer spacing around the page title.
+	*/
+	--placeholder: ;
+}
+
+.formRoot label {
+	/*
+		Shared label styles for form controls.
+		Keep this readable and consistent across all field types.
+	*/
+	--placeholder: ;
+}
+
+.formRoot input:not([type="checkbox"]):not([type="radio"]) {
+	/*
+		Text-like inputs: text, email, tel, number, date, etc.
+		Add border, padding, font, and spacing for standard fields.
+	*/
+	--placeholder: ;
+}
+
+.formRoot select {
+	/*
+		Select dropdown control.
+		Add custom arrow, right padding, and browser appearance overrides.
+	*/
+	--placeholder: ;
+}
+
+.formRoot textarea {
+	/*
+		Multi-line text input.
+		Match input typography and spacing; optionally set resize behavior.
+	*/
+	--placeholder: ;
+}
+
+.formRoot [data-hint] {
+	/*
+		Helper/hint text below labels or controls.
+		Usually uses muted color and slightly smaller or secondary styling.
+	*/
+	--placeholder: ;
+}
+
+.formRoot [data-radio-group],
+.formRoot [data-checkbox-group] {
+	/*
+		Group wrappers for related radio or checkbox sets.
+		Use for group borders, padding, and section spacing.
+	*/
+	--placeholder: ;
+}
+
+.formRoot [data-choice-group] {
+	/*
+		Layout container for individual radio/checkbox choices.
+		Commonly grid/flex with consistent vertical gap.
+	*/
+	--placeholder: ;
+}
+
+.formRoot [data-choice-item] {
+	/*
+		One radio/checkbox choice row.
+		Align control and text label, and control spacing between them.
+	*/
+	--placeholder: ;
+}
+
+.formRoot input[type="checkbox"],
+.formRoot input[type="radio"] {
+	/*
+		Native checkbox/radio control sizing and accent color.
+		Keep these separate from text-like input styling.
+	*/
+	--placeholder: ;
+}
+
+.formRoot button {
+	/*
+		Primary form action button (for example, Continue/Submit).
+		Define size, color, shape, and cursor behavior.
+	*/
+	--placeholder: ;
+}
+
+.formRoot button:hover {
+	/*
+		Hover treatment for the primary button.
+		Keep transitions subtle and consistent with the design system.
+	*/
+	--placeholder: ;
+}
