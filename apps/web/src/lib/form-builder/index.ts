@@ -9,10 +9,12 @@ import {
 } from "@web/types";
 import { buildValidation } from "./validation-builder";
 
-export const buildForm = (contract: ClientServiceContract): FormMeta => {
+export const buildForm = async (
+  contract: ClientServiceContract,
+): Promise<FormMeta> => {
   // Build the Validation Schema
   const { schema, defaults, methods }: FormValidation =
-    buildValidation(contract);
+    await buildValidation(contract);
 
   // Get method to calculate visible steps
 

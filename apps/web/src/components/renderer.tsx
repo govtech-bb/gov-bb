@@ -1,8 +1,8 @@
-import { ClientServiceContract, FormMeta, FormRendererProps } from "@web/types";
+import { FormMeta, FormRendererProps } from "@web/types";
 import { buildForm } from "@web/lib";
 
-export default function FormRenderer({ contract }: FormRendererProps) {
-  const formMeta: FormMeta = buildForm(contract);
+export default async function FormRenderer({ contract }: FormRendererProps) {
+  const formMeta: FormMeta = await buildForm(contract);
 
   return (
     <>
