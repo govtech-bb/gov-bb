@@ -4,4 +4,7 @@ export const Postcode: TextPrimitive = {
     fieldId: "postcode",
     label: "Postcode",
     htmlType: "text",
+    ui: {
+        width: "short",
+    },
 }

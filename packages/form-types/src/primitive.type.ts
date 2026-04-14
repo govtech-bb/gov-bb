@@ -23,6 +23,10 @@ export interface Option {
   value: string;
 }
 
+export interface PrimitiveUI {
+  width?: "short" | "medium" | "long";
+}
+
 export interface BasePrimitive {
   fieldId: string;
   label: string;
@@ -38,6 +42,7 @@ export interface BasePrimitive {
   metadata?: Partial<PrimitiveMetadata>;
   options?: Array<Option>;
   multiple?: boolean;
+  ui?: PrimitiveUI;
 }
 
 export interface TextPrimitive extends BasePrimitive {
