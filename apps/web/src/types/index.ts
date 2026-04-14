@@ -10,3 +10,4 @@ export type {
   FormValidation,
   FieldValidationMethods,
 } from "./validation.type.ts";
+export type { FormRendererProps } from "./props.type.ts";

@@ -1,10 +1,13 @@
-import { ClientServiceContract, FormMeta } from "@web/types";
+import { ClientServiceContract, FormMeta, FormRendererProps } from "@web/types";
 import { buildForm } from "@web/lib";
 
-export default function FormRenderer(schema: ClientServiceContract) {
-  const formMeta: FormMeta = buildForm(schema);
+export default function FormRenderer({ contract }: FormRendererProps) {
+  const formMeta: FormMeta = buildForm(contract);
 
   return (
-    <h2>Update me! </h2>
-  )
+    <>
+      <h2> {formMeta.formTitle} </h2>
+      <p> {formMeta.formTitle} </p>
+    </>
+  );
 }

@@ -20,6 +20,8 @@ export const buildForm = (contract: ClientServiceContract): FormMeta => {
 
   // Return FormMeta object with everything configured.
   return {
+    formTitle: contract.title,
+    formDescription: contract.description,
     schema,
     steps: contract.steps,
     defaultValues: defaults,
@@ -43,3 +45,7 @@ const getVisibleSteps = (
 ): ClientFormStep[] => {
   throw new Error("Not Implemented");
 };
+
+// Other Exports
+
+export { fetchContract } from "./form-fetcher";

@@ -6,6 +6,8 @@ import { FieldValidationMethods } from "./validation.type";
 
 export interface FormMeta {
   // Meta information for the client to render.
+  formTitle: string;
+  formDescription?: string;
   schema: z.ZodObject<Record<string, z.ZodType<unknown>>>;
   steps: ClientFormStep[];
   defaultValues: Record<string, unknown>;
