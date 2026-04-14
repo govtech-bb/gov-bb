@@ -1,5 +1,5 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { Repository } from 'typeorm';
+import { LessThan, Repository } from 'typeorm';
 import { FormDraftEntity, DraftStatus } from '../../database/entities/form-draft.entity';
 import { FormDefinitionEntity } from '../../database/entities/form-definition.entity';
 import { FormDraftsService } from './form-drafts.service';
@@ -193,6 +193,58 @@ describe('FormDraftsService', () => {
       const service = new FormDraftsService(draftRepo, makeFormDefRepo());
 
       await expect(service.abandon('unknown')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('cleanupExpired', () => {
+    it('deletes abandoned drafts older than 7 days', async () => {
+      const draftRepo = makeDraftRepo();
+      draftRepo.delete.mockResolvedValue({ affected: 2, raw: [] });
+      const service = new FormDraftsService(draftRepo, makeFormDefRepo());
+
+      await service.cleanupExpired();
+
+      const [firstCall] = draftRepo.delete.mock.calls;
+      expect(firstCall[0]).toMatchObject({ status: DraftStatus.ABANDONED });
+      expect((firstCall[0] as any).updatedAt).toEqual(LessThan(expect.any(Date)));
+    });
+
+    it('deletes active drafts with lastActiveAt older than 7 days', async () => {
+      const draftRepo = makeDraftRepo();
+      draftRepo.delete.mockResolvedValue({ affected: 1, raw: [] });
+      const service = new FormDraftsService(draftRepo, makeFormDefRepo());
+
+      await service.cleanupExpired();
+
+      const [, secondCall] = draftRepo.delete.mock.calls;
+      expect(secondCall[0]).toMatchObject({ status: DraftStatus.ACTIVE });
+      expect((secondCall[0] as any).lastActiveAt).toEqual(LessThan(expect.any(Date)));
+    });
+
+    it('uses a cutoff date 7 days in the past', async () => {
+      const draftRepo = makeDraftRepo();
+      draftRepo.delete.mockResolvedValue({ affected: 0, raw: [] });
+      const service = new FormDraftsService(draftRepo, makeFormDefRepo());
+
+      const before = new Date();
+      before.setDate(before.getDate() - 7);
+      await service.cleanupExpired();
+      const after = new Date();
+      after.setDate(after.getDate() - 7);
+
+      const cutoff: Date = (draftRepo.delete.mock.calls[0][0] as any).updatedAt.value;
+      expect(cutoff.getTime()).toBeGreaterThanOrEqual(before.getTime());
+      expect(cutoff.getTime()).toBeLessThanOrEqual(after.getTime());
+    });
+
+    it('calls delete twice even when no drafts are affected', async () => {
+      const draftRepo = makeDraftRepo();
+      draftRepo.delete.mockResolvedValue({ affected: 0, raw: [] });
+      const service = new FormDraftsService(draftRepo, makeFormDefRepo());
+
+      await service.cleanupExpired();
+
+      expect(draftRepo.delete).toHaveBeenCalledTimes(2);
     });
   });
 });
