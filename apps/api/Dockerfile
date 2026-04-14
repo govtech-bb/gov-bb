@@ -15,6 +15,7 @@ WORKDIR /app
 
 COPY --from=builder /app/dist/apps/api/ ./dist/
 COPY --from=builder /app/dist/packages/ ./packages/
+COPY --from=builder /app/packages/form-types/src/ ./packages/form-types/src/
 COPY --from=builder /app/node_modules/ ./node_modules/
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/tsconfig.base.json ./
