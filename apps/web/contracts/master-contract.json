@@ -2,8 +2,8 @@
   "formId": "master-form-v1",
   "title": "Master Service Contract - Documentation & Testing",
   "description": "Comprehensive service contract demonstrating all available features: all behaviours, validations, HTML types, and built-in components.",
-  "createdAt": "2026-04-02T00:00:00.000Z",
-  "updatedAt": "2026-04-02T00:00:00.000Z",
+  "createdAt": "2026-04-02T00:00:00",
+  "updatedAt": "2026-04-02T00:00:00",
   "version": "1.0.0",
   "steps": [
     {
@@ -35,13 +35,12 @@
             }
           ],
           "multiple": false,
-          "validations": [
-            {
-              "required": {
-                "error": "Title is required"
-              }
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Title is required"
             }
-          ]
+          }
         },
         {
           "fieldId": "firstName",
@@ -49,32 +48,24 @@
           "htmlType": "text",
           "placeholder": "Enter your first name",
           "hint": "As shown on your official documents",
-          "validations": [
-            {
-              "required": {
-                "value": true,
-                "error": "First name is required"
-              }
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "First name is required"
             },
-            {
-              "minLength": {
-                "value": 2,
-                "error": "First name must be at least 2 characters"
-              }
+            "minLength": {
+              "value": 2,
+              "error": "First name must be at least 2 characters"
             },
-            {
-              "maxLength": {
-                "value": 50,
-                "error": "First name must not exceed 50 characters"
-              }
+            "maxLength": {
+              "value": 50,
+              "error": "First name must not exceed 50 characters"
             },
-            {
-              "pattern": {
-                "value": "^[A-Za-z\\s\\-']+$",
-                "error": "First name can only contain letters, spaces, hyphens and apostrophes"
-              }
+            "pattern": {
+              "value": "^[A-Za-z\\s\\-']+$",
+              "error": "First name can only contain letters, spaces, hyphens and apostrophes"
             }
-          ]
+          }
         },
         {
           "fieldId": "middleName",
@@ -87,55 +78,44 @@
           "label": "Last Name",
           "htmlType": "text",
           "placeholder": "Enter your last name",
-          "validations": [
-            {
-              "required": {
-                "error": "Last name is required"
-              }
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Last name is required"
             },
-            {
-              "minLength": {
-                "value": 2,
-                "error": "Last name must be at least 2 characters"
-              }
+            "minLength": {
+              "value": 2,
+              "error": "Last name must be at least 2 characters"
             },
-            {
-              "maxLength": {
-                "value": 50,
-                "error": "Last name must not exceed 50 characters"
-              }
+            "maxLength": {
+              "value": 50,
+              "error": "Last name must not exceed 50 characters"
             }
-          ]
+          }
         },
         {
           "fieldId": "dateOfBirth",
           "label": "Date of Birth",
           "htmlType": "date",
           "hint": "You must be at least 18 years old",
-          "validations": [
-            {
-              "required": {
-                "error": "Date of birth is required"
-              }
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Date of birth is required"
             },
-            {
-              "past": {
-                "error": "Date of birth must be in the past"
-              }
+            "past": {
+              "value": true,
+              "error": "Date of birth must be in the past"
             },
-            {
-              "minYear": {
-                "value": 1900,
-                "error": "Please enter a valid year"
-              }
+            "minYear": {
+              "value": 1900,
+              "error": "Please enter a valid year"
             },
-            {
-              "maxYear": {
-                "value": 2008,
-                "error": "You must be at least 18 years old"
-              }
+            "maxYear": {
+              "value": 2008,
+              "error": "You must be at least 18 years old"
             }
-          ]
+          }
         },
         {
           "fieldId": "sex",
@@ -151,18 +131,16 @@
               "value": "female"
             }
           ],
-          "validations": [
-            {
-              "required": {
-                "error": "Please select your biological sex"
-              }
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Please select your biological sex"
             },
-            {
-              "radio": {
-                "error": "Please select an option"
-              }
+            "radio": {
+              "value": true,
+              "error": "Please select an option"
             }
-          ]
+          }
         },
         {
           "fieldId": "nationality",
@@ -196,13 +174,12 @@
             }
           ],
           "multiple": false,
-          "validations": [
-            {
-              "required": {
-                "error": "Nationality is required"
-              }
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Nationality is required"
             }
-          ]
+          }
         },
         {
           "fieldId": "nationalId",
@@ -218,25 +195,20 @@
               "value": "bb"
             }
           ],
-          "validations": [
-            {
-              "required": {
-                "error": "National ID is required for non-BB nationals"
-              }
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "National ID is required for non-BB nationals"
             },
-            {
-              "minLength": {
-                "value": 8,
-                "error": "National ID must be at least 8 characters"
-              }
+            "minLength": {
+              "value": 8,
+              "error": "National ID must be at least 8 characters"
             },
-            {
-              "maxLength": {
-                "value": 20,
-                "error": "National ID must not exceed 20 characters"
-              }
+            "maxLength": {
+              "value": 20,
+              "error": "National ID must not exceed 20 characters"
             }
-          ]
+          }
         },
         {
           "fieldId": "nino",
@@ -244,17 +216,14 @@
           "htmlType": "text",
           "placeholder": "e.g. AB 12 34 56 C",
           "hint": "Format: 2 letters, 6 digits, 1 letter",
-          "validations": [
-            {
-              "pattern": {
-                "value": "^[A-Z]{2}\\s?\\d{6}\\s?[A-Z]$",
-                "error": "Please enter a valid National Insurance number"
-              }
+          "validations": {
+            "pattern": {
+              "value": "^[A-Z]{2}\\s?\\d{6}\\s?[A-Z]$",
+              "error": "Please enter a valid National Insurance number"
             }
-          ]
+          }
         }
-      ],
-      "behaviours": []
+      ]
     },
     {
       "stepId": "step-2-contact-information",
@@ -266,37 +235,32 @@
           "label": "Email Address",
           "htmlType": "email",
           "placeholder": "your.email@example.com",
-          "validations": [
-            {
-              "required": {
-                "error": "Email address is required"
-              }
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Email address is required"
             },
-            {
-              "email": {
-                "error": "Please enter a valid email address"
-              }
+            "email": {
+              "value": true,
+              "error": "Please enter a valid email address"
             }
-          ]
+          }
         },
         {
           "fieldId": "confirmEmail",
           "label": "Confirm Email Address",
           "htmlType": "email",
           "placeholder": "Confirm your email address",
-          "validations": [
-            {
-              "required": {
-                "error": "Please confirm your email address"
-              }
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Please confirm your email address"
             },
-            {
-              "equal": {
-                "reference": "email",
-                "error": "Email addresses do not match"
-              }
+            "equal": {
+              "value": true,
+              "error": "Email addresses do not match"
             }
-          ]
+          }
         },
         {
           "fieldId": "telephone",
@@ -310,19 +274,16 @@
           "label": "Mobile Telephone",
           "htmlType": "tel",
           "placeholder": "Enter mobile number",
-          "validations": [
-            {
-              "required": {
-                "error": "Mobile number is required"
-              }
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Mobile number is required"
             },
-            {
-              "pattern": {
-                "value": "^[0-9+\\s\\-\\()\\]{10,15}$",
-                "error": "Please enter a valid phone number"
-              }
+            "pattern": {
+              "value": "^[0-9+\\s\\-\\()\\]{10,15}$",
+              "error": "Please enter a valid phone number"
             }
-          ]
+          }
         },
         {
           "fieldId": "workTelephone",
@@ -354,13 +315,12 @@
             }
           ],
           "multiple": true,
-          "validations": [
-            {
-              "required": {
-                "error": "Please select a preferred contact method"
-              }
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Please select a preferred contact method"
             }
-          ]
+          }
         },
         {
           "fieldId": "canContactEvening",
@@ -373,14 +333,12 @@
           "label": "Additional Contact Notes (Optional)",
           "htmlType": "textarea",
           "placeholder": "Any additional contact information or special requirements...",
-          "validations": [
-            {
-              "maxLength": {
-                "value": 500,
-                "error": "Notes must not exceed 500 characters"
-              }
+          "validations": {
+            "maxLength": {
+              "value": 500,
+              "error": "Notes must not exceed 500 characters"
             }
-          ]
+          }
         }
       ]
     },
@@ -415,32 +373,28 @@
           "label": "Current Address",
           "htmlType": "text",
           "hint": "House number and street",
-          "validations": [
-            {
-              "required": {
-                "error": "Current address is required"
-              }
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Current address is required"
             },
-            {
-              "minLength": {
-                "value": 5,
-                "error": "Please enter a complete address"
-              }
+            "minLength": {
+              "value": 5,
+              "error": "Please enter a complete address"
             }
-          ]
+          }
         },
         {
           "fieldId": "town",
           "label": "Town/City",
           "htmlType": "text",
           "placeholder": "Enter town or city",
-          "validations": [
-            {
-              "required": {
-                "error": "Town/City is required"
-              }
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Town/City is required"
             }
-          ]
+          }
         },
         {
           "fieldId": "county",
@@ -453,19 +407,16 @@
           "label": "Postcode",
           "htmlType": "text",
           "placeholder": "e.g. SW1A 1AA",
-          "validations": [
-            {
-              "required": {
-                "error": "Postcode is required"
-              }
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Postcode is required"
             },
-            {
-              "pattern": {
-                "value": "^[A-Z]{1,2}[0-9][0-9A-Z]?\\s?[0-9][A-Z]{2}$",
-                "error": "Please enter a valid BB postcode"
-              }
+            "pattern": {
+              "value": "^[A-Z]{1,2}[0-9][0-9A-Z]?\\s?[0-9][A-Z]{2}$",
+              "error": "Please enter a valid BB postcode"
             }
-          ]
+          }
         },
         {
           "fieldId": "country",
@@ -500,13 +451,12 @@
           ],
           "multiple": false,
           "defaultValue": "uk",
-          "validations": [
-            {
-              "required": {
-                "error": "Country is required"
-              }
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Country is required"
             }
-          ]
+          }
         },
         {
           "fieldId": "hasPreviousAddress",
@@ -528,13 +478,12 @@
               "value": true
             }
           ],
-          "validations": [
-            {
-              "required": {
-                "error": "Previous address is required"
-              }
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Previous address is required"
             }
-          ]
+          }
         },
         {
           "fieldId": "previousPostcode",
@@ -549,13 +498,12 @@
               "value": true
             }
           ],
-          "validations": [
-            {
-              "required": {
-                "error": "Previous postcode is required"
-              }
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Previous postcode is required"
             }
-          ]
+          }
         },
         {
           "fieldId": "employmentStatus",
@@ -585,13 +533,12 @@
             }
           ],
           "multiple": false,
-          "validations": [
-            {
-              "required": {
-                "error": "Employment status is required"
-              }
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Employment status is required"
             }
-          ]
+          }
         },
         {
           "fieldId": "employerName",
@@ -609,13 +556,12 @@
               ]
             }
           ],
-          "validations": [
-            {
-              "required": {
-                "error": "Employer name is required"
-              }
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Employer name is required"
             }
-          ]
+          }
         },
         {
           "fieldId": "jobTitle",
@@ -633,13 +579,12 @@
               ]
             }
           ],
-          "validations": [
-            {
-              "required": {
-                "error": "Job title is required"
-              }
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Job title is required"
             }
-          ]
+          }
         },
         {
           "fieldId": "annualIncome",
@@ -658,28 +603,22 @@
               ]
             }
           ],
-          "validations": [
-            {
-              "required": {
-                "error": "Annual income is required"
-              }
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Annual income is required"
             },
-            {
-              "min": {
-                "value": 0,
-                "error": "Income cannot be negative"
-              }
+            "min": {
+              "value": 0,
+              "error": "Income cannot be negative"
             },
-            {
-              "max": {
-                "value": 10000000,
-                "error": "Please enter a realistic income figure"
-              }
+            "max": {
+              "value": 10000000,
+              "error": "Please enter a realistic income figure"
             }
-          ]
+          }
         }
-      ],
-      "behaviours": []
+      ]
     },
     {
       "stepId": "step-4-documents-uploads",
@@ -696,29 +635,24 @@
             "pii": true,
             "sensitive": true
           },
-          "validations": [
-            {
-              "required": {
-                "error": "Please upload an identity document"
-              }
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Please upload an identity document"
             },
-            {
-              "fileTypes": {
-                "value": [
-                  "application/pdf",
-                  "image/jpeg",
-                  "image/png"
-                ],
-                "error": "Only PDF, JPG and PNG files are accepted"
-              }
+            "fileTypes": {
+              "value": [
+                "application/pdf",
+                "image/jpeg",
+                "image/png"
+              ],
+              "error": "Only PDF, JPG and PNG files are accepted"
             },
-            {
-              "itemMaxSize": {
-                "value": 5242880,
-                "error": "File size must not exceed 5MB"
-              }
+            "itemMaxSize": {
+              "value": 5242880,
+              "error": "File size must not exceed 5MB"
             }
-          ]
+          }
         },
         {
           "fieldId": "proofOfAddress",
@@ -726,41 +660,32 @@
           "htmlType": "file",
           "multiple": true,
           "hint": "Upload up to 3 documents (utility bills, bank statements)",
-          "validations": [
-            {
-              "required": {
-                "error": "Proof of address is required"
-              }
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Proof of address is required"
             },
-            {
-              "minItems": {
-                "value": 1,
-                "error": "Please upload at least one document"
-              }
+            "minItems": {
+              "value": 1,
+              "error": "Please upload at least one document"
             },
-            {
-              "maxItems": {
-                "value": 3,
-                "error": "You can upload a maximum of 3 documents"
-              }
+            "maxItems": {
+              "value": 3,
+              "error": "You can upload a maximum of 3 documents"
             },
-            {
-              "fileTypes": {
-                "value": [
-                  "application/pdf",
-                  "image/jpeg",
-                  "image/png"
-                ],
-                "error": "Only PDF, JPG and PNG files are accepted"
-              }
+            "fileTypes": {
+              "value": [
+                "application/pdf",
+                "image/jpeg",
+                "image/png"
+              ],
+              "error": "Only PDF, JPG and PNG files are accepted"
             },
-            {
-              "maxSize": {
-                "value": 10485760,
-                "error": "Total size must not exceed 10MB"
-              }
+            "maxSize": {
+              "value": 10485760,
+              "error": "Total size must not exceed 10MB"
             }
-          ]
+          }
         },
         {
           "fieldId": "documentTypes",
@@ -790,20 +715,16 @@
             }
           ],
           "multiple": true,
-          "validations": [
-            {
-              "minSelection": {
-                "value": 1,
-                "error": "Please select at least one document type"
-              }
+          "validations": {
+            "minSelection": {
+              "value": 1,
+              "error": "Please select at least one document type"
             },
-            {
-              "maxSelection": {
-                "value": 5,
-                "error": "You can select a maximum of 5 document types"
-              }
+            "maxSelection": {
+              "value": 5,
+              "error": "You can select a maximum of 5 document types"
             }
-          ]
+          }
         },
         {
           "fieldId": "additionalDocuments",
@@ -846,13 +767,12 @@
               "value": true
             }
           ],
-          "validations": [
-            {
-              "required": {
-                "error": "Bank name is required"
-              }
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Bank name is required"
             }
-          ]
+          }
         },
         {
           "fieldId": "accountType",
@@ -882,13 +802,12 @@
               "value": true
             }
           ],
-          "validations": [
-            {
-              "required": {
-                "error": "Account type is required"
-              }
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Account type is required"
             }
-          ]
+          }
         },
         {
           "fieldId": "accountNumber",
@@ -903,25 +822,20 @@
               "value": true
             }
           ],
-          "validations": [
-            {
-              "required": {
-                "error": "Account number is required"
-              }
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Account number is required"
             },
-            {
-              "minLength": {
-                "value": 4,
-                "error": "Account number must be 8 digits"
-              }
+            "minLength": {
+              "value": 4,
+              "error": "Account number must be 8 digits"
             },
-            {
-              "maxLength": {
-                "value": 20,
-                "error": "Account number must be 8 digits"
-              }
+            "maxLength": {
+              "value": 20,
+              "error": "Account number must be 8 digits"
             }
-          ]
+          }
         },
         {
           "fieldId": "swiftCode",
@@ -937,19 +851,16 @@
               "value": true
             }
           ],
-          "validations": [
-            {
-              "required": {
-                "error": "swift code is required"
-              }
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "swift code is required"
             },
-            {
-              "pattern": {
-                "value": "^[0-9]{2}[-\\s]?[0-9]{2}[-\\s]?[0-9]{2}$",
-                "error": "Please enter a valid 6-digit swift code"
-              }
+            "pattern": {
+              "value": "^[0-9]{2}[-\\s]?[0-9]{2}[-\\s]?[0-9]{2}$",
+              "error": "Please enter a valid 6-digit swift code"
             }
-          ]
+          }
         },
         {
           "fieldId": "noAccountReason",
@@ -964,50 +875,40 @@
               "value": false
             }
           ],
-          "validations": [
-            {
-              "required": {
-                "error": "Please provide a reason"
-              }
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Please provide a reason"
             },
-            {
-              "minLength": {
-                "value": 20,
-                "error": "Please provide more detail (minimum 20 characters)"
-              }
+            "minLength": {
+              "value": 20,
+              "error": "Please provide more detail (minimum 20 characters)"
             },
-            {
-              "maxLength": {
-                "value": 500,
-                "error": "Response must not exceed 500 characters"
-              }
+            "maxLength": {
+              "value": 500,
+              "error": "Response must not exceed 500 characters"
             }
-          ]
+          }
         },
         {
           "fieldId": "initialDeposit",
           "label": "Initial Deposit Amount ($)",
           "htmlType": "number",
           "placeholder": "Enter deposit amount",
-          "validations": [
-            {
-              "required": {
-                "error": "Initial deposit amount is required"
-              }
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Initial deposit amount is required"
             },
-            {
-              "min": {
-                "value": 100,
-                "error": "Minimum deposit is $100"
-              }
+            "min": {
+              "value": 100,
+              "error": "Minimum deposit is $100"
             },
-            {
-              "max": {
-                "value": 100000,
-                "error": "Maximum deposit is $100,000"
-              }
+            "max": {
+              "value": 100000,
+              "error": "Maximum deposit is $100,000"
             }
-          ]
+          }
         },
         {
           "fieldId": "fundSource",
@@ -1039,18 +940,16 @@
               "value": "other"
             }
           ],
-          "validations": [
-            {
-              "required": {
-                "error": "Please select the source of funds"
-              }
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Please select the source of funds"
             },
-            {
-              "radio": {
-                "error": "Please select an option"
-              }
+            "radio": {
+              "value": true,
+              "error": "Please select an option"
             }
-          ]
+          }
         },
         {
           "fieldId": "fundSourceOther",
@@ -1065,16 +964,14 @@
               "value": "other"
             }
           ],
-          "validations": [
-            {
-              "required": {
-                "error": "Please specify the source of funds"
-              }
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Please specify the source of funds"
             }
-          ]
+          }
         }
-      ],
-      "behaviours": []
+      ]
     },
     {
       "stepId": "step-6-declarations",
@@ -1086,26 +983,24 @@
           "label": "I confirm that all information provided in this form is true and accurate to the best of my knowledge.",
           "htmlType": "checkbox",
           "defaultValue": false,
-          "validations": [
-            {
-              "required": {
-                "error": "You must confirm this declaration"
-              }
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "You must confirm this declaration"
             }
-          ]
+          }
         },
         {
           "fieldId": "declaration2",
           "label": "I understand that providing false information may result in my application being rejected and may constitute a criminal offence.",
           "htmlType": "checkbox",
           "defaultValue": false,
-          "validations": [
-            {
-              "required": {
-                "error": "You must confirm this declaration"
-              }
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "You must confirm this declaration"
             }
-          ]
+          }
         },
         {
           "fieldId": "consentMarketing",
@@ -1118,26 +1013,24 @@
           "label": "I consent to my information being shared with third parties for the purpose of processing this application.",
           "htmlType": "checkbox",
           "defaultValue": false,
-          "validations": [
-            {
-              "required": {
-                "error": "Third party consent is required for application processing"
-              }
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Third party consent is required for application processing"
             }
-          ]
+          }
         },
         {
           "fieldId": "dataRetention",
           "label": "I understand that my data will be retained in accordance with the data retention policy.",
           "htmlType": "checkbox",
           "defaultValue": false,
-          "validations": [
-            {
-              "required": {
-                "error": "You must confirm data retention understanding"
-              }
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "You must confirm data retention understanding"
             }
-          ]
+          }
         },
         {
           "fieldId": "additionalComments",
@@ -1150,18 +1043,16 @@
           "label": "Date",
           "htmlType": "date",
           "hint": "Today's date will be used as the agreement date",
-          "validations": [
-            {
-              "required": {
-                "error": "Date is required"
-              }
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Date is required"
             },
-            {
-              "pastOrToday": {
-                "error": "Date cannot be in the future"
-              }
+            "pastOrToday": {
+              "value": true,
+              "error": "Date cannot be in the future"
             }
-          ]
+          }
         }
       ],
       "behaviours": [

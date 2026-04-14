@@ -4,8 +4,10 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "@govtech-bb/form-conditions": "*",
     "@govtech-bb/form-types": "*",
-    "@govtech-bb/form-conditions": "*"
+    "@tanstack/react-form": "^1.29.0",
+    "zod": "^4.3.6"
   },
   "scripts": {
     "dev": "next dev",

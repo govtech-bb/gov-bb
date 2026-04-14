@@ -1,41 +1,50 @@
-export interface ValidationConfig {
-  error?: string;
-  value?: any;
-  reference?: string;
-}
+import { z } from "zod";
 
-export type ValidationType =
-  | "required"
-  | "minLength"
-  | "maxLength"
-  | "pattern"
-  | "min"
-  | "max"
-  | "conditionalOn"
-  | "past"
-  | "pastOrToday"
-  | "future"
-  | "futureOrToday"
-  | "after"
-  | "before"
-  | "onOrAfter"
-  | "onOrBefore"
-  | "minYear"
-  | "maxYear"
-  | "minItems"
-  | "maxItems"
-  | "radio"
-  | "minSelection"
-  | "maxSelection"
-  | "email"
-  | "fileTypes"
-  | "itemMaxSize"
-  | "maxSize"
-  | "equal"
-  | "notEqual"
-  | "gt"
-  | "lt"
-  | "contains"
-  | "strictEquality";
+export const validationConfigSchema = z.object({
+  error: z.string().optional(),
+  value: z.any().optional(),
+  reference: z.string().optional(),
+});
+export type ValidationConfig = z.infer<typeof validationConfigSchema>;
 
-export type ValidationRule = Partial<Record<ValidationType, ValidationConfig>>;
+export const validationTypeSchema = z.enum([
+  "required",
+  "minLength",
+  "maxLength",
+  "pattern",
+  "min",
+  "max",
+  "conditionalOn",
+  "past",
+  "pastOrToday",
+  "future",
+  "futureOrToday",
+  "after",
+  "before",
+  "onOrAfter",
+  "onOrBefore",
+  "minYear",
+  "maxYear",
+  "minItems",
+  "maxItems",
+  "radio",
+  "minSelection",
+  "maxSelection",
+  "email",
+  "fileTypes",
+  "itemMaxSize",
+  "maxSize",
+  "equal",
+  "notEqual",
+  "gt",
+  "lt",
+  "contains",
+  "strictEquality",
+]);
+export type ValidationType = z.infer<typeof validationTypeSchema>;
+
+export const validationRuleSchema = z.record(
+  validationTypeSchema,
+  validationConfigSchema,
+);
+export type ValidationRule = z.infer<typeof validationRuleSchema>;

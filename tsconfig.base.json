@@ -26,6 +26,12 @@
       ],
       "@govtech-bb/form-conditions": [
         "packages/form-conditions/src/index.ts"
+      ],
+      "@web/types": [
+        "apps/web/src/types/index.ts"
+      ],
+      "@web/lib": [
+        "apps/web/src/lib/form-renderer",
       ]
     }
   },
