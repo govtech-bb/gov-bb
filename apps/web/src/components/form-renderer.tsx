@@ -4,8 +4,8 @@ import { buildForm } from "@web/lib";
 import { useForm } from "@tanstack/react-form";
 import FieldRenderer from "./field-renderer";
 
-export default async function FormRenderer({ contract }: FormRendererProps) {
-  const formMeta: FormMeta = await buildForm(contract);
+export default function FormRenderer({ contract }: FormRendererProps) {
+  const formMeta: FormMeta = buildForm(contract);
 
   const form = useForm({
     defaultValues: formMeta.defaultValues as FormValues,

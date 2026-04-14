@@ -7,9 +7,9 @@ import {
   ClientPrimitive,
 } from "@web/types";
 
-export const mapContractToLocale = async (
+export const mapContractToLocale = (
   contract: ServiceContract,
-): Promise<ClientServiceContract> => {
+): ClientServiceContract => {
   return {
     ...contract,
     steps: contract.steps.map((step) => mapStepToLocale(step)),

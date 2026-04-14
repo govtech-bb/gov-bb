@@ -7,16 +7,16 @@ import {
 } from "@web/types";
 import z from "zod";
 
-export const buildValidation = async (
+export const buildValidation = (
   contract: ClientServiceContract,
-): Promise<FormValidation> => {
+): FormValidation => {
   const shape: Record<string, z.ZodType<unknown>> = {};
   const fieldValidationMethods: Record<string, FieldValidationMethods> = {};
   const defaults: Record<string, unknown> = {};
 
   for (const step of contract.steps) {
     for (const field of step.fields) {
-      const { fieldSchema, methods } = await buildFieldValidation(field);
+      const { fieldSchema, methods } = buildFieldValidation(field);
       shape[field.name] = fieldSchema;
       fieldValidationMethods[field.name] = methods;
       if (field.defaultValue) {
@@ -32,12 +32,12 @@ export const buildValidation = async (
   };
 };
 
-export const buildFieldValidation = async (
+export const buildFieldValidation = (
   field: ClientPrimitive,
-): Promise<FieldValidation> => {
+): FieldValidation => {
   // TODO: Flesh this out based on field validation methods.
   let fieldSchema: z.ZodType<unknown> = z.object({});
-  let methods = await buildFieldValidationMethods(field);
+  let methods = buildFieldValidationMethods(field);
   return {
     fieldSchema,
     methods,
@@ -45,9 +45,9 @@ export const buildFieldValidation = async (
 };
 
 // This allows us to recalculate the methods after restoring from cache.
-export const buildFieldValidationMethods = async (
+export const buildFieldValidationMethods = (
   field: ClientPrimitive,
-): Promise<FieldValidationMethods> => {
+): FieldValidationMethods => {
   return {
     onBlur(value, formApi) {},
     onChange(value, formApi) {},

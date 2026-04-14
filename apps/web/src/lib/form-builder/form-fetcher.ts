@@ -20,16 +20,14 @@ import { mapContractToLocale } from "./field-mapper";
 */
 
 // TODO: Replace with actual fetching from server logic
-export const fetchContract = async (
+export const fetchContract = (
   id: string = "example",
-): Promise<ClientServiceContract> => {
+): ClientServiceContract => {
   console.warn("Fetching examples... ID: " + id);
   return fetchExampleContract(id);
 };
 
-export const fetchExampleContract = async (
-  id: string,
-): Promise<ClientServiceContract> => {
+export const fetchExampleContract = (id: string): ClientServiceContract => {
   let contract: ServiceContract;
 
   if (id === "master") {
