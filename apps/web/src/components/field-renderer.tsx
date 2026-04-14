@@ -30,7 +30,12 @@ export default function FieldRenderer({
           case "number":
           case "tel":
           case "email":
-            return <input {...sharedProps} />;
+            return (
+              <div>
+                <label> {field.label} </label>
+                <input {...sharedProps} />
+              </div>
+            );
           default:
             return <div>No field for {field.htmlType} designed</div>;
         }
