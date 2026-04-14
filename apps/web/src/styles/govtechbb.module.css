@@ -1,5 +1,293 @@
+/* Root Styles */
+.formRoot {
+  /* Brand Yellow */
+  --color-yellow-00: #e8a833;
+  --color-yellow-100: #ffc726;
+  --color-yellow-40: #ffe9a8;
+  --color-yellow-10: #fff9e9;
+
+  /* Brand Blue */
+  --color-blue-00: #00164a;
+  --color-blue-100: #00267f;
+  --color-blue-40: #99a8cc;
+  --color-blue-10: #e5e9f2;
+
+  /* Neutral Colors */
+  --color-black-00: #000000;
+  --color-mid-grey-00: #595959;
+  --color-grey-00: #e0e4e9;
+  --color-white-00: #ffffff;
+
+  /* Green */
+  --color-green-00: #00654a;
+  --color-green-100: #1fbf84;
+  --color-green-40: #a5e5ce;
+  --color-green-10: #e9f9f3;
+
+  /* Red */
+  --color-red-00: #a42c2c;
+  --color-red-100: #ff6b6b;
+  --color-red-40: #ffc4c4;
+  --color-red-10: #fff0f0;
+
+  /* Purple */
+  --color-purple-00: #4a235a;
+  --color-purple-100: #a962c7;
+  --color-purple-40: #ddc0e9;
+  --color-purple-10: #f6eff9;
+
+  /* Pink */
+  --color-pink-00: #ad1157;
+  --color-pink-100: #ff94d9;
+  --color-pink-40: #ffd4f0;
+  --color-pink-10: #fff4fb;
+
+  /* Teal */
+  --color-teal-00: #0e5f64;
+  --color-teal-100: #30c0c8;
+  --color-teal-40: #ace6e9;
+  --color-teal-10: #eaf9f9;
+
+  --color-focus-visible: var(--color-teal-100);
+
+  font-family: var(--font-figtree), sans-serif;
+  display: flex;
+  flex-direction: column;
+  padding: 2rem;
+  gap: 1rem;
+}
+
+/* Typography */
 .formRoot h1 {
-  font-size: 2rem;
-  margin-bottom: 1rem;
-  color: royalblue;
+  font-size: 3.5rem;
+  line-height: 1.15;
+  font-weight: 700;
+}
+
+.formRoot h2 {
+  font-size: 2.5rem;
+  line-height: 1.25;
+  font-weight: 700;
+}
+
+.formRoot h3 {
+  font-size: 1.5rem;
+  line-height: 1.25;
+  font-weight: 700;
+}
+
+.formRoot h4,
+.formRoot h5,
+.formRoot h6 {
+  font-size: 1.25rem;
+  line-height: 1.5;
+  font-weight: 700;
+}
+
+.formRoot p {
+  font-size: 1.25rem;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+/* Focus Styles */
+.formRoot :focus {
+  outline: 0.25rem solid var(--color-focus-visible);
+}
+
+/* Service Title */
+.formRoot .serviceTitle {
+  font-size: 1.25rem;
+  line-height: 1rem;
+  border-left: var(--color-blue-40) 0.25rem solid;
+  color: var(--color-mid-grey-00);
+  padding: 1rem;
+}
+
+/* Form Elements */
+.formRoot label {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.formRoot input:not([type="radio"]):not([type="checkbox"]),
+.formRoot select,
+.formRoot textarea {
+  font-size: 1.25rem;
+  border: 0.125rem solid var(--color-black-00);
+  border-radius: 0.25rem;
+  padding: 1rem;
+}
+
+.formRoot button {
+  font-size: 1.25rem;
+  display: inline-flex;
+  width: fit-content;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  background-color: var(--color-teal-00);
+  color: var(--color-white-00);
+  border: none;
+  border-radius: 0.25rem;
+  padding: 1.25rem 1.75rem;
+}
+
+.formRoot button:hover {
+  background-color: #1a777d;
+  color: var(--color-white-00);
+}
+
+.formRoot fieldset {
+  border: none;
+  padding: 0;
+  margin: 0 0 0.9375rem;
+}
+
+.formRoot fieldset legend {
+  padding: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+
+/* Radio Button Styles */
+.formRoot [data-radio-group] input {
+  width: 3rem;
+  height: 3rem;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-color: var(--color-white-00);
+  border: 0.125rem solid var(--color-black-00);
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.formRoot [data-radio-group] [data-choice-item] {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.formRoot [data-radio-group] input:hover {
+  cursor: pointer;
+  box-shadow: inset 0 0 0 0.25rem rgba(0, 0, 0, 0.1);
+}
+
+.formRoot [data-radio-group] input:focus,
+.formRoot [data-radio-group] input:focus-visible,
+.formRoot [data-checkbox-group] input:focus,
+.formRoot [data-checkbox-group] input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.formRoot [data-radio-group] input:checked {
+  background: radial-gradient(circle, var(--color-teal-00) 35%, var(--color-white-00) 35%);
+}
+
+.formRoot [data-radio-group] input:disabled {
+  opacity: 0.4;
+}
+
+.formRoot [data-radio-group] input:invalid {
+  border-color: var(--color-red-00);
+}
+
+/* Checkbox Styles */
+.formRoot [data-checkbox-group] {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.formRoot [data-checkbox-group] [data-choice-item] {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.formRoot [data-checkbox-group] input {
+  width: 3rem;
+  height: 3rem;
+  padding: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  position: relative;
+  flex-shrink: 0;
+  background-color: var(--color-white-00);
+  border: 0.125rem solid var(--color-black-00);
+  border-radius: 0;
+  transition: all 0.2s ease;
+}
+
+.formRoot [data-checkbox-group] input:hover {
+  cursor: pointer;
+  box-shadow: inset 0 0 0 0.25rem rgba(0, 0, 0, 0.1);
+}
+
+.formRoot [data-checkbox-group] input:disabled {
+  opacity: 0.4;
+}
+
+.formRoot [data-checkbox-group] input:invalid {
+  border-color: var(--color-red-00);
+}
+
+.formRoot [data-checkbox-group] input:checked::before {
+  content: "";
+  position: absolute;
+  width: 1.1875rem;
+  height: 1.1875rem;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 0;
+  background-color: var(--color-teal-00);
+}
+
+.formRoot [data-checkbox-group] [data-choice-item] label {
+  margin: 0;
+  font-size: 1.25rem;
+  line-height: 1.5;
+  font-weight: 400;
+  color: var(--color-black-00);
+  cursor: pointer;
+}
+
+.formRoot fieldset [data-checkbox-group] {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.formRoot fieldset [data-radio-group] {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.formRoot fieldset [data-checkbox-group] legend {
+  font-size: 1.25rem;
+  line-height: 1.5;
+  font-weight: 700;
+  color: var(--color-black-00);
+}
+
+.formRoot fieldset [data-checkbox-group] p {
+  margin: 0;
+  font-size: 1.25rem;
+  line-height: 1.5;
+  font-weight: 400;
+  color: var(--color-mid-grey-00);
+}
+
+.formRoot [data-checkbox-group-error] {
+  margin: 0;
+  font-size: 1.25rem;
+  line-height: 1.5;
+  font-weight: 400;
+  color: var(--color-red-00);
 }
