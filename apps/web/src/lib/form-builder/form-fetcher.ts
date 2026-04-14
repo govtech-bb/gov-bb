@@ -1,7 +1,7 @@
 // Responsible for fetching a form
 
 import { ClientServiceContract } from "@web/types";
-import exampleServiceContract from "../../../contracts/example-service-contract.json"
+import exampleServiceContract from "../../../contracts/example-service-contract.json";
 import { serviceContractSchema } from "@govtech-bb/form-types";
 import { mapContractToLocale } from "./field-mapper";
 
@@ -20,10 +20,10 @@ import { mapContractToLocale } from "./field-mapper";
 
 export const fetchContract = (id: string): ClientServiceContract => {
   throw new Error("Not Implemented");
-}
+};
 
 export const fetchExampleContract = (): ClientServiceContract => {
-  const contract = serviceContractSchema.parse(exampleServiceContract)
+  const contract = serviceContractSchema.parse(exampleServiceContract);
 
   return mapContractToLocale(contract);
-}
+};

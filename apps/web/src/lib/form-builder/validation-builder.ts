@@ -1,8 +1,15 @@
-import { ClientServiceContract, ClientPrimitive, FieldValidation, FormValidation } from '@web/types';
-import z from 'zod';
-import { FieldValidationMethods } from '../../types/validation.type';
+import {
+  ClientServiceContract,
+  ClientPrimitive,
+  FieldValidation,
+  FormValidation,
+} from "@web/types";
+import z from "zod";
+import { FieldValidationMethods } from "../../types/validation.type";
 
-export const buildValidation = (contract: ClientServiceContract): FormValidation => {
+export const buildValidation = (
+  contract: ClientServiceContract,
+): FormValidation => {
   const shape: Record<string, z.ZodType<unknown>> = {};
   const fieldValidationMethods: Record<string, FieldValidationMethods> = {};
   const defaults: Record<string, unknown> = {};
@@ -13,7 +20,7 @@ export const buildValidation = (contract: ClientServiceContract): FormValidation
       shape[field.name] = zodSchema;
       fieldValidationMethods[field.name] = methods;
       if (field.defaultValue) {
-        defaults[field.id] = field.defaultValue
+        defaults[field.id] = field.defaultValue;
       }
     }
   }
@@ -21,18 +28,20 @@ export const buildValidation = (contract: ClientServiceContract): FormValidation
   return {
     schema: z.object(shape),
     methods: fieldValidationMethods,
-    defaults
-  }
-}
+    defaults,
+  };
+};
 
-export const buildFieldValidation = (field: ClientPrimitive): FieldValidation => {
+export const buildFieldValidation = (
+  field: ClientPrimitive,
+): FieldValidation => {
   // TODO: Flesh this out based on field validation methods.
   let schema: z.ZodType<unknown> = z.object({});
   return {
     zodSchema: schema,
     methods: {
-      onBlur(value, formApi) { },
-      onChange(value, formApi) { }
-    }
-  }
-}
+      onBlur(value, formApi) {},
+      onChange(value, formApi) {},
+    },
+  };
+};

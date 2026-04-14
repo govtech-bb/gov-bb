@@ -9,4 +9,4 @@ export const buildForm = (contract: ClientServiceContract): FormMeta => {
   // Setup isStepVisible and getVisibleSteps methods based on behaviours.
   // Return FormMeta object with everything configured.
   throw new Error("Not Implemented");
-}
+};
