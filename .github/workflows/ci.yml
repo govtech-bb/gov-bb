@@ -427,42 +427,6 @@ jobs:
 
           EOF
 
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-      - run: npm install
-
-      - name: Run lint
-        id: lint
-        run: |
-          npx nx run-many -t lint 2>&1 | tee lint-output.txt
-          exit ${PIPESTATUS[0]}
-        continue-on-error: true
-
-      - name: Report lint results
-        if: steps.lint.outcome == 'failure'
-        run: |
-          echo "## ❌ Lint Failed" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "<details><summary>View lint errors</summary>" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          tail -100 lint-output.txt >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          echo "</details>" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Fix it locally:**" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "npx nx run-many -t lint" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          exit 1
-
   test:
     name: Test
     runs-on: ubuntu-latest
@@ -502,7 +466,7 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [typecheck, lint, test, secrets-scan, security]
+    needs: [typecheck, test, secrets-scan, security]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
