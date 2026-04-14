@@ -1,7 +1,7 @@
 import { ClientServiceContract, ClientPrimitive, FieldValidation, FormValidation } from '@web/types';
 import z from 'zod';
-
 import { FieldValidationMethods } from '../../types/validation.type';
+
 export const buildValidation = (contract: ClientServiceContract): FormValidation => {
   const shape: Record<string, z.ZodType<unknown>> = {};
   const fieldValidationMethods: Record<string, FieldValidationMethods> = {};

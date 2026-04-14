@@ -15,7 +15,7 @@ import { mapContractToLocale } from "./field-mapper";
  4. Generate validation rules as a Zod schema, and an object satisfying form.Validators.
  5. Render form, along with behavioral rules accounted for.
  6. Cache, with a cache key of: `form-schema:${schemaId}:${version}`
- 7. Returns data necessary for the form to render. (ClientServiceContract object)
+ 7. Returns data necessary for the form to render. (FormMeta object)
 */
 
 export const fetchContract = (id: string): ClientServiceContract => {
