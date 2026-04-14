@@ -7,7 +7,7 @@ export default function FormRenderer({ contract }: FormRendererProps) {
   return (
     <>
       <h2> {formMeta.formTitle} </h2>
-      <p> {formMeta.formTitle} </p>
+      <p> {formMeta.formDescription} </p>
     </>
   );
 }

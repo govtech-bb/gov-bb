@@ -23,7 +23,7 @@ import { mapContractToLocale } from "./field-mapper";
 export const fetchContract = (
   id: string = "example",
 ): ClientServiceContract => {
-  console.warn("Fetching examples...");
+  console.warn("Fetching examples... ID: " + id);
   return fetchExampleContract(id);
 };
 
