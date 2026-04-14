@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { primitiveSchema } from "./primitive.type";
+import { fieldOverridesSchema, primitiveSchema } from "./primitive.type";
 import { behaviourSchema } from "./behavior.type";
 
 export const formStepSchema = z.object({
@@ -13,13 +13,13 @@ export type FormStep = z.infer<typeof formStepSchema>;
 
 export const recipeComponentFieldSchema = z.object({
   ref: z.string().regex(/^components\//),
-  overrides: z.any().optional(),
+  overrides: fieldOverridesSchema.optional(),
 });
 export type RecipeComponentField = z.infer<typeof recipeComponentFieldSchema>;
 
 export const recipeBlockFieldSchema = z.object({
   ref: z.string().regex(/^blocks\//),
-  overrides: z.record(z.string(), z.any()).optional(),
+  overrides: z.record(z.string(), fieldOverridesSchema).optional(),
 });
 export type RecipeBlockField = z.infer<typeof recipeBlockFieldSchema>;
 
