@@ -44,7 +44,7 @@ export interface TextPrimitive extends BasePrimitive {
   htmlType: "text";
 }
 
-export interface TextareaPrimitive extends BasePrimitive {
+export interface TextAreaPrimitive extends BasePrimitive {
   htmlType: "textarea";
 }
 
@@ -88,8 +88,17 @@ export type Primitive =
   | BasePrimitive
   | SelectPrimitive
   | RadioPrimitive
-  | FilePrimitive
+  | FilePrimitive;
 
-export type FieldOverrides = Pick<Partial<Primitive>,
-  'label' | 'hint' | 'placeholder' | 'validations' | 'defaultValue' | 'isDisabled' | 'isVisible' | 'multiple' | 'options'
->
+export type FieldOverrides = Pick<
+  Partial<Primitive>,
+  | "label"
+  | "hint"
+  | "placeholder"
+  | "validations"
+  | "defaultValue"
+  | "isDisabled"
+  | "isVisible"
+  | "multiple"
+  | "options"
+>;

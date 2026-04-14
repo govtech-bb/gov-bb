@@ -6,7 +6,9 @@
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",
-      "outputs": ["{options.outputPath}"],
+      "outputs": [
+        "{options.outputPath}"
+      ],
       "options": {
         "outputPath": "dist/packages/form-types",
         "tsConfig": "packages/form-types/tsconfig.json",
@@ -16,7 +18,9 @@
     "lint": {
       "executor": "@nx/eslint:lint",
       "options": {
-        "lintFilePatterns": ["packages/form-types/**/*.ts"]
+        "lintFilePatterns": [
+          "packages/form-types/**/*.ts"
+        ]
       }
     }
   },

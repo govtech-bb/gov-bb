@@ -1,16 +1,13 @@
-import type {
-  FieldOverrides,
-  Primitive,
-} from "./primitive.type";
+import type { FieldOverrides, Primitive } from "./primitive.type";
 import type { Block } from "./block.type";
 import type { Behaviour } from "./behavior.type";
 
 export interface FormStep {
-  stepId: string; // ID for the step
-  title: string; // Title to display for the page
-  description?: string; // Optional subheading to display
-  elements: Array<Primitive | Block>; // Makes up the fields.
-  behaviours?: Array<Behaviour>; // Behaviour to apply on the step level.
+  stepId: string;
+  title: string;
+  description?: string;
+  elements: Array<Primitive | Block>;
+  behaviours?: Array<Behaviour>;
 }
 
 export interface RecipeComponentField {
@@ -20,7 +17,7 @@ export interface RecipeComponentField {
 
 export interface RecipeBlockField {
   ref: `blocks/${string}`;
-  overrides?: Record<string, FieldOverrides>; // keyed by fieldId within the block
+  overrides?: Record<string, FieldOverrides>;
 }
 
 export type RecipeFormStepField = RecipeComponentField | RecipeBlockField;

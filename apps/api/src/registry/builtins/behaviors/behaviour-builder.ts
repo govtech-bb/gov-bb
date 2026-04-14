@@ -5,7 +5,7 @@ import {
   RepeatableBehaviour,
   FieldArrayBehaviour,
   SharedFieldsBehaviour,
-} from "../../types";
+} from "@govtech-bb/form-types";
 
 class BehaviourBuilder {
   fieldId: string;
