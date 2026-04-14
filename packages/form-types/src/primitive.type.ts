@@ -29,6 +29,12 @@ export const optionSchema = z.object({
 });
 export type Option = z.infer<typeof optionSchema>;
 
+export const primitiveUISchema = z.object({
+  width: z.enum(["short", "medium", "long"]).optional(),
+})
+
+export type PrimitiveUI = z.infer<typeof primitiveUISchema>;
+
 export const basePrimitiveSchema = z.object({
   fieldId: z.string(),
   label: z.string(),
@@ -44,6 +50,7 @@ export const basePrimitiveSchema = z.object({
   metadata: primitiveMetadataSchema.partial().optional(),
   options: z.array(optionSchema).optional(),
   multiple: z.boolean().optional(),
+  ui: primitiveUISchema.optional(),
 });
 export type BasePrimitive = z.infer<typeof basePrimitiveSchema>;
 

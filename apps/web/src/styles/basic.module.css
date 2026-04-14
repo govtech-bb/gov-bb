@@ -1,0 +1,137 @@
+.formRoot {
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  display: flex;
+  flex-direction: column;
+  padding: 2rem;
+  gap: 0.625rem;
+  font-family: var(--font-sans);
+}
+
+.formRoot .serviceTitle {
+  font-size: 1.25rem;
+  line-height: 1.5rem;
+  border-left: #1e40af 0.25rem solid;
+  font-weight: 500;
+  color: #1e40af;
+  padding: 0 0.9375rem;
+  border-radius: 0.25rem;
+}
+
+.formRoot h1 {
+  font-weight: 700;
+  font-size: 3.5rem;
+  color: inherit;
+  margin: 1.25rem 0;
+}
+
+.formRoot label {
+  font-size: 1rem;
+  font-weight: 500;
+  color: inherit;
+}
+
+.formRoot input:not([type="checkbox"]):not([type="radio"]),
+.formRoot select {
+  padding: 1rem 0.75rem;
+  border: 0.125rem solid #000000;
+  border-radius: 0.25rem;
+  font-size: 1rem;
+  font-family: var(--font-sans);
+  margin-bottom: 0.9375rem;
+}
+
+.formRoot select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 2.5rem;
+  background-color: #ffffff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%231E40AF' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 0.75rem;
+}
+
+.formRoot select::-ms-expand {
+  display: none;
+}
+
+.formRoot select option {
+  color: #0f172a;
+  background-color: #ffffff;
+  font-size: 1rem;
+}
+
+.formRoot select option:disabled {
+  color: #64748b;
+}
+
+.formRoot select optgroup {
+  color: #1e3a8a;
+  font-weight: 600;
+}
+
+.formRoot [data-hint] {
+  font-size: 1rem;
+  color: #64748b;
+  margin-top: 0rem;
+  margin-bottom: 0rem;
+}
+
+.formRoot textarea {
+  padding: 1rem 0.75rem;
+  border: 0.125rem solid #000000;
+  border-radius: 0.25rem;
+  font-size: 1rem;
+  font-family: var(--font-sans);
+  margin-bottom: 0.9375rem;
+  resize: vertical;
+}
+
+.formRoot [data-radio-group],
+.formRoot [data-checkbox-group] {
+  border: 0.125rem solid #000000;
+  border-radius: 0.25rem;
+  padding: 1rem;
+  margin: 0 0 0.9375rem;
+}
+
+.formRoot [data-choice-group] {
+  display: grid;
+  gap: 0.625rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.formRoot [data-choice-item] {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-size: 1rem;
+  font-weight: 500;
+  margin: 0;
+}
+
+.formRoot input[type="checkbox"],
+.formRoot input[type="radio"] {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  accent-color: #1e40af;
+}
+
+.formRoot button {
+  padding: 1.25rem 1.5rem;
+  background-color: #1e40af;
+  color: #ffffff;
+  border: none;
+  border-radius: 0.25rem;
+  font-size: 1.25rem;
+  cursor: pointer;
+  width: fit-content;
+}
+
+.formRoot button:hover {
+  background-color: #224aba;
+  transition: all 0.2s ease-in-out;
+  
+}

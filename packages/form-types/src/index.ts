@@ -15,6 +15,7 @@ export {
   filePrimitiveSchema,
   primitiveSchema,
   fieldOverridesSchema,
+  primitiveUISchema,
 } from "./primitive.type";
 
 export type {
@@ -34,6 +35,7 @@ export type {
   CheckboxPrimitive,
   Primitive,
   HtmlTypes,
+  PrimitiveUI,
 } from "./primitive.type";
 
 export {
