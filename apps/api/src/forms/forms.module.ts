@@ -1,10 +1,9 @@
-import { Module } from '@nestjs/common';
-import { FormDefinitionsModule } from './form-definitions/form-definitions.module';
-import { FormVersionsModule } from './form-versions/form-versions.module';
-import { SubmissionsModule } from './submissions/submissions.module';
+import { Module } from "@nestjs/common";
+import { FormDefinitionsModule } from "./form-definitions/form-definitions.module";
+import { SubmissionsModule } from "./submissions/submissions.module";
 
 @Module({
-  imports: [FormDefinitionsModule, FormVersionsModule, SubmissionsModule],
-  exports: [FormDefinitionsModule, FormVersionsModule, SubmissionsModule],
+  imports: [FormDefinitionsModule, SubmissionsModule],
+  exports: [FormDefinitionsModule, SubmissionsModule],
 })
 export class FormsModule {}
