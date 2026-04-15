@@ -33,6 +33,7 @@
     "@nx/js": "^20.4.0",
     "@nx/nest": "^20.4.0",
     "@nx/next": "^20.4.0",
+    "@types/luxon": "^3.7.1",
     "@types/node": "^20.0.0",
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.0",
@@ -53,5 +54,8 @@
     "typeorm": "^0.3.26",
     "typescript": "^5.7.0"
   },
-  "packageManager": "npm@10.9.0"
+  "packageManager": "npm@10.9.0",
+  "dependencies": {
+    "luxon": "^3.7.2"
+  }
 }

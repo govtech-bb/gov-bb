@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, Repository } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { DateTime } from 'luxon';
 import { FormDraftEntity, DraftStatus } from '../../database/entities/form-draft.entity';
 import { FormDefinitionEntity } from '../../database/entities/form-definition.entity';
 import { AppError } from '../../common/errors';
@@ -23,10 +24,14 @@ export class FormDraftsService {
     draftId,
     formId,
     version,
+    values = {},
+    lastActivePage = 0,
   }: {
     draftId: string;
     formId: string;
     version?: string;
+    values?: Record<string, unknown>;
+    lastActivePage?: number;
   }): Promise<FormDraftEntity> {
     const existing = await this.draftRepo.findOne({ where: { draftId } });
     if (existing) return existing;
@@ -44,10 +49,10 @@ export class FormDraftsService {
       draftId,
       formId,
       formVersion: formDef.version,
-      values: {},
-      lastActivePage: 0,
+      values,
+      lastActivePage,
       status: DraftStatus.ACTIVE,
-      lastActiveAt: new Date(),
+      lastActiveAt: DateTime.utc().toJSDate(),
     });
     return this.draftRepo.save(draft);
   }
@@ -71,7 +76,7 @@ export class FormDraftsService {
     }
     if (values !== undefined) draft.values = values;
     if (lastActivePage !== undefined) draft.lastActivePage = lastActivePage;
-    draft.lastActiveAt = new Date();
+    draft.lastActiveAt = DateTime.utc().toJSDate();
     return this.draftRepo.save(draft);
   }
 
@@ -83,8 +88,7 @@ export class FormDraftsService {
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async cleanupExpired(): Promise<void> {
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - DRAFT_EXPIRY_DAYS);
+    const cutoff = DateTime.utc().minus({ days: DRAFT_EXPIRY_DAYS }).toJSDate();
 
     const abandoned = await this.draftRepo.delete({
       status: DraftStatus.ABANDONED,

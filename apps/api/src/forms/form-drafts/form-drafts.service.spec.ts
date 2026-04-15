@@ -111,6 +111,48 @@ describe('FormDraftsService', () => {
       expect(draftRepo.save).not.toHaveBeenCalled();
     });
 
+    it('uses provided values and lastActivePage when supplied at creation', async () => {
+      const draftRepo = makeDraftRepo();
+      const formDefRepo = makeFormDefRepo();
+      const service = new FormDraftsService(draftRepo, formDefRepo);
+
+      const initialValues = { firstName: 'John', lastName: 'Doe' };
+      draftRepo.findOne.mockResolvedValue(null);
+      formDefRepo.findOne.mockResolvedValue(makeFormDef('1.0.0'));
+      draftRepo.create.mockReturnValue(makeDraft({ values: initialValues, lastActivePage: 2 }));
+      draftRepo.save.mockResolvedValue(makeDraft({ values: initialValues, lastActivePage: 2 }));
+
+      const result = await service.create({
+        draftId: 'my-draft',
+        formId: 'passport-renewal',
+        values: initialValues,
+        lastActivePage: 2,
+      });
+
+      expect(draftRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ values: initialValues, lastActivePage: 2 }),
+      );
+      expect(result.values).toEqual(initialValues);
+      expect(result.lastActivePage).toBe(2);
+    });
+
+    it('defaults values to {} and lastActivePage to 0 when not provided', async () => {
+      const draftRepo = makeDraftRepo();
+      const formDefRepo = makeFormDefRepo();
+      const service = new FormDraftsService(draftRepo, formDefRepo);
+
+      draftRepo.findOne.mockResolvedValue(null);
+      formDefRepo.findOne.mockResolvedValue(makeFormDef('1.0.0'));
+      draftRepo.create.mockReturnValue(makeDraft());
+      draftRepo.save.mockResolvedValue(makeDraft());
+
+      await service.create({ draftId: 'my-draft', formId: 'passport-renewal' });
+
+      expect(draftRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ values: {}, lastActivePage: 0 }),
+      );
+    });
+
     it('throws NotFoundException when form definition does not exist', async () => {
       const draftRepo = makeDraftRepo();
       const formDefRepo = makeFormDefRepo();

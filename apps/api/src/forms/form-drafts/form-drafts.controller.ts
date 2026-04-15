@@ -20,7 +20,14 @@ export class FormDraftsController {
 
   @Post()
   async create(
-    @Body() body: { draftId: string; formId: string; version?: string },
+    @Body()
+    body: {
+      draftId: string;
+      formId: string;
+      version?: string;
+      values?: Record<string, unknown>;
+      lastActivePage?: number;
+    },
   ): Promise<ApiResponseShape<FormDraftEntity>> {
     const data = await this.formDraftsService.create(body);
     return ApiResponse.success(data, { message: 'Draft created' });
