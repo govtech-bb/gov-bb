@@ -1,4 +1,4 @@
-﻿name: CI
+name: CI
 
 on:
   pull_request:
@@ -43,7 +43,7 @@ jobs:
       - name: Report type check results
         if: steps.typecheck.outcome == 'failure'
         run: |
-          echo "## Γ¥î Type Check Failed" >> $GITHUB_STEP_SUMMARY
+          echo "## ❌ Type Check Failed" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "<details><summary>View type errors</summary>" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -130,11 +130,11 @@ jobs:
               if file not in current_files or not os.path.exists(file):
                   historical_secrets.append(finding)
 
-          print("## ≡ƒÜ¿ Secrets Detected")
+          print("## 🚨 Secrets Detected")
           print("")
 
           if current_secrets:
-              print(f"### Γ¢ö Current Commit: {len(current_secrets)} secret(s) - BUILD BLOCKED")
+              print(f"### ⛔ Current Commit: {len(current_secrets)} secret(s) - BUILD BLOCKED")
               print("")
               print("**These secrets are in your current changes and must be fixed:**")
               print("")
@@ -166,7 +166,7 @@ jobs:
               print("")
               print("---")
               print("")
-              print(f"### ΓÜá∩╕Å Git History: {len(historical_secrets)} secret(s) found - WARNING ONLY")
+              print(f"### ⚠️ Git History: {len(historical_secrets)} secret(s) found - WARNING ONLY")
               print("")
               print("<details><summary>Click to view historical secrets</summary>")
               print("")
@@ -195,12 +195,12 @@ jobs:
 
               print("</details>")
               print("")
-              print("≡ƒÆí **Recommendation**: These secrets should be rotated if they were real credentials.")
+              print("💡 **Recommendation**: These secrets should be rotated if they were real credentials.")
 
           print("")
           print("---")
           print("")
-          print("## ≡ƒöº How to Fix")
+          print("## 🔧 How to Fix")
           print("")
           print("- Use environment variables: `process.env.MY_SECRET`")
           print("- Use placeholder values: `'your-api-key-here'`")
@@ -241,7 +241,7 @@ jobs:
           SARIF_FILE=$(find sarif-results -name "*.sarif" -type f | head -n 1)
 
           if [ -z "$SARIF_FILE" ]; then
-            echo "## Γ£à Security Scan Complete" >> $GITHUB_STEP_SUMMARY
+            echo "## ✅ Security Scan Complete" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "No SARIF results file found. CodeQL analysis may still be processing." >> $GITHUB_STEP_SUMMARY
             exit 0
@@ -255,7 +255,7 @@ jobs:
 
           sarif_files = glob.glob('sarif-results/**/*.sarif', recursive=True)
           if not sarif_files:
-              print("## Γ£à Security Scan Complete")
+              print("## ✅ Security Scan Complete")
               print("")
               print("No security issues detected by CodeQL.")
               sys.exit(0)
@@ -355,7 +355,7 @@ jobs:
                       })
 
               if not all_results:
-                  print("## Γ£à Security Scan Complete")
+                  print("## ✅ Security Scan Complete")
                   print("")
                   print("No security issues detected by CodeQL.")
               else:
@@ -369,28 +369,28 @@ jobs:
 
                   priority_issues = critical + high
                   if priority_issues:
-                      print("## ΓÜá∩╕Å Security Issues Found - BUILD BLOCKED")
+                      print("## ⚠️ Security Issues Found - BUILD BLOCKED")
                   else:
-                      print("## ΓÜá∩╕Å Security Issues Found")
+                      print("## ⚠️ Security Issues Found")
 
                   print("")
                   print(f"CodeQL detected **{len(all_results)} potential security issue(s)**:")
                   print("")
                   if critical:
-                      print(f"- ≡ƒö┤ **{len(critical)} Critical**")
+                      print(f"- 🔴 **{len(critical)} Critical**")
                   if high:
-                      print(f"- ≡ƒƒá **{len(high)} High**")
+                      print(f"- 🟠 **{len(high)} High**")
                   if medium:
-                      print(f"- ≡ƒƒí **{len(medium)} Medium**")
+                      print(f"- 🟡 **{len(medium)} Medium**")
                   if low:
-                      print(f"- ≡ƒƒó **{len(low)} Low**")
+                      print(f"- 🟢 **{len(low)} Low**")
                   print("")
 
                   print("<details><summary>View all issue(s)</summary>")
                   print("")
 
                   for i, issue in enumerate(all_results, 1):
-                      emoji = {'Critical': '≡ƒö┤', 'High': '≡ƒƒá', 'Medium': '≡ƒƒí', 'Low': '≡ƒƒó'}.get(issue['severity'], 'ΓÜ¬')
+                      emoji = {'Critical': '🔴', 'High': '🟠', 'Medium': '🟡', 'Low': '🟢'}.get(issue['severity'], '⚪')
                       print(f"**{i}. {emoji} {issue['severity']}: {issue['rule_name']}**")
                       print(f"- **File**: `{issue['file']}` (line {issue['line']})")
                       if repo and sha and issue['file'] != 'Unknown':
@@ -408,7 +408,7 @@ jobs:
                   print("")
 
                   if priority_issues:
-                      print("**Γ¢ö Build blocked**: Critical or High severity issues must be fixed before merging.")
+                      print("**⛔ Build blocked**: Critical or High severity issues must be fixed before merging.")
                   else:
                       print("**Note**: Medium and Low severity issues won't block your build, but please review and fix them.")
 
@@ -419,18 +419,54 @@ jobs:
                   sys.exit(1)
 
           except Exception as e:
-              print("## ΓÜá∩╕Å Security Scan Complete")
+              print("## ⚠️ Security Scan Complete")
               print("")
               print(f"Could not parse SARIF results: {e}")
               print("")
-              print("**View details**: Go to the Security tab ΓåÆ Code scanning alerts")
+              print("**View details**: Go to the Security tab → Code scanning alerts")
 
           EOF
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm install
+
+      - name: Run tests
+        id: test
+        run: |
+          npx nx test api 2>&1 | tee test-output.txt
+          exit ${PIPESTATUS[0]}
+        continue-on-error: true
+
+      - name: Report test results
+        if: steps.test.outcome == 'failure'
+        run: |
+          echo "## ❌ Tests Failed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "<details><summary>View test failures</summary>" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          tail -100 test-output.txt >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "</details>" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Fix it locally:**" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "npx nx test api" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          exit 1
 
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [typecheck, secrets-scan, security]
+    needs: [typecheck, test, secrets-scan, security]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -449,7 +485,7 @@ jobs:
       - name: Report build results
         if: steps.build.outcome == 'failure'
         run: |
-          echo "## Γ¥î Build Failed" >> $GITHUB_STEP_SUMMARY
+          echo "## ❌ Build Failed" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "<details><summary>View build errors</summary>" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
