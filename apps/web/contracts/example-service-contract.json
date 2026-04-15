@@ -525,11 +525,11 @@
       "elements": [
         {
           "fieldId": "confirmation",
-          "label": "I confirm that my information is correct and I am happy for it to be verified. I understand that false details may lead to my application being rejected, and that the Government of Barbados will keep my information confidential.",
+          "label": "Declaration",          
           "htmlType": "checkbox",
           "options": [
             {
-              "label": "I confirm",
+              "label": "I confirm that my information is correct and I am happy for it to be verified. I understand that false details may lead to my application being rejected, and that the Government of Barbados will keep my information confidential.",
               "value": "confirmed"
             }
           ],
