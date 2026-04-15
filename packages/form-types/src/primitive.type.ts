@@ -31,7 +31,7 @@ export type Option = z.infer<typeof optionSchema>;
 
 export const primitiveUISchema = z.object({
   width: z.enum(["short", "medium", "long"]).optional(),
-})
+});
 
 export type PrimitiveUI = z.infer<typeof primitiveUISchema>;
 
@@ -93,7 +93,7 @@ export type CheckboxPrimitive = z.infer<typeof checkboxPrimitiveSchema>;
 export const selectPrimitiveSchema = basePrimitiveSchema.extend({
   options: z.array(optionSchema),
   htmlType: z.literal("select"),
-  multiple: z.literal(true),
+  multiple: z.boolean(),
 });
 export type SelectPrimitive = z.infer<typeof selectPrimitiveSchema>;
 

@@ -1,8 +1,9 @@
 // Responsible for fetching a form
 
 import { ClientServiceContract } from "@web/types";
-import exampleServiceContract from "../../../contracts/example-service-contract.json"
-import { serviceContractSchema } from "@govtech-bb/form-types";
+import exampleServiceContract from "../../../contracts/example-service-contract.json";
+import masterContract from "../../../contracts/master-contract.json";
+import { ServiceContract, serviceContractSchema } from "@govtech-bb/form-types";
 import { mapContractToLocale } from "./field-mapper";
 
 /* 
@@ -18,12 +19,22 @@ import { mapContractToLocale } from "./field-mapper";
  7. Returns data necessary for the form to render. (FormMeta object)
 */
 
-export const fetchContract = (id: string): ClientServiceContract => {
-  throw new Error("Not Implemented");
-}
+// TODO: Replace with actual fetching from server logic
+export const fetchContract = (
+  id: string = "example",
+): ClientServiceContract => {
+  console.warn("Fetching examples... ID: " + id);
+  return fetchExampleContract(id);
+};
 
-export const fetchExampleContract = (): ClientServiceContract => {
-  const contract = serviceContractSchema.parse(exampleServiceContract)
+export const fetchExampleContract = (id: string): ClientServiceContract => {
+  let contract: ServiceContract;
+
+  if (id === "master") {
+    contract = serviceContractSchema.parse(masterContract);
+  } else {
+    contract = serviceContractSchema.parse(exampleServiceContract);
+  }
 
   return mapContractToLocale(contract);
-}
+};

@@ -1,4 +1,10 @@
-import { Behaviour, DateTimeFormat, HtmlTypes, Option, ValidationRule } from "@govtech-bb/form-types";
+import {
+  Behaviour,
+  DateTimeFormat,
+  HtmlTypes,
+  Option,
+  ValidationRule,
+} from "@govtech-bb/form-types";
 
 export interface ClientPrimitive {
   id: string;
@@ -13,8 +19,6 @@ export interface ClientPrimitive {
   options?: Option[];
   multiple?: boolean;
   validations?: ValidationRule;
-  onChange?(value: any, formApi: any): void; // Method called when a field's value is changed. Set via validations.
-  onBlur?(value: any, formApi: any): void; // Method called when a field loses focus.
 }
 
 export interface ClientFormStep {
@@ -35,4 +39,4 @@ export interface ClientServiceContract {
   version: string;
 }
 
-export type FormValues = Record<string, any>
+export type FormValues = Record<string, any>;
