@@ -149,3 +149,7 @@ apps/web/next-env.d.ts
 # Amplify
 amplify/#current-cloud-backend
 .amplify-hosting
+
+# Working/presentation files
+PRESENTATION-*.yml
+cicd-policy*.json

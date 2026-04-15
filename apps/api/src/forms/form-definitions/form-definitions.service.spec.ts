@@ -1,17 +1,16 @@
-import { NotFoundException } from '@nestjs/common';
-import { Repository } from 'typeorm';
-import { FormDefinitionEntity } from '../../database/entities/form-definition.entity';
-import { RegistryService } from '../../registry/registry.service';
-import { FormDefinitionsService } from './form-definitions.service';
-import type { ServiceContract, ServiceContractRecipe } from '../../registry/types/service-contract.type';
+import { NotFoundException } from "@nestjs/common";
+import { Repository } from "typeorm";
+import { FormDefinitionEntity } from "../../database/entities/form-definition.entity";
+import { RegistryService } from "../../registry/registry.service";
+import { FormDefinitionsService } from "./form-definitions.service";
 
 const MOCK_RECIPE = {
-  formId: 'passport-renewal',
-  title: 'Passport Renewal',
-  description: 'Renew your passport',
-  version: '1.0.0',
-  createdAt: new Date('2026-01-01'),
-  updatedAt: new Date('2026-01-01'),
+  formId: "passport-renewal",
+  title: "Passport Renewal",
+  description: "Renew your passport",
+  version: "1.0.0",
+  createdAt: new Date("2026-01-01"),
+  updatedAt: new Date("2026-01-01"),
   steps: [],
   processors: [],
 };
@@ -21,15 +20,17 @@ const MOCK_HYDRATED = {
   steps: [],
 };
 
-function makeEntity(overrides: Partial<FormDefinitionEntity> = {}): FormDefinitionEntity {
+function makeEntity(
+  overrides: Partial<FormDefinitionEntity> = {},
+): FormDefinitionEntity {
   return {
-    id: 'uuid-1',
-    formId: 'passport-renewal',
-    version: '1.0.0',
+    id: "uuid-1",
+    formId: "passport-renewal",
+    version: "1.0.0",
     schema: MOCK_RECIPE as unknown as Record<string, unknown>,
     publishedAt: null,
-    createdAt: new Date('2026-01-01'),
-    updatedAt: new Date('2026-01-01'),
+    createdAt: new Date("2026-01-01"),
+    updatedAt: new Date("2026-01-01"),
     ...overrides,
   } as FormDefinitionEntity;
 }
@@ -47,72 +48,54 @@ function makeMocks() {
   return { repo, registry, service };
 }
 
-describe('FormDefinitionsService', () => {
-  describe('findById', () => {
-    it('returns a hydrated form for a valid ID', async () => {
+describe("FormDefinitionsService", () => {
+  describe("findByFormId", () => {
+    it("returns the latest hydrated form when no version is given", async () => {
       const { repo, registry, service } = makeMocks();
       (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
 
-      const result = await service.findById('uuid-1');
+      const result = await service.findByFormId({ formId: "passport-renewal" });
 
-      expect(repo.findOne).toHaveBeenCalledWith({ where: { id: 'uuid-1' } });
+      expect(repo.findOne).toHaveBeenCalledWith({
+        where: { formId: "passport-renewal" },
+        order: { createdAt: "DESC" },
+      });
       expect(registry.hydrateForm).toHaveBeenCalledWith(MOCK_RECIPE);
       expect(result).toEqual(MOCK_HYDRATED);
     });
 
-    it('throws NotFoundException for an unknown ID', async () => {
-      const { repo, service } = makeMocks();
-      (repo.findOne as jest.Mock).mockResolvedValue(null);
-
-      await expect(service.findById('unknown')).rejects.toThrow(NotFoundException);
-    });
-  });
-
-  describe('findByFormIdAndVersion', () => {
-    it('returns a hydrated form for a valid formId + version', async () => {
+    it("returns a specific version when version is given", async () => {
       const { repo, registry, service } = makeMocks();
       (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
 
-      const result = await service.findByFormIdAndVersion('passport-renewal', '1.0.0');
+      const result = await service.findByFormId({
+        formId: "passport-renewal",
+        version: "1.0.0",
+      });
 
       expect(repo.findOne).toHaveBeenCalledWith({
-        where: { formId: 'passport-renewal', version: '1.0.0' },
+        where: { formId: "passport-renewal", version: "1.0.0" },
+        order: { createdAt: "DESC" },
       });
       expect(registry.hydrateForm).toHaveBeenCalled();
       expect(result).toEqual(MOCK_HYDRATED);
     });
 
-    it('throws NotFoundException for an unknown formId + version', async () => {
+    it("throws NotFoundException when formId is not found", async () => {
+      const { repo, service } = makeMocks();
+      (repo.findOne as jest.Mock).mockResolvedValue(null);
+
+      await expect(service.findByFormId({ formId: "ghost" })).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it("throws NotFoundException when formId + version is not found", async () => {
       const { repo, service } = makeMocks();
       (repo.findOne as jest.Mock).mockResolvedValue(null);
 
       await expect(
-        service.findByFormIdAndVersion('ghost', '9.9.9'),
-      ).rejects.toThrow(NotFoundException);
-    });
-  });
-
-  describe('findLatestByFormId', () => {
-    it('returns the latest hydrated form for a valid formId', async () => {
-      const { repo, registry, service } = makeMocks();
-      (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
-
-      const result = await service.findLatestByFormId('passport-renewal');
-
-      expect(repo.findOne).toHaveBeenCalledWith({
-        where: { formId: 'passport-renewal' },
-        order: { createdAt: 'DESC' },
-      });
-      expect(registry.hydrateForm).toHaveBeenCalled();
-      expect(result).toEqual(MOCK_HYDRATED);
-    });
-
-    it('throws NotFoundException for an unknown formId', async () => {
-      const { repo, service } = makeMocks();
-      (repo.findOne as jest.Mock).mockResolvedValue(null);
-
-      await expect(
-        service.findLatestByFormId('ghost'),
+        service.findByFormId({ formId: "ghost", version: "9.9.9" }),
       ).rejects.toThrow(NotFoundException);
     });
   });

@@ -1,7 +1,7 @@
-import * as Components from './components';
-import * as Blocks from './blocks';
-import type { Primitive } from '../types/primitive.type';
-import type { Block } from '../types/block.type';
+import * as Components from "./components";
+import * as Blocks from "./blocks";
+import type { Primitive } from "@govtech-bb/form-types";
+import type { Block } from "@govtech-bb/form-types";
 
 export type RegistryEntry = Primitive | Block;
 
