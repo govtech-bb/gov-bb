@@ -77,12 +77,28 @@ export default function FieldRenderer({
             );
           case "checkbox":
             return (
-              <fieldset data-field>
+              <fieldset data-fieldset>
                 <legend>{field.label}</legend>
                 <div data-checkbox-group>
+                  {field.options?.map((option) => {
+                    return (
+                      <div key={option.value} data-checkbox-option>
+                        <input {...sharedProps}/>
+                        <label>{option.label}</label>
+                      </div>
+                    );
+                  })}
+                </div>
+              </fieldset>
+            );
+          case "radio":
+            return (
+              <fieldset data-fieldset>
+                <legend>{field.label}</legend>
+                <div data-radio-group>
                   {field.options?.map((option) => (
-                    <div key={option.value} data-checkbox-option>
-                      <input type="checkbox" />
+                    <div key={option.value} data-radio-item>
+                      <input {...sharedProps} />
                       <label>{option.label}</label>
                     </div>
                   ))}
