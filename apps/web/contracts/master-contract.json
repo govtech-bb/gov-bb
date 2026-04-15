@@ -326,6 +326,12 @@
           "fieldId": "canContactEvening",
           "label": "I can be contacted in the evening",
           "htmlType": "checkbox",
+          "options": [
+            {
+              "label": "I accept",
+              "value": "confirmed"
+            }
+          ],
           "defaultValue": false
         },
         {
@@ -462,6 +468,12 @@
           "fieldId": "hasPreviousAddress",
           "label": "I have a different previous address",
           "htmlType": "checkbox",
+          "options": [
+            {
+              "label": "I accept",
+              "value": "confirmed"
+            }
+          ],
           "defaultValue": false
         },
         {
@@ -550,10 +562,7 @@
               "type": "fieldConditionalOn",
               "targetFieldId": "employmentStatus",
               "operator": "in",
-              "value": [
-                "employed",
-                "self-employed"
-              ]
+              "value": ["employed", "self-employed"]
             }
           ],
           "validations": {
@@ -573,10 +582,7 @@
               "type": "fieldConditionalOn",
               "targetFieldId": "employmentStatus",
               "operator": "in",
-              "value": [
-                "employed",
-                "self-employed"
-              ]
+              "value": ["employed", "self-employed"]
             }
           ],
           "validations": {
@@ -597,10 +603,7 @@
               "type": "fieldConditionalOn",
               "targetFieldId": "employmentStatus",
               "operator": "in",
-              "value": [
-                "employed",
-                "self-employed"
-              ]
+              "value": ["employed", "self-employed"]
             }
           ],
           "validations": {
@@ -641,11 +644,7 @@
               "error": "Please upload an identity document"
             },
             "fileTypes": {
-              "value": [
-                "application/pdf",
-                "image/jpeg",
-                "image/png"
-              ],
+              "value": ["application/pdf", "image/jpeg", "image/png"],
               "error": "Only PDF, JPG and PNG files are accepted"
             },
             "itemMaxSize": {
@@ -674,11 +673,7 @@
               "error": "You can upload a maximum of 3 documents"
             },
             "fileTypes": {
-              "value": [
-                "application/pdf",
-                "image/jpeg",
-                "image/png"
-              ],
+              "value": ["application/pdf", "image/jpeg", "image/png"],
               "error": "Only PDF, JPG and PNG files are accepted"
             },
             "maxSize": {
@@ -752,6 +747,12 @@
           "fieldId": "hasBankAccount",
           "label": "I have a BB bank account",
           "htmlType": "checkbox",
+          "options": [
+            {
+              "label": "I accept",
+              "value": "confirmed"
+            }
+          ],
           "defaultValue": true
         },
         {
@@ -982,6 +983,12 @@
           "fieldId": "declaration1",
           "label": "I confirm that all information provided in this form is true and accurate to the best of my knowledge.",
           "htmlType": "checkbox",
+          "options": [
+            {
+              "label": "I accept",
+              "value": "confirmed"
+            }
+          ],
           "defaultValue": false,
           "validations": {
             "required": {
@@ -994,6 +1001,12 @@
           "fieldId": "declaration2",
           "label": "I understand that providing false information may result in my application being rejected and may constitute a criminal offence.",
           "htmlType": "checkbox",
+          "options": [
+            {
+              "label": "I accept",
+              "value": "confirmed"
+            }
+          ],
           "defaultValue": false,
           "validations": {
             "required": {
@@ -1006,12 +1019,24 @@
           "fieldId": "consentMarketing",
           "label": "I consent to receiving marketing communications about products and services that may be of interest to me.",
           "htmlType": "checkbox",
+          "options": [
+            {
+              "label": "I accept",
+              "value": "confirmed"
+            }
+          ],
           "defaultValue": false
         },
         {
           "fieldId": "consentThirdParty",
           "label": "I consent to my information being shared with third parties for the purpose of processing this application.",
           "htmlType": "checkbox",
+          "options": [
+            {
+              "label": "I accept",
+              "value": "confirmed"
+            }
+          ],
           "defaultValue": false,
           "validations": {
             "required": {
@@ -1024,6 +1049,12 @@
           "fieldId": "dataRetention",
           "label": "I understand that my data will be retained in accordance with the data retention policy.",
           "htmlType": "checkbox",
+          "options": [
+            {
+              "label": "I accept",
+              "value": "confirmed"
+            }
+          ],
           "defaultValue": false,
           "validations": {
             "required": {

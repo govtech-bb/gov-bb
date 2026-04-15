@@ -43,7 +43,7 @@ export const validationTypeSchema = z.enum([
 ]);
 export type ValidationType = z.infer<typeof validationTypeSchema>;
 
-export const validationRuleSchema = z.record(
+export const validationRuleSchema = z.partialRecord(
   validationTypeSchema,
   validationConfigSchema,
 );

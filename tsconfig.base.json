@@ -31,7 +31,10 @@
         "apps/web/src/types/index.ts"
       ],
       "@web/lib": [
-        "apps/web/src/lib/form-renderer",
+        "apps/web/src/lib/form-builder"
+      ],
+      "@web/components": [
+        "apps/web/src/components"
       ]
     }
   },
