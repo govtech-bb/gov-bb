@@ -3,7 +3,6 @@ import { Repository } from 'typeorm';
 import { FormDefinitionEntity } from '../../database/entities/form-definition.entity';
 import { RegistryService } from '../../registry/registry.service';
 import { FormDefinitionsService } from './form-definitions.service';
-import type { ServiceContract, ServiceContractRecipe } from '../../registry/types/service-contract.type';
 
 const MOCK_RECIPE = {
   formId: 'passport-renewal',
@@ -48,72 +47,47 @@ function makeMocks() {
 }
 
 describe('FormDefinitionsService', () => {
-  describe('findById', () => {
-    it('returns a hydrated form for a valid ID', async () => {
+  describe('findByFormId', () => {
+    it('returns the latest hydrated form when no version is given', async () => {
       const { repo, registry, service } = makeMocks();
       (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
 
-      const result = await service.findById('uuid-1');
+      const result = await service.findByFormId({ formId: 'passport-renewal' });
 
-      expect(repo.findOne).toHaveBeenCalledWith({ where: { id: 'uuid-1' } });
+      expect(repo.findOne).toHaveBeenCalledWith({
+        where: { formId: 'passport-renewal' },
+        order: { createdAt: 'DESC' },
+      });
       expect(registry.hydrateForm).toHaveBeenCalledWith(MOCK_RECIPE);
       expect(result).toEqual(MOCK_HYDRATED);
     });
 
-    it('throws NotFoundException for an unknown ID', async () => {
-      const { repo, service } = makeMocks();
-      (repo.findOne as jest.Mock).mockResolvedValue(null);
-
-      await expect(service.findById('unknown')).rejects.toThrow(NotFoundException);
-    });
-  });
-
-  describe('findByFormIdAndVersion', () => {
-    it('returns a hydrated form for a valid formId + version', async () => {
+    it('returns a specific version when version is given', async () => {
       const { repo, registry, service } = makeMocks();
       (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
 
-      const result = await service.findByFormIdAndVersion('passport-renewal', '1.0.0');
+      const result = await service.findByFormId({ formId: 'passport-renewal', version: '1.0.0' });
 
       expect(repo.findOne).toHaveBeenCalledWith({
         where: { formId: 'passport-renewal', version: '1.0.0' },
-      });
-      expect(registry.hydrateForm).toHaveBeenCalled();
-      expect(result).toEqual(MOCK_HYDRATED);
-    });
-
-    it('throws NotFoundException for an unknown formId + version', async () => {
-      const { repo, service } = makeMocks();
-      (repo.findOne as jest.Mock).mockResolvedValue(null);
-
-      await expect(
-        service.findByFormIdAndVersion('ghost', '9.9.9'),
-      ).rejects.toThrow(NotFoundException);
-    });
-  });
-
-  describe('findLatestByFormId', () => {
-    it('returns the latest hydrated form for a valid formId', async () => {
-      const { repo, registry, service } = makeMocks();
-      (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
-
-      const result = await service.findLatestByFormId('passport-renewal');
-
-      expect(repo.findOne).toHaveBeenCalledWith({
-        where: { formId: 'passport-renewal' },
         order: { createdAt: 'DESC' },
       });
       expect(registry.hydrateForm).toHaveBeenCalled();
       expect(result).toEqual(MOCK_HYDRATED);
     });
 
-    it('throws NotFoundException for an unknown formId', async () => {
+    it('throws NotFoundException when formId is not found', async () => {
       const { repo, service } = makeMocks();
       (repo.findOne as jest.Mock).mockResolvedValue(null);
 
-      await expect(
-        service.findLatestByFormId('ghost'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.findByFormId({ formId: 'ghost' })).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws NotFoundException when formId + version is not found', async () => {
+      const { repo, service } = makeMocks();
+      (repo.findOne as jest.Mock).mockResolvedValue(null);
+
+      await expect(service.findByFormId({ formId: 'ghost', version: '9.9.9' })).rejects.toThrow(NotFoundException);
     });
   });
 });

@@ -23,16 +23,16 @@
     "migration:show": "TS_NODE_PROJECT=apps/api/tsconfig.json typeorm-ts-node-commonjs migration:show -d apps/api/typeorm.config.ts"
   },
   "devDependencies": {
-    "@nestjs/cli": "^10.0.0",
-    "@nestjs/common": "^10.0.0",
-    "@nestjs/core": "^11.1.19",
-    "@nestjs/platform-express": "^11.1.19",
+    "@nestjs/cli": "^11.0.0",
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/platform-express": "^11.0.0",
     "@nestjs/typeorm": "^11.0.0",
-    "@nx/eslint": "^22.6.5",
-    "@nx/eslint-plugin": "^22.6.5",
+    "@nx/eslint": "^20.4.0",
+    "@nx/eslint-plugin": "^20.4.0",
     "@nx/js": "^20.4.0",
-    "@nx/nest": "^22.6.5",
-    "@nx/next": "^22.6.5",
+    "@nx/nest": "^20.4.0",
+    "@nx/next": "^20.4.0",
     "@types/node": "^20.0.0",
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.0",
@@ -41,8 +41,8 @@
     "eslint": "^8.57.0",
     "eslint-config-next": "^14.0.0",
     "eslint-config-prettier": "^10.0.0",
-    "next": "^16.2.3",
-    "nx": "^22.6.5",
+    "next": "^14.0.0",
+    "nx": "^20.4.0",
     "pg": "^8.16.3",
     "prettier": "^3.0.0",
     "react": "^18.0.0",
@@ -55,6 +55,8 @@
   },
   "packageManager": "npm@10.9.0",
   "dependencies": {
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.15.1",
     "zod": "^4.3.6"
   }
 }

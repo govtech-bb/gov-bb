@@ -217,7 +217,7 @@ describe('RegistryService', () => {
           },
         ],
       });
-      const block = result.steps[0].elements[0] as Block;
+      const block = result.steps[0].elements[0] as unknown as Block;
       const firstNameEl = block.elements.find((el) => el.fieldId === 'first-name');
       expect((firstNameEl as any).label).toBe('Given Name');
     });
