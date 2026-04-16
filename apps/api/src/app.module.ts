@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
 import { DatabaseModule } from './database/database.module';
 import { RegistryModule } from './registry/registry.module';
@@ -18,6 +19,7 @@ import { envValidationSchema } from './config/env.validation';
         abortEarly: false,
       },
     }),
+    ScheduleModule.forRoot(),
     DatabaseModule,
     RegistryModule,
     FormsModule,

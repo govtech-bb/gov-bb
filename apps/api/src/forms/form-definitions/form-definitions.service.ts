@@ -1,7 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { FormDefinitionEntity } from '../../database/entities/form-definition.entity';
+import { FormDefinitionRepository } from './form-definition.repository';
 import { RegistryService } from '../../registry/registry.service';
 import { AppError } from '../../common/errors';
 import type { ServiceContract } from '@govtech-bb/form-types';
@@ -9,8 +7,7 @@ import type { ServiceContract } from '@govtech-bb/form-types';
 @Injectable()
 export class FormDefinitionsService {
   constructor(
-    @InjectRepository(FormDefinitionEntity)
-    private readonly formDefRepo: Repository<FormDefinitionEntity>,
+    private readonly formDefRepo: FormDefinitionRepository,
     private readonly registryService: RegistryService,
   ) {}
 

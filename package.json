@@ -20,7 +20,8 @@
     "migration:generate": "TS_NODE_PROJECT=apps/api/tsconfig.json typeorm-ts-node-commonjs migration:generate -d apps/api/typeorm.config.ts",
     "migration:run": "TS_NODE_PROJECT=apps/api/tsconfig.json typeorm-ts-node-commonjs migration:run -d apps/api/typeorm.config.ts",
     "migration:revert": "TS_NODE_PROJECT=apps/api/tsconfig.json typeorm-ts-node-commonjs migration:revert -d apps/api/typeorm.config.ts",
-    "migration:show": "TS_NODE_PROJECT=apps/api/tsconfig.json typeorm-ts-node-commonjs migration:show -d apps/api/typeorm.config.ts"
+    "migration:show": "TS_NODE_PROJECT=apps/api/tsconfig.json typeorm-ts-node-commonjs migration:show -d apps/api/typeorm.config.ts",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.0",
@@ -33,6 +34,7 @@
     "@nx/js": "^20.4.0",
     "@nx/nest": "^20.4.0",
     "@nx/next": "^20.4.0",
+    "@types/luxon": "^3.7.1",
     "@types/node": "^20.0.0",
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.0",
@@ -41,6 +43,8 @@
     "eslint": "^8.57.0",
     "eslint-config-next": "^14.0.0",
     "eslint-config-prettier": "^10.0.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
     "next": "^14.0.0",
     "nx": "^20.4.0",
     "pg": "^8.16.3",
@@ -55,7 +59,11 @@
   },
   "packageManager": "npm@10.9.0",
   "dependencies": {
+    "luxon": "^3.7.2",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1"
+  },
+  "lint-staged": {
+    "*.{json,ts}": "prettier --write"
   }
 }
