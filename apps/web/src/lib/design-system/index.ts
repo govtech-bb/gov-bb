@@ -22,4 +22,4 @@ if (!requestedKey) {
   designSystem = DESIGN_SYSTEMS[requestedKey];
 }
 
-export { designSystem };
+export default designSystem;

@@ -30,7 +30,7 @@
   color: inherit;
 }
 
-.formRoot input:not([type="checkbox"]):not([type="radio"]),
+.formRoot input,
 .formRoot select {
   padding: 1rem 0.75rem;
   border: 0.125rem solid #000000;
@@ -88,27 +88,30 @@
   resize: vertical;
 }
 
-.formRoot [data-radio-group],
-.formRoot [data-checkbox-group] {
+.formRoot fieldset {
   border: 0.125rem solid #000000;
   border-radius: 0.25rem;
   padding: 1rem;
   margin: 0 0 0.9375rem;
 }
 
-.formRoot [data-choice-group] {
+.formRoot fieldset [data-radio-group],
+.formRoot fieldset [data-checkbox-group] {
   display: grid;
   gap: 0.625rem;
   margin: 0.5rem 0 1rem;
 }
 
-.formRoot [data-choice-item] {
-  display: inline-flex;
+.formRoot fieldset [data-choice-item] {
+  display: flex;
   align-items: center;
   gap: 0.625rem;
+}
+
+.formRoot legend {
   font-size: 1rem;
   font-weight: 500;
-  margin: 0;
+  color: inherit;
 }
 
 .formRoot input[type="checkbox"],
