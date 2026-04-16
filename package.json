@@ -24,9 +24,14 @@
     "prepare": "husky"
   },
   "devDependencies": {
+    "@eslint/css": "^1.1.0",
+    "@eslint/js": "^10.0.1",
+    "@eslint/json": "^1.2.0",
     "@nx/js": "^22.6.5",
     "@types/luxon": "^3.7.1",
     "@types/node": "^24.0.0",
+    "eslint": "^10.2.0",
+    "globals": "^17.5.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
     "nx": "^20.4.0",
@@ -36,7 +41,8 @@
     "rxjs": "^7.0.0",
     "ts-node": "^10.9.2",
     "typeorm": "^0.3.26",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.58.2"
   },
   "packageManager": "npm@10.9.0",
   "dependencies": {
