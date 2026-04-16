@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { FormRenderer } from "@web/components";
 import { fetchContract } from "@web/lib";
 
 export const Route = createFileRoute("/forms/$formId/")({
@@ -11,5 +12,5 @@ export const Route = createFileRoute("/forms/$formId/")({
 function RouteComponent() {
   const contract = Route.useLoaderData();
 
-  return <div>Hello {contract.title}</div>;
+  return <FormRenderer contract={contract} />;
 }
