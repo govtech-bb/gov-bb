@@ -2,18 +2,19 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { LessThan, Repository } from 'typeorm';
 import { FormDraftEntity, DraftStatus } from '../../database/entities/form-draft.entity';
 import { FormDefinitionEntity } from '../../database/entities/form-definition.entity';
+import { FormDraftRepository } from './form-draft.repository';
 import { FormDraftsService } from './form-drafts.service';
 
 function makeDraftRepo(
-  overrides: Partial<jest.Mocked<Repository<FormDraftEntity>>> = {},
-): jest.Mocked<Repository<FormDraftEntity>> {
+  overrides: Partial<jest.Mocked<FormDraftRepository>> = {},
+): jest.Mocked<FormDraftRepository> {
   return {
     findOne: jest.fn(),
     create: jest.fn(),
     save: jest.fn(),
     delete: jest.fn(),
     ...overrides,
-  } as unknown as jest.Mocked<Repository<FormDraftEntity>>;
+  } as unknown as jest.Mocked<FormDraftRepository>;
 }
 
 function makeFormDefRepo(

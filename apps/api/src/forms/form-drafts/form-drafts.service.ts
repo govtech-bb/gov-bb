@@ -3,8 +3,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, Repository } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { DateTime } from 'luxon';
-import { FormDraftEntity, DraftStatus } from '../../database/entities/form-draft.entity';
+import { DraftStatus, FormDraftEntity } from '../../database/entities/form-draft.entity';
 import { FormDefinitionEntity } from '../../database/entities/form-definition.entity';
+import { FormDraftRepository } from './form-draft.repository';
 import { AppError } from '../../common/errors';
 
 const DRAFT_EXPIRY_DAYS = 7;
@@ -14,8 +15,7 @@ export class FormDraftsService {
   private readonly logger = new Logger(FormDraftsService.name);
 
   constructor(
-    @InjectRepository(FormDraftEntity)
-    private readonly draftRepo: Repository<FormDraftEntity>,
+    private readonly draftRepo: FormDraftRepository,
     @InjectRepository(FormDefinitionEntity)
     private readonly formDefRepo: Repository<FormDefinitionEntity>,
   ) {}

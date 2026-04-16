@@ -10,6 +10,7 @@ import {
   Post,
 } from '@nestjs/common';
 import { FormDraftsService } from './form-drafts.service';
+import { CreateFormDraftDto, UpdateFormDraftDto } from './dto';
 import { ApiResponse } from '../../common/response';
 import type { ApiResponseShape } from '../../common/response';
 import type { FormDraftEntity } from '../../database/entities/form-draft.entity';
@@ -20,14 +21,7 @@ export class FormDraftsController {
 
   @Post()
   async create(
-    @Body()
-    body: {
-      draftId: string;
-      formId: string;
-      version?: string;
-      values?: Record<string, unknown>;
-      lastActivePage?: number;
-    },
+    @Body() body: CreateFormDraftDto,
   ): Promise<ApiResponseShape<FormDraftEntity>> {
     const data = await this.formDraftsService.create(body);
     return ApiResponse.success(data, { message: 'Draft created' });
@@ -44,7 +38,7 @@ export class FormDraftsController {
   @Patch(':draftId')
   async update(
     @Param('draftId') draftId: string,
-    @Body() body: { values?: Record<string, unknown>; lastActivePage?: number },
+    @Body() body: UpdateFormDraftDto,
   ): Promise<ApiResponseShape<FormDraftEntity>> {
     const data = await this.formDraftsService.update(draftId, body);
     return ApiResponse.success(data, { message: 'Draft updated' });
