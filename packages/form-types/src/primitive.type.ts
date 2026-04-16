@@ -1,104 +1,137 @@
-import type { Behaviour } from "./behavior.type";
-import type { ValidationRule } from "./validation.type";
+import { z } from "zod";
+import { behaviourSchema } from "./behavior.type";
+import { validationRuleSchema } from "./validation.type";
 
-export interface PrimitiveMetadata {
-  pii: boolean;
-  sensitive: boolean;
-}
+export const primitiveMetadataSchema = z.object({
+  pii: z.boolean(),
+  sensitive: z.boolean(),
+});
+export type PrimitiveMetadata = z.infer<typeof primitiveMetadataSchema>;
 
-export type HtmlTypes =
-  | "text"
-  | "textarea"
-  | "number"
-  | "date"
-  | "tel"
-  | "email"
-  | "checkbox"
-  | "radio"
-  | "file"
-  | "select";
+export const htmlTypesSchema = z.enum([
+  "text",
+  "textarea",
+  "number",
+  "date",
+  "tel",
+  "email",
+  "checkbox",
+  "radio",
+  "file",
+  "select",
+]);
+export type HtmlTypes = z.infer<typeof htmlTypesSchema>;
 
-export interface Option {
-  label: string;
-  value: string;
-}
+export const optionSchema = z.object({
+  label: z.string(),
+  value: z.string(),
+  disabled: z.boolean().optional(),
+});
+export type Option = z.infer<typeof optionSchema>;
 
-export interface BasePrimitive {
-  fieldId: string;
-  label: string;
-  htmlType: HtmlTypes;
-  placeholder?: string;
-  hint?: string;
-  defaultValue?: any;
-  value?: any;
-  isDisabled?: boolean;
-  isVisible?: boolean;
-  behaviours?: Behaviour[];
-  validations?: Partial<ValidationRule>[];
-  metadata?: Partial<PrimitiveMetadata>;
-  options?: Array<Option>;
-  multiple?: boolean;
-}
+export const primitiveUISchema = z.object({
+  width: z.enum(["short", "medium", "long"]).optional(),
+});
 
-export interface TextPrimitive extends BasePrimitive {
-  htmlType: "text";
-}
+export type PrimitiveUI = z.infer<typeof primitiveUISchema>;
 
-export interface TextAreaPrimitive extends BasePrimitive {
-  htmlType: "textarea";
-}
+export const basePrimitiveSchema = z.object({
+  fieldId: z.string(),
+  label: z.string(),
+  htmlType: htmlTypesSchema,
+  placeholder: z.string().optional(),
+  hint: z.string().optional(),
+  defaultValue: z.any().optional(),
+  value: z.any().optional(),
+  isDisabled: z.boolean().optional(),
+  isHidden: z.boolean().optional(),
+  behaviours: z.array(behaviourSchema).optional(),
+  validations: validationRuleSchema.optional(),
+  metadata: primitiveMetadataSchema.partial().optional(),
+  options: z.array(optionSchema).optional(),
+  multiple: z.boolean().optional(),
+  ui: primitiveUISchema.optional(),
+});
+export type BasePrimitive = z.infer<typeof basePrimitiveSchema>;
 
-export interface DatePrimitive extends BasePrimitive {
-  htmlType: "date";
-}
+export const textPrimitiveSchema = basePrimitiveSchema.extend({
+  htmlType: z.literal("text"),
+});
+export type TextPrimitive = z.infer<typeof textPrimitiveSchema>;
 
-export interface NumberPrimitive extends BasePrimitive {
-  htmlType: "number";
-}
+export const textAreaPrimitiveSchema = basePrimitiveSchema.extend({
+  htmlType: z.literal("textarea"),
+});
+export type TextAreaPrimitive = z.infer<typeof textAreaPrimitiveSchema>;
 
-export interface TelPrimitive extends BasePrimitive {
-  htmlType: "tel";
-}
+export const datePrimitiveSchema = basePrimitiveSchema.extend({
+  htmlType: z.literal("date"),
+});
+export type DatePrimitive = z.infer<typeof datePrimitiveSchema>;
 
-export interface EmailPrimitive extends BasePrimitive {
-  htmlType: "email";
-}
+export const numberPrimitiveSchema = basePrimitiveSchema.extend({
+  htmlType: z.literal("number"),
+});
+export type NumberPrimitive = z.infer<typeof numberPrimitiveSchema>;
 
-export interface CheckboxPrimitive extends BasePrimitive {
-  htmlType: "checkbox";
-}
+export const telPrimitiveSchema = basePrimitiveSchema.extend({
+  htmlType: z.literal("tel"),
+});
+export type TelPrimitive = z.infer<typeof telPrimitiveSchema>;
 
-export interface SelectPrimitive extends BasePrimitive {
-  options: Array<Option>;
-  htmlType: "select";
-  multiple: boolean;
-}
+export const emailPrimitiveSchema = basePrimitiveSchema.extend({
+  htmlType: z.literal("email"),
+});
+export type EmailPrimitive = z.infer<typeof emailPrimitiveSchema>;
 
-export interface RadioPrimitive extends BasePrimitive {
-  options: Array<Option>;
-  htmlType: "radio";
-}
+export const checkboxPrimitiveSchema = basePrimitiveSchema.extend({
+  htmlType: z.literal("checkbox"),
+  options: z.array(optionSchema),
+});
+export type CheckboxPrimitive = z.infer<typeof checkboxPrimitiveSchema>;
 
-export interface FilePrimitive extends BasePrimitive {
-  multiple: boolean;
-  htmlType: "file";
-}
+export const selectPrimitiveSchema = basePrimitiveSchema.extend({
+  options: z.array(optionSchema),
+  htmlType: z.literal("select"),
+  multiple: z.boolean(),
+});
+export type SelectPrimitive = z.infer<typeof selectPrimitiveSchema>;
 
-export type Primitive =
-  | BasePrimitive
-  | SelectPrimitive
-  | RadioPrimitive
-  | FilePrimitive;
+export const radioPrimitiveSchema = basePrimitiveSchema.extend({
+  options: z.array(optionSchema),
+  htmlType: z.literal("radio"),
+});
+export type RadioPrimitive = z.infer<typeof radioPrimitiveSchema>;
 
-export type FieldOverrides = Pick<
-  Partial<Primitive>,
-  | "label"
-  | "hint"
-  | "placeholder"
-  | "validations"
-  | "defaultValue"
-  | "isDisabled"
-  | "isVisible"
-  | "multiple"
-  | "options"
->;
+export const filePrimitiveSchema = basePrimitiveSchema.extend({
+  multiple: z.boolean(),
+  htmlType: z.literal("file"),
+});
+export type FilePrimitive = z.infer<typeof filePrimitiveSchema>;
+
+export const primitiveSchema = z.discriminatedUnion("htmlType", [
+  textPrimitiveSchema,
+  textAreaPrimitiveSchema,
+  datePrimitiveSchema,
+  numberPrimitiveSchema,
+  telPrimitiveSchema,
+  emailPrimitiveSchema,
+  checkboxPrimitiveSchema,
+  selectPrimitiveSchema,
+  radioPrimitiveSchema,
+  filePrimitiveSchema,
+]);
+export type Primitive = z.infer<typeof primitiveSchema>;
+
+export const fieldOverridesSchema = basePrimitiveSchema.pick({
+  label: true,
+  hint: true,
+  placeholder: true,
+  validations: true,
+  defaultValue: true,
+  isDisabled: true,
+  isHidden: true,
+  multiple: true,
+  options: true,
+});
+export type FieldOverrides = z.infer<typeof fieldOverridesSchema>;

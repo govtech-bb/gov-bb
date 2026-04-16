@@ -70,7 +70,7 @@ export async function hydrateStep(
     title: step.title,
     description: step.description,
     behaviours: step.behaviours,
-    elements,
+    elements: elements as Primitive[],
   };
 }
 

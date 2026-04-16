@@ -1,12 +1,12 @@
-import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
-import { ScheduleModule } from '@nestjs/schedule';
-import { AppController } from './app.controller';
-import { DatabaseModule } from './database/database.module';
-import { RegistryModule } from './registry/registry.module';
-import { FormsModule } from './forms/forms.module';
-import { configs } from './config';
-import { envValidationSchema } from './config/env.validation';
+import { Module } from "@nestjs/common";
+import { ConfigModule } from "@nestjs/config";
+import { ScheduleModule } from "@nestjs/schedule";
+import { AppController } from "./app.controller";
+import { DatabaseModule } from "./database/database.module";
+import { RegistryModule } from "./registry/registry.module";
+import { FormsModule } from "./forms/forms.module";
+import { configs } from "./config";
+import { envValidationSchema } from "./config/env.validation";
 
 @Module({
   imports: [

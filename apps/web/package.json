@@ -2,8 +2,33 @@
   "name": "@govtech-bb/web",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
   "dependencies": {
+    "@govtech-bb/form-conditions": "*",
     "@govtech-bb/form-types": "*",
-    "@govtech-bb/form-conditions": "*"
+    "@tanstack/react-form": "^1.29.0",
+    "@tanstack/react-router": "^1.168.22",
+    "@tanstack/react-router-devtools": "^1.166.13",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "zod": "^4.3.6"
+  },
+  "scripts": {
+    "nextdev": "next dev",
+    "next build": "next build",
+    "next start": "next start",
+    "dev": "vite dev --port 3000",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "format": "prettier --parser typescript --write **/*.{ts,tsx}"
+  },
+  "devDependencies": {
+    "@tanstack/router-plugin": "^1.167.22",
+    "@vitejs/plugin-react": "^6.0.1",
+    "vite": "^8.0.0"
   }
 }

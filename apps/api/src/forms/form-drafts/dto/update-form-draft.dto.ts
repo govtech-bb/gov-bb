@@ -1,4 +1,4 @@
-import { IsInt, IsObject, IsOptional, Min } from 'class-validator';
+import { IsInt, IsObject, IsOptional, Min } from "class-validator";
 
 export class UpdateFormDraftDto {
   @IsOptional()
