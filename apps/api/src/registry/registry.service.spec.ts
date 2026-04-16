@@ -5,7 +5,7 @@ import {
 import { mergeEntry, hydrateStep, hydrateForm } from "./resolution";
 import { CustomComponent } from "./entities/custom-component.entity";
 import { BUILTIN_REGISTRY } from "./builtins";
-import type { Block } from "@govtech-bb/form-types";
+import type { Block, ServiceContractRecipe } from "@govtech-bb/form-types";
 import type { Primitive } from "@govtech-bb/form-types";
 import { Repository } from "typeorm";
 
@@ -125,19 +125,19 @@ describe("hydrateForm", () => {
     .fn()
     .mockResolvedValue(BUILTIN_REGISTRY["components/first-name"]);
 
-  const baseRecipe = {
+  const baseRecipe: ServiceContractRecipe = {
     formId: "test-form",
     title: "Test Form",
     description: "A test",
     version: "1.0.0",
-    createdAt: new Date("2026-01-01"),
-    updatedAt: new Date("2026-01-01"),
+    createdAt: "2026-01-01T00:00:00",
+    updatedAt: "2026-01-01T00:00:00",
     processors: [],
     steps: [
       {
         stepId: "step-1",
         title: "Step 1",
-        elements: [{ ref: "components/first-name" as const }],
+        elements: [{ ref: "components/first-name" }],
       },
     ],
   };
@@ -151,7 +151,7 @@ describe("hydrateForm", () => {
   it("preserves metadata from the recipe", async () => {
     const result = await hydrateForm(baseRecipe, resolver);
     expect(result.version).toBe("1.0.0");
-    expect(result.createdAt).toEqual(new Date("2026-01-01"));
+    expect(result.createdAt).toBe("2026-01-01T00:00:00");
   });
 });
 
@@ -194,13 +194,13 @@ describe("RegistryService", () => {
   });
 
   describe("hydrateForm", () => {
-    const base = {
+    const base: Omit<ServiceContractRecipe, 'steps'> = {
       formId: "passport-renewal",
       title: "Passport Renewal",
       description: "Renew your passport",
       version: "1.0.0",
-      createdAt: new Date("2026-01-01"),
-      updatedAt: new Date("2026-01-01"),
+      createdAt: "2026-01-01T00:00:00",
+      updatedAt: "2026-01-01T00:00:00",
       processors: [],
     };
 
