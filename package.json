@@ -1,57 +1,49 @@
 {
-    "name": "@govtech-bb/modular-forms-monorepo",
-    "version": "0.0.0",
-    "private": true,
-    "workspaces": [
-        "apps/*",
-        "packages/*"
-    ],
-    "scripts": {
-        "build": "nx run-many -t build",
-        "lint": "nx run-many -t lint",
-        "dev:web": "nx dev web",
-        "dev:api": "nx dev api",
-        "start:web": "nx start web",
-        "start:api": "nx start api",
-        "format": "prettier --write .",
-        "format:check": "prettier --check .",
-        "migration:create": "TS_NODE_PROJECT=apps/api/tsconfig.json typeorm-ts-node-commonjs migration:create",
-        "migration:create:help": "node -e \"console.log('Usage: npm run migration:create -- <path/to/migrations>/<migration-name>'); console.log('Example: npm run migration:create -- apps/api/src/database/migrations/AddFormSubmissionIndexes'); console.log('This creates an empty migration file; use migration:generate for diff-based migrations.');\"",
-        "migration:generate": "TS_NODE_PROJECT=apps/api/tsconfig.json typeorm-ts-node-commonjs migration:generate -d apps/api/typeorm.config.ts",
-        "migration:run": "TS_NODE_PROJECT=apps/api/tsconfig.json typeorm-ts-node-commonjs migration:run -d apps/api/typeorm.config.ts",
-        "migration:revert": "TS_NODE_PROJECT=apps/api/tsconfig.json typeorm-ts-node-commonjs migration:revert -d apps/api/typeorm.config.ts",
-        "migration:show": "TS_NODE_PROJECT=apps/api/tsconfig.json typeorm-ts-node-commonjs migration:show -d apps/api/typeorm.config.ts"
-    },
-    "devDependencies": {
-        "@eslint/eslintrc": "^3.3.5",
-        "@eslint/js": "^10.0.1",
-        "@nestjs/cli": "^11.0.0",
-        "@nestjs/common": "^11.0.0",
-        "@nestjs/core": "^11.0.0",
-        "@nestjs/platform-express": "^11.0.0",
-        "@nestjs/typeorm": "^11.0.0",
-        "@nx/eslint-plugin": "^22.6.5",
-        "@nx/js": "^20.4.0",
-        "@nx/nest": "^22.6.5",
-        "@nx/next": "^22.6.5",
-        "@types/node": "^20.0.0",
-        "@typescript-eslint/eslint-plugin": "^8.58.2",
-        "eslint-config-prettier": "^10.1.8",
-        "eslint-plugin": "^1.0.1",
-        "eslint-plugin-prettier": "^5.5.5",
-        "nx": "^22.6.5",
-        "pg": "^8.16.3",
-        "prettier": "^3.0.0",
-        "reflect-metadata": "^0.2.0",
-        "rxjs": "^7.0.0",
-        "ts-node": "^10.9.2",
-        "typeorm": "^0.3.26",
-        "typescript": "^5.7.0",
-        "vite": "^8.0.8"
-    },
-    "packageManager": "npm@10.9.0",
-    "dependencies": {
-        "class-transformer": "^0.5.1",
-        "class-validator": "^0.15.1"
-    }
+  "name": "@govtech-bb/modular-forms-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "nx run-many -t build",
+    "lint": "nx run-many -t lint",
+    "dev:web": "nx dev web",
+    "dev:api": "nx dev api",
+    "start:web": "nx start web",
+    "start:api": "nx start api",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "migration:create": "TS_NODE_PROJECT=apps/api/tsconfig.json typeorm-ts-node-commonjs migration:create",
+    "migration:create:help": "node -e \"console.log('Usage: npm run migration:create -- <path/to/migrations>/<migration-name>'); console.log('Example: npm run migration:create -- apps/api/src/database/migrations/AddFormSubmissionIndexes'); console.log('This creates an empty migration file; use migration:generate for diff-based migrations.');\"",
+    "migration:generate": "TS_NODE_PROJECT=apps/api/tsconfig.json typeorm-ts-node-commonjs migration:generate -d apps/api/typeorm.config.ts",
+    "migration:run": "TS_NODE_PROJECT=apps/api/tsconfig.json typeorm-ts-node-commonjs migration:run -d apps/api/typeorm.config.ts",
+    "migration:revert": "TS_NODE_PROJECT=apps/api/tsconfig.json typeorm-ts-node-commonjs migration:revert -d apps/api/typeorm.config.ts",
+    "migration:show": "TS_NODE_PROJECT=apps/api/tsconfig.json typeorm-ts-node-commonjs migration:show -d apps/api/typeorm.config.ts",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@types/luxon": "^3.7.1",
+    "@types/node": "^24.0.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
+    "nx": "^20.4.0",
+    "pg": "^8.16.3",
+    "prettier": "^3.0.0",
+    "reflect-metadata": "^0.2.0",
+    "rxjs": "^7.0.0",
+    "ts-node": "^10.9.2",
+    "typeorm": "^0.3.26",
+    "typescript": "^5.7.0"
+  },
+  "packageManager": "npm@10.9.0",
+  "dependencies": {
+    "luxon": "^3.7.2",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.15.1"
+  },
+  "lint-staged": {
+    "*.{json,ts}": "prettier --write"
+  }
 }
