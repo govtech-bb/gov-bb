@@ -1,8 +1,9 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { LessThan, Repository } from 'typeorm';
+import { LessThan } from 'typeorm';
 import { FormDraftEntity, DraftStatus } from '../../database/entities/form-draft.entity';
-import { FormDefinitionEntity } from '../../database/entities/form-definition.entity';
+import type { FormDefinitionEntity } from '../../database/entities/form-definition.entity';
 import { FormDraftRepository } from './form-draft.repository';
+import { FormDefinitionRepository } from '../form-definitions/form-definition.repository';
 import { FormDraftsService } from './form-drafts.service';
 
 function makeDraftRepo(
@@ -18,12 +19,12 @@ function makeDraftRepo(
 }
 
 function makeFormDefRepo(
-  overrides: Partial<jest.Mocked<Repository<FormDefinitionEntity>>> = {},
-): jest.Mocked<Repository<FormDefinitionEntity>> {
+  overrides: Partial<jest.Mocked<FormDefinitionRepository>> = {},
+): jest.Mocked<FormDefinitionRepository> {
   return {
     findOne: jest.fn(),
     ...overrides,
-  } as unknown as jest.Mocked<Repository<FormDefinitionEntity>>;
+  } as unknown as jest.Mocked<FormDefinitionRepository>;
 }
 
 function makeDraft(overrides: Partial<FormDraftEntity> = {}): FormDraftEntity {
@@ -192,18 +193,45 @@ describe('FormDraftsService', () => {
   });
 
   describe('update', () => {
-    it('updates values and lastActivePage and refreshes lastActiveAt', async () => {
+    it('merges new values into existing values without dropping prior fields', async () => {
+      const draftRepo = makeDraftRepo();
+      const draft = makeDraft({ values: { firstName: 'Jane', surname: 'Doe' } });
+      draftRepo.findOne.mockResolvedValue(draft);
+      draftRepo.save.mockImplementation(async (d) => d as FormDraftEntity);
+      const service = new FormDraftsService(draftRepo, makeFormDefRepo());
+
+      await service.update('my-draft', { values: { firstName: 'John' } });
+
+      expect(draftRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ values: { firstName: 'John', surname: 'Doe' } }),
+      );
+    });
+
+    it('updates lastActivePage and refreshes lastActiveAt', async () => {
       const draftRepo = makeDraftRepo();
       const draft = makeDraft();
       draftRepo.findOne.mockResolvedValue(draft);
       draftRepo.save.mockImplementation(async (d) => d as FormDraftEntity);
       const service = new FormDraftsService(draftRepo, makeFormDefRepo());
 
-      await service.update('my-draft', { values: { name: 'John' }, lastActivePage: 2 });
+      await service.update('my-draft', { lastActivePage: 2 });
 
       expect(draftRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ values: { name: 'John' }, lastActivePage: 2 }),
+        expect.objectContaining({ lastActivePage: 2 }),
       );
+    });
+
+    it('does not mutate the original draft object', async () => {
+      const draftRepo = makeDraftRepo();
+      const draft = makeDraft({ values: { a: 1 } });
+      const originalValues = { ...draft.values };
+      draftRepo.findOne.mockResolvedValue(draft);
+      draftRepo.save.mockImplementation(async (d) => d as FormDraftEntity);
+      const service = new FormDraftsService(draftRepo, makeFormDefRepo());
+
+      await service.update('my-draft', { values: { b: 2 } });
+
+      expect(draft.values).toEqual(originalValues);
     });
 
     it('throws BadRequestException when draft is abandoned', async () => {

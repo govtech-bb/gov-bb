@@ -1,17 +1,13 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { FormDefinitionsController } from './form-definitions.controller';
 import { FormDefinitionsService } from './form-definitions.service';
-import { FormDefinitionEntity } from '../../database/entities/form-definition.entity';
+import { FormDefinitionRepository } from './form-definition.repository';
 import { RegistryModule } from '../../registry/registry.module';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([FormDefinitionEntity]),
-    RegistryModule,
-  ],
+  imports: [RegistryModule],
   controllers: [FormDefinitionsController],
-  providers: [FormDefinitionsService],
+  providers: [FormDefinitionsService, FormDefinitionRepository],
   exports: [FormDefinitionsService],
 })
 export class FormDefinitionsModule {}

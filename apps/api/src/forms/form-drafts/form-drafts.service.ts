@@ -1,11 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { LessThan, Repository } from 'typeorm';
+import { LessThan } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { DateTime } from 'luxon';
 import { DraftStatus, FormDraftEntity } from '../../database/entities/form-draft.entity';
-import { FormDefinitionEntity } from '../../database/entities/form-definition.entity';
 import { FormDraftRepository } from './form-draft.repository';
+import { FormDefinitionRepository } from '../form-definitions/form-definition.repository';
 import { AppError } from '../../common/errors';
 
 const DRAFT_EXPIRY_DAYS = 7;
@@ -16,8 +15,7 @@ export class FormDraftsService {
 
   constructor(
     private readonly draftRepo: FormDraftRepository,
-    @InjectRepository(FormDefinitionEntity)
-    private readonly formDefRepo: Repository<FormDefinitionEntity>,
+    private readonly formDefRepo: FormDefinitionRepository,
   ) {}
 
   async create({
@@ -74,10 +72,12 @@ export class FormDraftsService {
     if (draft.status === DraftStatus.ABANDONED) {
       throw AppError.badRequest('Cannot update an abandoned draft');
     }
-    if (values !== undefined) draft.values = values;
-    if (lastActivePage !== undefined) draft.lastActivePage = lastActivePage;
-    draft.lastActiveAt = DateTime.utc().toJSDate();
-    return this.draftRepo.save(draft);
+    return this.draftRepo.save({
+      ...draft,
+      ...(values !== undefined && { values: { ...draft.values, ...values } }),
+      ...(lastActivePage !== undefined && { lastActivePage }),
+      lastActiveAt: DateTime.utc().toJSDate(),
+    });
   }
 
   async abandon(draftId: string): Promise<void> {
