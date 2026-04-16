@@ -1,6 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
-import { Repository } from 'typeorm';
-import { FormDefinitionEntity } from '../../database/entities/form-definition.entity';
+import type { FormDefinitionEntity } from '../../database/entities/form-definition.entity';
+import { FormDefinitionRepository } from './form-definition.repository';
 import { RegistryService } from '../../registry/registry.service';
 import { FormDefinitionsService } from './form-definitions.service';
 
@@ -36,7 +36,7 @@ function makeEntity(overrides: Partial<FormDefinitionEntity> = {}): FormDefiniti
 function makeMocks() {
   const repo = {
     findOne: jest.fn(),
-  } as unknown as jest.Mocked<Repository<FormDefinitionEntity>>;
+  } as unknown as jest.Mocked<FormDefinitionRepository>;
 
   const registry = {
     hydrateForm: jest.fn().mockResolvedValue(MOCK_HYDRATED),
