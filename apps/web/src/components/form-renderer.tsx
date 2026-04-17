@@ -16,7 +16,7 @@ export default function FormRenderer({ contract }: FormRendererProps) {
   return (
     <div className={designSystem.formRoot}>
       <p className={designSystem.formTitle}> {formMeta.formTitle} </p>
-      <p className={designSystem.formDescription}> {formMeta.formDescription} </p>
+      {formMeta.formDescription && <p className={designSystem.formDescription}> {formMeta.formDescription} </p>}
       {formMeta.steps.map((step, stepIndex) => (
         <div key={step.stepId} className={designSystem.formStep}>
           <h1>{step.title}</h1>
