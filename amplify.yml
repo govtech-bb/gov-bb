@@ -2,7 +2,6 @@ version: 1
 applications:
   - appRoot: apps/web
     frontend:
-      buildPath: /
       phases:
         preBuild:
           commands:
@@ -12,25 +11,8 @@ applications:
             - npx nx run form-types:build
             - npx nx run form-conditions:build
             - cd apps/web && npx vite build && cd ../..
-        postBuild:
-          commands:
-            - mkdir -p .amplify-hosting/static
-            - cp -r apps/web/dist/. .amplify-hosting/static/
-            - cp apps/web/dist/index.html .amplify-hosting/static/404.html
-            - |
-              cat > .amplify-hosting/deploy-manifest.json << 'EOF'
-              {
-                "version": 1,
-                "routes": [
-                  { "path": "/assets/*", "target": { "kind": "Static", "cacheControl": "public, max-age=31536000, immutable" } },
-                  { "path": "/*.*", "target": { "kind": "Static" } },
-                  { "path": "/*", "target": { "kind": "Static" } }
-                ],
-                "framework": { "name": "vite", "version": "8.0.8" }
-              }
-              EOF
       artifacts:
-        baseDirectory: .amplify-hosting
+        baseDirectory: dist
         files:
           - "**/*"
       cache:
