@@ -16,6 +16,7 @@ applications:
           commands:
             - mkdir -p .amplify-hosting/static
             - cp -r apps/web/dist/. .amplify-hosting/static/
+            - cp apps/web/dist/index.html .amplify-hosting/static/404.html
             - |
               cat > .amplify-hosting/deploy-manifest.json << 'EOF'
               {
@@ -23,7 +24,7 @@ applications:
                 "routes": [
                   { "path": "/assets/*", "target": { "kind": "Static", "cacheControl": "public, max-age=31536000, immutable" } },
                   { "path": "/*.*", "target": { "kind": "Static" } },
-                  { "path": "/*", "target": { "kind": "Static" }, "fallback": { "kind": "Static", "src": "/index.html" } }
+                  { "path": "/*", "target": { "kind": "Static" } }
                 ],
                 "framework": { "name": "vite", "version": "8.0.8" }
               }
