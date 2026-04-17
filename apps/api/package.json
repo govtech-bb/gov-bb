@@ -25,7 +25,8 @@
     "joi": "^18.0.2",
     "node-cache": "^5.1.2",
     "pg": "^8.20.0",
-    "typeorm": "^0.3.28"
+    "typeorm": "^0.3.28",
+    "@nestjs/platform-express": "^11.1.0"
   },
   "devDependencies": {
     "@nestjs/testing": "^11.1.17",
