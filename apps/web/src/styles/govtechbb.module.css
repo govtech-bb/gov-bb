@@ -1,5 +1,8 @@
 /* Root Styles */
 .formRoot {
+  /* Font */
+  --font-figtree: "Figtree", sans-serif;
+
   /* Brand Yellow */
   --color-yellow-00: #e8a833;
   --color-yellow-100: #ffc726;
@@ -107,9 +110,17 @@
   padding: 1rem;
 }
 
+.formRoot .formDescription {
+  display: none;
+}
+
 /* Form Elements */
 .formStep h1 {
   margin: 0;
+}
+
+.formStep .formStepDescription {
+  display: none;
 }
 
 .formStep [data-field] {
@@ -152,7 +163,6 @@
   right: 3.75rem;
   border-left: 0.125rem solid var(--color-black-00);
   pointer-events: none;
-
 }
 
 .formRoot [data-select-field] [data-select-control]::after {
