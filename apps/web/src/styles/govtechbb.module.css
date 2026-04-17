@@ -110,9 +110,17 @@
   padding: 1rem;
 }
 
+.formRoot .formDescription {
+  display: none;
+}
+
 /* Form Elements */
 .formStep h1 {
   margin: 0;
+}
+
+.formStep .formStepDescription {
+  display: none;
 }
 
 .formStep [data-field] {
