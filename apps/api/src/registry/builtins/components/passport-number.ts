@@ -4,4 +4,7 @@ export const PassportNumber: TextPrimitive = {
     fieldId: "passport-number",
     label: "Passport number",
     htmlType: "text",
+    ui: {
+        width: "short",
+    },
 }

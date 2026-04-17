@@ -1,27 +1,37 @@
-import type { FieldOverrides, Primitive } from "./primitive.type";
-import type { Block } from "./block.type";
-import type { Behaviour } from "./behavior.type";
+import { z } from "zod";
+import { fieldOverridesSchema, primitiveSchema } from "./primitive.type";
+import { behaviourSchema } from "./behavior.type";
 
-export interface FormStep {
-  stepId: string;
-  title: string;
-  description?: string;
-  elements: Array<Primitive | Block>;
-  behaviours?: Array<Behaviour>;
-}
+export const formStepSchema = z.object({
+  stepId: z.string(),
+  title: z.string(),
+  description: z.string().optional(),
+  elements: z.array(primitiveSchema),
+  behaviours: z.array(behaviourSchema).optional(),
+});
+export type FormStep = z.infer<typeof formStepSchema>;
 
-export interface RecipeComponentField {
-  ref: `components/${string}`;
-  overrides?: FieldOverrides;
-}
+export const recipeComponentFieldSchema = z.object({
+  ref: z.string().regex(/^components\//),
+  overrides: fieldOverridesSchema.optional(),
+});
+export type RecipeComponentField = z.infer<typeof recipeComponentFieldSchema>;
 
-export interface RecipeBlockField {
-  ref: `blocks/${string}`;
-  overrides?: Record<string, FieldOverrides>;
-}
+export const recipeBlockFieldSchema = z.object({
+  ref: z.string().regex(/^blocks\//),
+  overrides: z.record(z.string(), fieldOverridesSchema).optional(),
+});
+export type RecipeBlockField = z.infer<typeof recipeBlockFieldSchema>;
 
-export type RecipeFormStepField = RecipeComponentField | RecipeBlockField;
+export const recipeFormStepFieldSchema = z.discriminatedUnion("ref", [
+  recipeComponentFieldSchema,
+  recipeBlockFieldSchema,
+]);
+export type RecipeFormStepField = z.infer<typeof recipeFormStepFieldSchema>;
 
-export interface RecipeFormStep extends Omit<FormStep, "elements"> {
-  elements: Array<RecipeFormStepField>;
-}
+export const recipeFormStepSchema = formStepSchema
+  .omit({ elements: true })
+  .extend({
+    elements: z.array(recipeFormStepFieldSchema),
+  });
+export type RecipeFormStep = z.infer<typeof recipeFormStepSchema>;

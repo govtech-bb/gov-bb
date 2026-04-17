@@ -11,7 +11,7 @@ export class FormDefinitionEntity extends TimestampedEntity {
   version: string;
 
   @Column({ type: "jsonb" })
-  schema: ServiceContractRecipe
+  schema: ServiceContractRecipe;
 
   @Column({ name: "published_at", type: "timestamp", nullable: true })
   publishedAt: Date | null;

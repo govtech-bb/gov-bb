@@ -1,6 +1,13 @@
-import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger } from '@nestjs/common';
-import { Request, Response } from 'express';
-import { ApiResponse } from './response';
+import {
+  ArgumentsHost,
+  Catch,
+  ExceptionFilter,
+  HttpException,
+  HttpStatus,
+  Logger,
+} from "@nestjs/common";
+import { Request, Response } from "express";
+import { ApiResponse } from "./response";
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
@@ -18,8 +25,8 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
     const message =
       exception instanceof HttpException
-        ? (exception.getResponse() as any)?.message ?? exception.message
-        : 'An unexpected error occurred';
+        ? ((exception.getResponse() as any)?.message ?? exception.message)
+        : "An unexpected error occurred";
 
     this.logger.error(`${req.method} ${req.url} ${statusCode} — ${message}`);
 

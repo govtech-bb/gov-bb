@@ -6,4 +6,7 @@ export const Parish: SelectPrimitive = {
     htmlType: "select",
     options: [],
     multiple: false,
+    ui: {
+        width: "short",
+    },
 }

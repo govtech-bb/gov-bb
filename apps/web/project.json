@@ -5,27 +5,26 @@
   "projectType": "application",
   "targets": {
     "build": {
-      "executor": "@nx/next:build",
-      "outputs": ["{options.outputPath}"],
+      "executor": "nx:run-commands",
+      "outputs": ["{projectRoot}/dist"],
       "options": {
-        "outputPath": "dist/apps/web"
+        "command": "npm run build",
+        "cwd": "apps/web"
       },
       "dependsOn": ["^build"]
     },
     "dev": {
-      "executor": "@nx/next:server",
+      "executor": "nx:run-commands",
       "options": {
-        "buildTarget": "web:build",
-        "dev": true,
-        "port": 4200
+        "command": "npm run dev",
+        "cwd": "apps/web"
       }
     },
     "start": {
-      "executor": "@nx/next:server",
+      "executor": "nx:run-commands",
       "options": {
-        "buildTarget": "web:build",
-        "dev": false,
-        "port": 4200
+        "command": "npm run preview",
+        "cwd": "apps/web"
       },
       "dependsOn": ["build"]
     },
