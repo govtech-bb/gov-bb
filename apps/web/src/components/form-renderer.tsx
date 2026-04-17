@@ -15,12 +15,12 @@ export default function FormRenderer({ contract }: FormRendererProps) {
 
   return (
     <div className={designSystem.formRoot}>
-      <p className={designSystem.formDescription}> {formMeta.formDescription} </p>
       <p className={designSystem.formTitle}> {formMeta.formTitle} </p>
+      <p className={designSystem.formDescription}> {formMeta.formDescription} </p>
       {formMeta.steps.map((step, stepIndex) => (
         <div key={step.stepId} className={designSystem.formStep}>
           <h1>{step.title}</h1>
-          {/* {step.description && <p>{step.description}</p>} */}
+          {step.description && <p className={designSystem.formStepDescription}>{step.description}</p>}
 
           {step.fields.map((field) => (
             <FieldRenderer key={field.id} form={form} field={field} />

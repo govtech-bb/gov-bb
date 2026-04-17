@@ -209,6 +209,10 @@
     border-color 0.15s ease;
 }
 
+.formRoot [data-checkbox-group] input:checked::before {
+  display: none;
+}
+
 .formRoot [data-checkbox-group] input[type="checkbox"]:hover {
   border-color: var(--color-accent);
 }
@@ -218,13 +222,13 @@
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
 }
 
+.formRoot [data-checkbox-group] input:invalid {
+  border-color: var(--color-error);
+}
+
 .formRoot [data-checkbox-group] input:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-.formRoot [data-checkbox-group] input:invalid {
-  border-color: var(--color-error);
 }
 
 .formRoot [data-checkbox-group] [data-checkbox-option] label {
@@ -267,13 +271,13 @@
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
 }
 
+.formRoot [data-radio-group] input:invalid {
+  border-color: var(--color-error);
+}
+
 .formRoot [data-radio-group] input:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-.formRoot [data-radio-group] input:invalid {
-  border-color: var(--color-error);
 }
 
 /* Hint Text */
@@ -310,6 +314,17 @@
 .formRoot button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* Focus States */
+.formRoot :focus {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.formRoot :focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 /* Error States */

@@ -116,6 +116,10 @@
   margin: 0;
 }
 
+.formStep .formStepDescription {
+  display: none;
+}
+
 .formStep [data-field] {
   display: flex;
   flex-direction: column;
