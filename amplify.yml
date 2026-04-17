@@ -1,4 +1,4 @@
-﻿version: 1
+version: 1
 applications:
   - appRoot: apps/web
     frontend:
@@ -11,25 +11,21 @@ applications:
           commands:
             - npx nx run form-types:build
             - npx nx run form-conditions:build
-            - cd apps/web && npx next build && cd ../..
+            - cd apps/web && npx vite build && cd ../..
         postBuild:
           commands:
-            - mkdir -p .amplify-hosting/compute/default
-            - mkdir -p .amplify-hosting/static/_next/static
-            - cp -r apps/web/.next/standalone/. .amplify-hosting/compute/default/
-            - cp -r apps/web/.next/static/. .amplify-hosting/static/_next/static/
-            - cp -r apps/web/public/. .amplify-hosting/static/
+            - mkdir -p .amplify-hosting/static
+            - cp -r apps/web/dist/. .amplify-hosting/static/
             - |
               cat > .amplify-hosting/deploy-manifest.json << 'EOF'
               {
                 "version": 1,
                 "routes": [
-                  { "path": "/_next/static/*", "target": { "kind": "Static", "cacheControl": "public, max-age=31536000, immutable" } },
-                  { "path": "/*.*", "target": { "kind": "Static" }, "fallback": { "kind": "Compute", "src": "default" } },
-                  { "path": "/*", "target": { "kind": "Compute", "src": "default" } }
+                  { "path": "/assets/*", "target": { "kind": "Static", "cacheControl": "public, max-age=31536000, immutable" } },
+                  { "path": "/*.*", "target": { "kind": "Static" } },
+                  { "path": "/*", "target": { "kind": "Static" }, "fallback": { "kind": "Static", "src": "/index.html" } }
                 ],
-                "computeResources": [{ "name": "default", "runtime": "nodejs20.x", "entrypoint": "apps/web/server.js" }],
-                "framework": { "name": "next", "version": "14.2.35" }
+                "framework": { "name": "vite", "version": "8.0.8" }
               }
               EOF
       artifacts:
