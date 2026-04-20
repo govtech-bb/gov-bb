@@ -83,6 +83,8 @@ export const buildFieldValidationMethods = (
         )
           return undefined;
         checkRequired(args);
+        // If the field is required, but has no value, then ignore subsequent errors
+        if (results.hasError) return results.errors;
         checkLength(args);
         checkPattern(args);
         checkEmail(args);
