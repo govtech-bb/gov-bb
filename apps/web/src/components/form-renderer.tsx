@@ -85,7 +85,7 @@ export default function FormRenderer({ contract, stepId }: FormRendererProps) {
             </button>
           )}
           <button type="button" onClick={handleContinue}>
-            Continue
+            {stepIndex === formMeta.steps.length - 1 ? "Submit" : "Continue"}
           </button>
         </div>
       </div>
