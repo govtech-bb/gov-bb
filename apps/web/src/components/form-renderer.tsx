@@ -1,14 +1,15 @@
 "use client";
-import { FormMeta, FormRendererProps, FormValues } from "@web/types";
-import { buildForm } from "@web/lib";
-import { useForm } from "@tanstack/react-form";
+import { FormRendererProps } from "@web/types";
 import { useNavigate } from "@tanstack/react-router";
 import FieldRenderer from "./field-renderer";
 import designSystem from "../lib/design-system";
 import React, { useEffect } from "react";
 
-export default function FormRenderer({ contract, stepId }: FormRendererProps) {
-  const formMeta: FormMeta = buildForm(contract);
+export default function FormRenderer({
+  form,
+  formMeta,
+  stepId,
+}: FormRendererProps) {
   const [stepIndex, setStepIndex] = React.useState(0);
   const [hidePrevious, setHidePrevious] = React.useState(true);
   const navigate = useNavigate({ from: "/forms/$formId/" });
@@ -34,13 +35,7 @@ export default function FormRenderer({ contract, stepId }: FormRendererProps) {
     }
   }, [stepIndex]);
 
-
   const currentStep = formMeta.steps[stepIndex];
-
-  const form = useForm({
-    defaultValues: formMeta.defaultValues as FormValues,
-    onSubmit: ({ value }) => { },
-  });
 
   const navigateToStep = (nextStepIndex: number) => {
     if (nextStepIndex < 0 || nextStepIndex >= formMeta.steps.length) {
@@ -66,6 +61,9 @@ export default function FormRenderer({ contract, stepId }: FormRendererProps) {
     navigateToStep(stepIndex + 1);
   };
 
+  const handleSubmit = () => {
+  };
+
   return (
     <div className={designSystem.formRoot}>
       <p className={designSystem.formTitle}> {formMeta.formTitle} </p>
@@ -84,7 +82,14 @@ export default function FormRenderer({ contract, stepId }: FormRendererProps) {
               Previous
             </button>
           )}
-          <button type="button" onClick={handleContinue}>
+          <button
+            type="button"
+            onClick={
+              stepIndex === formMeta.steps.length - 1
+                ? handleSubmit
+                : handleContinue
+            }
+          >
             {stepIndex === formMeta.steps.length - 1 ? "Submit" : "Continue"}
           </button>
         </div>
