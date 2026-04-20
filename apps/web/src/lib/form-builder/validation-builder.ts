@@ -1,4 +1,4 @@
-import { ValidationConfig, ValidationRule } from "@govtech-bb/form-types";
+import { ValidationConfig } from "@govtech-bb/form-types";
 import {
   ClientServiceContract,
   ClientPrimitive,
@@ -6,6 +6,7 @@ import {
   FormValidation,
   FieldValidationMethods,
   ValidationResults,
+  ValidationArgs,
 } from "@web/types";
 import z from "zod";
 
@@ -61,15 +62,29 @@ export const buildFieldValidationMethods = (
   const validations = field.validations;
 
   return {
-    onBlur(input) {},
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    onBlur(_input) {},
     onChange({ value }) {
       const results: ValidationResults = {
         hasError: false,
         errors: [],
       };
       if (typeof value === "string") {
-        checkLength(field.id, value, validations, results);
-        checkPattern(field.id, value, validations, results);
+        const args: ValidationArgs<string> = {
+          fieldId: field.id,
+          value,
+          validations,
+          results,
+        };
+        if (
+          validations.required &&
+          validations.required.value === false &&
+          value.length == 0
+        )
+          return undefined;
+        checkRequired(args);
+        checkLength(args);
+        checkPattern(args);
       }
 
       return results.hasError ? results.errors : undefined;
@@ -86,12 +101,28 @@ const getValidationErrorOr = (
 ): string =>
   (config.error || customError) ?? `Unknown error has occurred for ${fieldId}`;
 
-const checkLength = (
-  fieldId: string,
-  value: string,
-  validations: ValidationRule,
-  results: ValidationResults,
-): ValidationResults => {
+const checkRequired = ({
+  fieldId,
+  value,
+  results,
+  validations,
+}: ValidationArgs<string>) => {
+  if (
+    validations.required &&
+    validations.required.value &&
+    value.length === 0
+  ) {
+    results.hasError = true;
+    results.errors.push(getValidationErrorOr(fieldId, validations.required));
+  }
+};
+
+const checkLength = ({
+  fieldId,
+  value,
+  results,
+  validations,
+}: ValidationArgs<string>) => {
   const minLength = validations.minLength || null;
   const maxLength = validations.maxLength || null;
 
@@ -104,16 +135,14 @@ const checkLength = (
     results.hasError = true;
     results.errors.push(getValidationErrorOr(fieldId, maxLength));
   }
-
-  return results;
 };
 
-const checkPattern = (
-  fieldId: string,
-  value: string,
-  validations: ValidationRule,
-  results: ValidationResults,
-): ValidationResults => {
+const checkPattern = ({
+  fieldId,
+  value,
+  results,
+  validations,
+}: ValidationArgs<string>) => {
   const pattern = validations.pattern || null;
   if (!pattern) return results;
 
@@ -124,6 +153,4 @@ const checkPattern = (
     results.hasError = true;
     results.errors.push(getValidationErrorOr(fieldId, pattern));
   }
-
-  return results;
 };

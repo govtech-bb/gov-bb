@@ -1,3 +1,4 @@
+import { ValidationRule } from "@govtech-bb/form-types";
 import { ZodObject, ZodType } from "zod";
 
 interface FieldValidationContext<TValue = unknown, TFormApi = unknown> {
@@ -24,4 +25,11 @@ export interface FormValidation {
 export interface ValidationResults {
   hasError: boolean; // Whether any errors were picked up.
   errors: string[]; // Filtered list of results with errors.
+}
+
+export interface ValidationArgs<TValueType = unknown> {
+  fieldId: string;
+  value: TValueType;
+  validations: ValidationRule;
+  results: ValidationResults;
 }
