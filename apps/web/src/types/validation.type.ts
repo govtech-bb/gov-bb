@@ -21,11 +21,6 @@ export interface FormValidation {
   defaults: Record<string, unknown>;
 }
 
-export interface ValidationResult {
-  id: string; // ID of the field that has the validation error
-  error: string; // The error message
-}
-
 export interface ValidationResults {
   hasError: boolean; // Whether any errors were picked up.
   errors: string[]; // Filtered list of results with errors.

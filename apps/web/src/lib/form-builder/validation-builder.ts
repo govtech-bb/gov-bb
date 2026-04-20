@@ -5,7 +5,6 @@ import {
   FieldValidation,
   FormValidation,
   FieldValidationMethods,
-  ValidationResult,
   ValidationResults,
 } from "@web/types";
 import z from "zod";
@@ -64,12 +63,13 @@ export const buildFieldValidationMethods = (
   return {
     onBlur(input) {},
     onChange({ value }) {
-      let results: ValidationResults = {
+      const results: ValidationResults = {
         hasError: false,
         errors: [],
       };
       if (typeof value === "string") {
-        results = checkLength(field.id, value, validations, results);
+        checkLength(field.id, value, validations, results);
+        checkPattern(field.id, value, validations, results);
       }
 
       return results.hasError ? results.errors : undefined;
@@ -103,6 +103,26 @@ const checkLength = (
   if (maxLength && maxLength.value && value.length > maxLength.value) {
     results.hasError = true;
     results.errors.push(getValidationErrorOr(fieldId, maxLength));
+  }
+
+  return results;
+};
+
+const checkPattern = (
+  fieldId: string,
+  value: string,
+  validations: ValidationRule,
+  results: ValidationResults,
+): ValidationResults => {
+  const pattern = validations.pattern || null;
+  if (!pattern) return results;
+
+  const re = new RegExp(pattern.value);
+
+  const match = re.test(value);
+  if (!match) {
+    results.hasError = true;
+    results.errors.push(getValidationErrorOr(fieldId, pattern));
   }
 
   return results;
