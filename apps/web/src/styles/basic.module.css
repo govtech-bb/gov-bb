@@ -44,6 +44,11 @@
   color: var(--color-text-muted);
 }
 
+.formRoot .formNavigation {
+  display: flex;
+  gap: 1.25rem;
+}
+
 /* Typography */
 .formRoot h1 {
   font-size: 2rem;
