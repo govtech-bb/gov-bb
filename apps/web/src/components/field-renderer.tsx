@@ -1,4 +1,3 @@
-"use client";
 import { ClientPrimitive, FieldValidationMethods } from "@web/types";
 
 export default function FieldRenderer({
