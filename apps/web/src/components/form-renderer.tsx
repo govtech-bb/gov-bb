@@ -2,26 +2,69 @@
 import { FormMeta, FormRendererProps, FormValues } from "@web/types";
 import { buildForm } from "@web/lib";
 import { useForm } from "@tanstack/react-form";
+import { useNavigate } from "@tanstack/react-router";
 import FieldRenderer from "./field-renderer";
 import designSystem from "../lib/design-system";
+import React, { useEffect } from "react";
 
 export default function FormRenderer({ contract, stepId }: FormRendererProps) {
   const formMeta: FormMeta = buildForm(contract);
+  const [stepIndex, setStepIndex] = React.useState(0);
+  const [disablePrevious, setDisablePrevious] = React.useState(true);
+  const navigate = useNavigate({ from: "/forms/$formId/" });
+
+  useEffect(() => {
+    if (stepId) {
+      const requestedStepIndex = formMeta.steps.findIndex((formStep) => {
+        return formStep.stepId === stepId;
+      });
+
+      setStepIndex(requestedStepIndex >= 0 ? requestedStepIndex : 0);
+      return;
+    }
+
+    setStepIndex(0);
+  }, [stepId, formMeta.steps]);
+
+  useEffect(() => {
+    if (stepIndex === 0) {
+      setDisablePrevious(true);
+    } else {
+      setDisablePrevious(false);
+    }
+  }, [stepIndex]);
+
+
+  const currentStep = formMeta.steps[stepIndex];
 
   const form = useForm({
     defaultValues: formMeta.defaultValues as FormValues,
     onSubmit: ({ value }) => { },
   });
 
-  let stepIndex = 0;
+  const navigateToStep = (nextStepIndex: number) => {
+    if (nextStepIndex < 0 || nextStepIndex >= formMeta.steps.length) {
+      return;
+    }
 
-  if (stepId) {
-    stepIndex = formMeta.steps.findIndex((formStep) => {
-      return formStep.stepId === stepId
-    })
-  }
+    const nextStepId = formMeta.steps[nextStepIndex].stepId;
+    setStepIndex(nextStepIndex);
 
-  const currentStep = formMeta.steps[stepIndex]
+    void navigate({
+      search: (prev) => ({
+        ...prev,
+        step: nextStepId,
+      }),
+    });
+  };
+
+  const handlePrevious = () => {
+    navigateToStep(stepIndex - 1);
+  };
+
+  const handleContinue = () => {
+    navigateToStep(stepIndex + 1);
+  };
 
   return (
     <div className={designSystem.formRoot}>
@@ -34,11 +77,15 @@ export default function FormRenderer({ contract, stepId }: FormRendererProps) {
         {currentStep.fields.map((field) => (
           <FieldRenderer key={field.id} form={form} field={field} />
         ))}
-      </div>
 
-      <div className={designSystem.formNavigation}>
-        <button>Previous</button>
-        <button>Continue</button>
+        <div className={designSystem.formNavigation}>
+          <button type="button" disabled={disablePrevious} onClick={handlePrevious}>
+            Previous
+          </button>
+          <button type="button" onClick={handleContinue}>
+            Continue
+          </button>
+        </div>
       </div>
     </div>
   );
