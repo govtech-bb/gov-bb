@@ -1,18 +1,21 @@
 "use client";
-import { ClientPrimitive } from "@web/types";
+import { ClientPrimitive, FieldValidationMethods } from "@web/types";
 
 export default function FieldRenderer({
   form,
   field,
+  validationMethods,
 }: {
   form: any;
   field: ClientPrimitive;
+  validationMethods: FieldValidationMethods;
 }) {
   if (field.hidden) return null;
 
   return (
     <form.Field
       name={field.id}
+      validators={validationMethods}
       children={(f: any) => {
         const value = f.state.value;
 
@@ -21,7 +24,7 @@ export default function FieldRenderer({
           name: field.id,
           disabled: field.disabled,
           placeholder: field.placeholder,
-          value: value ?? undefined,
+          onBlur: f.handleBlur,
         };
 
         switch (field.htmlType) {
@@ -55,8 +58,11 @@ export default function FieldRenderer({
           case "email":
             return (
               <div data-field>
+                {!f.state.meta.isValid && (
+                  <em role="alert">{f.state.meta.errors.join(', ')}</em>
+                )}
                 <label> {field.label} </label>
-                <input {...sharedProps} />
+                <input {...sharedProps} value={value ?? ""} onChange={(e) => f.handleChange(e.target.value)} />
               </div>
             );
           case "select":
@@ -83,7 +89,7 @@ export default function FieldRenderer({
                   {field.options?.map((option) => {
                     return (
                       <div key={option.value} data-checkbox-option>
-                        <input {...sharedProps}/>
+                        <input {...sharedProps} />
                         <label>{option.label}</label>
                       </div>
                     );
@@ -108,7 +114,8 @@ export default function FieldRenderer({
           default:
             return <div style={{ color: "red" }}>No field for {field.htmlType} designed</div>;
         }
-      }}
+      }
+      }
     />
   );
 }

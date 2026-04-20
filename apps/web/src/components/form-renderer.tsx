@@ -1,4 +1,3 @@
-"use client";
 import { FormMeta, FormRendererProps, FormValues } from "@web/types";
 import { buildForm } from "@web/lib";
 import { useForm } from "@tanstack/react-form";
@@ -23,7 +22,7 @@ export default function FormRenderer({ contract }: FormRendererProps) {
           {step.description && <p className={designSystem.formStepDescription}>{step.description}</p>}
 
           {step.fields.map((field) => (
-            <FieldRenderer key={field.id} form={form} field={field} />
+            <FieldRenderer key={field.id} form={form} field={field} validationMethods={formMeta.validationMethods[field.id]} />
           ))}
           {stepIndex < formMeta.steps.length - 1 && <hr />}
         </div>

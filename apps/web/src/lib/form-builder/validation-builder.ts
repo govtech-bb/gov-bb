@@ -1,9 +1,12 @@
+import { ValidationConfig, ValidationRule } from "@govtech-bb/form-types";
 import {
   ClientServiceContract,
   ClientPrimitive,
   FieldValidation,
   FormValidation,
   FieldValidationMethods,
+  ValidationResult,
+  ValidationResults,
 } from "@web/types";
 import z from "zod";
 
@@ -36,8 +39,8 @@ export const buildFieldValidation = (
   field: ClientPrimitive,
 ): FieldValidation => {
   // TODO: Flesh this out based on field validation methods.
-  let fieldSchema: z.ZodType<unknown> = z.object({});
-  let methods = buildFieldValidationMethods(field);
+  const fieldSchema: z.ZodType<unknown> = z.object({});
+  const methods = buildFieldValidationMethods(field);
   return {
     fieldSchema,
     methods,
@@ -48,8 +51,59 @@ export const buildFieldValidation = (
 export const buildFieldValidationMethods = (
   field: ClientPrimitive,
 ): FieldValidationMethods => {
+  if (!field.validations) {
+    return {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      onBlur(_input) {},
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      onChange(_input) {},
+    };
+  }
+  const validations = field.validations;
+
   return {
-    onBlur(value, formApi) {},
-    onChange(value, formApi) {},
+    onBlur(input) {},
+    onChange({ value }) {
+      let results: ValidationResults = {
+        hasError: false,
+        errors: [],
+      };
+      if (typeof value === "string") {
+        results = checkLength(field.id, value, validations, results);
+      }
+
+      return results.hasError ? results.errors : undefined;
+    },
   };
+};
+
+// Modular Methods
+
+const getValidationErrorOr = (
+  fieldId: string,
+  config: ValidationConfig,
+  customError?: string,
+): string =>
+  (config.error || customError) ?? `Unknown error has occurred for ${fieldId}`;
+
+const checkLength = (
+  fieldId: string,
+  value: string,
+  validations: ValidationRule,
+  results: ValidationResults,
+): ValidationResults => {
+  const minLength = validations.minLength || null;
+  const maxLength = validations.maxLength || null;
+
+  if (minLength && minLength.value && value.length < minLength.value) {
+    results.hasError = true;
+    results.errors.push(getValidationErrorOr(fieldId, minLength));
+  }
+
+  if (maxLength && maxLength.value && value.length > maxLength.value) {
+    results.hasError = true;
+    results.errors.push(getValidationErrorOr(fieldId, maxLength));
+  }
+
+  return results;
 };
