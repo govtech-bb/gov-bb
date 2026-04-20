@@ -10,7 +10,7 @@ import React, { useEffect } from "react";
 export default function FormRenderer({ contract, stepId }: FormRendererProps) {
   const formMeta: FormMeta = buildForm(contract);
   const [stepIndex, setStepIndex] = React.useState(0);
-  const [disablePrevious, setDisablePrevious] = React.useState(true);
+  const [hidePrevious, setHidePrevious] = React.useState(true);
   const navigate = useNavigate({ from: "/forms/$formId/" });
 
   useEffect(() => {
@@ -28,9 +28,9 @@ export default function FormRenderer({ contract, stepId }: FormRendererProps) {
 
   useEffect(() => {
     if (stepIndex === 0) {
-      setDisablePrevious(true);
+      setHidePrevious(true);
     } else {
-      setDisablePrevious(false);
+      setHidePrevious(false);
     }
   }, [stepIndex]);
 
@@ -79,9 +79,11 @@ export default function FormRenderer({ contract, stepId }: FormRendererProps) {
         ))}
 
         <div className={designSystem.formNavigation}>
-          <button type="button" disabled={disablePrevious} onClick={handlePrevious}>
-            Previous
-          </button>
+          {!hidePrevious && (
+            <button type="button" onClick={handlePrevious}>
+              Previous
+            </button>
+          )}
           <button type="button" onClick={handleContinue}>
             Continue
           </button>
