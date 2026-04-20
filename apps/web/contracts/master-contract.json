@@ -787,7 +787,7 @@
           "htmlType": "checkbox",
           "options": [
             {
-              "label": "I accept",
+              "label": "I do",
               "value": "confirmed"
             }
           ],

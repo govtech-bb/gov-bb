@@ -69,6 +69,7 @@ export const buildFieldValidationMethods = (
         hasError: false,
         errors: [],
       };
+
       if (field.htmlType === "checkbox") {
         if (Array.isArray(value)) {
           const args: ValidationArgs<string[]> = {
@@ -107,6 +108,7 @@ export const buildFieldValidationMethods = (
         checkLength(args);
         checkPattern(args);
         checkEmail(args);
+        checkMinMax(args);
       }
 
       return results.hasError ? results.errors : undefined;
@@ -128,12 +130,13 @@ const checkRequired = ({
   value,
   results,
   validations,
-}: ValidationArgs<string | boolean>) => {
+}: ValidationArgs<string | boolean | number>) => {
   if (
     validations.required &&
     validations.required.value &&
     ((typeof value === "string" && value.length === 0) ||
-      (typeof value === "boolean" && value !== true))
+      (typeof value === "boolean" && value !== true) ||
+      (typeof value === "number" && value.toString().length === 0))
   ) {
     results.hasError = true;
     results.errors.push(getValidationErrorOr(fieldId, validations.required));
@@ -212,5 +215,43 @@ const checkEmail = ({
   } catch {
     results.hasError = true;
     results.errors.push(getValidationErrorOr(fieldId, email));
+  }
+};
+
+const checkMinMax = ({
+  fieldId,
+  value,
+  results,
+  validations,
+}: ValidationArgs<string | number>) => {
+  const min = validations.min || null;
+  const max = validations.max || null;
+
+  const stringToNumCheck = (value: string | number): number | null => {
+    if (typeof value === "number") return value;
+    const num = parseFloat(value);
+    if (isNaN(num)) {
+      results.hasError = true;
+      results.errors.push(`${value} is not a valid number`);
+      return null;
+    }
+    return num;
+  };
+
+  // Need to handle if min.value or max.value is 0, which is falsy.
+  if (min && min.value?.toString().length >= 1) {
+    const num = stringToNumCheck(value);
+    if (num && num < min.value) {
+      results.hasError = true;
+      results.errors.push(getValidationErrorOr(fieldId, min));
+    }
+  }
+
+  if (max && max.value?.toString().length >= 1) {
+    const num = stringToNumCheck(value);
+    if (num && num > max.value) {
+      results.hasError = true;
+      results.errors.push(getValidationErrorOr(fieldId, max));
+    }
   }
 };
