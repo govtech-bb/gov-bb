@@ -69,6 +69,25 @@ export const buildFieldValidationMethods = (
         hasError: false,
         errors: [],
       };
+      if (field.htmlType === "checkbox") {
+        if (Array.isArray(value)) {
+          const args: ValidationArgs<string[]> = {
+            fieldId: field.id,
+            value,
+            validations,
+            results,
+          };
+
+          checkSelectionLength(args);
+        } else {
+          checkRequired({
+            fieldId: field.id,
+            value: Boolean(value),
+            results,
+            validations,
+          });
+        }
+      }
       if (typeof value === "string") {
         const args: ValidationArgs<string> = {
           fieldId: field.id,
@@ -109,11 +128,12 @@ const checkRequired = ({
   value,
   results,
   validations,
-}: ValidationArgs<string>) => {
+}: ValidationArgs<string | boolean>) => {
   if (
     validations.required &&
     validations.required.value &&
-    value.length === 0
+    ((typeof value === "string" && value.length === 0) ||
+      (typeof value === "boolean" && value !== true))
   ) {
     results.hasError = true;
     results.errors.push(getValidationErrorOr(fieldId, validations.required));
@@ -137,6 +157,26 @@ const checkLength = ({
   if (maxLength && maxLength.value && value.length > maxLength.value) {
     results.hasError = true;
     results.errors.push(getValidationErrorOr(fieldId, maxLength));
+  }
+};
+
+const checkSelectionLength = ({
+  fieldId,
+  value,
+  results,
+  validations,
+}: ValidationArgs<string[]>) => {
+  const minSelection = validations.minSelection || null;
+  const maxSelection = validations.maxSelection || null;
+
+  if (minSelection && minSelection.value && value.length < minSelection.value) {
+    results.hasError = true;
+    results.errors.push(getValidationErrorOr(fieldId, minSelection));
+  }
+
+  if (maxSelection && maxSelection.value && value.length > maxSelection.value) {
+    results.hasError = true;
+    results.errors.push(getValidationErrorOr(fieldId, maxSelection));
   }
 };
 

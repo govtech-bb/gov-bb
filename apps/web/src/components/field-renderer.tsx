@@ -1,4 +1,5 @@
 import { ClientPrimitive, FieldValidationMethods } from "@web/types";
+import React from "react";
 
 export default function FieldRenderer({
   form,
@@ -12,10 +13,8 @@ export default function FieldRenderer({
   if (field.hidden) return null;
 
   return (
-    <form.Field
-      name={field.id}
-      validators={validationMethods}
-      children={(f: any) => {
+    <form.Field name={field.id} validators={validationMethods}>
+      {(f: any) => {
         const value = f.state.value;
 
         const sharedProps = {
@@ -58,10 +57,14 @@ export default function FieldRenderer({
             return (
               <div data-field>
                 {!f.state.meta.isValid && (
-                  <em role="alert">{f.state.meta.errors.join(', ')}</em>
+                  <em role="alert">{f.state.meta.errors.join(", ")}</em>
                 )}
                 <label> {field.label} </label>
-                <input {...sharedProps} value={value ?? ""} onChange={(e) => f.handleChange(e.target.value)} />
+                <input
+                  {...sharedProps}
+                  value={value ?? ""}
+                  onChange={(e) => f.handleChange(e.target.value)}
+                />
               </div>
             );
           case "select":
@@ -69,7 +72,7 @@ export default function FieldRenderer({
               <div data-field data-select-field>
                 <label> {field.label} </label>
                 <div data-select-control>
-                  <select {...sharedProps}>
+                  <select {...sharedProps} multiple={field.multiple ?? false}>
                     <option value=""></option>
                     {field.options?.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -81,14 +84,52 @@ export default function FieldRenderer({
               </div>
             );
           case "checkbox":
+            if (field.options && field.options.length === 1) {
+              const option = field.options[0];
+              return (
+                <div data-checkbox-group>
+                  {!f.state.meta.isValid && (
+                    <em role="alert">{f.state.meta.errors.join(", ")}</em>
+                  )}
+                  <legend>{field.label}</legend>
+                  <div key={option.value} data-checkbox-option>
+                    <input
+                      {...sharedProps}
+                      checked={value ?? false}
+                      value={option.value}
+                      onChange={(e) => {
+                        f.handleChange(e.target.checked)
+                      }}
+                    />
+                    <label>{option.label}</label>
+                  </div>
+                </div>
+              );
+            }
+
+            const checkboxValues: string[] = value ?? [];
+            const toggle = (item: string) => {
+              const next = checkboxValues.includes(item)
+                ? checkboxValues.filter((cv) => cv !== item)
+                : [...checkboxValues, item];
+              f.handleChange(next);
+            };
+
             return (
               <fieldset data-fieldset>
+                {!f.state.meta.isValid && (
+                  <em role="alert">{f.state.meta.errors.join(", ")}</em>
+                )}
                 <legend>{field.label}</legend>
                 <div data-checkbox-group>
                   {field.options?.map((option) => {
                     return (
                       <div key={option.value} data-checkbox-option>
-                        <input {...sharedProps} />
+                        <input
+                          {...sharedProps}
+                          checked={checkboxValues.includes(option.value)}
+                          onChange={() => toggle(option.value)}
+                        />
                         <label>{option.label}</label>
                       </div>
                     );
@@ -111,10 +152,13 @@ export default function FieldRenderer({
               </fieldset>
             );
           default:
-            return <div style={{ color: "red" }}>No field for {field.htmlType} designed</div>;
+            return (
+              <div style={{ color: "red" }}>
+                No field for {field.htmlType} designed
+              </div>
+            );
         }
-      }
-      }
-    />
+      }}
+    </form.Field>
   );
 }

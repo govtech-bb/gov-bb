@@ -314,7 +314,7 @@
               "value": "post"
             }
           ],
-          "multiple": true,
+          "multiple": false,
           "validations": {
             "required": {
               "value": true,
@@ -324,15 +324,53 @@
         },
         {
           "fieldId": "canContactEvening",
-          "label": "I can be contacted in the evening",
+          "label": "I prefer to be contacted in the...",
           "htmlType": "checkbox",
           "options": [
             {
-              "label": "I accept",
-              "value": "confirmed"
+              "label": "Morning",
+              "value": "morning"
+            },
+            {
+              "label": "Afternoon",
+              "value": "afternoon"
+            },
+            {
+              "label": "Evening",
+              "value": "evening"
+            },
+            {
+              "label": "Night",
+              "value": "night"
             }
           ],
-          "defaultValue": false
+          "validations": {
+            "minSelection": {
+              "value": 1,
+              "error": "At least one option must be selected"
+            },
+            "maxSelection": {
+              "value": 3,
+              "error": "May not select more than 3 options"
+            }
+          }
+        },
+        {
+          "fieldId": "singleLonelyTextbox",
+          "label": "Does this checkbox sit by itself?",
+          "htmlType": "checkbox",
+          "options": [
+            {
+              "label": "yes",
+              "value": "yes"
+            }
+          ],
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "This is required."
+            }
+          }
         },
         {
           "fieldId": "additionalNotes",
