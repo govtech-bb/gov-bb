@@ -85,6 +85,7 @@ export const buildFieldValidationMethods = (
         checkRequired(args);
         checkLength(args);
         checkPattern(args);
+        checkEmail(args);
       }
 
       return results.hasError ? results.errors : undefined;
@@ -144,7 +145,7 @@ const checkPattern = ({
   validations,
 }: ValidationArgs<string>) => {
   const pattern = validations.pattern || null;
-  if (!pattern) return results;
+  if (!pattern) return;
 
   const re = new RegExp(pattern.value);
 
@@ -152,5 +153,22 @@ const checkPattern = ({
   if (!match) {
     results.hasError = true;
     results.errors.push(getValidationErrorOr(fieldId, pattern));
+  }
+};
+
+const checkEmail = ({
+  fieldId,
+  value,
+  results,
+  validations,
+}: ValidationArgs<string>) => {
+  const email = validations.email || null;
+  if (!email) return;
+
+  try {
+    z.email().parse(value);
+  } catch {
+    results.hasError = true;
+    results.errors.push(getValidationErrorOr(fieldId, email));
   }
 };
