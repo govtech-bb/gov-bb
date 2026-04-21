@@ -18,14 +18,15 @@ export const buildValidation = (
   contract: ClientServiceContract,
 ): FormValidation => {
   const shape: Record<string, z.ZodType<unknown>> = {};
-  const fieldValidationMethods: Record<string, FieldValidationProperties> = {};
+  const fieldValidationProperties: Record<string, FieldValidationProperties> =
+    {};
   const defaults: Record<string, unknown> = {};
 
   for (const step of contract.steps) {
     for (const field of step.fields) {
-      const { fieldSchema, properties: methods } = buildFieldValidation(field);
+      const { fieldSchema, properties } = buildFieldValidation(field);
       shape[field.name] = fieldSchema;
-      fieldValidationMethods[field.name] = methods;
+      fieldValidationProperties[field.name] = properties;
       if (field.defaultValue) {
         defaults[field.id] = field.defaultValue;
       }
@@ -34,7 +35,7 @@ export const buildValidation = (
 
   return {
     schema: z.object(shape),
-    properties: fieldValidationMethods,
+    properties: fieldValidationProperties,
     defaults,
   };
 };
