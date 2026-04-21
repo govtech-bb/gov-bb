@@ -27,6 +27,7 @@
     "@eslint/css": "^1.1.0",
     "@eslint/js": "^10.0.1",
     "@eslint/json": "^1.2.0",
+    "@nx/jest": "^22.6.5",
     "@nx/js": "^22.6.5",
     "@types/luxon": "^3.7.1",
     "@types/node": "^24.0.0",
@@ -47,13 +48,13 @@
   "packageManager": "npm@10.9.0",
   "dependencies": {
     "@govtech-bb/design": "^1.0.0-alpha.15",
+    "@nestjs/event-emitter": "^3.0.1",
     "@nestjs/swagger": "^11.3.2",
+    "@nestjs/throttler": "^6.5.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
-    "luxon": "^3.7.2",
-    "@nestjs/event-emitter": "^3.0.1",
-    "@nestjs/throttler": "^6.5.0",
-    "eventemitter2": "^6.4.9"
+    "eventemitter2": "^6.4.9",
+    "luxon": "^3.7.2"
   },
   "lint-staged": {
     "*.{json,ts}": "prettier --write"
