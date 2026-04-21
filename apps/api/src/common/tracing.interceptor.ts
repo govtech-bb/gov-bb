@@ -1,7 +1,12 @@
-import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
-import { Observable, tap } from 'rxjs';
-import { trace, SpanStatusCode } from '@opentelemetry/api';
-import type { Request, Response } from 'express';
+import {
+  CallHandler,
+  ExecutionContext,
+  Injectable,
+  NestInterceptor,
+} from "@nestjs/common";
+import { Observable, tap } from "rxjs";
+import { trace, SpanStatusCode } from "@opentelemetry/api";
+import type { Request, Response } from "express";
 
 @Injectable()
 export class TracingInterceptor implements NestInterceptor {
@@ -12,16 +17,16 @@ export class TracingInterceptor implements NestInterceptor {
 
     if (span) {
       span.setAttributes({
-        'http.method': req.method,
-        'http.route': req.route?.path ?? req.path,
-        'http.url': req.url,
+        "http.method": req.method,
+        "http.route": req.route?.path ?? req.path,
+        "http.url": req.url,
       });
     }
 
     return next.handle().pipe(
       tap(() => {
         if (span) {
-          span.setAttributes({ 'http.status_code': res.statusCode });
+          span.setAttributes({ "http.status_code": res.statusCode });
           span.setStatus({ code: SpanStatusCode.OK });
         }
       }),

@@ -1,8 +1,15 @@
-import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger } from '@nestjs/common';
-import { Request, Response } from 'express';
-import { trace, SpanStatusCode } from '@opentelemetry/api';
-import { ApiResponse } from './response';
-import { MetricsService } from '../telemetry/metrics.service';
+import {
+  ArgumentsHost,
+  Catch,
+  ExceptionFilter,
+  HttpException,
+  HttpStatus,
+  Logger,
+} from "@nestjs/common";
+import { Request, Response } from "express";
+import { trace, SpanStatusCode } from "@opentelemetry/api";
+import { ApiResponse } from "./response";
+import { MetricsService } from "../telemetry/metrics.service";
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
@@ -30,11 +37,16 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const span = trace.getActiveSpan();
     if (span) {
       span.setStatus({ code: SpanStatusCode.ERROR, message: String(message) });
-      span.recordException(exception instanceof Error ? exception : new Error(String(message)));
-      span.setAttributes({ 'http.status_code': statusCode });
+      span.recordException(
+        exception instanceof Error ? exception : new Error(String(message)),
+      );
+      span.setAttributes({ "http.status_code": statusCode });
     }
 
-    if (statusCode === HttpStatus.BAD_REQUEST && exception instanceof HttpException) {
+    if (
+      statusCode === HttpStatus.BAD_REQUEST &&
+      exception instanceof HttpException
+    ) {
       this.metricsService.recordValidationFailure(req.path);
     }
     this.metricsService.recordHttpError(statusCode, req.method, req.path);

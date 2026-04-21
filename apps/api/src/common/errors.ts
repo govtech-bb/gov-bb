@@ -5,6 +5,7 @@ import {
   InternalServerErrorException,
   NotFoundException,
   UnauthorizedException,
+  UnprocessableEntityException,
 } from "@nestjs/common";
 
 export class AppError {
@@ -40,6 +41,12 @@ export class AppError {
 
   static forbidden(): ForbiddenException {
     return new ForbiddenException("Forbidden");
+  }
+
+  static unprocessable(
+    errors: Record<string, string[]>,
+  ): UnprocessableEntityException {
+    return new UnprocessableEntityException({ errors });
   }
 
   static internal(detail?: string): InternalServerErrorException {

@@ -19,10 +19,12 @@ class BehaviourBuilder {
     targetFieldId: string,
     value: string | number,
     operator: "equal" | "notEqual" | "in" | "exists" = "exists",
+    targetStepId?: string,
   ): this {
     const behaviour: FieldConditionalOnBehaviour = {
       type: "fieldConditionalOn",
       targetFieldId,
+      ...(targetStepId && { targetStepId }),
       operator,
       value,
     };
@@ -34,10 +36,12 @@ class BehaviourBuilder {
     targetFieldId: string,
     value: string | number,
     operator: "equal" | "notEqual" | "in" | "exists" = "exists",
+    targetStepId?: string,
   ): this {
     const behaviour: StepConditionalOnBehaviour = {
       type: "stepConditionalOn",
       targetFieldId,
+      ...(targetStepId && { targetStepId }),
       operator,
       value,
     };
