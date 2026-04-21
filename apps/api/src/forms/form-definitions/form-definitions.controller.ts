@@ -1,14 +1,7 @@
 import { Controller, Get, Param, Query } from "@nestjs/common";
-import {
-  ApiBearerAuth,
-  ApiNotFoundResponse,
-  ApiOperation,
-  ApiParam,
-  ApiQuery,
-  ApiResponse,
-  ApiTags,
-} from "@nestjs/swagger";
+import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { FormDefinitionsService } from "./form-definitions.service";
+import { GetFormDefinitionDocs } from "./form-definitions.docs";
 import { ApiResponse as AppApiResponse } from "../../common/response";
 import type { ApiResponseShape } from "../../common/response";
 import type { ServiceContract } from "@govtech-bb/form-types";
@@ -22,30 +15,7 @@ export class FormDefinitionsController {
   ) {}
 
   @Get(":formId")
-  @ApiOperation({
-    summary: "Get a form definition",
-    description:
-      "Returns the hydrated form definition for the given formId. " +
-      "Defaults to the latest version when no version is specified.",
-  })
-  @ApiParam({ name: "formId", description: "The unique form identifier", example: "passport-renewal" })
-  @ApiQuery({ name: "version", required: false, description: "Specific form version to retrieve", example: "1.0.0" })
-  @ApiResponse({
-    status: 200,
-    description: "Form definition retrieved",
-    schema: {
-      properties: {
-        status: { type: "string", enum: ["success"] },
-        message: { type: "string", example: "Form definition retrieved" },
-        statusCode: { type: "number", example: 200 },
-        data: {
-          type: "object",
-          description: "Hydrated ServiceContract containing steps, processors, and metadata",
-        },
-      },
-    },
-  })
-  @ApiNotFoundResponse({ description: "Form definition not found" })
+  @GetFormDefinitionDocs()
   async get(
     @Param("formId") formId: string,
     @Query("version") version?: string,
