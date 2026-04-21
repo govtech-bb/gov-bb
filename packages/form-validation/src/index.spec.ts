@@ -155,7 +155,7 @@ describe("validate()", () => {
         }),
       ],
       stepValues: { confirmPassword: "wrong" },
-      allValues: { "step-1": { password: "secret123" } },
+      allValues: { "step-1": { password: "testPass123" } },
     });
     expect(result.valid).toBe(false);
     expect(result.errors["confirmPassword"]).toContain("Values do not match");
@@ -186,7 +186,7 @@ describe("validate()", () => {
           strictEquality: { reference: "password" },
         }),
       ],
-      stepValues: { confirmPassword: "anything" },
+      stepValues: { confirmPassword: "someValue" },
       allValues: {},
     });
     expect(result.valid).toBe(true);
