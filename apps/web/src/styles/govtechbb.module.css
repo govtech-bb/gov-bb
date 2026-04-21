@@ -188,26 +188,23 @@
   padding: 1.25rem 1.75rem;
 }
 
-.formRoot button [data-variant="primary"] {
+.formRoot button[data-variant="primary"] {
   background-color: var(--color-teal-00);
   color: var(--color-white-00);
-  border: 0.125rem solid var(--color-black-00);
 }
 
-.formRoot button [data-variant="secondary"] {
+.formRoot button[data-variant="secondary"] {
   background-color: var(--color-grey-00);
   color: var(--color-black-00);
-  border: 0.125rem solid var(--color-black-00);
 }
 
-.formRoot button [data-variant="primary"]:hover {
+.formRoot button[data-variant="primary"]:hover {
   background-color: #1a777d;
   color: var(--color-white-00);
 }
 
-.formRoot button [data-variant="secondary"]:hover {
+.formRoot button[data-variant="secondary"]:hover {
   background-color: #ccc;
-  box-shadow: inset 0 0 0 4px rgba(0, 0, 0, 0.05);
   color: var(--color-black-00);
 }
 
