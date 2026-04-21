@@ -358,3 +358,29 @@
   font-weight: var(--font-weight-normal);
   margin: 0;
 }
+
+.formRoot [data-error-summary] {
+  color: var(--color-red-00);
+  font-size: var(--font-size-body);
+  border: 0.25rem solid var(--color-red-00);
+  padding: var(--spacing-m);
+}
+
+.formRoot [data-error-summary] h2 {
+  margin: auto;
+  color: var(--color-black-00);
+  font-size: var(--font-size-h4);
+  line-height: var(--line-height-h4);
+  font-weight: var(--font-weight-bold);
+}
+
+.formRoot [data-error-summary] ul {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;  
+}
+
+.formRoot [data-error-summary] ul li a {
+  color: var(--color-red-00);
+  text-decoration: underline;
+}
