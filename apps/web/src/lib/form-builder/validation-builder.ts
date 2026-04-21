@@ -13,6 +13,8 @@ import {
   ValidationArgs,
 } from "@web/types";
 import z from "zod";
+import { validate } from "@govtech-bb/form-validation";
+import type { Primitive } from "@govtech-bb/form-types";
 
 export const buildValidation = (
   contract: ClientServiceContract,
@@ -43,9 +45,21 @@ export const buildValidation = (
 export const buildFieldValidation = (
   field: ClientPrimitive,
 ): FieldValidation => {
-  // TODO: Flesh this out based on field validation methods.
-  const fieldSchema: z.ZodType<unknown> = z.object({});
+  const primitive = clientPrimitiveToPrimitive(field);
+
+  const fieldSchema = z.any().superRefine((value, ctx) => {
+    const result = validate({
+      primitives: [primitive],
+      stepValues: { [field.name]: value },
+    });
+
+    for (const msg of result.errors[field.name] ?? []) {
+      ctx.addIssue({ code: "custom", message: msg });
+    }
+  });
+
   const properties = buildFieldValidationProperties(field);
+
   return {
     fieldSchema,
     properties,
@@ -139,6 +153,16 @@ export const buildFieldValidationProperties = (
     onChangeListenTo: listenTo,
   };
 };
+
+function clientPrimitiveToPrimitive(field: ClientPrimitive): Primitive {
+  return {
+    fieldId: field.name,
+    label: field.label,
+    htmlType: field.htmlType,
+    validations: field.validations,
+    ...(field.options && { options: field.options }),
+  } as Primitive;
+}
 
 // Modular Methods
 

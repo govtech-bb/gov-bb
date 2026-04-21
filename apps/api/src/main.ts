@@ -1,13 +1,13 @@
-import './tracing'; // must be first — initialises the OTEL SDK before any NestJS code
-import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import "./tracing"; // must be first — initialises the OTEL SDK before any NestJS code
+import { NestFactory } from "@nestjs/core";
+import { ValidationPipe } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
-import { AppModule } from './app.module';
-import { GlobalExceptionFilter } from './common/exception.filter';
-import { ResponseInterceptor } from './common/response.interceptor';
-import { TracingInterceptor } from './common/tracing.interceptor';
-import { MetricsService } from './telemetry/metrics.service';
+import { AppModule } from "./app.module";
+import { GlobalExceptionFilter } from "./common/exception.filter";
+import { ResponseInterceptor } from "./common/response.interceptor";
+import { TracingInterceptor } from "./common/tracing.interceptor";
+import { MetricsService } from "./telemetry/metrics.service";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -16,17 +16,27 @@ async function bootstrap() {
   const port = config.get<number>("app.port") ?? 3001;
 
   app.useGlobalFilters(new GlobalExceptionFilter(metricsService));
-  app.useGlobalInterceptors(new ResponseInterceptor(), new TracingInterceptor());
+  app.useGlobalInterceptors(
+    new ResponseInterceptor(),
+    new TracingInterceptor(),
+  );
   app.useGlobalPipes(
     new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),
   );
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle("Modular Forms API")
-    .setDescription("REST API for managing form definitions, drafts, and submissions.")
+    .setDescription(
+      "REST API for managing form definitions, drafts, and submissions.",
+    )
     .setVersion("1.0")
     .addBearerAuth(
-      { type: "http", scheme: "bearer", bearerFormat: "JWT", description: "Enter your Bearer token" },
+      {
+        type: "http",
+        scheme: "bearer",
+        bearerFormat: "JWT",
+        description: "Enter your Bearer token",
+      },
       "bearer",
     )
     .addTag("Health", "Liveness and readiness checks")

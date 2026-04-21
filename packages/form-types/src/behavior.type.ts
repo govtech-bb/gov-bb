@@ -8,6 +8,7 @@ export type EqualityOperations = z.infer<typeof equalityOperationsSchema>;
 export const fieldConditionalOnBehaviourSchema = z.object({
   type: z.literal("fieldConditionalOn"),
   targetFieldId: z.string(),
+  targetStepId: z.string().optional(),
   operator: equalityOperationsSchema,
   value: z.union([
     z.string(),
@@ -24,6 +25,7 @@ export type FieldConditionalOnBehaviour = z.infer<
 export const stepConditionalOnBehaviourSchema = z.object({
   type: z.literal("stepConditionalOn"),
   targetFieldId: z.string(),
+  targetStepId: z.string().optional(),
   operator: equalityOperationsSchema,
   value: z.union([
     z.string(),

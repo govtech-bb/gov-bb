@@ -1,4 +1,5 @@
-import { Body, Controller, Headers, Post } from "@nestjs/common";
+import { Body, Controller, Headers, Post, UseGuards } from "@nestjs/common";
+import { ThrottlerGuard } from "@nestjs/throttler";
 import { SubmissionsService } from "./submissions.service";
 import { CreateSubmissionDto } from "./dto";
 import { ApiResponse } from "../../common/response";
@@ -10,6 +11,7 @@ export class SubmissionsController {
   constructor(private readonly submissionsService: SubmissionsService) {}
 
   @Post()
+  @UseGuards(ThrottlerGuard)
   async create(
     @Headers("idempotency-key") idempotencyKey: string,
     @Body() body: CreateSubmissionDto,

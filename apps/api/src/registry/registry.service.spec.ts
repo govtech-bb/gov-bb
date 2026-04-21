@@ -88,6 +88,7 @@ describe("mergeEntry", () => {
 
 describe("hydrateStep", () => {
   const primitiveEntry = BUILTIN_REGISTRY["components/first-name"];
+  const blockEntry = BUILTIN_REGISTRY["blocks/personal-information"] as Block;
 
   it("resolves all elements in a step", async () => {
     const resolver = jest.fn().mockResolvedValue(primitiveEntry);
@@ -101,6 +102,21 @@ describe("hydrateStep", () => {
     );
     expect(result.elements).toHaveLength(1);
     expect(resolver).toHaveBeenCalledWith("components/first-name");
+  });
+
+  it("flattens a block ref into its constituent primitives", async () => {
+    const resolver = jest.fn().mockResolvedValue(blockEntry);
+    const result = await hydrateStep(
+      {
+        stepId: "step-1",
+        title: "Step 1",
+        elements: [{ ref: "blocks/personal-information" }],
+      },
+      resolver,
+    );
+    expect(result.elements).toHaveLength(blockEntry.elements.length);
+    expect(result.elements[0]).toHaveProperty("fieldId");
+    expect(result.elements[0]).not.toHaveProperty("blockId");
   });
 
   it("throws UnresolvableComponentError for an unknown ref", async () => {
@@ -194,7 +210,7 @@ describe("RegistryService", () => {
   });
 
   describe("hydrateForm", () => {
-    const base: Omit<ServiceContractRecipe, 'steps'> = {
+    const base: Omit<ServiceContractRecipe, "steps"> = {
       formId: "passport-renewal",
       title: "Passport Renewal",
       description: "Renew your passport",
@@ -240,7 +256,32 @@ describe("RegistryService", () => {
       expect((result.steps[0].elements[0] as any).label).toBe("Given Name");
     });
 
-    it("applies block-level field overrides during hydration", async () => {
+    it("flattens a block's primitives into the step elements", async () => {
+      const personalInfoBlock = BUILTIN_REGISTRY[
+        "blocks/personal-information"
+      ] as Block;
+      const result = await makeService().hydrateForm({
+        ...base,
+        steps: [
+          {
+            stepId: "step-1",
+            title: "Step 1",
+            elements: [{ ref: "blocks/personal-information" as const }],
+          },
+        ],
+      });
+      // Block has N primitives — step must have exactly N elements, not 1 block
+      expect(result.steps[0].elements).toHaveLength(
+        personalInfoBlock.elements.length,
+      );
+      // Each element must be a Primitive (has fieldId, not blockId)
+      for (const el of result.steps[0].elements) {
+        expect(el).toHaveProperty("fieldId");
+        expect(el).not.toHaveProperty("blockId");
+      }
+    });
+
+    it("applies block-level field overrides and flattens during hydration", async () => {
       const result = await makeService().hydrateForm({
         ...base,
         steps: [
@@ -256,11 +297,34 @@ describe("RegistryService", () => {
           },
         ],
       });
-      const block = result.steps[0].elements[0] as unknown as Block;
-      const firstNameEl = block.elements.find(
+      const firstNameEl = result.steps[0].elements.find(
         (el) => el.fieldId === "first-name",
       );
+      expect(firstNameEl).toBeDefined();
       expect((firstNameEl as any).label).toBe("Given Name");
+    });
+
+    it("flattens mixed component and block refs into a single elements array", async () => {
+      const personalInfoBlock = BUILTIN_REGISTRY[
+        "blocks/personal-information"
+      ] as Block;
+      const result = await makeService().hydrateForm({
+        ...base,
+        steps: [
+          {
+            stepId: "step-1",
+            title: "Step 1",
+            elements: [
+              { ref: "components/email" as const },
+              { ref: "blocks/personal-information" as const },
+            ],
+          },
+        ],
+      });
+      // 1 component + N block elements
+      expect(result.steps[0].elements).toHaveLength(
+        1 + personalInfoBlock.elements.length,
+      );
     });
 
     it("throws UnresolvableComponentError for an unknown ref", async () => {
