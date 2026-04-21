@@ -80,7 +80,7 @@ jobs:
       - name: Scan current commit for secrets
         id: gitleaks_current
         run: |
-          gitleaks detect --source . --verbose --report-format json --report-path gitleaks-current.json 2>&1 | tee gitleaks-current-output.txt
+          gitleaks detect --source . --verbose --config .gitleaks.toml --report-format json --report-path gitleaks-current.json 2>&1 | tee gitleaks-current-output.txt
           exit ${PIPESTATUS[0]}
         continue-on-error: true
 
@@ -90,7 +90,7 @@ jobs:
         run: |
           echo "Secrets found in current commit. Checking git history for similar secrets..."
           git fetch --unshallow || git fetch --depth=1000
-          gitleaks detect --source . --verbose --report-format json --report-path gitleaks-history.json 2>&1 | tee gitleaks-history-output.txt || true
+          gitleaks detect --source . --verbose --config .gitleaks.toml --report-format json --report-path gitleaks-history.json 2>&1 | tee gitleaks-history-output.txt || true
         continue-on-error: true
 
       - name: Analyze and report secrets

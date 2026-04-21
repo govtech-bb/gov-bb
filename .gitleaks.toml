@@ -1,0 +1,9 @@
+[extend]
+# Extend the default gitleaks config
+useDefault = true
+
+[allowlist]
+description = "Test fixtures with dummy form field values"
+paths = [
+  '''packages/form-validation/src/index\.spec\.ts''',
+]
