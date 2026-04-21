@@ -8,7 +8,7 @@ export type { FormMeta } from "./renderer.type.ts";
 export type {
   FieldValidation,
   FormValidation,
-  FieldValidationMethods,
+  FieldValidationProperties,
   ValidationResults,
   ValidationArgs,
 } from "./validation.type.ts";
