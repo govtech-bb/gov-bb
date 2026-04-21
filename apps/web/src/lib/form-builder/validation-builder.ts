@@ -126,7 +126,7 @@ export const buildFieldValidationProperties = (
           checkRequired(args);
         }
 
-        // If the field is required, but has no value, then ignore subsequent errors
+        // If the field is required, but has no value, then skip subsequent error checks
         if (results.hasError) return results.errors;
         checkLength(args);
         checkPattern(args);
@@ -173,8 +173,8 @@ const checkLength = ({
   results,
   validations,
 }: ValidationArgs<string>) => {
-  const minLength = validations.minLength || null;
-  const maxLength = validations.maxLength || null;
+  const minLength = validations.minLength;
+  const maxLength = validations.maxLength;
 
   if (minLength && minLength.value && value.length < minLength.value) {
     results.hasError = true;
@@ -193,8 +193,8 @@ const checkSelectionLength = ({
   results,
   validations,
 }: ValidationArgs<string[]>) => {
-  const minSelection = validations.minSelection || null;
-  const maxSelection = validations.maxSelection || null;
+  const minSelection = validations.minSelection;
+  const maxSelection = validations.maxSelection;
 
   if (minSelection && minSelection.value && value.length < minSelection.value) {
     results.hasError = true;
@@ -213,7 +213,7 @@ const checkPattern = ({
   results,
   validations,
 }: ValidationArgs<string>) => {
-  const pattern = validations.pattern || null;
+  const pattern = validations.pattern;
   if (!pattern) return;
 
   const re = new RegExp(pattern.value);
@@ -231,7 +231,7 @@ const checkEmail = ({
   results,
   validations,
 }: ValidationArgs<string>) => {
-  const email = validations.email || null;
+  const email = validations.email;
   if (!email) return;
 
   try {
@@ -248,8 +248,8 @@ const checkMinMax = ({
   results,
   validations,
 }: ValidationArgs<string | number>) => {
-  const min = validations.min || null;
-  const max = validations.max || null;
+  const min = validations.min;
+  const max = validations.max;
 
   const stringToNumCheck = (value: string | number): number | null => {
     if (typeof value === "number") return value;
