@@ -71,7 +71,24 @@
           "fieldId": "middleName",
           "label": "Middle Name (Optional)",
           "htmlType": "text",
-          "placeholder": "Enter your middle name"
+          "placeholder": "Enter your middle name",
+          "validations": {
+            "required": {
+              "value": false
+            },
+            "minLength": {
+              "value": 2,
+              "error": "Middle name must be at least 2 characters"
+            },
+            "maxLength": {
+              "value": 50,
+              "error": "Middle name must not exceed 50 characters"
+            },
+            "pattern": {
+              "value": "^[A-Za-z\\s\\-']+$",
+              "error": "Middle name can only contain letters, spaces, hyphens and apostrophes"
+            }
+          }
         },
         {
           "fieldId": "lastName",
@@ -186,19 +203,19 @@
           "label": "National ID Number (Optional)",
           "htmlType": "text",
           "placeholder": "Enter your national ID",
-          "hint": "Required only for non-BB nationals",
+          "hint": "Required only for BB nationals",
           "behaviours": [
             {
               "type": "fieldConditionalOn",
               "targetFieldId": "nationality",
-              "operator": "notEqual",
+              "operator": "equal",
               "value": "bb"
             }
           ],
           "validations": {
             "required": {
               "value": true,
-              "error": "National ID is required for non-BB nationals"
+              "error": "National ID is required for BB nationals"
             },
             "minLength": {
               "value": 8,
