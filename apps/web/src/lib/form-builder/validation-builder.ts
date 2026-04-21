@@ -6,6 +6,8 @@ import {
   FieldValidationMethods,
 } from "@web/types";
 import z from "zod";
+import { validate } from "@govtech-bb/form-validation";
+import type { Primitive } from "@govtech-bb/form-types";
 
 export const buildValidation = (
   contract: ClientServiceContract,
@@ -35,16 +37,25 @@ export const buildValidation = (
 export const buildFieldValidation = (
   field: ClientPrimitive,
 ): FieldValidation => {
-  // TODO: Flesh this out based on field validation methods.
-  let fieldSchema: z.ZodType<unknown> = z.object({});
-  let methods = buildFieldValidationMethods(field);
+  const primitive = clientPrimitiveToPrimitive(field);
+
+  const fieldSchema = z.any().superRefine((value, ctx) => {
+    const result = validate({
+      primitives: [primitive],
+      stepValues: { [field.name]: value },
+    });
+
+    for (const msg of result.errors[field.name] ?? []) {
+      ctx.addIssue({ code: "custom", message: msg });
+    }
+  });
+
   return {
     fieldSchema,
-    methods,
+    methods: buildFieldValidationMethods(field),
   };
 };
 
-// This allows us to recalculate the methods after restoring from cache.
 export const buildFieldValidationMethods = (
   field: ClientPrimitive,
 ): FieldValidationMethods => {
@@ -53,3 +64,13 @@ export const buildFieldValidationMethods = (
     onChange(value, formApi) {},
   };
 };
+
+function clientPrimitiveToPrimitive(field: ClientPrimitive): Primitive {
+  return {
+    fieldId: field.name,
+    label: field.label,
+    htmlType: field.htmlType,
+    validations: field.validations,
+    ...(field.options && { options: field.options }),
+  } as Primitive;
+}
