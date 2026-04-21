@@ -9,17 +9,22 @@ import {
   Patch,
   Post,
 } from "@nestjs/common";
+import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { FormDraftsService } from "./form-drafts.service";
 import { CreateFormDraftDto, UpdateFormDraftDto } from "./dto";
+import { AbandonDraftDocs, CreateDraftDocs, GetDraftDocs, UpdateDraftDocs } from "./form-drafts.docs";
 import { ApiResponse } from "../../common/response";
 import type { ApiResponseShape } from "../../common/response";
 import type { FormDraftEntity } from "../../database/entities/form-draft.entity";
 
+@ApiTags("Form Drafts")
+@ApiBearerAuth()
 @Controller("form-drafts")
 export class FormDraftsController {
   constructor(private readonly formDraftsService: FormDraftsService) {}
 
   @Post()
+  @CreateDraftDocs()
   async create(
     @Body() body: CreateFormDraftDto,
   ): Promise<ApiResponseShape<FormDraftEntity>> {
@@ -28,6 +33,7 @@ export class FormDraftsController {
   }
 
   @Get(":draftId")
+  @GetDraftDocs()
   async getById(
     @Param("draftId") draftId: string,
   ): Promise<ApiResponseShape<FormDraftEntity>> {
@@ -36,6 +42,7 @@ export class FormDraftsController {
   }
 
   @Patch(":draftId")
+  @UpdateDraftDocs()
   async update(
     @Param("draftId") draftId: string,
     @Body() body: UpdateFormDraftDto,
@@ -46,6 +53,7 @@ export class FormDraftsController {
 
   @Delete(":draftId")
   @HttpCode(HttpStatus.NO_CONTENT)
+  @AbandonDraftDocs()
   async abandon(@Param("draftId") draftId: string): Promise<void> {
     await this.formDraftsService.abandon(draftId);
   }
