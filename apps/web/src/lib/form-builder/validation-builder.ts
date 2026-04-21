@@ -12,6 +12,7 @@ import {
   ValidationResults,
   ValidationArgs,
   DateValue,
+  DateValueInput,
 } from "@web/types";
 import z from "zod";
 
@@ -84,8 +85,20 @@ export const buildFieldValidationProperties = (
       };
 
       if (field.htmlType === "date") {
+        const valueInput = value as DateValueInput;
+        const argsInput: ValidationArgs<DateValueInput> = {
+          value: valueInput,
+          fieldId: field.id,
+          validations,
+          results,
+        };
+
+        if (!isDateComplete(argsInput)) return;
+
+        let dateValue: DateValue = value as DateValue;
+
         const args: ValidationArgs<DateValue> = {
-          value: value as DateValue,
+          value: dateValue,
           fieldId: field.id,
           validations,
           results,
@@ -300,6 +313,246 @@ const checkMinMax = ({
       results.hasError = true;
       results.errors.push(getValidationErrorOr(fieldId, max));
     }
+  }
+};
+
+const dateValueToDate = (value: DateValue): Date | null => {
+  if (
+    value.day === undefined ||
+    value.month === undefined ||
+    value.year === undefined
+  ) {
+    return null;
+  }
+  return new Date(value.year, value.month - 1, value.day);
+};
+
+const parseDateString = (dateStr: string): Date | null => {
+  const parts = dateStr.split("/");
+  if (parts.length !== 3) return null;
+  const day = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10);
+  const year = parseInt(parts[2], 10);
+  if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
+  return new Date(year, month - 1, day);
+};
+
+const isDateComplete = ({
+  value,
+  validations,
+  results,
+  fieldId,
+}: ValidationArgs<DateValueInput>): boolean => {
+  if (
+    value.day !== undefined &&
+    value.month !== undefined &&
+    value.year !== undefined
+  ) {
+    return true;
+  }
+
+  if (validations.required && validations.required.value) {
+    results.hasError = true;
+    results.errors.push(getValidationErrorOr(fieldId, validations.required));
+  }
+  return false;
+};
+
+const checkDatePast = ({
+  fieldId,
+  value,
+  results,
+  validations,
+}: ValidationArgs<DateValue>) => {
+  const past = validations.past;
+  if (!past) return;
+
+  const date = dateValueToDate(value);
+  if (!date) return;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  if (date >= today) {
+    results.hasError = true;
+    results.errors.push(getValidationErrorOr(fieldId, past));
+  }
+};
+
+const checkDatePastOrToday = ({
+  fieldId,
+  value,
+  results,
+  validations,
+}: ValidationArgs<DateValue>) => {
+  const pastOrToday = validations.pastOrToday;
+  if (!pastOrToday) return;
+
+  const date = dateValueToDate(value);
+  if (!date) return;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  if (date > today) {
+    results.hasError = true;
+    results.errors.push(getValidationErrorOr(fieldId, pastOrToday));
+  }
+};
+
+const checkDateFuture = ({
+  fieldId,
+  value,
+  results,
+  validations,
+}: ValidationArgs<DateValue>) => {
+  const future = validations.future;
+  if (!future) return;
+
+  const date = dateValueToDate(value);
+  if (!date) return;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  if (date <= today) {
+    results.hasError = true;
+    results.errors.push(getValidationErrorOr(fieldId, future));
+  }
+};
+
+const checkDateFutureOrToday = ({
+  fieldId,
+  value,
+  results,
+  validations,
+}: ValidationArgs<DateValue>) => {
+  const futureOrToday = validations.futureOrToday;
+  if (!futureOrToday) return;
+
+  const date = dateValueToDate(value);
+  if (!date) return;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  if (date < today) {
+    results.hasError = true;
+    results.errors.push(getValidationErrorOr(fieldId, futureOrToday));
+  }
+};
+
+const checkDateAfter = ({
+  fieldId,
+  value,
+  results,
+  validations,
+}: ValidationArgs<DateValue>) => {
+  const after = validations.after;
+  if (!after || !after.value) return;
+
+  const date = dateValueToDate(value);
+  if (!date) return;
+
+  const targetDate = parseDateString(after.value);
+  if (!targetDate) return;
+
+  if (date <= targetDate) {
+    results.hasError = true;
+    results.errors.push(getValidationErrorOr(fieldId, after));
+  }
+};
+
+const checkDateBefore = ({
+  fieldId,
+  value,
+  results,
+  validations,
+}: ValidationArgs<DateValue>) => {
+  const before = validations.before;
+  if (!before || !before.value) return;
+
+  const date = dateValueToDate(value);
+  if (!date) return;
+
+  const targetDate = parseDateString(before.value);
+  if (!targetDate) return;
+
+  if (date >= targetDate) {
+    results.hasError = true;
+    results.errors.push(getValidationErrorOr(fieldId, before));
+  }
+};
+
+const checkDateOnOrAfter = ({
+  fieldId,
+  value,
+  results,
+  validations,
+}: ValidationArgs<DateValue>) => {
+  const onOrAfter = validations.onOrAfter;
+  if (!onOrAfter || !onOrAfter.value) return;
+
+  const date = dateValueToDate(value);
+  if (!date) return;
+
+  const targetDate = parseDateString(onOrAfter.value);
+  if (!targetDate) return;
+
+  if (date < targetDate) {
+    results.hasError = true;
+    results.errors.push(getValidationErrorOr(fieldId, onOrAfter));
+  }
+};
+
+const checkDateOnOrBefore = ({
+  fieldId,
+  value,
+  results,
+  validations,
+}: ValidationArgs<DateValue>) => {
+  const onOrBefore = validations.onOrBefore;
+  if (!onOrBefore || !onOrBefore.value) return;
+
+  const date = dateValueToDate(value);
+  if (!date) return;
+
+  const targetDate = parseDateString(onOrBefore.value);
+  if (!targetDate) return;
+
+  if (date > targetDate) {
+    results.hasError = true;
+    results.errors.push(getValidationErrorOr(fieldId, onOrBefore));
+  }
+};
+
+const checkMinYear = ({
+  fieldId,
+  value,
+  results,
+  validations,
+}: ValidationArgs<DateValue>) => {
+  const minYear = validations.minYear;
+  if (!minYear || minYear.value === undefined) return;
+
+  if (value.year < minYear.value) {
+    results.hasError = true;
+    results.errors.push(getValidationErrorOr(fieldId, minYear));
+  }
+};
+
+const checkMaxYear = ({
+  fieldId,
+  value,
+  results,
+  validations,
+}: ValidationArgs<DateValue>) => {
+  const maxYear = validations.maxYear;
+  if (!maxYear || maxYear.value === undefined) return;
+
+  if (value.year > maxYear.value) {
+    results.hasError = true;
+    results.errors.push(getValidationErrorOr(fieldId, maxYear));
   }
 };
 
