@@ -26,10 +26,7 @@ export default function FormRenderer({ contract }: FormRendererProps) {
             <FieldRenderer key={field.id} form={form} field={field} />
           ))}
           {stepIndex < formMeta.steps.length - 1 && <hr />}
-        <button type="submit" data-variant="secondary">Previous</button>
-        <button type="submit" data-variant="primary">Continue</button>
         </div>
-        
       ))}
     </div>
   );
