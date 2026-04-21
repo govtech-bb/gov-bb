@@ -1,0 +1,10 @@
+[extend]
+# Extend the default gitleaks config
+useDefault = true
+
+# Allow test fixture files that contain dummy password/secret values
+[[allowlist]]
+description = "Test fixtures with dummy form field values"
+paths = [
+  '''packages/form-validation/src/index\.spec\.ts''',
+]
