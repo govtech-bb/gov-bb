@@ -352,17 +352,9 @@
   color: var(--color-black-00);
 }
 
-.formRoot fieldset [data-checkbox-group] p {
-  margin: 0;
-  font-size: var(--font-size-body);
-  line-height: var(--line-height-body);
-  font-weight: var(--font-weight-normal);
-  color: var(--color-mid-grey-00);
-}
-
 .formRoot [data-error] {
   color: var(--color-red-00);
   font-size: var(--font-size-body);
-  line-height: var(--line-height-body);
   font-weight: var(--font-weight-normal);
+  margin: 0;
 }

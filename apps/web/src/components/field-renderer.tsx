@@ -1,6 +1,7 @@
 import { AnyFieldApi } from "@tanstack/react-form";
 import { ClientPrimitive, FieldValidationProperties } from "@web/types";
 import React from "react";
+import ErrorMessage from "./error";
 
 export default function FieldRenderer({
   form,
@@ -58,10 +59,12 @@ export default function FieldRenderer({
           case "email":
             return (
               <div data-field>
-                {!f.state.meta.isValid && (
-                  <em role="alert">{f.state.meta.errors.join(", ")}</em>
-                )}
-                <label> {field.label} </label>
+                <div>
+                  <label> {field.label} </label>
+                  {!f.state.meta.isValid && (
+                    <ErrorMessage message={f.state.meta.errors.join(", ")} />
+                  )}
+                </div>
                 <input
                   {...sharedProps}
                   value={value ?? ""}
@@ -90,10 +93,12 @@ export default function FieldRenderer({
               const option = field.options[0];
               return (
                 <div data-checkbox-group>
-                  {!f.state.meta.isValid && (
-                    <em role="alert">{f.state.meta.errors.join(", ")}</em>
-                  )}
-                  <legend>{field.label}</legend>
+                  <div>
+                    <legend>{field.label}</legend>
+                    {!f.state.meta.isValid && (
+                      <ErrorMessage message={f.state.meta.errors.join(", ")} />
+                    )}
+                  </div>
                   <div key={option.value} data-checkbox-option>
                     <input
                       {...sharedProps}
@@ -119,10 +124,12 @@ export default function FieldRenderer({
 
             return (
               <fieldset data-fieldset>
-                {!f.state.meta.isValid && (
-                  <em role="alert">{f.state.meta.errors.join(", ")}</em>
-                )}
-                <legend>{field.label}</legend>
+                <div>
+                  <legend>{field.label}</legend>
+                  {!f.state.meta.isValid && (
+                    <ErrorMessage message={f.state.meta.errors.join(", ")} />
+                  )}
+                </div>
                 <div data-checkbox-group>
                   {field.options?.map((option) => {
                     return (
