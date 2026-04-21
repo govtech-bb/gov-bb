@@ -318,8 +318,6 @@ const evaluateCondition = (
   targetValue: string | any[],
   operation: EqualityOperations,
 ): boolean => {
-  console.log(sourceValue, targetValue);
-  console.log(sourceValue == targetValue);
   switch (operation) {
     case "in":
     case "exists":
