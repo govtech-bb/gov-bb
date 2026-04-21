@@ -2,7 +2,7 @@
 
 import z from "zod";
 import { ClientFormStep, FormValues } from "./field-mapper.type";
-import { FieldValidationMethods } from "./validation.type";
+import { FieldValidationProperties } from "./validation.type";
 
 export interface FormMeta {
   // Meta information for the client to render.
@@ -11,7 +11,7 @@ export interface FormMeta {
   schema: z.ZodObject<Record<string, z.ZodType<unknown>>>;
   steps: ClientFormStep[];
   defaultValues: Record<string, unknown>;
-  validationMethods: Record<string, FieldValidationMethods>;
+  validationProperties: Record<string, FieldValidationProperties>;
 
   isStepVisible(formStep: ClientFormStep, formValues: FormValues): boolean;
   getVisibleSteps(

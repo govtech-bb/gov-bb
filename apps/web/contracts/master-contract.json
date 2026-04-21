@@ -71,7 +71,24 @@
           "fieldId": "middleName",
           "label": "Middle Name (Optional)",
           "htmlType": "text",
-          "placeholder": "Enter your middle name"
+          "placeholder": "Enter your middle name",
+          "validations": {
+            "required": {
+              "value": false
+            },
+            "minLength": {
+              "value": 2,
+              "error": "Middle name must be at least 2 characters"
+            },
+            "maxLength": {
+              "value": 50,
+              "error": "Middle name must not exceed 50 characters"
+            },
+            "pattern": {
+              "value": "^[A-Za-z\\s\\-']+$",
+              "error": "Middle name can only contain letters, spaces, hyphens and apostrophes"
+            }
+          }
         },
         {
           "fieldId": "lastName",
@@ -186,19 +203,19 @@
           "label": "National ID Number (Optional)",
           "htmlType": "text",
           "placeholder": "Enter your national ID",
-          "hint": "Required only for non-BB nationals",
+          "hint": "Required only for BB nationals",
           "behaviours": [
             {
               "type": "fieldConditionalOn",
               "targetFieldId": "nationality",
-              "operator": "notEqual",
+              "operator": "equal",
               "value": "bb"
             }
           ],
           "validations": {
             "required": {
               "value": true,
-              "error": "National ID is required for non-BB nationals"
+              "error": "National ID is required for BB nationals"
             },
             "minLength": {
               "value": 8,
@@ -314,7 +331,7 @@
               "value": "post"
             }
           ],
-          "multiple": true,
+          "multiple": false,
           "validations": {
             "required": {
               "value": true,
@@ -324,15 +341,53 @@
         },
         {
           "fieldId": "canContactEvening",
-          "label": "I can be contacted in the evening",
+          "label": "I prefer to be contacted in the...",
           "htmlType": "checkbox",
           "options": [
             {
-              "label": "I accept",
-              "value": "confirmed"
+              "label": "Morning",
+              "value": "morning"
+            },
+            {
+              "label": "Afternoon",
+              "value": "afternoon"
+            },
+            {
+              "label": "Evening",
+              "value": "evening"
+            },
+            {
+              "label": "Night",
+              "value": "night"
             }
           ],
-          "defaultValue": false
+          "validations": {
+            "minSelection": {
+              "value": 1,
+              "error": "At least one option must be selected"
+            },
+            "maxSelection": {
+              "value": 3,
+              "error": "May not select more than 3 options"
+            }
+          }
+        },
+        {
+          "fieldId": "singleLonelyTextbox",
+          "label": "Does this checkbox sit by itself?",
+          "htmlType": "checkbox",
+          "options": [
+            {
+              "label": "yes",
+              "value": "yes"
+            }
+          ],
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "This is required."
+            }
+          }
         },
         {
           "fieldId": "additionalNotes",
@@ -749,7 +804,7 @@
           "htmlType": "checkbox",
           "options": [
             {
-              "label": "I accept",
+              "label": "I do",
               "value": "confirmed"
             }
           ],
