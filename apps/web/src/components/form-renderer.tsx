@@ -77,11 +77,12 @@ export default function FormRenderer({
 
         <div className={designSystem.formNavigation}>
           {!hidePrevious && (
-            <button type="button" onClick={handlePrevious}>
+            <button data-variant="secondary" type="button" onClick={handlePrevious}>
               Previous
             </button>
           )}
           <button
+            data-variant="primary"
             type="button"
             onClick={
               stepIndex === formMeta.steps.length - 1
