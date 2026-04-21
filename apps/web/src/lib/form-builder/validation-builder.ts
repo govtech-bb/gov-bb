@@ -282,7 +282,7 @@ const checkMinMax = ({
 
 const checkConditionalOn = (
   fieldId: string,
-  value: any,
+  currentFieldValue: any,
   behaviours: Behaviour[],
   results: ValidationResults,
   fieldApi: any,
@@ -295,17 +295,16 @@ const checkConditionalOn = (
   let isRequired: boolean = false;
 
   for (const condition of fieldConditionalOns) {
-    const cValue = condition.value;
     const otherValue = fieldApi.form.getFieldValue(condition.targetFieldId);
     const passesCondition = evaluateCondition(
-      cValue,
+      condition.value,
       otherValue,
       condition.operator,
     );
-    if (passesCondition && value.toString().length == 0) {
+    if (passesCondition && currentFieldValue.toString().length == 0) {
       results.hasError = true;
       results.errors = [
-        `${fieldId} is required because the value of ${condition.targetFieldId} is ${condition.operator} ${cValue}`,
+        `${fieldId} is required because the value of ${condition.targetFieldId} is ${condition.operator} ${condition.value}`,
       ];
       isRequired = true;
     }
