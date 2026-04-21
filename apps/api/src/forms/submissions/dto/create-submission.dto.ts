@@ -1,4 +1,5 @@
-import { IsNotEmpty, IsObject, IsOptional, IsString } from "class-validator";
+import { IsNotEmpty, IsObject, IsString } from "class-validator";
+import type { StepScopedValues } from "../submissions.types";
 
 export class CreateSubmissionDto {
   @IsString()
@@ -9,10 +10,10 @@ export class CreateSubmissionDto {
   @IsNotEmpty()
   formVersion!: string;
 
-  @IsObject()
-  values!: Record<string, unknown>;
+  @IsString()
+  @IsNotEmpty()
+  draftId!: string;
 
-  @IsOptional()
   @IsObject()
-  meta?: Record<string, unknown>;
+  values!: StepScopedValues;
 }
