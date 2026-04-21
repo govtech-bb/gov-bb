@@ -38,3 +38,9 @@ export interface ValidationArgs<TValueType = unknown> {
   validations: ValidationRule;
   results: ValidationResults;
 }
+
+export interface DateValue {
+  day?: number;
+  month?: number;
+  year?: number;
+}

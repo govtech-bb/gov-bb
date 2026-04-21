@@ -11,6 +11,7 @@ import {
   FieldValidationProperties,
   ValidationResults,
   ValidationArgs,
+  DateValue,
 } from "@web/types";
 import z from "zod";
 
@@ -76,10 +77,31 @@ export const buildFieldValidationProperties = (
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     onBlur(_input) {},
     onChange({ value, fieldApi }) {
+      // TODO: Modularize this!
       const results: ValidationResults = {
         hasError: false,
         errors: [],
       };
+
+      if (field.htmlType === "date") {
+        const args: ValidationArgs<DateValue> = {
+          value: value as DateValue,
+          fieldId: field.id,
+          validations,
+          results,
+        };
+
+        checkDatePast(args);
+        checkDatePastOrToday(args);
+        checkDateFuture(args);
+        checkDateFutureOrToday(args);
+        checkDateAfter(args);
+        checkDateBefore(args);
+        checkDateOnOrAfter(args);
+        checkDateOnOrBefore(args);
+        checkMinYear(args);
+        checkMaxYear(args);
+      }
 
       if (field.htmlType === "checkbox") {
         if (Array.isArray(value)) {
@@ -110,7 +132,7 @@ export const buildFieldValidationProperties = (
         };
 
         let isRequired: boolean = validations.required?.value ?? false;
-
+        // TODO: Make conditional check be checked on any and every type of field, not just string
         if (behaviours && behaviours.length > 0) {
           isRequired = checkConditionalOn(
             field.id,
@@ -154,11 +176,12 @@ const checkRequired = ({
   value,
   results,
   validations,
-}: ValidationArgs<string | boolean | number>) => {
+}: ValidationArgs<string | boolean | number | any[]>) => {
   if (
     validations.required &&
     validations.required.value &&
-    ((typeof value === "string" && value.length === 0) ||
+    (((typeof value === "string" || Array.isArray(value)) &&
+      value.length === 0) ||
       (typeof value === "boolean" && value !== true) ||
       (typeof value === "number" && value.toString().length === 0))
   ) {
