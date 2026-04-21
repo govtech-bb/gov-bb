@@ -11,7 +11,12 @@ export enum FormSubmissionStatus {
 
 @Entity({ name: "form_submissions" })
 export class FormSubmissionEntity extends TimestampedEntity {
-  @Column({ name: "idempotency_key", type: "varchar", length: 255, unique: true })
+  @Column({
+    name: "idempotency_key",
+    type: "varchar",
+    length: 255,
+    unique: true,
+  })
   idempotencyKey!: string;
 
   @Column({ name: "form_id", type: "varchar", length: 100 })

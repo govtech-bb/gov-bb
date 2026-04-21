@@ -1,0 +1,199 @@
+name: Deploy Sandbox
+
+on:
+  push:
+    branches: [sandbox]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ca-central-1
+  ECR_REPOSITORY: modular-forms-api
+  ECS_CLUSTER: modular-forms-sandbox
+  ECS_SERVICE: modular-forms-api-sandbox
+
+jobs:
+  deploy:
+    name: Build, Push & Deploy to Sandbox
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push image
+        id: build
+        env:
+          REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          IMAGE_URI="$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          LATEST_URI="$REGISTRY/$ECR_REPOSITORY:latest"
+
+          docker build --platform linux/amd64 -f apps/api/Dockerfile -t "$IMAGE_URI" -t "$LATEST_URI" .
+          docker push "$IMAGE_URI"
+          docker push "$LATEST_URI"
+
+          echo "image=$IMAGE_URI" >> "$GITHUB_OUTPUT"
+          echo "✅ Pushed $IMAGE_URI"
+
+      - name: Get current task definition
+        id: task-def
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition modular-forms-api-sandbox \
+            --region $AWS_REGION \
+            --query taskDefinition \
+            --output json > task-def.json
+          echo "✅ Task definition fetched"
+
+      - name: Update task definition with new image
+        id: new-task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-def.json
+          container-name: api
+          image: ${{ steps.build.outputs.image }}
+
+      - name: Run database migrations
+        run: |
+          TASK_DEF_ARN=$(aws ecs register-task-definition \
+            --cli-input-json "$(cat ${{ steps.new-task-def.outputs.task-definition }} | \
+              jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)')" \
+            --region $AWS_REGION \
+            --query taskDefinition.taskDefinitionArn \
+            --output text)
+          echo "Registered migration task def: $TASK_DEF_ARN"
+
+          TASK_ARN=$(aws ecs run-task \
+            --cluster $ECS_CLUSTER \
+            --task-definition "$TASK_DEF_ARN" \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[subnet-0dc6c8333012885b5,subnet-016eb706debe10250],securityGroups=[sg-05bfeab97a70e1081],assignPublicIp=DISABLED}" \
+            --overrides '{"containerOverrides":[{"name":"api","command":["npm","run","migration:run"]}]}' \
+            --region $AWS_REGION \
+            --query tasks[0].taskArn \
+            --output text)
+          echo "Migration task started: $TASK_ARN"
+
+          echo "Waiting for migration task to complete..."
+          aws ecs wait tasks-stopped \
+            --cluster $ECS_CLUSTER \
+            --tasks "$TASK_ARN" \
+            --region $AWS_REGION
+
+          EXIT_CODE=$(aws ecs describe-tasks \
+            --cluster $ECS_CLUSTER \
+            --tasks "$TASK_ARN" \
+            --region $AWS_REGION \
+            --query "tasks[0].containers[?name=='api'].exitCode | [0]" \
+            --output text)
+          echo "Migration exit code: $EXIT_CODE"
+
+          if [ "$EXIT_CODE" != "0" ]; then
+            echo "❌ Migration failed with exit code $EXIT_CODE"
+            echo "Check logs: aws logs tail /ecs/modular-forms-api-sandbox --follow"
+            exit 1
+          fi
+          echo "✅ Migrations completed successfully"
+
+      - name: Deploy to ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.new-task-def.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
+
+      - name: Clean up old task definition revisions
+        run: |
+          FAMILY=modular-forms-api-sandbox
+          # List all revisions sorted oldest first, keep the last 5
+          REVISIONS=$(aws ecs list-task-definitions \
+            --family-prefix "$FAMILY" \
+            --status ACTIVE \
+            --sort ASC \
+            --region $AWS_REGION \
+            --query taskDefinitionArns \
+            --output json | jq -r '.[]')
+
+          TOTAL=$(echo "$REVISIONS" | wc -l)
+          TO_DELETE=$((TOTAL - 5))
+
+          if [ "$TO_DELETE" -le 0 ]; then
+            echo "✅ Only $TOTAL revision(s) — nothing to clean up"
+            exit 0
+          fi
+
+          echo "$REVISIONS" | head -n "$TO_DELETE" | while read -r ARN; do
+            echo "Deregistering $ARN"
+            aws ecs deregister-task-definition \
+              --task-definition "$ARN" \
+              --region $AWS_REGION \
+              --query taskDefinition.taskDefinitionArn \
+              --output text
+          done
+          echo "✅ Cleaned up $TO_DELETE old revision(s)"
+
+      - name: Monitor Amplify build
+        id: amplify
+        env:
+          AMPLIFY_APP_ID: d1yjf5g5ckxcxg
+          AMPLIFY_BRANCH: sandbox
+        run: |
+          JOB_ID=$(aws amplify start-job \
+            --app-id "$AMPLIFY_APP_ID" \
+            --branch-name "$AMPLIFY_BRANCH" \
+            --job-type RELEASE \
+            --region "$AWS_REGION" \
+            --query jobSummary.jobId \
+            --output text)
+          echo "job_id=$JOB_ID" >> "$GITHUB_OUTPUT"
+          echo "Amplify job started: $JOB_ID"
+
+          for i in $(seq 1 30); do
+            STATUS=$(aws amplify get-job \
+              --app-id "$AMPLIFY_APP_ID" \
+              --branch-name "$AMPLIFY_BRANCH" \
+              --job-id "$JOB_ID" \
+              --region "$AWS_REGION" \
+              --query job.summary.status \
+              --output text)
+            echo "[$i/30] Amplify status: $STATUS"
+            if [ "$STATUS" = "SUCCEED" ]; then
+              echo "✅ Amplify build succeeded"
+              exit 0
+            elif [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "CANCELLED" ]; then
+              echo "❌ Amplify build $STATUS"
+              exit 1
+            fi
+            sleep 30
+          done
+          echo "❌ Amplify build timed out after 15 minutes"
+          exit 1
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Sandbox Deployment Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Image:** ${{ steps.build.outputs.image }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Commit:** ${{ github.sha }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "**API URL:** https://app-sandbox.alpha.gov.bb" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Amplify Job:** ${{ steps.amplify.outputs.job_id }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Check API logs: \`aws logs tail /ecs/modular-forms-api-sandbox --follow\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Check migration logs: \`aws logs tail /ecs/modular-forms-api-sandbox --follow --filter-pattern migration\`" >> "$GITHUB_STEP_SUMMARY"

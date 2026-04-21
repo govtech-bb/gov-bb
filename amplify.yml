@@ -1,17 +1,22 @@
 version: 1
-frontend:
-  phases:
-    preBuild:
-      commands:
-        - npm ci --ignore-scripts
-    build:
-      commands:
-        - npx nx build web
-  artifacts:
-    baseDirectory: apps/web/.next
-    files:
-      - "**/*"
-  cache:
-    paths:
-      - node_modules/**/*
-      - .nx/cache/**/*
+applications:
+  - appRoot: apps/web
+    frontend:
+      buildPath: /
+      phases:
+        preBuild:
+          commands:
+            - npm install --ignore-scripts
+        build:
+          commands:
+            - npx nx run form-types:build
+            - npx nx run form-conditions:build
+            - npx nx run web:build
+      artifacts:
+        baseDirectory: apps/web/dist
+        files:
+          - "**/*"
+      cache:
+        paths:
+          - node_modules/**/*
+          - .nx/cache/**/*

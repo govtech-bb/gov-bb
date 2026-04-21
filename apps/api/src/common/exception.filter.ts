@@ -22,8 +22,8 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
     const message =
       exception instanceof HttpException
-        ? (exception.getResponse() as any)?.message ?? exception.message
-        : 'An unexpected error occurred';
+        ? ((exception.getResponse() as any)?.message ?? exception.message)
+        : "An unexpected error occurred";
 
     this.logger.error(`${req.method} ${req.url} ${statusCode} — ${message}`);
 
