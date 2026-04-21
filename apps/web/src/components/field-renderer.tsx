@@ -1,3 +1,4 @@
+import { AnyFieldApi } from "@tanstack/react-form";
 import { ClientPrimitive, FieldValidationProperties } from "@web/types";
 import React from "react";
 
@@ -14,7 +15,7 @@ export default function FieldRenderer({
 
   return (
     <form.Field name={field.id} validators={validationProperties}>
-      {(f: any) => {
+      {(f: AnyFieldApi) => {
         const value = f.state.value;
 
         const sharedProps = {

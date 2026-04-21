@@ -1,17 +1,18 @@
 import { ValidationRule } from "@govtech-bb/form-types";
+import { AnyFieldApi } from "@tanstack/react-form";
 import { ZodObject, ZodType } from "zod";
 
-interface FieldValidationContext<TValue = unknown, TFormApi = unknown> {
+interface FieldValidationContext<TValue = unknown, TFieldApi = unknown> {
   value: TValue;
-  formApi?: TFormApi;
+  fieldApi?: TFieldApi;
 }
 
 export interface FieldValidationProperties<
   TValue = unknown,
-  TFormApi = unknown,
+  TFieldApi = AnyFieldApi,
 > {
-  onChange?(input: FieldValidationContext<TValue, TFormApi>): void; // Method called when a field's value is changed. Set via validations.
-  onBlur?(input: FieldValidationContext<TValue, TFormApi>): void; // Method called when a field loses focus.
+  onChange?(input: FieldValidationContext<TValue, TFieldApi>): void; // Method called when a field's value is changed. Set via validations.
+  onBlur?(input: FieldValidationContext<TValue, TFieldApi>): void; // Method called when a field loses focus.
   onChangeListenTo?: string[];
 }
 
