@@ -1,32 +1,98 @@
-import { FormMeta, FormRendererProps, FormValues } from "@web/types";
-import { buildForm } from "@web/lib";
-import { useForm } from "@tanstack/react-form";
+import { FormRendererProps } from "@web/types";
+import { useNavigate } from "@tanstack/react-router";
 import FieldRenderer from "./field-renderer";
 import designSystem from "../lib/design-system";
+import React, { useEffect } from "react";
 
-export default function FormRenderer({ contract }: FormRendererProps) {
-  const formMeta: FormMeta = buildForm(contract);
+export default function FormRenderer({
+  form,
+  formMeta,
+  stepId,
+}: FormRendererProps) {
+  const [stepIndex, setStepIndex] = React.useState(0);
+  const [hidePrevious, setHidePrevious] = React.useState(true);
+  const navigate = useNavigate({ from: "/forms/$formId/" });
 
-  const form = useForm({
-    defaultValues: formMeta.defaultValues as FormValues,
-    onSubmit: ({ value }) => { },
-  });
+  useEffect(() => {
+    if (stepId) {
+      const requestedStepIndex = formMeta.steps.findIndex((formStep) => {
+        return formStep.stepId === stepId;
+      });
+
+      setStepIndex(requestedStepIndex >= 0 ? requestedStepIndex : 0);
+      return;
+    }
+
+    setStepIndex(0);
+  }, [stepId, formMeta.steps]);
+
+  useEffect(() => {
+    if (stepIndex === 0) {
+      setHidePrevious(true);
+    } else {
+      setHidePrevious(false);
+    }
+  }, [stepIndex]);
+
+  const currentStep = formMeta.steps[stepIndex];
+
+  const navigateToStep = (nextStepIndex: number) => {
+    if (nextStepIndex < 0 || nextStepIndex >= formMeta.steps.length) {
+      return;
+    }
+
+    const nextStepId = formMeta.steps[nextStepIndex].stepId;
+    setStepIndex(nextStepIndex);
+
+    void navigate({
+      search: (prev) => ({
+        ...prev,
+        step: nextStepId,
+      }),
+    });
+  };
+
+  const handlePrevious = () => {
+    navigateToStep(stepIndex - 1);
+  };
+
+  const handleContinue = () => {
+    navigateToStep(stepIndex + 1);
+  };
+
+  const handleSubmit = () => {
+  };
 
   return (
     <div className={designSystem.formRoot}>
       <p className={designSystem.formTitle}> {formMeta.formTitle} </p>
-      {formMeta.formDescription && <p className={designSystem.formDescription}> {formMeta.formDescription} </p>}
-      {formMeta.steps.map((step, stepIndex) => (
-        <div key={step.stepId} className={designSystem.formStep}>
-          <h1>{step.title}</h1>
-          {step.description && <p className={designSystem.formStepDescription}>{step.description}</p>}
 
-          {step.fields.map((field) => (
-            <FieldRenderer key={field.id} form={form} field={field} validationMethods={formMeta.validationProperties[field.id]} />
-          ))}
-          {stepIndex < formMeta.steps.length - 1 && <hr />}
+      <h1>{currentStep.title}</h1>
+      {/* {step.description && <p>{step.description}</p>} */}
+
+      <div className={designSystem.formStep}>
+        {currentStep.fields.map((field) => (
+          <FieldRenderer key={field.id} form={form} field={field} validationProperties={formMeta.validationProperties[field.id]} />
+        ))}
+
+        <div className={designSystem.formNavigation}>
+          {!hidePrevious && (
+            <button type="button" onClick={handlePrevious}>
+              Previous
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={
+              stepIndex === formMeta.steps.length - 1
+                ? handleSubmit
+                : handleContinue
+            }
+          >
+            {stepIndex === formMeta.steps.length - 1 ? "Submit" : "Continue"}
+          </button>
         </div>
-      ))}
+      </div>
     </div>
   );
 }

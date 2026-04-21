@@ -4,16 +4,16 @@ import React from "react";
 export default function FieldRenderer({
   form,
   field,
-  validationMethods,
+  validationProperties,
 }: {
   form: any;
   field: ClientPrimitive;
-  validationMethods: FieldValidationProperties;
+  validationProperties: FieldValidationProperties;
 }) {
   if (field.hidden) return null;
 
   return (
-    <form.Field name={field.id} validators={validationMethods}>
+    <form.Field name={field.id} validators={validationProperties}>
       {(f: any) => {
         const value = f.state.value;
 
