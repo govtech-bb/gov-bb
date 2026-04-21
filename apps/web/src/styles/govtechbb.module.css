@@ -273,13 +273,13 @@
 .formRoot [data-checkbox-group] {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--spacing-s);
 }
 
 .formRoot [data-checkbox-group] [data-checkbox-option] {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: var(--spacing-s);
 }
 
 .formRoot [data-checkbox-group] input {
@@ -334,13 +334,13 @@
 .formRoot fieldset [data-checkbox-group] {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--spacing-xs);
 }
 
 .formRoot fieldset [data-radio-group] {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--spacing-xs);
 }
 
 .formRoot fieldset [data-checkbox-group] legend {
