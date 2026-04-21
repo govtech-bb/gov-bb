@@ -19,6 +19,7 @@ export interface ClientPrimitive {
   options?: Option[];
   multiple?: boolean;
   validations?: ValidationRule;
+  behaviours?: Behaviour[];
 }
 
 export interface ClientFormStep {

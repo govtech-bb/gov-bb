@@ -7,6 +7,7 @@ import { AppController } from "./app.controller";
 import { DatabaseModule } from "./database/database.module";
 import { RegistryModule } from "./registry/registry.module";
 import { FormsModule } from "./forms/forms.module";
+import { TelemetryModule } from "./telemetry/telemetry.module";
 import { configs } from "./config";
 import { envValidationSchema } from "./config/env.validation";
 
@@ -23,6 +24,7 @@ import { envValidationSchema } from "./config/env.validation";
     }),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 10 }]),
     EventEmitterModule.forRoot(),
+    TelemetryModule,
     ScheduleModule.forRoot(),
     DatabaseModule,
     RegistryModule,
