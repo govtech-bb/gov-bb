@@ -123,6 +123,11 @@
   display: none;
 }
 
+.formRoot .formNavigation {
+  display: flex;
+  gap: 1.25rem;
+}
+
 .formStep [data-field] {
   display: flex;
   flex-direction: column;
