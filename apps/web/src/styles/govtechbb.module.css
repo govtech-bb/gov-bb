@@ -364,6 +364,7 @@
   font-size: var(--font-size-body);
   border: 0.25rem solid var(--color-red-00);
   padding: var(--spacing-m);
+  margin-bottom: var(--spacing-s);
 }
 
 .formRoot [data-error-summary] h2 {
