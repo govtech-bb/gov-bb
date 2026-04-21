@@ -1,4 +1,3 @@
-"use client";
 import { FormRendererProps } from "@web/types";
 import { useNavigate } from "@tanstack/react-router";
 import FieldRenderer from "./field-renderer";
@@ -73,7 +72,7 @@ export default function FormRenderer({
 
       <div className={designSystem.formStep}>
         {currentStep.fields.map((field) => (
-          <FieldRenderer key={field.id} form={form} field={field} />
+          <FieldRenderer key={field.id} form={form} field={field} validationProperties={formMeta.validationProperties[field.id]} />
         ))}
 
         <div className={designSystem.formNavigation}>

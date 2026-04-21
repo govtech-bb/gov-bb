@@ -57,6 +57,7 @@ export {
   fieldArrayBehaviourSchema,
   sharedFieldsBehaviourSchema,
   behaviourSchema,
+  equalityOperationsSchema,
 } from "./behavior.type";
 
 export type {
@@ -66,6 +67,7 @@ export type {
   RepeatableBehaviour,
   FieldArrayBehaviour,
   SharedFieldsBehaviour,
+  EqualityOperations,
 } from "./behavior.type";
 
 export type { Block } from "./block.type";
@@ -86,20 +88,15 @@ export type {
   RecipeBlockField,
 } from "./form-step.type";
 
-export {
-  processorSchema
-} from "./processor.type"
+export { processorSchema } from "./processor.type";
 
-export type {
-  Processor
-} from "./processor.type"
+export type { Processor } from "./processor.type";
 
 export {
   dateTimeFormatSchema,
   serviceContractSchema,
   serviceContractRecipeSchema,
 } from "./service-contract.type";
-
 
 export type {
   ServiceContract,

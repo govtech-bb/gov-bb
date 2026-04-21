@@ -1,4 +1,3 @@
-"use client";
 import { createFileRoute } from "@tanstack/react-router";
 import { FormRenderer } from "@web/components";
 import { fetchContract, buildForm } from "@web/lib";

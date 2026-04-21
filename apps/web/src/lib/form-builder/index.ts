@@ -11,7 +11,7 @@ import { buildValidation } from "./validation-builder";
 
 export const buildForm = (contract: ClientServiceContract): FormMeta => {
   // Build the Validation Schema
-  const { schema, defaults, methods }: FormValidation =
+  const { schema, defaults, properties }: FormValidation =
     buildValidation(contract);
 
   // Get method to calculate visible steps
@@ -25,7 +25,7 @@ export const buildForm = (contract: ClientServiceContract): FormMeta => {
     schema,
     steps: contract.steps,
     defaultValues: defaults,
-    validationMethods: methods,
+    validationProperties: properties,
     getVisibleSteps,
     isStepVisible,
   };
