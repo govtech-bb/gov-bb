@@ -1,10 +1,14 @@
-import { ValidationConfig } from "@govtech-bb/form-types";
+import {
+  Behaviour,
+  EqualityOperations,
+  ValidationConfig,
+} from "@govtech-bb/form-types";
 import {
   ClientServiceContract,
   ClientPrimitive,
   FieldValidation,
   FormValidation,
-  FieldValidationMethods,
+  FieldValidationProperties,
   ValidationResults,
   ValidationArgs,
 } from "@web/types";
@@ -14,12 +18,12 @@ export const buildValidation = (
   contract: ClientServiceContract,
 ): FormValidation => {
   const shape: Record<string, z.ZodType<unknown>> = {};
-  const fieldValidationMethods: Record<string, FieldValidationMethods> = {};
+  const fieldValidationMethods: Record<string, FieldValidationProperties> = {};
   const defaults: Record<string, unknown> = {};
 
   for (const step of contract.steps) {
     for (const field of step.fields) {
-      const { fieldSchema, methods } = buildFieldValidation(field);
+      const { fieldSchema, properties: methods } = buildFieldValidation(field);
       shape[field.name] = fieldSchema;
       fieldValidationMethods[field.name] = methods;
       if (field.defaultValue) {
@@ -30,7 +34,7 @@ export const buildValidation = (
 
   return {
     schema: z.object(shape),
-    methods: fieldValidationMethods,
+    properties: fieldValidationMethods,
     defaults,
   };
 };
@@ -40,17 +44,17 @@ export const buildFieldValidation = (
 ): FieldValidation => {
   // TODO: Flesh this out based on field validation methods.
   const fieldSchema: z.ZodType<unknown> = z.object({});
-  const methods = buildFieldValidationMethods(field);
+  const properties = buildFieldValidationProperties(field);
   return {
     fieldSchema,
-    methods,
+    properties,
   };
 };
 
 // This allows us to recalculate the methods after restoring from cache.
-export const buildFieldValidationMethods = (
+export const buildFieldValidationProperties = (
   field: ClientPrimitive,
-): FieldValidationMethods => {
+): FieldValidationProperties => {
   if (!field.validations) {
     return {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -60,11 +64,17 @@ export const buildFieldValidationMethods = (
     };
   }
   const validations = field.validations;
+  const behaviours = field.behaviours;
+
+  const listenTo =
+    behaviours?.flatMap((b) =>
+      "targetFieldId" in b ? [b.targetFieldId] : [],
+    ) ?? [];
 
   return {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     onBlur(_input) {},
-    onChange({ value }) {
+    onChange({ value, fieldApi }) {
       const results: ValidationResults = {
         hasError: false,
         errors: [],
@@ -88,6 +98,7 @@ export const buildFieldValidationMethods = (
             validations,
           });
         }
+        return results.hasError ? results.errors : undefined;
       }
       if (typeof value === "string") {
         const args: ValidationArgs<string> = {
@@ -96,13 +107,24 @@ export const buildFieldValidationMethods = (
           validations,
           results,
         };
-        if (
-          validations.required &&
-          validations.required.value === false &&
-          value.length == 0
-        )
-          return undefined;
-        checkRequired(args);
+
+        let isRequired: boolean = validations.required?.value ?? false;
+
+        if (behaviours && behaviours.length > 0) {
+          isRequired = checkConditionalOn(
+            field.id,
+            value,
+            behaviours,
+            results,
+            fieldApi,
+          );
+        }
+
+        if (isRequired === false && value.length === 0) return undefined;
+        if (isRequired && !results.hasError) {
+          checkRequired(args);
+        }
+
         // If the field is required, but has no value, then ignore subsequent errors
         if (results.hasError) return results.errors;
         checkLength(args);
@@ -113,6 +135,7 @@ export const buildFieldValidationMethods = (
 
       return results.hasError ? results.errors : undefined;
     },
+    onChangeListenTo: listenTo,
   };
 };
 
@@ -253,5 +276,62 @@ const checkMinMax = ({
       results.hasError = true;
       results.errors.push(getValidationErrorOr(fieldId, max));
     }
+  }
+};
+
+const checkConditionalOn = (
+  fieldId: string,
+  value: any,
+  behaviours: Behaviour[],
+  results: ValidationResults,
+  fieldApi: any,
+): boolean => {
+  const fieldConditionalOns = behaviours.filter(
+    (b) => b.type === "fieldConditionalOn",
+  );
+  if (fieldConditionalOns.length === 0) return false;
+
+  let isRequired: boolean = false;
+
+  for (const condition of fieldConditionalOns) {
+    const cValue = condition.value;
+    const otherValue = fieldApi.form.getFieldValue(condition.targetFieldId);
+    const passesCondition = evaluateCondition(
+      cValue,
+      otherValue,
+      condition.operator,
+    );
+    if (passesCondition && value.toString().length == 0) {
+      results.hasError = true;
+      results.errors = [
+        `${fieldId} is required because the value of ${condition.targetFieldId} is ${condition.operator} ${cValue}`,
+      ];
+      isRequired = true;
+    }
+  }
+
+  return isRequired;
+};
+
+const evaluateCondition = (
+  sourceValue: any,
+  targetValue: string | any[],
+  operation: EqualityOperations,
+): boolean => {
+  console.log(sourceValue, targetValue);
+  console.log(sourceValue == targetValue);
+  switch (operation) {
+    case "in":
+    case "exists":
+      if (targetValue.includes(sourceValue)) return true;
+      else return false;
+    case "equal":
+      if (sourceValue == targetValue) return true;
+      else return false;
+    case "notEqual":
+      if (sourceValue != targetValue) return true;
+      else return false;
+    default:
+      return false;
   }
 };

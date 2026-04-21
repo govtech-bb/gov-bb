@@ -1,4 +1,4 @@
-import { ClientPrimitive, FieldValidationMethods } from "@web/types";
+import { ClientPrimitive, FieldValidationProperties } from "@web/types";
 import React from "react";
 
 export default function FieldRenderer({
@@ -8,7 +8,7 @@ export default function FieldRenderer({
 }: {
   form: any;
   field: ClientPrimitive;
-  validationMethods: FieldValidationMethods;
+  validationMethods: FieldValidationProperties;
 }) {
   if (field.hidden) return null;
 
@@ -20,6 +20,7 @@ export default function FieldRenderer({
         const sharedProps = {
           type: field.htmlType,
           name: field.id,
+          id: field.id,
           disabled: field.disabled,
           placeholder: field.placeholder,
           onBlur: f.handleBlur,
@@ -72,7 +73,7 @@ export default function FieldRenderer({
               <div data-field data-select-field>
                 <label> {field.label} </label>
                 <div data-select-control>
-                  <select {...sharedProps} multiple={field.multiple ?? false}>
+                  <select {...sharedProps} multiple={field.multiple ?? false} onChange={(e) => f.handleChange(e.target.value)}>
                     <option value=""></option>
                     {field.options?.map((option) => (
                       <option key={option.value} value={option.value}>
