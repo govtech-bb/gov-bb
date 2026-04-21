@@ -1,0 +1,7 @@
+# Test fixture values in form-validation spec — not real secrets
+041d530d7bf2a802e2e762faa105d7bab6e5e25c:packages/form-validation/src/index.spec.ts:hashicorp-tf-password:158
+041d530d7bf2a802e2e762faa105d7bab6e5e25c:packages/form-validation/src/index.spec.ts:hashicorp-tf-password:189
+73c2767991fb5682e6b54093093740f6fd72c71a:packages/form-validation/src/index.spec.ts:hashicorp-tf-password:158
+73c2767991fb5682e6b54093093740f6fd72c71a:packages/form-validation/src/index.spec.ts:hashicorp-tf-password:189
+f65572e00a3d6544f2527b84dafe109340377e43:packages/form-validation/src/index.spec.ts:hashicorp-tf-password:158
+f65572e00a3d6544f2527b84dafe109340377e43:packages/form-validation/src/index.spec.ts:hashicorp-tf-password:189
