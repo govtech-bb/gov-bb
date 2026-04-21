@@ -1,11 +1,14 @@
 import { z } from "zod";
 
-const operations = ["equal", "notEqual", "in", "exists"];
+const operationValues = ["equal", "notEqual", "in", "exists"] as const;
+
+export const equalityOperationsSchema = z.enum(operationValues);
+export type EqualityOperations = z.infer<typeof equalityOperationsSchema>;
 
 export const fieldConditionalOnBehaviourSchema = z.object({
   type: z.literal("fieldConditionalOn"),
   targetFieldId: z.string(),
-  operator: z.enum(operations),
+  operator: equalityOperationsSchema,
   value: z.union([
     z.string(),
     z.number(),
@@ -21,7 +24,7 @@ export type FieldConditionalOnBehaviour = z.infer<
 export const stepConditionalOnBehaviourSchema = z.object({
   type: z.literal("stepConditionalOn"),
   targetFieldId: z.string(),
-  operator: z.enum(operations),
+  operator: equalityOperationsSchema,
   value: z.union([
     z.string(),
     z.number(),

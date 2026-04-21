@@ -157,11 +157,15 @@
         {
           "fieldId": "email",
           "label": "Email address",
-          "htmlType": "email",
+          "htmlType": "text",
           "validations": {
             "required": {
               "value": true,
               "error": "Email address is required"
+            },
+            "email": {
+              "value": true,
+              "error": "Invalid email format!"
             }
           },
           "metadata": {
@@ -525,7 +529,7 @@
       "elements": [
         {
           "fieldId": "confirmation",
-          "label": "Declaration",          
+          "label": "Declaration",
           "htmlType": "checkbox",
           "options": [
             {
