@@ -1,7 +1,14 @@
-// Will handle prop definitions
-
+import { AnyFormApi } from "@tanstack/react-form";
 import { ClientServiceContract } from "./field-mapper.type";
+import { FormMeta } from "./renderer.type";
 
 export interface FormRendererProps {
-  contract: ClientServiceContract;
+  form: AnyFormApi;
+  formMeta: FormMeta;
+  stepId?: string;
 }
+
+export type FormRouteProps = {
+  contract: ClientServiceContract;
+  stepId?: string;
+};
