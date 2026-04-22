@@ -1,7 +1,7 @@
 import { AnyFieldApi } from "@tanstack/react-form";
 import { ClientPrimitive, FieldValidationProperties } from "@web/types";
 import React from "react";
-import ErrorMessage from "./error";
+import ErrorMessage from "./error-message";
 
 export default function FieldRenderer({
   form,
@@ -33,6 +33,9 @@ export default function FieldRenderer({
             return (
               <fieldset data-field data-date-field>
                 <legend>{field.label}</legend>
+                {!f.state.meta.isValid && (
+                  <ErrorMessage message={f.state.meta.errors.join(", ")} />
+                )}
                 <div data-date-group>
                   <div data-date-part>
                     <label>Day</label>
@@ -77,7 +80,11 @@ export default function FieldRenderer({
               <div data-field data-select-field>
                 <label> {field.label} </label>
                 <div data-select-control>
-                  <select {...sharedProps} multiple={field.multiple ?? false} onChange={(e) => f.handleChange(e.target.value)}>
+                  <select
+                    {...sharedProps}
+                    multiple={field.multiple ?? false}
+                    onChange={(e) => f.handleChange(e.target.value)}
+                  >
                     <option value=""></option>
                     {field.options?.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -105,7 +112,7 @@ export default function FieldRenderer({
                       checked={value ?? false}
                       value={option.value}
                       onChange={(e) => {
-                        f.handleChange(e.target.checked)
+                        f.handleChange(e.target.checked);
                       }}
                     />
                     <label>{option.label}</label>
