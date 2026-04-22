@@ -1,6 +1,7 @@
 import { AnyFieldApi } from "@tanstack/react-form";
 import { ClientPrimitive, DateValue, FieldValidationProperties } from "@web/types";
 import React from "react";
+import ErrorMessage from "./error-message";
 
 export default function FieldRenderer({
   form,
@@ -33,6 +34,9 @@ export default function FieldRenderer({
             return (
               <fieldset data-field data-date-field>
                 <legend>{field.label}</legend>
+                {!f.state.meta.isValid && (
+                  <ErrorMessage message={f.state.meta.errors.join(", ")} />
+                )}
                 <div data-date-group>
                   <div data-date-part>
                     <label>Day</label>
@@ -83,10 +87,12 @@ export default function FieldRenderer({
           case "email":
             return (
               <div data-field>
-                {!f.state.meta.isValid && (
-                  <em role="alert">{f.state.meta.errors.join(", ")}</em>
-                )}
-                <label> {field.label} </label>
+                <div>
+                  <label> {field.label} </label>
+                  {!f.state.meta.isValid && (
+                    <ErrorMessage message={f.state.meta.errors.join(", ")} />
+                  )}
+                </div>
                 <input
                   {...sharedProps}
                   value={value ?? ""}
@@ -99,7 +105,11 @@ export default function FieldRenderer({
               <div data-field data-select-field>
                 <label> {field.label} </label>
                 <div data-select-control>
-                  <select {...sharedProps} multiple={field.multiple ?? false} onChange={(e) => f.handleChange(e.target.value)}>
+                  <select
+                    {...sharedProps}
+                    multiple={field.multiple ?? false}
+                    onChange={(e) => f.handleChange(e.target.value)}
+                  >
                     <option value=""></option>
                     {field.options?.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -115,17 +125,19 @@ export default function FieldRenderer({
               const option = field.options[0];
               return (
                 <div data-checkbox-group>
-                  {!f.state.meta.isValid && (
-                    <em role="alert">{f.state.meta.errors.join(", ")}</em>
-                  )}
-                  <legend>{field.label}</legend>
+                  <div>
+                    <legend>{field.label}</legend>
+                    {!f.state.meta.isValid && (
+                      <ErrorMessage message={f.state.meta.errors.join(", ")} />
+                    )}
+                  </div>
                   <div key={option.value} data-checkbox-option>
                     <input
                       {...sharedProps}
                       checked={value ?? false}
                       value={option.value}
                       onChange={(e) => {
-                        f.handleChange(e.target.checked)
+                        f.handleChange(e.target.checked);
                       }}
                     />
                     <label>{option.label}</label>
@@ -144,10 +156,12 @@ export default function FieldRenderer({
 
             return (
               <fieldset data-fieldset>
-                {!f.state.meta.isValid && (
-                  <em role="alert">{f.state.meta.errors.join(", ")}</em>
-                )}
-                <legend>{field.label}</legend>
+                <div>
+                  <legend>{field.label}</legend>
+                  {!f.state.meta.isValid && (
+                    <ErrorMessage message={f.state.meta.errors.join(", ")} />
+                  )}
+                </div>
                 <div data-checkbox-group>
                   {field.options?.map((option) => {
                     return (
