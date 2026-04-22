@@ -220,6 +220,8 @@ export const buildFieldValidationProperties = (
         checkPattern(args);
         checkEmail(args);
         checkMinMax(args);
+        checkComparisons(args, fieldApi);
+        checkContains(args);
       }
 
       return results.hasError ? results.errors : undefined;
@@ -585,6 +587,60 @@ const checkMaxYear = ({
   }
 };
 
+/*
+ * Checks for equality, inequality, greater than and lesser than
+ */
+const checkComparisons = (
+  { fieldId, value, results, validations }: ValidationArgs<string | number>,
+  fieldApi: AnyFieldApi,
+) => {
+  const equal = validations.equal;
+  const notEqual = validations.notEqual;
+
+  const gt = validations.gt;
+  const lt = validations.lt;
+
+  if (!equal && !notEqual && !gt && !lt) return; // No validations provided
+
+  const compare = (
+    comp: "equal" | "notEqual" | "gt" | "lt",
+    validation?: ValidationConfig,
+  ) => {
+    if (validation && validation.reference) {
+      const targetFieldValue = fieldApi.form.getFieldValue(
+        validation.reference,
+      );
+      const passesCondition = evaluateCondition(value, targetFieldValue, comp);
+      if (!passesCondition) {
+        results.hasError = true;
+        results.errors.push(getValidationErrorOr(fieldId, validation));
+      }
+    }
+  };
+
+  compare("equal", equal);
+  compare("notEqual", notEqual);
+  compare("gt", gt);
+  compare("lt", lt);
+};
+
+const checkContains = ({
+  fieldId,
+  value,
+  results,
+  validations,
+}: ValidationArgs<string>) => {
+  const contains = validations.contains;
+  if (!contains || !contains.value) return;
+
+  const passesCondition = evaluateCondition(value, contains.value, "contains");
+
+  if (!passesCondition) {
+    results.hasError = true;
+    results.errors.push(getValidationErrorOr(fieldId, contains));
+  }
+};
+
 const checkConditionalOn = (
   fieldId: string,
   currentFieldValue: any,
@@ -622,26 +678,37 @@ const checkConditionalOn = (
 
 const evaluateCondition = (
   conditionValue: any,
-  targetFieldValue: string | any[] | undefined,
-  operation: EqualityOperations,
+  targetFieldValue: string | number | any[] | undefined,
+  operation: EqualityOperations | "gt" | "lt" | "contains" | "strictEquality",
 ): boolean => {
   switch (operation) {
     case "in":
+    case "contains":
       if (
         targetFieldValue &&
         conditionValue &&
+        typeof targetFieldValue != "number" &&
         targetFieldValue.includes(conditionValue)
       )
         return true;
       else return false;
-    case "equal":
+    case "equal": // Can be case insensitive
+      if (conditionValue && targetFieldValue) {
+        return (
+          conditionValue == targetFieldValue ||
+          (typeof conditionValue === "string" &&
+            typeof targetFieldValue === "string" &&
+            conditionValue.toLowerCase() === targetFieldValue.toLowerCase())
+        );
+      } else return false;
+    case "strictEquality":
       if (
         conditionValue &&
         targetFieldValue &&
-        conditionValue == targetFieldValue
+        conditionValue === targetFieldValue
       )
         return true;
-      else return false;
+      return false;
     case "notEqual":
       if (
         conditionValue &&
@@ -661,6 +728,22 @@ const evaluateCondition = (
         (!conditionValue && targetFieldValue)
       )
         return false;
+      return false;
+    case "gt":
+      if (conditionValue && targetFieldValue) {
+        const cv = Number(conditionValue);
+        const tfv = Number(targetFieldValue);
+
+        if (!isNaN(cv) && !isNaN(tfv)) return cv > tfv;
+      }
+      return false;
+    case "lt":
+      if (conditionValue && targetFieldValue) {
+        const cv = Number(conditionValue);
+        const tfv = Number(targetFieldValue);
+
+        if (!isNaN(cv) && !isNaN(tfv)) return cv < tfv;
+      }
       return false;
 
     default:
