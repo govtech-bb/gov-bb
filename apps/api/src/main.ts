@@ -42,6 +42,7 @@ async function bootstrap() {
     .addTag("Health", "Liveness and readiness checks")
     .addTag("Form Definitions", "Retrieve published form schemas")
     .addTag("Form Drafts", "Save and resume in-progress form submissions")
+    .addTag("Submissions", "Finalise drafts into permanent form submissions")
     .build();
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);
