@@ -84,7 +84,7 @@ export const buildFieldValidationProperties = (
 
       const fieldId = field.id;
       if (field.htmlType === "date") {
-        let dateValueInput = value as DateValueInput;
+        const dateValueInput = value as DateValueInput;
         if (
           !isDateComplete({
             value: dateValueInput,
@@ -95,8 +95,8 @@ export const buildFieldValidationProperties = (
         )
           return;
 
-        let dateValue: DateValue = value as DateValue;
-        let date: Date | null = dateValueToDate(dateValue);
+        const dateValue: DateValue = value as DateValue;
+        const date: Date | null = dateValueToDate(dateValue);
         if (!date) return;
 
         const year = date.getFullYear();
@@ -134,8 +134,8 @@ export const buildFieldValidationProperties = (
         if (!isDateComplete(argsDateValueInput))
           return results.hasError ? results.errors : undefined;
 
-        let dateValue: DateValue = value as DateValue;
-        let date: Date | null = dateValueToDate(dateValue);
+        const dateValue: DateValue = value as DateValue;
+        const date: Date | null = dateValueToDate(dateValue);
         if (!date) {
           results.hasError = true;
           results.errors.push(`${field.id} is an invalid date`);
@@ -600,10 +600,12 @@ const checkConditionalOn = (
   let isRequired: boolean = false;
 
   for (const condition of fieldConditionalOns) {
-    const otherValue = fieldApi.form.getFieldValue(condition.targetFieldId);
+    const targetFieldValue = fieldApi.form.getFieldValue(
+      condition.targetFieldId,
+    );
     const passesCondition = evaluateCondition(
       condition.value,
-      otherValue,
+      targetFieldValue,
       condition.operator,
     );
     if (passesCondition && currentFieldValue.toString().length == 0) {
@@ -619,21 +621,48 @@ const checkConditionalOn = (
 };
 
 const evaluateCondition = (
-  sourceValue: any,
-  targetValue: string | any[],
+  conditionValue: any,
+  targetFieldValue: string | any[] | undefined,
   operation: EqualityOperations,
 ): boolean => {
   switch (operation) {
     case "in":
-    case "exists":
-      if (targetValue.includes(sourceValue)) return true;
+      if (
+        targetFieldValue &&
+        conditionValue &&
+        targetFieldValue.includes(conditionValue)
+      )
+        return true;
       else return false;
     case "equal":
-      if (sourceValue == targetValue) return true;
+      if (
+        conditionValue &&
+        targetFieldValue &&
+        conditionValue == targetFieldValue
+      )
+        return true;
       else return false;
     case "notEqual":
-      if (sourceValue != targetValue) return true;
+      if (
+        conditionValue &&
+        targetFieldValue &&
+        conditionValue != targetFieldValue
+      )
+        return true;
       else return false;
+    case "exists":
+      if (
+        (conditionValue && targetFieldValue) ||
+        (!conditionValue && !targetFieldValue)
+      )
+        return true;
+      if (
+        (conditionValue && !targetFieldValue) ||
+        (!conditionValue && targetFieldValue)
+      )
+        return false;
+      return false;
+
     default:
       return false;
   }
