@@ -1,5 +1,9 @@
 import { AnyFieldApi } from "@tanstack/react-form";
-import { ClientPrimitive, DateValue, FieldValidationProperties } from "@web/types";
+import {
+  ClientPrimitive,
+  DateValue,
+  FieldValidationProperties,
+} from "@web/types";
 import React from "react";
 import ErrorMessage from "./error-message";
 
@@ -17,7 +21,7 @@ export default function FieldRenderer({
   return (
     <form.Field name={field.id} validators={validationProperties}>
       {(f: AnyFieldApi) => {
-        let value = f.state.value;
+        const value = f.state.value;
 
         const sharedProps = {
           type: field.htmlType,
@@ -30,7 +34,7 @@ export default function FieldRenderer({
 
         switch (field.htmlType) {
           case "date": {
-            let value = f.state.value as DateValue | undefined
+            const value = f.state.value as DateValue | undefined;
             return (
               <fieldset data-field data-date-field>
                 <legend>{field.label}</legend>
@@ -40,39 +44,52 @@ export default function FieldRenderer({
                 <div data-date-group>
                   <div data-date-part>
                     <label>Day</label>
-                    <input {...sharedProps} value={value?.day ?? ""} type="number" min={1} max={31}
+                    <input
+                      {...sharedProps}
+                      value={value?.day ?? ""}
+                      type="number"
+                      min={1}
+                      max={31}
                       onChange={(e) => {
                         const day = Number(e.target.value) ?? undefined;
                         f.handleChange({
                           ...value,
-                          day
-                        })
+                          day,
+                        });
                       }}
                     />
                   </div>
 
                   <div data-date-part>
                     <label>Month</label>
-                    <input {...sharedProps} type="number" value={value?.month ?? ""} min={1} max={12}
+                    <input
+                      {...sharedProps}
+                      type="number"
+                      value={value?.month ?? ""}
+                      min={1}
+                      max={12}
                       onChange={(e) => {
                         const month = Number(e.target.value) ?? undefined;
                         f.handleChange({
                           ...value,
-                          month
-                        })
+                          month,
+                        });
                       }}
                     />
                   </div>
 
                   <div data-date-part>
                     <label>Year</label>
-                    <input {...sharedProps} type="number" value={value?.year ?? ""}
+                    <input
+                      {...sharedProps}
+                      type="number"
+                      value={value?.year ?? ""}
                       onChange={(e) => {
                         const year = Number(e.target.value) ?? undefined;
                         f.handleChange({
                           ...value,
-                          year
-                        })
+                          year,
+                        });
                       }}
                     />
                   </div>

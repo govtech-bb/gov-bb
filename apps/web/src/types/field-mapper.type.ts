@@ -40,4 +40,4 @@ export interface ClientServiceContract {
   version: string;
 }
 
-export type FormValues = Record<string, any>;
+export type FormValues = Record<string, unknown>;
