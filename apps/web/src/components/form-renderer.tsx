@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import FieldRenderer from "./field-renderer";
 import designSystem from "../lib/design-system";
 import React, { useEffect } from "react";
+import ErrorSummary from "./error-summary";
 
 export default function FormRenderer({
   form,
@@ -69,6 +70,8 @@ export default function FormRenderer({
 
       <h1>{currentStep.title}</h1>
       {/* {step.description && <p>{step.description}</p>} */}
+      {/* TODO: Pass in a complete list of errors */}
+      <ErrorSummary />
 
       <div className={designSystem.formStep}>
         {currentStep.fields.map((field) => (

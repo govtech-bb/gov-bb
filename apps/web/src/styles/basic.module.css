@@ -349,8 +349,9 @@
 }
 
 /* Error States */
-.formRoot [data-checkbox-group-error] {
+.formRoot [data-error] {
   font-size: 0.8125rem;
   color: var(--color-error);
   margin-top: 0.25rem;
 }
+
