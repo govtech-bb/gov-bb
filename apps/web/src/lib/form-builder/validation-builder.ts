@@ -76,8 +76,45 @@ export const buildFieldValidationProperties = (
     ) ?? [];
 
   return {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    onBlur(_input) {},
+    onBlur({ value, fieldApi }) {
+      const results: ValidationResults = {
+        hasError: false,
+        errors: [],
+      };
+
+      const fieldId = field.id;
+      if (field.htmlType === "date") {
+        let dateValueInput = value as DateValueInput;
+        if (
+          !isDateComplete({
+            value: dateValueInput,
+            fieldId,
+            validations,
+            results,
+          })
+        )
+          return;
+
+        let dateValue: DateValue = value as DateValue;
+        let date: Date | null = dateValueToDate(dateValue);
+        if (!date) return;
+
+        const year = date.getFullYear();
+        const month = date.getMonth() + 1;
+        const day = date.getDate();
+
+        // Used if the user enters a date like 10/13/2008,
+        // which when converted to a date object, will be 10/1/2009
+        // Aim is to have the field reflect that change.
+        if (
+          year != dateValue.year ||
+          month != dateValue.month ||
+          day != dateValue.day
+        )
+          fieldApi.handleChange({ day, month, year });
+        return undefined;
+      }
+    },
     onChange({ value, fieldApi }) {
       // TODO: Modularize this!
       const results: ValidationResults = {
@@ -553,7 +590,7 @@ const checkConditionalOn = (
   currentFieldValue: any,
   behaviours: Behaviour[],
   results: ValidationResults,
-  fieldApi: any,
+  fieldApi: AnyFieldApi,
 ): boolean => {
   const fieldConditionalOns = behaviours.filter(
     (b) => b.type === "fieldConditionalOn",

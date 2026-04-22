@@ -4,7 +4,7 @@ import { ZodObject, ZodType } from "zod";
 
 interface FieldValidationContext<TValue = unknown, TFieldApi = unknown> {
   value: TValue;
-  fieldApi?: TFieldApi;
+  fieldApi: TFieldApi;
 }
 
 export interface FieldValidationProperties<
