@@ -141,6 +141,36 @@ export const buildFieldValidationProperties = (
         errors: [],
       };
 
+      let conditionalRequired: boolean = false;
+
+      if (behaviours && behaviours.length > 0) {
+        const fieldConditionalOns = behaviours.filter(
+          (b) => b.type === "fieldConditionalOn",
+        );
+
+        if (fieldConditionalOns.length > 0) {
+          // Checks if there is a field conditional on, that passes and affect required state
+          conditionalRequired = checkConditionalOn(
+            field.id,
+            value,
+            fieldConditionalOns,
+            results,
+            fieldApi,
+          );
+
+          if (conditionalRequired) {
+            if (!validations.required)
+              validations.required = {
+                value: true,
+                error: `${field.id} is required.`,
+              };
+          }
+        }
+      }
+
+      //TODO: Check required for everything here and return early
+      // Required check
+
       if (field.htmlType === "date") {
         runDateValidations(
           field.id,
@@ -166,22 +196,6 @@ export const buildFieldValidationProperties = (
           results,
         };
 
-        let isRequired: boolean = validations.required?.value ?? false;
-        // TODO: Make conditional check be checked on any and every type of field, not just string
-        if (behaviours && behaviours.length > 0) {
-          isRequired = checkConditionalOn(
-            field.id,
-            value,
-            behaviours,
-            results,
-            fieldApi,
-          );
-        }
-        if (isRequired && !results.hasError) {
-          checkRequired(args);
-        }
-
-        if (isRequired === false && value.length === 0) return undefined;
         runStringValidations(args, fieldApi);
       }
 
@@ -241,19 +255,19 @@ const runCheckboxValidations = (
   validations: ValidationRule,
   results: ValidationResults,
 ) => {
+  checkRequired({
+    fieldId,
+    value,
+    results,
+    validations,
+  });
+
   if (Array.isArray(value)) {
     checkSelectionLength({
       fieldId,
       value,
       validations,
       results,
-    });
-  } else {
-    checkRequired({
-      fieldId,
-      value,
-      results,
-      validations,
     });
   }
 };
@@ -262,8 +276,9 @@ const runStringValidations = (
   args: ValidationArgs<string>,
   fieldApi: AnyFieldApi,
 ) => {
-  // If the field is required, but has no value, then skip subsequent error checks
+  checkRequired(args);
   if (args.results.hasError) return;
+  // If the field is required, but has no value, then skip subsequent error checks
   checkLength(args);
   checkPattern(args);
   checkEmail(args);

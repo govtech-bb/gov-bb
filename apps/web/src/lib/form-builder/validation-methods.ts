@@ -1,7 +1,7 @@
 import {
   ValidationConfig,
-  Behaviour,
   EqualityOperations,
+  FieldConditionalOnBehaviour,
 } from "@govtech-bb/form-types";
 import { AnyFieldApi } from "@tanstack/react-form";
 import {
@@ -10,7 +10,7 @@ import {
   DateValueInput,
   ValidationResults,
 } from "@web/types";
-import z from "node_modules/zod/v4/classic/external.cjs";
+import z from "zod";
 
 // Modular Methods
 const getValidationErrorOr = (
@@ -19,6 +19,7 @@ const getValidationErrorOr = (
   customError?: string,
 ): string =>
   (config.error || customError) ?? `Unknown error has occurred for ${fieldId}`;
+
 export const checkRequired = ({
   fieldId,
   value,
@@ -416,13 +417,10 @@ export const checkContains = ({
 export const checkConditionalOn = (
   fieldId: string,
   currentFieldValue: any,
-  behaviours: Behaviour[],
+  fieldConditionalOns: FieldConditionalOnBehaviour[],
   results: ValidationResults,
   fieldApi: AnyFieldApi,
 ): boolean => {
-  const fieldConditionalOns = behaviours.filter(
-    (b) => b.type === "fieldConditionalOn",
-  );
   if (fieldConditionalOns.length === 0) return false;
 
   let isRequired: boolean = false;
