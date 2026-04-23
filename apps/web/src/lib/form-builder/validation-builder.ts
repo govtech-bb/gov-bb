@@ -120,23 +120,9 @@ export const buildFieldValidationProperties = (
 
   return {
     onBlur({ value, fieldApi }) {
-      const results: ValidationResults = {
-        hasError: false,
-        errors: [],
-      };
-
-      const fieldId = field.id;
       if (field.htmlType === "date") {
         const dateValueInput = value as DateValueInput;
-        if (
-          !isDateComplete({
-            value: dateValueInput,
-            fieldId,
-            validations,
-            results,
-          })
-        )
-          return;
+        if (!isDateComplete(dateValueInput)) return;
 
         const dateValue: DateValue = value as DateValue;
         const date: Date | null = dateValueToDate(dateValue);
