@@ -9,6 +9,7 @@ export type {
   FieldValidation,
   FormValidation,
   FieldValidationProperties,
+  FieldValidationErrors,
   ValidationResults,
   ValidationArgs,
   DateValueInput,

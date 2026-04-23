@@ -39,6 +39,8 @@ export interface ValidationArgs<TValueType = unknown> {
   results: ValidationResults;
 }
 
+export type FieldValidationErrors = Record<string, string[]>;
+
 export interface DateValueInput {
   day?: number;
   month?: number;

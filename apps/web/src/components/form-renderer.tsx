@@ -1,4 +1,4 @@
-import { FormRendererProps } from "@web/types";
+import { FieldValidationErrors, FormRendererProps } from "@web/types";
 import { useNavigate } from "@tanstack/react-router";
 import FieldRenderer from "./field-renderer";
 import designSystem from "../lib/design-system";
@@ -64,11 +64,15 @@ export default function FormRenderer({
 
   const handleSubmit = () => {};
 
-  const errors = useStore(form.store, (state) =>
-    currentStep.fields
-      .map((field) => state.fieldMeta[field.id]?.errors ?? [])
-      .flat(),
-  );
+  const errors = useStore(form.store, (state) => {
+    const fieldValidationErrors: FieldValidationErrors = {};
+    for (const field of currentStep.fields) {
+      const fieldErrors = state.fieldMeta[field.id]?.errors ?? [];
+      if (fieldErrors.length === 0) continue;
+      fieldValidationErrors[field.id] = fieldErrors;
+    }
+    return fieldValidationErrors;
+  });
 
   return (
     <div className={designSystem.formRoot}>
