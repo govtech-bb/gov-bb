@@ -1,6 +1,6 @@
 import { useEffect, useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { UseStepGuardProps } from "../types/props.type";
+import { UseStepGuardProps } from "@web/types";
 import {
   getFirstIncompleteStepIndex,
   markStepCompleted,
