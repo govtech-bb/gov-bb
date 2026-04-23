@@ -4,6 +4,7 @@ import FieldRenderer from "./field-renderer";
 import designSystem from "../lib/design-system";
 import React, { useEffect } from "react";
 import ErrorSummary from "./error-summary";
+import { useStore } from "@tanstack/react-form";
 
 export default function FormRenderer({
   form,
@@ -61,8 +62,13 @@ export default function FormRenderer({
     navigateToStep(stepIndex + 1);
   };
 
-  const handleSubmit = () => {
-  };
+  const handleSubmit = () => {};
+
+  const errors = useStore(form.store, (state) =>
+    currentStep.fields
+      .map((field) => state.fieldMeta[field.id]?.errors ?? [])
+      .flat(),
+  );
 
   return (
     <div className={designSystem.formRoot}>
@@ -71,16 +77,25 @@ export default function FormRenderer({
       <h1>{currentStep.title}</h1>
       {/* {step.description && <p>{step.description}</p>} */}
       {/* TODO: Pass in a complete list of errors */}
-      <ErrorSummary />
+      <ErrorSummary errors={errors} />
 
       <div className={designSystem.formStep}>
         {currentStep.fields.map((field) => (
-          <FieldRenderer key={field.id} form={form} field={field} validationProperties={formMeta.validationProperties[field.id]} />
+          <FieldRenderer
+            key={field.id}
+            form={form}
+            field={field}
+            validationProperties={formMeta.validationProperties[field.id]}
+          />
         ))}
 
         <div className={designSystem.formNavigation}>
           {!hidePrevious && (
-            <button data-variant="secondary" type="button" onClick={handlePrevious}>
+            <button
+              data-variant="secondary"
+              type="button"
+              onClick={handlePrevious}
+            >
               Previous
             </button>
           )}
