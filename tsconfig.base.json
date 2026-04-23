@@ -5,14 +5,13 @@
     "sourceMap": true,
     "declaration": true,
     "moduleResolution": "node",
+    "ignoreDeprecations": "5.0",
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "importHelpers": true,
     "target": "ES2022",
     "module": "ESNext",
-    "lib": [
-      "ES2022"
-    ],
+    "lib": ["ES2022"],
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
@@ -21,25 +20,13 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "paths": {
-      "@govtech-bb/form-types": [
-        "packages/form-types/src/index.ts"
-      ],
-      "@govtech-bb/form-conditions": [
-        "packages/form-conditions/src/index.ts"
-      ],
-      "@web/types": [
-        "apps/web/src/types/index.ts"
-      ],
-      "@web/lib": [
-        "apps/web/src/lib/form-builder"
-      ],
-      "@web/components": [
-        "apps/web/src/components"
-      ]
+      "@govtech-bb/form-types": ["packages/form-types/src/index.ts"],
+      "@govtech-bb/form-conditions": ["packages/form-conditions/src/index.ts"],
+      "@govtech-bb/form-validation": ["packages/form-validation/src/index.ts"],
+      "@web/types": ["apps/web/src/types/index.ts"],
+      "@web/lib": ["apps/web/src/lib/form-builder"],
+      "@web/components": ["apps/web/src/components"]
     }
   },
-  "exclude": [
-    "node_modules",
-    "tmp"
-  ]
+  "exclude": ["node_modules", "tmp"]
 }

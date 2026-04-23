@@ -1,20 +1,27 @@
-import type { Primitive, FieldOverrides } from '@govtech-bb/form-types';
-import type { Block } from '@govtech-bb/form-types';
-import type { FormStep, RecipeFormStep, RecipeFormStepField } from '@govtech-bb/form-types';
-import type { ServiceContract, ServiceContractRecipe } from '@govtech-bb/form-types';
-import type { RegistryEntry } from './builtins';
+import type { Primitive, FieldOverrides } from "@govtech-bb/form-types";
+import type { Block } from "@govtech-bb/form-types";
+import type {
+  FormStep,
+  RecipeFormStep,
+  RecipeFormStepField,
+} from "@govtech-bb/form-types";
+import type {
+  ServiceContract,
+  ServiceContractRecipe,
+} from "@govtech-bb/form-types";
+import type { RegistryEntry } from "./builtins";
 
 export type Resolver = (ref: string) => Promise<RegistryEntry | null>;
 
 export class UnresolvableComponentError extends Error {
   constructor(public readonly ref: string) {
     super(`Unknown component ref: ${ref}`);
-    this.name = 'UnresolvableComponentError';
+    this.name = "UnresolvableComponentError";
   }
 }
 
 function isBlock(entry: RegistryEntry): entry is Block {
-  return 'blockId' in entry;
+  return "blockId" in entry;
 }
 
 function applyPrimitiveOverrides(
@@ -47,17 +54,23 @@ export function mergeEntry(
   if (!field.overrides) return cloned;
 
   if (isBlock(cloned)) {
-    return applyBlockOverrides(cloned, field.overrides as Record<string, FieldOverrides>);
+    return applyBlockOverrides(
+      cloned,
+      field.overrides as Record<string, FieldOverrides>,
+    );
   }
 
-  return applyPrimitiveOverrides(cloned as Primitive, field.overrides as FieldOverrides);
+  return applyPrimitiveOverrides(
+    cloned as Primitive,
+    field.overrides as FieldOverrides,
+  );
 }
 
 export async function hydrateStep(
   step: RecipeFormStep,
   resolver: Resolver,
 ): Promise<FormStep> {
-  const elements = await Promise.all(
+  const resolved = await Promise.all(
     step.elements.map(async (field) => {
       const entry = await resolver(field.ref);
       if (!entry) throw new UnresolvableComponentError(field.ref);
@@ -65,12 +78,16 @@ export async function hydrateStep(
     }),
   );
 
+  const elements: Primitive[] = resolved.flatMap((entry) =>
+    isBlock(entry) ? entry.elements : [entry as Primitive],
+  );
+
   return {
     stepId: step.stepId,
     title: step.title,
     description: step.description,
     behaviours: step.behaviours,
-    elements: elements as Primitive[],
+    elements,
   };
 }
 

@@ -13,6 +13,12 @@
         "main": "packages/form-conditions/src/index.ts"
       }
     },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "options": {
+        "jestConfig": "packages/form-conditions/jest.config.ts"
+      }
+    },
     "lint": {
       "executor": "@nx/eslint:lint",
       "options": {
