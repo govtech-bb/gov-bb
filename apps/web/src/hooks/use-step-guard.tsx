@@ -14,7 +14,7 @@ export function useStepGuard({
 }: UseStepGuardProps) {
   const navigate = useNavigate({ from: "/forms/$formId/" });
 
-  const findStepIndexById = useCallback(
+  const getStepIndexById = useCallback(
     (id: string) => steps.findIndex((s) => s.stepId === id),
     [steps],
   );
@@ -58,7 +58,7 @@ export function useStepGuard({
       return;
     }
 
-    const requestedIndex = findStepIndexById(stepId);
+    const requestedIndex = getStepIndexById(stepId);
     const safeIndex = getSafeStepIndex(
       requestedIndex >= 0 ? requestedIndex : 0,
     );
@@ -71,7 +71,7 @@ export function useStepGuard({
   }, [
     stepId,
     steps,
-    findStepIndexById,
+    getStepIndexById,
     getSafeStepIndex,
     navigateToStep,
     setStepIndex,
