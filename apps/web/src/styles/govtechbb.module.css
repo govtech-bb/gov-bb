@@ -102,6 +102,7 @@
   border: 0.125rem solid var(--color-black-00);
   border-radius: 0.25rem;
   padding: var(--spacing-s);
+  background-color: #fff;
 }
 
 .formRoot input:hover,
