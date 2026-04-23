@@ -1,14 +1,9 @@
 import { FormRendererProps } from "@web/types";
-import { useNavigate } from "@tanstack/react-router";
 import FieldRenderer from "./field-renderer";
 import designSystem from "../lib/design-system";
 import React, { useEffect } from "react";
 import ErrorSummary from "./error-summary";
-import {
-  getLastCompletedStep,
-  isStepCompleted,
-  markStepCompleted,
-} from "../lib/session-storage";
+import { useStepGuard } from "../hooks/use-step-guard";
 
 export default function FormRenderer({
   form,
@@ -17,68 +12,12 @@ export default function FormRenderer({
 }: FormRendererProps) {
   const [stepIndex, setStepIndex] = React.useState(0);
   const [hidePrevious, setHidePrevious] = React.useState(true);
-  const navigate = useNavigate({ from: "/forms/$formId/" });
-
-  const findStepIndexbyId = (stepId: string) => {
-    return formMeta.steps.findIndex((formStep) => {
-      return formStep.stepId === stepId;
-    });
-  };
-
-  const navigateToStep = (nextStepIndex: number) => {
-    if (nextStepIndex < 0 || nextStepIndex >= formMeta.steps.length) {
-      return;
-    }
-
-    const nextStepId = formMeta.steps[nextStepIndex].stepId;
-    setStepIndex(nextStepIndex);
-
-    void navigate({
-      search: (prev) => ({
-        ...prev,
-        step: nextStepId,
-      }),
-    });
-  };
-
-  useEffect(() => {
-    if (stepId) {
-      const requestedStepIndex = findStepIndexbyId(stepId);
-
-      setStepIndex(requestedStepIndex >= 0 ? requestedStepIndex : 0);
-
-      if (!isStepCompleted(form._formId, stepId)) {
-        const previousStepIndex = requestedStepIndex - 1;
-
-        if (
-          previousStepIndex >= 0 &&
-          !isStepCompleted(
-            form._formId,
-            formMeta.steps[previousStepIndex].stepId,
-          )
-        ) {
-          const lastCompletedStepId = getLastCompletedStep(
-            form._formId,
-            formMeta.steps,
-          );
-          const lastCompletedStepIndex = lastCompletedStepId
-            ? findStepIndexbyId(lastCompletedStepId)
-            : -1;
-          setStepIndex(
-            lastCompletedStepIndex >= 0 ? lastCompletedStepIndex : 0,
-          );
-          navigateToStep(
-            lastCompletedStepIndex >= 0 ? lastCompletedStepIndex : 0,
-          );
-          return;
-        }
-      }
-
-      return;
-    }
-
-    setStepIndex(0);
-  }, [stepId, formMeta.steps]);
+  const { navigateToStep, completeAndContinue } = useStepGuard({
+    formId: form._formId,
+    steps: formMeta.steps,
+    stepId,
+    setStepIndex,
+  });
 
   useEffect(() => {
     if (stepIndex === 0) {
@@ -96,8 +35,7 @@ export default function FormRenderer({
 
   const handleContinue = () => {
     // TODO: Validate current step before marking as completed and navigating to the next step
-    markStepCompleted(form._formId, currentStep.stepId);
-    navigateToStep(stepIndex + 1);
+    completeAndContinue(currentStep.stepId, stepIndex);
   };
 
   const handleSubmit = () => {};
