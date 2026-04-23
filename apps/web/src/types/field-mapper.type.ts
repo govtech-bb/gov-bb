@@ -5,6 +5,7 @@ import {
   Option,
   ValidationRule,
 } from "@govtech-bb/form-types";
+import { FieldValue } from "./validation.type";
 
 export interface ClientPrimitive {
   id: string;
@@ -40,4 +41,4 @@ export interface ClientServiceContract {
   version: string;
 }
 
-export type FormValues = Record<string, unknown>;
+export type FormValues = Record<string, FieldValue>;
