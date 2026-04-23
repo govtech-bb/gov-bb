@@ -191,9 +191,23 @@ export const buildFieldValidationProperties = (
         }
       }
 
-      checkRequired({ fieldId: field.id, value, results, validations });
-      // If the field is required, but has no value, then skip subsequent error checks
-      if (results.hasError) return results.errors;
+      const requiredState = checkRequired({
+        fieldId: field.id,
+        value,
+        results,
+        validations,
+      });
+
+      if (requiredState === "unknownState") return undefined; // Or something
+
+      // If the field is required, but has no value, then skip subsequent error checks and show error.
+      if (requiredState === "requiredAndEmpty" || results.hasError)
+        return results.errors;
+
+      // If field is not required, and is empty, then skip subsequent error checks and show no error
+      if (requiredState === "notRequiredAndEmpty") return undefined;
+
+      // If requiredState === notEmpty, then we can continue validation
 
       if (field.htmlType === "date") {
         // If it passes the required check, then it has all 3 parts

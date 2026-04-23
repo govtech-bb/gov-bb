@@ -21,36 +21,48 @@ const getValidationErrorOr = (
 ): string =>
   (config.error || customError) ?? `Unknown error has occurred for ${fieldId}`;
 
+export type RequiredState =
+  | "requiredAndEmpty"
+  | "notRequiredAndEmpty"
+  | "notEmpty"
+  | "unknownState";
+
+export const valueIsEmpty = (value: FieldValue): boolean | undefined => {
+  if (typeof value === "string" || Array.isArray(value))
+    return value.length === 0; // If required and no content, flag it.
+  else if (typeof value === "boolean")
+    return value; // It's a boolean. If it's required and true, then that's fine.
+  else if (typeof value === "number") return value.toString().length === 0;
+  else if ("day" in value || "month" in value || "year" in value) {
+    // Checking for DateValueInput
+    return !isDateComplete(value); // need to negate
+  } else {
+    return undefined;
+  }
+};
+
 export const checkRequired = ({
   fieldId,
   value,
   results,
   validations,
-}: ValidationArgs<FieldValue>) => {
+}: ValidationArgs<FieldValue>): RequiredState => {
   const required = validations.required;
-  if (!required || !required.value) return;
-  let requiredAndEmpty: boolean = false;
 
-  if (typeof value === "string" || Array.isArray(value))
-    requiredAndEmpty = value.length === 0; // If required and no content, flag it.
-  else if (typeof value === "boolean")
-    requiredAndEmpty = value; // It's a boolean. If it's required and true, then that's fine.
-  else if (typeof value === "number")
-    requiredAndEmpty = value.toString().length === 0;
-  else if ("day" in value || "month" in value || "year" in value) {
-    requiredAndEmpty = !isDateComplete({
-      fieldId,
-      value,
-      results,
-      validations,
-    }); // need to negate
-  } else {
+  const isEmpty = valueIsEmpty(value);
+  if (isEmpty === undefined) {
     console.error(`Value ${value} for field ${fieldId} is unknown.`);
+    return "unknownState";
   }
 
-  if (!requiredAndEmpty) return;
-  results.hasError = true;
-  results.errors.push(getValidationErrorOr(fieldId, required));
+  if (required && required.value && isEmpty) {
+    results.hasError = true;
+    results.errors.push(getValidationErrorOr(fieldId, required));
+    return "requiredAndEmpty";
+  }
+  if (required && !required.value && isEmpty) return "notRequiredAndEmpty";
+
+  return "notEmpty";
 };
 
 export const checkLength = ({
@@ -187,25 +199,12 @@ const parseDateString = (dateStr: string): Date | null => {
   return new Date(year, month - 1, day);
 };
 
-export const isDateComplete = ({
-  value,
-  validations,
-  results,
-  fieldId,
-}: ValidationArgs<DateValueInput>): boolean => {
-  if (
+export const isDateComplete = (value: DateValueInput): boolean => {
+  return (
     value.day !== undefined &&
     value.month !== undefined &&
     value.year !== undefined
-  ) {
-    return true;
-  }
-
-  if (validations.required && validations.required.value) {
-    results.hasError = true;
-    results.errors.push(getValidationErrorOr(fieldId, validations.required));
-  }
-  return false;
+  );
 };
 
 export const checkDatePast = ({
