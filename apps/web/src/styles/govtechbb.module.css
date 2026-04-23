@@ -386,3 +386,46 @@
   color: var(--color-red-00);
   text-decoration: underline;
 }
+
+.reviewStep .reviewStepTitle {
+  display: flex;
+  gap: var(--spacing-xm);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.formRoot .reviewStep h2 {
+  font-size: var(--font-size-h2);
+  line-height: var(--line-height-h2);
+  font-weight: var(--font-weight-bold);
+  margin: 0;
+}
+
+.reviewStepTitle a {
+  text-decoration: underline;
+  color: var(--color-teal-00);
+}
+
+.formRoot .reviewFieldTable {
+  width: 100%;
+}
+
+.formRoot .reviewFieldTable tr {
+}
+
+.formRoot .reviewFieldLabel {
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  font-weight: var(--font-weight-bold);
+  width: 40%;
+  padding: var(--spacing-xs) 0;
+  text-align: left;
+}
+
+.formRoot .reviewFieldValue {
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  font-weight: var(--font-weight-normal);
+  padding: var(--spacing-xs) 0;
+  text-align: left;
+}

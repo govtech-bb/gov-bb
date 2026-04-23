@@ -50,6 +50,43 @@ export default function FormRenderer({
       <ErrorSummary />
 
       <div className={designSystem.formStep}>
+        {currentStep.stepId === "check-your-answers" && (
+          <div className={designSystem.review}>
+            {formMeta.steps
+              .filter(
+                (step) =>
+                  step.stepId !== "check-your-answers" &&
+                  step.stepId !== "declaration",
+              )
+              .map((step) => (
+                <div key={step.stepId} className={designSystem.reviewStep}>
+                  <div className={designSystem.reviewStepTitle}>
+                    <h2>{step.title}</h2>
+                    <a href="#">Change</a>
+                  </div>
+
+                  <table className={designSystem.reviewFieldTable}>
+                    <tbody>
+                      {step.fields.map((field) => (
+                        <tr
+                          key={field.id}
+                          className={designSystem.reviewFieldRow}
+                        >
+                          <td className={designSystem.reviewFieldLabel}>
+                            {field.label}
+                          </td>
+                          <td className={designSystem.reviewFieldValue}>
+                            Placeholder
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ))}
+          </div>
+        )}
+
         {currentStep.fields.map((field) => (
           <FieldRenderer
             key={field.id}
