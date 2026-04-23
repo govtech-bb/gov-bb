@@ -2,7 +2,7 @@ import { useEffect, useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { UseStepGuardProps } from "../types/props.type";
 import {
-  getLastCompletedStep,
+  getFirstIncompleteStepIndex,
   markStepCompleted,
 } from "../lib/session-storage";
 
@@ -20,13 +20,8 @@ export function useStepGuard({
   );
 
   const getMaxAllowedStepIndex = useCallback(() => {
-    const lastCompletedStepId = getLastCompletedStep(formId, steps);
-
-    if (!lastCompletedStepId) return 0;
-
-    const index = findStepIndexById(lastCompletedStepId);
-    return index + 1;
-  }, [formId, steps, findStepIndexById]);
+    return getFirstIncompleteStepIndex(formId, steps);
+  }, [formId, steps]);
 
   const getSafeStepIndex = useCallback(
     (requestedIndex: number) => {
@@ -40,25 +35,26 @@ export function useStepGuard({
     (requestedIndex: number) => {
       const safeIndex = getSafeStepIndex(requestedIndex);
 
-      if (safeIndex >= steps.length) return;
-
-      const nextStepId = steps[safeIndex].stepId;
-
       setStepIndex(safeIndex);
 
-      void navigate({
-        search: (prev) => ({
-          ...prev,
-          step: nextStepId,
-        }),
-      });
+      // Only update route if within valid range
+      if (safeIndex < steps.length) {
+        const nextStepId = steps[safeIndex].stepId;
+
+        void navigate({
+          search: (prev) => ({
+            ...prev,
+            step: nextStepId,
+          }),
+        });
+      }
     },
     [getSafeStepIndex, steps, navigate, setStepIndex],
   );
 
   useEffect(() => {
     if (!stepId) {
-      setStepIndex(0);
+      navigateToStep(0);
       return;
     }
 

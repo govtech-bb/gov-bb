@@ -48,3 +48,17 @@ export function getLastCompletedStep(
   }
   return null;
 }
+
+// Find the index of the first incomplete step
+export function getFirstIncompleteStepIndex(
+  formId: string,
+  steps: { stepId: string }[],
+): number {
+  const completedSteps = getCompletedSteps(formId);
+  for (let i = 0; i < steps.length; i++) {
+    if (!completedSteps.includes(steps[i].stepId)) {
+      return i;
+    }
+  }
+  return steps.length; // all steps completed
+}
