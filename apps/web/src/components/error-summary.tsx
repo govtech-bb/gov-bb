@@ -10,13 +10,18 @@ export default function ErrorSummary({
     return null;
   }
 
+  const formatter = new Intl.ListFormat("en", {
+    style: "long",
+    type: "conjunction",
+  });
+
   const fieldErrorItems: JSX.Element[] = [];
 
   for (const [fieldId, errorMessages] of Object.entries(errors)) {
     if (!errorMessages || errorMessages.length === 0) continue;
     fieldErrorItems.push(
       <li key={fieldId}>
-        <a href={`#${fieldId}`}>{errorMessages.join(", ")}</a>
+        <a href={`#${fieldId}`}>{formatter.format(errorMessages)}</a>
       </li>,
     );
   }
