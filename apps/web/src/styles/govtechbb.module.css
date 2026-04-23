@@ -102,6 +102,7 @@
   border: 0.125rem solid var(--color-black-00);
   border-radius: 0.25rem;
   padding: var(--spacing-s);
+  background-color: #fff;
 }
 
 .formRoot input:hover,
@@ -188,26 +189,23 @@
   padding: 1.25rem 1.75rem;
 }
 
-.formRoot button [data-variant="primary"] {
+.formRoot button[data-variant="primary"] {
   background-color: var(--color-teal-00);
   color: var(--color-white-00);
-  border: 0.125rem solid var(--color-black-00);
 }
 
-.formRoot button [data-variant="secondary"] {
+.formRoot button[data-variant="secondary"] {
   background-color: var(--color-grey-00);
   color: var(--color-black-00);
-  border: 0.125rem solid var(--color-black-00);
 }
 
-.formRoot button [data-variant="primary"]:hover {
+.formRoot button[data-variant="primary"]:hover {
   background-color: #1a777d;
   color: var(--color-white-00);
 }
 
-.formRoot button [data-variant="secondary"]:hover {
+.formRoot button[data-variant="secondary"]:hover {
   background-color: #ccc;
-  box-shadow: inset 0 0 0 4px rgba(0, 0, 0, 0.05);
   color: var(--color-black-00);
 }
 
@@ -355,17 +353,36 @@
   color: var(--color-black-00);
 }
 
-.formRoot fieldset [data-checkbox-group] p {
-  margin: 0;
-  font-size: var(--font-size-body);
-  line-height: var(--line-height-body);
-  font-weight: var(--font-weight-normal);
-  color: var(--color-mid-grey-00);
-}
-
 .formRoot [data-error] {
   color: var(--color-red-00);
   font-size: var(--font-size-body);
-  line-height: var(--line-height-body);
   font-weight: var(--font-weight-normal);
+  margin: 0;
+}
+
+.formRoot [data-error-summary] {
+  color: var(--color-red-00);
+  font-size: var(--font-size-body);
+  border: 0.25rem solid var(--color-red-00);
+  padding: var(--spacing-m);
+  margin-bottom: var(--spacing-s);
+}
+
+.formRoot [data-error-summary] h2 {
+  margin: auto;
+  color: var(--color-black-00);
+  font-size: var(--font-size-h4);
+  line-height: var(--line-height-h4);
+  font-weight: var(--font-weight-bold);
+}
+
+.formRoot [data-error-summary] ul {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;  
+}
+
+.formRoot [data-error-summary] ul li a {
+  color: var(--color-red-00);
+  text-decoration: underline;
 }
