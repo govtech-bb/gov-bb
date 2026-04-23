@@ -114,6 +114,15 @@ The system supports the following field types defined in `packages/form-types/sr
 </fieldset>
 ```
 
+### Navigation Buttons (Primary/Secondary Variants)
+
+```html
+<div class="formNavigation">
+  <button data-variant="secondary" type="button">Previous</button>
+  <button data-variant="primary" type="button">Continue</button>
+</div>
+```
+
 ---
 
 ## CSS Selectors Reference
@@ -130,7 +139,7 @@ The system supports the following field types defined in `packages/form-types/sr
 | `.formRoot input`    | Text-like inputs (text, email, tel, number) |
 | `.formRoot select`   | Select dropdowns                            |
 | `.formRoot textarea` | Multi-line text inputs                      |
-| `.formRoot button`   | Form buttons                                |
+| `.formRoot button`   | Shared button base styles                   |
 | `.formRoot fieldset` | Fieldset containers                         |
 | `.formRoot legend`   | Fieldset legends                            |
 
@@ -150,6 +159,8 @@ The system supports the following field types defined in `packages/form-types/sr
 | `[data-radio-group]`     | Radio group container             |
 | `[data-radio-item]`      | Individual radio option           |
 | `[data-hint]`            | Hint/help text                    |
+| `button[data-variant="primary"]` | Primary action button (Continue/Submit) |
+| `button[data-variant="secondary"]` | Secondary action button (Previous) |
 
 ### Pseudo-classes
 
@@ -512,16 +523,14 @@ DESIGN_SYSTEM=mydesign
 }
 ```
 
-### Buttons
+### Buttons (Variant-Based)
 
 ```css
-/* Default button */
+/* Shared base button */
 .formRoot button {
   font-size: 1.25rem;
   display: inline-flex;
   width: fit-content;
-  background-color: var(--color-teal-00);
-  color: var(--color-white-00);
   border: none;
   border-radius: 0.25rem;
   padding: 1.25rem 1.75rem;
@@ -530,10 +539,28 @@ DESIGN_SYSTEM=mydesign
     color 0.2s ease;
 }
 
-/* Hover state */
-.formRoot button:hover {
+/* Primary action */
+.formRoot button[data-variant="primary"] {
+  background-color: var(--color-teal-00);
+  color: var(--color-white-00);
+}
+
+/* Secondary action */
+.formRoot button[data-variant="secondary"] {
+  background-color: var(--color-grey-00);
+  color: var(--color-black-00);
+}
+
+/* Primary hover */
+.formRoot button[data-variant="primary"]:hover {
   background-color: #1a777d;
   color: var(--color-white-00);
+}
+
+/* Secondary hover */
+.formRoot button[data-variant="secondary"]:hover {
+  background-color: #ccc;
+  color: var(--color-black-00);
 }
 ```
 

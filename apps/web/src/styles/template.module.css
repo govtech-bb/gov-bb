@@ -287,16 +287,40 @@
 /* Buttons */
 .formRoot button {
   /*
-		Primary form action button (for example, Continue/Submit).
-		Define size, color, shape, and cursor behavior.
+		Shared base button styles for all variants.
+		Define shared size, shape, spacing, and interaction behavior.
 	*/
   --placeholder: ;
 }
 
-.formRoot button:hover {
+.formRoot button[data-variant="primary"] {
   /*
-		Hover treatment for the primary button.
+		Primary action button style (Continue/Submit).
+		Set the main call-to-action color treatment.
+	*/
+	--placeholder: ;
+}
+
+.formRoot button[data-variant="secondary"] {
+	/*
+		Secondary action button style (Previous).
+		Use a lower-emphasis button treatment than primary.
+	*/
+	--placeholder: ;
+}
+
+.formRoot button[data-variant="primary"]:hover {
+	/*
+		Hover treatment for the primary variant.
 		Keep transitions subtle and consistent with the design system.
+	*/
+	--placeholder: ;
+}
+
+.formRoot button[data-variant="secondary"]:hover {
+	/*
+		Hover treatment for the secondary variant.
+		Keep this distinct but lower emphasis than primary hover.
 	*/
   --placeholder: ;
 }

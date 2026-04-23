@@ -11,5 +11,8 @@ export type {
   FieldValidationProperties,
   ValidationResults,
   ValidationArgs,
+  DateValueInput,
+  DateValue,
+  FieldValue,
 } from "./validation.type.ts";
 export type { FormRendererProps } from "./props.type.ts";
