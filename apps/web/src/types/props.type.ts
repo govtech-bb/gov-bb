@@ -12,3 +12,10 @@ export type FormRouteProps = {
   contract: ClientServiceContract;
   stepId?: string;
 };
+
+export type UseStepGuardProps = {
+  formId: string;
+  steps: { stepId: string }[];
+  stepId?: string;
+  setStepIndex: React.Dispatch<React.SetStateAction<number>>;
+};
