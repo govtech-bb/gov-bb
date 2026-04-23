@@ -14,17 +14,15 @@ export function useStepGuard({
 }: UseStepGuardProps) {
   const navigate = useNavigate({ from: "/forms/$formId/" });
 
-  const getSafeStepIndex = useCallback(
-    (requestedIndex: number) => {
-      const maxAllowed = getFirstIncompleteStepIndex(formId, steps);
-      return Math.min(Math.max(requestedIndex, 0), maxAllowed);
-    },
-    [formId, steps],
-  );
+  const getSafeStepIndex = (requestedIndex: number) => {
+    const maxAllowed = getFirstIncompleteStepIndex(formId, steps);
+    return Math.min(Math.max(requestedIndex, 0), maxAllowed);
+  };
 
   const navigateToStep = useCallback(
     (requestedIndex: number) => {
-      const safeIndex = getSafeStepIndex(requestedIndex);
+      const maxAllowed = getFirstIncompleteStepIndex(formId, steps);
+      const safeIndex = Math.min(Math.max(requestedIndex, 0), maxAllowed);
 
       setStepIndex(safeIndex);
 
@@ -40,7 +38,7 @@ export function useStepGuard({
         });
       }
     },
-    [getSafeStepIndex, steps, navigate, setStepIndex],
+    [formId, steps, navigate, setStepIndex],
   );
 
   useEffect(() => {
@@ -59,15 +57,12 @@ export function useStepGuard({
     if (safeIndex !== requestedIndex) {
       navigateToStep(safeIndex);
     }
-  }, [stepId, steps, getSafeStepIndex, navigateToStep, setStepIndex]);
+  }, [stepId, steps, navigateToStep, setStepIndex]);
 
-  const completeAndContinue = useCallback(
-    (currentStepId: string, currentIndex: number) => {
-      markStepCompleted(formId, currentStepId);
-      navigateToStep(currentIndex + 1);
-    },
-    [formId, navigateToStep],
-  );
+  const completeAndContinue = (currentStepId: string, currentIndex: number) => {
+    markStepCompleted(formId, currentStepId);
+    navigateToStep(currentIndex + 1);
+  };
 
   return {
     navigateToStep,
