@@ -13,7 +13,7 @@ export default function FormRenderer({
   const [stepIndex, setStepIndex] = React.useState(0);
   const [hidePrevious, setHidePrevious] = React.useState(true);
   const { navigateToStep, completeAndContinue } = useStepGuard({
-    formId: form._formId,
+    formId: formMeta.formId,
     steps: formMeta.steps,
     stepId,
     setStepIndex,
