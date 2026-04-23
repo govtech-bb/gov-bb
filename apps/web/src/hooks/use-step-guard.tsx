@@ -14,21 +14,12 @@ export function useStepGuard({
 }: UseStepGuardProps) {
   const navigate = useNavigate({ from: "/forms/$formId/" });
 
-  const getStepIndexById = useCallback(
-    (id: string) => steps.findIndex((s) => s.stepId === id),
-    [steps],
-  );
-
-  const getMaxAllowedStepIndex = useCallback(() => {
-    return getFirstIncompleteStepIndex(formId, steps);
-  }, [formId, steps]);
-
   const getSafeStepIndex = useCallback(
     (requestedIndex: number) => {
-      const maxAllowed = getMaxAllowedStepIndex();
+      const maxAllowed = getFirstIncompleteStepIndex(formId, steps);
       return Math.min(Math.max(requestedIndex, 0), maxAllowed);
     },
-    [getMaxAllowedStepIndex],
+    [formId, steps],
   );
 
   const navigateToStep = useCallback(
@@ -58,7 +49,7 @@ export function useStepGuard({
       return;
     }
 
-    const requestedIndex = getStepIndexById(stepId);
+    const requestedIndex = steps.findIndex((s) => s.stepId === stepId);
     const safeIndex = getSafeStepIndex(
       requestedIndex >= 0 ? requestedIndex : 0,
     );
@@ -68,14 +59,7 @@ export function useStepGuard({
     if (safeIndex !== requestedIndex) {
       navigateToStep(safeIndex);
     }
-  }, [
-    stepId,
-    steps,
-    getStepIndexById,
-    getSafeStepIndex,
-    navigateToStep,
-    setStepIndex,
-  ]);
+  }, [stepId, steps, getSafeStepIndex, navigateToStep, setStepIndex]);
 
   const completeAndContinue = useCallback(
     (currentStepId: string, currentIndex: number) => {
