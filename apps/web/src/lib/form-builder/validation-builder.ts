@@ -172,12 +172,8 @@ export const buildFieldValidationProperties = (
       if (results.hasError) return results.errors;
 
       if (field.htmlType === "date") {
-        runDateValidations(
-          field.id,
-          value as DateValueInput,
-          validations,
-          results,
-        );
+        // If it passes the required check, then it has all 3 parts
+        runDateValidations(field.id, value as DateValue, validations, results);
         return results.hasError ? results.errors : undefined;
       }
 
@@ -207,13 +203,10 @@ export const buildFieldValidationProperties = (
 
 const runDateValidations = (
   fieldId: string,
-  value: DateValueInput,
+  value: DateValue,
   validations: ValidationRule,
   results: ValidationResults,
 ) => {
-  if (!isDateComplete({ value, validations, results, fieldId }))
-    return results.hasError ? results.errors : undefined;
-
   const dateValue: DateValue = value as DateValue;
   const date: Date | null = dateValueToDate(dateValue);
   if (!date) {

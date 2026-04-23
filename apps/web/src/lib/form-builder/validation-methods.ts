@@ -27,17 +27,30 @@ export const checkRequired = ({
   results,
   validations,
 }: ValidationArgs<FieldValue>) => {
-  if (
-    validations.required &&
-    validations.required.value &&
-    (((typeof value === "string" || Array.isArray(value)) &&
-      value.length === 0) ||
-      (typeof value === "boolean" && value !== true) ||
-      (typeof value === "number" && value.toString().length === 0))
-  ) {
-    results.hasError = true;
-    results.errors.push(getValidationErrorOr(fieldId, validations.required));
+  const required = validations.required;
+  if (!required || !required.value) return;
+  let requiredAndEmpty: boolean = false;
+
+  if (typeof value === "string" || Array.isArray(value))
+    requiredAndEmpty = value.length === 0; // If required and no content, flag it.
+  else if (typeof value === "boolean")
+    requiredAndEmpty = value; // It's a boolean. If it's required and true, then that's fine.
+  else if (typeof value === "number")
+    requiredAndEmpty = value.toString().length === 0;
+  else if ("day" in value || "month" in value || "year" in value) {
+    requiredAndEmpty = !isDateComplete({
+      fieldId,
+      value,
+      results,
+      validations,
+    }); // need to negate
+  } else {
+    console.error(`Value ${value} for field ${fieldId} is unknown.`);
   }
+
+  if (!requiredAndEmpty) return;
+  results.hasError = true;
+  results.errors.push(getValidationErrorOr(fieldId, required));
 };
 
 export const checkLength = ({
