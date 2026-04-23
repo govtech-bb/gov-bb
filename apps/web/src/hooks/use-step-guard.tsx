@@ -19,11 +19,6 @@ export function useStepGuard({
     return Math.min(Math.max(requestedIndex, 0), maxAllowed);
   };
 
-  const completeAndContinue = (currentStepId: string, currentIndex: number) => {
-    markStepCompleted(formId, currentStepId);
-    navigateToStep(currentIndex + 1);
-  };
-
   const navigateToStep = useCallback(
     (requestedIndex: number) => {
       const maxAllowed = getFirstIncompleteStepIndex(formId, steps);
@@ -45,6 +40,11 @@ export function useStepGuard({
     },
     [formId, steps, navigate, setStepIndex],
   );
+
+  const completeAndContinue = (currentStepId: string, currentIndex: number) => {
+    markStepCompleted(formId, currentStepId);
+    navigateToStep(currentIndex + 1);
+  };
 
   useEffect(() => {
     if (!stepId) {
