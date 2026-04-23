@@ -12,11 +12,11 @@ export default function ErrorSummary({
 
   const fieldErrorItems: JSX.Element[] = [];
 
-  for (const [fieldId, errorMessage] of Object.entries(errors)) {
-    if (!errorMessage || errorMessage.length === 0) continue;
+  for (const [fieldId, errorMessages] of Object.entries(errors)) {
+    if (!errorMessages || errorMessages.length === 0) continue;
     fieldErrorItems.push(
       <li key={fieldId}>
-        <a href={`#${fieldId}`}>{errorMessage.join(", ")}</a>
+        <a href={`#${fieldId}`}>{errorMessages.join(", ")}</a>
       </li>,
     );
   }

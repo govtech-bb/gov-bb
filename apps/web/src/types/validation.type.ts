@@ -34,6 +34,7 @@ export interface ValidationResults {
 
 export interface ValidationArgs<TValueType = unknown> {
   fieldId: string;
+  fieldLabel: string;
   value: TValueType;
   validations: ValidationRule;
   results: ValidationResults;
