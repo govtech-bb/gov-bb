@@ -8,7 +8,7 @@ interface FieldValidationContext<TValue = unknown, TFieldApi = unknown> {
 }
 
 export interface FieldValidationProperties<
-  TValue = unknown,
+  TValue = FieldValue,
   TFieldApi = AnyFieldApi,
 > {
   onChange?(input: FieldValidationContext<TValue, TFieldApi>): void; // Method called when a field's value is changed. Set via validations.
@@ -50,3 +50,10 @@ export interface DateValue {
   month: number;
   year: number;
 }
+
+export type FieldValue =
+  | string
+  | number
+  | boolean
+  | Array<string | number | boolean>
+  | DateValueInput;

@@ -21,8 +21,8 @@ export default function FieldRenderer({
   return (
     <form.Field name={field.id} validators={validationProperties}>
       {(f: AnyFieldApi) => {
-        const value = f.state.value;
-
+        // For each field type, be sure to establish...
+        // const value = f.state.value as ValueType | undefined
         const sharedProps = {
           type: field.htmlType,
           name: field.id,
@@ -102,6 +102,7 @@ export default function FieldRenderer({
           case "number":
           case "tel":
           case "email":
+            const value = f.state.value as string | undefined;
             return (
               <div data-field>
                 <div>
@@ -140,6 +141,7 @@ export default function FieldRenderer({
           case "checkbox":
             if (field.options && field.options.length === 1) {
               const option = field.options[0];
+              const value = f.state.value as boolean | undefined;
               return (
                 <div data-checkbox-group>
                   <div>
@@ -163,7 +165,8 @@ export default function FieldRenderer({
               );
             }
 
-            const checkboxValues: string[] = value ?? [];
+            const checkboxValues: string[] =
+              (f.state.value as string[] | undefined) ?? [];
             const toggle = (item: string) => {
               const next = checkboxValues.includes(item)
                 ? checkboxValues.filter((cv) => cv !== item)

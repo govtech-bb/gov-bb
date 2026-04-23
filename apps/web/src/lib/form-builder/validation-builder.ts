@@ -135,7 +135,6 @@ export const buildFieldValidationProperties = (
       }
     },
     onChange({ value, fieldApi }) {
-      // TODO: Modularize this!
       const results: ValidationResults = {
         hasError: false,
         errors: [],

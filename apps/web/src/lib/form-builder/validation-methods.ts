@@ -9,6 +9,7 @@ import {
   DateValue,
   DateValueInput,
   ValidationResults,
+  FieldValue,
 } from "@web/types";
 import z from "zod";
 
@@ -25,7 +26,7 @@ export const checkRequired = ({
   value,
   results,
   validations,
-}: ValidationArgs<string | boolean | number | any[]>) => {
+}: ValidationArgs<FieldValue>) => {
   if (
     validations.required &&
     validations.required.value &&
@@ -416,7 +417,7 @@ export const checkContains = ({
 };
 export const checkConditionalOn = (
   fieldId: string,
-  currentFieldValue: any,
+  currentFieldValue: FieldValue,
   fieldConditionalOns: FieldConditionalOnBehaviour[],
   results: ValidationResults,
   fieldApi: AnyFieldApi,
@@ -446,8 +447,8 @@ export const checkConditionalOn = (
   return isRequired;
 };
 const evaluateCondition = (
-  conditionValue: any,
-  targetFieldValue: string | number | any[] | undefined,
+  conditionValue: FieldValue,
+  targetFieldValue: FieldValue | undefined,
   operation: EqualityOperations | "gt" | "lt" | "contains" | "strictEquality",
 ): boolean => {
   switch (operation) {
@@ -456,8 +457,12 @@ const evaluateCondition = (
       if (
         targetFieldValue &&
         conditionValue &&
-        typeof targetFieldValue != "number" &&
-        targetFieldValue.includes(conditionValue)
+        (Array.isArray(targetFieldValue) ||
+          typeof targetFieldValue === "string") &&
+        (typeof conditionValue === "string" ||
+          typeof conditionValue === "boolean" ||
+          typeof conditionValue === "number") &&
+        targetFieldValue.includes(conditionValue.toString())
       )
         return true;
       else return false;

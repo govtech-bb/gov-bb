@@ -1,3 +1,4 @@
+import React from "react";
 
 export default function NotFound() {
   return (
@@ -5,7 +6,7 @@ export default function NotFound() {
       <div>
         {/* Header */}
         <div>
-          <h1>We couldn't find that page</h1>
+          <h1>We couldn&lsquo;t find that page</h1>
           <p>
             The page you’re looking for may have been moved, removed, or the
             address may have been typed incorrectly.
@@ -23,9 +24,7 @@ export default function NotFound() {
 
         {/* Quick Link Buttons */}
         <div>
-          <a href="/">
-            Go to Homepage
-          </a>
+          <a href="/">Go to Homepage</a>
         </div>
       </div>
     </div>
