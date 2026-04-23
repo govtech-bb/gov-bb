@@ -4,11 +4,11 @@ import { ZodObject, ZodType } from "zod";
 
 interface FieldValidationContext<TValue = unknown, TFieldApi = unknown> {
   value: TValue;
-  fieldApi?: TFieldApi;
+  fieldApi: TFieldApi;
 }
 
 export interface FieldValidationProperties<
-  TValue = unknown,
+  TValue = FieldValue,
   TFieldApi = AnyFieldApi,
 > {
   onChange?(input: FieldValidationContext<TValue, TFieldApi>): void; // Method called when a field's value is changed. Set via validations.
@@ -38,3 +38,22 @@ export interface ValidationArgs<TValueType = unknown> {
   validations: ValidationRule;
   results: ValidationResults;
 }
+
+export interface DateValueInput {
+  day?: number;
+  month?: number;
+  year?: number;
+}
+
+export interface DateValue {
+  day: number;
+  month: number;
+  year: number;
+}
+
+export type FieldValue =
+  | string
+  | number
+  | boolean
+  | Array<string | number | boolean>
+  | DateValueInput;

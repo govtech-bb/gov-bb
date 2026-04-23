@@ -1,9 +1,4 @@
 import {
-  Behaviour,
-  EqualityOperations,
-  ValidationConfig,
-} from "@govtech-bb/form-types";
-import {
   ClientServiceContract,
   ClientPrimitive,
   FieldValidation,
@@ -11,8 +6,35 @@ import {
   FieldValidationProperties,
   ValidationResults,
   ValidationArgs,
+  DateValue,
+  DateValueInput,
 } from "@web/types";
 import z from "zod";
+import {
+  isDateComplete,
+  dateValueToDate,
+  checkDatePast,
+  checkDatePastOrToday,
+  checkDateFuture,
+  checkDateFutureOrToday,
+  checkDateAfter,
+  checkDateBefore,
+  checkDateOnOrAfter,
+  checkDateOnOrBefore,
+  checkMinYear,
+  checkMaxYear,
+  checkSelectionLength,
+  checkRequired,
+  checkConditionalOn,
+  checkLength,
+  checkPattern,
+  checkEmail,
+  checkMinMax,
+  checkComparisons,
+  checkContains,
+} from "./validation-methods";
+import { AnyFieldApi } from "@tanstack/react-form";
+import { ValidationRule } from "@govtech-bb/form-types";
 
 export const buildValidation = (
   contract: ClientServiceContract,
@@ -73,34 +95,95 @@ export const buildFieldValidationProperties = (
     ) ?? [];
 
   return {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    onBlur(_input) {},
+    onBlur({ value, fieldApi }) {
+      const results: ValidationResults = {
+        hasError: false,
+        errors: [],
+      };
+
+      const fieldId = field.id;
+      if (field.htmlType === "date") {
+        const dateValueInput = value as DateValueInput;
+        if (
+          !isDateComplete({
+            value: dateValueInput,
+            fieldId,
+            validations,
+            results,
+          })
+        )
+          return;
+
+        const dateValue: DateValue = value as DateValue;
+        const date: Date | null = dateValueToDate(dateValue);
+        if (!date) return;
+
+        const year = date.getFullYear();
+        const month = date.getMonth() + 1;
+        const day = date.getDate();
+
+        // Used if the user enters a date like 10/13/2008,
+        // which when converted to a date object, will be 10/1/2009
+        // Aim is to have the field reflect that change.
+        if (
+          year != dateValue.year ||
+          month != dateValue.month ||
+          day != dateValue.day
+        )
+          fieldApi.handleChange({ day, month, year });
+        return undefined;
+      }
+    },
     onChange({ value, fieldApi }) {
       const results: ValidationResults = {
         hasError: false,
         errors: [],
       };
 
-      if (field.htmlType === "checkbox") {
-        if (Array.isArray(value)) {
-          const args: ValidationArgs<string[]> = {
-            fieldId: field.id,
-            value,
-            validations,
-            results,
-          };
+      let conditionalRequired: boolean = false;
 
-          checkSelectionLength(args);
-        } else {
-          checkRequired({
-            fieldId: field.id,
-            value: Boolean(value),
+      if (behaviours && behaviours.length > 0) {
+        const fieldConditionalOns = behaviours.filter(
+          (b) => b.type === "fieldConditionalOn",
+        );
+
+        if (fieldConditionalOns.length > 0) {
+          // Checks if there is a field conditional on, that passes and affect required state
+          conditionalRequired = checkConditionalOn(
+            field.id,
+            value,
+            fieldConditionalOns,
             results,
-            validations,
-          });
+            fieldApi,
+          );
+
+          if (conditionalRequired) {
+            if (!validations.required)
+              validations.required = {
+                value: true,
+                error: `${field.id} is required.`,
+              };
+          }
         }
+      }
+
+      checkRequired({ fieldId: field.id, value, results, validations });
+      // If the field is required, but has no value, then skip subsequent error checks
+      if (results.hasError) return results.errors;
+
+      if (field.htmlType === "date") {
+        // If it passes the required check, then it has all 3 parts
+        runDateValidations(field.id, value as DateValue, validations, results);
         return results.hasError ? results.errors : undefined;
       }
+
+      if (field.htmlType === "checkbox") {
+        if (typeof value !== "boolean" || !Array.isArray(value))
+          return undefined;
+        runCheckboxValidations(field.id, value, validations, results);
+        return results.hasError ? results.errors : undefined;
+      }
+
       if (typeof value === "string") {
         const args: ValidationArgs<string> = {
           fieldId: field.id,
@@ -109,29 +192,7 @@ export const buildFieldValidationProperties = (
           results,
         };
 
-        let isRequired: boolean = validations.required?.value ?? false;
-
-        if (behaviours && behaviours.length > 0) {
-          isRequired = checkConditionalOn(
-            field.id,
-            value,
-            behaviours,
-            results,
-            fieldApi,
-          );
-        }
-
-        if (isRequired === false && value.length === 0) return undefined;
-        if (isRequired && !results.hasError) {
-          checkRequired(args);
-        }
-
-        // If the field is required, but has no value, then skip subsequent error checks
-        if (results.hasError) return results.errors;
-        checkLength(args);
-        checkPattern(args);
-        checkEmail(args);
-        checkMinMax(args);
+        runStringValidations(args, fieldApi);
       }
 
       return results.hasError ? results.errors : undefined;
@@ -140,196 +201,71 @@ export const buildFieldValidationProperties = (
   };
 };
 
-// Modular Methods
-
-const getValidationErrorOr = (
+const runDateValidations = (
   fieldId: string,
-  config: ValidationConfig,
-  customError?: string,
-): string =>
-  (config.error || customError) ?? `Unknown error has occurred for ${fieldId}`;
-
-const checkRequired = ({
-  fieldId,
-  value,
-  results,
-  validations,
-}: ValidationArgs<string | boolean | number>) => {
-  if (
-    validations.required &&
-    validations.required.value &&
-    ((typeof value === "string" && value.length === 0) ||
-      (typeof value === "boolean" && value !== true) ||
-      (typeof value === "number" && value.toString().length === 0))
-  ) {
+  value: DateValue,
+  validations: ValidationRule,
+  results: ValidationResults,
+) => {
+  const dateValue: DateValue = value as DateValue;
+  const date: Date | null = dateValueToDate(dateValue);
+  if (!date) {
     results.hasError = true;
-    results.errors.push(getValidationErrorOr(fieldId, validations.required));
-  }
-};
-
-const checkLength = ({
-  fieldId,
-  value,
-  results,
-  validations,
-}: ValidationArgs<string>) => {
-  const minLength = validations.minLength;
-  const maxLength = validations.maxLength;
-
-  if (minLength && minLength.value && value.length < minLength.value) {
-    results.hasError = true;
-    results.errors.push(getValidationErrorOr(fieldId, minLength));
+    results.errors.push(`${fieldId} is an invalid date`);
+    return;
   }
 
-  if (maxLength && maxLength.value && value.length > maxLength.value) {
-    results.hasError = true;
-    results.errors.push(getValidationErrorOr(fieldId, maxLength));
-  }
-};
-
-const checkSelectionLength = ({
-  fieldId,
-  value,
-  results,
-  validations,
-}: ValidationArgs<string[]>) => {
-  const minSelection = validations.minSelection;
-  const maxSelection = validations.maxSelection;
-
-  if (minSelection && minSelection.value && value.length < minSelection.value) {
-    results.hasError = true;
-    results.errors.push(getValidationErrorOr(fieldId, minSelection));
-  }
-
-  if (maxSelection && maxSelection.value && value.length > maxSelection.value) {
-    results.hasError = true;
-    results.errors.push(getValidationErrorOr(fieldId, maxSelection));
-  }
-};
-
-const checkPattern = ({
-  fieldId,
-  value,
-  results,
-  validations,
-}: ValidationArgs<string>) => {
-  const pattern = validations.pattern;
-  if (!pattern) return;
-
-  const re = new RegExp(pattern.value);
-
-  const match = re.test(value);
-  if (!match) {
-    results.hasError = true;
-    results.errors.push(getValidationErrorOr(fieldId, pattern));
-  }
-};
-
-const checkEmail = ({
-  fieldId,
-  value,
-  results,
-  validations,
-}: ValidationArgs<string>) => {
-  const email = validations.email;
-  if (!email) return;
-
-  try {
-    z.email().parse(value);
-  } catch {
-    results.hasError = true;
-    results.errors.push(getValidationErrorOr(fieldId, email));
-  }
-};
-
-const checkMinMax = ({
-  fieldId,
-  value,
-  results,
-  validations,
-}: ValidationArgs<string | number>) => {
-  const min = validations.min;
-  const max = validations.max;
-
-  const stringToNumCheck = (value: string | number): number | null => {
-    if (typeof value === "number") return value;
-    const num = parseFloat(value);
-    if (isNaN(num)) {
-      results.hasError = true;
-      results.errors.push(`${value} is not a valid number`);
-      return null;
-    }
-    return num;
+  const argsDate: ValidationArgs<Date> = {
+    value: date,
+    fieldId,
+    validations,
+    results,
   };
 
-  // Need to handle if min.value or max.value is 0, which is falsy.
-  if (min && min.value?.toString().length >= 1) {
-    const num = stringToNumCheck(value);
-    if (num && num < min.value) {
-      results.hasError = true;
-      results.errors.push(getValidationErrorOr(fieldId, min));
-    }
-  }
+  checkDatePast(argsDate);
+  checkDatePastOrToday(argsDate);
+  checkDateFuture(argsDate);
+  checkDateFutureOrToday(argsDate);
+  checkDateAfter(argsDate);
+  checkDateBefore(argsDate);
+  checkDateOnOrAfter(argsDate);
+  checkDateOnOrBefore(argsDate);
 
-  if (max && max.value?.toString().length >= 1) {
-    const num = stringToNumCheck(value);
-    if (num && num > max.value) {
-      results.hasError = true;
-      results.errors.push(getValidationErrorOr(fieldId, max));
-    }
-  }
+  const argsDateValue: ValidationArgs<DateValue> = {
+    value: dateValue,
+    fieldId,
+    validations,
+    results,
+  };
+
+  checkMinYear(argsDateValue);
+  checkMaxYear(argsDateValue);
 };
 
-const checkConditionalOn = (
+const runCheckboxValidations = (
   fieldId: string,
-  currentFieldValue: any,
-  behaviours: Behaviour[],
+  value: string[] | boolean,
+  validations: ValidationRule,
   results: ValidationResults,
-  fieldApi: any,
-): boolean => {
-  const fieldConditionalOns = behaviours.filter(
-    (b) => b.type === "fieldConditionalOn",
-  );
-  if (fieldConditionalOns.length === 0) return false;
-
-  let isRequired: boolean = false;
-
-  for (const condition of fieldConditionalOns) {
-    const otherValue = fieldApi.form.getFieldValue(condition.targetFieldId);
-    const passesCondition = evaluateCondition(
-      condition.value,
-      otherValue,
-      condition.operator,
-    );
-    if (passesCondition && currentFieldValue.toString().length == 0) {
-      results.hasError = true;
-      results.errors = [
-        `${fieldId} is required because the value of ${condition.targetFieldId} is ${condition.operator} ${condition.value}`,
-      ];
-      isRequired = true;
-    }
+) => {
+  if (Array.isArray(value)) {
+    checkSelectionLength({
+      fieldId,
+      value,
+      validations,
+      results,
+    });
   }
-
-  return isRequired;
 };
 
-const evaluateCondition = (
-  sourceValue: any,
-  targetValue: string | any[],
-  operation: EqualityOperations,
-): boolean => {
-  switch (operation) {
-    case "in":
-    case "exists":
-      if (targetValue.includes(sourceValue)) return true;
-      else return false;
-    case "equal":
-      if (sourceValue == targetValue) return true;
-      else return false;
-    case "notEqual":
-      if (sourceValue != targetValue) return true;
-      else return false;
-    default:
-      return false;
-  }
+const runStringValidations = (
+  args: ValidationArgs<string>,
+  fieldApi: AnyFieldApi,
+) => {
+  checkLength(args);
+  checkPattern(args);
+  checkEmail(args);
+  checkMinMax(args);
+  checkComparisons(args, fieldApi);
+  checkContains(args);
 };

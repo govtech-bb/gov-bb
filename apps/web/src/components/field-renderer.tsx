@@ -1,5 +1,9 @@
 import { AnyFieldApi } from "@tanstack/react-form";
-import { ClientPrimitive, FieldValidationProperties } from "@web/types";
+import {
+  ClientPrimitive,
+  DateValue,
+  FieldValidationProperties,
+} from "@web/types";
 import React from "react";
 import ErrorMessage from "./error-message";
 
@@ -17,8 +21,8 @@ export default function FieldRenderer({
   return (
     <form.Field name={field.id} validators={validationProperties}>
       {(f: AnyFieldApi) => {
-        const value = f.state.value;
-
+        // For each field type, be sure to establish...
+        // const value = f.state.value as ValueType | undefined
         const sharedProps = {
           type: field.htmlType,
           name: field.id,
@@ -30,6 +34,7 @@ export default function FieldRenderer({
 
         switch (field.htmlType) {
           case "date": {
+            const value = f.state.value as DateValue | undefined;
             return (
               <fieldset data-field data-date-field>
                 <legend>{field.label}</legend>
@@ -39,17 +44,54 @@ export default function FieldRenderer({
                 <div data-date-group>
                   <div data-date-part>
                     <label>Day</label>
-                    <input />
+                    <input
+                      {...sharedProps}
+                      value={value?.day ?? ""}
+                      type="number"
+                      min={1}
+                      max={31}
+                      onChange={(e) => {
+                        const day = Number(e.target.value) ?? undefined;
+                        f.handleChange({
+                          ...value,
+                          day,
+                        });
+                      }}
+                    />
                   </div>
 
                   <div data-date-part>
                     <label>Month</label>
-                    <input />
+                    <input
+                      {...sharedProps}
+                      type="number"
+                      value={value?.month ?? ""}
+                      min={1}
+                      max={12}
+                      onChange={(e) => {
+                        const month = Number(e.target.value) ?? undefined;
+                        f.handleChange({
+                          ...value,
+                          month,
+                        });
+                      }}
+                    />
                   </div>
 
                   <div data-date-part>
                     <label>Year</label>
-                    <input />
+                    <input
+                      {...sharedProps}
+                      type="number"
+                      value={value?.year ?? ""}
+                      onChange={(e) => {
+                        const year = Number(e.target.value) ?? undefined;
+                        f.handleChange({
+                          ...value,
+                          year,
+                        });
+                      }}
+                    />
                   </div>
                 </div>
               </fieldset>
@@ -60,6 +102,7 @@ export default function FieldRenderer({
           case "number":
           case "tel":
           case "email":
+            const value = f.state.value as string | undefined;
             return (
               <div data-field>
                 <div>
@@ -98,6 +141,7 @@ export default function FieldRenderer({
           case "checkbox":
             if (field.options && field.options.length === 1) {
               const option = field.options[0];
+              const value = f.state.value as boolean | undefined;
               return (
                 <div data-checkbox-group>
                   <div>
@@ -121,7 +165,8 @@ export default function FieldRenderer({
               );
             }
 
-            const checkboxValues: string[] = value ?? [];
+            const checkboxValues: string[] =
+              (f.state.value as string[] | undefined) ?? [];
             const toggle = (item: string) => {
               const next = checkboxValues.includes(item)
                 ? checkboxValues.filter((cv) => cv !== item)
