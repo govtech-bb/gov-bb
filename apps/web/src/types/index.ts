@@ -17,3 +17,4 @@ export type {
   FieldValue,
 } from "./validation.type.ts";
 export type { FormRendererProps } from "./props.type.ts";
+export type { UseStepGuardProps } from "./props.type.ts";

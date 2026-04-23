@@ -1,10 +1,10 @@
 import { FieldValidationErrors, FormRendererProps } from "@web/types";
-import { useNavigate } from "@tanstack/react-router";
 import FieldRenderer from "./field-renderer";
 import designSystem from "../lib/design-system";
 import React, { useEffect } from "react";
 import ErrorSummary from "./error-summary";
 import { useStore } from "@tanstack/react-form";
+import { useStepGuard } from "../hooks/use-step-guard";
 
 export default function FormRenderer({
   form,
@@ -13,20 +13,12 @@ export default function FormRenderer({
 }: FormRendererProps) {
   const [stepIndex, setStepIndex] = React.useState(0);
   const [hidePrevious, setHidePrevious] = React.useState(true);
-  const navigate = useNavigate({ from: "/forms/$formId/" });
-
-  useEffect(() => {
-    if (stepId) {
-      const requestedStepIndex = formMeta.steps.findIndex((formStep) => {
-        return formStep.stepId === stepId;
-      });
-
-      setStepIndex(requestedStepIndex >= 0 ? requestedStepIndex : 0);
-      return;
-    }
-
-    setStepIndex(0);
-  }, [stepId, formMeta.steps]);
+  const { navigateToStep, completeAndContinue } = useStepGuard({
+    formId: formMeta.formId,
+    steps: formMeta.steps,
+    stepId,
+    setStepIndex,
+  });
 
   useEffect(() => {
     if (stepIndex === 0) {
@@ -38,28 +30,13 @@ export default function FormRenderer({
 
   const currentStep = formMeta.steps[stepIndex];
 
-  const navigateToStep = (nextStepIndex: number) => {
-    if (nextStepIndex < 0 || nextStepIndex >= formMeta.steps.length) {
-      return;
-    }
-
-    const nextStepId = formMeta.steps[nextStepIndex].stepId;
-    setStepIndex(nextStepIndex);
-
-    void navigate({
-      search: (prev) => ({
-        ...prev,
-        step: nextStepId,
-      }),
-    });
-  };
-
   const handlePrevious = () => {
     navigateToStep(stepIndex - 1);
   };
 
   const handleContinue = () => {
-    navigateToStep(stepIndex + 1);
+    // TODO: Validate current step before marking as completed and navigating to the next step
+    completeAndContinue(currentStep.stepId, stepIndex);
   };
 
   const handleSubmit = () => {};
