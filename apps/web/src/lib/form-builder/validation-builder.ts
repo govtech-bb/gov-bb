@@ -167,8 +167,9 @@ export const buildFieldValidationProperties = (
         }
       }
 
-      //TODO: Check required for everything here and return early
-      // Required check
+      checkRequired({ fieldId: field.id, value, results, validations });
+      // If the field is required, but has no value, then skip subsequent error checks
+      if (results.hasError) return results.errors;
 
       if (field.htmlType === "date") {
         runDateValidations(
@@ -254,13 +255,6 @@ const runCheckboxValidations = (
   validations: ValidationRule,
   results: ValidationResults,
 ) => {
-  checkRequired({
-    fieldId,
-    value,
-    results,
-    validations,
-  });
-
   if (Array.isArray(value)) {
     checkSelectionLength({
       fieldId,
@@ -275,9 +269,6 @@ const runStringValidations = (
   args: ValidationArgs<string>,
   fieldApi: AnyFieldApi,
 ) => {
-  checkRequired(args);
-  if (args.results.hasError) return;
-  // If the field is required, but has no value, then skip subsequent error checks
   checkLength(args);
   checkPattern(args);
   checkEmail(args);
