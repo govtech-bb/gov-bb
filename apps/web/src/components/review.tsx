@@ -1,7 +1,7 @@
 import designSystem from "../lib/design-system";
 import React from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ReviewProps } from "../types/props.type";
+import { ReviewProps } from "@web/types";
 
 export default function Review({ formMeta, form }: ReviewProps) {
   const navigate = useNavigate({ from: "/forms/$formId/" });
