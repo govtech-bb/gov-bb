@@ -387,7 +387,15 @@
   text-decoration: underline;
 }
 
-.reviewStep .reviewStepTitle {
+/* Review Step Styles */
+.formRoot .reviewStep {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s);
+  width: calc(100% * 2 / 3);
+}
+
+.formRoot .reviewStep .reviewStepTitle {
   display: flex;
   gap: var(--spacing-xm);
   align-items: center;
@@ -401,16 +409,13 @@
   margin: 0;
 }
 
-.reviewStepTitle a {
+.formRoot .reviewStep .reviewStepTitle a {
   text-decoration: underline;
   color: var(--color-teal-00);
 }
 
 .formRoot .reviewFieldTable {
   width: 100%;
-}
-
-.formRoot .reviewFieldTable tr {
 }
 
 .formRoot .reviewFieldLabel {

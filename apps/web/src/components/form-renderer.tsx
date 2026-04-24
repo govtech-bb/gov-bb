@@ -87,7 +87,7 @@ export default function FormRenderer({
                             {field.label}
                           </td>
                           <td className={designSystem.reviewFieldValue}>
-                            Placeholder
+                            {form.state.values[field.id] as string}
                           </td>
                         </tr>
                       ))}
