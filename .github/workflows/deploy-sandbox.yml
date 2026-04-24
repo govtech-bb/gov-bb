@@ -118,35 +118,10 @@ jobs:
           cluster: ${{ env.ECS_CLUSTER }}
           wait-for-service-stability: true
 
-      - name: Clean up old task definition revisions
-        run: |
-          FAMILY=modular-forms-api-sandbox
-          # List all revisions sorted oldest first, keep the last 5
-          REVISIONS=$(aws ecs list-task-definitions \
-            --family-prefix "$FAMILY" \
-            --status ACTIVE \
-            --sort ASC \
-            --region $AWS_REGION \
-            --query taskDefinitionArns \
-            --output json | jq -r '.[]')
-
-          TOTAL=$(echo "$REVISIONS" | wc -l)
-          TO_DELETE=$((TOTAL - 5))
-
-          if [ "$TO_DELETE" -le 0 ]; then
-            echo "✅ Only $TOTAL revision(s) — nothing to clean up"
-            exit 0
-          fi
-
-          echo "$REVISIONS" | head -n "$TO_DELETE" | while read -r ARN; do
-            echo "Deregistering $ARN"
-            aws ecs deregister-task-definition \
-              --task-definition "$ARN" \
-              --region $AWS_REGION \
-              --query taskDefinition.taskDefinitionArn \
-              --output text
-          done
-          echo "✅ Cleaned up $TO_DELETE old revision(s)"
+      # Task definition revision cleanup removed — old revisions don't consume
+      # resources and deregistering them causes OpenTofu state drift (the revision
+      # tofu tracks gets deregistered, making tofu think the resource is gone).
+      # AWS allows thousands of revisions per family, so this is safe to skip.
 
       - name: Monitor Amplify build
         id: amplify
