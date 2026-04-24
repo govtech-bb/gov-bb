@@ -5,6 +5,7 @@ import React, { useEffect } from "react";
 import ErrorSummary from "./error-summary";
 import { useStore } from "@tanstack/react-form";
 import { useStepGuard } from "../hooks/use-step-guard";
+import Review from "./review";
 
 export default function FormRenderer({
   form,
@@ -61,6 +62,10 @@ export default function FormRenderer({
       <ErrorSummary errors={errors} />
 
       <div className={designSystem.formStep}>
+        {currentStep.stepId === "check-your-answers" && (
+          <Review formMeta={formMeta} form={form} />
+        )}
+
         {currentStep.fields.map((field) => (
           <FieldRenderer
             key={field.id}

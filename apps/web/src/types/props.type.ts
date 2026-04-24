@@ -19,3 +19,8 @@ export type UseStepGuardProps = {
   stepId?: string;
   setStepIndex: React.Dispatch<React.SetStateAction<number>>;
 };
+
+export type ReviewProps = {
+  formMeta: FormMeta;
+  form: AnyFormApi;
+};
