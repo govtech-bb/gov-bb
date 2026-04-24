@@ -289,6 +289,7 @@ export default function FieldRenderer({
               </fieldset>
             );
           case "radio":
+            const value: string = (f.state.value as string | undefined) ?? "";
             return (
               <fieldset data-fieldset>
                 <legend>{field.label}</legend>
@@ -296,7 +297,11 @@ export default function FieldRenderer({
                 <div data-radio-group>
                   {field.options?.map((option) => (
                     <div key={option.value} data-radio-item>
-                      <input {...sharedProps} />
+                      <input
+                        {...sharedProps}
+                        checked={option.value === value ? true : false}
+                        onChange={() => f.handleChange(option.value)}
+                      />
                       <label>{option.label}</label>
                     </div>
                   ))}
