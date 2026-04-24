@@ -3,7 +3,7 @@ import {
   EqualityOperations,
   FieldConditionalOnBehaviour,
 } from "@govtech-bb/form-types";
-import { AnyFieldApi } from "@tanstack/react-form";
+import { AnyFieldApi, AnyFormApi } from "@tanstack/react-form";
 import {
   ValidationArgs,
   DateValue,
@@ -18,10 +18,12 @@ import z from "zod";
 export type RequiredState =
   | "requiredAndEmpty"
   | "notRequiredAndEmpty"
+  | "notRequired"
   | "notEmpty"
   | "unknownState";
 
 export const valueIsEmpty = (value: FieldValue): boolean | undefined => {
+  if (!value) return true;
   if (typeof value === "string" || Array.isArray(value))
     return value.length === 0; // If required and no content, flag it.
   else if (typeof value === "boolean")
@@ -422,32 +424,32 @@ export const checkConditionalOn = (
   fieldLabel: string,
   currentFieldValue: FieldValue,
   fieldConditionalOns: FieldConditionalOnBehaviour[],
-  results: ValidationResults,
-  fieldApi: AnyFieldApi,
-): boolean => {
-  if (fieldConditionalOns.length === 0) return false;
-
-  let isRequired: boolean = false;
+  // results: ValidationResults,
+  formApi: AnyFormApi,
+): RequiredState => {
+  if (fieldConditionalOns.length === 0) return "unknownState";
 
   for (const condition of fieldConditionalOns) {
-    const targetFieldValue = fieldApi.form.getFieldValue(
-      condition.targetFieldId,
-    );
+    const targetFieldValue = formApi.getFieldValue(condition.targetFieldId);
     const passesCondition = evaluateCondition(
       condition.value,
       targetFieldValue,
       condition.operator,
     );
+    if (!currentFieldValue) currentFieldValue = "";
     if (passesCondition && currentFieldValue.toString().length == 0) {
-      results.hasError = true;
-      results.errors = [
-        `${fieldLabel} is required because the value of ${condition.targetFieldId} is ${condition.operator} ${condition.value}`,
-      ];
-      isRequired = true;
+      // results.hasError = true;
+      // results.errors = [
+      //   `${fieldLabel} is required because the value of ${condition.targetFieldId} is ${condition.operator} ${condition.value}`,
+      // ];
+      return "requiredAndEmpty";
+    }
+    if (passesCondition && currentFieldValue.toString().length) {
+      return "notEmpty";
     }
   }
 
-  return isRequired;
+  return "notRequired";
 };
 const evaluateCondition = (
   conditionValue: FieldValue,

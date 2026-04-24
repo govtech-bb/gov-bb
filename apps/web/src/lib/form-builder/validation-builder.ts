@@ -159,13 +159,13 @@ export const buildFieldValidationProperties = (
 
         if (fieldConditionalOns.length > 0) {
           // Checks if there is a field conditional on, that passes and effects required state
-          conditionalRequired = checkConditionalOn(
-            field.id,
-            value,
-            fieldConditionalOns,
-            results,
-            fieldApi,
-          );
+          // conditionalRequired = checkConditionalOn(
+          //   field.id,
+          //   value,
+          //   fieldConditionalOns,
+          //   results,
+          //   fieldApi,
+          // );
 
           if (conditionalRequired) {
             if (!validations.required)
