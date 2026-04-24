@@ -209,12 +209,12 @@ export const buildFieldValidationProperties = (
       }
 
       if (field.htmlType === "checkbox") {
-        if (typeof value !== "boolean" || !Array.isArray(value))
+        if (typeof value !== "boolean" && !Array.isArray(value))
           return undefined;
         runCheckboxValidations(
           field.id,
           field.label,
-          value,
+          value as boolean | string[],
           validations,
           results,
         );
