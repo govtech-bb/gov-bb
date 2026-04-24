@@ -89,7 +89,13 @@ export default function FormRenderer({
                             {field.label}
                           </td>
                           <td className={designSystem.reviewFieldValue}>
-                            {form.state.values[field.id] as string}
+                            {field.htmlType === "select" && field.options
+                              ? field.options.find(
+                                  (option) =>
+                                    option.value ===
+                                    form.state.values[field.id],
+                                )?.label
+                              : form.state.values[field.id]}
                           </td>
                         </tr>
                       ))}
