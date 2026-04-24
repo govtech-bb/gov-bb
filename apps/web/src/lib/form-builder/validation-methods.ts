@@ -69,7 +69,8 @@ export const checkRequired = ({
     setValidationError(fieldLabel, required, results);
     return "requiredAndEmpty";
   }
-  if (required && !required.value && isEmpty) return "notRequiredAndEmpty";
+  if ((!required || (required && !required.value)) && isEmpty)
+    return "notRequiredAndEmpty";
 
   return "notEmpty";
 };
