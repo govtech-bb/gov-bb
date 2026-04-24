@@ -53,9 +53,22 @@ export default function FormRenderer({
   const repeatableStepCount = 1;
 
   const addRepeatableStep = () => {
+    const addAnotherStepRadioId = `${currentStep.stepId}.addAnother-${repeatableStepCount}`;
+    const nextStepId = `${currentStep.stepId}-${repeatableStepCount}`;
+
+    let nextStepFields = currentFields.filter(
+      (f) => f.id != addAnotherStepRadioId,
+    );
+    if (sharedFieldBehaviour) {
+      nextStepFields = nextStepFields.filter(
+        (field) => !sharedFieldBehaviour.fieldIds.includes(field.name),
+      );
+    }
+
     const nextStep: ClientFormStep = {
       ...currentStep,
-      stepId: `${currentStep.stepId}-${repeatableStepCount}`,
+      fields: nextStepFields,
+      stepId: nextStepId,
     };
 
     formMeta.steps.splice(stepIndex + 1, 0, nextStep);
