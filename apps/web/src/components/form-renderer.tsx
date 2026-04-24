@@ -1,4 +1,8 @@
-import { FieldValidationErrors, FormRendererProps } from "@web/types";
+import {
+  ClientPrimitive,
+  FieldValidationErrors,
+  FormRendererProps,
+} from "@web/types";
 import FieldRenderer from "./field-renderer";
 import designSystem from "../lib/design-system";
 import React, { useEffect } from "react";
@@ -30,6 +34,7 @@ export default function FormRenderer({
   }, [stepIndex]);
 
   const currentStep = formMeta.steps[stepIndex];
+  const currentFields = [...currentStep.fields];
 
   const handlePrevious = () => {
     navigateToStep(stepIndex - 1);
@@ -40,7 +45,39 @@ export default function FormRenderer({
     completeAndContinue(currentStep.stepId, stepIndex);
   };
 
-  const handleSubmit = () => {};
+  const repeatableBehaviour = currentStep.behaviours?.filter(
+    (b) => b.type === "repeatable",
+  )[0];
+  const sharedFieldBehaviour = currentStep.behaviours?.filter(
+    (b) => b.type === "sharedFields",
+  )[0];
+
+  if (repeatableBehaviour) {
+    const repeatableStepCount = 1;
+
+    const addAnotherField: ClientPrimitive = {
+      id: `${currentStep.stepId}.addAnother-${repeatableStepCount}`,
+      name: `${currentStep.stepId}.addAnother-${repeatableStepCount}`,
+      label: "Add another?",
+      htmlType: "radio",
+      disabled: false,
+      hidden: false,
+      options: [
+        { label: "Yes", value: "yes" },
+        { label: "No", value: "no" },
+      ],
+      validations: {
+        required: {
+          value: true,
+          error: "Add another is required.",
+        },
+      },
+    };
+
+    currentFields.push(addAnotherField);
+  }
+
+  const handleSubmit = () => { };
 
   const errors = useStore(form.store, (state) => {
     const fieldValidationErrors: FieldValidationErrors = {};
@@ -66,7 +103,7 @@ export default function FormRenderer({
           <Review formMeta={formMeta} form={form} />
         )}
 
-        {currentStep.fields.map((field) => (
+        {currentFields.map((field) => (
           <FieldRenderer
             key={field.id}
             form={form}
