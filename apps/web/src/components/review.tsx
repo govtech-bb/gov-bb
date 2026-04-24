@@ -3,6 +3,19 @@ import React from "react";
 import { ReviewProps } from "../types/props.type";
 
 export default function Review({ formMeta, form }: ReviewProps) {
+  const formatDate = (dateValue: {
+    day: number;
+    month: number;
+    year: number;
+  }) => {
+    const { day, month, year } = dateValue;
+    const formattedDate = new Date(year, month - 1, day)
+      .toDateString()
+      .trim()
+      .replace(/^\w+\s/, ""); // Remove the day of the week from the date string
+    return formattedDate;
+  };
+
   return (
     <div className={designSystem.review}>
       {formMeta.steps
@@ -35,7 +48,16 @@ export default function Review({ formMeta, form }: ReviewProps) {
                                 option.value === form.state.values[field.id],
                             )
                             ?.label.replace("Saint ", "St ")
-                        : (form.state.values[field.id] as string | null)}
+                        : field.htmlType === "date" &&
+                            form.state.values[field.id]
+                          ? formatDate(
+                              form.state.values[field.id] as {
+                                day: number;
+                                month: number;
+                                year: number;
+                              },
+                            )
+                          : (form.state.values[field.id] as string | null)}
                     </td>
                   </tr>
                 ))}
