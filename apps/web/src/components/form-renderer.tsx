@@ -73,7 +73,9 @@ export default function FormRenderer({
                 <div key={step.stepId} className={designSystem.reviewStep}>
                   <div className={designSystem.reviewStepTitle}>
                     <h2>{step.title}</h2>
-                    <a href="#">Change</a>
+                    <a href={`/forms/${formMeta.formId}?step=${step.stepId}`}>
+                      Change
+                    </a>
                   </div>
 
                   <table className={designSystem.reviewFieldTable}>
