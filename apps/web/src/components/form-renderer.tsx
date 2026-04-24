@@ -1,4 +1,5 @@
 import {
+  ClientFormStep,
   ClientPrimitive,
   FieldValidationErrors,
   FormRendererProps,
@@ -40,10 +41,7 @@ export default function FormRenderer({
     navigateToStep(stepIndex - 1);
   };
 
-  const handleContinue = () => {
-    // TODO: Validate current step before marking as completed and navigating to the next step
-    completeAndContinue(currentStep.stepId, stepIndex);
-  };
+  console.log(formMeta.steps);
 
   const repeatableBehaviour = currentStep.behaviours?.filter(
     (b) => b.type === "repeatable",
@@ -52,9 +50,34 @@ export default function FormRenderer({
     (b) => b.type === "sharedFields",
   )[0];
 
-  if (repeatableBehaviour) {
-    const repeatableStepCount = 1;
+  const repeatableStepCount = 1;
 
+  const addRepeatableStep = () => {
+    const nextStep: ClientFormStep = {
+      ...currentStep,
+      stepId: `${currentStep.stepId}-${repeatableStepCount}`,
+    };
+
+    formMeta.steps.splice(stepIndex + 1, 0, nextStep);
+  };
+
+  const removeRepeatableStep = () => {};
+
+  const handleContinue = () => {
+    // Handle navigation to repeatable step.
+
+    if (repeatableBehaviour) {
+      const anotherFieldId = `${currentStep.stepId}.addAnother-${repeatableStepCount}`;
+
+      const anotherFieldValue = form.getFieldValue(anotherFieldId);
+      if (anotherFieldValue === "yes") addRepeatableStep();
+    }
+
+    // TODO: Validate current step before marking as completed and navigating to the next step
+    completeAndContinue(currentStep.stepId, stepIndex);
+  };
+
+  if (repeatableBehaviour) {
     const addAnotherField: ClientPrimitive = {
       id: `${currentStep.stepId}.addAnother-${repeatableStepCount}`,
       name: `${currentStep.stepId}.addAnother-${repeatableStepCount}`,
@@ -77,7 +100,7 @@ export default function FormRenderer({
     currentFields.push(addAnotherField);
   }
 
-  const handleSubmit = () => { };
+  const handleSubmit = () => {};
 
   const errors = useStore(form.store, (state) => {
     const fieldValidationErrors: FieldValidationErrors = {};
