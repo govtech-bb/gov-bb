@@ -5,6 +5,7 @@ import React, { useEffect } from "react";
 import ErrorSummary from "./error-summary";
 import { useStore } from "@tanstack/react-form";
 import { useStepGuard } from "../hooks/use-step-guard";
+import Review from "./review";
 
 export default function FormRenderer({
   form,
@@ -62,50 +63,7 @@ export default function FormRenderer({
 
       <div className={designSystem.formStep}>
         {currentStep.stepId === "check-your-answers" && (
-          <div className={designSystem.review}>
-            {formMeta.steps
-              .filter(
-                (step) =>
-                  step.stepId !== "check-your-answers" &&
-                  step.stepId !== "declaration",
-              )
-              .map((step) => (
-                <div key={step.stepId} className={designSystem.reviewStep}>
-                  <div className={designSystem.reviewStepTitle}>
-                    <h2>{step.title}</h2>
-                    <a href={`/forms/${formMeta.formId}?step=${step.stepId}`}>
-                      Change
-                    </a>
-                  </div>
-
-                  <table className={designSystem.reviewFieldTable}>
-                    <tbody>
-                      {step.fields.map((field) => (
-                        <tr
-                          key={field.id}
-                          className={designSystem.reviewFieldRow}
-                        >
-                          <td className={designSystem.reviewFieldLabel}>
-                            {field.label}
-                          </td>
-                          <td className={designSystem.reviewFieldValue}>
-                            {field.htmlType === "select" && field.options
-                              ? field.options
-                                  .find(
-                                    (option) =>
-                                      option.value ===
-                                      form.state.values[field.id],
-                                  )
-                                  ?.label.replace("Saint ", "St ")
-                              : form.state.values[field.id]}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ))}
-          </div>
+          <Review formMeta={formMeta} form={form} />
         )}
 
         {currentStep.fields.map((field) => (
