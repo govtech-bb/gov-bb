@@ -204,6 +204,25 @@ export const buildFieldValidationProperties = (
         );
       }
 
+      // Handling field arrays
+      if (Array.isArray(value)) {
+        const elements = value;
+
+        for (const element of elements) {
+          if (typeof element === "string") {
+            if (element.length === 0) continue;
+            runStringValidations(
+              field.id,
+              field.label,
+              element,
+              validations,
+              results,
+              fieldApi,
+            );
+          }
+        }
+      }
+
       return results.hasError ? results.errors : undefined;
     },
     onChangeListenTo: listenTo,

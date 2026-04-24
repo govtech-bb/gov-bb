@@ -140,6 +140,7 @@ export default function FieldRenderer({
               const value = f.state.value as string | undefined;
               inputElement = (
                 <input
+                  key={field.id}
                   {...sharedProps}
                   value={value ?? ""}
                   onChange={(e) => f.handleChange(e.target.value)}
@@ -153,6 +154,15 @@ export default function FieldRenderer({
 
               const popField = (values: string[]) => {
                 values.pop();
+                f.handleChange(values);
+              };
+
+              const updateField = (
+                values: string[],
+                index: number,
+                value: string,
+              ) => {
+                values[index] = value;
                 f.handleChange(values);
               };
 
@@ -170,17 +180,16 @@ export default function FieldRenderer({
               inputElement = (
                 <>
                   {Array.from({ length: fieldCount }).map((_, i) => (
-                    <>
+                    <React.Fragment key={`${field.id}-${i}`}>
                       <input
-                        key={i}
                         {...sharedProps}
                         value={values && values.length > 0 ? values[i] : ""}
-                        onChange={(e) => f.handleChange(e.target.value)}
+                        onChange={(e) => updateField(values, i, e.target.value)}
                       />
                       {i === fieldCount - 1 && i != 0 ? (
                         <p onClick={() => popField(values)}> Remove </p>
                       ) : null}
-                    </>
+                    </React.Fragment>
                   ))}
                   {fieldCount < max ? (
                     <p onClick={() => addAnother(values)}>Add Another</p>

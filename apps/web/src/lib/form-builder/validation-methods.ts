@@ -20,9 +20,11 @@ export type RequiredState =
 
 export const valueIsEmpty = (value: FieldValue): boolean | undefined => {
   if (!value) return true;
-  if (typeof value === "string" || Array.isArray(value))
+  if (typeof value === "string")
     return value.length === 0; // If required and no content, flag it.
-  else if (typeof value === "boolean")
+  else if (Array.isArray(value)) {
+    return value.length === 0; // I want this to check each element for truthiness
+  } else if (typeof value === "boolean")
     return !value; // It's a boolean. If it's required then it must be true
   else if (typeof value === "number") return value.toString().length === 0;
   else if ("day" in value || "month" in value || "year" in value) {
