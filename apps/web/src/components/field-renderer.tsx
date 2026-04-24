@@ -125,13 +125,16 @@ export default function FieldRenderer({
               </div>
             );
           case "select":
+            const isMultiple = field.multiple ?? false;
+            const selectValue = f.state.value as string | string[] | undefined;
             return (
               <div data-field data-select-field>
                 <label> {field.label} </label>
                 <div data-select-control>
                   <select
                     {...sharedProps}
-                    multiple={field.multiple ?? false}
+                    multiple={isMultiple}
+                    value={selectValue ? selectValue : ""}
                     onChange={(e) => f.handleChange(e.target.value)}
                   >
                     <option value=""></option>

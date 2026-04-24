@@ -1,8 +1,11 @@
 import designSystem from "../lib/design-system";
 import React from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { ReviewProps } from "../types/props.type";
 
 export default function Review({ formMeta, form }: ReviewProps) {
+  const navigate = useNavigate({ from: "/forms/$formId/" });
+
   const formatDate = (dateValue: {
     day: number;
     month: number;
@@ -16,6 +19,17 @@ export default function Review({ formMeta, form }: ReviewProps) {
     return formattedDate;
   };
 
+  const handleChangeClick =
+    (stepId: string) => (event: React.MouseEvent<HTMLAnchorElement>) => {
+      event.preventDefault();
+      void navigate({
+        search: (prev) => ({
+          ...prev,
+          step: stepId,
+        }),
+      });
+    };
+
   return (
     <div className={designSystem.review}>
       {formMeta.steps
@@ -28,7 +42,10 @@ export default function Review({ formMeta, form }: ReviewProps) {
           <div key={step.stepId} className={designSystem.reviewStep}>
             <div className={designSystem.reviewStepTitle}>
               <h2>{step.title}</h2>
-              <a href={`/forms/${formMeta.formId}?step=${step.stepId}`}>
+              <a
+                href={`/forms/${formMeta.formId}?step=${step.stepId}`}
+                onClick={handleChangeClick(step.stepId)}
+              >
                 Change
               </a>
             </div>
