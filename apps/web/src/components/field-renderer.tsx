@@ -18,6 +18,11 @@ export default function FieldRenderer({
 }) {
   if (field.hidden) return null;
 
+  const formatter = new Intl.ListFormat("en", {
+    style: "long",
+    type: "conjunction",
+  });
+
   return (
     <form.Field name={field.id} validators={validationProperties}>
       {(f: AnyFieldApi) => {
@@ -32,15 +37,18 @@ export default function FieldRenderer({
           onBlur: f.handleBlur,
         };
 
+        let errorMessage = "";
+        if (!f.state.meta.isValid) {
+          errorMessage = formatter.format(f.state.meta.errors);
+        }
+
         switch (field.htmlType) {
           case "date": {
             const value = f.state.value as DateValue | undefined;
             return (
               <fieldset data-field data-date-field>
                 <legend>{field.label}</legend>
-                {!f.state.meta.isValid && (
-                  <ErrorMessage message={f.state.meta.errors.join(", ")} />
-                )}
+                <ErrorMessage message={errorMessage} />
                 <div data-date-group>
                   <div data-date-part>
                     <label>Day</label>
@@ -107,9 +115,7 @@ export default function FieldRenderer({
               <div data-field>
                 <div>
                   <label> {field.label} </label>
-                  {!f.state.meta.isValid && (
-                    <ErrorMessage message={f.state.meta.errors.join(", ")} />
-                  )}
+                  <ErrorMessage message={errorMessage} />
                 </div>
                 <input
                   {...sharedProps}
@@ -146,9 +152,7 @@ export default function FieldRenderer({
                 <div data-checkbox-group>
                   <div>
                     <legend>{field.label}</legend>
-                    {!f.state.meta.isValid && (
-                      <ErrorMessage message={f.state.meta.errors.join(", ")} />
-                    )}
+                    <ErrorMessage message={errorMessage} />
                   </div>
                   <div key={option.value} data-checkbox-option>
                     <input
@@ -178,9 +182,7 @@ export default function FieldRenderer({
               <fieldset data-fieldset>
                 <div>
                   <legend>{field.label}</legend>
-                  {!f.state.meta.isValid && (
-                    <ErrorMessage message={f.state.meta.errors.join(", ")} />
-                  )}
+                  <ErrorMessage message={errorMessage} />
                 </div>
                 <div data-checkbox-group>
                   {field.options?.map((option) => {
@@ -202,6 +204,7 @@ export default function FieldRenderer({
             return (
               <fieldset data-fieldset>
                 <legend>{field.label}</legend>
+                <ErrorMessage message={errorMessage} />
                 <div data-radio-group>
                   {field.options?.map((option) => (
                     <div key={option.value} data-radio-item>
