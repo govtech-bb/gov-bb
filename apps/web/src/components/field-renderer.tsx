@@ -6,10 +6,7 @@ import {
 } from "@web/types";
 import React from "react";
 import ErrorMessage from "./error-message";
-import {
-  checkConditionalOn,
-  RequiredState,
-} from "../lib/form-builder/validation-methods";
+import { RequiredState, checkConditionalOn } from "@web/lib";
 
 export default function FieldRenderer({
   form,
@@ -27,7 +24,7 @@ export default function FieldRenderer({
     type: "conjunction",
   });
 
-  let requiredState: RequiredState = "unknownState";
+  let conditionalRequiredState: RequiredState = "unknownState";
 
   const fieldConditionalOns = field.behaviours?.filter(
     (b) => b.type === "fieldConditionalOn",
@@ -35,15 +32,14 @@ export default function FieldRenderer({
   const fieldArrays = field.behaviours?.filter((b) => b.type === "fieldArray");
 
   if (fieldConditionalOns && fieldConditionalOns.length > 0) {
-    requiredState = checkConditionalOn(
-      field.id,
+    conditionalRequiredState = checkConditionalOn(
       form.getFieldValue(field.id),
       fieldConditionalOns,
       form,
     );
   }
 
-  if (requiredState === "notRequired") return null;
+  if (conditionalRequiredState === "notRequired") return null;
 
   return (
     <form.Field name={field.id} validators={validationProperties}>

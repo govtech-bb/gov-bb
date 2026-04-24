@@ -50,3 +50,5 @@ const getVisibleSteps = (
 // Other Exports
 
 export { fetchContract } from "./form-fetcher";
+export { checkConditionalOn } from "./behavior-helper";
+export type { RequiredState } from "./validation-methods";

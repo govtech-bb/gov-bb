@@ -1,9 +1,5 @@
-import {
-  ValidationConfig,
-  EqualityOperations,
-  FieldConditionalOnBehaviour,
-} from "@govtech-bb/form-types";
-import { AnyFieldApi, AnyFormApi } from "@tanstack/react-form";
+import { ValidationConfig, EqualityOperations } from "@govtech-bb/form-types";
+import { AnyFieldApi } from "@tanstack/react-form";
 import {
   ValidationArgs,
   DateValue,
@@ -420,38 +416,8 @@ export const checkContains = ({
     setValidationError(fieldLabel, contains, results);
   }
 };
-export const checkConditionalOn = (
-  fieldLabel: string,
-  currentFieldValue: FieldValue,
-  fieldConditionalOns: FieldConditionalOnBehaviour[],
-  // results: ValidationResults,
-  formApi: AnyFormApi,
-): RequiredState => {
-  if (fieldConditionalOns.length === 0) return "unknownState";
 
-  for (const condition of fieldConditionalOns) {
-    const targetFieldValue = formApi.getFieldValue(condition.targetFieldId);
-    const passesCondition = evaluateCondition(
-      condition.value,
-      targetFieldValue,
-      condition.operator,
-    );
-    if (!currentFieldValue) currentFieldValue = "";
-    if (passesCondition && currentFieldValue.toString().length == 0) {
-      // results.hasError = true;
-      // results.errors = [
-      //   `${fieldLabel} is required because the value of ${condition.targetFieldId} is ${condition.operator} ${condition.value}`,
-      // ];
-      return "requiredAndEmpty";
-    }
-    if (passesCondition && currentFieldValue.toString().length) {
-      return "notEmpty";
-    }
-  }
-
-  return "notRequired";
-};
-const evaluateCondition = (
+export const evaluateCondition = (
   conditionValue: FieldValue,
   targetFieldValue: FieldValue | undefined,
   operation: EqualityOperations | "gt" | "lt" | "contains" | "strictEquality",

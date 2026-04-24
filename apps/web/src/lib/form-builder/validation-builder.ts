@@ -25,7 +25,6 @@ import {
   checkMaxYear,
   checkSelectionLength,
   checkRequired,
-  checkConditionalOn,
   checkLength,
   checkPattern,
   checkEmail,
@@ -149,33 +148,6 @@ export const buildFieldValidationProperties = (
         hasError: false,
         errors: [],
       };
-
-      let conditionalRequired: boolean = false;
-
-      if (behaviours && behaviours.length > 0) {
-        const fieldConditionalOns = behaviours.filter(
-          (b) => b.type === "fieldConditionalOn",
-        );
-
-        if (fieldConditionalOns.length > 0) {
-          // Checks if there is a field conditional on, that passes and effects required state
-          // conditionalRequired = checkConditionalOn(
-          //   field.id,
-          //   value,
-          //   fieldConditionalOns,
-          //   results,
-          //   fieldApi,
-          // );
-
-          if (conditionalRequired) {
-            if (!validations.required)
-              validations.required = {
-                value: true,
-                error: `${field.id} is required.`,
-              };
-          }
-        }
-      }
 
       const requiredState = checkRequired({
         fieldId: field.id,
