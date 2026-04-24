@@ -4,9 +4,10 @@ import {
   DateValue,
   FieldValidationProperties,
 } from "@web/types";
-import React from "react";
+import React, { JSX } from "react";
 import ErrorMessage from "./error-message";
 import { RequiredState, checkConditionalOn } from "@web/lib";
+import { FieldArrayBehaviour } from "@govtech-bb/form-types";
 
 export default function FieldRenderer({
   form,
@@ -25,11 +26,16 @@ export default function FieldRenderer({
   });
 
   let conditionalRequiredState: RequiredState = "unknownState";
+  let fieldArray: FieldArrayBehaviour;
 
   const fieldConditionalOns = field.behaviours?.filter(
     (b) => b.type === "fieldConditionalOn",
   );
+
   const fieldArrays = field.behaviours?.filter((b) => b.type === "fieldArray");
+  if (fieldArrays && fieldArrays.length >= 1) {
+    fieldArray = fieldArrays[0];
+  }
 
   if (fieldConditionalOns && fieldConditionalOns.length > 0) {
     conditionalRequiredState = checkConditionalOn(
@@ -127,21 +133,73 @@ export default function FieldRenderer({
           case "textarea":
           case "number":
           case "tel":
-          case "email":
-            const value = f.state.value as string | undefined;
-            return (
-              <div data-field>
-                <div>
-                  <label> {field.label} </label>
-                  <ErrorMessage message={errorMessage} />
-                </div>
+          case "email": {
+            let inputElement: JSX.Element;
+
+            if (!fieldArray) {
+              const value = f.state.value as string | undefined;
+              inputElement = (
                 <input
                   {...sharedProps}
                   value={value ?? ""}
                   onChange={(e) => f.handleChange(e.target.value)}
                 />
+              );
+            } else {
+              const addAnother = (values: string[]) => {
+                values.push("");
+                f.handleChange(values);
+              };
+
+              const popField = (values: string[]) => {
+                values.pop();
+                f.handleChange(values);
+              };
+
+              const values = (f.state.value as string[] | undefined) ?? [
+                (field.defaultValue as string) ?? "",
+              ];
+              const min = fieldArray.min;
+              const max = fieldArray.max;
+
+              const fieldCount =
+                values && values.length > 0
+                  ? Math.min(values.length, max)
+                  : min;
+
+              inputElement = (
+                <>
+                  {Array.from({ length: fieldCount }).map((_, i) => (
+                    <>
+                      <input
+                        key={i}
+                        {...sharedProps}
+                        value={values && values.length > 0 ? values[i] : ""}
+                        onChange={(e) => f.handleChange(e.target.value)}
+                      />
+                      {i === fieldCount - 1 && i != 0 ? (
+                        <p onClick={() => popField(values)}> Remove </p>
+                      ) : null}
+                    </>
+                  ))}
+                  {fieldCount < max ? (
+                    <p onClick={() => addAnother(values)}>Add Another</p>
+                  ) : null}
+                </>
+              );
+            }
+
+            const element: JSX.Element = (
+              <div data-field>
+                <div>
+                  <label> {field.label} </label>
+                  <ErrorMessage message={errorMessage} />
+                </div>
+                {inputElement}
               </div>
             );
+            return element;
+          }
           case "select":
             const isMultiple = field.multiple ?? false;
             const selectValue = f.state.value as string | string[] | undefined;
