@@ -8,7 +8,8 @@ import {
 import { FieldValue } from "./validation.type";
 
 export interface ClientPrimitive {
-  id: string;
+  id: string; // Step ID + field ID
+  fieldId: string;
   name: string;
   label: string;
   htmlType: HtmlTypes;

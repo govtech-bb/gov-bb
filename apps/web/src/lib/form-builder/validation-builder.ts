@@ -48,8 +48,8 @@ export const buildValidation = (
   for (const step of contract.steps) {
     for (const field of step.fields) {
       const { fieldSchema, properties } = buildFieldValidation(field);
-      shape[field.name] = fieldSchema;
-      fieldValidationProperties[field.name] = properties;
+      shape[field.id] = fieldSchema;
+      fieldValidationProperties[field.id] = properties;
       if (field.defaultValue) {
         defaults[field.id] = field.defaultValue;
       }
@@ -192,6 +192,8 @@ export const buildFieldValidationProperties = (
         );
         return results.hasError ? results.errors : undefined;
       }
+
+      console.log(typeof value);
 
       if (typeof value === "string") {
         runStringValidations(

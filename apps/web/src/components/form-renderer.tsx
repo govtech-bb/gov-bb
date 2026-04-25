@@ -41,8 +41,6 @@ export default function FormRenderer({
     navigateToStep(stepIndex - 1);
   };
 
-  console.log(formMeta.steps);
-
   const repeatableBehaviour = currentStep.behaviours?.filter(
     (b) => b.type === "repeatable",
   )[0];
@@ -61,7 +59,7 @@ export default function FormRenderer({
     );
     if (sharedFieldBehaviour) {
       nextStepFields = nextStepFields.filter(
-        (field) => !sharedFieldBehaviour.fieldIds.includes(field.name),
+        (field) => !sharedFieldBehaviour.fieldIds.includes(field.id),
       );
     }
 
@@ -93,7 +91,8 @@ export default function FormRenderer({
   if (repeatableBehaviour) {
     const addAnotherField: ClientPrimitive = {
       id: `${currentStep.stepId}.addAnother-${repeatableStepCount}`,
-      name: `${currentStep.stepId}.addAnother-${repeatableStepCount}`,
+      fieldId: "addAnother",
+      name: "Add Another",
       label: "Add another?",
       htmlType: "radio",
       disabled: false,
