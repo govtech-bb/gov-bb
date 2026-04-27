@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { FormRenderer } from "@web/components";
+import { FormRenderer, FormError } from "@web/components";
 import { fetchContract, buildForm } from "@web/lib";
 import { formSearchParamSchema } from "apps/web/src/types/form-search-param.type";
 import { useForm } from "@tanstack/react-form";
@@ -8,9 +8,8 @@ import React from "react";
 
 export const Route = createFileRoute("/forms/$formId/")({
   component: RouteComponent,
-  loader: ({ params }) => {
-    return fetchContract(params.formId);
-  },
+  errorComponent: FormError,
+  loader: ({ params }) => fetchContract(params.formId),
   validateSearch: (search) => formSearchParamSchema.parse(search),
 });
 

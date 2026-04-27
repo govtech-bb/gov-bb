@@ -49,4 +49,4 @@ const getVisibleSteps = (
 
 // Other Exports
 
-export { fetchContract } from "./form-fetcher";
+export { fetchContract, FormFetchError } from "./form-fetcher";
