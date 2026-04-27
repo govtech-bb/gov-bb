@@ -133,5 +133,6 @@ export const fieldOverridesSchema = basePrimitiveSchema.pick({
   isHidden: true,
   multiple: true,
   options: true,
+  ui: true,
 });
 export type FieldOverrides = z.infer<typeof fieldOverridesSchema>;
