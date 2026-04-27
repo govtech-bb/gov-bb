@@ -1,0 +1,11 @@
+import type { RuleRunner } from "../types";
+export declare const pastRunner: RuleRunner;
+export declare const pastOrTodayRunner: RuleRunner;
+export declare const futureRunner: RuleRunner;
+export declare const futureOrTodayRunner: RuleRunner;
+export declare const afterRunner: RuleRunner;
+export declare const beforeRunner: RuleRunner;
+export declare const onOrAfterRunner: RuleRunner;
+export declare const onOrBeforeRunner: RuleRunner;
+export declare const minYearRunner: RuleRunner;
+export declare const maxYearRunner: RuleRunner;
