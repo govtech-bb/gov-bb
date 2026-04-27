@@ -32,7 +32,6 @@ export default function Review({ formMeta, form }: ReviewProps) {
     };
 
   const formValues = getFormData(formMeta.formId) || {};
-  console.log("Form values in review:", formValues);
 
   return (
     <div className={designSystem.review}>
@@ -67,19 +66,19 @@ export default function Review({ formMeta, form }: ReviewProps) {
                             .find(
                               (option) =>
                                 option.value ===
-                                formValues[step.stepId][field.name],
+                                formValues[step.stepId]?.[field.name],
                             )
                             ?.label.replace("Saint ", "St ")
                         : field.htmlType === "date" &&
-                            formValues[step.stepId][field.name]
+                            formValues[step.stepId]?.[field.name]
                           ? formatDate(
-                              formValues[step.stepId][field.name] as {
+                              formValues[step.stepId]?.[field.name] as {
                                 day: number;
                                 month: number;
                                 year: number;
                               },
                             )
-                          : (formValues[step.stepId][field.name] as
+                          : (formValues[step.stepId]?.[field.name] as
                               | string
                               | null)}
                     </td>
