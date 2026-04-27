@@ -6,7 +6,7 @@ export function storeFormData(formId: string, data: FormValues) {
 }
 
 // Retrieve form data from session storage
-export function retrieveFormData(formId: string) {
+export function getFormData(formId: string) {
   const data = sessionStorage.getItem(`formData_${formId}`);
   return data ? JSON.parse(data) : null;
 }

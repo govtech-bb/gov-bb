@@ -2,6 +2,7 @@ import designSystem from "../lib/design-system";
 import React from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { ReviewProps } from "@web/types";
+import { getFormData } from "../lib/session-storage";
 
 export default function Review({ formMeta, form }: ReviewProps) {
   const navigate = useNavigate({ from: "/forms/$formId/" });
@@ -29,6 +30,9 @@ export default function Review({ formMeta, form }: ReviewProps) {
         }),
       });
     };
+
+  const formValues = getFormData(formMeta.formId) || {};
+  console.log("Form values in review:", formValues);
 
   return (
     <div className={designSystem.review}>
@@ -62,19 +66,22 @@ export default function Review({ formMeta, form }: ReviewProps) {
                         ? field.options
                             .find(
                               (option) =>
-                                option.value === form.state.values[field.id],
+                                option.value ===
+                                formValues[step.stepId][field.name],
                             )
                             ?.label.replace("Saint ", "St ")
                         : field.htmlType === "date" &&
-                            form.state.values[field.id]
+                            formValues[step.stepId][field.name]
                           ? formatDate(
-                              form.state.values[field.id] as {
+                              formValues[step.stepId][field.name] as {
                                 day: number;
                                 month: number;
                                 year: number;
                               },
                             )
-                          : (form.state.values[field.id] as string | null)}
+                          : (formValues[step.stepId][field.name] as
+                              | string
+                              | null)}
                     </td>
                   </tr>
                 ))}

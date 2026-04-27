@@ -36,8 +36,7 @@ export default function FormRenderer({
   };
 
   const handleContinue = () => {
-    // TODO: Validate current step before marking as completed and navigating to the next step
-    completeAndContinue(currentStep.stepId, stepIndex);
+    completeAndContinue(currentStep.stepId, stepIndex, form.state.values);
   };
 
   const handleSubmit = () => {};
