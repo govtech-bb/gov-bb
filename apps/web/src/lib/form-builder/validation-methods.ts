@@ -425,6 +425,7 @@ export const evaluateCondition = (
   targetFieldValue: FieldValue | undefined,
   operation: EqualityOperations | "gt" | "lt" | "contains" | "strictEquality",
 ): boolean => {
+  console.log({ targetFieldValue });
   switch (operation) {
     case "in":
     case "contains":

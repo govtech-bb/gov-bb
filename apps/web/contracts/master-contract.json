@@ -445,6 +445,7 @@
         {
           "type": "stepConditionalOn",
           "targetFieldId": "telephone",
+          "targetStepId": "step-2-contact-information",
           "operator": "exists",
           "value": ""
         }
