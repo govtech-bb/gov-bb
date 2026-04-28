@@ -17,23 +17,15 @@ export default function FormRenderer({
   form,
   formMeta,
   stepId,
+  targetStores,
 }: FormRendererProps) {
   const [stepIndex, setStepIndex] = React.useState(0);
   const [hidePrevious, setHidePrevious] = React.useState(true);
 
-  // const visibleSteps = React.useMemo(
-  //   () => getVisibleSteps(formMeta.steps, form),
-  //   [formMeta.steps, form],
-  // );
-
-  const stepsStore = useStore(form.store, (state) => state.values);
-
   const visibleSteps = React.useMemo(
     () => getVisibleSteps(formMeta.steps, form),
-    [stepsStore],
+    [targetStores],
   );
-
-  // console.log(visibleSteps)
 
   const { navigateToStep, completeAndContinue } = useStepGuard({
     formId: formMeta.formId,

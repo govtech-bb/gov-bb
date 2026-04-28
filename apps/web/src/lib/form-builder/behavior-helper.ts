@@ -20,7 +20,6 @@ export const checkConditionalOn = (
     }
 
     const targetFieldValue = formApi.getFieldValue(targetFieldId);
-    console.log({ targetFieldId });
 
     const passesCondition = evaluateCondition(
       condition.value,
@@ -55,4 +54,23 @@ export const getVisibleSteps = (
   formApi: AnyFormApi,
 ): ClientFormStep[] => {
   return formSteps.filter((step) => isStepVisible(step, formApi));
+};
+
+export const getStepConditonalTargets = (
+  formSteps: ClientFormStep[],
+): Record<string, string> => {
+  const obj: Record<string, string> = {};
+
+  for (const formStep of formSteps) {
+    if (!formStep.behaviours) continue;
+    const stepBehaviours: StepConditionalOnBehaviour[] =
+      formStep.behaviours?.filter((b) => b.type === "stepConditionalOn");
+    if (!stepBehaviours || stepBehaviours.length === 0) continue;
+
+    for (const stepBehaviour of stepBehaviours) {
+      obj[stepBehaviour.targetStepId ?? "temporary"] =
+        stepBehaviour.targetFieldId;
+    }
+  }
+  return obj;
 };

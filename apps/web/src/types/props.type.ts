@@ -1,10 +1,12 @@
 import { AnyFormApi } from "@tanstack/react-form";
 import { ClientServiceContract } from "./field-mapper.type";
 import { FormMeta } from "./renderer.type";
+import { Store } from "@tanstack/react-store";
 
 export interface FormRendererProps {
   form: AnyFormApi;
   formMeta: FormMeta;
+  targetStores: Store<AnyFormApi>[];
   stepId?: string;
 }
 

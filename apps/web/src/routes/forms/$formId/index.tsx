@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { FormRenderer } from "@web/components";
 import { fetchContract, buildForm } from "@web/lib";
 import { formSearchParamSchema } from "apps/web/src/types/form-search-param.type";
-import { useForm } from "@tanstack/react-form";
+import { useForm, useStore } from "@tanstack/react-form";
 import { FormValues } from "@web/types";
 import React from "react";
 
@@ -28,5 +28,20 @@ function RouteComponent() {
     },
   });
 
-  return <FormRenderer form={form} formMeta={formMeta} stepId={step} />;
+  const targetStores = [];
+
+  for (const [key, value] of Object.entries(formMeta.stepConditionalTargets)) {
+    targetStores.push(
+      useStore(form.store, (state) => state.values[key]?.[value]),
+    );
+  }
+
+  return (
+    <FormRenderer
+      form={form}
+      formMeta={formMeta}
+      stepId={step}
+      targetStores={targetStores}
+    />
+  );
 }

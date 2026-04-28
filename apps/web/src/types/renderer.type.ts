@@ -4,6 +4,9 @@ import z from "zod";
 import { ClientFormStep } from "./field-mapper.type";
 import { FieldValidationProperties } from "./validation.type";
 
+type stepId = string;
+type fieldId = string;
+
 export interface FormMeta {
   // Meta information for the client to render.
   formId: string;
@@ -13,4 +16,5 @@ export interface FormMeta {
   steps: ClientFormStep[];
   defaultValues: Record<string, unknown>;
   validationProperties: Record<string, FieldValidationProperties>;
+  stepConditionalTargets: Record<stepId, fieldId>;
 }
