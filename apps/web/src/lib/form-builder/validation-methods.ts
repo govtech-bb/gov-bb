@@ -466,16 +466,7 @@ export const evaluateCondition = (
         return true;
       else return false;
     case "exists":
-      if (
-        (conditionValue && targetFieldValue) ||
-        (!conditionValue && !targetFieldValue)
-      )
-        return true;
-      if (
-        (conditionValue && !targetFieldValue) ||
-        (!conditionValue && targetFieldValue)
-      )
-        return false;
+      if (targetFieldValue && !valueIsEmpty(targetFieldValue)) return true;
       return false;
     case "gt":
       if (conditionValue && targetFieldValue) {

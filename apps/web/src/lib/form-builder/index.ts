@@ -1,22 +1,12 @@
 // Responsible for turning a ClientServiceContract into a FormMeta for consumption.
 
-import {
-  ClientFormStep,
-  ClientServiceContract,
-  FormMeta,
-  FormValidation,
-  FormValues,
-} from "@web/types";
+import { ClientServiceContract, FormMeta, FormValidation } from "@web/types";
 import { buildValidation } from "./validation-builder";
 
 export const buildForm = (contract: ClientServiceContract): FormMeta => {
   // Build the Validation Schema
   const { schema, defaults, properties }: FormValidation =
     buildValidation(contract);
-
-  // Get method to calculate visible steps
-
-  const isStepVisible = buildIsStepVisible(contract);
 
   // Return FormMeta object with everything configured.
   return {
@@ -27,28 +17,11 @@ export const buildForm = (contract: ClientServiceContract): FormMeta => {
     steps: contract.steps,
     defaultValues: defaults,
     validationProperties: properties,
-    getVisibleSteps,
-    isStepVisible,
   };
-};
-
-type IsStepVisible = (f: ClientFormStep, v: FormValues) => boolean;
-
-const buildIsStepVisible = (contract: ClientServiceContract): IsStepVisible => {
-  return (formStep: ClientFormStep, formValues: FormValues): boolean => {
-    throw new Error("Not Implemented");
-  };
-};
-
-const getVisibleSteps = (
-  formSteps: ClientFormStep[],
-  formValues: FormValues,
-): ClientFormStep[] => {
-  throw new Error("Not Implemented");
 };
 
 // Other Exports
 
 export { fetchContract } from "./form-fetcher";
-export { checkConditionalOn } from "./behavior-helper";
+export { checkConditionalOn, getVisibleSteps } from "./behavior-helper";
 export type { RequiredState } from "./validation-methods";

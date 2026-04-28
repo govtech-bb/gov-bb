@@ -1,7 +1,7 @@
 // These will be the types used internally in the system to render a form.
 
 import z from "zod";
-import { ClientFormStep, FormValues } from "./field-mapper.type";
+import { ClientFormStep } from "./field-mapper.type";
 import { FieldValidationProperties } from "./validation.type";
 
 export interface FormMeta {
@@ -13,10 +13,4 @@ export interface FormMeta {
   steps: ClientFormStep[];
   defaultValues: Record<string, unknown>;
   validationProperties: Record<string, FieldValidationProperties>;
-
-  isStepVisible(formStep: ClientFormStep, formValues: FormValues): boolean;
-  getVisibleSteps(
-    formSteps: ClientFormStep[],
-    formValues: FormValues,
-  ): ClientFormStep[];
 }

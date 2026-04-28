@@ -11,6 +11,7 @@ import ErrorSummary from "./error-summary";
 import { useStore } from "@tanstack/react-form";
 import { useStepGuard } from "../hooks/use-step-guard";
 import Review from "./review";
+import { getVisibleSteps } from "@web/lib";
 
 export default function FormRenderer({
   form,
@@ -19,9 +20,15 @@ export default function FormRenderer({
 }: FormRendererProps) {
   const [stepIndex, setStepIndex] = React.useState(0);
   const [hidePrevious, setHidePrevious] = React.useState(true);
+
+  const visibleSteps = React.useMemo(
+    () => getVisibleSteps(formMeta.steps, form),
+    [formMeta.steps, form],
+  );
+
   const { navigateToStep, completeAndContinue } = useStepGuard({
     formId: formMeta.formId,
-    steps: formMeta.steps,
+    steps: visibleSteps,
     stepId,
     setStepIndex,
   });
@@ -34,7 +41,7 @@ export default function FormRenderer({
     }
   }, [stepIndex]);
 
-  const currentStep = formMeta.steps[stepIndex];
+  const currentStep = visibleSteps[stepIndex];
   const currentFields = [...currentStep.fields];
 
   const handlePrevious = () => {
@@ -69,10 +76,10 @@ export default function FormRenderer({
       stepId: nextStepId,
     };
 
-    formMeta.steps.splice(stepIndex + 1, 0, nextStep);
+    visibleSteps.splice(stepIndex + 1, 0, nextStep);
   };
 
-  const removeRepeatableStep = () => {};
+  // const removeRepeatableStep = () => { };
 
   const handleContinue = () => {
     // Handle navigation to repeatable step.
@@ -161,12 +168,12 @@ export default function FormRenderer({
             data-variant="primary"
             type="button"
             onClick={
-              stepIndex === formMeta.steps.length - 1
+              stepIndex === visibleSteps.length - 1
                 ? handleSubmit
                 : handleContinue
             }
           >
-            {stepIndex === formMeta.steps.length - 1 ? "Submit" : "Continue"}
+            {stepIndex === visibleSteps.length - 1 ? "Submit" : "Continue"}
           </button>
         </div>
       </div>

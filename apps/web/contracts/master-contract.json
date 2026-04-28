@@ -288,10 +288,20 @@
         },
         {
           "fieldId": "telephone",
-          "label": "Home Telephone (Optional)",
+          "label": "Home Telephone",
           "htmlType": "tel",
           "placeholder": "Enter home phone number",
-          "hint": "Including area code"
+          "hint": "Including area code",
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Telephone number is required"
+            },
+            "pattern": {
+              "value": "^[0-9]{10,15}$",
+              "error": "Please enter a valid phone number"
+            }
+          }
         },
         {
           "fieldId": "mobile",
@@ -304,7 +314,7 @@
               "error": "Mobile number is required"
             },
             "pattern": {
-              "value": "^[0-9+\\s\\-\\()\\]{10,15}$",
+              "value": "^[0-9]{10,15}$",
               "error": "Please enter a valid phone number"
             }
           }
@@ -313,7 +323,16 @@
           "fieldId": "workTelephone",
           "label": "Work Telephone (Optional)",
           "htmlType": "tel",
-          "placeholder": "Enter work phone number"
+          "placeholder": "Enter work phone number",
+          "validations": {
+            "required": {
+              "value": false
+            },
+            "pattern": {
+              "value": "^[0-9+]{10,15}$",
+              "error": "Please enter a valid phone number"
+            }
+          }
         },
         {
           "fieldId": "preferredContact",

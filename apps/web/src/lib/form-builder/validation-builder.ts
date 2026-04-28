@@ -193,8 +193,6 @@ export const buildFieldValidationProperties = (
         return results.hasError ? results.errors : undefined;
       }
 
-      console.log(typeof value);
-
       if (typeof value === "string") {
         runStringValidations(
           field.id,

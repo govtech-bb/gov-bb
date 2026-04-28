@@ -1,17 +1,24 @@
-import { FieldConditionalOnBehaviour } from "@govtech-bb/form-types";
+import {
+  FieldConditionalOnBehaviour,
+  StepConditionalOnBehaviour,
+} from "@govtech-bb/form-types";
 import { AnyFormApi } from "@tanstack/react-form";
-import { FieldValue } from "@web/types";
+import { ClientFormStep, FieldValue } from "@web/types";
 import { evaluateCondition, RequiredState } from "./validation-methods";
 
 export const checkConditionalOn = (
   currentFieldValue: FieldValue,
-  fieldConditionalOns: FieldConditionalOnBehaviour[],
+  conditionalOns: FieldConditionalOnBehaviour[] | StepConditionalOnBehaviour[],
   formApi: AnyFormApi,
+  stepId?: string,
 ): RequiredState => {
-  if (fieldConditionalOns.length === 0) return "unknownState";
+  if (conditionalOns.length === 0) return "unknownState";
 
-  for (const condition of fieldConditionalOns) {
-    const targetFieldValue = formApi.getFieldValue(condition.targetFieldId);
+  for (const condition of conditionalOns) {
+    const targetFieldId = stepId
+      ? `${stepId}.${condition.targetFieldId}`
+      : condition.targetFieldId;
+    const targetFieldValue = formApi.getFieldValue(targetFieldId);
     const passesCondition = evaluateCondition(
       condition.value,
       targetFieldValue,
@@ -27,4 +34,22 @@ export const checkConditionalOn = (
   }
 
   return "notRequired";
+};
+
+const isStepVisible = (step: ClientFormStep, formApi: AnyFormApi) => {
+  if (!step.behaviours || step.behaviours.length === 0) return true;
+  const stepBehaviours: StepConditionalOnBehaviour[] = step.behaviours.filter(
+    (b) => b.type === "stepConditionalOn",
+  );
+  const requiredState = checkConditionalOn("", stepBehaviours, formApi);
+
+  if (requiredState === "notRequired") return false;
+  return true;
+};
+
+export const getVisibleSteps = (
+  formSteps: ClientFormStep[],
+  formApi: AnyFormApi,
+): ClientFormStep[] => {
+  return formSteps.filter((step) => isStepVisible(step, formApi));
 };
