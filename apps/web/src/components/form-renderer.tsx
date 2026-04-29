@@ -59,7 +59,7 @@ export default function FormRenderer({
   const repeatableStepCount =
     Object.keys(stepRepeatableRecord?.stepData ?? []).length + 1;
 
-  const addRepeatableStep = () => {
+  const addRepeatableStep = (): ClientFormStep[] => {
     const addAnotherStepRadioId = `${currentStep.stepId}.addAnother-${repeatableStepCount}`;
     const nextStepId = `${baseStepId}--${repeatableStepCount}`;
 
@@ -82,11 +82,13 @@ export default function FormRenderer({
       stepData: {
         [stepId]: stepValues,
       },
+      orderedStepIds: [stepId, nextStepId],
       sharedData: {},
     };
 
     if (stepRepeatableRecord) {
       updatedRecord.stepData[stepId] = stepValues;
+      updatedRecord.orderedStepIds.push(nextStepId);
     }
 
     setRepeatableRecord((prev) => {
@@ -117,7 +119,46 @@ export default function FormRenderer({
     ];
   };
 
-  // const removeRepeatableStep = () => { };
+  const removeRepeatableStep = (): ClientFormStep[] => {
+    const nextCount = stepId.split("--")[1] ?? 1;
+    const nextStepId = `${baseStepId}--${nextCount}`;
+
+    if (repeatableRecord[baseStepId]?.stepData[nextStepId]) {
+      const step = visibleSteps.filter((step) => step.stepId == nextStepId)[0];
+      if (!step) return visibleSteps;
+
+      const repeatableStepIds = repeatableRecord[baseStepId].orderedStepIds;
+
+      const nextStepPosition = repeatableStepIds.indexOf(step.stepId);
+
+      const toRemove: string[] = [];
+      const toPop = repeatableStepIds.length - nextStepPosition;
+
+      for (let i = 0; i < toPop; i++) {
+        const poppedStepId = repeatableStepIds.pop();
+        if (poppedStepId) {
+          toRemove.push(poppedStepId);
+          delete repeatableRecord[baseStepId]?.sharedData?.[poppedStepId];
+        }
+      }
+
+      const startStepToDelete = formMeta.steps.filter(
+        (step) => step.stepId === toRemove[toRemove.length - 1],
+      )[0];
+
+      if (!startStepToDelete) return visibleSteps;
+      const deleteFromIndex = formMeta.steps.indexOf(startStepToDelete);
+
+      formMeta.steps.splice(deleteFromIndex, toPop);
+
+      const filterMethod = (step: ClientFormStep) =>
+        !toRemove.includes(step.stepId);
+
+      return visibleSteps.filter(filterMethod);
+    }
+
+    return visibleSteps;
+  };
 
   const handleContinue = () => {
     // Handle navigation to repeatable step.
@@ -128,6 +169,10 @@ export default function FormRenderer({
       const anotherFieldValue = form.getFieldValue(anotherFieldId);
       if (anotherFieldValue === "yes") {
         const updatedSteps = addRepeatableStep();
+        completeAndContinue(currentStep.stepId, stepIndex, updatedSteps);
+        return;
+      } else {
+        const updatedSteps = removeRepeatableStep();
         completeAndContinue(currentStep.stepId, stepIndex, updatedSteps);
         return;
       }
