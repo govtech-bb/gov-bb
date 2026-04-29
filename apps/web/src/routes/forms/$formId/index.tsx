@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { FormRenderer } from "@web/components";
 import { fetchContract, buildForm, getVisibleSteps } from "@web/lib";
+import { FormRenderer, FormError } from "@web/components";
 import { formSearchParamSchema } from "apps/web/src/types/form-search-param.type";
 import { useForm, useStore } from "@tanstack/react-form";
 import { ClientFormStep, FormRepeatableRecord, FormValues } from "@web/types";
@@ -9,9 +9,8 @@ import { useStepGuard } from "apps/web/src/hooks/use-step-guard";
 
 export const Route = createFileRoute("/forms/$formId/")({
   component: RouteComponent,
-  loader: ({ params }) => {
-    return fetchContract(params.formId);
-  },
+  errorComponent: FormError,
+  loader: ({ params }) => fetchContract(params.formId),
   validateSearch: (search) => formSearchParamSchema.parse(search),
 });
 

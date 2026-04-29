@@ -26,6 +26,6 @@ export const buildForm = (contract: ClientServiceContract): FormMeta => {
 
 // Other Exports
 
-export { fetchContract } from "./form-fetcher";
 export { checkConditionalOn, getVisibleSteps } from "./behavior-helper";
 export type { RequiredState } from "./validation-methods";
+export { fetchContract, FormFetchError } from "./form-fetcher";
