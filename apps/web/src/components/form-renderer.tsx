@@ -58,7 +58,7 @@ export default function FormRenderer({
   const currentRepeatStepCount = Number(rawIndex ?? 0);
 
   const stepRepeatableRecord = repeatableRecord[baseStepId];
-  const repeatableStepCount = stepRepeatableRecord.orderedStepIds.length;
+  const repeatableStepCount = stepRepeatableRecord?.orderedStepIds?.length;
 
   const addRepeatableStep = (): ClientFormStep[] => {
     if (!repeatableBehaviour) return visibleSteps;
