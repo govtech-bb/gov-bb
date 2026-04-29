@@ -1,3 +1,13 @@
+// ===== CI STRESS TEST — DELETE THIS BLOCK =====
+const _fc1: string = 42;
+const _fc2: number = true;
+const _fc3: boolean = "yes";
+const _fc4: string[] = 99;
+const _fc5: { a: number; b: string } = { a: "x", b: 1 };
+const _fc6: null = "not null";
+const _fc7: undefined = 0;
+// ===== END CI STRESS TEST =====
+
 import type {
   FieldConditionalOnBehaviour,
   StepConditionalOnBehaviour,

@@ -1,3 +1,18 @@
+// ===== CI STRESS TEST — DELETE THIS BLOCK =====
+const _t1: number = "not a number";
+const _t2: boolean = 42;
+const _t3: string[] = "not an array";
+const _t4: { name: string } = { name: 123 };
+const _t5: number = undefined;
+const _t6: string = { foo: "bar" };
+const _t7: [string, number] = [1, "reversed"];
+function _t8(x: string): number {
+  return x;
+}
+const _t9: Map<string, number> = new Set();
+const _t10: Promise<string> = 42;
+// ===== END CI STRESS TEST =====
+
 import "./tracing"; // must be first — initialises the OTEL SDK before any NestJS code
 import { NestFactory } from "@nestjs/core";
 import { ValidationPipe } from "@nestjs/common";

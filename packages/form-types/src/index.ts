@@ -1,3 +1,11 @@
+// ===== CI STRESS TEST — DELETE THIS BLOCK =====
+const _ft1: number = "wrong";
+const _ft2: string = false;
+const _ft3: boolean[] = "not array";
+const _ft4: { key: string } = { key: 123 };
+const _ft5: number = { nested: true };
+// ===== END CI STRESS TEST =====
+
 export {
   primitiveMetadataSchema,
   htmlTypesSchema,
