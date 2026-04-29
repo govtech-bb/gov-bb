@@ -170,8 +170,8 @@ export default function FormRenderer({
   };
 
   const handleContinue = () => {
-    // Handle navigation to repeatable step.
 
+    // Handle navigation to repeatable step.
     if (repeatableBehaviour) {
       const anotherFieldId = `${currentStep.stepId}.addAnother-${repeatableStepCount}`;
 

@@ -1,9 +1,10 @@
 import designSystem from "../lib/design-system";
 import React from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ReviewProps } from "@web/types";
+import { ClientPrimitive, FormMeta } from "@web/types";
+import { getFormData } from "../lib/session-storage";
 
-export default function Review({ formMeta, form }: ReviewProps) {
+export default function Review(formMeta: FormMeta) {
   const navigate = useNavigate({ from: "/forms/$formId/" });
 
   const formatDate = (dateValue: {
@@ -29,6 +30,46 @@ export default function Review({ formMeta, form }: ReviewProps) {
         }),
       });
     };
+
+  const formValues = getFormData(formMeta.formId) || {};
+
+  const getFieldDisplayValue = (stepId: string, field: ClientPrimitive) => {
+    const value = formValues[stepId]?.[field.name];
+
+    switch (field.htmlType) {
+      case "select": {
+        if (!field.options) return value as string | null;
+        return field.options
+          .find((option) => option.value === value)
+          ?.label.replace("Saint ", "St ");
+      }
+      case "date": {
+        if (!value) return value as string | null;
+        return formatDate(
+          value as {
+            day: number;
+            month: number;
+            year: number;
+          },
+        );
+      }
+      case "checkbox": {
+        if (!field.options) return value as string | null;
+        const selectedOptions = field.options.filter(
+          (option) =>
+            option.value === value ||
+            (Array.isArray(value) && value.includes(option.value)),
+        );
+        return selectedOptions.map((option) => option.label).join(", ");
+      }
+      case "radio": {
+        if (!field.options) return value as string | null;
+        return field.options.find((option) => option.value === value)?.label;
+      }
+      default:
+        return value as string | null;
+    }
+  };
 
   return (
     <div className={designSystem.review}>
@@ -58,23 +99,7 @@ export default function Review({ formMeta, form }: ReviewProps) {
                       {field.label}
                     </td>
                     <td className={designSystem.reviewFieldValue}>
-                      {field.htmlType === "select" && field.options
-                        ? field.options
-                            .find(
-                              (option) =>
-                                option.value === form.state.values[field.id],
-                            )
-                            ?.label.replace("Saint ", "St ")
-                        : field.htmlType === "date" &&
-                            form.state.values[field.id]
-                          ? formatDate(
-                              form.state.values[field.id] as {
-                                day: number;
-                                month: number;
-                                year: number;
-                              },
-                            )
-                          : (form.state.values[field.id] as string | null)}
+                      {getFieldDisplayValue(step.stepId, field)}
                     </td>
                   </tr>
                 ))}
