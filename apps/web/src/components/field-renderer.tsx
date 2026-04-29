@@ -147,7 +147,8 @@ export default function FieldRenderer({
                 />
               );
             } else {
-              const addAnother = (values: string[]) => {
+              const addAnotherField = (values: string[]) => {
+                // Pushes a new empty field, that a user can fill in
                 values.push("");
                 f.handleChange(values);
               };
@@ -192,7 +193,7 @@ export default function FieldRenderer({
                     </React.Fragment>
                   ))}
                   {fieldCount < max ? (
-                    <p onClick={() => addAnother(values)}>Add Another</p>
+                    <p onClick={() => addAnotherField(values)}>Add Another</p>
                   ) : null}
                 </>
               );
