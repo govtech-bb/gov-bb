@@ -54,10 +54,8 @@ export default function FormRenderer({
 
   const stepValues = useStore(form.store, (state) => state.values[stepId]);
 
-  const baseStepId = stepId.split("--")[0];
-  const currentRepeatStepCount = isNaN(Number(stepId.split("--")[1]))
-    ? 0
-    : Number(stepId.split("--")[1]);
+  const [baseStepId, rawIndex] = stepId.split("--");
+  const currentRepeatStepCount = Number(rawIndex ?? 0);
 
   const stepRepeatableRecord = repeatableRecord[baseStepId];
   const repeatableStepCount =
@@ -130,44 +128,45 @@ export default function FormRenderer({
   };
 
   const removeRepeatableStep = (): ClientFormStep[] => {
-    const nextCount = stepId.split("--")[1] ?? 1;
-    const nextStepId = `${baseStepId}--${nextCount}`;
+    const [, rawIndex] = stepId.split("--");
+    const index = Number(rawIndex ?? 0);
+    const targetStepId = `${baseStepId}--${index ? index : 1}`;
 
-    if (repeatableRecord[baseStepId]?.stepData[nextStepId]) {
-      const step = visibleSteps.filter((step) => step.stepId == nextStepId)[0];
-      if (!step) return visibleSteps;
+    const record = repeatableRecord[baseStepId];
+    if (!record?.orderedStepIds.includes(targetStepId)) return visibleSteps;
 
-      const repeatableStepIds = repeatableRecord[baseStepId].orderedStepIds;
+    const step = visibleSteps.find((s) => s.stepId === targetStepId);
+    if (!step) return visibleSteps;
 
-      const nextStepPosition = repeatableStepIds.indexOf(step.stepId);
+    const { orderedStepIds } = record;
 
-      const toRemove: string[] = [];
-      const toPop = repeatableStepIds.length - 1 - nextStepPosition;
+    const startIndex = orderedStepIds.indexOf(targetStepId);
+    if (startIndex === -1) return visibleSteps;
 
-      for (let i = 0; i < toPop; i++) {
-        const poppedStepId = repeatableStepIds.pop();
-        if (poppedStepId) {
-          toRemove.push(poppedStepId);
-          delete repeatableRecord[baseStepId]?.sharedData?.[poppedStepId];
-        }
-      }
-
-      const startStepToDelete = formMeta.steps.filter(
-        (step) => step.stepId === toRemove[toRemove.length - 1],
-      )[0];
-
-      if (!startStepToDelete) return visibleSteps;
-      const deleteFromIndex = formMeta.steps.indexOf(startStepToDelete);
-
-      formMeta.steps.splice(deleteFromIndex, toPop);
-
-      const filterMethod = (step: ClientFormStep) =>
-        !toRemove.includes(step.stepId);
-
-      return visibleSteps.filter(filterMethod);
+    let toRemove: string[];
+    if (index !== 0) {
+      // Determine which step IDs to remove (everything after the target)
+      toRemove = orderedStepIds.slice(startIndex + 1);
+      record.orderedStepIds = orderedStepIds.slice(0, startIndex + 1);
+    } else {
+      // But if there's only one other element, (removing from the source step) then remove it.
+      toRemove = orderedStepIds.slice(startIndex);
+      record.orderedStepIds = orderedStepIds.slice(0, startIndex);
     }
 
-    return visibleSteps;
+    if (toRemove.length === 0) return visibleSteps;
+
+    // Remove from formMeta
+    const deleteFromIndex = formMeta.steps.findIndex(
+      (s) => s.stepId === toRemove[0],
+    );
+
+    if (deleteFromIndex !== -1) {
+      formMeta.steps.splice(deleteFromIndex, toRemove.length);
+    }
+
+    // Filter visible steps
+    return visibleSteps.filter((step) => !toRemove.includes(step.stepId));
   };
 
   const handleContinue = () => {
