@@ -1,11 +1,18 @@
 import { AnyFormApi } from "@tanstack/react-form";
-import { ClientServiceContract } from "./field-mapper.type";
+import { ClientFormStep, ClientServiceContract } from "./field-mapper.type";
 import { FormMeta } from "./renderer.type";
+
+import { FormRepeatableRecord } from "./behavior-helper.type";
 
 export interface FormRendererProps {
   form: AnyFormApi;
   formMeta: FormMeta;
-  stepId?: string;
+  visibleSteps: ClientFormStep[];
+  stepId: string;
+  repeatableRecord: FormRepeatableRecord;
+  setRepeatableRecord: React.Dispatch<
+    React.SetStateAction<FormRepeatableRecord>
+  >;
 }
 
 export type FormRouteProps = {

@@ -43,6 +43,9 @@
           "metadata": {
             "pii": true,
             "sensitive": false
+          },
+          "ui": {
+            "width": "short"
           }
         },
         {
@@ -132,6 +135,9 @@
           "metadata": {
             "pii": true,
             "sensitive": true
+          },
+          "ui": {
+            "width": "medium"
           }
         },
         {
@@ -331,6 +337,9 @@
           "metadata": {
             "pii": true,
             "sensitive": false
+          },
+          "ui": {
+            "width": "short"
           }
         },
         {
@@ -347,6 +356,9 @@
           "metadata": {
             "pii": true,
             "sensitive": false
+          },
+          "ui": {
+            "width": "short"
           }
         }
       ]
@@ -467,6 +479,9 @@
           "metadata": {
             "pii": true,
             "sensitive": false
+          },
+          "ui": {
+            "width": "short"
           }
         },
         {
@@ -483,6 +498,9 @@
           "metadata": {
             "pii": true,
             "sensitive": false
+          },
+          "ui": {
+            "width": "short"
           }
         },
         {
