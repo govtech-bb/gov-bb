@@ -19,3 +19,4 @@ export type {
 export type { FormRendererProps } from "./props.type.ts";
 export type { UseStepGuardProps } from "./props.type.ts";
 export type { ReviewProps } from "./props.type.ts";
+export type { FormRepeatableRecord } from "./behavior-helper.type.ts";

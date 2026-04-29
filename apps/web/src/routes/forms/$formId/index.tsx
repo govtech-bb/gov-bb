@@ -3,7 +3,7 @@ import { FormRenderer } from "@web/components";
 import { fetchContract, buildForm } from "@web/lib";
 import { formSearchParamSchema } from "apps/web/src/types/form-search-param.type";
 import { useForm, useStore } from "@tanstack/react-form";
-import { FormValues } from "@web/types";
+import { FormRepeatableRecord, FormValues } from "@web/types";
 import React from "react";
 
 export const Route = createFileRoute("/forms/$formId/")({
@@ -17,6 +17,8 @@ export const Route = createFileRoute("/forms/$formId/")({
 function RouteComponent() {
   const contract = Route.useLoaderData();
   const { step } = Route.useSearch();
+  const [repeatableRecord, setRepeatableRecord] =
+    React.useState<FormRepeatableRecord>({});
 
   const formMeta = buildForm(contract);
 
@@ -36,12 +38,16 @@ function RouteComponent() {
     );
   }
 
+  console.log(repeatableRecord);
+
   return (
     <FormRenderer
       form={form}
       formMeta={formMeta}
-      stepId={step}
+      stepId={step ?? ""}
       targetStores={targetStores}
+      repeatableRecord={repeatableRecord}
+      setRepeatableRecord={setRepeatableRecord}
     />
   );
 }

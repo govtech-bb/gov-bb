@@ -18,6 +18,8 @@ export default function FormRenderer({
   formMeta,
   stepId,
   targetStores,
+  repeatableRecord,
+  setRepeatableRecord,
 }: FormRendererProps) {
   const [stepIndex, setStepIndex] = React.useState(0);
   const [hidePrevious, setHidePrevious] = React.useState(true);
@@ -56,20 +58,42 @@ export default function FormRenderer({
     (b) => b.type === "sharedFields",
   )[0];
 
-  const repeatableStepCount = 1;
+  const repeatableStepCount = Object.keys(
+    repeatableRecord[stepId]?.stepData ?? [],
+  ).length;
+
+  // console.log(repeatableStepCount)
+
+  const stepValues = useStore(form.store, (state) => state.values[stepId]);
 
   const addRepeatableStep = () => {
+    const baseStepId = stepId.split("--")[0];
+
     const addAnotherStepRadioId = `${currentStep.stepId}.addAnother-${repeatableStepCount}`;
-    const nextStepId = `${currentStep.stepId}-${repeatableStepCount}`;
+    const nextStepId = `${baseStepId}--${repeatableStepCount}`;
 
     let nextStepFields = currentFields.filter(
       (f) => f.id != addAnotherStepRadioId,
     );
+
     if (sharedFieldBehaviour) {
       nextStepFields = nextStepFields.filter(
         (field) => !sharedFieldBehaviour.fieldIds.includes(field.id),
       );
     }
+
+    setRepeatableRecord((prev) => {
+      return {
+        ...prev,
+        [baseStepId]: {
+          maxRepeats: 5,
+          minRepeats: 1,
+          stepData: {
+            [stepId]: stepValues,
+          },
+        },
+      };
+    });
 
     const nextStep: ClientFormStep = {
       ...currentStep,

@@ -42,4 +42,5 @@ export interface ClientServiceContract {
   version: string;
 }
 
-export type FormValues = Record<string, FieldValue>;
+type fieldId = string;
+export type FormValues = Record<fieldId, FieldValue>;
