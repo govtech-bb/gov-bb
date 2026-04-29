@@ -9,7 +9,8 @@ import {
 import { FieldValue } from "./validation.type";
 
 export interface ClientPrimitive {
-  id: string;
+  id: string; // Step ID + field ID
+  fieldId: string;
   name: string;
   label: string;
   htmlType: HtmlTypes;
@@ -43,4 +44,5 @@ export interface ClientServiceContract {
   version: string;
 }
 
-export type FormValues = Record<string, FieldValue>;
+type fieldId = string;
+export type FormValues = Record<fieldId, FieldValue>;

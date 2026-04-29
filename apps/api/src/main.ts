@@ -14,6 +14,15 @@ async function bootstrap() {
   const config = app.get(ConfigService);
   const metricsService = app.get(MetricsService);
   const port = config.get<number>("app.port") ?? 3001;
+  const corsOrigin =
+    config.get<string>("app.corsOrigin") ?? "http://localhost:3000";
+
+  app.enableCors({
+    origin: corsOrigin,
+    methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "Idempotency-Key"],
+    credentials: true,
+  });
 
   app.useGlobalFilters(new GlobalExceptionFilter(metricsService));
   app.useGlobalInterceptors(

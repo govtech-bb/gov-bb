@@ -32,7 +32,7 @@ export const mapFieldToLocale = (
   return {
     ...field,
     id: step.stepId + "." + field.fieldId,
-    name: field.fieldId,
+    name: field.fieldId, // Primitive should provide a `name` value.
     disabled: field.isDisabled ?? false,
     hidden: field.isHidden ?? false,
   };
