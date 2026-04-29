@@ -4,7 +4,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { ClientPrimitive, FormMeta } from "@web/types";
 import { getFormData } from "../lib/session-storage";
 
-export default function Review(formMeta: FormMeta) {
+export default function Review({ formMeta }: { formMeta: FormMeta }) {
   const navigate = useNavigate({ from: "/forms/$formId/" });
 
   const formatDate = (dateValue: {
