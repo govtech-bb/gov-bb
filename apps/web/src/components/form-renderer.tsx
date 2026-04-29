@@ -55,13 +55,23 @@ export default function FormRenderer({
   const stepValues = useStore(form.store, (state) => state.values[stepId]);
 
   const baseStepId = stepId.split("--")[0];
+  const currentRepeatStepCount = isNaN(Number(stepId.split("--")[1]))
+    ? 0
+    : Number(stepId.split("--")[1]);
+
   const stepRepeatableRecord = repeatableRecord[baseStepId];
   const repeatableStepCount =
     Object.keys(stepRepeatableRecord?.stepData ?? []).length + 1;
 
   const addRepeatableStep = (): ClientFormStep[] => {
     const addAnotherStepRadioId = `${currentStep.stepId}.addAnother-${repeatableStepCount}`;
-    const nextStepId = `${baseStepId}--${repeatableStepCount}`;
+    const nextStepId = `${baseStepId}--${currentRepeatStepCount + 1}`;
+
+    if (
+      stepRepeatableRecord &&
+      stepRepeatableRecord.orderedStepIds.includes(nextStepId)
+    )
+      return visibleSteps;
 
     let nextStepFields = currentFields
       .filter((f) => f.id != addAnotherStepRadioId)
@@ -132,7 +142,7 @@ export default function FormRenderer({
       const nextStepPosition = repeatableStepIds.indexOf(step.stepId);
 
       const toRemove: string[] = [];
-      const toPop = repeatableStepIds.length - nextStepPosition;
+      const toPop = repeatableStepIds.length - 1 - nextStepPosition;
 
       for (let i = 0; i < toPop; i++) {
         const poppedStepId = repeatableStepIds.pop();
