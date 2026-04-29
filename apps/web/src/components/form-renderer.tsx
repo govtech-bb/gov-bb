@@ -63,9 +63,12 @@ export default function FormRenderer({
     const addAnotherStepRadioId = `${currentStep.stepId}.addAnother-${repeatableStepCount}`;
     const nextStepId = `${baseStepId}--${repeatableStepCount}`;
 
-    let nextStepFields = currentFields.filter(
-      (f) => f.id != addAnotherStepRadioId,
-    );
+    let nextStepFields = currentFields
+      .filter((f) => f.id != addAnotherStepRadioId)
+      .map((field) => {
+        field.id = `${nextStepId}.${field.fieldId}`;
+        return field;
+      });
 
     if (sharedFieldBehaviour) {
       nextStepFields = nextStepFields.filter(
@@ -126,8 +129,8 @@ export default function FormRenderer({
       if (anotherFieldValue === "yes") {
         const updatedSteps = addRepeatableStep();
         completeAndContinue(currentStep.stepId, stepIndex, updatedSteps);
+        return;
       }
-      return;
     }
     // TODO: Validate current step before marking as completed and navigating to the next step
     completeAndContinue(currentStep.stepId, stepIndex);
