@@ -200,7 +200,7 @@ export default function FieldRenderer({
             }
 
             const element: JSX.Element = (
-              <div data-field>
+              <div data-field data-field-width={field.ui?.width}>
                 <div>
                   <label> {field.label} </label>
                   <ErrorMessage message={errorMessage} />
@@ -214,7 +214,11 @@ export default function FieldRenderer({
             const isMultiple = field.multiple ?? false;
             const selectValue = f.state.value as string | string[] | undefined;
             return (
-              <div data-field data-select-field>
+              <div
+                data-field
+                data-select-field
+                data-field-width={field.ui?.width}
+              >
                 <label> {field.label} </label>
                 <div data-select-control>
                   <select

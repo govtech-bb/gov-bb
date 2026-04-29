@@ -69,11 +69,11 @@
 }
 
 /* Form Elements */
-.formStep h1 {
+.formRoot .formStep h1 {
   margin: 0;
 }
 
-.formStep .formStepDescription {
+.formRoot .formStep .formStepDescription {
   display: none;
 }
 
@@ -82,10 +82,18 @@
   gap: 1.25rem;
 }
 
-.formStep [data-field] {
+.formRoot .formStep [data-field] {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xs);
+}
+
+.formRoot .formStep [data-field][data-field-width="short"] {
+  width: 100%;
+}
+
+.formRoot .formStep [data-field][data-field-width="medium"] {
+  width: 100%;
 }
 
 .formRoot label {
@@ -439,4 +447,15 @@
   font-weight: var(--font-weight-normal);
   padding: var(--spacing-xs) 0;
   text-align: left;
+}
+
+/* Media Queries */
+@media screen and (min-width: 768px) {
+  .formRoot .formStep [data-field][data-field-width="short"] {
+    width: 33%;
+  }
+
+  .formRoot .formStep [data-field][data-field-width="medium"] {
+    width: 50%;
+  }
 }
