@@ -235,7 +235,10 @@ export default function FieldRenderer({
           case "checkbox":
             if (field.options && field.options.length === 1) {
               const option = field.options[0];
-              const value = f.state.value as boolean | undefined;
+              const value =
+                (f.state.value as string | undefined) ??
+                field.defaultValue ??
+                "";
               return (
                 <div data-checkbox-group>
                   <div>
@@ -245,10 +248,11 @@ export default function FieldRenderer({
                   <div key={option.value} data-checkbox-option>
                     <input
                       {...sharedProps}
-                      checked={value ?? false}
-                      value={option.value}
-                      onChange={(e) => {
-                        f.handleChange(e.target.checked);
+                      checked={option.value === value}
+                      onChange={() => {
+                        option.value === value
+                          ? f.handleChange("")
+                          : f.handleChange(option.value);
                       }}
                     />
                     <label>{option.label}</label>
