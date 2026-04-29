@@ -6,6 +6,7 @@ import {
 } from "@web/types";
 import React from "react";
 import ErrorMessage from "./error-message";
+import FileUpload from "./file-upload";
 
 export default function FieldRenderer({
   form,
@@ -218,6 +219,8 @@ export default function FieldRenderer({
                 </div>
               </fieldset>
             );
+          case "file":
+            return <FileUpload />;
           default:
             return (
               <div style={{ color: "red" }}>
