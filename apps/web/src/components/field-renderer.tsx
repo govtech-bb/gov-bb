@@ -152,7 +152,7 @@ export default function FieldRenderer({
                 f.handleChange(values);
               };
 
-              const popField = (values: string[]) => {
+              const removeField = (values: string[]) => {
                 values.pop();
                 f.handleChange(values);
               };
@@ -187,7 +187,7 @@ export default function FieldRenderer({
                         onChange={(e) => updateField(values, i, e.target.value)}
                       />
                       {i === fieldCount - 1 && i != 0 ? (
-                        <p onClick={() => popField(values)}> Remove </p>
+                        <p onClick={() => removeField(values)}> Remove </p>
                       ) : null}
                     </React.Fragment>
                   ))}
