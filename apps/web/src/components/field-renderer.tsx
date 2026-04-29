@@ -319,7 +319,14 @@ export default function FieldRenderer({
               </fieldset>
             );
           case "file":
-            return <FileUpload />;
+            return (
+              <FileUpload
+                field={field}
+                sharedProps={sharedProps}
+                value={f.state.value as File[] | null | undefined}
+                onFileChange={(files) => f.handleChange(files)}
+              />
+            );
           default:
             return (
               <div style={{ color: "red" }}>
