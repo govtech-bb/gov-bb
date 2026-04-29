@@ -236,7 +236,7 @@ export default function FormRenderer({
 
       <div className={designSystem.formStep}>
         {currentStep.stepId === "check-your-answers" && (
-          <Review formMeta={formMeta} form={form} />
+          <Review key={"review-step"} formMeta={formMeta} />
         )}
 
         {currentFields.map((field) => (

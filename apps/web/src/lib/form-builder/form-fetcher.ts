@@ -3,6 +3,8 @@
 import { ClientServiceContract } from "@web/types";
 import { ServiceContract, serviceContractSchema } from "@govtech-bb/form-types";
 import { mapContractToLocale } from "./field-mapper";
+import exampleServiceContract from "../../../contracts/example-service-contract.json";
+import masterContract from "../../../contracts/master-contract.json";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
@@ -36,6 +38,10 @@ interface ApiResponseBody {
 export const fetchContract = async (
   id: string,
 ): Promise<ClientServiceContract> => {
+  if (id === "example" || id === "master") {
+    return fetchExampleContract(id);
+  }
+
   let response: Response;
 
   try {
@@ -67,5 +73,19 @@ export const fetchContract = async (
   }
 
   const contract: ServiceContract = serviceContractSchema.parse(body.data);
+  return mapContractToLocale(contract);
+};
+
+const fetchExampleContract = (
+  id: "master" | "example",
+): ClientServiceContract => {
+  let contract: ServiceContract;
+
+  if (id === "master") {
+    contract = serviceContractSchema.parse(masterContract);
+  } else {
+    contract = serviceContractSchema.parse(exampleServiceContract);
+  }
+
   return mapContractToLocale(contract);
 };

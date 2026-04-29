@@ -3,8 +3,8 @@
   "title": "Redirect my business mail",
   "description": "Tell the Post Office you would like to change the address that your business mail gets delivered to.",
   "version": "1.0.0",
-  "createdAt": "2026-04-02T00:00:00",
-  "updatedAt": "2026-04-02T00:00:00",
+  "createdAt": "2026-04-02T00:00:00Z",
+  "updatedAt": "2026-04-02T00:00:00Z",
   "steps": [
     {
       "stepId": "applicant-details",

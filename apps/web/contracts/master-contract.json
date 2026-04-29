@@ -2,8 +2,8 @@
   "formId": "master-form-v1",
   "title": "Master Service Contract - Documentation & Testing",
   "description": "Comprehensive service contract demonstrating all available features: all behaviours, validations, HTML types, and built-in components.",
-  "createdAt": "2026-04-02T00:00:00",
-  "updatedAt": "2026-04-02T00:00:00",
+  "createdAt": "2026-04-02T00:00:00Z",
+  "updatedAt": "2026-04-02T00:00:00Z",
   "version": "1.0.0",
   "steps": [
     {
