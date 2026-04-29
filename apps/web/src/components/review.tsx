@@ -1,10 +1,16 @@
 import designSystem from "../lib/design-system";
 import React from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { AnyFormApi } from "@tanstack/react-form";
 import { ClientPrimitive, FormMeta } from "@web/types";
-import { getFormData } from "../lib/session-storage";
 
-export default function Review(formMeta: FormMeta) {
+export default function Review({
+  formMeta,
+  form,
+}: {
+  formMeta: FormMeta;
+  form: AnyFormApi;
+}) {
   const navigate = useNavigate({ from: "/forms/$formId/" });
 
   const formatDate = (dateValue: {
@@ -31,7 +37,10 @@ export default function Review(formMeta: FormMeta) {
       });
     };
 
-  const formValues = getFormData(formMeta.formId) || {};
+  const formValues = form.state.values as Record<
+    string,
+    Record<string, unknown>
+  >;
 
   const getFieldDisplayValue = (stepId: string, field: ClientPrimitive) => {
     const value = formValues[stepId]?.[field.name];
@@ -65,6 +74,17 @@ export default function Review(formMeta: FormMeta) {
       case "radio": {
         if (!field.options) return value as string | null;
         return field.options.find((option) => option.value === value)?.label;
+      }
+      case "file": {
+        const files = Array.isArray(value)
+          ? value.filter((file): file is File => file instanceof File)
+          : [];
+
+        if (files.length === 0) {
+          return "No file selected";
+        }
+
+        return files.map((file) => file.name).join(", ");
       }
       default:
         return value as string | null;
