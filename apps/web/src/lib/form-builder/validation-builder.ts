@@ -25,7 +25,6 @@ import {
   checkMaxYear,
   checkSelectionLength,
   checkRequired,
-  checkConditionalOn,
   checkLength,
   checkPattern,
   checkEmail,
@@ -49,8 +48,8 @@ export const buildValidation = (
   for (const step of contract.steps) {
     for (const field of step.fields) {
       const { fieldSchema, properties } = buildFieldValidation(field);
-      shape[field.name] = fieldSchema;
-      fieldValidationProperties[field.name] = properties;
+      shape[field.id] = fieldSchema;
+      fieldValidationProperties[field.id] = properties;
       if (field.defaultValue) {
         defaults[field.id] = field.defaultValue;
       }
@@ -150,33 +149,6 @@ export const buildFieldValidationProperties = (
         errors: [],
       };
 
-      let conditionalRequired: boolean = false;
-
-      if (behaviours && behaviours.length > 0) {
-        const fieldConditionalOns = behaviours.filter(
-          (b) => b.type === "fieldConditionalOn",
-        );
-
-        if (fieldConditionalOns.length > 0) {
-          // Checks if there is a field conditional on, that passes and effects required state
-          conditionalRequired = checkConditionalOn(
-            field.id,
-            value,
-            fieldConditionalOns,
-            results,
-            fieldApi,
-          );
-
-          if (conditionalRequired) {
-            if (!validations.required)
-              validations.required = {
-                value: true,
-                error: `${field.id} is required.`,
-              };
-          }
-        }
-      }
-
       const requiredState = checkRequired({
         fieldId: field.id,
         fieldLabel: field.label,
@@ -230,6 +202,25 @@ export const buildFieldValidationProperties = (
           results,
           fieldApi,
         );
+      }
+
+      // Handling field arrays
+      if (Array.isArray(value)) {
+        const elements = value;
+
+        for (const element of elements) {
+          if (typeof element === "string") {
+            if (element.length === 0) continue;
+            runStringValidations(
+              field.id,
+              field.label,
+              element,
+              validations,
+              results,
+              fieldApi,
+            );
+          }
+        }
       }
 
       return results.hasError ? results.errors : undefined;

@@ -1,8 +1,4 @@
-import {
-  ValidationConfig,
-  EqualityOperations,
-  FieldConditionalOnBehaviour,
-} from "@govtech-bb/form-types";
+import { ValidationConfig, EqualityOperations } from "@govtech-bb/form-types";
 import { AnyFieldApi } from "@tanstack/react-form";
 import {
   ValidationArgs,
@@ -18,13 +14,17 @@ import z from "zod";
 export type RequiredState =
   | "requiredAndEmpty"
   | "notRequiredAndEmpty"
+  | "notRequired"
   | "notEmpty"
   | "unknownState";
 
 export const valueIsEmpty = (value: FieldValue): boolean | undefined => {
-  if (typeof value === "string" || Array.isArray(value))
+  if (!value) return true;
+  if (typeof value === "string")
     return value.length === 0; // If required and no content, flag it.
-  else if (typeof value === "boolean")
+  else if (Array.isArray(value)) {
+    return value.length === 0; // I want this to check each element for truthiness
+  } else if (typeof value === "boolean")
     return !value; // It's a boolean. If it's required then it must be true
   else if (typeof value === "number") return value.toString().length === 0;
   else if ("day" in value || "month" in value || "year" in value) {
@@ -71,7 +71,8 @@ export const checkRequired = ({
     setValidationError(fieldLabel, required, results);
     return "requiredAndEmpty";
   }
-  if (required && !required.value && isEmpty) return "notRequiredAndEmpty";
+  if ((!required || (required && !required.value)) && isEmpty)
+    return "notRequiredAndEmpty";
 
   return "notEmpty";
 };
@@ -418,38 +419,8 @@ export const checkContains = ({
     setValidationError(fieldLabel, contains, results);
   }
 };
-export const checkConditionalOn = (
-  fieldLabel: string,
-  currentFieldValue: FieldValue,
-  fieldConditionalOns: FieldConditionalOnBehaviour[],
-  results: ValidationResults,
-  fieldApi: AnyFieldApi,
-): boolean => {
-  if (fieldConditionalOns.length === 0) return false;
 
-  let isRequired: boolean = false;
-
-  for (const condition of fieldConditionalOns) {
-    const targetFieldValue = fieldApi.form.getFieldValue(
-      condition.targetFieldId,
-    );
-    const passesCondition = evaluateCondition(
-      condition.value,
-      targetFieldValue,
-      condition.operator,
-    );
-    if (passesCondition && currentFieldValue.toString().length == 0) {
-      results.hasError = true;
-      results.errors = [
-        `${fieldLabel} is required because the value of ${condition.targetFieldId} is ${condition.operator} ${condition.value}`,
-      ];
-      isRequired = true;
-    }
-  }
-
-  return isRequired;
-};
-const evaluateCondition = (
+export const evaluateCondition = (
   conditionValue: FieldValue,
   targetFieldValue: FieldValue | undefined,
   operation: EqualityOperations | "gt" | "lt" | "contains" | "strictEquality",
@@ -495,16 +466,7 @@ const evaluateCondition = (
         return true;
       else return false;
     case "exists":
-      if (
-        (conditionValue && targetFieldValue) ||
-        (!conditionValue && !targetFieldValue)
-      )
-        return true;
-      if (
-        (conditionValue && !targetFieldValue) ||
-        (!conditionValue && targetFieldValue)
-      )
-        return false;
+      if (targetFieldValue && !valueIsEmpty(targetFieldValue)) return true;
       return false;
     case "gt":
       if (conditionValue && targetFieldValue) {
