@@ -58,17 +58,15 @@ export default function FormRenderer({
     (b) => b.type === "sharedFields",
   )[0];
 
-  const repeatableStepCount = Object.keys(
-    repeatableRecord[stepId]?.stepData ?? [],
-  ).length;
-
-  // console.log(repeatableStepCount)
-
   const stepValues = useStore(form.store, (state) => state.values[stepId]);
 
-  const addRepeatableStep = () => {
-    const baseStepId = stepId.split("--")[0];
+  const baseStepId = stepId.split("--")[0];
+  const stepRepeatableRecord = repeatableRecord[baseStepId];
+  const repeatableStepCount = Object.keys(
+    stepRepeatableRecord?.stepData ?? [],
+  ).length;
 
+  const addRepeatableStep = () => {
     const addAnotherStepRadioId = `${currentStep.stepId}.addAnother-${repeatableStepCount}`;
     const nextStepId = `${baseStepId}--${repeatableStepCount}`;
 
@@ -82,16 +80,23 @@ export default function FormRenderer({
       );
     }
 
+    const updatedRecord = stepRepeatableRecord ?? {
+      minRepeats: 1,
+      maxRepeats: 5,
+      stepData: {
+        [stepId]: stepValues,
+      },
+      sharedData: {},
+    };
+
+    if (stepRepeatableRecord) {
+      updatedRecord.stepData[stepId] = stepValues;
+    }
+
     setRepeatableRecord((prev) => {
       return {
         ...prev,
-        [baseStepId]: {
-          maxRepeats: 5,
-          minRepeats: 1,
-          stepData: {
-            [stepId]: stepValues,
-          },
-        },
+        [baseStepId]: updatedRecord,
       };
     });
 
