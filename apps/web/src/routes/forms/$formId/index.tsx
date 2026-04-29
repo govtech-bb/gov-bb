@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { FormRenderer } from "@web/components";
-import { fetchContract, buildForm } from "@web/lib";
+import { fetchContract, buildForm, getVisibleSteps } from "@web/lib";
 import { formSearchParamSchema } from "apps/web/src/types/form-search-param.type";
 import { useForm, useStore } from "@tanstack/react-form";
-import { FormRepeatableRecord, FormValues } from "@web/types";
+import { ClientFormStep, FormRepeatableRecord, FormValues } from "@web/types";
 import React from "react";
+import { useStepGuard } from "apps/web/src/hooks/use-step-guard";
 
 export const Route = createFileRoute("/forms/$formId/")({
   component: RouteComponent,
@@ -32,20 +33,25 @@ function RouteComponent() {
 
   const targetStores = [];
 
-  for (const [key, value] of Object.entries(formMeta.stepConditionalTargets)) {
+  for (const [stepId, fieldId] of Object.entries(
+    formMeta.stepConditionalTargets,
+  )) {
     targetStores.push(
-      useStore(form.store, (state) => state.values[key]?.[value]),
+      useStore(form.store, (state) => state.values[stepId]?.[fieldId]),
     );
   }
 
-  console.log(repeatableRecord);
+  const visibleSteps = React.useMemo(
+    () => getVisibleSteps(formMeta.steps, form),
+    [targetStores, formMeta.steps],
+  );
 
   return (
     <FormRenderer
       form={form}
       formMeta={formMeta}
       stepId={step ?? ""}
-      targetStores={targetStores}
+      visibleSteps={visibleSteps}
       repeatableRecord={repeatableRecord}
       setRepeatableRecord={setRepeatableRecord}
     />

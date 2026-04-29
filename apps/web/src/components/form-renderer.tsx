@@ -11,23 +11,17 @@ import ErrorSummary from "./error-summary";
 import { useStore } from "@tanstack/react-form";
 import { useStepGuard } from "../hooks/use-step-guard";
 import Review from "./review";
-import { getVisibleSteps } from "@web/lib";
 
 export default function FormRenderer({
   form,
   formMeta,
   stepId,
-  targetStores,
+  visibleSteps,
   repeatableRecord,
   setRepeatableRecord,
 }: FormRendererProps) {
-  const [stepIndex, setStepIndex] = React.useState(0);
   const [hidePrevious, setHidePrevious] = React.useState(true);
-
-  const visibleSteps = React.useMemo(
-    () => getVisibleSteps(formMeta.steps, form),
-    [targetStores],
-  );
+  const [stepIndex, setStepIndex] = React.useState(0);
 
   const { navigateToStep, completeAndContinue } = useStepGuard({
     formId: formMeta.formId,
@@ -62,9 +56,8 @@ export default function FormRenderer({
 
   const baseStepId = stepId.split("--")[0];
   const stepRepeatableRecord = repeatableRecord[baseStepId];
-  const repeatableStepCount = Object.keys(
-    stepRepeatableRecord?.stepData ?? [],
-  ).length;
+  const repeatableStepCount =
+    Object.keys(stepRepeatableRecord?.stepData ?? []).length + 1;
 
   const addRepeatableStep = () => {
     const addAnotherStepRadioId = `${currentStep.stepId}.addAnother-${repeatableStepCount}`;
@@ -76,7 +69,7 @@ export default function FormRenderer({
 
     if (sharedFieldBehaviour) {
       nextStepFields = nextStepFields.filter(
-        (field) => !sharedFieldBehaviour.fieldIds.includes(field.id),
+        (field) => !sharedFieldBehaviour.fieldIds.includes(field.fieldId),
       );
     }
 
@@ -106,7 +99,19 @@ export default function FormRenderer({
       stepId: nextStepId,
     };
 
-    visibleSteps.splice(stepIndex + 1, 0, nextStep);
+    const currentStepIndex = formMeta.steps.indexOf(currentStep);
+    formMeta.steps.splice(currentStepIndex + 1, 0, nextStep); // The real update
+
+    // This is a temporary update that will be replaced when the useMemo recalculates visible steps due to the change in formMeta.steps
+    // This is needed, since by the time we call completeAndContinue, the memoized visible steps would not have been recalculated yet
+    // Meaning that completeAndContinue will still be operating on the "stale" list of steps.
+    // By manually making the update here, and passing it directly to completeAndContinue, completeAndContinue gets to operate on the
+    // updated version, or "future state" of visible steps.
+    return [
+      ...visibleSteps.slice(0, stepIndex + 1),
+      nextStep,
+      ...visibleSteps.slice(stepIndex + 1),
+    ];
   };
 
   // const removeRepeatableStep = () => { };
@@ -118,9 +123,12 @@ export default function FormRenderer({
       const anotherFieldId = `${currentStep.stepId}.addAnother-${repeatableStepCount}`;
 
       const anotherFieldValue = form.getFieldValue(anotherFieldId);
-      if (anotherFieldValue === "yes") addRepeatableStep();
+      if (anotherFieldValue === "yes") {
+        const updatedSteps = addRepeatableStep();
+        completeAndContinue(currentStep.stepId, stepIndex, updatedSteps);
+      }
+      return;
     }
-
     // TODO: Validate current step before marking as completed and navigating to the next step
     completeAndContinue(currentStep.stepId, stepIndex);
   };
