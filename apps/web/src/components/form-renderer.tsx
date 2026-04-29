@@ -58,10 +58,10 @@ export default function FormRenderer({
   const currentRepeatStepCount = Number(rawIndex ?? 0);
 
   const stepRepeatableRecord = repeatableRecord[baseStepId];
-  const repeatableStepCount =
-    Object.keys(stepRepeatableRecord?.stepData ?? []).length + 1;
+  const repeatableStepCount = stepRepeatableRecord.orderedStepIds.length;
 
   const addRepeatableStep = (): ClientFormStep[] => {
+    if (!repeatableBehaviour) return visibleSteps;
     const addAnotherStepRadioId = `${currentStep.stepId}.addAnother-${repeatableStepCount}`;
     const nextStepId = `${baseStepId}--${currentRepeatStepCount + 1}`;
 
@@ -85,8 +85,8 @@ export default function FormRenderer({
     }
 
     const updatedRecord = stepRepeatableRecord ?? {
-      minRepeats: 1,
-      maxRepeats: 5,
+      minRepeats: repeatableBehaviour.min ?? 1,
+      maxRepeats: repeatableBehaviour.max ?? 5,
       stepData: {
         [stepId]: stepValues,
       },
@@ -128,7 +128,7 @@ export default function FormRenderer({
   };
 
   const removeRepeatableStep = (): ClientFormStep[] => {
-    const [, rawIndex] = stepId.split("--");
+    const rawIndex = stepId.split("--")[1];
     const index = Number(rawIndex ?? 0);
     const targetStepId = `${baseStepId}--${index ? index : 1}`;
 
