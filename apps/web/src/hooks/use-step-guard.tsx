@@ -1,9 +1,10 @@
 import { useEffect, useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { UseStepGuardProps } from "@web/types";
+import { FormMeta, FormValues, UseStepGuardProps } from "@web/types";
 import {
   getFirstIncompleteStepIndex,
   markStepCompleted,
+  storeFormData,
 } from "../lib/session-storage";
 
 export function useStepGuard({
@@ -41,8 +42,13 @@ export function useStepGuard({
     [formId, steps, navigate, setStepIndex],
   );
 
-  const completeAndContinue = (currentStepId: string, currentIndex: number) => {
+  const completeAndContinue = (
+    currentStepId: string,
+    currentIndex: number,
+    formValues: FormValues,
+  ) => {
     markStepCompleted(formId, currentStepId);
+    storeFormData(formId, formValues);
     navigateToStep(currentIndex + 1);
   };
 
