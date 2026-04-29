@@ -19,17 +19,20 @@ export const mapContractToLocale = (
 export const mapStepToLocale = (step: FormStep): ClientFormStep => {
   return {
     ...step,
-    fields: step.elements.map((el) => mapFieldToLocale(el)),
+    fields: step.elements.map((el) => mapFieldToLocale(el, step)),
   };
 };
 
-export const mapFieldToLocale = (field: Primitive): ClientPrimitive => {
+export const mapFieldToLocale = (
+  field: Primitive,
+  step: FormStep,
+): ClientPrimitive => {
   // If it is that we want `options` to be referenced, and accessible via some Key Value store.
   // The logic to fetch, should be done in here.
   return {
     ...field,
-    id: field.fieldId,
-    name: field.fieldId,
+    id: step.stepId + "." + field.fieldId,
+    name: field.fieldId, // Primitive should provide a `name` value.
     disabled: field.isDisabled ?? false,
     hidden: field.isHidden ?? false,
   };

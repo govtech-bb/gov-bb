@@ -2,8 +2,8 @@
   "formId": "master-form-v1",
   "title": "Master Service Contract - Documentation & Testing",
   "description": "Comprehensive service contract demonstrating all available features: all behaviours, validations, HTML types, and built-in components.",
-  "createdAt": "2026-04-02T00:00:00",
-  "updatedAt": "2026-04-02T00:00:00",
+  "createdAt": "2026-04-02T00:00:00Z",
+  "updatedAt": "2026-04-02T00:00:00Z",
   "version": "1.0.0",
   "steps": [
     {
@@ -88,7 +88,14 @@
               "value": "^[A-Za-z\\s\\-']+$",
               "error": "Middle name can only contain letters, spaces, hyphens and apostrophes"
             }
-          }
+          },
+          "behaviours": [
+            {
+              "type": "fieldArray",
+              "min": 1,
+              "max": 4
+            }
+          ]
         },
         {
           "fieldId": "lastName",
@@ -281,10 +288,20 @@
         },
         {
           "fieldId": "telephone",
-          "label": "Home Telephone (Optional)",
+          "label": "Home Telephone",
           "htmlType": "tel",
           "placeholder": "Enter home phone number",
-          "hint": "Including area code"
+          "hint": "Including area code",
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Telephone number is required"
+            },
+            "pattern": {
+              "value": "^[0-9]{10,15}$",
+              "error": "Please enter a valid phone number"
+            }
+          }
         },
         {
           "fieldId": "mobile",
@@ -297,7 +314,7 @@
               "error": "Mobile number is required"
             },
             "pattern": {
-              "value": "^[0-9+\\s\\-\\()\\]{10,15}$",
+              "value": "^[0-9]{10,15}$",
               "error": "Please enter a valid phone number"
             }
           }
@@ -306,7 +323,16 @@
           "fieldId": "workTelephone",
           "label": "Work Telephone (Optional)",
           "htmlType": "tel",
-          "placeholder": "Enter work phone number"
+          "placeholder": "Enter work phone number",
+          "validations": {
+            "required": {
+              "value": false
+            },
+            "pattern": {
+              "value": "^[0-9+]{10,15}$",
+              "error": "Please enter a valid phone number"
+            }
+          }
         },
         {
           "fieldId": "preferredContact",
@@ -419,6 +445,7 @@
         {
           "type": "stepConditionalOn",
           "targetFieldId": "telephone",
+          "targetStepId": "step-2-contact-information",
           "operator": "exists",
           "value": ""
         }
@@ -808,7 +835,7 @@
               "value": "confirmed"
             }
           ],
-          "defaultValue": true
+          "defaultValue": "confirmed"
         },
         {
           "fieldId": "bankName",
@@ -820,7 +847,7 @@
               "type": "fieldConditionalOn",
               "targetFieldId": "hasBankAccount",
               "operator": "equal",
-              "value": true
+              "value": "confirmed"
             }
           ],
           "validations": {
@@ -855,7 +882,7 @@
               "type": "fieldConditionalOn",
               "targetFieldId": "hasBankAccount",
               "operator": "equal",
-              "value": true
+              "value": "confirmed"
             }
           ],
           "validations": {
@@ -875,7 +902,7 @@
               "type": "fieldConditionalOn",
               "targetFieldId": "hasBankAccount",
               "operator": "equal",
-              "value": true
+              "value": "confirmed"
             }
           ],
           "validations": {
@@ -904,7 +931,7 @@
               "type": "fieldConditionalOn",
               "targetFieldId": "hasBankAccount",
               "operator": "equal",
-              "value": true
+              "value": "confirmed"
             }
           ],
           "validations": {
@@ -927,8 +954,8 @@
             {
               "type": "fieldConditionalOn",
               "targetFieldId": "hasBankAccount",
-              "operator": "equal",
-              "value": false
+              "operator": "notEqual",
+              "value": "confirmed"
             }
           ],
           "validations": {
@@ -1026,6 +1053,17 @@
               "error": "Please specify the source of funds"
             }
           }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 1,
+          "max": 3
+        },
+        {
+          "type": "sharedFields",
+          "fieldIds": ["hasBankAccount"]
         }
       ]
     },
@@ -1149,6 +1187,12 @@
           "value": true
         }
       ]
+    },
+    {
+      "stepId": "check-your-answers",
+      "title": "Check Your Answers",
+      "description": "Review all the information you have provided before submitting your application.",
+      "elements": []
     }
   ]
 }

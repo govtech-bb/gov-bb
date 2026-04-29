@@ -1,9 +1,10 @@
 import { useEffect, useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { UseStepGuardProps } from "@web/types";
+import { ClientFormStep, UseStepGuardProps } from "@web/types";
 import {
   getFirstIncompleteStepIndex,
   markStepCompleted,
+  storeFormData,
 } from "../lib/session-storage";
 
 export function useStepGuard({
@@ -20,15 +21,16 @@ export function useStepGuard({
   };
 
   const navigateToStep = useCallback(
-    (requestedIndex: number) => {
-      const maxAllowed = getFirstIncompleteStepIndex(formId, steps);
+    (requestedIndex: number, updatedSteps?: ClientFormStep[]) => {
+      const currentSteps = updatedSteps ?? steps;
+      const maxAllowed = getFirstIncompleteStepIndex(formId, currentSteps);
       const safeIndex = Math.min(Math.max(requestedIndex, 0), maxAllowed);
 
       setStepIndex(safeIndex);
 
       // Only update route if within valid range
-      if (safeIndex < steps.length) {
-        const nextStepId = steps[safeIndex].stepId;
+      if (safeIndex < currentSteps.length) {
+        const nextStepId = currentSteps[safeIndex].stepId;
 
         void navigate({
           search: (prev) => ({
@@ -41,9 +43,13 @@ export function useStepGuard({
     [formId, steps, navigate, setStepIndex],
   );
 
-  const completeAndContinue = (currentStepId: string, currentIndex: number) => {
+  const completeAndContinue = (
+    currentStepId: string,
+    currentIndex: number,
+    updatedSteps?: ClientFormStep[],
+  ) => {
     markStepCompleted(formId, currentStepId);
-    navigateToStep(currentIndex + 1);
+    navigateToStep(currentIndex + 1, updatedSteps);
   };
 
   useEffect(() => {
