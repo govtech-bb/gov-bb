@@ -399,9 +399,13 @@
           ],
           "defaultValue": "afternoon",
           "validations": {
+            "required": {
+              "value": true,
+              "error": "This field is required."
+            },
             "minSelection": {
-              "value": 1,
-              "error": "At least one option must be selected"
+              "value": 2,
+              "error": "At least two options must be selected"
             },
             "maxSelection": {
               "value": 3,
