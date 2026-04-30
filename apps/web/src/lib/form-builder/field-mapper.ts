@@ -31,10 +31,16 @@ export const mapFieldToLocale = (
   // The logic to fetch, should be done in here.
   return {
     ...field,
-    id: step.stepId + "." + field.fieldId,
+    id: getFullId(step.stepId, field.fieldId),
     stepId: step.stepId,
     name: field.name ?? field.label,
     disabled: field.isDisabled ?? false,
     hidden: field.isHidden ?? false,
   };
+};
+
+export const stepFieldIdConcactenator = "|";
+
+export const getFullId = (stepId: string, fieldId: string): string => {
+  return `${stepId}${stepFieldIdConcactenator}${fieldId}`;
 };

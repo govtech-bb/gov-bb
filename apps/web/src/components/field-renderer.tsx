@@ -241,10 +241,7 @@ export default function FieldRenderer({
           case "checkbox":
             if (field.options && field.options.length === 1) {
               const option = field.options[0];
-              const value =
-                (f.state.value as string | undefined) ??
-                field.defaultValue ??
-                "";
+              const value = (f.state.value as string | undefined) ?? "";
               return (
                 <div data-checkbox-group>
                   <div>
