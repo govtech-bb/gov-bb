@@ -1,7 +1,7 @@
 import designSystem from "../lib/design-system";
 import React from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { AnyFormApi } from "@tanstack/react-form";
+import { AnyFormApi, useStore } from "@tanstack/react-form";
 import { ClientPrimitive, FormMeta } from "@web/types";
 
 export default function Review({
@@ -37,13 +37,24 @@ export default function Review({
       });
     };
 
-  const formValues = form.state.values as Record<
-    string,
-    Record<string, unknown>
-  >;
+  useStore(form.store, (state) => state.values);
 
-  const getFieldDisplayValue = (stepId: string, field: ClientPrimitive) => {
-    const value = formValues[stepId]?.[field.name];
+  const getUploadedFileName = (fileValue: unknown): string | null => {
+    if (!fileValue || typeof fileValue !== "object") return null;
+
+    if (fileValue instanceof File) {
+      return fileValue.name;
+    }
+
+    const fileName = (fileValue as { name?: unknown }).name;
+
+    return typeof fileName === "string" && fileName.trim().length > 0
+      ? fileName
+      : null;
+  };
+
+  const getFieldDisplayValue = (field: ClientPrimitive) => {
+    const value = form.getFieldValue(field.id);
 
     switch (field.htmlType) {
       case "select": {
@@ -76,18 +87,20 @@ export default function Review({
         return field.options.find((option) => option.value === value)?.label;
       }
       case "file": {
-        const files = Array.isArray(value)
-          ? value.filter((file): file is File => file instanceof File)
+        const fileNames = Array.isArray(value)
+          ? value
+              .map((file) => getUploadedFileName(file))
+              .filter((name): name is string => name !== null) // remove nulls
           : [];
 
-        if (files.length === 0) {
+        if (fileNames.length === 0) {
           return "No file selected";
         }
 
-        return files.map((file) => file.name).join(", ");
+        return fileNames.join(", ");
       }
       default:
-        return value as string | null;
+        return value === undefined || value === null ? "" : String(value);
     }
   };
 
@@ -119,7 +132,7 @@ export default function Review({
                       {field.label}
                     </td>
                     <td className={designSystem.reviewFieldValue}>
-                      {getFieldDisplayValue(step.stepId, field)}
+                      {getFieldDisplayValue(field)}
                     </td>
                   </tr>
                 ))}
