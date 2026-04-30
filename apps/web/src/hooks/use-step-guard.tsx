@@ -4,7 +4,6 @@ import { ClientFormStep, UseStepGuardProps } from "@web/types";
 import {
   getFirstIncompleteStepIndex,
   markStepCompleted,
-  storeFormData,
 } from "../lib/session-storage";
 
 export function useStepGuard({
