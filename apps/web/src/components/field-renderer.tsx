@@ -42,6 +42,7 @@ export default function FieldRenderer({
       form.getFieldValue(field.id),
       fieldConditionalOns,
       form,
+      field.stepId,
     );
   }
 

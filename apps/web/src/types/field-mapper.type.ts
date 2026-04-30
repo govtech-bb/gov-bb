@@ -11,6 +11,7 @@ import { FieldValue } from "./validation.type";
 export interface ClientPrimitive {
   id: string; // Step ID + field ID
   fieldId: string;
+  stepId: string;
   name: string;
   label: string;
   htmlType: HtmlTypes;

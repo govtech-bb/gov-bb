@@ -193,6 +193,7 @@ export default function FormRenderer({
     const addAnotherField: ClientPrimitive = {
       id: `${currentStep.stepId}.addAnother-${repeatableStepCount}`,
       fieldId: "addAnother",
+      stepId: currentStep.stepId,
       name: "Add Another",
       label: "Add another?",
       htmlType: "radio",
