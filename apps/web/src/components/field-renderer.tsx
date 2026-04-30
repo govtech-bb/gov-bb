@@ -55,7 +55,7 @@ export default function FieldRenderer({
         // const value = f.state.value as ValueType | undefined
         const sharedProps = {
           type: field.htmlType,
-          name: field.id,
+          name: field.name,
           id: field.id,
           disabled: field.disabled,
           placeholder: field.placeholder,

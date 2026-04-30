@@ -21,10 +21,11 @@ export interface FieldValidation {
   properties: FieldValidationProperties;
 }
 
+type stepId = string;
 export interface FormValidation {
   schema: ZodObject<Record<string, ZodType<unknown>>>;
   properties: Record<string, FieldValidationProperties>;
-  defaults: Record<string, unknown>;
+  defaults: Record<stepId, FieldValue>;
 }
 
 export interface ValidationResults {

@@ -24,7 +24,7 @@ export default function Review({ formMeta }: { formMeta: FormMeta }) {
     (stepId: string) => (event: React.MouseEvent<HTMLAnchorElement>) => {
       event.preventDefault();
       void navigate({
-        search: (prev) => ({
+        search: (prev: Record<string, unknown>) => ({
           ...prev,
           step: stepId,
         }),
