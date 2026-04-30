@@ -25,7 +25,7 @@ export type FieldConditionalOnBehaviour = z.infer<
 export const stepConditionalOnBehaviourSchema = z.object({
   type: z.literal("stepConditionalOn"),
   targetFieldId: z.string(),
-  targetStepId: z.string().optional(),
+  targetStepId: z.string(),
   operator: equalityOperationsSchema,
   value: z.union([
     z.string(),
