@@ -26,7 +26,7 @@ class BehaviourBuilder {
     const behaviour: FieldConditionalOnBehaviour = {
       type: "fieldConditionalOn",
       targetFieldId,
-      ...(targetStepId && { targetStepId }),
+      ...((targetStepId && { targetStepId }) || { targetStepId: this.stepId }),
       operator,
       value,
     };
