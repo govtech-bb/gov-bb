@@ -225,7 +225,7 @@ export default function FieldRenderer({
                   <select
                     {...sharedProps}
                     multiple={isMultiple}
-                    value={selectValue ? selectValue : ""}
+                    value={selectValue ? selectValue : isMultiple ? [] : ""}
                     onChange={(e) => f.handleChange(e.target.value)}
                   >
                     <option value=""></option>
