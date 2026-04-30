@@ -3,7 +3,7 @@ export type { RequiredState } from "./validation-methods";
 export { fetchContract, FormFetchError } from "./form-fetcher";
 export { buildForm } from "./build-form";
 export {
-  getFullId,
+  getFullFieldId,
   stepFieldIdConcactenator,
   mapContractToLocale,
 } from "./field-mapper";
