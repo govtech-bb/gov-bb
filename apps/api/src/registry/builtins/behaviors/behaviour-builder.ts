@@ -9,10 +9,12 @@ import {
 
 class BehaviourBuilder {
   fieldId: string;
+  stepId: string;
   behaviours: Behaviour[] = [];
 
-  constructor(fieldId: string) {
+  constructor(fieldId: string, stepId: string) {
     this.fieldId = fieldId;
+    this.stepId = stepId;
   }
 
   fieldConditionalOn(
@@ -36,12 +38,12 @@ class BehaviourBuilder {
     targetFieldId: string,
     value: string | number,
     operator: "equal" | "notEqual" | "in" | "exists" = "exists",
-    targetStepId?: string,
+    targetStepId: string,
   ): this {
     const behaviour: StepConditionalOnBehaviour = {
       type: "stepConditionalOn",
       targetFieldId,
-      ...(targetStepId && { targetStepId }),
+      targetStepId,
       operator,
       value,
     };
