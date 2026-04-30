@@ -267,11 +267,6 @@ export default function FieldRenderer({
             const checkboxValues: string[] =
               (f.state.value as string[] | undefined) ?? [];
 
-            // Need to check for the default value being a string.
-            if (f.state.value && typeof f.state.value === "string") {
-              f.handleChange([f.state.value]);
-            }
-
             const toggle = (item: string) => {
               const next = checkboxValues.includes(item)
                 ? checkboxValues.filter((cv) => cv !== item)

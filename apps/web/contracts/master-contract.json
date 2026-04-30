@@ -397,7 +397,7 @@
               "value": "night"
             }
           ],
-          "defaultValue": "afternoon",
+          "defaultValue": ["afternoon"],
           "validations": {
             "required": {
               "value": true,
