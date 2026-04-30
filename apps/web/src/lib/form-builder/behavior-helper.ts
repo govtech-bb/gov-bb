@@ -10,13 +10,16 @@ export const checkConditionalOn = (
   currentFieldValue: FieldValue,
   conditionalOns: FieldConditionalOnBehaviour[] | StepConditionalOnBehaviour[],
   formApi: AnyFormApi,
+  fieldStep?: string,
 ): RequiredState => {
   if (conditionalOns.length === 0) return "unknownState";
 
   for (const condition of conditionalOns) {
+    const targetStepId: string | undefined =
+      condition.targetStepId ?? fieldStep;
     let targetFieldId = condition.targetFieldId;
-    if (condition.targetStepId) {
-      targetFieldId = `${condition.targetStepId}.${condition.targetFieldId}`;
+    if (targetStepId) {
+      targetFieldId = `${targetStepId}.${condition.targetFieldId}`;
     }
 
     const targetFieldValue = formApi.getFieldValue(targetFieldId);
