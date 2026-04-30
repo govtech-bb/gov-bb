@@ -4,7 +4,10 @@
   "private": true,
   "main": "./src/index.ts",
   "types": "./src/index.ts",
+  "lint-staged": {
+    "*.ts": "npx prettier --write"
+  },
   "devDependencies": {
-    "tsc-files": "^1.1.4"
+    "lint-staged": "^16.4.0"
   }
 }

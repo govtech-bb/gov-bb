@@ -20,74 +20,32 @@ jobs:
           cache: "npm"
       - run: npm install
 
-      - name: Typecheck apps/api
-        id: typecheck_api
-        run: npx tsc --noEmit -p apps/api/tsconfig.json 2>&1 | tee typecheck-api.txt; exit ${PIPESTATUS[0]}
-        continue-on-error: true
-
-      - name: Typecheck apps/web
-        id: typecheck_web
-        run: npx tsc --noEmit -p apps/web/tsconfig.json 2>&1 | tee typecheck-web.txt; exit ${PIPESTATUS[0]}
-        continue-on-error: true
-
-      - name: Typecheck packages/form-types
-        id: typecheck_form_types
-        run: npx tsc --noEmit -p packages/form-types/tsconfig.json 2>&1 | tee typecheck-form-types.txt; exit ${PIPESTATUS[0]}
-        continue-on-error: true
-
-      - name: Typecheck packages/form-conditions
-        id: typecheck_form_conditions
-        run: npx tsc --noEmit -p packages/form-conditions/tsconfig.json 2>&1 | tee typecheck-form-conditions.txt; exit ${PIPESTATUS[0]}
+      - name: Run type check (tsc --build)
+        id: typecheck
+        run: |
+          npx tsc -b 2>&1 | tee typecheck-output.txt
+          exit ${PIPESTATUS[0]}
         continue-on-error: true
 
       - name: Report type check results
-        if: always()
+        if: steps.typecheck.outcome == 'failure'
         run: |
-          HAS_ERRORS=false
+          ERROR_COUNT=$(grep -c "error TS" typecheck-output.txt 2>/dev/null || echo "?")
 
-          echo "## Type Check Results" >> $GITHUB_STEP_SUMMARY
+          echo "## ❌ Type Check Failed — ${ERROR_COUNT} error(s)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-
-          for project in api web form-types form-conditions; do
-            FILE="typecheck-${project}.txt"
-            # Map filename back to step id
-            case "$project" in
-              api) STEP_OUTCOME="${{ steps.typecheck_api.outcome }}" ; PROJECT_PATH="apps/api" ;;
-              web) STEP_OUTCOME="${{ steps.typecheck_web.outcome }}" ; PROJECT_PATH="apps/web" ;;
-              form-types) STEP_OUTCOME="${{ steps.typecheck_form_types.outcome }}" ; PROJECT_PATH="packages/form-types" ;;
-              form-conditions) STEP_OUTCOME="${{ steps.typecheck_form_conditions.outcome }}" ; PROJECT_PATH="packages/form-conditions" ;;
-            esac
-
-            if [ "$STEP_OUTCOME" = "failure" ]; then
-              HAS_ERRORS=true
-              ERROR_COUNT=$(grep -c "^.*error TS" "$FILE" 2>/dev/null || echo "?")
-              echo "### ❌ ${PROJECT_PATH} — ${ERROR_COUNT} error(s)" >> $GITHUB_STEP_SUMMARY
-              echo "" >> $GITHUB_STEP_SUMMARY
-              echo "<details><summary>View errors</summary>" >> $GITHUB_STEP_SUMMARY
-              echo "" >> $GITHUB_STEP_SUMMARY
-              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-              cat "$FILE" >> $GITHUB_STEP_SUMMARY
-              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-              echo "</details>" >> $GITHUB_STEP_SUMMARY
-              echo "" >> $GITHUB_STEP_SUMMARY
-            else
-              echo "### ✅ ${PROJECT_PATH}" >> $GITHUB_STEP_SUMMARY
-              echo "" >> $GITHUB_STEP_SUMMARY
-            fi
-          done
-
-          if [ "$HAS_ERRORS" = true ]; then
-            echo "---" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**Fix locally:**" >> $GITHUB_STEP_SUMMARY
-            echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-            echo "npx tsc --noEmit -p apps/api/tsconfig.json" >> $GITHUB_STEP_SUMMARY
-            echo "npx tsc --noEmit -p apps/web/tsconfig.json" >> $GITHUB_STEP_SUMMARY
-            echo "npx tsc --noEmit -p packages/form-types/tsconfig.json" >> $GITHUB_STEP_SUMMARY
-            echo "npx tsc --noEmit -p packages/form-conditions/tsconfig.json" >> $GITHUB_STEP_SUMMARY
-            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-            exit 1
-          fi
+          echo "<details><summary>View type errors</summary>" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          cat typecheck-output.txt >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "</details>" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Fix locally:**" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "npx tsc -b" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          exit 1
 
   secrets-scan:
     name: Secrets Scan
