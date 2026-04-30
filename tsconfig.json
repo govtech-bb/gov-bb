@@ -1,0 +1,20 @@
+{
+  "files": [],
+  "references": [
+    {
+      "path": "packages/form-types"
+    },
+    {
+      "path": "packages/form-conditions"
+    },
+    {
+      "path": "packages/form-validation"
+    },
+    {
+      "path": "apps/web"
+    },
+    {
+      "path": "apps/api"
+    }
+  ]
+}
