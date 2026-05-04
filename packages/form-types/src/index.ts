@@ -90,7 +90,7 @@ export type {
 
 export { processorSchema } from "./processor.type";
 
-export type { Processor } from "./processor.type";
+export type { Processor, PaymentProcessorConfig } from "./processor.type";
 
 export {
   dateTimeFormatSchema,
