@@ -81,7 +81,7 @@ export default function FileUpload({
           <span data-file-upload-limit>
             Max Size:{" "}
             {validationRules?.maxSize?.value
-              ? validationRules.maxSize.value + " bytes"
+              ? validationRules.maxSize.value / (1024 * 1024) + " MB"
               : "--"}
           </span>
         </div>
