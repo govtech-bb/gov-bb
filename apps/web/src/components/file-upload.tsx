@@ -21,7 +21,7 @@ export default function FileUpload({
     const picked = currentFiles ? Array.from(currentFiles) : [];
     const updatedFiles = [...files, ...picked];
     setFiles(updatedFiles);
-    onFileChange?.(updatedFiles.length ? updatedFiles : null);
+    onFileChange(updatedFiles.length ? updatedFiles : null);
   };
 
   const handleChooseClick = () => {

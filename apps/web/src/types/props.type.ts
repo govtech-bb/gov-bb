@@ -34,7 +34,7 @@ export type UseStepGuardProps = {
 export type FileUploadProps = {
   field: ClientPrimitive;
   sharedProps: React.InputHTMLAttributes<HTMLInputElement>;
-  onFileChange?: (files: File[] | null) => void;
+  onFileChange: (files: File[] | null) => void;
   value?: File[] | null;
   errorMessage?: string;
   validationRules?: any;
