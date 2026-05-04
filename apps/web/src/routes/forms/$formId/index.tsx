@@ -22,8 +22,6 @@ export const Route = createFileRoute("/forms/$formId/")({
 function RouteComponent() {
   const contract = Route.useLoaderData();
   const { step } = Route.useSearch();
-  const [repeatableStepSettings, setRepeatableStepSettings] =
-    React.useState<RepeatableStepSettings>({});
 
   const formMeta = buildForm(contract);
 
@@ -37,6 +35,9 @@ function RouteComponent() {
       console.log("Form submitted:", value);
     },
   });
+
+  const [repeatableStepSettings, setRepeatableStepSettings] =
+    React.useState<RepeatableStepSettings>(formMeta.repeatSettings);
 
   const formValues = useStore(
     form.store,
