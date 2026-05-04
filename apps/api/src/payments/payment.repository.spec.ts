@@ -49,4 +49,11 @@ describe("PaymentRepository.upsertBySubmission", () => {
     expect(result.id).toBe("p-new");
     expect(save).toHaveBeenCalledWith(draft);
   });
+
+  it("create() returns a new entity instance", () => {
+    const create = jest.fn().mockImplementation((d) => ({ ...d }));
+    const ds = { getRepository: () => ({ create }) } as unknown as DataSource;
+    const r = new PaymentRepository(ds);
+    expect(r.create({ submissionId: "s-1" })).toEqual({ submissionId: "s-1" });
+  });
 });

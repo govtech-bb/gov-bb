@@ -9,6 +9,10 @@ export class PaymentRepository {
     this.repo = dataSource.getRepository(PaymentEntity);
   }
 
+  create(draft: Partial<PaymentEntity>): PaymentEntity {
+    return this.repo.create(draft);
+  }
+
   async upsertBySubmission(draft: PaymentEntity): Promise<PaymentEntity> {
     const existing = await this.repo.findOne({
       where: { submissionId: draft.submissionId },
