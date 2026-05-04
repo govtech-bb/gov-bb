@@ -2,14 +2,22 @@
 
 import { ClientServiceContract, FormMeta, FormValidation } from "@web/types";
 import { buildValidation } from "./validation-builder";
-import { getStepConditonalTargets } from "./behavior-helper";
+import {
+  getStepConditonalTargets,
+  setupRepeatSteps,
+} from "./helpers/behavior-helper";
 
 export const buildForm = (contract: ClientServiceContract): FormMeta => {
   // Build the Validation Schema
   const { schema, defaults, properties }: FormValidation =
     buildValidation(contract);
 
+  // Get fields with conditional on values to watch for changes.
   const stepConditionalTargets = getStepConditonalTargets(contract.steps);
+
+  // Configure repeatable steps with their minimum
+
+  contract.steps = setupRepeatSteps(contract.steps);
 
   // Return FormMeta object with everything configured.
   return {

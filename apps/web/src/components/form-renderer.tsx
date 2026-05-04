@@ -201,33 +201,33 @@ export default function FormRenderer({
     completeAndContinue(currentStep.stepId, stepIndex);
   };
 
-  if (repeatableBehaviour) {
-    const addAnotherField: ClientPrimitive = {
-      id: getFullFieldId(
-        currentStep.stepId,
-        `addAnother-${repeatableStepCount}`,
-      ),
-      fieldId: `addAnother-${repeatableStepCount}`,
-      stepId: currentStep.stepId,
-      name: "Add Another",
-      label: "Add another?",
-      htmlType: "radio",
-      disabled: false,
-      hidden: false,
-      options: [
-        { label: "Yes", value: "yes" },
-        { label: "No", value: "no" },
-      ],
-      validations: {
-        required: {
-          value: true,
-          error: "Add another is required.",
-        },
-      },
-    };
-
-    currentFields.push(addAnotherField);
-  }
+  // if (repeatableBehaviour) {
+  //   const addAnotherField: ClientPrimitive = {
+  //     id: getFullFieldId(
+  //       currentStep.stepId,
+  //       `addAnother-${repeatableStepCount}`,
+  //     ),
+  //     fieldId: `addAnother-${repeatableStepCount}`,
+  //     stepId: currentStep.stepId,
+  //     name: "Add Another",
+  //     label: "Add another?",
+  //     htmlType: "radio",
+  //     disabled: false,
+  //     hidden: false,
+  //     options: [
+  //       { label: "Yes", value: "yes" },
+  //       { label: "No", value: "no" },
+  //     ],
+  //     validations: {
+  //       required: {
+  //         value: true,
+  //         error: "Add another is required.",
+  //       },
+  //     },
+  //   };
+  //
+  //   currentFields.push(addAnotherField);
+  // }
 
   const handleSubmit = () => {};
 
