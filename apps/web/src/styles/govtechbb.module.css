@@ -85,7 +85,7 @@
 .formRoot .formStep [data-field] {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
+  gap: var(--spacing-xxs);
 }
 
 .formRoot .formStep [data-field][data-field-width="short"] {
@@ -100,6 +100,12 @@
   font-size: var(--font-size-body);
   line-height: var(--line-height-body);
   font-weight: var(--font-weight-bold);
+}
+
+.formRoot [data-hint] {
+  padding: 0rem;
+  margin: 0rem;
+  color: var(--color-mid-grey-00);
 }
 
 .formRoot input,

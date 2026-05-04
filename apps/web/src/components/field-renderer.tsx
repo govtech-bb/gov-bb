@@ -74,6 +74,7 @@ export default function FieldRenderer({
             return (
               <fieldset data-field data-date-field>
                 <legend>{field.label}</legend>
+                {field.hint && <p data-hint>{field.hint}</p>}
                 <ErrorMessage message={errorMessage} />
                 <div data-date-group>
                   <div data-date-part>
@@ -205,6 +206,7 @@ export default function FieldRenderer({
               <div data-field data-field-width={field.ui?.width}>
                 <div>
                   <label> {field.label} </label>
+                  {field.hint && <p data-hint>{field.hint}</p>}
                   <ErrorMessage message={errorMessage} />
                 </div>
                 {inputElement}
@@ -222,6 +224,7 @@ export default function FieldRenderer({
                 data-field-width={field.ui?.width}
               >
                 <label> {field.label} </label>
+                {field.hint && <p data-hint>{field.hint}</p>}
                 <div data-select-control>
                   <select
                     {...sharedProps}
@@ -247,6 +250,7 @@ export default function FieldRenderer({
                 <div data-checkbox-group>
                   <div>
                     <legend>{field.label}</legend>
+                    {field.hint && <p data-hint>{field.hint}</p>}
                     <ErrorMessage message={errorMessage} />
                   </div>
                   <div key={option.value} data-checkbox-option>
@@ -279,6 +283,7 @@ export default function FieldRenderer({
               <fieldset data-fieldset>
                 <div>
                   <legend>{field.label}</legend>
+                  {field.hint && <p data-hint>{field.hint}</p>}
                   <ErrorMessage message={errorMessage} />
                 </div>
                 <div data-checkbox-group>
@@ -302,6 +307,7 @@ export default function FieldRenderer({
             return (
               <fieldset data-fieldset>
                 <legend>{field.label}</legend>
+                {field.hint && <p data-hint>{field.hint}</p>}
                 <ErrorMessage message={errorMessage} />
                 <div data-radio-group>
                   {field.options?.map((option) => (

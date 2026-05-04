@@ -14,6 +14,7 @@
         {
           "fieldId": "title",
           "label": "Title",
+          "hint": "Select your title",
           "htmlType": "select",
           "placeholder": "Select title",
           "options": [
@@ -378,6 +379,7 @@
         {
           "fieldId": "canContactEvening",
           "label": "I prefer to be contacted in the...",
+          "hint": "Select all that apply",
           "htmlType": "checkbox",
           "options": [
             {
@@ -1011,6 +1013,7 @@
           "fieldId": "fundSource",
           "label": "Source of Funds",
           "htmlType": "radio",
+          "hint": "Select the primary source of your funds",
           "options": [
             {
               "label": "Employment Income",
