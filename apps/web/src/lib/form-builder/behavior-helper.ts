@@ -30,6 +30,7 @@ export const checkConditionalOn = (
       targetFieldValue,
       condition.operator,
     );
+
     if (!currentFieldValue) currentFieldValue = "";
     if (passesCondition && currentFieldValue.toString().length == 0) {
       return "requiredAndEmpty";
