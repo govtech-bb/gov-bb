@@ -28,4 +28,18 @@ export class ProcessorFactory {
       return [handler];
     });
   }
+
+  resolveSplit(processorConfigs: Processor[]): {
+    gating: ISubmissionProcessor[];
+    nonGating: ISubmissionProcessor[];
+  } {
+    const resolved = this.resolve(processorConfigs);
+    const gating: ISubmissionProcessor[] = [];
+    const nonGating: ISubmissionProcessor[] = [];
+    for (const p of resolved) {
+      if (p.gatesPipeline) gating.push(p);
+      else nonGating.push(p);
+    }
+    return { gating, nonGating };
+  }
 }
