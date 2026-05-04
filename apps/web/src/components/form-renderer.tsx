@@ -63,6 +63,11 @@ export default function FormRenderer({
 
   const addRepeatableStep = (): ClientFormStep[] => {
     if (!repeatableBehaviour) return visibleSteps;
+    if (
+      repeatableBehaviour.max &&
+      repeatableStepCount >= repeatableBehaviour.max
+    )
+      return visibleSteps;
     const addAnotherStepRadioId = getFullFieldId(
       currentStep.stepId,
       `addAnother-${repeatableStepCount}`,
