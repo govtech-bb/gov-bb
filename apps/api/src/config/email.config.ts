@@ -1,10 +1,15 @@
 import { registerAs } from "@nestjs/config";
 
 export default registerAs("email", () => ({
-  host: process.env.SMTP_HOST ?? "localhost",
-  port: parseInt(process.env.SMTP_PORT ?? "587", 10),
-  secure: process.env.SMTP_SECURE === "true",
-  user: process.env.SMTP_USER ?? "",
-  pass: process.env.SMTP_PASS ?? "",
-  from: process.env.SMTP_FROM ?? "noreply@gov.bb",
+  // AWS region for the SES client. Falls back to the standard SDK env var
+  // (AWS_DEFAULT_REGION) which ECS sets automatically from the task region.
+  region:
+    process.env.SES_REGION ?? process.env.AWS_DEFAULT_REGION ?? "us-east-1",
+
+  // Verified SES sender identity — must be verified in the AWS account.
+  from: process.env.SES_FROM_ADDRESS ?? "noreply@gov.bb",
+
+  // SES configuration set for bounce/complaint tracking via SNS/EventBridge.
+  // Optional — omit to send without telemetry.
+  configurationSet: process.env.SES_CONFIGURATION_SET,
 }));

@@ -17,13 +17,10 @@ export const envValidationSchema = Joi.object({
   OTEL_SERVICE_NAME: Joi.string().optional(),
   OTEL_EXPORTER_OTLP_ENDPOINT: Joi.string().optional(),
 
-  // Email / SMTP (optional — required only when forms use the email processor)
-  SMTP_HOST: Joi.string().optional(),
-  SMTP_PORT: Joi.number().default(587),
-  SMTP_SECURE: Joi.boolean().default(false),
-  SMTP_USER: Joi.string().optional().allow(""),
-  SMTP_PASS: Joi.string().optional().allow(""),
-  SMTP_FROM: Joi.string().default("noreply@gov.bb"),
+  // SES (optional — required only when forms use the email processor)
+  SES_REGION: Joi.string().optional(),
+  SES_FROM_ADDRESS: Joi.string().default("noreply@gov.bb"),
+  SES_CONFIGURATION_SET: Joi.string().optional(),
 
   // Spreadsheet export (optional — defaults to <cwd>/exports)
   SPREADSHEET_EXPORT_DIR: Joi.string().optional(),
