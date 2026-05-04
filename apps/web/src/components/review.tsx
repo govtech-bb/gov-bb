@@ -1,10 +1,16 @@
 import designSystem from "../lib/design-system";
 import React from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { AnyFormApi } from "@tanstack/react-form";
 import { ClientPrimitive, FormMeta } from "@web/types";
-import { getFormData } from "../lib/session-storage";
 
-export default function Review({ formMeta }: { formMeta: FormMeta }) {
+export default function Review({
+  formMeta,
+  form,
+}: {
+  formMeta: FormMeta;
+  form: AnyFormApi;
+}) {
   const navigate = useNavigate({ from: "/forms/$formId/" });
 
   const formatDate = (dateValue: {
@@ -31,10 +37,22 @@ export default function Review({ formMeta }: { formMeta: FormMeta }) {
       });
     };
 
-  const formValues = getFormData(formMeta.formId) || {};
+  const getUploadedFileName = (fileValue: unknown): string | null => {
+    if (!fileValue || typeof fileValue !== "object") return null;
 
-  const getFieldDisplayValue = (stepId: string, field: ClientPrimitive) => {
-    const value = formValues[stepId]?.[field.name];
+    if (fileValue instanceof File) {
+      return fileValue.name;
+    }
+
+    const fileName = (fileValue as { name?: unknown }).name;
+
+    return typeof fileName === "string" && fileName.trim().length > 0
+      ? fileName
+      : null;
+  };
+
+  const getFieldDisplayValue = (field: ClientPrimitive) => {
+    const value = form.getFieldValue(field.id);
 
     switch (field.htmlType) {
       case "select": {
@@ -66,8 +84,21 @@ export default function Review({ formMeta }: { formMeta: FormMeta }) {
         if (!field.options) return value as string | null;
         return field.options.find((option) => option.value === value)?.label;
       }
+      case "file": {
+        const fileNames = Array.isArray(value)
+          ? value
+              .map((file) => getUploadedFileName(file))
+              .filter((name): name is string => name !== null) // remove nulls
+          : [];
+
+        if (fileNames.length === 0) {
+          return "No file selected";
+        }
+
+        return fileNames.join(", ");
+      }
       default:
-        return value as string | null;
+        return value === undefined || value === null ? "" : String(value);
     }
   };
 
@@ -99,7 +130,7 @@ export default function Review({ formMeta }: { formMeta: FormMeta }) {
                       {field.label}
                     </td>
                     <td className={designSystem.reviewFieldValue}>
-                      {getFieldDisplayValue(step.stepId, field)}
+                      {getFieldDisplayValue(field)}
                     </td>
                   </tr>
                 ))}

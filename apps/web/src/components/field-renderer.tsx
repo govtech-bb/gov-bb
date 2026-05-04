@@ -8,6 +8,7 @@ import React, { JSX } from "react";
 import ErrorMessage from "./error-message";
 import { RequiredState, checkConditionalOn } from "@web/lib";
 import { FieldArrayBehaviour } from "@govtech-bb/form-types";
+import FileUpload from "./file-upload";
 
 export default function FieldRenderer({
   form,
@@ -317,6 +318,15 @@ export default function FieldRenderer({
                   ))}
                 </div>
               </fieldset>
+            );
+          case "file":
+            return (
+              <FileUpload
+                field={field}
+                sharedProps={sharedProps}
+                value={f.state.value as File[] | null | undefined}
+                onFileChange={(files) => f.handleChange(files)}
+              />
             );
           default:
             return (
