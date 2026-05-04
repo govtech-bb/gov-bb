@@ -55,10 +55,7 @@ export const setupRepeatSteps = (
         );
 
         if (j == repeatBehaviour.min) {
-          const addAnother = generateRepeatableAddAnotherField(
-            nextStepId,
-            repeatStepCount,
-          );
+          const addAnother = generateRepeatableAddAnotherField(nextStepId);
           nextStepFields.push(addAnother);
         }
 
@@ -100,11 +97,10 @@ const generateRepeatStepFields = (
 
 export const generateRepeatableAddAnotherField = (
   stepId: string,
-  repeatStepId: number,
 ): ClientPrimitive => {
   const addAnotherField: ClientPrimitive = {
-    id: getFullFieldId(stepId, `addAnother-${repeatStepId}`),
-    fieldId: `addAnother-${repeatStepId}`,
+    id: getFullFieldId(stepId, "addAnother"),
+    fieldId: "addAnother",
     stepId: stepId,
     name: "Add Another",
     label: "Add another?",

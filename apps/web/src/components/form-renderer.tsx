@@ -67,11 +67,8 @@ export default function FormRenderer({
       repeatableStepCount >= repeatableBehaviour.max
     )
       return visibleSteps;
-    const addAnotherStepRadioId = getFullFieldId(
-      currentStep.stepId,
-      `addAnother-${repeatableStepCount}`,
-    );
     const nextStepId = `${baseStepId}--${currentRepeatStepCount + 1}`;
+    const addAnotherStepRadioId = getFullFieldId(nextStepId, "addAnother");
 
     if (
       stepRepeatableStepSettings &&
@@ -172,10 +169,7 @@ export default function FormRenderer({
     // Handle navigation to repeatable step.
     console.log({ visibleSteps });
     if (repeatableBehaviour) {
-      const anotherFieldId = getFullFieldId(
-        currentStep.stepId,
-        `addAnother-${repeatableStepCount}`,
-      );
+      const anotherFieldId = getFullFieldId(currentStep.stepId, "addAnother");
 
       const anotherFieldValue = form.getFieldValue(anotherFieldId);
       if (anotherFieldValue === "yes") {
