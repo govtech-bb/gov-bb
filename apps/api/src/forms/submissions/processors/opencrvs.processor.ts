@@ -1,5 +1,8 @@
 import { Injectable, Logger } from "@nestjs/common";
-import type { ISubmissionProcessor } from "./submission-processor.interface";
+import type {
+  ISubmissionProcessor,
+  ProcessorOutput,
+} from "./submission-processor.interface";
 import type { SubmissionCreatedEvent } from "../submissions.types";
 
 @Injectable()
@@ -7,7 +10,7 @@ export class OpencrvsProcessor implements ISubmissionProcessor {
   readonly type = "opencrvs" as const;
   private readonly logger = new Logger(OpencrvsProcessor.name);
 
-  async process(payload: SubmissionCreatedEvent): Promise<void> {
+  async process(payload: SubmissionCreatedEvent): Promise<ProcessorOutput> {
     const cfg =
       payload.processors.find((p) => p.type === "opencrvs")?.config ?? {};
 
@@ -16,7 +19,7 @@ export class OpencrvsProcessor implements ISubmissionProcessor {
       this.logger.warn(
         `[opencrvs] No endpoint configured for submission ${payload.submissionId} — skipping`,
       );
-      return;
+      return { kind: "completed" };
     }
 
     const headers: Record<string, string> = {
@@ -53,5 +56,7 @@ export class OpencrvsProcessor implements ISubmissionProcessor {
     this.logger.log(
       `[opencrvs] Forwarded submission ${payload.submissionId} to ${endpoint}`,
     );
+
+    return { kind: "completed" };
   }
 }

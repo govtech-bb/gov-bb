@@ -2,7 +2,10 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import * as nodemailer from "nodemailer";
 import type { Transporter } from "nodemailer";
-import type { ISubmissionProcessor } from "./submission-processor.interface";
+import type {
+  ISubmissionProcessor,
+  ProcessorOutput,
+} from "./submission-processor.interface";
 import type { SubmissionCreatedEvent } from "../submissions.types";
 
 @Injectable()
@@ -25,7 +28,7 @@ export class EmailProcessor implements ISubmissionProcessor {
     });
   }
 
-  async process(payload: SubmissionCreatedEvent): Promise<void> {
+  async process(payload: SubmissionCreatedEvent): Promise<ProcessorOutput> {
     const cfg =
       payload.processors.find((p) => p.type === "email")?.config ?? {};
 
@@ -34,7 +37,7 @@ export class EmailProcessor implements ISubmissionProcessor {
       this.logger.warn(
         `[email] No recipientField configured for submission ${payload.submissionId} — skipping`,
       );
-      return;
+      return { kind: "completed" };
     }
 
     // recipientField format: "stepId.fieldId"
@@ -45,7 +48,7 @@ export class EmailProcessor implements ISubmissionProcessor {
       this.logger.warn(
         `[email] Could not resolve recipient at "${recipientField}" for submission ${payload.submissionId} — skipping`,
       );
-      return;
+      return { kind: "completed" };
     }
 
     const subject =
@@ -70,6 +73,8 @@ export class EmailProcessor implements ISubmissionProcessor {
     this.logger.log(
       `[email] Confirmation sent to ${to} for submission ${payload.submissionId}`,
     );
+
+    return { kind: "completed" };
   }
 
   private buildTextBody(payload: SubmissionCreatedEvent): string {
