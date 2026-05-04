@@ -56,7 +56,7 @@ export default function FieldRenderer({
         // const value = f.state.value as ValueType | undefined
         const sharedProps = {
           type: field.htmlType,
-          name: field.id,
+          name: field.name,
           id: field.id,
           disabled: field.disabled,
           placeholder: field.placeholder,
@@ -226,7 +226,7 @@ export default function FieldRenderer({
                   <select
                     {...sharedProps}
                     multiple={isMultiple}
-                    value={selectValue ? selectValue : ""}
+                    value={selectValue ? selectValue : isMultiple ? [] : ""}
                     onChange={(e) => f.handleChange(e.target.value)}
                   >
                     <option value=""></option>
@@ -242,10 +242,7 @@ export default function FieldRenderer({
           case "checkbox":
             if (field.options && field.options.length === 1) {
               const option = field.options[0];
-              const value =
-                (f.state.value as string | undefined) ??
-                field.defaultValue ??
-                "";
+              const value = (f.state.value as string | undefined) ?? "";
               return (
                 <div data-checkbox-group>
                   <div>
@@ -270,6 +267,7 @@ export default function FieldRenderer({
 
             const checkboxValues: string[] =
               (f.state.value as string[] | undefined) ?? [];
+
             const toggle = (item: string) => {
               const next = checkboxValues.includes(item)
                 ? checkboxValues.filter((cv) => cv !== item)

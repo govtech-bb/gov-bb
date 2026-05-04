@@ -30,7 +30,7 @@ export default function Review({
     (stepId: string) => (event: React.MouseEvent<HTMLAnchorElement>) => {
       event.preventDefault();
       void navigate({
-        search: (prev) => ({
+        search: (prev: Record<string, unknown>) => ({
           ...prev,
           step: stepId,
         }),

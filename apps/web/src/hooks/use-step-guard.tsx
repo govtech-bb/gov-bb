@@ -32,7 +32,7 @@ export function useStepGuard({
         const nextStepId = currentSteps[safeIndex].stepId;
 
         void navigate({
-          search: (prev) => ({
+          search: (prev: Record<string, unknown>) => ({
             ...prev,
             step: nextStepId,
           }),

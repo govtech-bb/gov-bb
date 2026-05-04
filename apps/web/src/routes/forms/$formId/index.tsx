@@ -1,5 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { fetchContract, buildForm, getVisibleSteps } from "@web/lib";
+import {
+  fetchContract,
+  buildForm,
+  getVisibleSteps,
+  getFullFieldId,
+} from "@web/lib";
 import { FormRenderer, FormError } from "@web/components";
 import { formSearchParamSchema } from "apps/web/src/types/form-search-param.type";
 import { useForm, useStore } from "@tanstack/react-form";
@@ -49,7 +54,10 @@ function RouteComponent() {
     formMeta.stepConditionalTargets,
   )) {
     targetStores.push(
-      useStore(form.store, (state) => state.values[`${stepId}.${fieldId}`]),
+      useStore(
+        form.store,
+        (state) => state.values[getFullFieldId(stepId, fieldId)],
+      ),
     );
   }
 
