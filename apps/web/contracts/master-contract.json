@@ -775,8 +775,8 @@
               "error": "Only PDF, JPG and PNG files are accepted"
             },
             "maxSize": {
-              "value": 10485760,
-              "error": "Total size must not exceed 10MB"
+              "value": 1048576,
+              "error": "Total size must not exceed 1MB"
             }
           }
         },

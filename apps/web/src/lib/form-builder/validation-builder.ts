@@ -230,15 +230,13 @@ export const buildFieldValidationProperties = (
 
       // Handling files
       if (field.htmlType === "file") {
-        if (value instanceof FileList) {
-          runFileValidations(
-            field.id,
-            field.label,
-            value as FileList,
-            validations,
-            results,
-          );
-        }
+        runFileValidations(
+          field.id,
+          field.label,
+          value as FileList,
+          validations,
+          results,
+        );
       }
 
       return results.hasError ? results.errors : undefined;
