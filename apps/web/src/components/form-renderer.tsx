@@ -127,8 +127,9 @@ export default function FormRenderer({
 
   const removeRepeatableStep = (): ClientFormStep[] => {
     const rawIndex = stepId.split("--")[1];
-    const index = Number(rawIndex ?? 0);
-    const targetStepId = `${baseStepId}--${index ? index : 1}`;
+    let index = Number(rawIndex ?? 0);
+    if (isNaN(index)) return visibleSteps;
+    const targetStepId = `${baseStepId}--${index ? index + 1 : 1}`;
 
     const record = repeatableStepSettings[baseStepId];
     if (!record?.orderedStepIds.includes(targetStepId)) return visibleSteps;
@@ -136,15 +137,15 @@ export default function FormRenderer({
     const step = visibleSteps.find((s) => s.stepId === targetStepId);
     if (!step) return visibleSteps;
 
-    const { orderedStepIds } = record;
+    const orderedStepIds = record.orderedStepIds;
 
     const startIndex = orderedStepIds.indexOf(targetStepId);
     if (startIndex === -1) return visibleSteps;
 
     let toRemove: string[];
     if (index !== 0) {
-      // Determine which step IDs to remove (everything after the target)
-      toRemove = orderedStepIds.slice(startIndex + 1);
+      // Determine which step IDs to remove (target and everything after)
+      toRemove = orderedStepIds.slice(startIndex);
       record.orderedStepIds = orderedStepIds.slice(0, startIndex + 1);
     } else {
       // But if there's only one other element, (removing from the source step) then remove it.
@@ -169,6 +170,7 @@ export default function FormRenderer({
 
   const handleContinue = () => {
     // Handle navigation to repeatable step.
+    console.log({ visibleSteps });
     if (repeatableBehaviour) {
       const anotherFieldId = getFullFieldId(
         currentStep.stepId,

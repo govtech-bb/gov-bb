@@ -23,7 +23,7 @@ function RouteComponent() {
   const contract = Route.useLoaderData();
   const { step } = Route.useSearch();
 
-  const formMeta = buildForm(contract);
+  const formMeta = React.useMemo(() => buildForm(contract), [contract]);
 
   const form = useForm({
     defaultValues: {
