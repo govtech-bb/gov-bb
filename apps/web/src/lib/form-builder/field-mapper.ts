@@ -39,7 +39,7 @@ export const mapFieldToLocale = (
   };
 };
 
-export const stepFieldIdConcactenator = "|";
+export const stepFieldIdConcactenator = "-";
 
 export const getFullFieldId = (stepId: string, fieldId: string): string => {
   return `${stepId}${stepFieldIdConcactenator}${fieldId}`;
