@@ -8,6 +8,7 @@ export default function FileUpload({
   onFileChange,
   value,
   errorMessage,
+  validationRules,
 }: FileUploadProps) {
   const [files, setFiles] = React.useState<File[]>(value ?? []);
 
@@ -39,14 +40,25 @@ export default function FileUpload({
     });
   };
 
+  const readableFileTypes = field.validations?.fileTypes?.value
+    .map((type: string) => type.split("/")[1]) // "image/png" → "png"
+    .join(", ");
+
+  const fileTypeFormatter = new Intl.ListFormat("en", {
+    style: "long",
+    type: "disjunction",
+  });
+
   return (
     <div data-file-upload>
-      <ErrorMessage message={errorMessage} />
+      {errorMessage && <ErrorMessage message={errorMessage} />}
       <label data-file-upload-label>
         <div data-file-upload-instructions>
           <span data-file-upload-title>{field.label ?? "Upload a file"}</span>
           <span data-file-upload-description>
-            {field.placeholder ?? "Attach a file"}
+            {field.validations?.fileTypes?.value
+              ? `Attach a ${fileTypeFormatter.format(readableFileTypes.split(", "))} file`
+              : "No file type restrictions"}
           </span>
         </div>
 
@@ -66,7 +78,12 @@ export default function FileUpload({
             Choose file
           </button>
           {/* TODO: Replace with actual file size limit */}
-          <span data-file-upload-limit>Max Size: --MB</span>
+          <span data-file-upload-limit>
+            Max Size:{" "}
+            {validationRules?.maxSize?.value
+              ? validationRules.maxSize.value + " bytes"
+              : "--"}
+          </span>
         </div>
       </label>
 

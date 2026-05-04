@@ -9,6 +9,7 @@ import ErrorMessage from "./error-message";
 import { RequiredState, checkConditionalOn } from "@web/lib";
 import { FieldArrayBehaviour } from "@govtech-bb/form-types";
 import FileUpload from "./file-upload";
+import { fi } from "zod/v4/locales";
 
 export default function FieldRenderer({
   form,
@@ -331,6 +332,7 @@ export default function FieldRenderer({
                 value={f.state.value as File[] | null | undefined}
                 onFileChange={(files) => f.handleChange(files)}
                 errorMessage={errorMessage}
+                validationRules={field.validations}
               />
             );
           default:
