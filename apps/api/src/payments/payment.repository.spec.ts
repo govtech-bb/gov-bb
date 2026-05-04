@@ -7,7 +7,7 @@ import {
   PaymentProvider,
 } from "../database/entities/payment.entity";
 
-describe("PaymentRepository.upsertBySubmission", () => {
+describe("PaymentRepository.findOrCreate", () => {
   let repo: PaymentRepository;
   const findOne = jest.fn();
   const save = jest.fn();
@@ -30,7 +30,7 @@ describe("PaymentRepository.upsertBySubmission", () => {
   it("returns existing Payment when submissionId is already in DB", async () => {
     const existing = { id: "p-1", submissionId: "sub-1" } as PaymentEntity;
     findOne.mockResolvedValue(existing);
-    const result = await repo.upsertBySubmission({
+    const result = await repo.findOrCreate({
       submissionId: "sub-1",
     } as PaymentEntity);
     expect(result).toBe(existing);
@@ -45,7 +45,7 @@ describe("PaymentRepository.upsertBySubmission", () => {
       provider: PaymentProvider.EZPAY,
       status: PaymentStatus.PENDING,
     } as PaymentEntity;
-    const result = await repo.upsertBySubmission(draft);
+    const result = await repo.findOrCreate(draft);
     expect(result.id).toBe("p-new");
     expect(save).toHaveBeenCalledWith(draft);
   });

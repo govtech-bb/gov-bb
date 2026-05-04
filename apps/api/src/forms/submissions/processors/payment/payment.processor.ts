@@ -66,7 +66,7 @@ export class PaymentProcessor implements ISubmissionProcessor {
       status: PaymentStatus.PENDING,
     });
 
-    const payment = await this.paymentRepo.upsertBySubmission(draft);
+    const payment = await this.paymentRepo.findOrCreate(draft);
 
     if (payment.providerUrl) {
       this.logger.log(
@@ -104,9 +104,7 @@ export class PaymentProcessor implements ISubmissionProcessor {
     payment.status = PaymentStatus.INITIATED;
     await this.paymentRepo.save(payment);
 
-    this.logger.log(
-      `Payment ${payment.id} initiated with EzPay (token=${token})`,
-    );
+    this.logger.log(`Payment ${payment.id} initiated with EzPay`);
 
     return {
       kind: "deferred",

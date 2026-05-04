@@ -14,13 +14,11 @@ describe("PaymentProcessor.process", () => {
   const ezpay = { createPayment: jest.fn() };
   const paymentRepo = {
     create: jest.fn().mockImplementation((d) => d),
-    upsertBySubmission: jest
-      .fn()
-      .mockImplementation(async (e: PaymentEntity) => ({
-        ...e,
-        id: "pay-1",
-        status: PaymentStatus.PENDING,
-      })),
+    findOrCreate: jest.fn().mockImplementation(async (e: PaymentEntity) => ({
+      ...e,
+      id: "pay-1",
+      status: PaymentStatus.PENDING,
+    })),
     save: jest.fn().mockImplementation(async (e) => e),
   };
   const deptKeys = new DepartmentKeyResolver({ education: "edu-key" });
@@ -28,13 +26,11 @@ describe("PaymentProcessor.process", () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     paymentRepo.create.mockImplementation((d) => d);
-    paymentRepo.upsertBySubmission.mockImplementation(
-      async (e: PaymentEntity) => ({
-        ...e,
-        id: "pay-1",
-        status: PaymentStatus.PENDING,
-      }),
-    );
+    paymentRepo.findOrCreate.mockImplementation(async (e: PaymentEntity) => ({
+      ...e,
+      id: "pay-1",
+      status: PaymentStatus.PENDING,
+    }));
     paymentRepo.save.mockImplementation(async (e) => e);
     const module = await Test.createTestingModule({
       providers: [
@@ -97,7 +93,7 @@ describe("PaymentProcessor.process", () => {
         description: "Term fees",
       },
     });
-    expect(paymentRepo.upsertBySubmission).toHaveBeenCalled();
+    expect(paymentRepo.findOrCreate).toHaveBeenCalled();
     expect(ezpay.createPayment).toHaveBeenCalledWith(
       expect.objectContaining({
         paymentCode: "EDU-001",
@@ -115,7 +111,7 @@ describe("PaymentProcessor.process", () => {
   });
 
   it("returns the existing payment URL on retry (idempotent)", async () => {
-    paymentRepo.upsertBySubmission.mockResolvedValue({
+    paymentRepo.findOrCreate.mockResolvedValue({
       id: "pay-1",
       submissionId: "sub-1",
       status: PaymentStatus.INITIATED,
@@ -146,7 +142,7 @@ describe("PaymentProcessor.process", () => {
   });
 
   it("returns cached URL even when status is PENDING (prior partial attempt)", async () => {
-    paymentRepo.upsertBySubmission.mockResolvedValue({
+    paymentRepo.findOrCreate.mockResolvedValue({
       id: "pay-1",
       submissionId: "sub-1",
       status: PaymentStatus.PENDING,

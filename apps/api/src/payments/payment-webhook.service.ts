@@ -88,6 +88,9 @@ export class PaymentWebhookService {
     return { acknowledged: true };
   }
 
+  // expectedAmount is decimal(10,2) stored as string ("50.00"); verifiedAmount
+  // is parsed as a number. The 0.005 epsilon (half a cent) avoids spurious
+  // mismatches from float imprecision on cent-precision currency.
   private amountsMatch(
     verifiedAmount: number,
     expectedAmount: string,
@@ -111,7 +114,7 @@ export class PaymentWebhookService {
       status: this.mapTxStatus(v.status),
       amount: String(v.amount),
       dateSettled: v.dateSettled ? new Date(v.dateSettled) : null,
-      rawResponse: v as unknown as Record<string, unknown>,
+      rawResponse: { ...v },
     };
     if (existing) {
       Object.assign(existing, fields);

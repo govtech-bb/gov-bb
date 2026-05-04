@@ -13,7 +13,7 @@ export class PaymentRepository {
     return this.repo.create(draft);
   }
 
-  async upsertBySubmission(draft: PaymentEntity): Promise<PaymentEntity> {
+  async findOrCreate(draft: PaymentEntity): Promise<PaymentEntity> {
     const existing = await this.repo.findOne({
       where: { submissionId: draft.submissionId },
     });
