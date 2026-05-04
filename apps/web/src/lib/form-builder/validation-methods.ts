@@ -505,14 +505,7 @@ export const checkFileTypes = ({
   });
 
   for (const file of value) {
-    console.log(
-      "Checking file type for file:",
-      file.name,
-      "with types:",
-      fileTypes.value,
-    );
     const extension = file.name.split(".").pop()?.toLowerCase();
-    console.log("Extracted file extension:", extension);
     if (extension && !allowedExtensions.includes(extension)) {
       setValidationError(
         fieldLabel,
@@ -530,17 +523,16 @@ export const checkFileMaxSize = ({
   results,
   validations,
 }: ValidationArgs<FileList>) => {
-  const fileMaxSize = validations.itemMaxSize;
-  if (!fileMaxSize || fileMaxSize.value === undefined) return;
+  const fileMaxSize = validations.maxSize?.value;
+  if (!fileMaxSize || fileMaxSize === undefined) return;
 
   for (const file of value) {
-    const size = file.size;
-    if (size > fileMaxSize.value) {
+    if (file.size > fileMaxSize) {
       setValidationError(
         fieldLabel,
         fileMaxSize,
         results,
-        `File ${file.name} exceeds maximum size of ${fileMaxSize.value} bytes.`,
+        `File ${file.name} exceeds the maximum size of ${(fileMaxSize / (1024 * 1024)).toPrecision(2)} MB.`,
       );
     }
   }
