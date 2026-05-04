@@ -1,4 +1,4 @@
-import { BadRequestException } from "@nestjs/common";
+import { BadRequestException, HttpStatus } from "@nestjs/common";
 import {
   FormSubmissionEntity,
   FormSubmissionStatus,
@@ -7,6 +7,8 @@ import { FormSubmissionRepository } from "./form-submission.repository";
 import { SubmissionsService } from "./submissions.service";
 import { SubmissionPipelineService } from "./submission-pipeline.service";
 import { EventEmitter2 } from "@nestjs/event-emitter";
+import { ProcessorFactory } from "./processors/processor-factory.service";
+import type { ISubmissionProcessor } from "./processors/submission-processor.interface";
 import type { SubmitDto } from "./submissions.types";
 
 function makeEntity(
@@ -39,7 +41,15 @@ const AUDIT_TRAIL = {
   submittedAt: "2026-04-01T00:00:00.000Z",
 };
 
-function makeMocks(existingEntity: FormSubmissionEntity | null = null) {
+interface MakeMocksOptions {
+  existingEntity?: FormSubmissionEntity | null;
+  gating?: ISubmissionProcessor[];
+  nonGating?: ISubmissionProcessor[];
+}
+
+function makeMocks(options: MakeMocksOptions = {}) {
+  const { existingEntity = null, gating = [], nonGating = [] } = options;
+
   const txRepo = {
     findOne: jest.fn().mockResolvedValue(null),
     create: jest.fn().mockImplementation((data) => ({ ...data })),
@@ -63,12 +73,24 @@ function makeMocks(existingEntity: FormSubmissionEntity | null = null) {
     emit: jest.fn(),
   } as unknown as EventEmitter2;
 
+  const processorFactory = {
+    resolveSplit: jest.fn().mockReturnValue({ gating, nonGating }),
+  } as unknown as ProcessorFactory;
+
   const service = new SubmissionsService(
     submissionRepo,
     pipeline,
     eventEmitter,
+    processorFactory,
   );
-  return { txRepo, submissionRepo, pipeline, eventEmitter, service };
+  return {
+    txRepo,
+    submissionRepo,
+    pipeline,
+    eventEmitter,
+    processorFactory,
+    service,
+  };
 }
 
 const BASE_DTO: SubmitDto = {
@@ -97,7 +119,7 @@ describe("SubmissionsService", () => {
 
     it("creates a new submission when key is unique", async () => {
       const created = makeEntity();
-      const { txRepo, service } = makeMocks(null);
+      const { txRepo, service } = makeMocks();
       txRepo.save.mockResolvedValue(created);
 
       const result = await service.submit(BASE_DTO);
@@ -114,7 +136,7 @@ describe("SubmissionsService", () => {
     });
 
     it("emits submission.created event after successful create", async () => {
-      const { service, eventEmitter } = makeMocks(null);
+      const { service, eventEmitter } = makeMocks();
       await service.submit(BASE_DTO);
       expect(eventEmitter.emit as jest.Mock).toHaveBeenCalledWith(
         "submission.created",
@@ -127,7 +149,7 @@ describe("SubmissionsService", () => {
 
     it('returns outcome "duplicate" when key exists with non-processing status', async () => {
       const existing = makeEntity({ status: FormSubmissionStatus.COMPLETE });
-      const { pipeline, service } = makeMocks(existing);
+      const { pipeline, service } = makeMocks({ existingEntity: existing });
 
       const result = await service.submit(BASE_DTO);
 
@@ -138,7 +160,7 @@ describe("SubmissionsService", () => {
 
     it('returns outcome "in_progress" when key exists with PROCESSING status', async () => {
       const existing = makeEntity({ status: FormSubmissionStatus.PROCESSING });
-      const { pipeline, service } = makeMocks(existing);
+      const { pipeline, service } = makeMocks({ existingEntity: existing });
 
       const result = await service.submit(BASE_DTO);
 
@@ -148,19 +170,173 @@ describe("SubmissionsService", () => {
     });
 
     it('returns outcome "duplicate" for SUBMITTED status', async () => {
-      const { service } = makeMocks(
-        makeEntity({ status: FormSubmissionStatus.SUBMITTED }),
-      );
+      const { service } = makeMocks({
+        existingEntity: makeEntity({ status: FormSubmissionStatus.SUBMITTED }),
+      });
       const result = await service.submit(BASE_DTO);
       expect(result.outcome).toBe("duplicate");
     });
 
     it('returns outcome "duplicate" for ERROR status', async () => {
-      const { service } = makeMocks(
-        makeEntity({ status: FormSubmissionStatus.ERROR }),
-      );
+      const { service } = makeMocks({
+        existingEntity: makeEntity({ status: FormSubmissionStatus.ERROR }),
+      });
       const result = await service.submit(BASE_DTO);
       expect(result.outcome).toBe("duplicate");
+    });
+  });
+
+  describe("with gating processor present", () => {
+    function makeGatingProcessor(
+      kind: "deferred" | "completed" = "deferred",
+      data?: {
+        paymentUrl: string;
+        paymentId: string;
+        amount: number;
+        description: string;
+      },
+    ): ISubmissionProcessor {
+      return {
+        type: "payment",
+        gatesPipeline: true,
+        process: jest.fn().mockResolvedValue(
+          kind === "deferred"
+            ? {
+                kind: "deferred",
+                data: data ?? {
+                  paymentUrl: "https://pay.example/abc",
+                  paymentId: "pay-1",
+                  amount: 1000,
+                  description: "Form fee",
+                },
+              }
+            : { kind: "completed" },
+        ),
+      } as unknown as ISubmissionProcessor;
+    }
+
+    it("saves submission with PENDING_PAYMENT status and no submittedAt", async () => {
+      const gating = makeGatingProcessor();
+      const { txRepo, service } = makeMocks({ gating: [gating] });
+
+      await service.submit(BASE_DTO);
+
+      expect(txRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          idempotencyKey: "key-abc",
+          status: FormSubmissionStatus.PENDING_PAYMENT,
+        }),
+      );
+      const createArg = txRepo.create.mock.calls[0][0] as Record<
+        string,
+        unknown
+      >;
+      expect(createArg.submittedAt).toBeUndefined();
+    });
+
+    it("does NOT emit submission.created", async () => {
+      const gating = makeGatingProcessor();
+      const { service, eventEmitter } = makeMocks({ gating: [gating] });
+
+      await service.submit(BASE_DTO);
+
+      expect(eventEmitter.emit as jest.Mock).not.toHaveBeenCalled();
+    });
+
+    it("returns deferred payload with statusCode 200", async () => {
+      const deferredData = {
+        paymentUrl: "https://pay.example/xyz",
+        paymentId: "pay-xyz",
+        amount: 2500,
+        description: "Application fee",
+      };
+      const gating = makeGatingProcessor("deferred", deferredData);
+      const { service } = makeMocks({ gating: [gating] });
+
+      const result = await service.submit(BASE_DTO);
+
+      expect(result.outcome).toBe("created");
+      expect(result.statusCode).toBe(HttpStatus.OK);
+      expect(result.message).toBe("Payment required");
+      expect(result.deferred).toEqual(deferredData);
+    });
+
+    it("calls each gating processor sequentially", async () => {
+      const order: string[] = [];
+      const first = {
+        type: "payment",
+        gatesPipeline: true,
+        process: jest.fn().mockImplementation(async () => {
+          order.push("first:start");
+          await Promise.resolve();
+          order.push("first:end");
+          return {
+            kind: "deferred",
+            data: {
+              paymentUrl: "u",
+              paymentId: "p1",
+              amount: 1,
+              description: "d",
+            },
+          };
+        }),
+      } as unknown as ISubmissionProcessor;
+      const second = {
+        type: "payment",
+        gatesPipeline: true,
+        process: jest.fn().mockImplementation(async () => {
+          order.push("second:start");
+          await Promise.resolve();
+          order.push("second:end");
+          return { kind: "completed" };
+        }),
+      } as unknown as ISubmissionProcessor;
+
+      const { service } = makeMocks({ gating: [first, second] });
+      await service.submit(BASE_DTO);
+
+      expect(first.process).toHaveBeenCalledTimes(1);
+      expect(second.process).toHaveBeenCalledTimes(1);
+      expect(order).toEqual([
+        "first:start",
+        "first:end",
+        "second:start",
+        "second:end",
+      ]);
+    });
+
+    it("captures the FIRST deferred result when multiple gating processors return deferred", async () => {
+      const firstData = {
+        paymentUrl: "first",
+        paymentId: "p1",
+        amount: 1,
+        description: "first",
+      };
+      const secondData = {
+        paymentUrl: "second",
+        paymentId: "p2",
+        amount: 2,
+        description: "second",
+      };
+      const first = makeGatingProcessor("deferred", firstData);
+      const second = makeGatingProcessor("deferred", secondData);
+      const { service } = makeMocks({ gating: [first, second] });
+
+      const result = await service.submit(BASE_DTO);
+
+      expect(result.deferred).toEqual(firstData);
+      expect(second.process).toHaveBeenCalled();
+    });
+
+    it("propagates errors from gating processors", async () => {
+      const failing = {
+        type: "payment",
+        gatesPipeline: true,
+        process: jest.fn().mockRejectedValue(new Error("boom")),
+      } as unknown as ISubmissionProcessor;
+      const { service } = makeMocks({ gating: [failing] });
+
+      await expect(service.submit(BASE_DTO)).rejects.toThrow("boom");
     });
   });
 });

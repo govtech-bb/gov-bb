@@ -21,11 +21,16 @@ export class SubmissionsController {
     @Headers("idempotency-key") idempotencyKey: string,
     @Body() body: CreateSubmissionDto,
   ): Promise<ApiResponseShape<FormSubmissionEntity>> {
-    const { data, message, statusCode } = await this.submissionsService.submit({
-      ...body,
-      idempotencyKey,
-    });
+    const { data, message, statusCode, deferred } =
+      await this.submissionsService.submit({
+        ...body,
+        idempotencyKey,
+      });
 
-    return ApiResponse.success(data, { message, statusCode });
+    return ApiResponse.success(data, {
+      message,
+      statusCode,
+      ...(deferred && { meta: { deferred } }),
+    });
   }
 }
