@@ -3,7 +3,10 @@ import { ConfigService } from "@nestjs/config";
 import * as ExcelJS from "exceljs";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import type { ISubmissionProcessor } from "./submission-processor.interface";
+import type {
+  ISubmissionProcessor,
+  ProcessorOutput,
+} from "./submission-processor.interface";
 import type {
   SubmissionCreatedEvent,
   StepScopedValues,
@@ -24,7 +27,7 @@ export class SpreadsheetProcessor implements ISubmissionProcessor {
       join(process.cwd(), "exports");
   }
 
-  async process(payload: SubmissionCreatedEvent): Promise<void> {
+  async process(payload: SubmissionCreatedEvent): Promise<ProcessorOutput> {
     const cfg =
       payload.processors.find((p) => p.type === "spreadsheet")?.config ?? {};
 
@@ -59,7 +62,7 @@ export class SpreadsheetProcessor implements ISubmissionProcessor {
         this.logger.warn(
           `[spreadsheet] Submission ${payload.submissionId} already recorded in ${filePath} — skipping`,
         );
-        return;
+        return { kind: "completed" };
       }
     }
 
@@ -89,6 +92,8 @@ export class SpreadsheetProcessor implements ISubmissionProcessor {
     this.logger.log(
       `[spreadsheet] Recorded submission ${payload.submissionId} → ${filePath}`,
     );
+
+    return { kind: "completed" };
   }
 }
 

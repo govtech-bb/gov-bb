@@ -24,4 +24,16 @@ export const envValidationSchema = Joi.object({
 
   // Spreadsheet export (optional — defaults to <cwd>/exports)
   SPREADSHEET_EXPORT_DIR: Joi.string().optional(),
+
+  // EzPay (required only when forms use the payment processor)
+  EZPAY_BASE_URL: Joi.string().uri().required(),
+  EZPAY_DEPARTMENT_API_KEYS: Joi.string().required(),
+  EZPAY_WEBHOOK_VERIFY_SIGNATURE: Joi.string()
+    .valid("true", "false")
+    .default("false"),
+  EZPAY_WEBHOOK_SECRET: Joi.string().when("EZPAY_WEBHOOK_VERIFY_SIGNATURE", {
+    is: "true",
+    then: Joi.required(),
+    otherwise: Joi.string().optional().allow(""),
+  }),
 });

@@ -4,6 +4,7 @@ import { FormSubmissionStatus } from "../../database/entities/form-submission.en
 import { AppError } from "../../common/errors";
 import { FormSubmissionRepository } from "./form-submission.repository";
 import { SubmissionPipelineService } from "./submission-pipeline.service";
+import { ProcessorFactory } from "./processors/processor-factory.service";
 import type {
   SubmitDto,
   SubmitResult,
@@ -16,6 +17,7 @@ export class SubmissionsService {
     private readonly submissionRepo: FormSubmissionRepository,
     private readonly pipeline: SubmissionPipelineService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly processorFactory: ProcessorFactory,
   ) {}
 
   async submit(dto: SubmitDto): Promise<SubmitResult> {
@@ -43,6 +45,9 @@ export class SubmissionsService {
 
     const { draft, contract, auditTrail } = await this.pipeline.run(dto);
 
+    const split = this.processorFactory.resolveSplit(contract.processors ?? []);
+    const hasGating = split.gating.length > 0;
+
     const saved = await this.submissionRepo.tx(async (repo) => {
       const doubleCheck = await repo.findOne({
         where: { idempotencyKey },
@@ -59,8 +64,10 @@ export class SubmissionsService {
         formVersion: draft.formVersion,
         values: dto.values,
         meta: auditTrail as unknown as Record<string, unknown>,
-        status: FormSubmissionStatus.SUBMITTED,
-        submittedAt: new Date(),
+        status: hasGating
+          ? FormSubmissionStatus.PENDING_PAYMENT
+          : FormSubmissionStatus.SUBMITTED,
+        ...(hasGating ? {} : { submittedAt: new Date() }),
       });
 
       return repo.save(entity);
@@ -70,10 +77,31 @@ export class SubmissionsService {
       submissionId: saved.id,
       formId: dto.formId,
       formVersion: draft.formVersion,
+      idempotencyKey: dto.idempotencyKey,
       processors: contract.processors ?? [],
       values: dto.values,
       meta: auditTrail,
     };
+
+    if (hasGating) {
+      // First deferred wins; later gating processors still run for their side-effects
+      // (e.g. persisting their own state) but their `data` is discarded.
+      let deferred: SubmitResult["deferred"];
+      for (const processor of split.gating) {
+        const output = await processor.process(event);
+        if (output.kind === "deferred" && !deferred) {
+          deferred = output.data;
+        }
+      }
+
+      return {
+        outcome: "created",
+        data: saved,
+        message: "Payment required",
+        statusCode: HttpStatus.OK,
+        deferred,
+      };
+    }
 
     this.eventEmitter.emit("submission.created", event);
 

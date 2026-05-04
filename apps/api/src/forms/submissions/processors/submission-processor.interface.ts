@@ -3,7 +3,20 @@ import type { SubmissionCreatedEvent } from "../submissions.types";
 
 export const SUBMISSION_PROCESSORS = Symbol("SUBMISSION_PROCESSORS");
 
+export type ProcessorOutput =
+  | { kind: "completed" }
+  | {
+      kind: "deferred";
+      data: {
+        paymentUrl: string;
+        paymentId: string;
+        amount: number;
+        description: string;
+      };
+    };
+
 export interface ISubmissionProcessor {
   readonly type: Processor["type"];
-  process(payload: SubmissionCreatedEvent): Promise<void>;
+  readonly gatesPipeline?: boolean;
+  process(payload: SubmissionCreatedEvent): Promise<ProcessorOutput>;
 }

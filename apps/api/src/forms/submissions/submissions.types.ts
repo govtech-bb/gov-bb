@@ -19,6 +19,7 @@ export interface SubmissionCreatedEvent {
   submissionId: string;
   formId: string;
   formVersion: string;
+  idempotencyKey: string;
   processors: Processor[];
   values: StepScopedValues;
   meta: SubmissionAuditTrail;
@@ -39,4 +40,10 @@ export interface SubmitResult {
   data: FormSubmissionEntity;
   message: string;
   statusCode: number;
+  deferred?: {
+    paymentUrl: string;
+    paymentId: string;
+    amount: number;
+    description: string;
+  };
 }

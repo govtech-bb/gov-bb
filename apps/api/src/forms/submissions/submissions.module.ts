@@ -11,11 +11,13 @@ import {
   SpreadsheetProcessor,
   SUBMISSION_PROCESSORS,
 } from "./processors";
+import { PaymentProcessor } from "./processors/payment/payment.processor";
 import { FormDefinitionsModule } from "../form-definitions/form-definitions.module";
 import { FormDraftsModule } from "../form-drafts/form-drafts.module";
+import { PaymentsModule } from "../../payments/payments.module";
 
 @Module({
-  imports: [FormDefinitionsModule, FormDraftsModule],
+  imports: [FormDefinitionsModule, FormDraftsModule, PaymentsModule],
   controllers: [SubmissionsController],
   providers: [
     SubmissionsService,
@@ -25,14 +27,21 @@ import { FormDraftsModule } from "../form-drafts/form-drafts.module";
     EmailProcessor,
     OpencrvsProcessor,
     SpreadsheetProcessor,
+    PaymentProcessor,
     {
       provide: SUBMISSION_PROCESSORS,
       useFactory: (
         email: EmailProcessor,
         opencrvs: OpencrvsProcessor,
         spreadsheet: SpreadsheetProcessor,
-      ) => [email, opencrvs, spreadsheet],
-      inject: [EmailProcessor, OpencrvsProcessor, SpreadsheetProcessor],
+        payment: PaymentProcessor,
+      ) => [email, opencrvs, spreadsheet, payment],
+      inject: [
+        EmailProcessor,
+        OpencrvsProcessor,
+        SpreadsheetProcessor,
+        PaymentProcessor,
+      ],
     },
     ProcessorFactory,
     SubmissionProcessorListener,

@@ -5,6 +5,7 @@ import { TimestampedEntity } from "./entity-base";
 export enum FormSubmissionStatus {
   DRAFT = "draft",
   SUBMITTED = "submitted",
+  PENDING_PAYMENT = "pending_payment",
   PROCESSING = "processing",
   COMPLETE = "complete",
   ERROR = "error",
