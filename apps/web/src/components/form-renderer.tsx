@@ -62,6 +62,7 @@ export default function FormRenderer({
     currentStepRepeatableSettings?.orderedStepIds.length;
 
   const addRepeatableStep = (): ClientFormStep[] => {
+    if (!currentStepRepeatableSettings) return visibleSteps;
     if (!repeatableBehaviour) return visibleSteps;
     if (
       repeatableBehaviour.max &&
@@ -70,10 +71,7 @@ export default function FormRenderer({
       return visibleSteps;
     const nextStepId = `${baseStepId}--${currentRepeatStepCount + 1}`;
 
-    if (
-      currentStepRepeatableSettings &&
-      currentStepRepeatableSettings.orderedStepIds.includes(nextStepId)
-    )
+    if (currentStepRepeatableSettings.orderedStepIds.includes(nextStepId))
       return visibleSteps;
 
     let nextStepFields = currentFields
@@ -134,23 +132,19 @@ export default function FormRenderer({
     if (!record?.orderedStepIds.includes(targetStepId)) return visibleSteps;
 
     const step = visibleSteps.find((s) => s.stepId === targetStepId);
-    if (!step) return visibleSteps;
+    if (!step) {
+      const pos = record.orderedStepIds.indexOf(targetStepId);
+      record.orderedStepIds.splice(pos, 1);
+      return visibleSteps;
+    }
 
-    const orderedStepIds = record.orderedStepIds;
+    const orderedStepIds = [...record.orderedStepIds];
 
     const startIndex = orderedStepIds.indexOf(targetStepId);
     if (startIndex === -1) return visibleSteps;
 
-    let toRemove: string[];
-    if (index !== 0) {
-      // Determine which step IDs to remove (target and everything after)
-      toRemove = orderedStepIds.slice(startIndex);
-      record.orderedStepIds = orderedStepIds.slice(0, startIndex + 1);
-    } else {
-      // But if there's only one other element, (removing from the source step) then remove it.
-      toRemove = orderedStepIds.slice(startIndex);
-      record.orderedStepIds = orderedStepIds.slice(0, startIndex);
-    }
+    const toRemove: string[] = orderedStepIds.slice(startIndex);
+    record.orderedStepIds = orderedStepIds.slice(0, startIndex);
 
     if (toRemove.length === 0) return visibleSteps;
 
@@ -205,7 +199,6 @@ export default function FormRenderer({
 
       <h1>{currentStep.title}</h1>
       {/* {step.description && <p>{step.description}</p>} */}
-      {/* TODO: Pass in a complete list of errors */}
       <ErrorSummary errors={errors} />
 
       <div className={designSystem.formStep}>
