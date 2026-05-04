@@ -39,7 +39,8 @@
     "node-cache": "^5.1.2",
     "nodemailer": "^6.9.0",
     "pg": "^8.20.0",
-    "typeorm": "^0.3.28"
+    "typeorm": "^0.3.28",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@nestjs/testing": "^11.1.17",
