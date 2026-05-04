@@ -9,7 +9,6 @@ import ErrorMessage from "./error-message";
 import { RequiredState, checkConditionalOn } from "@web/lib";
 import { FieldArrayBehaviour } from "@govtech-bb/form-types";
 import FileUpload from "./file-upload";
-import { fi } from "zod/v4/locales";
 
 export default function FieldRenderer({
   form,

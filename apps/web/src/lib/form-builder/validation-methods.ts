@@ -517,7 +517,7 @@ export const checkFileMaxSize = ({
   results,
   validations,
 }: ValidationArgs<FileList>) => {
-  const fileMaxSize = validations.fileMaxSize;
+  const fileMaxSize = validations.itemMaxSize;
   if (!fileMaxSize || fileMaxSize.value === undefined) return;
 
   for (const file of value) {

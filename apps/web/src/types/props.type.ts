@@ -37,5 +37,5 @@ export type FileUploadProps = {
   onFileChange?: (files: File[] | null) => void;
   value?: File[] | null;
   errorMessage?: string;
-  validationProperties?: any;
+  validationRules?: any;
 };
