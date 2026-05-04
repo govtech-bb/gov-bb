@@ -10,18 +10,14 @@ export default function FileUpload({
   errorMessage,
   validationRules,
 }: FileUploadProps) {
-  const [files, setFiles] = React.useState<File[]>(value ?? []);
-
-  React.useEffect(() => {
-    setFiles(value ?? []);
-  }, [value]);
+  const files = value ?? [];
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const currentFiles = e.target.files;
     const picked = currentFiles ? Array.from(currentFiles) : [];
     const updatedFiles = [...files, ...picked];
-    setFiles(updatedFiles);
     onFileChange(updatedFiles.length ? updatedFiles : null);
+    e.target.value = "";
   };
 
   const handleChooseClick = () => {
@@ -32,12 +28,9 @@ export default function FileUpload({
   };
 
   const removeFile = (index: number) => {
-    setFiles((prev) => {
-      const next = prev.slice();
-      next.splice(index, 1);
-      onFileChange?.(next.length ? next : null);
-      return next;
-    });
+    const next = files.slice();
+    next.splice(index, 1);
+    onFileChange?.(next.length ? next : null);
   };
 
   const readableFileTypes = field.validations?.fileTypes?.value
