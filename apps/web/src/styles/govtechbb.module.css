@@ -102,6 +102,12 @@
   font-weight: var(--font-weight-bold);
 }
 
+.formRoot [data-hint] {
+  padding: 0rem;
+  margin: 0rem;
+  color: var(--color-mid-grey-00);
+}
+
 .formRoot input,
 .formRoot select,
 .formRoot textarea {
