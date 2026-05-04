@@ -763,8 +763,8 @@
               "error": "Proof of address is required"
             },
             "minItems": {
-              "value": 1,
-              "error": "Please upload at least one document"
+              "value": 2,
+              "error": "Please upload at least 2 documents"
             },
             "maxItems": {
               "value": 3,
