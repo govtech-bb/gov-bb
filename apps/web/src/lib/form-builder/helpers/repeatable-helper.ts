@@ -1,7 +1,7 @@
 import {
   ClientFormStep,
   ClientPrimitive,
-  FormRepeatableRecord,
+  RepeatableStepSettings,
   RepeatableConfig,
 } from "@web/types";
 import { getFullFieldId } from "@web/lib";
@@ -12,7 +12,7 @@ import {
 
 export const setupRepeatSteps = (
   formSteps: ClientFormStep[],
-  repeatSettings: FormRepeatableRecord,
+  repeatSettings: RepeatableStepSettings,
 ): ClientFormStep[] => {
   const updatedSteps = [...formSteps];
   for (let i = 0; i < updatedSteps.length; i++) {

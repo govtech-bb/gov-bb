@@ -3,7 +3,7 @@
 import {
   ClientServiceContract,
   FormMeta,
-  FormRepeatableRecord,
+  RepeatableStepSettings,
   FormValidation,
 } from "@web/types";
 import { buildValidation } from "./validation-builder";
@@ -21,7 +21,7 @@ export const buildForm = (contract: ClientServiceContract): FormMeta => {
   const stepConditionalTargets = getStepConditonalTargets(contract.steps);
 
   // Configure repeatable steps with their minimum and config state
-  const repeatSettings: FormRepeatableRecord = {};
+  const repeatSettings: RepeatableStepSettings = {};
 
   contract.steps = setupRepeatSteps(contract.steps, repeatSettings);
 

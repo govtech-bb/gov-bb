@@ -17,8 +17,8 @@ export default function FormRenderer({
   formMeta,
   stepId,
   visibleSteps,
-  repeatableRecord,
-  setRepeatableRecord,
+  repeatableStepSettings,
+  setRepeatableStepSettings,
 }: FormRendererProps) {
   const [hidePrevious, setHidePrevious] = React.useState(true);
   const [stepIndex, setStepIndex] = React.useState(0);
@@ -57,8 +57,8 @@ export default function FormRenderer({
   const [baseStepId, rawIndex] = stepId.split("--");
   const currentRepeatStepCount = Number(rawIndex ?? 0);
 
-  const stepRepeatableRecord = repeatableRecord[baseStepId];
-  const repeatableStepCount = stepRepeatableRecord?.orderedStepIds.length;
+  const stepRepeatableStepSettings = repeatableStepSettings[baseStepId];
+  const repeatableStepCount = stepRepeatableStepSettings?.orderedStepIds.length;
 
   const addRepeatableStep = (): ClientFormStep[] => {
     if (!repeatableBehaviour) return visibleSteps;
@@ -74,8 +74,8 @@ export default function FormRenderer({
     const nextStepId = `${baseStepId}--${currentRepeatStepCount + 1}`;
 
     if (
-      stepRepeatableRecord &&
-      stepRepeatableRecord.orderedStepIds.includes(nextStepId)
+      stepRepeatableStepSettings &&
+      stepRepeatableStepSettings.orderedStepIds.includes(nextStepId)
     )
       return visibleSteps;
 
@@ -92,22 +92,12 @@ export default function FormRenderer({
       );
     }
 
-    const updatedRecord = stepRepeatableRecord ?? {
-      minRepeats: repeatableBehaviour.min ?? 1,
-      maxRepeats: repeatableBehaviour.max ?? 5,
-      stepData: {
-        [stepId]: stepValues,
-      },
-      orderedStepIds: [stepId, nextStepId],
-      sharedData: {},
-    };
+    const updatedRecord = stepRepeatableStepSettings;
 
-    if (stepRepeatableRecord) {
-      updatedRecord.stepData[stepId] = stepValues;
-      updatedRecord.orderedStepIds.push(nextStepId);
-    }
+    updatedRecord.stepData[stepId] = stepValues;
+    updatedRecord.orderedStepIds.push(nextStepId);
 
-    setRepeatableRecord((prev) => {
+    setRepeatableStepSettings((prev) => {
       return {
         ...prev,
         [baseStepId]: updatedRecord,
@@ -140,7 +130,7 @@ export default function FormRenderer({
     const index = Number(rawIndex ?? 0);
     const targetStepId = `${baseStepId}--${index ? index : 1}`;
 
-    const record = repeatableRecord[baseStepId];
+    const record = repeatableStepSettings[baseStepId];
     if (!record?.orderedStepIds.includes(targetStepId)) return visibleSteps;
 
     const step = visibleSteps.find((s) => s.stepId === targetStepId);

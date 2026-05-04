@@ -8,7 +8,7 @@ import {
 import { FormRenderer, FormError } from "@web/components";
 import { formSearchParamSchema } from "apps/web/src/types/form-search-param.type";
 import { useForm, useStore } from "@tanstack/react-form";
-import { FormRepeatableRecord, FormValues } from "@web/types";
+import { RepeatableStepSettings, FormValues } from "@web/types";
 import React from "react";
 import { getFormData, storeFormData } from "../../../lib/session-storage";
 
@@ -22,8 +22,8 @@ export const Route = createFileRoute("/forms/$formId/")({
 function RouteComponent() {
   const contract = Route.useLoaderData();
   const { step } = Route.useSearch();
-  const [repeatableRecord, setRepeatableRecord] =
-    React.useState<FormRepeatableRecord>({});
+  const [repeatableStepSettings, setRepeatableStepSettings] =
+    React.useState<RepeatableStepSettings>({});
 
   const formMeta = buildForm(contract);
 
@@ -72,8 +72,8 @@ function RouteComponent() {
       formMeta={formMeta}
       stepId={step ?? ""}
       visibleSteps={visibleSteps}
-      repeatableRecord={repeatableRecord}
-      setRepeatableRecord={setRepeatableRecord}
+      repeatableStepSettings={repeatableStepSettings}
+      setRepeatableStepSettings={setRepeatableStepSettings}
     />
   );
 }
