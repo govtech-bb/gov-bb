@@ -498,22 +498,26 @@ export const checkFileTypes = ({
   const fileTypes = validations.fileTypes;
   if (!fileTypes || fileTypes.value.length === 0) return;
 
-  // Remove prefix from file types if present (e.g. "image/png" → "png")
   const allowedExtensions = fileTypes.value.map((type: string) => {
     const parts = type.split("/");
     return parts.length > 1 ? parts[1].toLowerCase() : type.toLowerCase();
   });
 
+  const invalidExtensions = new Set<string>();
   for (const file of value) {
     const extension = file.name.split(".").pop()?.toLowerCase();
     if (extension && !allowedExtensions.includes(extension)) {
-      setValidationError(
-        fieldLabel,
-        fileTypes,
-        results,
-        `File ${file.name} has an invalid type. Allowed types: ${fileTypes.value.join(", ")}.`,
-      );
+      invalidExtensions.add(extension);
     }
+  }
+
+  if (invalidExtensions.size > 0) {
+    setValidationError(
+      fieldLabel,
+      fileTypes,
+      results,
+      `File type not allowed. Allowed types: ${fileTypes.value.join(", ")}.`,
+    );
   }
 };
 
