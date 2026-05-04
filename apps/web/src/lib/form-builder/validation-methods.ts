@@ -489,3 +489,85 @@ export const evaluateCondition = (
       return false;
   }
 };
+
+export const checkFileTypes = ({
+  fieldLabel,
+  value,
+  results,
+  validations,
+}: ValidationArgs<FileList>) => {
+  const fileTypes = validations.fileTypes;
+  if (!fileTypes || fileTypes.value.length === 0) return;
+
+  for (const file of value) {
+    const extension = file.name.split(".").pop()?.toLowerCase();
+    if (extension && !fileTypes.value.includes(extension)) {
+      setValidationError(
+        fieldLabel,
+        fileTypes,
+        results,
+        `File type .${extension} is not allowed.`,
+      );
+    }
+  }
+};
+
+export const checkFileMaxSize = ({
+  fieldLabel,
+  value,
+  results,
+  validations,
+}: ValidationArgs<FileList>) => {
+  const fileMaxSize = validations.fileMaxSize;
+  if (!fileMaxSize || fileMaxSize.value === undefined) return;
+
+  for (const file of value) {
+    const size = file.size;
+    if (size > fileMaxSize.value) {
+      setValidationError(
+        fieldLabel,
+        fileMaxSize,
+        results,
+        `File ${file.name} exceeds maximum size of ${fileMaxSize.value} bytes.`,
+      );
+    }
+  }
+};
+
+export const checkMaxFiles = ({
+  fieldLabel,
+  value,
+  results,
+  validations,
+}: ValidationArgs<FileList>) => {
+  const maxItems = validations.maxItems;
+  if (!maxItems || maxItems.value === undefined) return;
+
+  if (value.length > maxItems.value) {
+    setValidationError(
+      fieldLabel,
+      maxItems,
+      results,
+      `Number of files exceeds the maximum allowed (${maxItems.value}).`,
+    );
+  }
+};
+
+export const checkMinFiles = ({
+  fieldLabel,
+  value,
+  results,
+  validations,
+}: ValidationArgs<FileList>) => {
+  const minItems = validations.minItems;
+  if (!minItems || minItems.value === undefined) return;
+
+  if (value.length < minItems.value) {
+    setValidationError(
+      fieldLabel,
+      minItems,
+      results,
+      `Number of files is less than the minimum required (${minItems.value}).`,
+    );
+  }
+};

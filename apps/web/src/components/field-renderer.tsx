@@ -330,6 +330,7 @@ export default function FieldRenderer({
                 sharedProps={sharedProps}
                 value={f.state.value as File[] | null | undefined}
                 onFileChange={(files) => f.handleChange(files)}
+                errorMessage={errorMessage}
               />
             );
           default:

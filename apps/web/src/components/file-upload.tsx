@@ -1,11 +1,13 @@
 import React from "react";
 import { FileUploadProps } from "@web/types";
+import ErrorMessage from "./error-message";
 
 export default function FileUpload({
   field,
   sharedProps,
   onFileChange,
   value,
+  errorMessage,
 }: FileUploadProps) {
   const [files, setFiles] = React.useState<File[]>(value ?? []);
 
@@ -39,6 +41,7 @@ export default function FileUpload({
 
   return (
     <div data-file-upload>
+      <ErrorMessage message={errorMessage} />
       <label data-file-upload-label>
         <div data-file-upload-instructions>
           <span data-file-upload-title>{field.label ?? "Upload a file"}</span>
