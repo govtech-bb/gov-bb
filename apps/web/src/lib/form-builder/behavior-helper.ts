@@ -5,6 +5,7 @@ import {
 import { AnyFormApi } from "@tanstack/react-form";
 import { ClientFormStep, FieldValue } from "@web/types";
 import { evaluateCondition, RequiredState } from "./validation-methods";
+import { getFullFieldId } from "./field-mapper";
 
 export const checkConditionalOn = (
   currentFieldValue: FieldValue,
@@ -19,7 +20,7 @@ export const checkConditionalOn = (
       condition.targetStepId ?? fieldStep;
     let targetFieldId = condition.targetFieldId;
     if (targetStepId) {
-      targetFieldId = `${targetStepId}.${condition.targetFieldId}`;
+      targetFieldId = getFullFieldId(targetStepId, condition.targetFieldId);
     }
 
     const targetFieldValue = formApi.getFieldValue(targetFieldId);
@@ -29,6 +30,7 @@ export const checkConditionalOn = (
       targetFieldValue,
       condition.operator,
     );
+
     if (!currentFieldValue) currentFieldValue = "";
     if (passesCondition && currentFieldValue.toString().length == 0) {
       return "requiredAndEmpty";

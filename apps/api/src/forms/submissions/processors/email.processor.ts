@@ -1,7 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import * as nodemailer from "nodemailer";
-import type { Transporter } from "nodemailer";
+import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
 import type {
   ISubmissionProcessor,
   ProcessorOutput,
@@ -12,19 +11,15 @@ import type { SubmissionCreatedEvent } from "../submissions.types";
 export class EmailProcessor implements ISubmissionProcessor {
   readonly type = "email" as const;
   private readonly logger = new Logger(EmailProcessor.name);
-  private readonly transporter: Transporter;
+  private readonly client: SESv2Client;
   private readonly from: string;
+  private readonly configurationSet: string | undefined;
 
   constructor(config: ConfigService) {
     this.from = config.get<string>("email.from") ?? "noreply@gov.bb";
-    this.transporter = nodemailer.createTransport({
-      host: config.get<string>("email.host"),
-      port: config.get<number>("email.port"),
-      secure: config.get<boolean>("email.secure"),
-      auth: {
-        user: config.get<string>("email.user"),
-        pass: config.get<string>("email.pass"),
-      },
+    this.configurationSet = config.get<string>("email.configurationSet");
+    this.client = new SESv2Client({
+      region: config.get<string>("email.region") ?? "us-east-1",
     });
   }
 
@@ -55,20 +50,36 @@ export class EmailProcessor implements ISubmissionProcessor {
       (cfg["subject"] as string | undefined) ??
       "Your form submission has been received";
 
-    // The Message-ID is set to a deterministic value derived from the
-    // submissionId. This acts as a best-effort idempotency signal: mail
-    // infrastructure and receiving clients that honour Message-ID will
-    // treat repeat sends of the same ID as duplicates.
-    await this.transporter.sendMail({
-      from: this.from,
-      to,
-      subject,
-      headers: {
-        "Message-ID": `<${payload.submissionId}@modular-forms.gov.bb>`,
-      },
-      text: this.buildTextBody(payload),
-      html: this.buildHtmlBody(payload),
-    });
+    await this.client.send(
+      new SendEmailCommand({
+        FromEmailAddress: this.from,
+        Destination: { ToAddresses: [to] },
+        Content: {
+          Simple: {
+            Subject: { Data: subject, Charset: "UTF-8" },
+            Body: {
+              Text: {
+                Data: this.buildTextBody(payload),
+                Charset: "UTF-8",
+              },
+              Html: {
+                Data: this.buildHtmlBody(payload),
+                Charset: "UTF-8",
+              },
+            },
+          },
+        },
+        // EmailTags are forwarded to the SES event destination (SNS/EventBridge).
+        // Tagging with submissionId lets the configuration set's bounce/complaint
+        // stream filter or deduplicate events per submission without extra plumbing.
+        EmailTags: [{ Name: "submissionId", Value: payload.submissionId }],
+        // ConfigurationSetName wires this send into the SES event destination
+        // so bounces and complaints are tracked automatically.
+        ...(this.configurationSet && {
+          ConfigurationSetName: this.configurationSet,
+        }),
+      }),
+    );
 
     this.logger.log(
       `[email] Confirmation sent to ${to} for submission ${payload.submissionId}`,
@@ -79,8 +90,8 @@ export class EmailProcessor implements ISubmissionProcessor {
 
   private buildTextBody(payload: SubmissionCreatedEvent): string {
     return [
-      `Your submission has been received.`,
-      ``,
+      "Your submission has been received.",
+      "",
       `Reference: ${payload.submissionId}`,
       `Form:      ${payload.formId}`,
       `Submitted: ${payload.meta.submittedAt}`,

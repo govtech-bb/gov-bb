@@ -1,22 +1,23 @@
 import { Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import * as nodemailer from "nodemailer";
+import {
+  SESv2Client,
+  SendEmailCommand,
+  type SendEmailCommandInput,
+} from "@aws-sdk/client-sesv2";
 import { EmailProcessor } from "./email.processor";
 import type { SubmissionCreatedEvent } from "../submissions.types";
 
-jest.mock("nodemailer");
+jest.mock("@aws-sdk/client-sesv2");
 
-const mockSendMail = jest.fn().mockResolvedValue({ messageId: "test-id" });
-const mockCreateTransport = nodemailer.createTransport as jest.Mock;
+const mockSend = jest.fn().mockResolvedValue({ MessageId: "ses-msg-001" });
+(SESv2Client as jest.Mock).mockImplementation(() => ({ send: mockSend }));
 
 function makeConfig(overrides: Record<string, unknown> = {}): ConfigService {
   const defaults: Record<string, unknown> = {
-    "email.host": "smtp.test.local",
-    "email.port": 587,
-    "email.secure": false,
-    "email.user": "user",
-    "email.pass": "pass",
+    "email.region": "ap-southeast-1",
     "email.from": "noreply@test.gov",
+    "email.configurationSet": undefined,
     ...overrides,
   };
   return { get: (key: string) => defaults[key] } as unknown as ConfigService;
@@ -52,55 +53,82 @@ function makePayload(
   };
 }
 
+/** Extracts the SendEmailCommand input from the first constructor call.
+ *
+ * jest.mock() replaces SendEmailCommand with a mock constructor that records
+ * every `new SendEmailCommand(input)` call. Reading mock.calls[0][0] gives us
+ * the raw input object without relying on the real .input property (which is
+ * absent from the auto-mocked class).
+ */
+function getSentInput() {
+  // jest.mock() replaces SendEmailCommand with a mock constructor that records
+  // every `new SendEmailCommand(input)` call. mock.calls[0][0] is the raw
+  // input object — the real .input property is absent from the auto-mocked class.
+  const MockedCmd = SendEmailCommand as unknown as jest.Mock;
+  return MockedCmd.mock.calls[0][0] as SendEmailCommandInput;
+}
+
 describe("EmailProcessor", () => {
   let processor: EmailProcessor;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockCreateTransport.mockReturnValue({ sendMail: mockSendMail });
     processor = new EmailProcessor(makeConfig());
   });
 
   describe("process", () => {
-    it("sends an email to the address resolved from recipientField", async () => {
+    it("sends to the address resolved from recipientField", async () => {
       await processor.process(makePayload());
 
-      expect(mockSendMail).toHaveBeenCalledWith(
-        expect.objectContaining({ to: "jane@example.com" }),
-      );
+      expect(getSentInput().Destination?.ToAddresses).toEqual([
+        "jane@example.com",
+      ]);
     });
 
-    it("uses the configured from address", async () => {
+    it("sends from the configured SES sender identity", async () => {
       await processor.process(makePayload());
 
-      expect(mockSendMail).toHaveBeenCalledWith(
-        expect.objectContaining({ from: "noreply@test.gov" }),
-      );
+      expect(getSentInput().FromEmailAddress).toBe("noreply@test.gov");
     });
 
     it("uses the subject from processor config when provided", async () => {
-      await processor.process(makePayload({ subject: "Custom subject" }));
+      await processor.process(
+        makePayload({ subject: "Passport renewal received" }),
+      );
 
-      expect(mockSendMail).toHaveBeenCalledWith(
-        expect.objectContaining({ subject: "Custom subject" }),
+      expect(getSentInput().Content?.Simple?.Subject?.Data).toBe(
+        "Passport renewal received",
       );
     });
 
     it("falls back to a default subject when none is configured", async () => {
       await processor.process(makePayload());
 
-      expect(mockSendMail).toHaveBeenCalledWith(
-        expect.objectContaining({ subject: expect.any(String) }),
-      );
-      const call = mockSendMail.mock.calls[0][0];
-      expect(call.subject.length).toBeGreaterThan(0);
+      const subject = getSentInput().Content?.Simple?.Subject?.Data ?? "";
+      expect(subject.length).toBeGreaterThan(0);
     });
 
-    it("sets a deterministic Message-ID for retry safety", async () => {
+    it("tags the send with submissionId for SES event stream traceability", async () => {
       await processor.process(makePayload());
 
-      const call = mockSendMail.mock.calls[0][0];
-      expect(call.headers["Message-ID"]).toContain("sub-001");
+      expect(getSentInput().EmailTags).toEqual(
+        expect.arrayContaining([{ Name: "submissionId", Value: "sub-001" }]),
+      );
+    });
+
+    it("includes ConfigurationSetName when configured", async () => {
+      processor = new EmailProcessor(
+        makeConfig({ "email.configurationSet": "modular-forms-prod" }),
+      );
+      await processor.process(makePayload());
+
+      expect(getSentInput().ConfigurationSetName).toBe("modular-forms-prod");
+    });
+
+    it("omits ConfigurationSetName when not configured", async () => {
+      await processor.process(makePayload());
+
+      expect(getSentInput().ConfigurationSetName).toBeUndefined();
     });
 
     it("skips and warns when recipientField is missing from processor config", async () => {
@@ -110,7 +138,7 @@ describe("EmailProcessor", () => {
 
       await processor.process(payload);
 
-      expect(mockSendMail).not.toHaveBeenCalled();
+      expect(mockSend).not.toHaveBeenCalled();
       expect(warn).toHaveBeenCalledWith(
         expect.stringContaining("No recipientField"),
       );
@@ -123,7 +151,7 @@ describe("EmailProcessor", () => {
 
       await processor.process(payload);
 
-      expect(mockSendMail).not.toHaveBeenCalled();
+      expect(mockSend).not.toHaveBeenCalled();
       expect(warn).toHaveBeenCalledWith(
         expect.stringContaining("Could not resolve recipient"),
       );

@@ -1,8 +1,45 @@
 import { FormValues } from "@web/types";
 
+function stripNonSerializableValues(value: unknown): unknown {
+  if (typeof File !== "undefined" && value instanceof File) {
+    return undefined;
+  }
+
+  if (typeof Blob !== "undefined" && value instanceof Blob) {
+    return undefined;
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .map((entry) => stripNonSerializableValues(entry))
+      .filter((entry) => entry !== undefined);
+  }
+
+  if (value && typeof value === "object") {
+    const entries: [string, unknown][] = [];
+
+    for (const [key, nestedValue] of Object.entries(
+      value as Record<string, unknown>,
+    )) {
+      const sanitizedValue = stripNonSerializableValues(nestedValue);
+
+      if (sanitizedValue !== undefined) {
+        entries.push([key, sanitizedValue]);
+      }
+    }
+
+    return Object.fromEntries(entries);
+  }
+
+  return value;
+}
+
 // Store form data in session storage
 export function storeFormData(formId: string, data: FormValues) {
-  sessionStorage.setItem(`formData_${formId}`, JSON.stringify(data));
+  sessionStorage.setItem(
+    `formData_${formId}`,
+    JSON.stringify(stripNonSerializableValues(data)),
+  );
 }
 
 // Retrieve form data from session storage

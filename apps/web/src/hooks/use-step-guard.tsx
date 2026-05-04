@@ -4,7 +4,6 @@ import { ClientFormStep, UseStepGuardProps } from "@web/types";
 import {
   getFirstIncompleteStepIndex,
   markStepCompleted,
-  storeFormData,
 } from "../lib/session-storage";
 
 export function useStepGuard({
@@ -33,7 +32,7 @@ export function useStepGuard({
         const nextStepId = currentSteps[safeIndex].stepId;
 
         void navigate({
-          search: (prev) => ({
+          search: (prev: Record<string, unknown>) => ({
             ...prev,
             step: nextStepId,
           }),
