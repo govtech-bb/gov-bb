@@ -82,4 +82,7 @@ export const getStepConditonalTargets = (
 
 // Other exports
 
-export { setupRepeatSteps } from "./repeatable-helper";
+export {
+  setupRepeatSteps,
+  generateRepeatableAddAnotherField,
+} from "./repeatable-helper";
