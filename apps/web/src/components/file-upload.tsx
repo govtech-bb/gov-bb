@@ -77,7 +77,6 @@ export default function FileUpload({
           >
             Choose file
           </button>
-          {/* TODO: Replace with actual file size limit */}
           <span data-file-upload-limit>
             Max Size:{" "}
             {validationRules?.maxSize?.value
