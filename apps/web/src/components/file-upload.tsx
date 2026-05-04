@@ -8,7 +8,6 @@ export default function FileUpload({
   value,
 }: FileUploadProps) {
   const [files, setFiles] = React.useState<File[]>(value ?? []);
-  const inputRef = React.useRef<HTMLInputElement | null>(null);
 
   React.useEffect(() => {
     setFiles(value ?? []);
@@ -20,11 +19,14 @@ export default function FileUpload({
     const updatedFiles = [...files, ...picked];
     setFiles(updatedFiles);
     onFileChange?.(updatedFiles.length ? updatedFiles : null);
-    // clear native file input so same file can be re-picked
-    if (inputRef.current) inputRef.current.value = "";
   };
 
-  const handleChooseClick = () => inputRef.current?.click();
+  const handleChooseClick = () => {
+    const input = document.querySelector(
+      `input[type="file"][name="${sharedProps.name}"]`,
+    ) as HTMLInputElement | null;
+    input?.click();
+  };
 
   const removeFile = (index: number) => {
     setFiles((prev) => {
@@ -47,7 +49,6 @@ export default function FileUpload({
 
         <input
           {...sharedProps}
-          ref={inputRef}
           type="file"
           data-file-upload-input
           onChange={handleInputChange}
