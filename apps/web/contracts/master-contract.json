@@ -1,5 +1,5 @@
 {
-  "formId": "master-form-v1",
+  "formId": "masterFormV1",
   "title": "Master Service Contract - Documentation & Testing",
   "description": "Comprehensive service contract demonstrating all available features: all behaviours, validations, HTML types, and built-in components.",
   "createdAt": "2026-04-02T00:00:00Z",
@@ -7,7 +7,7 @@
   "version": "1.0.0",
   "steps": [
     {
-      "stepId": "step-1-personal-details",
+      "stepId": "step1PersonalDetails",
       "title": "Personal Details",
       "description": "Basic personal information with various HTML types and validations",
       "elements": [
@@ -259,7 +259,7 @@
       ]
     },
     {
-      "stepId": "step-2-contact-information",
+      "stepId": "step2ContactInformation",
       "title": "Contact Information",
       "description": "Various contact methods with conditional visibility and validation",
       "elements": [
@@ -445,7 +445,7 @@
       ]
     },
     {
-      "stepId": "random-step",
+      "stepId": "randomStep",
       "title": "I see you gave us your telephone number",
       "description": "Nothing to see here. Carry on.",
       "elements": [
@@ -460,14 +460,14 @@
         {
           "type": "stepConditionalOn",
           "targetFieldId": "telephone",
-          "targetStepId": "step-2-contact-information",
+          "targetStepId": "step2ContactInformation",
           "operator": "exists",
           "value": ""
         }
       ]
     },
     {
-      "stepId": "step-3-address-employment",
+      "stepId": "step3AddressEmployment",
       "title": "Address & Employment",
       "description": "Address information with conditional fields and employment details",
       "elements": [
@@ -720,7 +720,7 @@
       ]
     },
     {
-      "stepId": "step-4-documents-uploads",
+      "stepId": "step4DocumentsUploads",
       "title": "Documents & Uploads",
       "description": "File uploads with various validation rules and repeatable field arrays",
       "elements": [
@@ -835,7 +835,7 @@
       ]
     },
     {
-      "stepId": "step-5-financial-information",
+      "stepId": "step5FinancialInformation",
       "title": "Financial Information",
       "description": "Bank details with conditional fields and various validation types",
       "elements": [
@@ -1082,7 +1082,7 @@
       ]
     },
     {
-      "stepId": "step-6-declarations",
+      "stepId": "step6Declarations",
       "title": "Declarations & Consent",
       "description": "Legal declarations and consent with checkbox validations",
       "elements": [
@@ -1203,7 +1203,7 @@
       ]
     },
     {
-      "stepId": "check-your-answers",
+      "stepId": "checkYourAnswers",
       "title": "Check Your Answers",
       "description": "Review all the information you have provided before submitting your application.",
       "elements": []
