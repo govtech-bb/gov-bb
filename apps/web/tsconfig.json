@@ -1,6 +1,7 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "composite": true,
     "jsx": "preserve",
     "allowJs": true,
     "noEmit": true,
@@ -14,18 +15,20 @@
         "name": "next"
       }
     ],
-    "types": [
-      "react",
-      "react-dom",
-      "node",
-      "vite/client"
-    ],
-    "lib": [
-      "ES2022",
-      "DOM",
-      "DOM.Iterable"
-    ]
+    "types": ["react", "react-dom", "node", "vite/client"],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"]
   },
+  "references": [
+    {
+      "path": "../../packages/form-types"
+    },
+    {
+      "path": "../../packages/form-validation"
+    },
+    {
+      "path": "../../packages/form-conditions"
+    }
+  ],
   "include": [
     "src/**/*.ts",
     "src/**/*.tsx",
@@ -34,8 +37,5 @@
     "next.config.js",
     ".next/types/**/*.ts"
   ],
-  "exclude": [
-    "node_modules",
-    ".next"
-  ]
+  "exclude": ["node_modules", ".next"]
 }

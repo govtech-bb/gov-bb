@@ -1,6 +1,7 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "composite": true,
     "outDir": "./dist",
     "module": "commonjs",
     "declaration": true,
@@ -9,6 +10,17 @@
     "strictPropertyInitialization": false,
     "types": ["node", "jest"]
   },
+  "references": [
+    {
+      "path": "../../packages/form-types"
+    },
+    {
+      "path": "../../packages/form-validation"
+    },
+    {
+      "path": "../../packages/form-conditions"
+    }
+  ],
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }
