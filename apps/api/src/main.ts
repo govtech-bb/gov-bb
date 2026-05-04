@@ -10,7 +10,7 @@ import { TracingInterceptor } from "./common/tracing.interceptor";
 import { MetricsService } from "./telemetry/metrics.service";
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { rawBody: true });
   const config = app.get(ConfigService);
   const metricsService = app.get(MetricsService);
   const port = config.get<number>("app.port") ?? 3001;
