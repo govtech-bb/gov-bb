@@ -118,7 +118,10 @@ describe("SubmissionsService", () => {
       await service.submit(BASE_DTO);
       expect(eventEmitter.emit as jest.Mock).toHaveBeenCalledWith(
         "submission.created",
-        expect.objectContaining({ submissionId: expect.any(String) }),
+        expect.objectContaining({
+          submissionId: expect.any(String),
+          idempotencyKey: "key-abc",
+        }),
       );
     });
 

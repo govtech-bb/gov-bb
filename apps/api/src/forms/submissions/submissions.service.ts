@@ -70,6 +70,7 @@ export class SubmissionsService {
       submissionId: saved.id,
       formId: dto.formId,
       formVersion: draft.formVersion,
+      idempotencyKey: dto.idempotencyKey,
       processors: contract.processors ?? [],
       values: dto.values,
       meta: auditTrail,

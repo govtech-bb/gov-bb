@@ -19,6 +19,7 @@ export interface SubmissionCreatedEvent {
   submissionId: string;
   formId: string;
   formVersion: string;
+  idempotencyKey: string;
   processors: Processor[];
   values: StepScopedValues;
   meta: SubmissionAuditTrail;

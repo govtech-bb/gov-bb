@@ -30,6 +30,7 @@ function makePayload(
     submissionId: "sub-001",
     formId: "passport-renewal",
     formVersion: "1.0.0",
+    idempotencyKey: "idem-email-1",
     processors: [
       {
         type: "email",

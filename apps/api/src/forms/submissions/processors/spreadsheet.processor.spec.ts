@@ -26,6 +26,7 @@ function makePayload(
     submissionId,
     formId: "passport-renewal",
     formVersion: "1.0.0",
+    idempotencyKey: "idem-spreadsheet-1",
     processors: [
       {
         type: "spreadsheet",

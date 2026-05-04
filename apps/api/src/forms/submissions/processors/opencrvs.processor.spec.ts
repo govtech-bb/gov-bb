@@ -12,6 +12,7 @@ function makePayload(
     submissionId: "sub-002",
     formId: "birth-registration",
     formVersion: "2.0.0",
+    idempotencyKey: "idem-opencrvs-1",
     processors: [
       {
         type: "opencrvs",
