@@ -431,12 +431,11 @@ export const evaluateCondition = (
       if (
         targetFieldValue &&
         conditionValue &&
-        (Array.isArray(targetFieldValue) ||
-          typeof targetFieldValue === "string") &&
-        (typeof conditionValue === "string" ||
-          typeof conditionValue === "boolean" ||
-          typeof conditionValue === "number") &&
-        targetFieldValue.includes(conditionValue.toString())
+        (Array.isArray(conditionValue) || typeof conditionValue === "string") &&
+        (typeof targetFieldValue === "string" ||
+          typeof targetFieldValue === "boolean" ||
+          typeof targetFieldValue === "number") &&
+        conditionValue.includes(targetFieldValue.toString())
       )
         return true;
       else return false;
