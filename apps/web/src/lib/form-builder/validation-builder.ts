@@ -8,6 +8,7 @@ import {
   ValidationArgs,
   DateValue,
   DateValueInput,
+  FieldValue,
 } from "@web/types";
 import z from "zod";
 import {
@@ -43,7 +44,7 @@ export const buildValidation = (
   const shape: Record<string, z.ZodType<unknown>> = {};
   const fieldValidationProperties: Record<string, FieldValidationProperties> =
     {};
-  const defaults: Record<string, unknown> = {};
+  const defaults: Record<string, FieldValue> = {};
 
   for (const step of contract.steps) {
     for (const field of step.fields) {

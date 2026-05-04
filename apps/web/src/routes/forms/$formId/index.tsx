@@ -1,10 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { fetchContract, buildForm, getVisibleSteps } from "@web/lib";
+import {
+  fetchContract,
+  buildForm,
+  getVisibleSteps,
+  getFullFieldId,
+} from "@web/lib";
 import { FormRenderer, FormError } from "@web/components";
 import { formSearchParamSchema } from "apps/web/src/types/form-search-param.type";
 import { useForm, useStore } from "@tanstack/react-form";
 import { FormRepeatableRecord, FormValues } from "@web/types";
 import React from "react";
+import { getFormData, storeFormData } from "../../../lib/session-storage";
 
 export const Route = createFileRoute("/forms/$formId/")({
   component: RouteComponent,
@@ -22,12 +28,25 @@ function RouteComponent() {
   const formMeta = buildForm(contract);
 
   const form = useForm({
-    defaultValues: formMeta.defaultValues as FormValues,
+    defaultValues: {
+      ...(formMeta.defaultValues as FormValues),
+      ...(getFormData(formMeta.formId) ?? {}),
+    },
     onSubmit: ({ value }) => {
       // TODO: Handle form submission
       console.log("Form submitted:", value);
     },
   });
+
+  const formValues = useStore(
+    form.store,
+    (state) => state.values,
+  ) as FormValues;
+
+  // Persists form data on accidental refresh or navigation
+  React.useEffect(() => {
+    storeFormData(formMeta.formId, formValues);
+  }, [formMeta.formId, formValues]);
 
   const targetStores = [];
 
@@ -35,7 +54,10 @@ function RouteComponent() {
     formMeta.stepConditionalTargets,
   )) {
     targetStores.push(
-      useStore(form.store, (state) => state.values[`${stepId}.${fieldId}`]),
+      useStore(
+        form.store,
+        (state) => state.values[getFullFieldId(stepId, fieldId)],
+      ),
     );
   }
 

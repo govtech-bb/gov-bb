@@ -1,7 +1,10 @@
 import { AnyFormApi } from "@tanstack/react-form";
-import { ClientFormStep, ClientServiceContract } from "./field-mapper.type";
+import {
+  ClientFormStep,
+  ClientPrimitive,
+  ClientServiceContract,
+} from "./field-mapper.type";
 import { FormMeta } from "./renderer.type";
-
 import { FormRepeatableRecord } from "./behavior-helper.type";
 
 export interface FormRendererProps {
@@ -25,4 +28,11 @@ export type UseStepGuardProps = {
   steps: { stepId: string }[];
   stepId?: string;
   setStepIndex: React.Dispatch<React.SetStateAction<number>>;
+};
+
+export type FileUploadProps = {
+  field: ClientPrimitive;
+  sharedProps: React.InputHTMLAttributes<HTMLInputElement>;
+  onFileChange?: (files: File[] | null) => void;
+  value?: File[] | null;
 };

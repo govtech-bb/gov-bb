@@ -11,6 +11,7 @@ import ErrorSummary from "./error-summary";
 import { useStore } from "@tanstack/react-form";
 import { useStepGuard } from "../hooks/use-step-guard";
 import Review from "./review";
+import { getFullFieldId } from "@web/lib";
 
 export default function FormRenderer({
   form,
@@ -62,7 +63,10 @@ export default function FormRenderer({
 
   const addRepeatableStep = (): ClientFormStep[] => {
     if (!repeatableBehaviour) return visibleSteps;
-    const addAnotherStepRadioId = `${currentStep.stepId}.addAnother-${repeatableStepCount}`;
+    const addAnotherStepRadioId = getFullFieldId(
+      currentStep.stepId,
+      `addAnother-${repeatableStepCount}`,
+    );
     const nextStepId = `${baseStepId}--${currentRepeatStepCount + 1}`;
 
     if (
@@ -74,7 +78,7 @@ export default function FormRenderer({
     let nextStepFields = currentFields
       .filter((f) => f.id != addAnotherStepRadioId)
       .map((field) => {
-        field.id = `${nextStepId}.${field.fieldId}`;
+        field.id = getFullFieldId(nextStepId, field.fieldId);
         return field;
       });
 
@@ -172,7 +176,10 @@ export default function FormRenderer({
   const handleContinue = () => {
     // Handle navigation to repeatable step.
     if (repeatableBehaviour) {
-      const anotherFieldId = `${currentStep.stepId}.addAnother-${repeatableStepCount}`;
+      const anotherFieldId = getFullFieldId(
+        currentStep.stepId,
+        `addAnother-${repeatableStepCount}`,
+      );
 
       const anotherFieldValue = form.getFieldValue(anotherFieldId);
       if (anotherFieldValue === "yes") {
@@ -191,8 +198,11 @@ export default function FormRenderer({
 
   if (repeatableBehaviour) {
     const addAnotherField: ClientPrimitive = {
-      id: `${currentStep.stepId}.addAnother-${repeatableStepCount}`,
-      fieldId: "addAnother",
+      id: getFullFieldId(
+        currentStep.stepId,
+        `addAnother-${repeatableStepCount}`,
+      ),
+      fieldId: `addAnother-${repeatableStepCount}`,
       stepId: currentStep.stepId,
       name: "Add Another",
       label: "Add another?",
@@ -237,7 +247,7 @@ export default function FormRenderer({
 
       <div className={designSystem.formStep}>
         {currentStep.stepId === "check-your-answers" && (
-          <Review key={"review-step"} formMeta={formMeta} />
+          <Review key={"review-step"} formMeta={formMeta} form={form} />
         )}
 
         {currentFields.map((field) => (
