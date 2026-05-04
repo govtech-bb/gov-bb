@@ -85,7 +85,7 @@
 .formRoot .formStep [data-field] {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xxs);
+  gap: var(--spacing-xs);
 }
 
 .formRoot .formStep [data-field][data-field-width="short"] {
