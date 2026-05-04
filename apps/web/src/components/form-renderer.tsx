@@ -1,6 +1,5 @@
 import {
   ClientFormStep,
-  ClientPrimitive,
   FieldValidationErrors,
   FormRendererProps,
 } from "@web/types";

@@ -4,6 +4,7 @@ import z from "zod";
 import { ClientFormStep } from "./field-mapper.type";
 import { FieldValidationProperties } from "./validation.type";
 
+import { FormRepeatableRecord } from "./behavior-helper.type";
 type stepId = string;
 type fieldId = string;
 
@@ -17,4 +18,5 @@ export interface FormMeta {
   defaultValues: Record<string, unknown>;
   validationProperties: Record<string, FieldValidationProperties>;
   stepConditionalTargets: Record<stepId, fieldId>;
+  repeatSettings: FormRepeatableRecord;
 }

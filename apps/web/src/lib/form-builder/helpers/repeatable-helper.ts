@@ -1,4 +1,9 @@
-import { ClientFormStep, ClientPrimitive } from "@web/types";
+import {
+  ClientFormStep,
+  ClientPrimitive,
+  FormRepeatableRecord,
+  RepeatableConfig,
+} from "@web/types";
 import { getFullFieldId } from "@web/lib";
 import {
   RepeatableBehaviour,
@@ -7,6 +12,7 @@ import {
 
 export const setupRepeatSteps = (
   formSteps: ClientFormStep[],
+  repeatSettings: FormRepeatableRecord,
 ): ClientFormStep[] => {
   const updatedSteps = [...formSteps];
   for (let i = 0; i < updatedSteps.length; i++) {
@@ -25,6 +31,15 @@ export const setupRepeatSteps = (
     const idParts = step.stepId.split("--");
     // If not the original, just skip
     if (idParts.length > 1) continue;
+
+    // We can setup the config first.
+    const repeatConfig: RepeatableConfig = {
+      minRepeats: repeatBehaviour.min,
+      maxRepeats: repeatBehaviour.max,
+      orderedStepIds: [step.stepId],
+      stepData: {},
+      sharedData: {},
+    };
 
     if (repeatBehaviour.min) {
       // Start at 1 to account for source step
@@ -53,8 +68,10 @@ export const setupRepeatSteps = (
           stepId: nextStepId,
         };
         updatedSteps.splice(i + repeatStepCount, 0, nextStep);
+        repeatConfig.orderedStepIds.push(nextStepId);
       }
     }
+    repeatSettings[step.stepId] = repeatConfig;
   }
   return updatedSteps;
 };
