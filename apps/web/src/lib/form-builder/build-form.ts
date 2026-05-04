@@ -23,7 +23,7 @@ export const buildForm = (contract: ClientServiceContract): FormMeta => {
   // Configure repeatable steps with their minimum and config state
   const repeatSettings: RepeatableStepSettings = {};
 
-  contract.steps = setupRepeatSteps(contract.steps, repeatSettings);
+  const steps = setupRepeatSteps(contract.steps, repeatSettings);
 
   // Return FormMeta object with everything configured.
   return {
@@ -31,7 +31,7 @@ export const buildForm = (contract: ClientServiceContract): FormMeta => {
     formTitle: contract.title,
     formDescription: contract.description,
     schema,
-    steps: contract.steps,
+    steps,
     defaultValues: defaults,
     validationProperties: properties,
     stepConditionalTargets,

@@ -67,6 +67,13 @@ export const setupRepeatSteps = (
         updatedSteps.splice(i + repeatStepCount, 0, nextStep);
         repeatConfig.orderedStepIds.push(nextStepId);
       }
+    } else {
+      const addAnother = generateRepeatableAddAnotherField(step.stepId);
+      const newStepFields = [...step.fields, addAnother];
+      updatedSteps[i] = {
+        ...step,
+        fields: newStepFields,
+      };
     }
     repeatSettings[step.stepId] = repeatConfig;
   }
