@@ -5,3 +5,4 @@ export {
 export { ProcessorFactory } from "./processor-factory.service";
 export { EmailProcessor } from "./email.processor";
 export { OpencrvsProcessor } from "./opencrvs.processor";
+export { SpreadsheetProcessor } from "./spreadsheet.processor";
