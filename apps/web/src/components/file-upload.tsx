@@ -69,7 +69,7 @@ export default function FileUpload({
       {files.length > 0 && (
         <div data-file-upload-list>
           {files.map((f, i) => (
-            <div key={`${f.name}-${i}`} data-file-upload-item>
+            <div key={i} data-file-upload-item>
               <span data-file-upload-item-name>{f.name}</span>
               <button
                 type="button"
