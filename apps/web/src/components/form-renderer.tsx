@@ -180,7 +180,7 @@ export default function FormRenderer({
         const updatedSteps = addRepeatableStep();
         completeAndContinue(currentStep.stepId, stepIndex, updatedSteps);
         return;
-      } else {
+      } else if (anotherFieldValue === "no") {
         const updatedSteps = removeRepeatableStep();
         completeAndContinue(currentStep.stepId, stepIndex, updatedSteps);
         return;
