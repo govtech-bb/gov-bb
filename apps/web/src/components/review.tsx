@@ -37,8 +37,6 @@ export default function Review({
       });
     };
 
-  useStore(form.store, (state) => state.values);
-
   const getUploadedFileName = (fileValue: unknown): string | null => {
     if (!fileValue || typeof fileValue !== "object") return null;
 
