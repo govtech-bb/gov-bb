@@ -3,6 +3,8 @@ import {
   ClientPrimitive,
   RepeatableStepSettings,
   RepeatableConfig,
+  AddRepeatableStepParams,
+  RemoveRepeatableStepParams,
 } from "@web/types";
 import { getFullFieldId } from "@web/lib";
 import {
@@ -146,4 +148,120 @@ export const getRepeatStepCount = (stepId: string): number => {
   if (parts.length <= 1) return 0;
   const count = Number(parts[parts.length - 1]);
   return isNaN(count) ? 0 : count;
+};
+
+export const addRepeatableStep = ({
+  currentStep,
+  currentRepeatConfig,
+  repeatableBehaviour,
+  visibleSteps,
+  sharedFieldsBehaviour,
+  stepValues,
+  formMeta,
+}: AddRepeatableStepParams): {
+  updatedSteps: ClientFormStep[];
+  updatedConfig?: RepeatableConfig;
+} => {
+  if (!currentRepeatConfig) return { updatedSteps: visibleSteps };
+  if (!repeatableBehaviour) return { updatedSteps: visibleSteps };
+  const repeatableStepCount = currentRepeatConfig.orderedStepIds.length;
+
+  if (repeatableBehaviour.max && repeatableStepCount >= repeatableBehaviour.max)
+    return { updatedSteps: visibleSteps };
+
+  const [baseStepId, stepRepeatId] = [
+    currentStep.stepId.split(repeatStepConcactenator)[0],
+    getRepeatStepCount(currentStep.stepId),
+  ];
+
+  const nextStepId = getRepeatStepId(baseStepId, stepRepeatId + 1);
+
+  if (currentRepeatConfig.orderedStepIds.includes(nextStepId))
+    return { updatedSteps: visibleSteps };
+
+  const nextStepFields = generateRepeatStepFields(
+    [...currentStep.fields],
+    nextStepId,
+    getFullFieldId(currentStep.stepId, "addAnother"),
+    sharedFieldsBehaviour,
+  );
+  if (
+    repeatableBehaviour.max &&
+    repeatableStepCount < repeatableBehaviour.max - 1
+  ) {
+    nextStepFields.push(generateRepeatableAddAnotherField(nextStepId));
+  }
+
+  currentRepeatConfig.stepData[currentStep.stepId] = stepValues;
+  currentRepeatConfig.orderedStepIds.push(nextStepId);
+
+  const nextStep: ClientFormStep = {
+    ...currentStep,
+    fields: nextStepFields,
+    stepId: nextStepId,
+  };
+
+  const currentStepIndex = formMeta.steps.indexOf(currentStep);
+  formMeta.steps.splice(currentStepIndex + 1, 0, nextStep); // The real update
+
+  // This is a temporary update that will be replaced when the useMemo recalculates visible steps due to the change in formMeta.steps
+  // This is needed, since by the time we call completeAndContinue, the memoized visible steps would not have been recalculated yet
+  // Meaning that completeAndContinue will still be operating on the "stale" list of steps.
+  // By manually making the update here, and passing it directly to completeAndContinue, completeAndContinue gets to operate on the
+  // updated version, or "future state" of visible steps.
+  const stepIndex = visibleSteps.indexOf(currentStep);
+  const updatedSteps = [...visibleSteps];
+  updatedSteps.splice(stepIndex + 1, 0, nextStep);
+  return { updatedSteps, updatedConfig: currentRepeatConfig };
+};
+
+export const removeRepeatableStep = ({
+  currentStep,
+  visibleSteps,
+  currentRepeatConfig,
+  formMeta,
+}: RemoveRepeatableStepParams): ClientFormStep[] => {
+  const [baseStepId, stepRepeatId] = [
+    currentStep.stepId.split(repeatStepConcactenator)[0],
+    getRepeatStepCount(currentStep.stepId),
+  ];
+  if (stepRepeatId === 0) return visibleSteps;
+  const targetStepId = getRepeatStepId(
+    baseStepId,
+    stepRepeatId ? stepRepeatId + 1 : 1,
+  );
+
+  if (!currentRepeatConfig.orderedStepIds.includes(targetStepId))
+    return visibleSteps;
+
+  const step = visibleSteps.find((s) => s.stepId === targetStepId);
+  if (!step) {
+    const pos = currentRepeatConfig.orderedStepIds.indexOf(targetStepId);
+    if (pos !== -1) {
+      currentRepeatConfig.orderedStepIds.splice(pos, 1);
+    }
+    return visibleSteps;
+  }
+
+  const orderedStepIds = [...currentRepeatConfig.orderedStepIds];
+
+  const startIndex = orderedStepIds.indexOf(targetStepId);
+  if (startIndex === -1) return visibleSteps;
+
+  const toRemove: string[] = orderedStepIds.slice(startIndex);
+  currentRepeatConfig.orderedStepIds = orderedStepIds.slice(0, startIndex);
+
+  if (toRemove.length === 0) return visibleSteps;
+
+  // Remove from formMeta
+  const deleteFromIndex = formMeta.steps.findIndex(
+    (s) => s.stepId === toRemove[0],
+  );
+
+  if (deleteFromIndex !== -1) {
+    formMeta.steps.splice(deleteFromIndex, toRemove.length);
+  }
+
+  // Filter visible steps
+  return visibleSteps.filter((step) => !toRemove.includes(step.stepId));
 };
