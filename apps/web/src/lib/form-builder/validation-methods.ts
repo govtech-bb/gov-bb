@@ -401,8 +401,8 @@ export const checkComparisons = (
     validation?: ValidationConfig,
   ) => {
     if (validation && validation.referenceFieldId) {
-      const referenceStepId = validation?.referenceStepId ?? currentStepId;
-      const referenceFieldId = validation?.referenceFieldId;
+      const referenceStepId = validation.referenceStepId ?? currentStepId;
+      const referenceFieldId = validation.referenceFieldId;
 
       const fullReferenceId = getFullFieldId(referenceStepId, referenceFieldId);
 
