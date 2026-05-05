@@ -292,7 +292,8 @@
               "error": "Please confirm your email address"
             },
             "equal": {
-              "reference": "email",
+              "reference": "step2ContactInformation-email",
+              "referencesStep": true,
               "error": "Email addresses do not match"
             }
           }

@@ -398,11 +398,8 @@ export const checkComparisons = (
   ) => {
     if (validation && validation.reference) {
       let referenceId: string;
-      if (validation.referenceStepId) {
-        referenceId = getFullFieldId(
-          validation.referenceStepId,
-          validation.reference,
-        );
+      if (validation.referencesStep) {
+        referenceId = validation.reference;
       } else {
         referenceId = getFullFieldId(currentStepId, validation.reference);
       }

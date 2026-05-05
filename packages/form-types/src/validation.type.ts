@@ -5,7 +5,7 @@ export const validationConfigSchema = z.object({
   value: z.any().optional(),
   reference: z.string().optional(),
   targetStepId: z.string().optional(),
-  referenceStepId: z.string().optional(),
+  referencesStep: z.boolean().optional(),
 });
 export type ValidationConfig = z.infer<typeof validationConfigSchema>;
 
