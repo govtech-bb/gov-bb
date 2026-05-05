@@ -383,7 +383,7 @@ const getStepIdFromFieldName = (fieldName: string): string => {
 };
 
 export const checkComparisons = (
-  { fieldLabel, value, results, validations }: ValidationArgs<string | number>,
+  { fieldName, value, results, validations }: ValidationArgs<string | number>,
   fieldApi: AnyFieldApi,
 ) => {
   const equal = validations.equal;
@@ -409,7 +409,7 @@ export const checkComparisons = (
       const targetFieldValue = fieldApi.form.getFieldValue(fullReferenceId);
       const passesCondition = evaluateCondition(value, targetFieldValue, comp);
       if (!passesCondition) {
-        setValidationError(fieldLabel, validation, results);
+        setValidationError(fieldName, validation, results);
       }
     }
   };
@@ -420,7 +420,7 @@ export const checkComparisons = (
   compare("lt", lt);
 };
 export const checkContains = ({
-  fieldLabel,
+  fieldName,
   value,
   results,
   validations,
@@ -431,7 +431,7 @@ export const checkContains = ({
   const passesCondition = evaluateCondition(value, contains.value, "contains");
 
   if (!passesCondition) {
-    setValidationError(fieldLabel, contains, results);
+    setValidationError(fieldName, contains, results);
   }
 };
 
@@ -500,7 +500,7 @@ export const evaluateCondition = (
 };
 
 export const checkFileTypes = ({
-  fieldLabel,
+  fieldName,
   value,
   results,
   validations,
@@ -523,7 +523,7 @@ export const checkFileTypes = ({
 
   if (invalidExtensions.size > 0) {
     setValidationError(
-      fieldLabel,
+      fieldName,
       fileTypes,
       results,
       `File type not allowed. Allowed types: ${fileTypes.value.join(", ")}.`,
@@ -532,7 +532,7 @@ export const checkFileTypes = ({
 };
 
 export const checkFileMaxSize = ({
-  fieldLabel,
+  fieldName,
   value,
   results,
   validations,
@@ -543,7 +543,7 @@ export const checkFileMaxSize = ({
   for (const file of value) {
     if (file.size > fileMaxSize) {
       setValidationError(
-        fieldLabel,
+        fieldName,
         fileMaxSize,
         results,
         `File ${file.name} exceeds the maximum size of ${(fileMaxSize / (1024 * 1024)).toPrecision(2)} MB.`,
@@ -553,7 +553,7 @@ export const checkFileMaxSize = ({
 };
 
 export const checkMaxFiles = ({
-  fieldLabel,
+  fieldName,
   value,
   results,
   validations,
@@ -563,7 +563,7 @@ export const checkMaxFiles = ({
 
   if (value.length > maxItems.value) {
     setValidationError(
-      fieldLabel,
+      fieldName,
       maxItems,
       results,
       `Number of files exceeds the maximum allowed (${maxItems.value}).`,
@@ -572,7 +572,7 @@ export const checkMaxFiles = ({
 };
 
 export const checkMinFiles = ({
-  fieldLabel,
+  fieldName,
   value,
   results,
   validations,
@@ -582,7 +582,7 @@ export const checkMinFiles = ({
 
   if (value.length < minItems.value) {
     setValidationError(
-      fieldLabel,
+      fieldName,
       minItems,
       results,
       `Number of files is less than the minimum required (${minItems.value}).`,
