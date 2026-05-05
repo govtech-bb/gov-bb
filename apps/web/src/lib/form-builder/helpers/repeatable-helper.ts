@@ -55,7 +55,7 @@ export const setupRepeatSteps = (
           sharedBehaviour,
         );
 
-        if (j == repeatBehaviour.min) {
+        if (j == repeatBehaviour.min && j != repeatBehaviour.max) {
           const addAnother = generateRepeatableAddAnotherField(nextStepId);
           nextStepFields.push(addAnother);
         }

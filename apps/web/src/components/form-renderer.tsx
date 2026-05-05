@@ -87,7 +87,12 @@ export default function FormRenderer({
       getFullFieldId(currentStep.stepId, "addAnother"),
       sharedFieldBehaviour,
     );
-    nextStepFields.push(generateRepeatableAddAnotherField(nextStepId));
+    if (
+      repeatableBehaviour.max &&
+      repeatableStepCount < repeatableBehaviour.max - 1
+    ) {
+      nextStepFields.push(generateRepeatableAddAnotherField(nextStepId));
+    }
 
     const updatedRecord = currentStepRepeatableSettings;
 
