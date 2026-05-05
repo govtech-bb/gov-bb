@@ -1,8 +1,4 @@
-import {
-  ValidationConfig,
-  EqualityOperations,
-  FieldConditionalOnBehaviour,
-} from "@govtech-bb/form-types";
+import { ValidationConfig, EqualityOperations } from "@govtech-bb/form-types";
 import { AnyFieldApi } from "@tanstack/react-form";
 import {
   ValidationArgs,
@@ -14,47 +10,75 @@ import {
 import z from "zod";
 
 // Modular Methods
-const getValidationErrorOr = (
-  fieldId: string,
-  config: ValidationConfig,
+
+export type RequiredState =
+  | "requiredAndEmpty"
+  | "notRequiredAndEmpty"
+  | "notRequired"
+  | "notEmpty"
+  | "unknownState";
+
+export const valueIsEmpty = (value: FieldValue): boolean | undefined => {
+  if (!value) return true;
+  if (typeof value === "string")
+    return value.length === 0; // If required and no content, flag it.
+  else if (Array.isArray(value)) {
+    return value.length === 0; // I want this to check each element for truthiness
+  } else if (typeof value === "boolean")
+    return !value; // It's a boolean. If it's required then it must be true
+  else if (typeof value === "number") return value.toString().length === 0;
+  else if ("day" in value || "month" in value || "year" in value) {
+    // Checking for DateValueInput
+    return !isDateComplete(value); // need to negate
+  } else {
+    return undefined;
+  }
+};
+
+const setValidationError = (
+  fieldLabel: string,
+  validation: ValidationConfig,
+  results: ValidationResults,
   customError?: string,
-): string =>
-  (config.error || customError) ?? `Unknown error has occurred for ${fieldId}`;
+) => {
+  const errorMessage =
+    (validation.error || customError) ??
+    `Unknown error has occurred for ${fieldLabel}`;
+  if (results.hasError === true) {
+    results.errors.push(errorMessage.replace(`${fieldLabel}`, ""));
+  } else {
+    results.hasError = true;
+    results.errors.push(errorMessage);
+  }
+};
 
 export const checkRequired = ({
   fieldId,
+  fieldLabel,
   value,
   results,
   validations,
-}: ValidationArgs<FieldValue>) => {
+}: ValidationArgs<FieldValue>): RequiredState => {
   const required = validations.required;
-  if (!required || !required.value) return;
-  let requiredAndEmpty: boolean = false;
 
-  if (typeof value === "string" || Array.isArray(value))
-    requiredAndEmpty = value.length === 0; // If required and no content, flag it.
-  else if (typeof value === "boolean")
-    requiredAndEmpty = value; // It's a boolean. If it's required and true, then that's fine.
-  else if (typeof value === "number")
-    requiredAndEmpty = value.toString().length === 0;
-  else if ("day" in value || "month" in value || "year" in value) {
-    requiredAndEmpty = !isDateComplete({
-      fieldId,
-      value,
-      results,
-      validations,
-    }); // need to negate
-  } else {
+  const isEmpty = valueIsEmpty(value);
+  if (isEmpty === undefined) {
     console.error(`Value ${value} for field ${fieldId} is unknown.`);
+    return "unknownState";
   }
 
-  if (!requiredAndEmpty) return;
-  results.hasError = true;
-  results.errors.push(getValidationErrorOr(fieldId, required));
+  if (required && required.value && isEmpty) {
+    setValidationError(fieldLabel, required, results);
+    return "requiredAndEmpty";
+  }
+  if ((!required || (required && !required.value)) && isEmpty)
+    return "notRequiredAndEmpty";
+
+  return "notEmpty";
 };
 
 export const checkLength = ({
-  fieldId,
+  fieldLabel,
   value,
   results,
   validations,
@@ -63,18 +87,16 @@ export const checkLength = ({
   const maxLength = validations.maxLength;
 
   if (minLength && minLength.value && value.length < minLength.value) {
-    results.hasError = true;
-    results.errors.push(getValidationErrorOr(fieldId, minLength));
+    setValidationError(fieldLabel, minLength, results);
   }
 
   if (maxLength && maxLength.value && value.length > maxLength.value) {
-    results.hasError = true;
-    results.errors.push(getValidationErrorOr(fieldId, maxLength));
+    setValidationError(fieldLabel, maxLength, results);
   }
 };
 
 export const checkSelectionLength = ({
-  fieldId,
+  fieldLabel,
   value,
   results,
   validations,
@@ -83,18 +105,16 @@ export const checkSelectionLength = ({
   const maxSelection = validations.maxSelection;
 
   if (minSelection && minSelection.value && value.length < minSelection.value) {
-    results.hasError = true;
-    results.errors.push(getValidationErrorOr(fieldId, minSelection));
+    setValidationError(fieldLabel, minSelection, results);
   }
 
   if (maxSelection && maxSelection.value && value.length > maxSelection.value) {
-    results.hasError = true;
-    results.errors.push(getValidationErrorOr(fieldId, maxSelection));
+    setValidationError(fieldLabel, maxSelection, results);
   }
 };
 
 export const checkPattern = ({
-  fieldId,
+  fieldLabel,
   value,
   results,
   validations,
@@ -106,13 +126,12 @@ export const checkPattern = ({
 
   const match = re.test(value);
   if (!match) {
-    results.hasError = true;
-    results.errors.push(getValidationErrorOr(fieldId, pattern));
+    setValidationError(fieldLabel, pattern, results);
   }
 };
 
 export const checkEmail = ({
-  fieldId,
+  fieldLabel,
   value,
   results,
   validations,
@@ -123,13 +142,12 @@ export const checkEmail = ({
   try {
     z.email().parse(value);
   } catch {
-    results.hasError = true;
-    results.errors.push(getValidationErrorOr(fieldId, email));
+    setValidationError(fieldLabel, email, results);
   }
 };
 
 export const checkMinMax = ({
-  fieldId,
+  fieldLabel,
   value,
   results,
   validations,
@@ -152,16 +170,14 @@ export const checkMinMax = ({
   if (min && min.value?.toString().length >= 1) {
     const num = stringToNumCheck(value);
     if (num && num < min.value) {
-      results.hasError = true;
-      results.errors.push(getValidationErrorOr(fieldId, min));
+      setValidationError(fieldLabel, min, results);
     }
   }
 
   if (max && max.value?.toString().length >= 1) {
     const num = stringToNumCheck(value);
     if (num && num > max.value) {
-      results.hasError = true;
-      results.errors.push(getValidationErrorOr(fieldId, max));
+      setValidationError(fieldLabel, max, results);
     }
   }
 };
@@ -187,29 +203,16 @@ const parseDateString = (dateStr: string): Date | null => {
   return new Date(year, month - 1, day);
 };
 
-export const isDateComplete = ({
-  value,
-  validations,
-  results,
-  fieldId,
-}: ValidationArgs<DateValueInput>): boolean => {
-  if (
+export const isDateComplete = (value: DateValueInput): boolean => {
+  return (
     value.day !== undefined &&
     value.month !== undefined &&
     value.year !== undefined
-  ) {
-    return true;
-  }
-
-  if (validations.required && validations.required.value) {
-    results.hasError = true;
-    results.errors.push(getValidationErrorOr(fieldId, validations.required));
-  }
-  return false;
+  );
 };
 
 export const checkDatePast = ({
-  fieldId,
+  fieldLabel,
   value,
   results,
   validations,
@@ -221,13 +224,12 @@ export const checkDatePast = ({
   today.setHours(0, 0, 0, 0);
 
   if (value >= today) {
-    results.hasError = true;
-    results.errors.push(getValidationErrorOr(fieldId, past));
+    setValidationError(fieldLabel, past, results);
   }
 };
 
 export const checkDatePastOrToday = ({
-  fieldId,
+  fieldLabel,
   value,
   results,
   validations,
@@ -239,13 +241,12 @@ export const checkDatePastOrToday = ({
   today.setHours(0, 0, 0, 0);
 
   if (value > today) {
-    results.hasError = true;
-    results.errors.push(getValidationErrorOr(fieldId, pastOrToday));
+    setValidationError(fieldLabel, pastOrToday, results);
   }
 };
 
 export const checkDateFuture = ({
-  fieldId,
+  fieldLabel,
   value,
   results,
   validations,
@@ -257,13 +258,12 @@ export const checkDateFuture = ({
   today.setHours(0, 0, 0, 0);
 
   if (value <= today) {
-    results.hasError = true;
-    results.errors.push(getValidationErrorOr(fieldId, future));
+    setValidationError(fieldLabel, future, results);
   }
 };
 
 export const checkDateFutureOrToday = ({
-  fieldId,
+  fieldLabel,
   value,
   results,
   validations,
@@ -275,13 +275,12 @@ export const checkDateFutureOrToday = ({
   today.setHours(0, 0, 0, 0);
 
   if (value < today) {
-    results.hasError = true;
-    results.errors.push(getValidationErrorOr(fieldId, futureOrToday));
+    setValidationError(fieldLabel, futureOrToday, results);
   }
 };
 
 export const checkDateAfter = ({
-  fieldId,
+  fieldLabel,
   value,
   results,
   validations,
@@ -293,12 +292,11 @@ export const checkDateAfter = ({
   if (!targetDate) return;
 
   if (value <= targetDate) {
-    results.hasError = true;
-    results.errors.push(getValidationErrorOr(fieldId, after));
+    setValidationError(fieldLabel, after, results);
   }
 };
 export const checkDateBefore = ({
-  fieldId,
+  fieldLabel,
   value,
   results,
   validations,
@@ -310,12 +308,11 @@ export const checkDateBefore = ({
   if (!targetDate) return;
 
   if (value >= targetDate) {
-    results.hasError = true;
-    results.errors.push(getValidationErrorOr(fieldId, before));
+    setValidationError(fieldLabel, before, results);
   }
 };
 export const checkDateOnOrAfter = ({
-  fieldId,
+  fieldLabel,
   value,
   results,
   validations,
@@ -327,12 +324,11 @@ export const checkDateOnOrAfter = ({
   if (!targetDate) return;
 
   if (value < targetDate) {
-    results.hasError = true;
-    results.errors.push(getValidationErrorOr(fieldId, onOrAfter));
+    setValidationError(fieldLabel, onOrAfter, results);
   }
 };
 export const checkDateOnOrBefore = ({
-  fieldId,
+  fieldLabel,
   value,
   results,
   validations,
@@ -344,12 +340,11 @@ export const checkDateOnOrBefore = ({
   if (!targetDate) return;
 
   if (value > targetDate) {
-    results.hasError = true;
-    results.errors.push(getValidationErrorOr(fieldId, onOrBefore));
+    setValidationError(fieldLabel, onOrBefore, results);
   }
 };
 export const checkMinYear = ({
-  fieldId,
+  fieldLabel,
   value,
   results,
   validations,
@@ -358,12 +353,11 @@ export const checkMinYear = ({
   if (!minYear || minYear.value === undefined) return;
 
   if (value.year < minYear.value) {
-    results.hasError = true;
-    results.errors.push(getValidationErrorOr(fieldId, minYear));
+    setValidationError(fieldLabel, minYear, results);
   }
 };
 export const checkMaxYear = ({
-  fieldId,
+  fieldLabel,
   value,
   results,
   validations,
@@ -372,15 +366,14 @@ export const checkMaxYear = ({
   if (!maxYear || maxYear.value === undefined) return;
 
   if (value.year > maxYear.value) {
-    results.hasError = true;
-    results.errors.push(getValidationErrorOr(fieldId, maxYear));
+    setValidationError(fieldLabel, maxYear, results);
   }
 };
 /*
  * Checks for equality, inequality, greater than and lesser than
  */
 export const checkComparisons = (
-  { fieldId, value, results, validations }: ValidationArgs<string | number>,
+  { fieldLabel, value, results, validations }: ValidationArgs<string | number>,
   fieldApi: AnyFieldApi,
 ) => {
   const equal = validations.equal;
@@ -401,8 +394,7 @@ export const checkComparisons = (
       );
       const passesCondition = evaluateCondition(value, targetFieldValue, comp);
       if (!passesCondition) {
-        results.hasError = true;
-        results.errors.push(getValidationErrorOr(fieldId, validation));
+        setValidationError(fieldLabel, validation, results);
       }
     }
   };
@@ -413,7 +405,7 @@ export const checkComparisons = (
   compare("lt", lt);
 };
 export const checkContains = ({
-  fieldId,
+  fieldLabel,
   value,
   results,
   validations,
@@ -424,42 +416,11 @@ export const checkContains = ({
   const passesCondition = evaluateCondition(value, contains.value, "contains");
 
   if (!passesCondition) {
-    results.hasError = true;
-    results.errors.push(getValidationErrorOr(fieldId, contains));
+    setValidationError(fieldLabel, contains, results);
   }
 };
-export const checkConditionalOn = (
-  fieldId: string,
-  currentFieldValue: FieldValue,
-  fieldConditionalOns: FieldConditionalOnBehaviour[],
-  results: ValidationResults,
-  fieldApi: AnyFieldApi,
-): boolean => {
-  if (fieldConditionalOns.length === 0) return false;
 
-  let isRequired: boolean = false;
-
-  for (const condition of fieldConditionalOns) {
-    const targetFieldValue = fieldApi.form.getFieldValue(
-      condition.targetFieldId,
-    );
-    const passesCondition = evaluateCondition(
-      condition.value,
-      targetFieldValue,
-      condition.operator,
-    );
-    if (passesCondition && currentFieldValue.toString().length == 0) {
-      results.hasError = true;
-      results.errors = [
-        `${fieldId} is required because the value of ${condition.targetFieldId} is ${condition.operator} ${condition.value}`,
-      ];
-      isRequired = true;
-    }
-  }
-
-  return isRequired;
-};
-const evaluateCondition = (
+export const evaluateCondition = (
   conditionValue: FieldValue,
   targetFieldValue: FieldValue | undefined,
   operation: EqualityOperations | "gt" | "lt" | "contains" | "strictEquality",
@@ -470,12 +431,11 @@ const evaluateCondition = (
       if (
         targetFieldValue &&
         conditionValue &&
-        (Array.isArray(targetFieldValue) ||
-          typeof targetFieldValue === "string") &&
-        (typeof conditionValue === "string" ||
-          typeof conditionValue === "boolean" ||
-          typeof conditionValue === "number") &&
-        targetFieldValue.includes(conditionValue.toString())
+        (Array.isArray(conditionValue) || typeof conditionValue === "string") &&
+        (typeof targetFieldValue === "string" ||
+          typeof targetFieldValue === "boolean" ||
+          typeof targetFieldValue === "number") &&
+        conditionValue.includes(targetFieldValue.toString())
       )
         return true;
       else return false;
@@ -505,16 +465,7 @@ const evaluateCondition = (
         return true;
       else return false;
     case "exists":
-      if (
-        (conditionValue && targetFieldValue) ||
-        (!conditionValue && !targetFieldValue)
-      )
-        return true;
-      if (
-        (conditionValue && !targetFieldValue) ||
-        (!conditionValue && targetFieldValue)
-      )
-        return false;
+      if (targetFieldValue && !valueIsEmpty(targetFieldValue)) return true;
       return false;
     case "gt":
       if (conditionValue && targetFieldValue) {

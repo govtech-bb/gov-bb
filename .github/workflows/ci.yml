@@ -20,30 +20,19 @@ jobs:
           cache: "npm"
       - run: npm install
 
-      - name: Run type check
+      - name: Run type check (tsc --build)
         id: typecheck
         run: |
-          npx tsc --noEmit -p apps/api/tsconfig.json 2>&1 | tee typecheck-output.txt
-          API_EXIT=${PIPESTATUS[0]}
-
-          npx tsc --noEmit -p apps/web/tsconfig.json 2>&1 | tee -a typecheck-output.txt
-          WEB_EXIT=${PIPESTATUS[0]}
-
-          npx tsc --noEmit -p packages/form-types/tsconfig.json 2>&1 | tee -a typecheck-output.txt
-          TYPES_EXIT=${PIPESTATUS[0]}
-
-          npx tsc --noEmit -p packages/form-conditions/tsconfig.json 2>&1 | tee -a typecheck-output.txt
-          CONDITIONS_EXIT=${PIPESTATUS[0]}
-
-          if [ "$API_EXIT" -ne 0 ] || [ "$WEB_EXIT" -ne 0 ] || [ "$TYPES_EXIT" -ne 0 ] || [ "$CONDITIONS_EXIT" -ne 0 ]; then
-            exit 1
-          fi
+          npx tsc -b 2>&1 | tee typecheck-output.txt
+          exit ${PIPESTATUS[0]}
         continue-on-error: true
 
       - name: Report type check results
         if: steps.typecheck.outcome == 'failure'
         run: |
-          echo "## ❌ Type Check Failed" >> $GITHUB_STEP_SUMMARY
+          ERROR_COUNT=$(grep -c "error TS" typecheck-output.txt 2>/dev/null || echo "?")
+
+          echo "## ❌ Type Check Failed — ${ERROR_COUNT} error(s)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "<details><summary>View type errors</summary>" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -52,10 +41,9 @@ jobs:
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "</details>" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Fix it locally:**" >> $GITHUB_STEP_SUMMARY
+          echo "**Fix locally:**" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "npx tsc --noEmit -p apps/api/tsconfig.json" >> $GITHUB_STEP_SUMMARY
-          echo "npx tsc --noEmit -p apps/web/tsconfig.json" >> $GITHUB_STEP_SUMMARY
+          echo "npx tsc -b" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           exit 1
 
@@ -441,7 +429,7 @@ jobs:
       - name: Run tests
         id: test
         run: |
-          npx nx run-many -t test 2>&1 | tee test-output.txt
+          npx nx run-many -t test --nxBail=false 2>&1 | tee test-output.txt
           exit ${PIPESTATUS[0]}
         continue-on-error: true
 
@@ -478,7 +466,7 @@ jobs:
       - name: Build all packages
         id: build
         run: |
-          npx nx run-many -t build 2>&1 | tee build-output.txt
+          npx nx run-many -t build --nxBail=false 2>&1 | tee build-output.txt
           exit ${PIPESTATUS[0]}
         continue-on-error: true
 

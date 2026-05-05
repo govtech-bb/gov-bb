@@ -35,7 +35,7 @@
     "globals": "^17.5.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
-    "nx": "^20.4.0",
+    "nx": "^22.6.5",
     "pg": "^8.16.3",
     "prettier": "^3.0.0",
     "reflect-metadata": "^0.2.0",
@@ -47,6 +47,7 @@
   },
   "packageManager": "npm@10.9.0",
   "dependencies": {
+    "@aws-sdk/client-sesv2": "^3.1041.0",
     "@govtech-bb/design": "^1.0.0-alpha.15",
     "@nestjs/event-emitter": "^3.0.1",
     "@nestjs/swagger": "^11.3.2",

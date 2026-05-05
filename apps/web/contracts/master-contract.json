@@ -1,19 +1,20 @@
 {
-  "formId": "master-form-v1",
+  "formId": "masterFormV1",
   "title": "Master Service Contract - Documentation & Testing",
   "description": "Comprehensive service contract demonstrating all available features: all behaviours, validations, HTML types, and built-in components.",
-  "createdAt": "2026-04-02T00:00:00",
-  "updatedAt": "2026-04-02T00:00:00",
+  "createdAt": "2026-04-02T00:00:00Z",
+  "updatedAt": "2026-04-02T00:00:00Z",
   "version": "1.0.0",
   "steps": [
     {
-      "stepId": "step-1-personal-details",
+      "stepId": "step1PersonalDetails",
       "title": "Personal Details",
       "description": "Basic personal information with various HTML types and validations",
       "elements": [
         {
           "fieldId": "title",
           "label": "Title",
+          "hint": "Select your title",
           "htmlType": "select",
           "placeholder": "Select title",
           "options": [
@@ -26,7 +27,7 @@
               "value": "mrs"
             },
             {
-              "label": "Ms",
+              "label": "Miss",
               "value": "ms"
             },
             {
@@ -40,7 +41,8 @@
               "value": true,
               "error": "Title is required"
             }
-          }
+          },
+          "defaultValue": "ms"
         },
         {
           "fieldId": "firstName",
@@ -48,6 +50,7 @@
           "htmlType": "text",
           "placeholder": "Enter your first name",
           "hint": "As shown on your official documents",
+          "defaultValue": "Jane",
           "validations": {
             "required": {
               "value": true,
@@ -88,13 +91,21 @@
               "value": "^[A-Za-z\\s\\-']+$",
               "error": "Middle name can only contain letters, spaces, hyphens and apostrophes"
             }
-          }
+          },
+          "behaviours": [
+            {
+              "type": "fieldArray",
+              "min": 1,
+              "max": 4
+            }
+          ]
         },
         {
           "fieldId": "lastName",
           "label": "Last Name",
           "htmlType": "text",
           "placeholder": "Enter your last name",
+          "defaultValue": "Dane",
           "validations": {
             "required": {
               "value": true,
@@ -115,6 +126,11 @@
           "label": "Date of Birth",
           "htmlType": "date",
           "hint": "You must be at least 18 years old",
+          "defaultValue": {
+            "day": "01",
+            "month": "01",
+            "year": "2001"
+          },
           "validations": {
             "required": {
               "value": true,
@@ -148,6 +164,7 @@
               "value": "female"
             }
           ],
+          "defaultValue": "female",
           "validations": {
             "required": {
               "value": true,
@@ -243,7 +260,7 @@
       ]
     },
     {
-      "stepId": "step-2-contact-information",
+      "stepId": "step2ContactInformation",
       "title": "Contact Information",
       "description": "Various contact methods with conditional visibility and validation",
       "elements": [
@@ -252,6 +269,7 @@
           "label": "Email Address",
           "htmlType": "email",
           "placeholder": "your.email@example.com",
+          "defaultValue": "jane.dane@mail.com",
           "validations": {
             "required": {
               "value": true,
@@ -274,17 +292,27 @@
               "error": "Please confirm your email address"
             },
             "equal": {
-              "value": true,
+              "reference": "email",
               "error": "Email addresses do not match"
             }
           }
         },
         {
           "fieldId": "telephone",
-          "label": "Home Telephone (Optional)",
+          "label": "Home Telephone",
           "htmlType": "tel",
           "placeholder": "Enter home phone number",
-          "hint": "Including area code"
+          "hint": "Including area code",
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Telephone number is required"
+            },
+            "pattern": {
+              "value": "^[0-9]{10,15}$",
+              "error": "Please enter a valid phone number"
+            }
+          }
         },
         {
           "fieldId": "mobile",
@@ -297,7 +325,7 @@
               "error": "Mobile number is required"
             },
             "pattern": {
-              "value": "^[0-9+\\s\\-\\()\\]{10,15}$",
+              "value": "^[0-9]{10,15}$",
               "error": "Please enter a valid phone number"
             }
           }
@@ -306,7 +334,16 @@
           "fieldId": "workTelephone",
           "label": "Work Telephone (Optional)",
           "htmlType": "tel",
-          "placeholder": "Enter work phone number"
+          "placeholder": "Enter work phone number",
+          "validations": {
+            "required": {
+              "value": false
+            },
+            "pattern": {
+              "value": "^[0-9+]{10,15}$",
+              "error": "Please enter a valid phone number"
+            }
+          }
         },
         {
           "fieldId": "preferredContact",
@@ -342,6 +379,7 @@
         {
           "fieldId": "canContactEvening",
           "label": "I prefer to be contacted in the...",
+          "hint": "Select all that apply",
           "htmlType": "checkbox",
           "options": [
             {
@@ -361,10 +399,15 @@
               "value": "night"
             }
           ],
+          "defaultValue": ["afternoon"],
           "validations": {
+            "required": {
+              "value": true,
+              "error": "This field is required."
+            },
             "minSelection": {
-              "value": 1,
-              "error": "At least one option must be selected"
+              "value": 2,
+              "error": "At least two options must be selected"
             },
             "maxSelection": {
               "value": 3,
@@ -404,7 +447,7 @@
       ]
     },
     {
-      "stepId": "random-step",
+      "stepId": "randomStep",
       "title": "I see you gave us your telephone number",
       "description": "Nothing to see here. Carry on.",
       "elements": [
@@ -419,13 +462,14 @@
         {
           "type": "stepConditionalOn",
           "targetFieldId": "telephone",
+          "targetStepId": "step2ContactInformation",
           "operator": "exists",
           "value": ""
         }
       ]
     },
     {
-      "stepId": "step-3-address-employment",
+      "stepId": "step3AddressEmployment",
       "title": "Address & Employment",
       "description": "Address information with conditional fields and employment details",
       "elements": [
@@ -528,8 +572,7 @@
               "label": "I accept",
               "value": "confirmed"
             }
-          ],
-          "defaultValue": false
+          ]
         },
         {
           "fieldId": "previousAddress",
@@ -542,7 +585,7 @@
               "type": "fieldConditionalOn",
               "targetFieldId": "hasPreviousAddress",
               "operator": "equal",
-              "value": true
+              "value": "confirmed"
             }
           ],
           "validations": {
@@ -562,7 +605,7 @@
               "type": "fieldConditionalOn",
               "targetFieldId": "hasPreviousAddress",
               "operator": "equal",
-              "value": true
+              "value": "confirmed"
             }
           ],
           "validations": {
@@ -679,7 +722,7 @@
       ]
     },
     {
-      "stepId": "step-4-documents-uploads",
+      "stepId": "step4DocumentsUploads",
       "title": "Documents & Uploads",
       "description": "File uploads with various validation rules and repeatable field arrays",
       "elements": [
@@ -794,7 +837,7 @@
       ]
     },
     {
-      "stepId": "step-5-financial-information",
+      "stepId": "step5FinancialInformation",
       "title": "Financial Information",
       "description": "Bank details with conditional fields and various validation types",
       "elements": [
@@ -808,7 +851,7 @@
               "value": "confirmed"
             }
           ],
-          "defaultValue": true
+          "defaultValue": "confirmed"
         },
         {
           "fieldId": "bankName",
@@ -820,7 +863,7 @@
               "type": "fieldConditionalOn",
               "targetFieldId": "hasBankAccount",
               "operator": "equal",
-              "value": true
+              "value": "confirmed"
             }
           ],
           "validations": {
@@ -855,7 +898,7 @@
               "type": "fieldConditionalOn",
               "targetFieldId": "hasBankAccount",
               "operator": "equal",
-              "value": true
+              "value": "confirmed"
             }
           ],
           "validations": {
@@ -875,7 +918,7 @@
               "type": "fieldConditionalOn",
               "targetFieldId": "hasBankAccount",
               "operator": "equal",
-              "value": true
+              "value": "confirmed"
             }
           ],
           "validations": {
@@ -904,7 +947,7 @@
               "type": "fieldConditionalOn",
               "targetFieldId": "hasBankAccount",
               "operator": "equal",
-              "value": true
+              "value": "confirmed"
             }
           ],
           "validations": {
@@ -927,8 +970,8 @@
             {
               "type": "fieldConditionalOn",
               "targetFieldId": "hasBankAccount",
-              "operator": "equal",
-              "value": false
+              "operator": "notEqual",
+              "value": "confirmed"
             }
           ],
           "validations": {
@@ -970,6 +1013,7 @@
           "fieldId": "fundSource",
           "label": "Source of Funds",
           "htmlType": "radio",
+          "hint": "Select the primary source of your funds",
           "options": [
             {
               "label": "Employment Income",
@@ -1027,10 +1071,21 @@
             }
           }
         }
+      ],
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 1,
+          "max": 3
+        },
+        {
+          "type": "sharedFields",
+          "fieldIds": ["hasBankAccount"]
+        }
       ]
     },
     {
-      "stepId": "step-6-declarations",
+      "stepId": "step6Declarations",
       "title": "Declarations & Consent",
       "description": "Legal declarations and consent with checkbox validations",
       "elements": [
@@ -1149,6 +1204,12 @@
           "value": true
         }
       ]
+    },
+    {
+      "stepId": "checkYourAnswers",
+      "title": "Check Your Answers",
+      "description": "Review all the information you have provided before submitting your application.",
+      "elements": []
     }
   ]
 }

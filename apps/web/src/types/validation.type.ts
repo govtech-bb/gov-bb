@@ -21,10 +21,11 @@ export interface FieldValidation {
   properties: FieldValidationProperties;
 }
 
+type stepId = string;
 export interface FormValidation {
   schema: ZodObject<Record<string, ZodType<unknown>>>;
   properties: Record<string, FieldValidationProperties>;
-  defaults: Record<string, unknown>;
+  defaults: Record<stepId, FieldValue>;
 }
 
 export interface ValidationResults {
@@ -34,10 +35,13 @@ export interface ValidationResults {
 
 export interface ValidationArgs<TValueType = unknown> {
   fieldId: string;
+  fieldLabel: string;
   value: TValueType;
   validations: ValidationRule;
   results: ValidationResults;
 }
+
+export type FieldValidationErrors = Record<string, string[]>;
 
 export interface DateValueInput {
   day?: number;

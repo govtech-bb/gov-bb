@@ -8,6 +8,7 @@ import {
   ValidationArgs,
   DateValue,
   DateValueInput,
+  FieldValue,
 } from "@web/types";
 import z from "zod";
 import {
@@ -25,7 +26,6 @@ import {
   checkMaxYear,
   checkSelectionLength,
   checkRequired,
-  checkConditionalOn,
   checkLength,
   checkPattern,
   checkEmail,
@@ -44,13 +44,13 @@ export const buildValidation = (
   const shape: Record<string, z.ZodType<unknown>> = {};
   const fieldValidationProperties: Record<string, FieldValidationProperties> =
     {};
-  const defaults: Record<string, unknown> = {};
+  const defaults: Record<string, FieldValue> = {};
 
   for (const step of contract.steps) {
     for (const field of step.fields) {
       const { fieldSchema, properties } = buildFieldValidation(field);
-      shape[field.name] = fieldSchema;
-      fieldValidationProperties[field.name] = properties;
+      shape[field.id] = fieldSchema;
+      fieldValidationProperties[field.id] = properties;
       if (field.defaultValue) {
         defaults[field.id] = field.defaultValue;
       }
@@ -120,23 +120,9 @@ export const buildFieldValidationProperties = (
 
   return {
     onBlur({ value, fieldApi }) {
-      const results: ValidationResults = {
-        hasError: false,
-        errors: [],
-      };
-
-      const fieldId = field.id;
       if (field.htmlType === "date") {
         const dateValueInput = value as DateValueInput;
-        if (
-          !isDateComplete({
-            value: dateValueInput,
-            fieldId,
-            validations,
-            results,
-          })
-        )
-          return;
+        if (!isDateComplete(dateValueInput)) return;
 
         const dateValue: DateValue = value as DateValue;
         const date: Date | null = dateValueToDate(dateValue);
@@ -164,59 +150,78 @@ export const buildFieldValidationProperties = (
         errors: [],
       };
 
-      let conditionalRequired: boolean = false;
+      const requiredState = checkRequired({
+        fieldId: field.id,
+        fieldLabel: field.label,
+        value,
+        results,
+        validations,
+      });
 
-      if (behaviours && behaviours.length > 0) {
-        const fieldConditionalOns = behaviours.filter(
-          (b) => b.type === "fieldConditionalOn",
-        );
+      if (requiredState === "unknownState") return undefined; // Or something
 
-        if (fieldConditionalOns.length > 0) {
-          // Checks if there is a field conditional on, that passes and effects required state
-          conditionalRequired = checkConditionalOn(
-            field.id,
-            value,
-            fieldConditionalOns,
-            results,
-            fieldApi,
-          );
+      // If the field is required, but has no value, then skip subsequent error checks and show error.
+      if (requiredState === "requiredAndEmpty" || results.hasError)
+        return results.errors;
 
-          if (conditionalRequired) {
-            if (!validations.required)
-              validations.required = {
-                value: true,
-                error: `${field.id} is required.`,
-              };
-          }
-        }
-      }
+      // If field is not required, and is empty, then skip subsequent error checks and show no error
+      if (requiredState === "notRequiredAndEmpty") return undefined;
 
-      checkRequired({ fieldId: field.id, value, results, validations });
-      // If the field is required, but has no value, then skip subsequent error checks
-      if (results.hasError) return results.errors;
+      // If requiredState === notEmpty, then we can continue validation
 
       if (field.htmlType === "date") {
         // If it passes the required check, then it has all 3 parts
-        runDateValidations(field.id, value as DateValue, validations, results);
+        runDateValidations(
+          field.id,
+          field.label,
+          value as DateValue,
+          validations,
+          results,
+        );
         return results.hasError ? results.errors : undefined;
       }
 
       if (field.htmlType === "checkbox") {
-        if (typeof value !== "boolean" || !Array.isArray(value))
+        if (typeof value !== "boolean" && !Array.isArray(value))
           return undefined;
-        runCheckboxValidations(field.id, value, validations, results);
+        runCheckboxValidations(
+          field.id,
+          field.label,
+          value as boolean | string[],
+          validations,
+          results,
+        );
         return results.hasError ? results.errors : undefined;
       }
 
       if (typeof value === "string") {
-        const args: ValidationArgs<string> = {
-          fieldId: field.id,
-          value,
+        runStringValidations(
+          field.id,
+          field.label,
+          value as string,
           validations,
           results,
-        };
+          fieldApi,
+        );
+      }
 
-        runStringValidations(args, fieldApi);
+      // Handling field arrays
+      if (Array.isArray(value)) {
+        const elements = value;
+
+        for (const element of elements) {
+          if (typeof element === "string") {
+            if (element.length === 0) continue;
+            runStringValidations(
+              field.id,
+              field.label,
+              element,
+              validations,
+              results,
+              fieldApi,
+            );
+          }
+        }
       }
 
       return results.hasError ? results.errors : undefined;
@@ -227,6 +232,7 @@ export const buildFieldValidationProperties = (
 
 const runDateValidations = (
   fieldId: string,
+  fieldLabel: string,
   value: DateValue,
   validations: ValidationRule,
   results: ValidationResults,
@@ -242,6 +248,7 @@ const runDateValidations = (
   const argsDate: ValidationArgs<Date> = {
     value: date,
     fieldId,
+    fieldLabel,
     validations,
     results,
   };
@@ -258,6 +265,7 @@ const runDateValidations = (
   const argsDateValue: ValidationArgs<DateValue> = {
     value: dateValue,
     fieldId,
+    fieldLabel,
     validations,
     results,
   };
@@ -268,6 +276,7 @@ const runDateValidations = (
 
 const runCheckboxValidations = (
   fieldId: string,
+  fieldLabel: string,
   value: string[] | boolean,
   validations: ValidationRule,
   results: ValidationResults,
@@ -278,14 +287,27 @@ const runCheckboxValidations = (
       value,
       validations,
       results,
+      fieldLabel,
     });
   }
 };
 
 const runStringValidations = (
-  args: ValidationArgs<string>,
+  fieldId: string,
+  fieldLabel: string,
+  value: string,
+  validations: ValidationRule,
+  results: ValidationResults,
   fieldApi: AnyFieldApi,
 ) => {
+  const args: ValidationArgs<string> = {
+    fieldId,
+    fieldLabel,
+    value,
+    validations,
+    results,
+  };
+
   checkLength(args);
   checkPattern(args);
   checkEmail(args);

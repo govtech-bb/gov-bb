@@ -1,13 +1,11 @@
 import { z } from "zod";
-import { formStepSchema, RecipeFormStep, recipeFormStepSchema } from "./form-step.type";
-import { Processor, processorSchema } from "./processor.type";
+import { formStepSchema, recipeFormStepSchema } from "./form-step.type";
+import { processorSchema } from "./processor.type";
 
-// YYYY-MM-DDTHH:MM:SS
-export const dateTimeFormatSchema = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/);
+// ISO 8601 datetime — accepts optional milliseconds and timezone offset/Z
+// e.g. "2026-01-01T00:00:00", "2026-01-01T00:00:00.000Z", "2026-01-01T00:00:00+05:30"
+export const dateTimeFormatSchema = z.string().datetime({ offset: true });
 export type DateTimeFormat = z.infer<typeof dateTimeFormatSchema>;
-
 
 export const serviceContractSchema = z.object({
   formId: z.string(),
@@ -32,4 +30,3 @@ export const serviceContractRecipeSchema = z.object({
   version: z.string(),
 });
 export type ServiceContractRecipe = z.infer<typeof serviceContractRecipeSchema>;
-

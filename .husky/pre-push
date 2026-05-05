@@ -1,0 +1,9 @@
+if npx tsc -b --pretty --verbose; then
+  echo "--------------------------------------------"
+  echo "Pfft. You cleaned up the code nice. Good job"
+else
+  echo "--------------------------------------------"
+  echo "Don't panic. Just start from the top."
+ exit 1
+fi
+

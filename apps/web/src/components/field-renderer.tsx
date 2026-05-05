@@ -4,8 +4,11 @@ import {
   DateValue,
   FieldValidationProperties,
 } from "@web/types";
-import React from "react";
+import React, { JSX } from "react";
 import ErrorMessage from "./error-message";
+import { RequiredState, checkConditionalOn } from "@web/lib";
+import { FieldArrayBehaviour } from "@govtech-bb/form-types";
+import FileUpload from "./file-upload";
 
 export default function FieldRenderer({
   form,
@@ -18,6 +21,34 @@ export default function FieldRenderer({
 }) {
   if (field.hidden) return null;
 
+  const formatter = new Intl.ListFormat("en", {
+    style: "long",
+    type: "conjunction",
+  });
+
+  let conditionalRequiredState: RequiredState = "unknownState";
+  let fieldArray: FieldArrayBehaviour;
+
+  const fieldConditionalOns = field.behaviours?.filter(
+    (b) => b.type === "fieldConditionalOn",
+  );
+
+  const fieldArrays = field.behaviours?.filter((b) => b.type === "fieldArray");
+  if (fieldArrays && fieldArrays.length >= 1) {
+    fieldArray = fieldArrays[0];
+  }
+
+  if (fieldConditionalOns && fieldConditionalOns.length > 0) {
+    conditionalRequiredState = checkConditionalOn(
+      form.getFieldValue(field.id),
+      fieldConditionalOns,
+      form,
+      field.stepId,
+    );
+  }
+
+  if (conditionalRequiredState === "notRequired") return null;
+
   return (
     <form.Field name={field.id} validators={validationProperties}>
       {(f: AnyFieldApi) => {
@@ -25,12 +56,17 @@ export default function FieldRenderer({
         // const value = f.state.value as ValueType | undefined
         const sharedProps = {
           type: field.htmlType,
-          name: field.id,
+          name: field.name,
           id: field.id,
           disabled: field.disabled,
           placeholder: field.placeholder,
           onBlur: f.handleBlur,
         };
+
+        let errorMessage = "";
+        if (!f.state.meta.isValid) {
+          errorMessage = formatter.format(f.state.meta.errors);
+        }
 
         switch (field.htmlType) {
           case "date": {
@@ -38,9 +74,8 @@ export default function FieldRenderer({
             return (
               <fieldset data-field data-date-field>
                 <legend>{field.label}</legend>
-                {!f.state.meta.isValid && (
-                  <ErrorMessage message={f.state.meta.errors.join(", ")} />
-                )}
+                {field.hint && <p data-hint>{field.hint}</p>}
+                <ErrorMessage message={errorMessage} />
                 <div data-date-group>
                   <div data-date-part>
                     <label>Day</label>
@@ -101,31 +136,100 @@ export default function FieldRenderer({
           case "textarea":
           case "number":
           case "tel":
-          case "email":
-            const value = f.state.value as string | undefined;
-            return (
-              <div data-field>
-                <div>
-                  <label> {field.label} </label>
-                  {!f.state.meta.isValid && (
-                    <ErrorMessage message={f.state.meta.errors.join(", ")} />
-                  )}
-                </div>
+          case "email": {
+            let inputElement: JSX.Element;
+
+            if (!fieldArray) {
+              const value = f.state.value as string | undefined;
+              inputElement = (
                 <input
+                  key={field.id}
                   {...sharedProps}
                   value={value ?? ""}
                   onChange={(e) => f.handleChange(e.target.value)}
                 />
+              );
+            } else {
+              const addAnotherField = (values: string[]) => {
+                // Pushes a new empty field, that a user can fill in
+                values.push("");
+                f.handleChange(values);
+              };
+
+              const removeField = (values: string[]) => {
+                values.pop();
+                f.handleChange(values);
+              };
+
+              const updateField = (
+                values: string[],
+                index: number,
+                value: string,
+              ) => {
+                values[index] = value;
+                f.handleChange(values);
+              };
+
+              const values = (f.state.value as string[] | undefined) ?? [
+                (field.defaultValue as string) ?? "",
+              ];
+              const min = fieldArray.min;
+              const max = fieldArray.max;
+
+              const fieldCount =
+                values && values.length > 0
+                  ? Math.min(values.length, max)
+                  : min;
+
+              inputElement = (
+                <>
+                  {Array.from({ length: fieldCount }).map((_, i) => (
+                    <React.Fragment key={`${field.id}-${i}`}>
+                      <input
+                        {...sharedProps}
+                        value={values && values.length > 0 ? values[i] : ""}
+                        onChange={(e) => updateField(values, i, e.target.value)}
+                      />
+                      {i === fieldCount - 1 && i != 0 ? (
+                        <p onClick={() => removeField(values)}> Remove </p>
+                      ) : null}
+                    </React.Fragment>
+                  ))}
+                  {fieldCount < max ? (
+                    <p onClick={() => addAnotherField(values)}>Add Another</p>
+                  ) : null}
+                </>
+              );
+            }
+
+            const element: JSX.Element = (
+              <div data-field data-field-width={field.ui?.width}>
+                <div>
+                  <label> {field.label} </label>
+                  {field.hint && <p data-hint>{field.hint}</p>}
+                  <ErrorMessage message={errorMessage} />
+                </div>
+                {inputElement}
               </div>
             );
+            return element;
+          }
           case "select":
+            const isMultiple = field.multiple ?? false;
+            const selectValue = f.state.value as string | string[] | undefined;
             return (
-              <div data-field data-select-field>
+              <div
+                data-field
+                data-select-field
+                data-field-width={field.ui?.width}
+              >
                 <label> {field.label} </label>
+                {field.hint && <p data-hint>{field.hint}</p>}
                 <div data-select-control>
                   <select
                     {...sharedProps}
-                    multiple={field.multiple ?? false}
+                    multiple={isMultiple}
+                    value={selectValue ? selectValue : isMultiple ? [] : ""}
                     onChange={(e) => f.handleChange(e.target.value)}
                   >
                     <option value=""></option>
@@ -141,22 +245,22 @@ export default function FieldRenderer({
           case "checkbox":
             if (field.options && field.options.length === 1) {
               const option = field.options[0];
-              const value = f.state.value as boolean | undefined;
+              const value = (f.state.value as string | undefined) ?? "";
               return (
                 <div data-checkbox-group>
                   <div>
                     <legend>{field.label}</legend>
-                    {!f.state.meta.isValid && (
-                      <ErrorMessage message={f.state.meta.errors.join(", ")} />
-                    )}
+                    {field.hint && <p data-hint>{field.hint}</p>}
+                    <ErrorMessage message={errorMessage} />
                   </div>
                   <div key={option.value} data-checkbox-option>
                     <input
                       {...sharedProps}
-                      checked={value ?? false}
-                      value={option.value}
-                      onChange={(e) => {
-                        f.handleChange(e.target.checked);
+                      checked={option.value === value}
+                      onChange={() => {
+                        option.value === value
+                          ? f.handleChange("")
+                          : f.handleChange(option.value);
                       }}
                     />
                     <label>{option.label}</label>
@@ -167,6 +271,7 @@ export default function FieldRenderer({
 
             const checkboxValues: string[] =
               (f.state.value as string[] | undefined) ?? [];
+
             const toggle = (item: string) => {
               const next = checkboxValues.includes(item)
                 ? checkboxValues.filter((cv) => cv !== item)
@@ -178,9 +283,8 @@ export default function FieldRenderer({
               <fieldset data-fieldset>
                 <div>
                   <legend>{field.label}</legend>
-                  {!f.state.meta.isValid && (
-                    <ErrorMessage message={f.state.meta.errors.join(", ")} />
-                  )}
+                  {field.hint && <p data-hint>{field.hint}</p>}
+                  <ErrorMessage message={errorMessage} />
                 </div>
                 <div data-checkbox-group>
                   {field.options?.map((option) => {
@@ -199,18 +303,34 @@ export default function FieldRenderer({
               </fieldset>
             );
           case "radio":
+            const value: string = (f.state.value as string | undefined) ?? "";
             return (
               <fieldset data-fieldset>
                 <legend>{field.label}</legend>
+                {field.hint && <p data-hint>{field.hint}</p>}
+                <ErrorMessage message={errorMessage} />
                 <div data-radio-group>
                   {field.options?.map((option) => (
                     <div key={option.value} data-radio-item>
-                      <input {...sharedProps} />
+                      <input
+                        {...sharedProps}
+                        checked={option.value === value ? true : false}
+                        onChange={() => f.handleChange(option.value)}
+                      />
                       <label>{option.label}</label>
                     </div>
                   ))}
                 </div>
               </fieldset>
+            );
+          case "file":
+            return (
+              <FileUpload
+                field={field}
+                sharedProps={sharedProps}
+                value={f.state.value as File[] | null | undefined}
+                onFileChange={(files) => f.handleChange(files)}
+              />
             );
           default:
             return (

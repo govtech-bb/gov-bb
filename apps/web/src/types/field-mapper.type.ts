@@ -3,12 +3,15 @@ import {
   DateTimeFormat,
   HtmlTypes,
   Option,
+  PrimitiveUI,
   ValidationRule,
 } from "@govtech-bb/form-types";
 import { FieldValue } from "./validation.type";
 
 export interface ClientPrimitive {
-  id: string;
+  id: string; // Step ID + field ID
+  fieldId: string;
+  stepId: string;
   name: string;
   label: string;
   htmlType: HtmlTypes;
@@ -21,6 +24,7 @@ export interface ClientPrimitive {
   multiple?: boolean;
   validations?: ValidationRule;
   behaviours?: Behaviour[];
+  ui?: PrimitiveUI;
 }
 
 export interface ClientFormStep {
@@ -41,4 +45,5 @@ export interface ClientServiceContract {
   version: string;
 }
 
-export type FormValues = Record<string, FieldValue>;
+type fieldId = string;
+export type FormValues = Record<fieldId, FieldValue>;

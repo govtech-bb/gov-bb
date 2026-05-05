@@ -336,6 +336,7 @@ describe("evaluateFormConditions", () => {
               targetFieldId: "toggle",
               operator: "equal",
               value: "yes",
+              targetStepId: "step-1",
             },
           ],
           fieldBehaviours: {

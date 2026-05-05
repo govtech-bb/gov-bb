@@ -38,6 +38,7 @@ export type PrimitiveUI = z.infer<typeof primitiveUISchema>;
 export const basePrimitiveSchema = z.object({
   fieldId: z.string(),
   label: z.string(),
+  name: z.string().optional(),
   htmlType: htmlTypesSchema,
   placeholder: z.string().optional(),
   hint: z.string().optional(),
@@ -133,5 +134,6 @@ export const fieldOverridesSchema = basePrimitiveSchema.pick({
   isHidden: true,
   multiple: true,
   options: true,
+  ui: true,
 });
 export type FieldOverrides = z.infer<typeof fieldOverridesSchema>;
