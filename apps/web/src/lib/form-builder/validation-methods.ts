@@ -379,13 +379,7 @@ const getStepIdFromFieldName = (fieldName: string): string => {
 };
 
 export const checkComparisons = (
-  {
-    fieldId,
-    fieldLabel,
-    value,
-    results,
-    validations,
-  }: ValidationArgs<string | number>,
+  { fieldLabel, value, results, validations }: ValidationArgs<string | number>,
   fieldApi: AnyFieldApi,
 ) => {
   const equal = validations.equal;
