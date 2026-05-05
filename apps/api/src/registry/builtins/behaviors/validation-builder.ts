@@ -79,7 +79,7 @@ class ValidationBuilder {
   conditionalOn(fieldId: string, value: any, error?: string): this {
     this.rules["conditionalOn"] = {
       value,
-      reference: fieldId,
+      referenceFieldId: fieldId,
       error: error ?? `${this.fieldErrorName} has a condition`,
     };
     return this;

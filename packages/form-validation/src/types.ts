@@ -10,7 +10,7 @@ export interface ValidationResult {
 // StepScopedValues mirrors the shape from @govtech-bb/form-conditions
 export type StepScopedValues = Record<string, Record<string, unknown>>;
 
-// Cross-field rules resolve via config.targetStepId + config.reference.
+// Cross-field rules resolve via config.targetStepId + config.referenceFieldId.
 // Falls back to flat scan across all steps if targetStepId is absent.
 // If the referenced field cannot be found, the rule is skipped (no error).
 export type RuleRunner = (

@@ -20,10 +20,11 @@ export const maxRunner: RuleRunner = (value, config) => {
 
 export const gtRunner: RuleRunner = (value, config, allValues) => {
   const msg =
-    config.error ?? `Must be greater than ${config.reference ?? config.value}`;
+    config.error ??
+    `Must be greater than ${config.referenceFieldId ?? config.value}`;
   const resolved = resolveReference(config, allValues);
   if (resolved === MISSING)
-    return config.reference !== undefined
+    return config.referenceFieldId !== undefined
       ? null
       : z.number().gt(num(config.value), msg).safeParse(num(value)).success
         ? null
@@ -34,10 +35,11 @@ export const gtRunner: RuleRunner = (value, config, allValues) => {
 
 export const ltRunner: RuleRunner = (value, config, allValues) => {
   const msg =
-    config.error ?? `Must be less than ${config.reference ?? config.value}`;
+    config.error ??
+    `Must be less than ${config.referenceFieldId ?? config.value}`;
   const resolved = resolveReference(config, allValues);
   if (resolved === MISSING)
-    return config.reference !== undefined
+    return config.referenceFieldId !== undefined
       ? null
       : z.number().lt(num(config.value), msg).safeParse(num(value)).success
         ? null
@@ -47,10 +49,11 @@ export const ltRunner: RuleRunner = (value, config, allValues) => {
 };
 
 export const equalRunner: RuleRunner = (value, config, allValues) => {
-  const msg = config.error ?? `Must equal ${config.reference ?? config.value}`;
+  const msg =
+    config.error ?? `Must equal ${config.referenceFieldId ?? config.value}`;
   const resolved = resolveReference(config, allValues);
   if (resolved === MISSING)
-    return config.reference !== undefined
+    return config.referenceFieldId !== undefined
       ? null
       : num(value) === num(config.value)
         ? null
@@ -60,10 +63,10 @@ export const equalRunner: RuleRunner = (value, config, allValues) => {
 
 export const notEqualRunner: RuleRunner = (value, config, allValues) => {
   const msg =
-    config.error ?? `Must not equal ${config.reference ?? config.value}`;
+    config.error ?? `Must not equal ${config.referenceFieldId ?? config.value}`;
   const resolved = resolveReference(config, allValues);
   if (resolved === MISSING)
-    return config.reference !== undefined
+    return config.referenceFieldId !== undefined
       ? null
       : num(value) !== num(config.value)
         ? null
