@@ -59,7 +59,8 @@ export default function FormRenderer({
   const stepValues = useStore(form.store, (state) => state.values[stepId]);
 
   const [baseStepId, rawIndex] = stepId.split("--");
-  const currentRepeatStepCount = Number(rawIndex ?? 0);
+  let currentRepeatStepCount = Number(rawIndex ?? 0);
+  if (isNaN(currentRepeatStepCount)) currentRepeatStepCount = 0;
 
   const currentStepRepeatableSettings = repeatableStepSettings[baseStepId];
   const repeatableStepCount =
