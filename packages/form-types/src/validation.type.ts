@@ -3,8 +3,9 @@ import { z } from "zod";
 export const validationConfigSchema = z.object({
   error: z.string().optional(),
   value: z.any().optional(),
-  reference: z.string().optional(),
   targetStepId: z.string().optional(),
+  referenceFieldId: z.string().optional(),
+  referenceStepId: z.string().optional(),
 });
 export type ValidationConfig = z.infer<typeof validationConfigSchema>;
 

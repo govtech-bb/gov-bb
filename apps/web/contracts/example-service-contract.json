@@ -529,7 +529,7 @@
               "error": "End date is required"
             },
             "after": {
-              "reference": "redirection-start-date",
+              "referenceFieldId": "redirection-start-date",
               "error": "End date must be after start date"
             }
           }

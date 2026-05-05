@@ -38,7 +38,7 @@ function runRule(
   allValues: StepScopedValues,
   stepValues: Record<string, unknown>,
 ): string | null {
-  if (config.reference === undefined) {
+  if (config.referenceFieldId === undefined) {
     return runner(value, config, allValues);
   }
 
@@ -51,7 +51,8 @@ function runRule(
   const patched: ValidationConfig = {
     ...config,
     value: resolved,
-    reference: undefined,
+    referenceFieldId: undefined,
+    referenceStepId: undefined,
     targetStepId: undefined,
   };
   return runner(value, patched, allValues);

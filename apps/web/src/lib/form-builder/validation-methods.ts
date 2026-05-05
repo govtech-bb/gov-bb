@@ -8,6 +8,7 @@ import {
   FieldValue,
 } from "@web/types";
 import z from "zod";
+import { getFullFieldId, stepFieldIdConcactenator } from "./field-mapper";
 
 // Modular Methods
 
@@ -372,6 +373,15 @@ export const checkMaxYear = ({
 /*
  * Checks for equality, inequality, greater than and lesser than
  */
+const getStepIdFromFieldName = (fieldName: string): string => {
+  const lastConcatenatedIndex = fieldName.lastIndexOf(
+    `${stepFieldIdConcactenator}`,
+  );
+  return lastConcatenatedIndex > 0
+    ? fieldName.slice(0, lastConcatenatedIndex)
+    : "";
+};
+
 export const checkComparisons = (
   { fieldLabel, value, results, validations }: ValidationArgs<string | number>,
   fieldApi: AnyFieldApi,
@@ -384,14 +394,19 @@ export const checkComparisons = (
 
   if (!equal && !notEqual && !gt && !lt) return; // No validations provided
 
+  const currentStepId = getStepIdFromFieldName(fieldApi.name);
+
   const compare = (
     comp: "equal" | "notEqual" | "gt" | "lt",
     validation?: ValidationConfig,
   ) => {
-    if (validation && validation.reference) {
-      const targetFieldValue = fieldApi.form.getFieldValue(
-        validation.reference,
-      );
+    if (validation && validation.referenceFieldId) {
+      const referenceStepId = validation.referenceStepId ?? currentStepId;
+      const referenceFieldId = validation.referenceFieldId;
+
+      const fullReferenceId = getFullFieldId(referenceStepId, referenceFieldId);
+
+      const targetFieldValue = fieldApi.form.getFieldValue(fullReferenceId);
       const passesCondition = evaluateCondition(value, targetFieldValue, comp);
       if (!passesCondition) {
         setValidationError(fieldLabel, validation, results);

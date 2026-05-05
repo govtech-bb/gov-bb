@@ -151,7 +151,7 @@ describe("validate()", () => {
       primitives: [
         text("confirmPassword", {
           required: {},
-          strictEquality: { reference: "password" },
+          strictEquality: { referenceFieldId: "password" },
         }),
       ],
       stepValues: { confirmPassword: "wrong" },
@@ -166,7 +166,10 @@ describe("validate()", () => {
       primitives: [
         text("confirmPassword", {
           required: {},
-          strictEquality: { reference: "password", targetStepId: "step-1" },
+          strictEquality: {
+            referenceFieldId: "password",
+            targetStepId: "step-1",
+          },
         }),
       ],
       stepValues: { confirmPassword: "correct" },
@@ -183,7 +186,7 @@ describe("validate()", () => {
       primitives: [
         text("confirmPassword", {
           required: {},
-          strictEquality: { reference: "password" },
+          strictEquality: { referenceFieldId: "password" },
         }),
       ],
       stepValues: { confirmPassword: "anything" },
@@ -216,7 +219,10 @@ describe("validate()", () => {
     it("resolves a reference within the current step when allValues is empty", () => {
       const result = validate({
         primitives: [
-          number("salary", { required: {}, gt: { reference: "minimum-wage" } }),
+          number("salary", {
+            required: {},
+            gt: { referenceFieldId: "minimum-wage" },
+          }),
           number("minimum-wage", { required: {} }),
         ],
         stepValues: { salary: 85000, "minimum-wage": 40000 },
@@ -227,7 +233,10 @@ describe("validate()", () => {
     it("fails correctly when same-step reference resolves and rule fails", () => {
       const result = validate({
         primitives: [
-          number("salary", { required: {}, gt: { reference: "minimum-wage" } }),
+          number("salary", {
+            required: {},
+            gt: { referenceFieldId: "minimum-wage" },
+          }),
           number("minimum-wage", { required: {} }),
         ],
         stepValues: { salary: 30000, "minimum-wage": 40000 },
@@ -239,7 +248,10 @@ describe("validate()", () => {
     it("prefers allValues over stepValues when the reference exists in allValues", () => {
       const result = validate({
         primitives: [
-          number("salary", { required: {}, gt: { reference: "minimum-wage" } }),
+          number("salary", {
+            required: {},
+            gt: { referenceFieldId: "minimum-wage" },
+          }),
         ],
         stepValues: { salary: 85000, "minimum-wage": 999 },
         allValues: { "employment-info": { "minimum-wage": 40000 } },
