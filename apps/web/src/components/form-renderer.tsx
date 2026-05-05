@@ -11,11 +11,7 @@ import { useStore } from "@tanstack/react-form";
 import { useStepGuard } from "../hooks/use-step-guard";
 import Review from "./review";
 import {
-  generateRepeatableAddAnotherField,
-  generateRepeatStepFields,
   getFullFieldId,
-  getRepeatStepId,
-  getRepeatStepCount,
   repeatStepConcactenator,
   addRepeatableStep,
   removeRepeatableStep,
@@ -26,8 +22,7 @@ export default function FormRenderer({
   formMeta,
   stepId,
   visibleSteps,
-  repeatableStepSettings,
-  setRepeatableStepSettings,
+  repeatableStepSettingsRef,
 }: FormRendererProps) {
   const { navigateToStep, completeAndContinue, currentIndex } = useStepGuard({
     formId: formMeta.formId,
@@ -60,6 +55,7 @@ export default function FormRenderer({
   const stepValues = useStore(form.store, (state) => state.values[stepId]);
 
   const baseStepId = stepId.split(repeatStepConcactenator)[0];
+  const repeatableStepSettings = repeatableStepSettingsRef.current;
   const handleContinue = () => {
     // Handle navigation to repeatable step.
     if (repeatableBehaviour) {
@@ -77,12 +73,7 @@ export default function FormRenderer({
           currentRepeatConfig: repeatableStepSettings[baseStepId],
         });
         if (updatedConfig) {
-          setRepeatableStepSettings((prev) => {
-            return {
-              ...prev,
-              [baseStepId]: updatedConfig,
-            };
-          });
+          repeatableStepSettings[baseStepId] = updatedConfig;
         }
         completeAndContinue(currentStep.stepId, updatedSteps);
         return;

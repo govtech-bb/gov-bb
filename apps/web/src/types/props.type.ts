@@ -12,10 +12,7 @@ export interface FormRendererProps {
   formMeta: FormMeta;
   visibleSteps: ClientFormStep[];
   stepId: string;
-  repeatableStepSettings: RepeatableStepSettings;
-  setRepeatableStepSettings: React.Dispatch<
-    React.SetStateAction<RepeatableStepSettings>
-  >;
+  repeatableStepSettingsRef: React.MutableRefObject<RepeatableStepSettings>;
 }
 
 export type FormRouteProps = {
