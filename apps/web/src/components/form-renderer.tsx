@@ -6,7 +6,7 @@ import {
 } from "@web/types";
 import FieldRenderer from "./field-renderer";
 import designSystem from "../lib/design-system";
-import React, { useEffect } from "react";
+import React from "react";
 import ErrorSummary from "./error-summary";
 import { useStore } from "@tanstack/react-form";
 import { useStepGuard } from "../hooks/use-step-guard";
@@ -21,29 +21,25 @@ export default function FormRenderer({
   repeatableRecord,
   setRepeatableRecord,
 }: FormRendererProps) {
-  const [hidePrevious, setHidePrevious] = React.useState(true);
-  const [stepIndex, setStepIndex] = React.useState(0);
-
-  const { navigateToStep, completeAndContinue } = useStepGuard({
+  const { navigateToStep, completeAndContinue, currentIndex } = useStepGuard({
     formId: formMeta.formId,
-    steps: visibleSteps,
-    stepId,
-    setStepIndex,
+    activeSteps: visibleSteps,
+    currentStepId: stepId,
   });
 
-  useEffect(() => {
-    if (stepIndex === 0) {
-      setHidePrevious(true);
-    } else {
-      setHidePrevious(false);
-    }
-  }, [stepIndex]);
+  // currentIndex is -1 for the brief moment the guard effect is redirecting
+  // away from a step that was just hidden by a condition change.
+  const stepIndex = Math.max(0, currentIndex);
+  const hidePrevious = currentIndex <= 0;
 
-  const currentStep = visibleSteps[stepIndex];
+  const currentStep = visibleSteps[stepIndex] ?? visibleSteps[0];
+  if (!currentStep) return null;
+
   const currentFields = [...currentStep.fields];
 
   const handlePrevious = () => {
-    navigateToStep(stepIndex - 1);
+    const prevStep = visibleSteps[stepIndex - 1];
+    if (prevStep) navigateToStep(prevStep.stepId);
   };
 
   const repeatableBehaviour = currentStep.behaviours?.filter(
@@ -184,16 +180,16 @@ export default function FormRenderer({
       const anotherFieldValue = form.getFieldValue(anotherFieldId);
       if (anotherFieldValue === "yes") {
         const updatedSteps = addRepeatableStep();
-        completeAndContinue(currentStep.stepId, stepIndex, updatedSteps);
+        completeAndContinue(currentStep.stepId, updatedSteps);
         return;
       } else {
         const updatedSteps = removeRepeatableStep();
-        completeAndContinue(currentStep.stepId, stepIndex, updatedSteps);
+        completeAndContinue(currentStep.stepId, updatedSteps);
         return;
       }
     }
     // TODO: Validate current step before marking as completed and navigating to the next step
-    completeAndContinue(currentStep.stepId, stepIndex);
+    completeAndContinue(currentStep.stepId);
   };
 
   if (repeatableBehaviour) {
