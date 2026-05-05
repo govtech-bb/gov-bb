@@ -5,16 +5,16 @@ import {
   ClientServiceContract,
 } from "./field-mapper.type";
 import { FormMeta } from "./renderer.type";
-import { FormRepeatableRecord } from "./behavior-helper.type";
+import { RepeatableStepSettings } from "./behavior-helper.type";
 
 export interface FormRendererProps {
   form: AnyFormApi;
   formMeta: FormMeta;
   visibleSteps: ClientFormStep[];
   stepId: string;
-  repeatableRecord: FormRepeatableRecord;
-  setRepeatableRecord: React.Dispatch<
-    React.SetStateAction<FormRepeatableRecord>
+  repeatableStepSettings: RepeatableStepSettings;
+  setRepeatableStepSettings: React.Dispatch<
+    React.SetStateAction<RepeatableStepSettings>
   >;
 }
 
@@ -42,6 +42,8 @@ export type UseStepGuardProps = {
 export type FileUploadProps = {
   field: ClientPrimitive;
   sharedProps: React.InputHTMLAttributes<HTMLInputElement>;
-  onFileChange?: (files: File[] | null) => void;
+  onFileChange: (files: File[] | null) => void;
   value?: File[] | null;
+  errorMessage?: string;
+  validationRules?: any;
 };
