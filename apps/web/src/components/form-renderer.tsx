@@ -10,7 +10,11 @@ import ErrorSummary from "./error-summary";
 import { useStore } from "@tanstack/react-form";
 import { useStepGuard } from "../hooks/use-step-guard";
 import Review from "./review";
-import { generateRepeatableAddAnotherField, getFullFieldId } from "@web/lib";
+import {
+  generateRepeatableAddAnotherField,
+  generateRepeatStepFields,
+  getFullFieldId,
+} from "@web/lib";
 
 export default function FormRenderer({
   form,
@@ -74,20 +78,13 @@ export default function FormRenderer({
     if (currentStepRepeatableSettings.orderedStepIds.includes(nextStepId))
       return visibleSteps;
 
-    let nextStepFields = currentFields
-      .filter((f) => f.id != getFullFieldId(currentStep.stepId, "addAnother"))
-      .map((field) => {
-        field.id = getFullFieldId(nextStepId, field.fieldId);
-        return field;
-      });
-
+    const nextStepFields = generateRepeatStepFields(
+      currentFields,
+      nextStepId,
+      getFullFieldId(currentStep.stepId, "addAnother"),
+      sharedFieldBehaviour,
+    );
     nextStepFields.push(generateRepeatableAddAnotherField(nextStepId));
-
-    if (sharedFieldBehaviour) {
-      nextStepFields = nextStepFields.filter(
-        (field) => !sharedFieldBehaviour.fieldIds.includes(field.fieldId),
-      );
-    }
 
     const updatedRecord = currentStepRepeatableSettings;
 

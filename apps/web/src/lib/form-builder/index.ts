@@ -3,6 +3,7 @@ export {
   getVisibleSteps,
   setupRepeatSteps,
   generateRepeatableAddAnotherField,
+  generateRepeatStepFields,
 } from "./helpers/behavior-helper";
 export type { RequiredState } from "./validation-methods";
 export { fetchContract, FormFetchError } from "./form-fetcher";

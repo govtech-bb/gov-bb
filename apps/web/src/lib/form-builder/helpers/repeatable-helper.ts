@@ -47,7 +47,7 @@ export const setupRepeatSteps = (
         const repeatStepCount = j;
         const nextStepId = `${step.stepId}--${repeatStepCount}`;
 
-        let nextStepFields = generateRepeatStepFields(
+        const nextStepFields = generateRepeatStepFields(
           step.fields,
           nextStepId,
           undefined,
@@ -80,21 +80,24 @@ export const setupRepeatSteps = (
   return updatedSteps;
 };
 
-const generateRepeatStepFields = (
+export const generateRepeatStepFields = (
   currentFields: ClientPrimitive[],
   nextStepId: string,
   addAnotherStepId?: string,
   sharedFieldBehaviour?: SharedFieldsBehaviour,
 ): ClientPrimitive[] => {
-  let nextStepFields = currentFields
+  const nextStepFields = currentFields
     .filter((f) => f.id !== addAnotherStepId)
     .map((field) => {
-      field.id = getFullFieldId(nextStepId, field.fieldId);
-      return field;
+      return {
+        ...field,
+        id: getFullFieldId(nextStepId, field.fieldId),
+        stepId: nextStepId,
+      };
     });
 
   if (sharedFieldBehaviour) {
-    nextStepFields = nextStepFields.filter(
+    return nextStepFields.filter(
       (field) => !sharedFieldBehaviour.fieldIds.includes(field.fieldId),
     );
   }
