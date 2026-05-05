@@ -397,12 +397,13 @@ export const checkComparisons = (
     validation?: ValidationConfig,
   ) => {
     if (validation && validation.reference) {
-      let referenceId: string;
-      if (validation.referencesStep) {
-        referenceId = validation.reference;
-      } else {
-        referenceId = getFullFieldId(currentStepId, validation.reference);
-      }
+      const referenceId = validation.referenceStepId
+        ? getFullFieldId(
+            validation.referenceStepId,
+            validation.referenceFieldId!,
+          )
+        : getFullFieldId(currentStepId, validation.reference);
+
       const targetFieldValue = fieldApi.form.getFieldValue(referenceId);
       const passesCondition = evaluateCondition(value, targetFieldValue, comp);
       if (!passesCondition) {
