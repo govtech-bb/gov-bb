@@ -8,7 +8,7 @@ import {
   FieldValue,
 } from "@web/types";
 import z from "zod";
-import { getFullFieldId } from "./field-mapper";
+import { getFullFieldId, stepFieldIdConcactenator } from "./field-mapper";
 
 // Modular Methods
 
@@ -374,8 +374,12 @@ export const checkMaxYear = ({
  * Checks for equality, inequality, greater than and lesser than
  */
 const getStepIdFromFieldName = (fieldName: string): string => {
-  const lastHyphenIndex = fieldName.lastIndexOf("-");
-  return lastHyphenIndex > 0 ? fieldName.slice(0, lastHyphenIndex) : "";
+  const lastConcatenatedIndex = fieldName.lastIndexOf(
+    `${stepFieldIdConcactenator}`,
+  );
+  return lastConcatenatedIndex > 0
+    ? fieldName.slice(0, lastConcatenatedIndex)
+    : "";
 };
 
 export const checkComparisons = (
