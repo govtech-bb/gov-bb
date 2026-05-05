@@ -293,7 +293,8 @@
             },
             "equal": {
               "reference": "step2ContactInformation-email",
-              "referencesStep": true,
+              "referenceFieldId": "email",
+              "referenceStepId": "step2ContactInformation",
               "error": "Email addresses do not match"
             }
           }

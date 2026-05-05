@@ -5,13 +5,15 @@ class ValidationBuilder {
   fieldLabel: string;
   fieldName?: string;
   fieldErrorName: string;
+  fieldStepId: string;
   rules: ValidationRule = {};
 
-  constructor(parent: Primitive) {
+  constructor(parent: Primitive, stepId: string) {
     this.fieldId = parent.fieldId;
     this.fieldLabel = parent.label;
     this.fieldName = parent.name;
     this.fieldErrorName = this.fieldName ?? this.fieldLabel;
+    this.fieldStepId = stepId;
   }
 
   required(value?: boolean, error?: string): this {
@@ -276,26 +278,32 @@ class ValidationBuilder {
     return this;
   }
 
-  equal(fieldId: string, error?: string): this {
+  equal(fieldId: string, stepId?: string, error?: string): this {
+    const refStep = stepId ?? this.fieldStepId;
     this.rules["equal"] = {
-      reference: fieldId,
+      referenceStepId: refStep,
+      referenceFieldId: fieldId,
       error: error ?? `${this.fieldErrorName} must equal ${fieldId}'s value`,
     };
     return this;
   }
 
-  notEqual(fieldId: string, error?: string): this {
+  notEqual(fieldId: string, stepId?: string, error?: string): this {
+    const refStep = stepId ?? this.fieldStepId;
     this.rules["notEqual"] = {
-      reference: fieldId,
+      referenceStepId: refStep,
+      referenceFieldId: fieldId,
       error:
         error ?? `${this.fieldErrorName} must not equal ${fieldId}'s value`,
     };
     return this;
   }
 
-  gt(fieldId: string, error?: string): this {
+  gt(fieldId: string, stepId?: string, error?: string): this {
+    const refStep = stepId ?? this.fieldStepId;
     this.rules["gt"] = {
-      reference: fieldId,
+      referenceStepId: refStep,
+      referenceFieldId: fieldId,
       error:
         error ??
         `${this.fieldErrorName} must be greater than ${fieldId}'s value`,
@@ -303,9 +311,11 @@ class ValidationBuilder {
     return this;
   }
 
-  lt(fieldId: string, error?: string): this {
+  lt(fieldId: string, stepId?: string, error?: string): this {
+    const refStep = stepId ?? this.fieldStepId;
     this.rules["lt"] = {
-      reference: fieldId,
+      referenceStepId: refStep,
+      referenceFieldId: fieldId,
       error:
         error ?? `${this.fieldErrorName} must be less than ${fieldId}'s value`,
     };
@@ -320,9 +330,11 @@ class ValidationBuilder {
     return this;
   }
 
-  strictEquality(fieldId: string, error?: string): this {
+  strictEquality(fieldId: string, stepId?: string, error?: string): this {
+    const refStep = stepId ?? this.fieldStepId;
     this.rules["equal"] = {
-      reference: fieldId,
+      referenceStepId: refStep,
+      referenceFieldId: fieldId,
       error:
         error ?? `${this.fieldErrorName} must exactly match ${fieldId}'s value`,
     };
