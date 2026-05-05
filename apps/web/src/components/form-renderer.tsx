@@ -138,7 +138,9 @@ export default function FormRenderer({
     const step = visibleSteps.find((s) => s.stepId === targetStepId);
     if (!step) {
       const pos = record.orderedStepIds.indexOf(targetStepId);
-      record.orderedStepIds.splice(pos, 1);
+      if (pos !== -1) {
+        record.orderedStepIds.splice(pos, 1);
+      }
       return visibleSteps;
     }
 
