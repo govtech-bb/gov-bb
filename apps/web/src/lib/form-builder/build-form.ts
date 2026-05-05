@@ -1,15 +1,26 @@
 // Responsible for turning a ClientServiceContract into a FormMeta for consumption.
 
-import { ClientServiceContract, FormMeta, FormValidation } from "@web/types";
+import {
+  ClientServiceContract,
+  FormMeta,
+  RepeatableStepSettings,
+  FormValidation,
+} from "@web/types";
 import { buildValidation } from "./validation-builder";
-import { getStepConditonalTargets } from "./behavior-helper";
+import { getStepConditonalTargets, setupRepeatSteps } from "@web/lib";
 
 export const buildForm = (contract: ClientServiceContract): FormMeta => {
   // Build the Validation Schema
   const { schema, defaults, properties }: FormValidation =
     buildValidation(contract);
 
+  // Get fields with conditional on values to watch for changes.
   const stepConditionalTargets = getStepConditonalTargets(contract.steps);
+
+  // Configure repeatable steps with their minimum and config state
+  const repeatSettings: RepeatableStepSettings = {};
+
+  const steps = setupRepeatSteps(contract.steps, repeatSettings);
 
   // Return FormMeta object with everything configured.
   return {
@@ -17,9 +28,10 @@ export const buildForm = (contract: ClientServiceContract): FormMeta => {
     formTitle: contract.title,
     formDescription: contract.description,
     schema,
-    steps: contract.steps,
+    steps,
     defaultValues: defaults,
     validationProperties: properties,
     stepConditionalTargets,
+    repeatSettings,
   };
 };

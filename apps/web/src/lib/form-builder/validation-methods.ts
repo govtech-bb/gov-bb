@@ -457,12 +457,7 @@ export const evaluateCondition = (
         return true;
       return false;
     case "notEqual":
-      if (
-        conditionValue &&
-        targetFieldValue &&
-        conditionValue != targetFieldValue
-      )
-        return true;
+      if (conditionValue && conditionValue != targetFieldValue) return true;
       else return false;
     case "exists":
       if (targetFieldValue && !valueIsEmpty(targetFieldValue)) return true;

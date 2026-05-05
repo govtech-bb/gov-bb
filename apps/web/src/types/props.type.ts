@@ -5,17 +5,16 @@ import {
   ClientServiceContract,
 } from "./field-mapper.type";
 import { FormMeta } from "./renderer.type";
-import { FormRepeatableRecord } from "./behavior-helper.type";
-import { ValidationConfig } from "@govtech-bb/form-types";
+import { RepeatableStepSettings } from "./behavior-helper.type";
 
 export interface FormRendererProps {
   form: AnyFormApi;
   formMeta: FormMeta;
   visibleSteps: ClientFormStep[];
   stepId: string;
-  repeatableRecord: FormRepeatableRecord;
-  setRepeatableRecord: React.Dispatch<
-    React.SetStateAction<FormRepeatableRecord>
+  repeatableStepSettings: RepeatableStepSettings;
+  setRepeatableStepSettings: React.Dispatch<
+    React.SetStateAction<RepeatableStepSettings>
   >;
 }
 

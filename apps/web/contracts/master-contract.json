@@ -7,7 +7,7 @@
   "version": "1.0.0",
   "steps": [
     {
-      "stepId": "step1PersonalDetails",
+      "stepId": "step-1-personal-details",
       "title": "Personal Details",
       "description": "Basic personal information with various HTML types and validations",
       "elements": [
@@ -45,7 +45,7 @@
           "defaultValue": "ms"
         },
         {
-          "fieldId": "firstName",
+          "fieldId": "first-name",
           "label": "First Name",
           "htmlType": "text",
           "placeholder": "Enter your first name",
@@ -71,7 +71,7 @@
           }
         },
         {
-          "fieldId": "middleName",
+          "fieldId": "middle-name",
           "label": "Middle Name (Optional)",
           "htmlType": "text",
           "placeholder": "Enter your middle name",
@@ -101,7 +101,7 @@
           ]
         },
         {
-          "fieldId": "lastName",
+          "fieldId": "last-name",
           "label": "Last Name",
           "htmlType": "text",
           "placeholder": "Enter your last name",
@@ -122,7 +122,7 @@
           }
         },
         {
-          "fieldId": "dateOfBirth",
+          "fieldId": "date-of-birth",
           "label": "Date of Birth",
           "htmlType": "date",
           "hint": "You must be at least 18 years old",
@@ -216,7 +216,7 @@
           }
         },
         {
-          "fieldId": "nationalId",
+          "fieldId": "national-id",
           "label": "National ID Number (Optional)",
           "htmlType": "text",
           "placeholder": "Enter your national ID",
@@ -260,7 +260,7 @@
       ]
     },
     {
-      "stepId": "step2ContactInformation",
+      "stepId": "step-2-contact-information",
       "title": "Contact Information",
       "description": "Various contact methods with conditional visibility and validation",
       "elements": [
@@ -282,7 +282,7 @@
           }
         },
         {
-          "fieldId": "confirmEmail",
+          "fieldId": "confirm-email",
           "label": "Confirm Email Address",
           "htmlType": "email",
           "placeholder": "Confirm your email address",
@@ -331,7 +331,7 @@
           }
         },
         {
-          "fieldId": "workTelephone",
+          "fieldId": "work-telephone",
           "label": "Work Telephone (Optional)",
           "htmlType": "tel",
           "placeholder": "Enter work phone number",
@@ -346,7 +346,7 @@
           }
         },
         {
-          "fieldId": "preferredContact",
+          "fieldId": "preferred-contact",
           "label": "Preferred Contact Method",
           "htmlType": "select",
           "placeholder": "Select preferred method",
@@ -377,7 +377,7 @@
           }
         },
         {
-          "fieldId": "canContactEvening",
+          "fieldId": "can-contact-evening",
           "label": "I prefer to be contacted in the...",
           "hint": "Select all that apply",
           "htmlType": "checkbox",
@@ -416,7 +416,7 @@
           }
         },
         {
-          "fieldId": "singleLonelyTextbox",
+          "fieldId": "single-lonely-textbox",
           "label": "Does this checkbox sit by itself?",
           "htmlType": "checkbox",
           "options": [
@@ -433,7 +433,7 @@
           }
         },
         {
-          "fieldId": "additionalNotes",
+          "fieldId": "additional-notes",
           "label": "Additional Contact Notes (Optional)",
           "htmlType": "textarea",
           "placeholder": "Any additional contact information or special requirements...",
@@ -447,7 +447,7 @@
       ]
     },
     {
-      "stepId": "randomStep",
+      "stepId": "random-step",
       "title": "I see you gave us your telephone number",
       "description": "Nothing to see here. Carry on.",
       "elements": [
@@ -462,19 +462,19 @@
         {
           "type": "stepConditionalOn",
           "targetFieldId": "telephone",
-          "targetStepId": "step2ContactInformation",
+          "targetStepId": "step-2-contact-information",
           "operator": "exists",
           "value": ""
         }
       ]
     },
     {
-      "stepId": "step3AddressEmployment",
+      "stepId": "step-3-address-employment",
       "title": "Address & Employment",
       "description": "Address information with conditional fields and employment details",
       "elements": [
         {
-          "fieldId": "currentAddress",
+          "fieldId": "current-address",
           "label": "Current Address",
           "htmlType": "text",
           "hint": "House number and street",
@@ -564,7 +564,7 @@
           }
         },
         {
-          "fieldId": "hasPreviousAddress",
+          "fieldId": "has-previous-address",
           "label": "I have a different previous address",
           "htmlType": "checkbox",
           "options": [
@@ -575,7 +575,7 @@
           ]
         },
         {
-          "fieldId": "previousAddress",
+          "fieldId": "previous-address",
           "label": "Previous Address",
           "htmlType": "text",
           "placeholder": "Enter previous address",
@@ -583,7 +583,7 @@
           "behaviours": [
             {
               "type": "fieldConditionalOn",
-              "targetFieldId": "hasPreviousAddress",
+              "targetFieldId": "has-previous-address",
               "operator": "equal",
               "value": "confirmed"
             }
@@ -596,14 +596,14 @@
           }
         },
         {
-          "fieldId": "previousPostcode",
+          "fieldId": "previous-postcode",
           "label": "Previous Postcode",
           "htmlType": "text",
           "placeholder": "Enter previous postcode",
           "behaviours": [
             {
               "type": "fieldConditionalOn",
-              "targetFieldId": "hasPreviousAddress",
+              "targetFieldId": "has-previous-address",
               "operator": "equal",
               "value": "confirmed"
             }
@@ -616,7 +616,7 @@
           }
         },
         {
-          "fieldId": "employmentStatus",
+          "fieldId": "employment-status",
           "label": "Current Employment Status",
           "htmlType": "select",
           "placeholder": "Select employment status",
@@ -651,14 +651,14 @@
           }
         },
         {
-          "fieldId": "employerName",
+          "fieldId": "employer-name",
           "label": "Employer Name",
           "htmlType": "text",
           "placeholder": "Enter employer name",
           "behaviours": [
             {
               "type": "fieldConditionalOn",
-              "targetFieldId": "employmentStatus",
+              "targetFieldId": "employment-status",
               "operator": "in",
               "value": ["employed", "self-employed"]
             }
@@ -671,14 +671,14 @@
           }
         },
         {
-          "fieldId": "jobTitle",
+          "fieldId": "job-title",
           "label": "Job Title",
           "htmlType": "text",
           "placeholder": "Enter your job title",
           "behaviours": [
             {
               "type": "fieldConditionalOn",
-              "targetFieldId": "employmentStatus",
+              "targetFieldId": "employment-status",
               "operator": "in",
               "value": ["employed", "self-employed"]
             }
@@ -691,7 +691,7 @@
           }
         },
         {
-          "fieldId": "annualIncome",
+          "fieldId": "annual-income",
           "label": "Annual Income ($)",
           "htmlType": "number",
           "placeholder": "Enter annual income",
@@ -699,7 +699,7 @@
           "behaviours": [
             {
               "type": "fieldConditionalOn",
-              "targetFieldId": "employmentStatus",
+              "targetFieldId": "employment-status",
               "operator": "in",
               "value": ["employed", "self-employed"]
             }
@@ -722,12 +722,12 @@
       ]
     },
     {
-      "stepId": "step4DocumentsUploads",
+      "stepId": "step-4-documents-uploads",
       "title": "Documents & Uploads",
       "description": "File uploads with various validation rules and repeatable field arrays",
       "elements": [
         {
-          "fieldId": "uploadDocument",
+          "fieldId": "upload-document",
           "label": "Upload Identity Document",
           "htmlType": "file",
           "multiple": false,
@@ -752,7 +752,7 @@
           }
         },
         {
-          "fieldId": "proofOfAddress",
+          "fieldId": "proof-of-address",
           "label": "Proof of Address Documents",
           "htmlType": "file",
           "multiple": true,
@@ -781,7 +781,7 @@
           }
         },
         {
-          "fieldId": "documentTypes",
+          "fieldId": "document-types",
           "label": "Additional Document Types",
           "htmlType": "select",
           "placeholder": "Select document types provided",
@@ -820,7 +820,7 @@
           }
         },
         {
-          "fieldId": "additionalDocuments",
+          "fieldId": "additional-documents",
           "label": "Additional Supporting Documents",
           "htmlType": "file",
           "multiple": false,
@@ -837,12 +837,12 @@
       ]
     },
     {
-      "stepId": "step5FinancialInformation",
+      "stepId": "step-5-financial-information",
       "title": "Financial Information",
       "description": "Bank details with conditional fields and various validation types",
       "elements": [
         {
-          "fieldId": "hasBankAccount",
+          "fieldId": "has-bank-account",
           "label": "I have a BB bank account",
           "htmlType": "checkbox",
           "options": [
@@ -854,14 +854,14 @@
           "defaultValue": "confirmed"
         },
         {
-          "fieldId": "bankName",
+          "fieldId": "bank-name",
           "label": "Bank Name",
           "htmlType": "text",
           "placeholder": "Enter bank name",
           "behaviours": [
             {
               "type": "fieldConditionalOn",
-              "targetFieldId": "hasBankAccount",
+              "targetFieldId": "has-bank-account",
               "operator": "equal",
               "value": "confirmed"
             }
@@ -874,7 +874,7 @@
           }
         },
         {
-          "fieldId": "accountType",
+          "fieldId": "account-type",
           "label": "Account Type",
           "htmlType": "select",
           "placeholder": "Select account type",
@@ -896,7 +896,7 @@
           "behaviours": [
             {
               "type": "fieldConditionalOn",
-              "targetFieldId": "hasBankAccount",
+              "targetFieldId": "has-bank-account",
               "operator": "equal",
               "value": "confirmed"
             }
@@ -909,14 +909,14 @@
           }
         },
         {
-          "fieldId": "accountNumber",
+          "fieldId": "account-number",
           "label": "Account Number",
           "htmlType": "text",
           "placeholder": "n-digit account number",
           "behaviours": [
             {
               "type": "fieldConditionalOn",
-              "targetFieldId": "hasBankAccount",
+              "targetFieldId": "has-bank-account",
               "operator": "equal",
               "value": "confirmed"
             }
@@ -937,7 +937,7 @@
           }
         },
         {
-          "fieldId": "swiftCode",
+          "fieldId": "swift-code",
           "label": "Swift Code",
           "htmlType": "text",
           "placeholder": "XX-XX-XX",
@@ -945,7 +945,7 @@
           "behaviours": [
             {
               "type": "fieldConditionalOn",
-              "targetFieldId": "hasBankAccount",
+              "targetFieldId": "has-bank-account",
               "operator": "equal",
               "value": "confirmed"
             }
@@ -962,14 +962,14 @@
           }
         },
         {
-          "fieldId": "noAccountReason",
+          "fieldId": "no-account-reason",
           "label": "Reason for not having a BB bank account",
           "htmlType": "textarea",
           "placeholder": "Please explain why you do not have a BB bank account...",
           "behaviours": [
             {
               "type": "fieldConditionalOn",
-              "targetFieldId": "hasBankAccount",
+              "targetFieldId": "has-bank-account",
               "operator": "notEqual",
               "value": "confirmed"
             }
@@ -990,7 +990,7 @@
           }
         },
         {
-          "fieldId": "initialDeposit",
+          "fieldId": "initial-deposit",
           "label": "Initial Deposit Amount ($)",
           "htmlType": "number",
           "placeholder": "Enter deposit amount",
@@ -1010,7 +1010,7 @@
           }
         },
         {
-          "fieldId": "fundSource",
+          "fieldId": "fund-source",
           "label": "Source of Funds",
           "htmlType": "radio",
           "hint": "Select the primary source of your funds",
@@ -1052,14 +1052,14 @@
           }
         },
         {
-          "fieldId": "fundSourceOther",
+          "fieldId": "fund-source-other",
           "label": "Please specify other source",
           "htmlType": "text",
           "placeholder": "Describe other source of funds",
           "behaviours": [
             {
               "type": "fieldConditionalOn",
-              "targetFieldId": "fundSource",
+              "targetFieldId": "fund-source",
               "operator": "equal",
               "value": "other"
             }
@@ -1075,17 +1075,17 @@
       "behaviours": [
         {
           "type": "repeatable",
-          "min": 1,
-          "max": 3
+          "min": 2,
+          "max": 6
         },
         {
           "type": "sharedFields",
-          "fieldIds": ["hasBankAccount"]
+          "fieldIds": ["has-bank-account"]
         }
       ]
     },
     {
-      "stepId": "step6Declarations",
+      "stepId": "step-6-declarations",
       "title": "Declarations & Consent",
       "description": "Legal declarations and consent with checkbox validations",
       "elements": [
@@ -1126,7 +1126,7 @@
           }
         },
         {
-          "fieldId": "consentMarketing",
+          "fieldId": "consent-marketing",
           "label": "I consent to receiving marketing communications about products and services that may be of interest to me.",
           "htmlType": "checkbox",
           "options": [
@@ -1138,7 +1138,7 @@
           "defaultValue": false
         },
         {
-          "fieldId": "consentThirdParty",
+          "fieldId": "consent-third-party",
           "label": "I consent to my information being shared with third parties for the purpose of processing this application.",
           "htmlType": "checkbox",
           "options": [
@@ -1156,7 +1156,7 @@
           }
         },
         {
-          "fieldId": "dataRetention",
+          "fieldId": "data-retention",
           "label": "I understand that my data will be retained in accordance with the data retention policy.",
           "htmlType": "checkbox",
           "options": [
@@ -1174,13 +1174,13 @@
           }
         },
         {
-          "fieldId": "additionalComments",
+          "fieldId": "additional-comments",
           "label": "Additional Comments (Optional)",
           "htmlType": "textarea",
           "placeholder": "Any additional information you'd like to provide..."
         },
         {
-          "fieldId": "agreedDate",
+          "fieldId": "agreed-date",
           "label": "Date",
           "htmlType": "date",
           "hint": "Today's date will be used as the agreement date",
@@ -1199,14 +1199,14 @@
       "behaviours": [
         {
           "type": "fieldConditionalOn",
-          "targetFieldId": "consentMarketing",
+          "targetFieldId": "consent-marketing",
           "operator": "equal",
           "value": true
         }
       ]
     },
     {
-      "stepId": "checkYourAnswers",
+      "stepId": "check-your-answers",
       "title": "Check Your Answers",
       "description": "Review all the information you have provided before submitting your application.",
       "elements": []

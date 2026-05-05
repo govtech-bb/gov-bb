@@ -12,4 +12,4 @@ export interface RepeatableConfig {
   sharedData?: FormValues;
 }
 
-export type FormRepeatableRecord = Record<sourceStepId, RepeatableConfig>;
+export type RepeatableStepSettings = Record<sourceStepId, RepeatableConfig>;
