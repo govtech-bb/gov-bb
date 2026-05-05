@@ -47,6 +47,7 @@
   },
   "packageManager": "npm@10.9.0",
   "dependencies": {
+    "@aws-sdk/client-sesv2": "^3.1041.0",
     "@govtech-bb/design": "^1.0.0-alpha.15",
     "@nestjs/event-emitter": "^3.0.1",
     "@nestjs/swagger": "^11.3.2",

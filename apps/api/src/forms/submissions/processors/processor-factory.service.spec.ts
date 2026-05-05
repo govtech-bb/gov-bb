@@ -95,4 +95,39 @@ describe("ProcessorFactory", () => {
       expect(resolved).toEqual([]);
     });
   });
+
+  describe("resolveSplit", () => {
+    let factory: ProcessorFactory;
+    const emailProcessor = makeProcessor("email");
+    const gatingPayment: ISubmissionProcessor = {
+      type: "payment" as Processor["type"],
+      gatesPipeline: true,
+      process: jest.fn().mockResolvedValue({ kind: "completed" }),
+    };
+
+    beforeEach(async () => {
+      const module = await Test.createTestingModule({
+        providers: [
+          ProcessorFactory,
+          {
+            provide: SUBMISSION_PROCESSORS,
+            useValue: [emailProcessor, gatingPayment],
+          },
+        ],
+      }).compile();
+
+      factory = module.get(ProcessorFactory);
+    });
+
+    it("splits gating from non-gating processors", () => {
+      const split = factory.resolveSplit([cfg("payment"), cfg("email")]);
+
+      expect(split.gating).toEqual([gatingPayment]);
+      expect(split.nonGating).toEqual([emailProcessor]);
+    });
+
+    it("returns empty arrays for empty config", () => {
+      expect(factory.resolveSplit([])).toEqual({ gating: [], nonGating: [] });
+    });
+  });
 });

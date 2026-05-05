@@ -13,9 +13,11 @@ export class SubmissionProcessorListener {
   async handleSubmissionCreated(
     payload: SubmissionCreatedEvent,
   ): Promise<void> {
-    const resolved = this.processorFactory.resolve(payload.processors);
+    const { nonGating } = this.processorFactory.resolveSplit(
+      payload.processors,
+    );
 
-    for (const processor of resolved) {
+    for (const processor of nonGating) {
       try {
         await processor.process(payload);
       } catch (err) {
