@@ -500,3 +500,94 @@ export const evaluateCondition = (
       return false;
   }
 };
+
+export const checkFileTypes = ({
+  fieldLabel,
+  value,
+  results,
+  validations,
+}: ValidationArgs<FileList>) => {
+  const fileTypes = validations.fileTypes;
+  if (!fileTypes || fileTypes.value.length === 0) return;
+
+  const allowedExtensions = fileTypes.value.map((type: string) => {
+    const parts = type.split("/");
+    return parts.length > 1 ? parts[1].toLowerCase() : type.toLowerCase();
+  });
+
+  const invalidExtensions = new Set<string>();
+  for (const file of value) {
+    const extension = file.name.split(".").pop()?.toLowerCase();
+    if (extension && !allowedExtensions.includes(extension)) {
+      invalidExtensions.add(extension);
+    }
+  }
+
+  if (invalidExtensions.size > 0) {
+    setValidationError(
+      fieldLabel,
+      fileTypes,
+      results,
+      `File type not allowed. Allowed types: ${fileTypes.value.join(", ")}.`,
+    );
+  }
+};
+
+export const checkFileMaxSize = ({
+  fieldLabel,
+  value,
+  results,
+  validations,
+}: ValidationArgs<FileList>) => {
+  const fileMaxSize = validations.maxSize?.value;
+  if (!fileMaxSize || fileMaxSize === undefined) return;
+
+  for (const file of value) {
+    if (file.size > fileMaxSize) {
+      setValidationError(
+        fieldLabel,
+        fileMaxSize,
+        results,
+        `File ${file.name} exceeds the maximum size of ${(fileMaxSize / (1024 * 1024)).toPrecision(2)} MB.`,
+      );
+    }
+  }
+};
+
+export const checkMaxFiles = ({
+  fieldLabel,
+  value,
+  results,
+  validations,
+}: ValidationArgs<FileList>) => {
+  const maxItems = validations.maxItems;
+  if (!maxItems || maxItems.value === undefined) return;
+
+  if (value.length > maxItems.value) {
+    setValidationError(
+      fieldLabel,
+      maxItems,
+      results,
+      `Number of files exceeds the maximum allowed (${maxItems.value}).`,
+    );
+  }
+};
+
+export const checkMinFiles = ({
+  fieldLabel,
+  value,
+  results,
+  validations,
+}: ValidationArgs<FileList>) => {
+  const minItems = validations.minItems;
+  if (!minItems || minItems.value === undefined) return;
+
+  if (value.length < minItems.value) {
+    setValidationError(
+      fieldLabel,
+      minItems,
+      results,
+      `Number of files is less than the minimum required (${minItems.value}).`,
+    );
+  }
+};

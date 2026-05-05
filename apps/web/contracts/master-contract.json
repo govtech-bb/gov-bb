@@ -764,8 +764,8 @@
               "error": "Proof of address is required"
             },
             "minItems": {
-              "value": 1,
-              "error": "Please upload at least one document"
+              "value": 2,
+              "error": "Please upload at least 2 documents"
             },
             "maxItems": {
               "value": 3,
@@ -776,8 +776,8 @@
               "error": "Only PDF, JPG and PNG files are accepted"
             },
             "maxSize": {
-              "value": 10485760,
-              "error": "Total size must not exceed 10MB"
+              "value": 524288,
+              "error": "Total size must not exceed 0.5MB"
             }
           }
         },
