@@ -46,10 +46,13 @@ const setValidationError = (
     (validation.error || customError) ??
     `Unknown error has occurred for ${fieldName}`;
   if (results.hasError === true) {
-    results.errors.push(errorMessage.replace(`${fieldName}`, ""));
+    const formattedError = errorMessage.replace(`${fieldName}`, "");
+    if (!results.errors.includes(formattedError))
+      results.errors.push(formattedError);
   } else {
     results.hasError = true;
-    results.errors.push(errorMessage);
+    if (!results.errors.includes(errorMessage))
+      results.errors.push(errorMessage);
   }
 };
 
