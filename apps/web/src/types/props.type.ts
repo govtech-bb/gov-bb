@@ -6,6 +6,7 @@ import {
 } from "./field-mapper.type";
 import { FormMeta } from "./renderer.type";
 import { FormRepeatableRecord } from "./behavior-helper.type";
+import { ValidationConfig } from "@govtech-bb/form-types";
 
 export interface FormRendererProps {
   form: AnyFormApi;
@@ -33,6 +34,8 @@ export type UseStepGuardProps = {
 export type FileUploadProps = {
   field: ClientPrimitive;
   sharedProps: React.InputHTMLAttributes<HTMLInputElement>;
-  onFileChange?: (files: File[] | null) => void;
+  onFileChange: (files: File[] | null) => void;
   value?: File[] | null;
+  errorMessage?: string;
+  validationRules?: any;
 };

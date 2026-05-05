@@ -32,6 +32,10 @@ import {
   checkMinMax,
   checkComparisons,
   checkContains,
+  checkFileTypes,
+  checkFileMaxSize,
+  checkMaxFiles,
+  checkMinFiles,
 } from "./validation-methods";
 import { AnyFieldApi } from "@tanstack/react-form";
 import { ValidationRule } from "@govtech-bb/form-types";
@@ -224,6 +228,17 @@ export const buildFieldValidationProperties = (
         }
       }
 
+      // Handling files
+      if (field.htmlType === "file") {
+        runFileValidations(
+          field.id,
+          field.label,
+          value as FileList,
+          validations,
+          results,
+        );
+      }
+
       return results.hasError ? results.errors : undefined;
     },
     onChangeListenTo: listenTo,
@@ -314,4 +329,24 @@ const runStringValidations = (
   checkMinMax(args);
   checkComparisons(args, fieldApi);
   checkContains(args);
+};
+
+const runFileValidations = (
+  fieldId: string,
+  fieldLabel: string,
+  value: FileList,
+  validations: ValidationRule,
+  results: ValidationResults,
+) => {
+  const args: ValidationArgs<FileList> = {
+    fieldId,
+    fieldLabel,
+    value,
+    validations,
+    results,
+  };
+  checkFileTypes(args);
+  checkFileMaxSize(args);
+  checkMaxFiles(args);
+  checkMinFiles(args);
 };
