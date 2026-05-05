@@ -1,5 +1,5 @@
 import type { RuleRunner } from "../types";
-import { resolveReference, MISSING } from "./resolve-referenceFieldId";
+import { resolveReference, MISSING } from "./resolve-reference";
 
 const parseDate = (v: unknown): Date | null => {
   if (!v || typeof v !== "string") return null;
