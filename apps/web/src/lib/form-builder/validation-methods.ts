@@ -8,6 +8,7 @@ import {
   FieldValue,
 } from "@web/types";
 import z from "zod";
+import { getFullFieldId } from "./field-mapper";
 
 // Modular Methods
 
@@ -372,6 +373,11 @@ export const checkMaxYear = ({
 /*
  * Checks for equality, inequality, greater than and lesser than
  */
+const getStepIdFromFieldName = (fieldName: string): string => {
+  const lastHyphenIndex = fieldName.lastIndexOf("-");
+  return lastHyphenIndex > 0 ? fieldName.slice(0, lastHyphenIndex) : "";
+};
+
 export const checkComparisons = (
   { fieldLabel, value, results, validations }: ValidationArgs<string | number>,
   fieldApi: AnyFieldApi,
@@ -384,14 +390,23 @@ export const checkComparisons = (
 
   if (!equal && !notEqual && !gt && !lt) return; // No validations provided
 
+  const currentStepId = getStepIdFromFieldName(fieldApi.name);
+
   const compare = (
     comp: "equal" | "notEqual" | "gt" | "lt",
     validation?: ValidationConfig,
   ) => {
     if (validation && validation.reference) {
-      const targetFieldValue = fieldApi.form.getFieldValue(
-        validation.reference,
-      );
+      let referenceId: string;
+      if (validation.referenceStepId) {
+        referenceId = getFullFieldId(
+          validation.referenceStepId,
+          validation.reference,
+        );
+      } else {
+        referenceId = getFullFieldId(currentStepId, validation.reference);
+      }
+      const targetFieldValue = fieldApi.form.getFieldValue(referenceId);
       const passesCondition = evaluateCondition(value, targetFieldValue, comp);
       if (!passesCondition) {
         setValidationError(fieldLabel, validation, results);
