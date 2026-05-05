@@ -87,6 +87,7 @@ export function getLastCompletedStep(
 }
 
 // Find the index of the first incomplete step
+// @deprecated — prefer getFirstIncompleteActiveStep for condition-aware navigation
 export function getFirstIncompleteStepIndex(
   formId: string,
   steps: { stepId: string }[],
@@ -98,4 +99,42 @@ export function getFirstIncompleteStepIndex(
     }
   }
   return steps.length; // all steps completed
+}
+
+/**
+ * Returns the first step in `activeSteps` that has not yet been completed.
+ *
+ * Only the steps currently visible (condition-filtered) are considered —
+ * hidden steps are not blocking, regardless of their stored completion state.
+ * Returns null when every active step is already completed.
+ */
+export function getFirstIncompleteActiveStep(
+  formId: string,
+  activeSteps: { stepId: string }[],
+): { stepId: string } | null {
+  const completedSteps = getCompletedSteps(formId);
+  return activeSteps.find((s) => !completedSteps.includes(s.stepId)) ?? null;
+}
+
+/**
+ * Returns true when every step that precedes `targetStepId` inside
+ * `activeSteps` has already been completed.
+ *
+ * This is the single source of truth for "can the user navigate here?":
+ * - Step is not in activeSteps → false (hidden by condition, not reachable)
+ * - Step is first in activeSteps → true (no prerequisites)
+ * - All steps before it are completed → true
+ * - Any step before it is incomplete → false
+ */
+export function isStepAccessible(
+  formId: string,
+  targetStepId: string,
+  activeSteps: { stepId: string }[],
+): boolean {
+  const completedSteps = getCompletedSteps(formId);
+  for (const step of activeSteps) {
+    if (step.stepId === targetStepId) return true; // reached target: all preceding steps were complete
+    if (!completedSteps.includes(step.stepId)) return false; // preceding step not complete
+  }
+  return false; // targetStepId not found in activeSteps
 }
