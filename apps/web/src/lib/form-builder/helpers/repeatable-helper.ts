@@ -28,9 +28,9 @@ export const setupRepeatSteps = (
 
     // Need to see if this is the original step
 
-    const idParts = step.stepId.split("--");
+    const repeatStepCount = getRepeatStepCount(step.stepId);
     // If not the original, just skip
-    if (idParts.length > 1) continue;
+    if (repeatStepCount > 0) continue;
 
     // We can setup the config first.
     const repeatConfig: RepeatableConfig = {
@@ -45,7 +45,8 @@ export const setupRepeatSteps = (
       // Start at 1 to account for source step
       for (let j = 1; j <= repeatBehaviour.min; j++) {
         const repeatStepCount = j;
-        const nextStepId = `${step.stepId}--${repeatStepCount}`;
+        // const nextStepId = `${step.stepId}--${repeatStepCount}`;
+        const nextStepId = getRepeatStepId(step.stepId, repeatStepCount);
 
         const nextStepFields = generateRepeatStepFields(
           step.fields,
@@ -129,4 +130,20 @@ export const generateRepeatableAddAnotherField = (
     },
   };
   return addAnotherField;
+};
+
+export const repeatStepConcactenator = "~";
+
+export const getRepeatStepId = (
+  stepId: string,
+  repeatStepCount: number,
+): string => {
+  return `${stepId}${repeatStepConcactenator}${repeatStepCount}`;
+};
+
+export const getRepeatStepCount = (stepId: string): number => {
+  const parts = stepId.split(repeatStepConcactenator);
+  if (parts.length <= 1) return 0;
+  const count = Number(parts[parts.length - 1]);
+  return isNaN(count) ? 0 : count;
 };

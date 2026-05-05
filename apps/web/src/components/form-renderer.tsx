@@ -14,6 +14,9 @@ import {
   generateRepeatableAddAnotherField,
   generateRepeatStepFields,
   getFullFieldId,
+  getRepeatStepId,
+  getRepeatStepCount,
+  repeatStepConcactenator,
 } from "@web/lib";
 
 export default function FormRenderer({
@@ -58,9 +61,8 @@ export default function FormRenderer({
 
   const stepValues = useStore(form.store, (state) => state.values[stepId]);
 
-  const [baseStepId, rawIndex] = stepId.split("--");
-  let currentRepeatStepCount = Number(rawIndex ?? 0);
-  if (isNaN(currentRepeatStepCount)) currentRepeatStepCount = 0;
+  const baseStepId = stepId.split(repeatStepConcactenator)[0];
+  const currentRepeatStepCount = getRepeatStepCount(stepId);
 
   const currentStepRepeatableSettings = repeatableStepSettings[baseStepId];
   const repeatableStepCount =
@@ -74,7 +76,7 @@ export default function FormRenderer({
       repeatableStepCount >= repeatableBehaviour.max
     )
       return visibleSteps;
-    const nextStepId = `${baseStepId}--${currentRepeatStepCount + 1}`;
+    const nextStepId = getRepeatStepId(baseStepId, currentRepeatStepCount + 1);
 
     if (currentStepRepeatableSettings.orderedStepIds.includes(nextStepId))
       return visibleSteps;
@@ -121,10 +123,9 @@ export default function FormRenderer({
   };
 
   const removeRepeatableStep = (): ClientFormStep[] => {
-    const rawIndex = stepId.split("--")[1];
-    let index = Number(rawIndex ?? 0);
-    if (isNaN(index)) return visibleSteps;
-    const targetStepId = `${baseStepId}--${index ? index + 1 : 1}`;
+    const index = getRepeatStepCount(stepId);
+    if (index === 0) return visibleSteps;
+    const targetStepId = getRepeatStepId(baseStepId, index ? index + 1 : 1);
 
     const record = repeatableStepSettings[baseStepId];
     if (!record?.orderedStepIds.includes(targetStepId)) return visibleSteps;

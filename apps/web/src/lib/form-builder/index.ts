@@ -1,10 +1,3 @@
-export {
-  checkConditionalOn,
-  getVisibleSteps,
-  setupRepeatSteps,
-  generateRepeatableAddAnotherField,
-  generateRepeatStepFields,
-} from "./helpers/behavior-helper";
 export type { RequiredState } from "./validation-methods";
 export { fetchContract, FormFetchError } from "./form-fetcher";
 export { buildForm } from "./build-form";
@@ -13,3 +6,16 @@ export {
   stepFieldIdConcactenator,
   mapContractToLocale,
 } from "./field-mapper";
+export {
+  setupRepeatSteps,
+  generateRepeatableAddAnotherField,
+  generateRepeatStepFields,
+  repeatStepConcactenator,
+  getRepeatStepId,
+  getRepeatStepCount,
+} from "./helpers/repeatable-helper";
+export {
+  checkConditionalOn,
+  getVisibleSteps,
+  getStepConditonalTargets,
+} from "./helpers/behavior-helper";

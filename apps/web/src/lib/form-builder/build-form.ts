@@ -7,10 +7,7 @@ import {
   FormValidation,
 } from "@web/types";
 import { buildValidation } from "./validation-builder";
-import {
-  getStepConditonalTargets,
-  setupRepeatSteps,
-} from "./helpers/behavior-helper";
+import { getStepConditonalTargets, setupRepeatSteps } from "@web/lib";
 
 export const buildForm = (contract: ClientServiceContract): FormMeta => {
   // Build the Validation Schema
