@@ -379,7 +379,13 @@ const getStepIdFromFieldName = (fieldName: string): string => {
 };
 
 export const checkComparisons = (
-  { fieldLabel, value, results, validations }: ValidationArgs<string | number>,
+  {
+    fieldId,
+    fieldLabel,
+    value,
+    results,
+    validations,
+  }: ValidationArgs<string | number>,
   fieldApi: AnyFieldApi,
 ) => {
   const equal = validations.equal;
@@ -396,15 +402,13 @@ export const checkComparisons = (
     comp: "equal" | "notEqual" | "gt" | "lt",
     validation?: ValidationConfig,
   ) => {
-    if (validation && validation.reference) {
-      const referenceId = validation.referenceStepId
-        ? getFullFieldId(
-            validation.referenceStepId,
-            validation.referenceFieldId!,
-          )
-        : getFullFieldId(currentStepId, validation.reference);
+    if (validation && validation.referenceFieldId) {
+      const referenceStepId = validation?.referenceStepId ?? currentStepId;
+      const referenceFieldId = validation?.referenceFieldId;
 
-      const targetFieldValue = fieldApi.form.getFieldValue(referenceId);
+      const fullReferenceId = getFullFieldId(referenceStepId, referenceFieldId);
+
+      const targetFieldValue = fieldApi.form.getFieldValue(fullReferenceId);
       const passesCondition = evaluateCondition(value, targetFieldValue, comp);
       if (!passesCondition) {
         setValidationError(fieldLabel, validation, results);
