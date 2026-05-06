@@ -2,6 +2,11 @@ import React from "react";
 import designSystem from "../styles/govtechbb.module.css";
 
 export default function SubmissionConfirmation() {
+  const hasPayment = true; // TODO: get this from backend response
+  const serviceName = "Example Service"; // TODO: get this from backend response
+  const amount = "$100.00"; // TODO: get this from backend response
+  const quantity = 1; // TODO: get this from backend response
+
   return (
     <div className={designSystem.confirmation}>
       <p className={designSystem.subHeading}>
@@ -9,26 +14,28 @@ export default function SubmissionConfirmation() {
         payment.
       </p>
 
-      <div className={designSystem.paymentSummary}>
-        <h2>Complete your payment</h2>
-        <p>
-          Please review and complete your payment to finalize your application
-        </p>
+      {hasPayment && (
+        <div className={designSystem.paymentSummary}>
+          <h2>Complete your payment</h2>
+          <p>
+            Please review and complete your payment to finalize your application
+          </p>
 
-        <div className={designSystem.paymentSummaryTable}>
-          <p>Service</p>
-          <p>{}</p>
-          <p>Quantity</p>
-          <p>{}</p>
-          <p>Amount</p>
-          <p>{}</p>
+          <div className={designSystem.paymentSummaryTable}>
+            <p>Service</p>
+            <p>{serviceName}</p>
+            <p>Quantity</p>
+            <p>{quantity}</p>
+            <p>Amount</p>
+            <p>{amount}</p>
+          </div>
+
+          <button data-variant="primary">Continue to payment</button>
+          <p className={designSystem.paymentHint}>
+            You will be redirected to EZ Pay to securely complete your payment.
+          </p>
         </div>
-
-        <button data-variant="primary">Continue to payment</button>
-        <p className={designSystem.paymentHint}>
-          You will be redirected to EZ Pay to securely complete your payment.
-        </p>
-      </div>
+      )}
 
       <div className={designSystem.nextSteps}>
         <h2>What happens next</h2>
