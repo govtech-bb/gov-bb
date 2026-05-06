@@ -1215,16 +1215,7 @@
     {
       "stepId": "submission-confirmation",
       "title": "Thank you for your application!",
-      "elements": [],
-      "paymentSummary": {
-        "label": "Master Application",
-        "amount": 30,
-        "quantity": 1,
-        "total": {
-          "amount": 30
-        },
-        "currency": "BBD"
-      }
+      "elements": []
     }
   ]
 }
