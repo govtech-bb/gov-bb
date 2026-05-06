@@ -336,9 +336,9 @@ export default function FieldRenderer({
             );
           case "show-hide": {
             // Value is a boolean: false = collapsed (default), true = expanded.
-            // The toggle is never validated itself — it acts as the target of a
-            // fieldConditionalOn behaviour on any fields it controls, so those
-            // fields are hidden and skipped from validation while collapsed.
+            // The toggle itself carries no validation. Hint text and controlled
+            // sibling fields are rendered by form-renderer inside a shared
+            // data-show-hide-content wrapper so the left border spans them all.
             const isOpen = (f.state.value as boolean | undefined) ?? false;
             return (
               <div data-show-hide>
@@ -351,11 +351,6 @@ export default function FieldRenderer({
                   <span data-show-hide-arrow aria-hidden="true" />
                   {field.label}
                 </button>
-                {isOpen && field.hint && (
-                  <div data-show-hide-content>
-                    <p data-hint>{field.hint}</p>
-                  </div>
-                )}
               </div>
             );
           }
