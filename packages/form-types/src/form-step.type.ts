@@ -2,14 +2,10 @@ import { z } from "zod";
 import { fieldOverridesSchema, primitiveSchema } from "./primitive.type";
 import { behaviourSchema } from "./behavior.type";
 
-const paymentSummaryItemSchema = z.object({
+const paymentSummarySchema = z.object({
   label: z.string(),
   amount: z.number(),
   quantity: z.number().optional(),
-});
-
-const paymentSummarySchema = z.object({
-  items: z.array(paymentSummaryItemSchema),
   total: z.object({ amount: z.number() }),
   currency: z.string(),
 });

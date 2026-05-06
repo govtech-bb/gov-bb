@@ -1217,13 +1217,9 @@
       "title": "Thank you for your application!",
       "elements": [],
       "paymentSummary": {
-        "items": [
-          {
-            "label": "Master Application",
-            "amount": 30,
-            "quantity": 1
-          }
-        ],
+        "label": "Master Application",
+        "amount": 30,
+        "quantity": 1,
         "total": {
           "amount": 30
         },

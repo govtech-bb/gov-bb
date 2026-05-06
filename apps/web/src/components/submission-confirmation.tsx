@@ -1,5 +1,5 @@
-import designSystem from "../styles/govtechbb.module.css";
 import React from "react";
+import designSystem from "../styles/govtechbb.module.css";
 import { PaymentSummary } from "@govtech-bb/form-types";
 
 interface SubmissionConfirmationProps {
@@ -24,18 +24,14 @@ export default function SubmissionConfirmation({
           </p>
 
           <div className={designSystem.paymentSummaryTable}>
-            {paymentSummary.items.map((item, index) => (
-              <React.Fragment key={index}>
-                <p>Service</p>
-                <p>{item.label}</p>
-                <p>Quantity</p>
-                <p>{item.quantity}</p>
-                <p>Amount</p>
-                <p>
-                  {paymentSummary.currency} {item.amount.toFixed(2)}
-                </p>
-              </React.Fragment>
-            ))}
+            <p>Service</p>
+            <p>{paymentSummary.label}</p>
+            <p>Quantity</p>
+            <p>{paymentSummary.quantity}</p>
+            <p>Amount</p>
+            <p>
+              {paymentSummary.currency} {paymentSummary.amount.toFixed(2)}
+            </p>
           </div>
 
           <button data-variant="primary">Continue to payment</button>
