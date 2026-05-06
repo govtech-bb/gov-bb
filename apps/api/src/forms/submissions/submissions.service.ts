@@ -44,6 +44,7 @@ export class SubmissionsService {
     }
 
     const { draft, contract, auditTrail } = await this.pipeline.run(dto);
+    const pinnedVersion = draft?.formVersion ?? dto.formVersion;
 
     const split = this.processorFactory.resolveSplit(contract.processors ?? []);
     const hasGating = split.gating.length > 0;
@@ -61,7 +62,7 @@ export class SubmissionsService {
       const entity = repo.create({
         idempotencyKey,
         formId: dto.formId,
-        formVersion: draft.formVersion,
+        formVersion: pinnedVersion,
         values: dto.values,
         meta: auditTrail as unknown as Record<string, unknown>,
         status: hasGating
@@ -76,7 +77,7 @@ export class SubmissionsService {
     const event: SubmissionCreatedEvent = {
       submissionId: saved.id,
       formId: dto.formId,
-      formVersion: draft.formVersion,
+      formVersion: pinnedVersion,
       idempotencyKey: dto.idempotencyKey,
       processors: contract.processors ?? [],
       values: dto.values,
