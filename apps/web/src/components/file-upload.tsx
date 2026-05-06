@@ -1,24 +1,23 @@
 import React from "react";
 import { FileUploadProps } from "@web/types";
+import ErrorMessage from "./error-message";
 
 export default function FileUpload({
   field,
   sharedProps,
   onFileChange,
   value,
+  errorMessage,
+  validationRules,
 }: FileUploadProps) {
-  const [files, setFiles] = React.useState<File[]>(value ?? []);
-
-  React.useEffect(() => {
-    setFiles(value ?? []);
-  }, [value]);
+  const files = value ?? [];
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const currentFiles = e.target.files;
     const picked = currentFiles ? Array.from(currentFiles) : [];
     const updatedFiles = [...files, ...picked];
-    setFiles(updatedFiles);
-    onFileChange?.(updatedFiles.length ? updatedFiles : null);
+    onFileChange(updatedFiles.length ? updatedFiles : null);
+    e.target.value = "";
   };
 
   const handleChooseClick = () => {
@@ -29,21 +28,30 @@ export default function FileUpload({
   };
 
   const removeFile = (index: number) => {
-    setFiles((prev) => {
-      const next = prev.slice();
-      next.splice(index, 1);
-      onFileChange?.(next.length ? next : null);
-      return next;
-    });
+    const next = files.slice();
+    next.splice(index, 1);
+    onFileChange?.(next.length ? next : null);
   };
+
+  const readableFileTypes = field.validations?.fileTypes?.value
+    .map((type: string) => type.split("/")[1]) // "image/png" → "png"
+    .join(", ");
+
+  const fileTypeFormatter = new Intl.ListFormat("en", {
+    style: "long",
+    type: "disjunction",
+  });
 
   return (
     <div data-file-upload>
+      {errorMessage && <ErrorMessage message={errorMessage} />}
       <label data-file-upload-label>
         <div data-file-upload-instructions>
           <span data-file-upload-title>{field.label ?? "Upload a file"}</span>
           <span data-file-upload-description>
-            {field.placeholder ?? "Attach a file"}
+            {field.validations?.fileTypes?.value
+              ? `Attach a ${fileTypeFormatter.format(readableFileTypes.split(", "))} file`
+              : "No file type restrictions"}
           </span>
         </div>
 
@@ -62,8 +70,13 @@ export default function FileUpload({
           >
             Choose file
           </button>
-          {/* TODO: Replace with actual file size limit */}
-          <span data-file-upload-limit>Max Size: --MB</span>
+          <span data-file-upload-limit>
+            Max Size:{" "}
+            {validationRules?.maxSize?.value
+              ? (validationRules.maxSize.value / (1024 * 1024)).toPrecision(2) +
+                " MB"
+              : "--"}
+          </span>
         </div>
       </label>
 

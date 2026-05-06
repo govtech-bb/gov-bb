@@ -5,16 +5,16 @@ import {
   ClientServiceContract,
 } from "./field-mapper.type";
 import { FormMeta } from "./renderer.type";
-import { FormRepeatableRecord } from "./behavior-helper.type";
+import { RepeatableStepSettings } from "./behavior-helper.type";
 
 export interface FormRendererProps {
   form: AnyFormApi;
   formMeta: FormMeta;
   visibleSteps: ClientFormStep[];
   stepId: string;
-  repeatableRecord: FormRepeatableRecord;
-  setRepeatableRecord: React.Dispatch<
-    React.SetStateAction<FormRepeatableRecord>
+  repeatableStepSettings: RepeatableStepSettings;
+  setRepeatableStepSettings: React.Dispatch<
+    React.SetStateAction<RepeatableStepSettings>
   >;
 }
 
@@ -25,14 +25,25 @@ export type FormRouteProps = {
 
 export type UseStepGuardProps = {
   formId: string;
-  steps: { stepId: string }[];
-  stepId?: string;
-  setStepIndex: React.Dispatch<React.SetStateAction<number>>;
+  /**
+   * The condition-filtered list of steps that are currently visible/active.
+   * Hidden or conditionally-removed steps must NOT be included — the guard
+   * derives all accessibility decisions from this list.
+   */
+  activeSteps: ClientFormStep[];
+  /**
+   * The step ID currently reflected in the URL (?step=...).
+   * The guard enforces that the user may only be on a step that is both
+   * present in activeSteps and reachable (all preceding steps completed).
+   */
+  currentStepId: string;
 };
 
 export type FileUploadProps = {
   field: ClientPrimitive;
   sharedProps: React.InputHTMLAttributes<HTMLInputElement>;
-  onFileChange?: (files: File[] | null) => void;
+  onFileChange: (files: File[] | null) => void;
   value?: File[] | null;
+  errorMessage?: string;
+  validationRules?: any;
 };

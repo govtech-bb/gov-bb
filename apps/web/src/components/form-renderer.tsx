@@ -1,49 +1,51 @@
 import {
   ClientFormStep,
-  ClientPrimitive,
   FieldValidationErrors,
   FormRendererProps,
 } from "@web/types";
 import FieldRenderer from "./field-renderer";
 import designSystem from "../lib/design-system";
-import React, { useEffect } from "react";
+import React from "react";
 import ErrorSummary from "./error-summary";
 import { useStore } from "@tanstack/react-form";
 import { useStepGuard } from "../hooks/use-step-guard";
 import Review from "./review";
-import { getFullFieldId } from "@web/lib";
+import {
+  generateRepeatableAddAnotherField,
+  generateRepeatStepFields,
+  getFullFieldId,
+  getRepeatStepId,
+  getRepeatStepCount,
+  repeatStepConcactenator,
+} from "@web/lib";
 
 export default function FormRenderer({
   form,
   formMeta,
   stepId,
   visibleSteps,
-  repeatableRecord,
-  setRepeatableRecord,
+  repeatableStepSettings,
+  setRepeatableStepSettings,
 }: FormRendererProps) {
-  const [hidePrevious, setHidePrevious] = React.useState(true);
-  const [stepIndex, setStepIndex] = React.useState(0);
-
-  const { navigateToStep, completeAndContinue } = useStepGuard({
+  const { navigateToStep, completeAndContinue, currentIndex } = useStepGuard({
     formId: formMeta.formId,
-    steps: visibleSteps,
-    stepId,
-    setStepIndex,
+    activeSteps: visibleSteps,
+    currentStepId: stepId,
   });
 
-  useEffect(() => {
-    if (stepIndex === 0) {
-      setHidePrevious(true);
-    } else {
-      setHidePrevious(false);
-    }
-  }, [stepIndex]);
+  // currentIndex is -1 for the brief moment the guard effect is redirecting
+  // away from a step that was just hidden by a condition change.
+  const stepIndex = Math.max(0, currentIndex);
+  const hidePrevious = currentIndex <= 0;
 
-  const currentStep = visibleSteps[stepIndex];
+  const currentStep = visibleSteps[stepIndex] ?? visibleSteps[0];
+  if (!currentStep) return null;
+
   const currentFields = [...currentStep.fields];
 
   const handlePrevious = () => {
-    navigateToStep(stepIndex - 1);
+    const prevStep = visibleSteps[stepIndex - 1];
+    if (prevStep) navigateToStep(prevStep.stepId);
   };
 
   const repeatableBehaviour = currentStep.behaviours?.filter(
@@ -55,55 +57,45 @@ export default function FormRenderer({
 
   const stepValues = useStore(form.store, (state) => state.values[stepId]);
 
-  const [baseStepId, rawIndex] = stepId.split("--");
-  const currentRepeatStepCount = Number(rawIndex ?? 0);
+  const baseStepId = stepId.split(repeatStepConcactenator)[0];
+  const currentRepeatStepCount = getRepeatStepCount(stepId);
 
-  const stepRepeatableRecord = repeatableRecord[baseStepId];
-  const repeatableStepCount = stepRepeatableRecord?.orderedStepIds.length;
+  const currentStepRepeatableSettings = repeatableStepSettings[baseStepId];
+  const repeatableStepCount =
+    currentStepRepeatableSettings?.orderedStepIds.length;
 
   const addRepeatableStep = (): ClientFormStep[] => {
+    if (!currentStepRepeatableSettings) return visibleSteps;
     if (!repeatableBehaviour) return visibleSteps;
-    const addAnotherStepRadioId = getFullFieldId(
-      currentStep.stepId,
-      `addAnother-${repeatableStepCount}`,
-    );
-    const nextStepId = `${baseStepId}--${currentRepeatStepCount + 1}`;
-
     if (
-      stepRepeatableRecord &&
-      stepRepeatableRecord.orderedStepIds.includes(nextStepId)
+      repeatableBehaviour.max &&
+      repeatableStepCount >= repeatableBehaviour.max
     )
       return visibleSteps;
+    const nextStepId = getRepeatStepId(baseStepId, currentRepeatStepCount + 1);
 
-    let nextStepFields = currentFields
-      .filter((f) => f.id != addAnotherStepRadioId)
-      .map((field) => {
-        field.id = getFullFieldId(nextStepId, field.fieldId);
-        return field;
-      });
+    if (currentStepRepeatableSettings.orderedStepIds.includes(nextStepId))
+      return visibleSteps;
 
-    if (sharedFieldBehaviour) {
-      nextStepFields = nextStepFields.filter(
-        (field) => !sharedFieldBehaviour.fieldIds.includes(field.fieldId),
-      );
+    const nextStepFields = generateRepeatStepFields(
+      currentFields,
+      nextStepId,
+      getFullFieldId(currentStep.stepId, "addAnother"),
+      sharedFieldBehaviour,
+    );
+    if (
+      repeatableBehaviour.max &&
+      repeatableStepCount < repeatableBehaviour.max - 1
+    ) {
+      nextStepFields.push(generateRepeatableAddAnotherField(nextStepId));
     }
 
-    const updatedRecord = stepRepeatableRecord ?? {
-      minRepeats: repeatableBehaviour.min ?? 1,
-      maxRepeats: repeatableBehaviour.max ?? 5,
-      stepData: {
-        [stepId]: stepValues,
-      },
-      orderedStepIds: [stepId, nextStepId],
-      sharedData: {},
-    };
+    const updatedRecord = currentStepRepeatableSettings;
 
-    if (stepRepeatableRecord) {
-      updatedRecord.stepData[stepId] = stepValues;
-      updatedRecord.orderedStepIds.push(nextStepId);
-    }
+    updatedRecord.stepData[stepId] = stepValues;
+    updatedRecord.orderedStepIds.push(nextStepId);
 
-    setRepeatableRecord((prev) => {
+    setRepeatableStepSettings((prev) => {
       return {
         ...prev,
         [baseStepId]: updatedRecord,
@@ -132,31 +124,29 @@ export default function FormRenderer({
   };
 
   const removeRepeatableStep = (): ClientFormStep[] => {
-    const rawIndex = stepId.split("--")[1];
-    const index = Number(rawIndex ?? 0);
-    const targetStepId = `${baseStepId}--${index ? index : 1}`;
+    const index = getRepeatStepCount(stepId);
+    if (index === 0) return visibleSteps;
+    const targetStepId = getRepeatStepId(baseStepId, index ? index + 1 : 1);
 
-    const record = repeatableRecord[baseStepId];
+    const record = repeatableStepSettings[baseStepId];
     if (!record?.orderedStepIds.includes(targetStepId)) return visibleSteps;
 
     const step = visibleSteps.find((s) => s.stepId === targetStepId);
-    if (!step) return visibleSteps;
+    if (!step) {
+      const pos = record.orderedStepIds.indexOf(targetStepId);
+      if (pos !== -1) {
+        record.orderedStepIds.splice(pos, 1);
+      }
+      return visibleSteps;
+    }
 
-    const { orderedStepIds } = record;
+    const orderedStepIds = [...record.orderedStepIds];
 
     const startIndex = orderedStepIds.indexOf(targetStepId);
     if (startIndex === -1) return visibleSteps;
 
-    let toRemove: string[];
-    if (index !== 0) {
-      // Determine which step IDs to remove (everything after the target)
-      toRemove = orderedStepIds.slice(startIndex + 1);
-      record.orderedStepIds = orderedStepIds.slice(0, startIndex + 1);
-    } else {
-      // But if there's only one other element, (removing from the source step) then remove it.
-      toRemove = orderedStepIds.slice(startIndex);
-      record.orderedStepIds = orderedStepIds.slice(0, startIndex);
-    }
+    const toRemove: string[] = orderedStepIds.slice(startIndex);
+    record.orderedStepIds = orderedStepIds.slice(0, startIndex);
 
     if (toRemove.length === 0) return visibleSteps;
 
@@ -176,53 +166,22 @@ export default function FormRenderer({
   const handleContinue = () => {
     // Handle navigation to repeatable step.
     if (repeatableBehaviour) {
-      const anotherFieldId = getFullFieldId(
-        currentStep.stepId,
-        `addAnother-${repeatableStepCount}`,
-      );
+      const anotherFieldId = getFullFieldId(currentStep.stepId, "addAnother");
 
       const anotherFieldValue = form.getFieldValue(anotherFieldId);
       if (anotherFieldValue === "yes") {
         const updatedSteps = addRepeatableStep();
-        completeAndContinue(currentStep.stepId, stepIndex, updatedSteps);
+        completeAndContinue(currentStep.stepId, updatedSteps);
         return;
-      } else {
+      } else if (anotherFieldValue === "no") {
         const updatedSteps = removeRepeatableStep();
-        completeAndContinue(currentStep.stepId, stepIndex, updatedSteps);
+        completeAndContinue(currentStep.stepId, updatedSteps);
         return;
       }
     }
     // TODO: Validate current step before marking as completed and navigating to the next step
-    completeAndContinue(currentStep.stepId, stepIndex);
+    completeAndContinue(currentStep.stepId);
   };
-
-  if (repeatableBehaviour) {
-    const addAnotherField: ClientPrimitive = {
-      id: getFullFieldId(
-        currentStep.stepId,
-        `addAnother-${repeatableStepCount}`,
-      ),
-      fieldId: `addAnother-${repeatableStepCount}`,
-      stepId: currentStep.stepId,
-      name: "Add Another",
-      label: "Add another?",
-      htmlType: "radio",
-      disabled: false,
-      hidden: false,
-      options: [
-        { label: "Yes", value: "yes" },
-        { label: "No", value: "no" },
-      ],
-      validations: {
-        required: {
-          value: true,
-          error: "Add another is required.",
-        },
-      },
-    };
-
-    currentFields.push(addAnotherField);
-  }
 
   const handleSubmit = () => {};
 
@@ -242,7 +201,6 @@ export default function FormRenderer({
 
       <h1>{currentStep.title}</h1>
       {/* {step.description && <p>{step.description}</p>} */}
-      {/* TODO: Pass in a complete list of errors */}
       <ErrorSummary errors={errors} />
 
       <div className={designSystem.formStep}>
