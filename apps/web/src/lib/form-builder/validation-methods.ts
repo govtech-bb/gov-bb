@@ -37,25 +37,28 @@ export const valueIsEmpty = (value: FieldValue): boolean | undefined => {
 };
 
 const setValidationError = (
-  fieldLabel: string,
+  fieldName: string,
   validation: ValidationConfig,
   results: ValidationResults,
   customError?: string,
 ) => {
   const errorMessage =
     (validation.error || customError) ??
-    `Unknown error has occurred for ${fieldLabel}`;
+    `Unknown error has occurred for ${fieldName}`;
   if (results.hasError === true) {
-    results.errors.push(errorMessage.replace(`${fieldLabel}`, ""));
+    const formattedError = errorMessage.replace(`${fieldName}`, "");
+    if (!results.errors.includes(formattedError))
+      results.errors.push(formattedError);
   } else {
     results.hasError = true;
-    results.errors.push(errorMessage);
+    if (!results.errors.includes(errorMessage))
+      results.errors.push(errorMessage);
   }
 };
 
 export const checkRequired = ({
   fieldId,
-  fieldLabel,
+  fieldName,
   value,
   results,
   validations,
@@ -69,7 +72,7 @@ export const checkRequired = ({
   }
 
   if (required && required.value && isEmpty) {
-    setValidationError(fieldLabel, required, results);
+    setValidationError(fieldName, required, results);
     return "requiredAndEmpty";
   }
   if ((!required || (required && !required.value)) && isEmpty)
@@ -79,7 +82,7 @@ export const checkRequired = ({
 };
 
 export const checkLength = ({
-  fieldLabel,
+  fieldName,
   value,
   results,
   validations,
@@ -88,16 +91,16 @@ export const checkLength = ({
   const maxLength = validations.maxLength;
 
   if (minLength && minLength.value && value.length < minLength.value) {
-    setValidationError(fieldLabel, minLength, results);
+    setValidationError(fieldName, minLength, results);
   }
 
   if (maxLength && maxLength.value && value.length > maxLength.value) {
-    setValidationError(fieldLabel, maxLength, results);
+    setValidationError(fieldName, maxLength, results);
   }
 };
 
 export const checkSelectionLength = ({
-  fieldLabel,
+  fieldName,
   value,
   results,
   validations,
@@ -106,16 +109,16 @@ export const checkSelectionLength = ({
   const maxSelection = validations.maxSelection;
 
   if (minSelection && minSelection.value && value.length < minSelection.value) {
-    setValidationError(fieldLabel, minSelection, results);
+    setValidationError(fieldName, minSelection, results);
   }
 
   if (maxSelection && maxSelection.value && value.length > maxSelection.value) {
-    setValidationError(fieldLabel, maxSelection, results);
+    setValidationError(fieldName, maxSelection, results);
   }
 };
 
 export const checkPattern = ({
-  fieldLabel,
+  fieldName,
   value,
   results,
   validations,
@@ -127,12 +130,12 @@ export const checkPattern = ({
 
   const match = re.test(value);
   if (!match) {
-    setValidationError(fieldLabel, pattern, results);
+    setValidationError(fieldName, pattern, results);
   }
 };
 
 export const checkEmail = ({
-  fieldLabel,
+  fieldName,
   value,
   results,
   validations,
@@ -143,12 +146,12 @@ export const checkEmail = ({
   try {
     z.email().parse(value);
   } catch {
-    setValidationError(fieldLabel, email, results);
+    setValidationError(fieldName, email, results);
   }
 };
 
 export const checkMinMax = ({
-  fieldLabel,
+  fieldName,
   value,
   results,
   validations,
@@ -171,14 +174,14 @@ export const checkMinMax = ({
   if (min && min.value?.toString().length >= 1) {
     const num = stringToNumCheck(value);
     if (num && num < min.value) {
-      setValidationError(fieldLabel, min, results);
+      setValidationError(fieldName, min, results);
     }
   }
 
   if (max && max.value?.toString().length >= 1) {
     const num = stringToNumCheck(value);
     if (num && num > max.value) {
-      setValidationError(fieldLabel, max, results);
+      setValidationError(fieldName, max, results);
     }
   }
 };
@@ -213,7 +216,7 @@ export const isDateComplete = (value: DateValueInput): boolean => {
 };
 
 export const checkDatePast = ({
-  fieldLabel,
+  fieldName,
   value,
   results,
   validations,
@@ -225,12 +228,12 @@ export const checkDatePast = ({
   today.setHours(0, 0, 0, 0);
 
   if (value >= today) {
-    setValidationError(fieldLabel, past, results);
+    setValidationError(fieldName, past, results);
   }
 };
 
 export const checkDatePastOrToday = ({
-  fieldLabel,
+  fieldName,
   value,
   results,
   validations,
@@ -242,12 +245,12 @@ export const checkDatePastOrToday = ({
   today.setHours(0, 0, 0, 0);
 
   if (value > today) {
-    setValidationError(fieldLabel, pastOrToday, results);
+    setValidationError(fieldName, pastOrToday, results);
   }
 };
 
 export const checkDateFuture = ({
-  fieldLabel,
+  fieldName,
   value,
   results,
   validations,
@@ -259,12 +262,12 @@ export const checkDateFuture = ({
   today.setHours(0, 0, 0, 0);
 
   if (value <= today) {
-    setValidationError(fieldLabel, future, results);
+    setValidationError(fieldName, future, results);
   }
 };
 
 export const checkDateFutureOrToday = ({
-  fieldLabel,
+  fieldName,
   value,
   results,
   validations,
@@ -276,12 +279,12 @@ export const checkDateFutureOrToday = ({
   today.setHours(0, 0, 0, 0);
 
   if (value < today) {
-    setValidationError(fieldLabel, futureOrToday, results);
+    setValidationError(fieldName, futureOrToday, results);
   }
 };
 
 export const checkDateAfter = ({
-  fieldLabel,
+  fieldName,
   value,
   results,
   validations,
@@ -293,11 +296,11 @@ export const checkDateAfter = ({
   if (!targetDate) return;
 
   if (value <= targetDate) {
-    setValidationError(fieldLabel, after, results);
+    setValidationError(fieldName, after, results);
   }
 };
 export const checkDateBefore = ({
-  fieldLabel,
+  fieldName,
   value,
   results,
   validations,
@@ -309,11 +312,11 @@ export const checkDateBefore = ({
   if (!targetDate) return;
 
   if (value >= targetDate) {
-    setValidationError(fieldLabel, before, results);
+    setValidationError(fieldName, before, results);
   }
 };
 export const checkDateOnOrAfter = ({
-  fieldLabel,
+  fieldName,
   value,
   results,
   validations,
@@ -325,11 +328,11 @@ export const checkDateOnOrAfter = ({
   if (!targetDate) return;
 
   if (value < targetDate) {
-    setValidationError(fieldLabel, onOrAfter, results);
+    setValidationError(fieldName, onOrAfter, results);
   }
 };
 export const checkDateOnOrBefore = ({
-  fieldLabel,
+  fieldName,
   value,
   results,
   validations,
@@ -341,11 +344,11 @@ export const checkDateOnOrBefore = ({
   if (!targetDate) return;
 
   if (value > targetDate) {
-    setValidationError(fieldLabel, onOrBefore, results);
+    setValidationError(fieldName, onOrBefore, results);
   }
 };
 export const checkMinYear = ({
-  fieldLabel,
+  fieldName,
   value,
   results,
   validations,
@@ -354,11 +357,11 @@ export const checkMinYear = ({
   if (!minYear || minYear.value === undefined) return;
 
   if (value.year < minYear.value) {
-    setValidationError(fieldLabel, minYear, results);
+    setValidationError(fieldName, minYear, results);
   }
 };
 export const checkMaxYear = ({
-  fieldLabel,
+  fieldName,
   value,
   results,
   validations,
@@ -367,7 +370,7 @@ export const checkMaxYear = ({
   if (!maxYear || maxYear.value === undefined) return;
 
   if (value.year > maxYear.value) {
-    setValidationError(fieldLabel, maxYear, results);
+    setValidationError(fieldName, maxYear, results);
   }
 };
 /*
@@ -383,7 +386,7 @@ const getStepIdFromFieldName = (fieldName: string): string => {
 };
 
 export const checkComparisons = (
-  { fieldLabel, value, results, validations }: ValidationArgs<string | number>,
+  { fieldName, value, results, validations }: ValidationArgs<string | number>,
   fieldApi: AnyFieldApi,
 ) => {
   const equal = validations.equal;
@@ -409,7 +412,7 @@ export const checkComparisons = (
       const targetFieldValue = fieldApi.form.getFieldValue(fullReferenceId);
       const passesCondition = evaluateCondition(value, targetFieldValue, comp);
       if (!passesCondition) {
-        setValidationError(fieldLabel, validation, results);
+        setValidationError(fieldName, validation, results);
       }
     }
   };
@@ -420,7 +423,7 @@ export const checkComparisons = (
   compare("lt", lt);
 };
 export const checkContains = ({
-  fieldLabel,
+  fieldName,
   value,
   results,
   validations,
@@ -431,7 +434,7 @@ export const checkContains = ({
   const passesCondition = evaluateCondition(value, contains.value, "contains");
 
   if (!passesCondition) {
-    setValidationError(fieldLabel, contains, results);
+    setValidationError(fieldName, contains, results);
   }
 };
 
@@ -500,7 +503,7 @@ export const evaluateCondition = (
 };
 
 export const checkFileTypes = ({
-  fieldLabel,
+  fieldName,
   value,
   results,
   validations,
@@ -523,7 +526,7 @@ export const checkFileTypes = ({
 
   if (invalidExtensions.size > 0) {
     setValidationError(
-      fieldLabel,
+      fieldName,
       fileTypes,
       results,
       `File type not allowed. Allowed types: ${fileTypes.value.join(", ")}.`,
@@ -532,7 +535,7 @@ export const checkFileTypes = ({
 };
 
 export const checkFileMaxSize = ({
-  fieldLabel,
+  fieldName,
   value,
   results,
   validations,
@@ -543,7 +546,7 @@ export const checkFileMaxSize = ({
   for (const file of value) {
     if (file.size > fileMaxSize) {
       setValidationError(
-        fieldLabel,
+        fieldName,
         fileMaxSize,
         results,
         `File ${file.name} exceeds the maximum size of ${(fileMaxSize / (1024 * 1024)).toPrecision(2)} MB.`,
@@ -553,7 +556,7 @@ export const checkFileMaxSize = ({
 };
 
 export const checkMaxFiles = ({
-  fieldLabel,
+  fieldName,
   value,
   results,
   validations,
@@ -563,7 +566,7 @@ export const checkMaxFiles = ({
 
   if (value.length > maxItems.value) {
     setValidationError(
-      fieldLabel,
+      fieldName,
       maxItems,
       results,
       `Number of files exceeds the maximum allowed (${maxItems.value}).`,
@@ -572,7 +575,7 @@ export const checkMaxFiles = ({
 };
 
 export const checkMinFiles = ({
-  fieldLabel,
+  fieldName,
   value,
   results,
   validations,
@@ -582,7 +585,7 @@ export const checkMinFiles = ({
 
   if (value.length < minItems.value) {
     setValidationError(
-      fieldLabel,
+      fieldName,
       minItems,
       results,
       `Number of files is less than the minimum required (${minItems.value}).`,
