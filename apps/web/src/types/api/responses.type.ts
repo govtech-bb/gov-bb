@@ -10,3 +10,7 @@ export interface ApiResponse {
 export interface FromDraftResponse extends ApiResponse {
   data: FormDraftResponseBody;
 }
+
+export interface FormSubmissionResponse extends ApiResponse {
+  data: FormDraftResponseBody;
+}

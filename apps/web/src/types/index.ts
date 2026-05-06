@@ -29,4 +29,8 @@ export type {
   ApiResponse,
   FormDraft,
   FormDraftResponseBody,
+  FormSubmissionResponseBody,
+  FromDraftResponse,
+  FormSubmissionResponse,
+  FormSubmissionBody,
 } from "./api/index.ts";
