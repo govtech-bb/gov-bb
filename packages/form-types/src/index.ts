@@ -82,7 +82,6 @@ export {
 
 export type {
   FormStep,
-  PaymentSummary,
   RecipeFormStep,
   RecipeFormStepField,
   RecipeComponentField,

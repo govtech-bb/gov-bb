@@ -1,14 +1,7 @@
 import React from "react";
 import designSystem from "../styles/govtechbb.module.css";
-import { PaymentSummary } from "@govtech-bb/form-types";
 
-interface SubmissionConfirmationProps {
-  paymentSummary?: PaymentSummary;
-}
-
-export default function SubmissionConfirmation({
-  paymentSummary,
-}: SubmissionConfirmationProps) {
+export default function SubmissionConfirmation() {
   return (
     <div className={designSystem.confirmation}>
       <p className={designSystem.subHeading}>
@@ -16,30 +9,26 @@ export default function SubmissionConfirmation({
         payment.
       </p>
 
-      {paymentSummary && (
-        <div className={designSystem.paymentSummary}>
-          <h2>Complete your payment</h2>
-          <p>
-            Please review and complete your payment to finalize your application
-          </p>
+      <div className={designSystem.paymentSummary}>
+        <h2>Complete your payment</h2>
+        <p>
+          Please review and complete your payment to finalize your application
+        </p>
 
-          <div className={designSystem.paymentSummaryTable}>
-            <p>Service</p>
-            <p>{paymentSummary.label}</p>
-            <p>Quantity</p>
-            <p>{paymentSummary.quantity}</p>
-            <p>Amount</p>
-            <p>
-              {paymentSummary.currency} {paymentSummary.amount.toFixed(2)}
-            </p>
-          </div>
-
-          <button data-variant="primary">Continue to payment</button>
-          <p className={designSystem.paymentHint}>
-            You will be redirected to EZ Pay to securely complete your payment.
-          </p>
+        <div className={designSystem.paymentSummaryTable}>
+          <p>Service</p>
+          <p>{}</p>
+          <p>Quantity</p>
+          <p>{}</p>
+          <p>Amount</p>
+          <p>{}</p>
         </div>
-      )}
+
+        <button data-variant="primary">Continue to payment</button>
+        <p className={designSystem.paymentHint}>
+          You will be redirected to EZ Pay to securely complete your payment.
+        </p>
+      </div>
 
       <div className={designSystem.nextSteps}>
         <h2>What happens next</h2>
