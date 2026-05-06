@@ -13,6 +13,8 @@ export {
   repeatStepConcactenator,
   getRepeatStepId,
   getRepeatStepCount,
+  removeRepeatableStep,
+  addRepeatableStep,
 } from "./helpers/repeatable-helper";
 export {
   checkConditionalOn,
