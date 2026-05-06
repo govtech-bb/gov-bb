@@ -21,5 +21,7 @@ export type { UseStepGuardProps } from "./props.type.ts";
 export type {
   RepeatableStepSettings,
   RepeatableConfig,
+  AddRepeatableStepParams,
+  RemoveRepeatableStepParams,
 } from "./behavior-helper.type.ts";
 export type { FileUploadProps } from "./props.type.ts";

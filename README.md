@@ -54,7 +54,7 @@ cp apps/api/.env.example apps/api/.env
 | Variable | App | Default | Description |
 |---|---|---|---|
 | `PORT` | web | `4200` | Next.js server port |
-| `NEXT_PUBLIC_API_URL` | web | `http://localhost:3001` | API base URL |
+| `VITE_API_URL` | web | `http://localhost:3001` | API base URL |
 | `API_PORT` | api | `3001` | NestJS server port |
 | `DB_HOST` | api | `localhost` | PostgreSQL host |
 | `DB_PORT` | api | `5432` | PostgreSQL port |

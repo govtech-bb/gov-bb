@@ -21,11 +21,6 @@ export default function FieldRenderer({
 }) {
   if (field.hidden) return null;
 
-  const formatter = new Intl.ListFormat("en", {
-    style: "long",
-    type: "conjunction",
-  });
-
   let conditionalRequiredState: RequiredState = "unknownState";
   let fieldArray: FieldArrayBehaviour;
 
@@ -65,7 +60,7 @@ export default function FieldRenderer({
 
         let errorMessage = "";
         if (!f.state.meta.isValid) {
-          errorMessage = formatter.format(f.state.meta.errors);
+          errorMessage = f.state.meta.errors[0];
         }
 
         switch (field.htmlType) {
