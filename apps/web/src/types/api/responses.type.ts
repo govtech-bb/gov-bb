@@ -1,3 +1,4 @@
+import { ServiceContract } from "@govtech-bb/form-types";
 import { FormDraftResponseBody } from "./form-draft.type";
 
 export interface ApiResponse {
@@ -5,6 +6,10 @@ export interface ApiResponse {
   message: string;
   data: unknown;
   statusCode?: number;
+}
+
+export interface FormDefinitionResponse extends ApiResponse {
+  data: ServiceContract;
 }
 
 export interface FromDraftResponse extends ApiResponse {
