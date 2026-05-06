@@ -13,7 +13,7 @@ export default function SubmissionConfirmation({
   onTryAgain,
 }: SubmissionConfirmationProps) {
   // TODO: Dynamically render this content from backend response
-  const hasPayment = true;
+  const hasPayment = false;
   const serviceName = "Example Service";
   const amount = "$100.00";
   const quantity = 1;
@@ -22,56 +22,40 @@ export default function SubmissionConfirmation({
   return (
     <div className={designSystem.confirmation}>
       {success ? (
-        <div className={designSystem.successHeader}>
-          <p className={designSystem.successServiceTitle}>{serviceTitle}</p>
-          <h1 className={designSystem.successStepTitle}>{stepTitle}</h1>
-          <p className={designSystem.successSubheading}>
-            Your application has been submitted successfully.
-          </p>
-        </div>
-      ) : (
-        !hasPayment && (
-          <div>
-            <div className={designSystem.errorHeader}>
-              <p className={designSystem.errorServiceTitle}>{serviceTitle}</p>
-              <h1 className={designSystem.errorStepTitle}>Error</h1>
-              <p className={designSystem.errorSubheading}>
-                More error details go here.
+        <>
+          <div className={designSystem.successHeader}>
+            <p className={designSystem.successServiceTitle}>{serviceTitle}</p>
+            <h1 className={designSystem.successStepTitle}>{stepTitle}</h1>
+            <p className={designSystem.successSubheading}>
+              Your application has been submitted successfully.
+            </p>
+          </div>
+
+          {hasPayment && (
+            <div className={designSystem.paymentSummary}>
+              <h2>Complete your payment</h2>
+              <p>
+                Please review and complete your payment to finalize your
+                application
+              </p>
+
+              <div className={designSystem.paymentSummaryTable}>
+                <p>Service</p>
+                <p>{serviceName}</p>
+                <p>Quantity</p>
+                <p>{quantity}</p>
+                <p>Amount</p>
+                <p>{amount}</p>
+              </div>
+
+              <button data-variant="primary">Continue to payment</button>
+              <p className={designSystem.paymentHint}>
+                You will be redirected to EZ Pay to securely complete your
+                payment.
               </p>
             </div>
+          )}
 
-            <button data-variant="primary" onClick={onTryAgain}>
-              Try again
-            </button>
-          </div>
-        )
-      )}
-
-      {hasPayment && success && (
-        <div className={designSystem.paymentSummary}>
-          <h2>Complete your payment</h2>
-          <p>
-            Please review and complete your payment to finalize your application
-          </p>
-
-          <div className={designSystem.paymentSummaryTable}>
-            <p>Service</p>
-            <p>{serviceName}</p>
-            <p>Quantity</p>
-            <p>{quantity}</p>
-            <p>Amount</p>
-            <p>{amount}</p>
-          </div>
-
-          <button data-variant="primary">Continue to payment</button>
-          <p className={designSystem.paymentHint}>
-            You will be redirected to EZ Pay to securely complete your payment.
-          </p>
-        </div>
-      )}
-
-      {success && (
-        <div>
           <div className={designSystem.nextSteps}>
             <h2>What happens next</h2>
             <p>Step 1</p>
@@ -88,11 +72,24 @@ export default function SubmissionConfirmation({
             <button data-variant="secondary">
               Give feedback on this service
             </button>
-
             <p>
               This will take about 30 seconds. Your responses are anonymous.
             </p>
           </div>
+        </>
+      ) : (
+        <div>
+          <div className={designSystem.errorHeader}>
+            <p className={designSystem.errorServiceTitle}>{serviceTitle}</p>
+            <h1 className={designSystem.errorStepTitle}>Error</h1>
+            <p className={designSystem.errorSubheading}>
+              More error details go here.
+            </p>
+          </div>
+
+          <button data-variant="primary" onClick={onTryAgain}>
+            Try again
+          </button>
         </div>
       )}
     </div>
