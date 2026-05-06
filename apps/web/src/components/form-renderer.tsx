@@ -210,7 +210,10 @@ export default function FormRenderer({
         )}
 
         {currentStep.stepId === "submission-confirmation" && (
-          <SubmissionConfirmation key={"submission-confirmation"} />
+          <SubmissionConfirmation
+            key={"submission-confirmation"}
+            paymentSummary={currentStep.paymentSummary}
+          />
         )}
 
         {currentFields.map((field) => (

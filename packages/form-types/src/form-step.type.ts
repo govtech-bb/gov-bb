@@ -2,12 +2,27 @@ import { z } from "zod";
 import { fieldOverridesSchema, primitiveSchema } from "./primitive.type";
 import { behaviourSchema } from "./behavior.type";
 
+const paymentSummaryItemSchema = z.object({
+  label: z.string(),
+  amount: z.number(),
+  quantity: z.number().optional(),
+});
+
+const paymentSummarySchema = z.object({
+  items: z.array(paymentSummaryItemSchema),
+  total: z.object({ amount: z.number() }),
+  currency: z.string(),
+});
+
+export type PaymentSummary = z.infer<typeof paymentSummarySchema>;
+
 export const formStepSchema = z.object({
   stepId: z.string(),
   title: z.string(),
   description: z.string().optional(),
   elements: z.array(primitiveSchema),
   behaviours: z.array(behaviourSchema).optional(),
+  paymentSummary: paymentSummarySchema.optional(),
 });
 export type FormStep = z.infer<typeof formStepSchema>;
 

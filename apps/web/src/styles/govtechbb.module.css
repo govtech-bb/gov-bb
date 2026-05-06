@@ -611,7 +611,7 @@
 
 /* Confirmation Styles */
 .formRoot .confirmation {
-  gap: var(--spacing-m);
+  gap: var(--spacing-s);
 }
 
 /* Payment Summary Styles */

@@ -3,6 +3,7 @@ import {
   DateTimeFormat,
   HtmlTypes,
   Option,
+  PaymentSummary,
   PrimitiveUI,
   ValidationRule,
 } from "@govtech-bb/form-types";
@@ -33,6 +34,7 @@ export interface ClientFormStep {
   description?: string;
   fields: ClientPrimitive[];
   behaviours?: Behaviour[];
+  paymentSummary?: PaymentSummary;
 }
 
 export interface ClientServiceContract {
