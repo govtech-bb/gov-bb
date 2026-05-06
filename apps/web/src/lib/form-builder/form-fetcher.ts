@@ -5,7 +5,7 @@ import { ServiceContract, serviceContractSchema } from "@govtech-bb/form-types";
 import { mapContractToLocale } from "./field-mapper";
 import exampleServiceContract from "../../../contracts/example-service-contract.json";
 import masterContract from "../../../contracts/master-contract.json";
-import { getContract } from "@web/form-api";
+import { fetchFormDefinition } from "@web/form-api";
 
 /**
  * Fetches a service contract by ID from the API, validates its shape, and
@@ -21,7 +21,7 @@ export const fetchContract = async (
     return fetchExampleContract(id);
   }
 
-  const contract = await getContract(id);
+  const contract = await fetchFormDefinition(id);
 
   return mapContractToLocale(contract);
 };
