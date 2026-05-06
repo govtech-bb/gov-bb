@@ -26,16 +26,27 @@ export class FormFetchError extends Error {
   }
 }
 
+interface ResponseErrorMessages {
+  not_found?: string;
+}
+
 const makeFetch = async <T extends ApiResponse>(
   endpoint: string,
-  errorMessage: string,
+  errorMessage: ResponseErrorMessages,
+  fetchArgs: {
+    method: "POST" | "GET" | "DELETE" | "PATCH";
+    headers?: HeadersInit;
+    body?: string; // JSON.stringify it before passing it.
+  } = { method: "GET" },
 ): Promise<{
   body: T;
   response: Response;
 }> => {
   let response: Response;
   try {
-    response = await fetch(`${API_URL}${endpoint}`);
+    response = await fetch(`${API_URL}${endpoint}`, {
+      ...fetchArgs,
+    });
   } catch {
     throw new FormFetchError(
       "Unable to reach the server. Please check your connection and try again.",
@@ -44,15 +55,19 @@ const makeFetch = async <T extends ApiResponse>(
   }
 
   if (!response.ok) {
-    const message =
-      response.status === 404
-        ? errorMessage
-        : `Failed to load form (HTTP ${response.status}).`;
+    let message: string;
+
+    switch (response.status) {
+      case 404:
+        message = errorMessage.not_found ?? "Requested item was not found";
+      default:
+        message = `Failed to load form (HTTP ${response.status}).`;
+    }
     throw new FormFetchError(message, response.status);
   }
 
   const body = (await response.json()) as T;
-  if (body.status !== "success") {
+  if (body.status && body.status !== "success") {
     throw new FormFetchError(
       body.message ?? "The server returned an unexpected response.",
       500,
@@ -67,7 +82,7 @@ export const fetchFormDefinition = async (
 ): Promise<ServiceContract> => {
   const { body } = await makeFetch<FormDefinitionResponse>(
     `/form-definitions/${encodeURIComponent(contractId)}`,
-    `The form "${contractId}" could not be found.`,
+    { not_found: `The form "${contractId}" could not be found.` },
   );
 
   try {
@@ -87,8 +102,7 @@ export const createFormDraft = async (
   values: FormValues,
   lastActiveStep: string,
 ) => {
-  let response: Response;
-
+  const endpoint = "/form-drafts";
   const formDraft: FormDraft = {
     draftId,
     formId,
@@ -97,18 +111,14 @@ export const createFormDraft = async (
     lastActiveStep,
   };
 
-  try {
-    response = await fetch(`${API_URL}/form-drafts`, {
-      method: "POST",
-      headers: {},
+  makeFetch(
+    endpoint,
+    {},
+    {
       body: JSON.stringify(formDraft),
-    });
-  } catch {
-    throw new FormFetchError(
-      "Unable to reach the server. Please check your connection and try again.",
-      0,
-    );
-  }
+      method: "POST",
+    },
+  );
 };
 
 export const fetchFormDraft = async (
@@ -116,7 +126,7 @@ export const fetchFormDraft = async (
 ): Promise<FormDraftResponseBody> => {
   const { body } = await makeFetch<FormDraftResponse>(
     `/form-drafts/${draftId}`,
-    "Draft not found",
+    { not_found: "Draft not found" },
   );
 
   try {
@@ -136,38 +146,24 @@ export const patchFormDraft = async (
   draftId: string,
   toUpdate: Partial<FormDraft>,
 ): Promise<FormDraftResponseBody> => {
-  const url = `${API_URL}/form-drafts/${draftId}`;
+  const endpoint = `/form-drafts/${draftId}`;
 
-  let response: Response;
+  const fetchArgs = {
+    method: "PATCH",
+    headers: {},
+    body: JSON.stringify(toUpdate),
+  } as const;
 
-  try {
-    response = await fetch(url, {
-      method: "PATCH",
-      headers: {},
-      body: JSON.stringify(toUpdate),
-    });
-  } catch {
-    throw new FormFetchError(
-      "Unable to reach the server. Please check your connection and try again.",
-      0,
-    );
-  }
+  const errorMessage: ResponseErrorMessages = {
+    not_found: "Form draft not found",
+  };
 
-  if (!response.ok) {
-    const message =
-      response.status === 404
-        ? "Form draft not found"
-        : `Failed to load form (HTTP ${response.status}).`;
-    throw new FormFetchError(message, response.status);
-  }
+  const { body } = await makeFetch<FormDraftResponse>(
+    endpoint,
+    errorMessage,
+    fetchArgs,
+  );
 
-  const body = (await response.json()) as FormDraftResponse;
-  if (body.status !== "success") {
-    throw new FormFetchError(
-      body.message ?? "The server returned an unexpected response.",
-      500,
-    );
-  }
   try {
     const draft: FormDraftResponseBody = formDraftResponseBodySchema.parse(
       body.data,
@@ -182,28 +178,11 @@ export const patchFormDraft = async (
 };
 
 export const deleteFormDraft = async (draftId: string): Promise<number> => {
-  const url = `${API_URL}/form-drafts/${draftId}`;
+  const endpoint = `/form-drafs/${draftId}`;
+  const errorMessage = {};
+  const fetchArgs = { method: "DELETE" } as const;
 
-  let response: Response;
-  try {
-    response = await fetch(url, {
-      method: "DELETE",
-      headers: {},
-    });
-  } catch {
-    throw new FormFetchError(
-      "Unable to reach the server. Please check your connection and try again.",
-      0,
-    );
-  }
-
-  if (!response.ok) {
-    const message =
-      response.status === 404
-        ? "Form draft not found"
-        : `Failed to load form (HTTP ${response.status}).`;
-    throw new FormFetchError(message, response.status);
-  }
+  const { response } = await makeFetch(endpoint, errorMessage, fetchArgs);
 
   return response.status;
 };
