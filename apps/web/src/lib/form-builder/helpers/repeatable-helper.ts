@@ -152,32 +152,30 @@ export const getRepeatStepCount = (stepId: string): number => {
 
 export const addRepeatableStep = ({
   currentStep,
-  currentRepeatConfig,
+  repeatableStepSettings,
   repeatableBehaviour,
   visibleSteps,
   sharedFieldsBehaviour,
   stepValues,
   formMeta,
-}: AddRepeatableStepParams): {
-  updatedSteps: ClientFormStep[];
-  updatedConfig?: RepeatableConfig;
-} => {
-  if (!currentRepeatConfig) return { updatedSteps: visibleSteps };
-  if (!repeatableBehaviour) return { updatedSteps: visibleSteps };
-  const repeatableStepCount = currentRepeatConfig.orderedStepIds.length;
-
-  if (repeatableBehaviour.max && repeatableStepCount >= repeatableBehaviour.max)
-    return { updatedSteps: visibleSteps };
-
+}: AddRepeatableStepParams): ClientFormStep[] => {
   const [baseStepId, stepRepeatId] = [
     currentStep.stepId.split(repeatStepConcactenator)[0],
     getRepeatStepCount(currentStep.stepId),
   ];
 
+  const currentRepeatConfig = repeatableStepSettings[baseStepId];
+  if (!currentRepeatConfig) return visibleSteps;
+  if (!repeatableBehaviour) return visibleSteps;
+  const repeatableStepCount = currentRepeatConfig.orderedStepIds.length;
+
+  if (repeatableBehaviour.max && repeatableStepCount >= repeatableBehaviour.max)
+    return visibleSteps;
+
   const nextStepId = getRepeatStepId(baseStepId, stepRepeatId + 1);
 
   if (currentRepeatConfig.orderedStepIds.includes(nextStepId))
-    return { updatedSteps: visibleSteps };
+    return visibleSteps;
 
   const nextStepFields = generateRepeatStepFields(
     [...currentStep.fields],
@@ -194,6 +192,7 @@ export const addRepeatableStep = ({
 
   currentRepeatConfig.stepData[currentStep.stepId] = stepValues;
   currentRepeatConfig.orderedStepIds.push(nextStepId);
+  repeatableStepSettings[baseStepId] = currentRepeatConfig;
 
   const nextStep: ClientFormStep = {
     ...currentStep,
@@ -212,7 +211,7 @@ export const addRepeatableStep = ({
   const stepIndex = visibleSteps.indexOf(currentStep);
   const updatedSteps = [...visibleSteps];
   updatedSteps.splice(stepIndex + 1, 0, nextStep);
-  return { updatedSteps, updatedConfig: currentRepeatConfig };
+  return updatedSteps;
 };
 
 export const removeRepeatableStep = ({

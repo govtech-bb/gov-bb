@@ -63,18 +63,15 @@ export default function FormRenderer({
 
       const anotherFieldValue = form.getFieldValue(anotherFieldId);
       if (anotherFieldValue === "yes") {
-        const { updatedSteps, updatedConfig } = addRepeatableStep({
+        const updatedSteps = addRepeatableStep({
           currentStep,
           repeatableBehaviour,
           sharedFieldsBehaviour,
           visibleSteps,
           stepValues,
           formMeta,
-          currentRepeatConfig: repeatableStepSettings[baseStepId],
+          repeatableStepSettings,
         });
-        if (updatedConfig) {
-          repeatableStepSettings[baseStepId] = updatedConfig;
-        }
         completeAndContinue(currentStep.stepId, updatedSteps);
         return;
       } else if (anotherFieldValue === "no") {

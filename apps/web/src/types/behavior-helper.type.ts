@@ -21,7 +21,7 @@ export type RepeatableStepSettings = Record<sourceStepId, RepeatableConfig>;
 
 export interface AddRepeatableStepParams {
   currentStep: ClientFormStep;
-  currentRepeatConfig: RepeatableConfig;
+  repeatableStepSettings: RepeatableStepSettings;
   repeatableBehaviour?: RepeatableBehaviour;
   sharedFieldsBehaviour?: SharedFieldsBehaviour;
   visibleSteps: ClientFormStep[];
