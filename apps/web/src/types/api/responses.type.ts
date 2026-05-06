@@ -12,7 +12,7 @@ export interface FormDefinitionResponse extends ApiResponse {
   data: ServiceContract;
 }
 
-export interface FromDraftResponse extends ApiResponse {
+export interface FormDraftResponse extends ApiResponse {
   data: FormDraftResponseBody;
 }
 

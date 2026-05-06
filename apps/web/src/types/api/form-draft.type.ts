@@ -22,15 +22,4 @@ export const formDraftResponseBodySchema = z.object({
   lastActiveAt: z.string(),
 });
 
-export interface FormDraftResponseBody {
-  id: string;
-  createdAt: string;
-  updatedAt: string;
-  draftId: string;
-  formId: string;
-  formVersion: string;
-  values: FormValues;
-  lastActiveStep: string;
-  status: string;
-  lastActiveAt: string;
-}
+export type FormDraftResponseBody = z.infer<typeof formDraftResponseBodySchema>;
