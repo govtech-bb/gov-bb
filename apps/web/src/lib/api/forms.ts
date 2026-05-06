@@ -1,5 +1,5 @@
 import { ServiceContract, serviceContractSchema } from "@govtech-bb/form-types";
-import { ApiResponse, FormDefinitionResponse } from "@web/types";
+import { FormDefinitionResponse } from "@web/types";
 
 const API_URL = process.env.VITE_API_URL ?? "http://localhost:3001";
 
