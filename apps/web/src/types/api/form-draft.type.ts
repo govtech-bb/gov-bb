@@ -1,4 +1,5 @@
-import { FormValues } from "../field-mapper.type";
+import { FormValues, formValuesSchema } from "../field-mapper.type";
+import { z } from "zod";
 
 export interface FormDraft {
   draftId: string;
@@ -7,6 +8,19 @@ export interface FormDraft {
   values: FormValues;
   lastActiveStep: string;
 }
+
+export const formDraftResponseBodySchema = z.object({
+  id: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  draftId: z.string(),
+  formId: z.string(),
+  formVersion: z.string(),
+  values: formValuesSchema,
+  lastActiveStep: z.string(),
+  status: z.string(),
+  lastActiveAt: z.string(),
+});
 
 export interface FormDraftResponseBody {
   id: string;

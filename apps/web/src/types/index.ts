@@ -4,6 +4,7 @@ export type {
   ClientPrimitive,
   FormValues,
 } from "./field-mapper.type.ts";
+export { formValuesSchema } from "./field-mapper.type";
 export type { FormMeta } from "./renderer.type.ts";
 export type {
   FieldValidation,
@@ -16,15 +17,18 @@ export type {
   DateValue,
   FieldValue,
 } from "./validation.type.ts";
-export type { FormRendererProps } from "./props.type.ts";
-export type { UseStepGuardProps } from "./props.type.ts";
+export { fieldValueSchema } from "./validation.type";
+export type {
+  FormRendererProps,
+  UseStepGuardProps,
+  FileUploadProps,
+} from "./props.type.ts";
 export type {
   RepeatableStepSettings,
   RepeatableConfig,
   AddRepeatableStepParams,
   RemoveRepeatableStepParams,
 } from "./behavior-helper.type.ts";
-export type { FileUploadProps } from "./props.type.ts";
 export type {
   ApiResponse,
   FormDraft,

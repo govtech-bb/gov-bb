@@ -1,6 +1,6 @@
 import { ValidationRule } from "@govtech-bb/form-types";
 import { AnyFieldApi } from "@tanstack/react-form";
-import { ZodObject, ZodType } from "zod";
+import { ZodObject, ZodType, z } from "zod";
 
 interface FieldValidationContext<TValue = unknown, TFieldApi = unknown> {
   value: TValue;
@@ -43,11 +43,13 @@ export interface ValidationArgs<TValueType = unknown> {
 
 export type FieldValidationErrors = Record<string, string[]>;
 
-export interface DateValueInput {
-  day?: number;
-  month?: number;
-  year?: number;
-}
+const dateValueInputSchema = z.object({
+  day: z.number().optional(),
+  month: z.number().optional(),
+  year: z.number().optional(),
+});
+
+export type DateValueInput = z.infer<typeof dateValueInputSchema>;
 
 export interface DateValue {
   day: number;
@@ -55,9 +57,12 @@ export interface DateValue {
   year: number;
 }
 
-export type FieldValue =
-  | string
-  | number
-  | boolean
-  | Array<string | number | boolean>
-  | DateValueInput;
+export const fieldValueSchema = z.union([
+  z.string(),
+  z.number(),
+  z.boolean(),
+  z.array(z.union([z.string(), z.number(), z.boolean()])),
+  dateValueInputSchema,
+]);
+
+export type FieldValue = z.infer<typeof fieldValueSchema>;
