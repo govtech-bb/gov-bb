@@ -6,7 +6,7 @@ import { mapContractToLocale } from "./field-mapper";
 import exampleServiceContract from "../../../contracts/example-service-contract.json";
 import masterContract from "../../../contracts/master-contract.json";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
+const API_URL = process.env.VITE_API_URL ?? "http://localhost:3001";
 
 /**
  * Thrown when a contract fetch fails. Carries the HTTP status code so callers
