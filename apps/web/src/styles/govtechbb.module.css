@@ -44,6 +44,13 @@
   font-weight: var(--font-weight-bold);
 }
 
+.formRoot .subHeading {
+  font-size: var(--font-size-h4);
+  line-height: var(--line-height-body);
+  font-weight: var(--font-weight-normal);
+  margin-top: 0;
+}
+
 .formRoot p {
   font-size: var(--font-size-body);
   line-height: var(--line-height-body);
@@ -600,4 +607,55 @@
   .formRoot .formStep [data-field][data-field-width="medium"] {
     width: 50%;
   }
+}
+
+/* Confirmation Styles */
+.formRoot .confirmation {
+  gap: var(--spacing-m);
+}
+
+/* Payment Summary Styles */
+.formRoot .paymentSummary {
+  background-color: #e8eef5;
+  padding: var(--spacing-m);
+  border-radius: 0.25rem;
+  margin-bottom: var(--spacing-m);
+}
+
+.formRoot .paymentSummary h2 {
+  margin-top: 0;
+  margin-bottom: var(--spacing-xs);
+}
+
+.formRoot .paymentSummary > p {
+  margin: 0 0 var(--spacing-m) 0;
+}
+
+.formRoot .paymentSummaryTable {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-s);
+  margin: var(--spacing-m) 0;
+  padding-top: var(--spacing-m);
+  border-top: 0.125rem solid rgba(0, 0, 0, 0.1);
+}
+
+.formRoot .paymentHint {
+  font-size: var(--font-size-caption);
+  color: var(--color-mid-grey-00);
+  padding-top: var(--spacing-xs);
+  font-style: italic;
+}
+
+.formRoot .nextSteps {
+  margin-top: var(--spacing-m);
+}
+
+.formRoot .feedback {
+  margin-top: var(--spacing-m);
+  border-radius: 0.25rem;
+}
+
+.formRoot .feedback h3 {
+  margin-top: 0;
 }
