@@ -4,19 +4,20 @@ import designSystem from "../styles/govtechbb.module.css";
 interface SubmissionConfirmationProps {
   serviceTitle: string;
   stepTitle: string;
-  success: boolean;
+  onTryAgain?: () => void;
 }
 
 export default function SubmissionConfirmation({
   serviceTitle,
   stepTitle,
+  onTryAgain,
 }: SubmissionConfirmationProps) {
   // TODO: Dynamically render this content from backend response
   const hasPayment = true;
   const serviceName = "Example Service";
   const amount = "$100.00";
   const quantity = 1;
-  const success = false;
+  const success = true;
 
   return (
     <div className={designSystem.confirmation}>
@@ -29,17 +30,21 @@ export default function SubmissionConfirmation({
           </p>
         </div>
       ) : (
-        <div>
-          <div className={designSystem.errorHeader}>
-            <p className={designSystem.errorServiceTitle}>{serviceTitle}</p>
-            <h1 className={designSystem.errorStepTitle}>Error</h1>
-            <p className={designSystem.errorSubheading}>
-              More error details go here.
-            </p>
-          </div>
+        !hasPayment && (
+          <div>
+            <div className={designSystem.errorHeader}>
+              <p className={designSystem.errorServiceTitle}>{serviceTitle}</p>
+              <h1 className={designSystem.errorStepTitle}>Error</h1>
+              <p className={designSystem.errorSubheading}>
+                More error details go here.
+              </p>
+            </div>
 
-          <button data-variant="primary">Try again</button>
-        </div>
+            <button data-variant="primary" onClick={onTryAgain}>
+              Try again
+            </button>
+          </div>
+        )
       )}
 
       {hasPayment && success && (
