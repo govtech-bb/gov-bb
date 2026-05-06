@@ -1,20 +1,48 @@
 import React from "react";
 import designSystem from "../styles/govtechbb.module.css";
 
-export default function SubmissionConfirmation() {
-  const hasPayment = true; // TODO: get this from backend response
-  const serviceName = "Example Service"; // TODO: get this from backend response
-  const amount = "$100.00"; // TODO: get this from backend response
-  const quantity = 1; // TODO: get this from backend response
+interface SubmissionConfirmationProps {
+  serviceTitle: string;
+  stepTitle: string;
+  success: boolean;
+}
+
+export default function SubmissionConfirmation({
+  serviceTitle,
+  stepTitle,
+}: SubmissionConfirmationProps) {
+  // TODO: Dynamically render this content from backend response
+  const hasPayment = true;
+  const serviceName = "Example Service";
+  const amount = "$100.00";
+  const quantity = 1;
+  const success = false;
 
   return (
     <div className={designSystem.confirmation}>
-      <p className={designSystem.subHeading}>
-        The department will process your application when you have made your
-        payment.
-      </p>
+      {success ? (
+        <div className={designSystem.successHeader}>
+          <p className={designSystem.successServiceTitle}>{serviceTitle}</p>
+          <h1 className={designSystem.successStepTitle}>{stepTitle}</h1>
+          <p className={designSystem.successSubheading}>
+            Your application has been submitted successfully.
+          </p>
+        </div>
+      ) : (
+        <div>
+          <div className={designSystem.errorHeader}>
+            <p className={designSystem.errorServiceTitle}>{serviceTitle}</p>
+            <h1 className={designSystem.errorStepTitle}>Error</h1>
+            <p className={designSystem.errorSubheading}>
+              More error details go here.
+            </p>
+          </div>
 
-      {hasPayment && (
+          <button data-variant="primary">Try again</button>
+        </div>
+      )}
+
+      {hasPayment && success && (
         <div className={designSystem.paymentSummary}>
           <h2>Complete your payment</h2>
           <p>
@@ -37,23 +65,31 @@ export default function SubmissionConfirmation() {
         </div>
       )}
 
-      <div className={designSystem.nextSteps}>
-        <h2>What happens next</h2>
-        <p>Step 1</p>
-        <p>Step 2</p>
-        <p>Step 3</p>
-      </div>
+      {success && (
+        <div>
+          <div className={designSystem.nextSteps}>
+            <h2>What happens next</h2>
+            <p>Step 1</p>
+            <p>Step 2</p>
+            <p>Step 3</p>
+          </div>
 
-      <div className={designSystem.feedback}>
-        <h3>Help us improve this service</h3>
-        <p>
-          We are always working to improve government services. If you have a
-          moment, you can tell us about your experience today.
-        </p>
-        <button data-variant="secondary">Give feedback on this service</button>
+          <div className={designSystem.feedback}>
+            <h3>Help us improve this service</h3>
+            <p>
+              We are always working to improve government services. If you have
+              a moment, you can tell us about your experience today.
+            </p>
+            <button data-variant="secondary">
+              Give feedback on this service
+            </button>
 
-        <p>This will take about 30 seconds. Your responses are anonymous.</p>
-      </div>
+            <p>
+              This will take about 30 seconds. Your responses are anonymous.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

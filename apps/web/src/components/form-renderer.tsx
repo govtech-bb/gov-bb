@@ -101,11 +101,16 @@ export default function FormRenderer({
     return fieldValidationErrors;
   });
 
+  const isSubmissionConfirmation =
+    currentStep.stepId === "submission-confirmation";
+
   return (
     <div className={designSystem.formRoot}>
-      <p className={designSystem.formTitle}> {formMeta.formTitle} </p>
+      {!isSubmissionConfirmation && (
+        <p className={designSystem.formTitle}> {formMeta.formTitle} </p>
+      )}
 
-      <h1>{currentStep.title}</h1>
+      {!isSubmissionConfirmation && <h1>{currentStep.title}</h1>}
       {/* {step.description && <p>{step.description}</p>} */}
       <ErrorSummary errors={errors} />
 
@@ -114,8 +119,12 @@ export default function FormRenderer({
           <Review key={"review-step"} formMeta={formMeta} form={form} />
         )}
 
-        {currentStep.stepId === "submission-confirmation" && (
-          <SubmissionConfirmation key={"submission-confirmation"} />
+        {isSubmissionConfirmation && (
+          <SubmissionConfirmation
+            key={"submission-confirmation"}
+            serviceTitle={formMeta.formTitle}
+            stepTitle={currentStep.title}
+          />
         )}
 
         {currentFields.map((field) => (
