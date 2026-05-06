@@ -598,16 +598,6 @@
   text-align: left;
 }
 
-/* Media Queries */
-@media screen and (min-width: 768px) {
-  .formRoot .formStep [data-field][data-field-width="short"] {
-    width: 33%;
-  }
-
-  .formRoot .formStep [data-field][data-field-width="medium"] {
-    width: 50%;
-  }
-}
 
 /* Confirmation Styles */
 .formRoot .confirmation {
@@ -620,6 +610,7 @@
   padding: var(--spacing-m);
   border-radius: 0.25rem;
   margin-bottom: var(--spacing-m);
+  max-width: 100%;
 }
 
 .formRoot .paymentSummary h2 {
@@ -658,4 +649,19 @@
 
 .formRoot .feedback h3 {
   margin-top: 0;
+}
+
+/* Media Queries */
+@media screen and (min-width: 768px) {
+  .formRoot .formStep [data-field][data-field-width="short"] {
+    width: 33%;
+  }
+
+  .formRoot .formStep [data-field][data-field-width="medium"] {
+    width: 50%;
+  }
+
+  .formRoot .paymentSummary {
+    max-width: 60%;
+  }
 }

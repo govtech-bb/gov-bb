@@ -225,28 +225,30 @@ export default function FormRenderer({
           />
         ))}
 
-        <div className={designSystem.formNavigation}>
-          {!hidePrevious && (
+        {currentStep.stepId !== "submission-confirmation" && (
+          <div className={designSystem.formNavigation}>
+            {!hidePrevious && (
+              <button
+                data-variant="secondary"
+                type="button"
+                onClick={handlePrevious}
+              >
+                Previous
+              </button>
+            )}
             <button
-              data-variant="secondary"
+              data-variant="primary"
               type="button"
-              onClick={handlePrevious}
+              onClick={
+                stepIndex === visibleSteps.length - 1
+                  ? handleSubmit
+                  : handleContinue
+              }
             >
-              Previous
+              {stepIndex === visibleSteps.length - 1 ? "Submit" : "Continue"}
             </button>
-          )}
-          <button
-            data-variant="primary"
-            type="button"
-            onClick={
-              stepIndex === visibleSteps.length - 1
-                ? handleSubmit
-                : handleContinue
-            }
-          >
-            {stepIndex === visibleSteps.length - 1 ? "Submit" : "Continue"}
-          </button>
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
