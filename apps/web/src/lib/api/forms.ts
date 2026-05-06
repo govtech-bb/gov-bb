@@ -1,4 +1,5 @@
 import { ServiceContract, serviceContractSchema } from "@govtech-bb/form-types";
+import { ApiResponse } from "@web/types";
 
 const API_URL = process.env.VITE_API_URL ?? "http://localhost:3001";
 
@@ -14,12 +15,6 @@ export class FormFetchError extends Error {
     super(message);
     this.name = "FormFetchError";
   }
-}
-
-interface ApiResponseBody {
-  status: "success" | "failed";
-  message: string;
-  data: unknown;
 }
 
 export const getContract = async (
@@ -45,7 +40,7 @@ export const getContract = async (
     throw new FormFetchError(message, response.status);
   }
 
-  const body = (await response.json()) as ApiResponseBody;
+  const body = (await response.json()) as ApiResponse;
 
   if (body.status !== "success") {
     throw new FormFetchError(
