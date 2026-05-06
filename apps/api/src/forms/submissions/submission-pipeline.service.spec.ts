@@ -1,8 +1,5 @@
 import { Test } from "@nestjs/testing";
-import {
-  BadRequestException,
-  UnprocessableEntityException,
-} from "@nestjs/common";
+import { UnprocessableEntityException } from "@nestjs/common";
 import { SubmissionPipelineService } from "./submission-pipeline.service";
 import { FormDefinitionsService } from "../form-definitions/form-definitions.service";
 import { FormDraftsService } from "../form-drafts/form-drafts.service";
@@ -88,14 +85,18 @@ describe("SubmissionPipelineService", () => {
   });
 
   describe("pinVersion", () => {
-    it("throws BadRequest when assertedVersion mismatches draft.formVersion", async () => {
+    it("uses the draft's pinned version even when the client sends a different one", async () => {
       draftsService.findById.mockResolvedValue(
         mockDraft({ formVersion: "2.0.0" }),
       );
+      definitionsService.findByFormId.mockResolvedValue(mockContract());
 
-      await expect(service.run(baseDto())).rejects.toBeInstanceOf(
-        BadRequestException,
-      );
+      await service.run(baseDto());
+
+      expect(definitionsService.findByFormId).toHaveBeenCalledWith({
+        formId: "passport-renewal",
+        version: "2.0.0",
+      });
     });
 
     it("throws NotFound when draft does not exist", async () => {
