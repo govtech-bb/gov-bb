@@ -10,3 +10,4 @@ export type {
   FormSubmissionBody,
   FormSubmissionResponseBody,
 } from "./form-submission.type.ts";
+export { formSubmissionResponseBodySchema } from "./form-submission.type";

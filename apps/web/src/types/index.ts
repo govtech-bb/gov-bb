@@ -39,4 +39,7 @@ export type {
   FormSubmissionBody,
   FormDefinitionResponse,
 } from "./api/index.ts";
-export { formDraftResponseBodySchema } from "./api/";
+export {
+  formDraftResponseBodySchema,
+  formSubmissionResponseBodySchema,
+} from "./api/";

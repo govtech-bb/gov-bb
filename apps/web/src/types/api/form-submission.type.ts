@@ -1,4 +1,5 @@
-import { FormValues } from "../field-mapper.type";
+import z from "zod";
+import { FormValues, formValuesSchema } from "../field-mapper.type";
 
 type stepId = string;
 
@@ -9,12 +10,19 @@ export interface FormSubmissionBody {
   values: Record<stepId, FormValues>;
 }
 
-export interface FormSubmissionResponseBody extends FormSubmissionBody {
-  id: string;
-  createdAt: string;
-  updatedAt: string;
-  idempotencyKey: string;
-  status: string;
-  meta: unknown;
-  submittedAt: string;
-}
+export const formSubmissionResponseBodySchema = z.object({
+  id: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  idempotencyKey: z.string(),
+  formId: z.string(),
+  formVersion: z.string(),
+  status: z.string(),
+  values: z.record(z.string(), formValuesSchema),
+  meta: z.unknown(),
+  submittedAt: z.string(),
+});
+
+export type FormSubmissionResponseBody = z.infer<
+  typeof formSubmissionResponseBodySchema
+>;

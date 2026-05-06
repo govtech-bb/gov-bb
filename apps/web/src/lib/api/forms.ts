@@ -8,6 +8,9 @@ import {
   FormMeta,
   FormValues,
   FormDraftResponse,
+  FormSubmissionResponse,
+  FormSubmissionResponseBody,
+  formSubmissionResponseBodySchema,
 } from "@web/types";
 
 const API_URL = process.env.VITE_API_URL ?? "http://localhost:3001";
@@ -171,7 +174,7 @@ export const patchFormDraft = async (
     return draft;
   } catch {
     throw new FormFetchError(
-      "The form fetched is of an incorrect format and can not be parsed.",
+      "The draft fetched is of an incorrect format and can not be parsed.",
       400,
     );
   }
@@ -185,4 +188,44 @@ export const deleteFormDraft = async (draftId: string): Promise<number> => {
   const { response } = await makeFetch(endpoint, errorMessage, fetchArgs);
 
   return response.status;
+};
+
+export const postEzpay = async () => {};
+
+export const postFormSubmission = async (
+  { formId, version: formVersion }: FormMeta,
+  values: Record<string, FormValues>,
+  idempotencyKey: string,
+) => {
+  const endpoint = `/submissions`;
+  const errorMessage = {};
+  const fetchArgs = {
+    method: "POST",
+    headers: {
+      "idempotency-key": idempotencyKey,
+    },
+    body: JSON.stringify({
+      formId,
+      formVersion,
+      values,
+    }),
+  } as const;
+
+  //TODO: Do special things based on response status
+  const { body, response } = await makeFetch<FormSubmissionResponse>(
+    endpoint,
+    errorMessage,
+    fetchArgs,
+  );
+
+  try {
+    const resp: FormSubmissionResponseBody =
+      formSubmissionResponseBodySchema.parse(body.data);
+    return resp;
+  } catch {
+    throw new FormFetchError(
+      "The draft fetched is of an incorrect format and can not be parsed.",
+      400,
+    );
+  }
 };
