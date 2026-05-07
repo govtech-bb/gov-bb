@@ -35,7 +35,7 @@ function RouteComponent() {
     onSubmit: async ({ value: values }) => {
       // TODO: Handle form submission
       console.log("Form submitted:", values);
-      await postFormSubmission(formMeta, values);
+      const response = await postFormSubmission(formMeta, values);
     },
   });
 

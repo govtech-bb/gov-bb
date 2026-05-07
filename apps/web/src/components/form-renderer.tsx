@@ -153,6 +153,7 @@ export default function FormRenderer({
 
   const handleSubmit = () => {
     form.handleSubmit();
+    completeAndContinue(currentStep.stepId);
   };
 
   const errors = useStore(form.store, (state) => {

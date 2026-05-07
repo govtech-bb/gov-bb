@@ -9,7 +9,7 @@ import {
 } from "@web/types";
 import { buildValidation } from "./validation-builder";
 import { getStepConditonalTargets, setupRepeatSteps } from "@web/lib";
-import { randomUUID } from "crypto";
+import { v4 as uuidv4 } from "uuid";
 
 export const buildForm = (contract: ClientServiceContract): FormMeta => {
   // Build the Validation Schema
@@ -36,7 +36,7 @@ export const buildForm = (contract: ClientServiceContract): FormMeta => {
   steps.splice(-2, 0, checkAnswers);
 
   // Generate Idempotency Key
-  const idempotencyKey = randomUUID();
+  const idempotencyKey = uuidv4();
 
   // Return FormMeta object with everything configured.
   return {
