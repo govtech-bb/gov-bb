@@ -134,6 +134,7 @@ export default function FormRenderer({
             key={"submission-confirmation"}
             serviceTitle={formMeta.formTitle}
             stepTitle={currentStep.title}
+            nextSteps={currentStep.nextSteps}
             onTryAgain={() => navigateToStep("check-your-answers")}
           />
         )}

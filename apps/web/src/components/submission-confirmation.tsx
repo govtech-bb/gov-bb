@@ -1,15 +1,11 @@
 import React from "react";
 import designSystem from "../styles/govtechbb.module.css";
-
-interface SubmissionConfirmationProps {
-  serviceTitle: string;
-  stepTitle: string;
-  onTryAgain?: () => void;
-}
+import { SubmissionConfirmationProps } from "../types/props.type";
 
 export default function SubmissionConfirmation({
   serviceTitle,
   stepTitle,
+  nextSteps,
   onTryAgain,
 }: SubmissionConfirmationProps) {
   // TODO: Dynamically render this content from backend response
@@ -102,12 +98,23 @@ export default function SubmissionConfirmation({
             </div>
           )}
 
-          <div className={designSystem.nextSteps}>
-            <h2>What happens next</h2>
-            <p>Step 1</p>
-            <p>Step 2</p>
-            <p>Step 3</p>
-          </div>
+          {nextSteps && nextSteps.length > 0 && (
+            <div className={designSystem.nextSteps}>
+              {nextSteps.map((section, index) => (
+                <div key={index}>
+                  <h2>{section.title}</h2>
+                  {section.content && <p>{section.content}</p>}
+                  {section.items && section.items.length > 0 && (
+                    <ul>
+                      {section.items.map((item, i) => (
+                        <li key={i}>{item}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className={designSystem.feedback}>
             <h3>Help us improve this service</h3>
