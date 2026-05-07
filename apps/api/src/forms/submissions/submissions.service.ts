@@ -2,6 +2,7 @@ import { HttpStatus, Injectable } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { FormSubmissionStatus } from "../../database/entities/form-submission.entity";
 import { AppError } from "../../common/errors";
+import { ExpressionsService } from "../../expressions/expressions.service";
 import { FormSubmissionRepository } from "./form-submission.repository";
 import { SubmissionPipelineService } from "./submission-pipeline.service";
 import { ProcessorFactory } from "./processors/processor-factory.service";
@@ -18,6 +19,7 @@ export class SubmissionsService {
     private readonly pipeline: SubmissionPipelineService,
     private readonly eventEmitter: EventEmitter2,
     private readonly processorFactory: ProcessorFactory,
+    private readonly expressions: ExpressionsService,
   ) {}
 
   async submit(dto: SubmitDto): Promise<SubmitResult> {
@@ -46,7 +48,8 @@ export class SubmissionsService {
     const { draft, contract, auditTrail } = await this.pipeline.run(dto);
     const pinnedVersion = draft?.formVersion ?? dto.formVersion;
 
-    const split = this.processorFactory.resolveSplit(contract.processors ?? []);
+    const rawProcessors = contract.processors ?? [];
+    const split = this.processorFactory.resolveSplit(rawProcessors);
     const hasGating = split.gating.length > 0;
 
     const saved = await this.submissionRepo.tx(async (repo) => {
@@ -79,17 +82,34 @@ export class SubmissionsService {
       formId: dto.formId,
       formVersion: pinnedVersion,
       idempotencyKey: dto.idempotencyKey,
-      processors: contract.processors ?? [],
+      processors: rawProcessors,
       values: dto.values,
       meta: auditTrail,
     };
 
     if (hasGating) {
+      const resolvedForGating = this.expressions.resolveProcessors(
+        rawProcessors,
+        {
+          values: dto.values,
+          meta: auditTrail as unknown as Record<string, unknown>,
+          submission: {
+            id: saved.id,
+            formId: dto.formId,
+            idempotencyKey: dto.idempotencyKey,
+          },
+        },
+      );
+      const gatingEvent: SubmissionCreatedEvent = {
+        ...event,
+        processors: resolvedForGating,
+      };
+
       // First deferred wins; later gating processors still run for their side-effects
       // (e.g. persisting their own state) but their `data` is discarded.
       let deferred: SubmitResult["deferred"];
       for (const processor of split.gating) {
-        const output = await processor.process(event);
+        const output = await processor.process(gatingEvent);
         if (output.kind === "deferred" && !deferred) {
           deferred = output.data;
         }

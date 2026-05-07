@@ -14,9 +14,11 @@ export class FormDefinitionsService {
   async findByFormId({
     formId,
     version,
+    includeProcessors = false,
   }: {
     formId: string;
     version?: string;
+    includeProcessors?: boolean;
   }): Promise<ServiceContract> {
     const entity = await this.formDefRepo.findOne({
       where: { formId, ...(version && { version }) },
@@ -26,6 +28,11 @@ export class FormDefinitionsService {
     if (!entity) {
       throw AppError.notFound("Form definition", { formId, version });
     }
-    return this.registryService.hydrateForm(entity.schema);
+
+    const contract = await this.registryService.hydrateForm(entity.schema);
+    if (includeProcessors) return contract;
+
+    const { processors: _processors, ...stripped } = contract;
+    return stripped as ServiceContract;
   }
 }

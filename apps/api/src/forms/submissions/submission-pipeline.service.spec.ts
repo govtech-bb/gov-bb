@@ -96,6 +96,7 @@ describe("SubmissionPipelineService", () => {
       expect(definitionsService.findByFormId).toHaveBeenCalledWith({
         formId: "passport-renewal",
         version: "2.0.0",
+        includeProcessors: true,
       });
     });
 

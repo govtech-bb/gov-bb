@@ -75,12 +75,8 @@ describe("applyIfRule", () => {
     ).toBe(25);
   });
 
-  it("propagates errors from malformed rules (unknown operator)", () => {
-    // A single-key object whose key is not a registered operator. In practice,
-    // schema validation prevents this — but if it reaches applyIfRule, surface
-    // the error rather than silently pass through.
-    expect(() => applyIfRule({ unknownOp: ["x"] }, { values: {} })).toThrow(
-      /Unrecognized operation/,
-    );
+  it("returns single-key objects whose key is not a registered operator unchanged", () => {
+    const literal = { name: "Alice" };
+    expect(applyIfRule(literal, { values: {} })).toBe(literal);
   });
 });

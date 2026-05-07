@@ -24,8 +24,8 @@ export class EmailProcessor implements ISubmissionProcessor {
   }
 
   async process(payload: SubmissionCreatedEvent): Promise<ProcessorOutput> {
-    const cfg =
-      payload.processors.find((p) => p.type === "email")?.config ?? {};
+    const cfg = (payload.processors.find((p) => p.type === "email")?.config ??
+      {}) as Record<string, unknown>;
 
     const recipientField = cfg["recipientField"] as string | undefined;
     if (!recipientField) {

@@ -153,6 +153,7 @@ export class PaymentWebhookService {
       const contract = await this.formDefs.findByFormId({
         formId: payment.formId,
         version: submission.formVersion,
+        includeProcessors: true,
       });
       const downstreamProcessors = (contract.processors ?? []).filter(
         (p) => p.type !== "payment",

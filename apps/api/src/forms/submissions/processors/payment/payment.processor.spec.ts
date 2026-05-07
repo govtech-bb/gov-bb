@@ -137,7 +137,7 @@ describe("PaymentProcessor.process", () => {
 
   it("throws when no payment processor is in the processors array", async () => {
     const e = event();
-    e.processors = [{ type: "email", config: { to: "x" } }];
+    e.processors = [{ type: "email", config: { recipientField: "x" } }];
     await expect(processor.process(e)).rejects.toThrow();
   });
 
