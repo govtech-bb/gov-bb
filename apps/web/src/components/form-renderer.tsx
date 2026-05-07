@@ -110,14 +110,25 @@ export default function FormRenderer({
   const repeatableStepSettings = repeatableStepSettingsRef.current;
   const handleContinue = async () => {
     // Validate current step fields
-
     const results = await Promise.all(
       currentFields.map((field) => form.validateField(field.id, "change")),
     );
 
+    const scrollToTop = () => {
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth", // Smooth animation
+      });
+    };
+
     const hasError = results.some((r) => r.length > 0);
     if (hasError) {
-      return;
+      scrollToTop();
+      if (
+        !process.env.SKIP_CONTINUE_VALIDATION ||
+        process.env.SKIP_CONTINUE_VALIDATION === "false"
+      )
+        return;
     }
 
     // Handle navigation to repeatable step.
@@ -151,7 +162,10 @@ export default function FormRenderer({
     completeAndContinue(currentStep.stepId);
   };
 
-  const handleSubmit = () => {};
+  const handleSubmit = () => {
+    form.handleSubmit();
+    completeAndContinue(currentStep.stepId);
+  };
 
   const errors = useStore(form.store, (state) => {
     const fieldValidationErrors: FieldValidationErrors = {};
@@ -267,12 +281,12 @@ export default function FormRenderer({
               data-variant="primary"
               type="button"
               onClick={
-                stepIndex === visibleSteps.length - 1
+                stepIndex === visibleSteps.length - 2
                   ? handleSubmit
                   : handleContinue
               }
             >
-              {stepIndex === visibleSteps.length - 1 ? "Submit" : "Continue"}
+              {stepIndex === visibleSteps.length - 2 ? "Submit" : "Continue"}
             </button>
           </div>
         )}

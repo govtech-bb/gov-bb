@@ -44,7 +44,7 @@ const toSentenceCase = (str?: string): string => {
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 };
 
-export const stepFieldIdConcactenator = "-";
+export const stepFieldIdConcactenator = "_";
 
 export const getFullFieldId = (stepId: string, fieldId: string): string => {
   return `${stepId}${stepFieldIdConcactenator}${fieldId}`;
