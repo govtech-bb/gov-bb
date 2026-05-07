@@ -537,11 +537,6 @@
       ]
     },
     {
-      "stepId": "check-your-answers",
-      "title": "Check your answers",
-      "elements": []
-    },
-    {
       "stepId": "declaration",
       "title": "Declaration",
       "elements": [

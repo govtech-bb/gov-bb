@@ -1207,12 +1207,6 @@
       ]
     },
     {
-      "stepId": "check-your-answers",
-      "title": "Check Your Answers",
-      "description": "Review all the information you have provided before submitting your application.",
-      "elements": []
-    },
-    {
       "stepId": "submission-confirmation",
       "title": "Thank you for your application!",
       "elements": []
