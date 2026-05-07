@@ -152,7 +152,7 @@ export default function FormRenderer({
   };
 
   const handleSubmit = () => {
-    console.log("Submitting");
+    form.handleSubmit();
   };
 
   const errors = useStore(form.store, (state) => {

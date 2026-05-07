@@ -20,4 +20,5 @@ export interface FormMeta {
   validationProperties: Record<string, FieldValidationProperties>;
   stepConditionalTargets: Record<stepId, fieldId>;
   repeatSettings: RepeatableStepSettings;
+  idempotencyKey: string;
 }

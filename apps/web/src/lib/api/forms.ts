@@ -193,9 +193,8 @@ export const deleteFormDraft = async (draftId: string): Promise<number> => {
 export const postEzpay = async () => {};
 
 export const postFormSubmission = async (
-  { formId, version: formVersion }: FormMeta,
+  { formId, version: formVersion, idempotencyKey }: FormMeta,
   values: Record<string, FormValues>,
-  idempotencyKey: string,
 ) => {
   const endpoint = `/submissions`;
   const errorMessage = {};
