@@ -1,12 +1,12 @@
 /* GovTech BB Design System Styles */
 /* Design Token Documentation: https://github.com/govtech-bb/design-system/blob/main/packages/design/README.md */
-@import '@govtech-bb/design';
+@import "@govtech-bb/design";
 
 /* Root Styles */
 .formRoot {
   /* Font */
   --font-figtree: "Figtree", sans-serif;
-  
+
   font-family: var(--font-figtree), sans-serif;
   padding: var(--spacing-s);
 }
@@ -42,6 +42,13 @@
   font-size: var(--font-size-h4);
   line-height: var(--line-height-h4);
   font-weight: var(--font-weight-bold);
+}
+
+.formRoot .subHeading {
+  font-size: var(--font-size-h4);
+  line-height: var(--line-height-body);
+  font-weight: var(--font-weight-normal);
+  margin-top: 0;
 }
 
 .formRoot p {
@@ -529,7 +536,7 @@
 .formRoot [data-error-summary] ul {
   list-style-type: none;
   margin: 0;
-  padding: 0;  
+  padding: 0;
 }
 
 .formRoot [data-error-summary] ul li a {
@@ -591,6 +598,130 @@
   text-align: left;
 }
 
+/* Confirmation Styles */
+.formRoot .confirmation {
+  gap: var(--spacing-s);
+}
+
+/* Success Header Styles */
+.formRoot .successHeader {
+  background-color: var(--color-teal-40);
+  padding: var(--spacing-m);
+  margin: calc(var(--spacing-m) * -1);
+  padding: calc(var(--spacing-m));
+  margin-bottom: var(--spacing-m);
+}
+
+.formRoot .successServiceTitle {
+    font-size: var(--font-size-h4);
+  line-height: var(--line-height-h4);
+  border-left: var(--color-teal-00) 0.25rem solid;
+  color: var(--color-black-00);
+  padding: 0.5rem 1rem;
+}
+
+.formRoot .successStepTitle {
+  font-size: var(--font-size-h1);
+  line-height: var(--line-height-h1);
+  font-weight: var(--font-weight-bold);
+  margin: 0;
+  padding: 0;
+}
+
+.formRoot .successSubheading {
+  font-size: var(--font-size-h4);
+  line-height: var(--line-height-body);
+  font-weight: var(--font-weight-normal);
+}
+
+/* Error Header Styles */
+.formRoot .errorHeader {
+  background-color: var(--color-red-40);
+  padding: var(--spacing-m);
+  margin: calc(var(--spacing-m) * -1);
+  margin-bottom: var(--spacing-m);
+}
+
+.formRoot .errorServiceTitle {
+    font-size: var(--font-size-h4);
+  line-height: var(--line-height-h4);
+  border-left: var(--color-red-00) 0.25rem solid;
+  color: var(--color-black-00);
+  padding: 0.5rem 1rem;
+}
+
+.formRoot .errorStepTitle {
+  font-size: var(--font-size-h1);
+  line-height: var(--line-height-h1);
+  font-weight: var(--font-weight-bold);
+  margin: 0;
+  padding: 0;
+}
+
+.formRoot .errorSubheading {
+  font-size: var(--font-size-h4);
+  line-height: var(--line-height-body);
+  font-weight: var(--font-weight-normal);
+}
+
+/* Payment Summary Styles */
+.formRoot .paymentSummary {
+  background-color: #e8eef5;
+  padding: var(--spacing-m);
+  border-radius: 0.25rem;
+  margin-bottom: var(--spacing-m);
+  max-width: 100%;
+}
+
+.formRoot .paymentSummary h2 {
+  margin-top: 0;
+  margin-bottom: var(--spacing-xs);
+}
+
+.formRoot .paymentSummary > p {
+  margin: 0 0 var(--spacing-m) 0;
+}
+
+.formRoot .paymentSuccessSummary {
+  background-color: var(--color-green-00);
+  color: var(--color-white-00);
+  padding: var(--spacing-m);
+  border-radius: 0.25rem;
+  margin-bottom: var(--spacing-m);
+  max-width: 100%;
+}
+
+.formRoot .paymentSummaryTable {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-s);
+  margin: var(--spacing-m) 0;
+  padding-top: var(--spacing-m);
+  border-top: 0.1rem solid var(--color-white-00);
+}
+
+
+
+.formRoot .paymentHint {
+  font-size: var(--font-size-caption);
+  color: var(--color-mid-grey-00);
+  padding-top: var(--spacing-xs);
+  font-style: italic;
+}
+
+.formRoot .nextSteps {
+  margin-top: var(--spacing-m);
+}
+
+.formRoot .feedback {
+  margin-top: var(--spacing-m);
+  border-radius: 0.25rem;
+}
+
+.formRoot .feedback h3 {
+  margin-top: 0;
+}
+
 /* Media Queries */
 @media screen and (min-width: 768px) {
   .formRoot .formStep [data-field][data-field-width="short"] {
@@ -599,5 +730,10 @@
 
   .formRoot .formStep [data-field][data-field-width="medium"] {
     width: 50%;
+  }
+
+  .formRoot .paymentSummary,
+  .formRoot .paymentSuccessSummary {
+    max-width: 60%;
   }
 }

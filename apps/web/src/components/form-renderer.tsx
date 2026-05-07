@@ -10,6 +10,7 @@ import ErrorSummary from "./error-summary";
 import { useStore } from "@tanstack/react-form";
 import { useStepGuard } from "../hooks/use-step-guard";
 import Review from "./review";
+import SubmissionConfirmation from "./submission-confirmation";
 import {
   getFullFieldId,
   repeatStepConcactenator,
@@ -100,17 +101,31 @@ export default function FormRenderer({
     return fieldValidationErrors;
   });
 
+  const isSubmissionConfirmation =
+    currentStep.stepId === "submission-confirmation";
+
   return (
     <div className={designSystem.formRoot}>
-      <p className={designSystem.formTitle}> {formMeta.formTitle} </p>
+      {!isSubmissionConfirmation && (
+        <p className={designSystem.formTitle}> {formMeta.formTitle} </p>
+      )}
 
-      <h1>{currentStep.title}</h1>
+      {!isSubmissionConfirmation && <h1>{currentStep.title}</h1>}
       {/* {step.description && <p>{step.description}</p>} */}
       <ErrorSummary errors={errors} />
 
       <div className={designSystem.formStep}>
         {currentStep.stepId === "check-your-answers" && (
           <Review key={"review-step"} formMeta={formMeta} form={form} />
+        )}
+
+        {isSubmissionConfirmation && (
+          <SubmissionConfirmation
+            key={"submission-confirmation"}
+            serviceTitle={formMeta.formTitle}
+            stepTitle={currentStep.title}
+            onTryAgain={() => navigateToStep("check-your-answers")}
+          />
         )}
 
         {currentFields.map((field) => (
@@ -122,28 +137,30 @@ export default function FormRenderer({
           />
         ))}
 
-        <div className={designSystem.formNavigation}>
-          {!hidePrevious && (
+        {currentStep.stepId !== "submission-confirmation" && (
+          <div className={designSystem.formNavigation}>
+            {!hidePrevious && (
+              <button
+                data-variant="secondary"
+                type="button"
+                onClick={handlePrevious}
+              >
+                Previous
+              </button>
+            )}
             <button
-              data-variant="secondary"
+              data-variant="primary"
               type="button"
-              onClick={handlePrevious}
+              onClick={
+                stepIndex === visibleSteps.length - 1
+                  ? handleSubmit
+                  : handleContinue
+              }
             >
-              Previous
+              {stepIndex === visibleSteps.length - 1 ? "Submit" : "Continue"}
             </button>
-          )}
-          <button
-            data-variant="primary"
-            type="button"
-            onClick={
-              stepIndex === visibleSteps.length - 1
-                ? handleSubmit
-                : handleContinue
-            }
-          >
-            {stepIndex === visibleSteps.length - 1 ? "Submit" : "Continue"}
-          </button>
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
