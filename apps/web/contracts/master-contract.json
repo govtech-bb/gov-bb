@@ -1218,15 +1218,26 @@
       "elements": [],
       "nextSteps": [
         {
-          "step": "Your submission has been received and will be reviewed by our team."
-        },
-        {
-          "step": "You will be contacted if any additional information is required."
-        },
-        {
-          "step": "A decision will be communicated to you within the specified timeframe."
+          "title": "What happens next",
+          "content": "You will receive a confirmation email with:",
+          "items": [
+            "Your application reference number",
+            "the cost of the certificate(s)",
+            "the expected completion date"
+          ]
         }
-      ]
+      ],
+      "contactDetails": {
+        "title": "Registration Department",
+        "telephoneNumber": "(246) 535-8300",
+        "email": "registrationdept@barbados.gov.bb",
+        "address": {
+          "line1": "Supreme Court Complex",
+          "line2": "Whitepark Road",
+          "city": "St. Michael",
+          "country": "Barbados"
+        }
+      }
     }
   ]
 }

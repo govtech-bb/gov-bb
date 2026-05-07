@@ -1,12 +1,6 @@
 import React from "react";
 import designSystem from "../styles/govtechbb.module.css";
-
-interface SubmissionConfirmationProps {
-  serviceTitle: string;
-  stepTitle: string;
-  nextSteps?: { step: string }[];
-  onTryAgain?: () => void;
-}
+import { SubmissionConfirmationProps } from "../types/props.type";
 
 export default function SubmissionConfirmation({
   serviceTitle,
@@ -106,9 +100,18 @@ export default function SubmissionConfirmation({
 
           {nextSteps && nextSteps.length > 0 && (
             <div className={designSystem.nextSteps}>
-              <h2>What happens next</h2>
-              {nextSteps.map((item, index) => (
-                <p key={index}>{item.step}</p>
+              {nextSteps.map((section, index) => (
+                <div key={index}>
+                  <h2>{section.title}</h2>
+                  {section.content && <p>{section.content}</p>}
+                  {section.items && section.items.length > 0 && (
+                    <ul>
+                      {section.items.map((item, i) => (
+                        <li key={i}>{item}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               ))}
             </div>
           )}

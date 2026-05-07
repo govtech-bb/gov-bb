@@ -20,7 +20,6 @@ export const mapStepToLocale = (step: FormStep): ClientFormStep => {
   return {
     ...step,
     fields: step.elements.map((el) => mapFieldToLocale(el, step)),
-    nextSteps: step.nextSteps,
   };
 };
 
