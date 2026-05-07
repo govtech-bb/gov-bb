@@ -292,7 +292,8 @@
               "error": "Please confirm your email address"
             },
             "equal": {
-              "reference": "email",
+              "referenceFieldId": "email",
+              "referenceStepId": "step2ContactInformation",
               "error": "Email addresses do not match"
             }
           }
@@ -1206,10 +1207,31 @@
       ]
     },
     {
-      "stepId": "check-your-answers",
-      "title": "Check Your Answers",
-      "description": "Review all the information you have provided before submitting your application.",
-      "elements": []
+      "stepId": "submission-confirmation",
+      "title": "Thank you for your application!",
+      "elements": [],
+      "nextSteps": [
+        {
+          "title": "What happens next",
+          "content": "You will receive a confirmation email with:",
+          "items": [
+            "Your application reference number",
+            "the cost of the certificate(s)",
+            "the expected completion date"
+          ]
+        }
+      ],
+      "contactDetails": {
+        "title": "Registration Department",
+        "telephoneNumber": "(246) 535-8300",
+        "email": "registrationdept@barbados.gov.bb",
+        "address": {
+          "line1": "Supreme Court Complex",
+          "line2": "Whitepark Road",
+          "city": "St. Michael",
+          "country": "Barbados"
+        }
+      }
     }
   ]
 }

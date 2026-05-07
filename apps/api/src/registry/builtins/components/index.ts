@@ -7,6 +7,7 @@ export { Bank } from "./bank";
 export { Confirmation } from "./confirmation";
 export { ContactTelephone } from "./contact-number";
 export { Country } from "./country";
+export { GenericDate } from "./date";
 export { DateOfBirth } from "./date-of-birth";
 export { EmailAddress } from "./email";
 export { FaxNumber } from "./fax-number";

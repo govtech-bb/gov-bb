@@ -54,11 +54,12 @@ export const afterRunner: RuleRunner = (value, config, allValues) => {
   const target = resolveDateRef(config, allValues);
   if (
     resolveReference(config, allValues) === MISSING &&
-    config.reference !== undefined
+    config.referenceFieldId !== undefined
   )
     return null;
   const msg =
-    config.error ?? `Date must be after ${config.reference ?? config.value}`;
+    config.error ??
+    `Date must be after ${config.referenceFieldId ?? config.value}`;
   const d = parseDate(value);
   const ref = parseDate(target);
   if (!d || !ref) return msg;
@@ -68,12 +69,13 @@ export const afterRunner: RuleRunner = (value, config, allValues) => {
 export const beforeRunner: RuleRunner = (value, config, allValues) => {
   if (
     resolveReference(config, allValues) === MISSING &&
-    config.reference !== undefined
+    config.referenceFieldId !== undefined
   )
     return null;
   const target = resolveDateRef(config, allValues);
   const msg =
-    config.error ?? `Date must be before ${config.reference ?? config.value}`;
+    config.error ??
+    `Date must be before ${config.referenceFieldId ?? config.value}`;
   const d = parseDate(value);
   const ref = parseDate(target);
   if (!d || !ref) return msg;
@@ -83,13 +85,13 @@ export const beforeRunner: RuleRunner = (value, config, allValues) => {
 export const onOrAfterRunner: RuleRunner = (value, config, allValues) => {
   if (
     resolveReference(config, allValues) === MISSING &&
-    config.reference !== undefined
+    config.referenceFieldId !== undefined
   )
     return null;
   const target = resolveDateRef(config, allValues);
   const msg =
     config.error ??
-    `Date must be on or after ${config.reference ?? config.value}`;
+    `Date must be on or after ${config.referenceFieldId ?? config.value}`;
   const d = parseDate(value);
   const ref = parseDate(target);
   if (!d || !ref) return msg;
@@ -99,13 +101,13 @@ export const onOrAfterRunner: RuleRunner = (value, config, allValues) => {
 export const onOrBeforeRunner: RuleRunner = (value, config, allValues) => {
   if (
     resolveReference(config, allValues) === MISSING &&
-    config.reference !== undefined
+    config.referenceFieldId !== undefined
   )
     return null;
   const target = resolveDateRef(config, allValues);
   const msg =
     config.error ??
-    `Date must be on or before ${config.reference ?? config.value}`;
+    `Date must be on or before ${config.referenceFieldId ?? config.value}`;
   const d = parseDate(value);
   const ref = parseDate(target);
   if (!d || !ref) return msg;

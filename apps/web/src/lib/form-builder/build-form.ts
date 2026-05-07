@@ -5,6 +5,7 @@ import {
   FormMeta,
   RepeatableStepSettings,
   FormValidation,
+  ClientFormStep,
 } from "@web/types";
 import { buildValidation } from "./validation-builder";
 import { getStepConditonalTargets, setupRepeatSteps } from "@web/lib";
@@ -22,9 +23,21 @@ export const buildForm = (contract: ClientServiceContract): FormMeta => {
 
   const steps = setupRepeatSteps(contract.steps, repeatSettings);
 
+  // Configure check-your-answer step
+  const checkAnswers: ClientFormStep = {
+    stepId: "check-your-answers",
+    fields: [],
+    title: "Check your answers",
+    description:
+      "Review all the information you have provided before submitting your application.",
+  };
+
+  steps.splice(-1, 0, checkAnswers);
+
   // Return FormMeta object with everything configured.
   return {
     formId: contract.formId,
+    version: contract.version,
     formTitle: contract.title,
     formDescription: contract.description,
     schema,

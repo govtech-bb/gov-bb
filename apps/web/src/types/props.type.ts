@@ -12,10 +12,7 @@ export interface FormRendererProps {
   formMeta: FormMeta;
   visibleSteps: ClientFormStep[];
   stepId: string;
-  repeatableStepSettings: RepeatableStepSettings;
-  setRepeatableStepSettings: React.Dispatch<
-    React.SetStateAction<RepeatableStepSettings>
-  >;
+  repeatableStepSettingsRef: React.MutableRefObject<RepeatableStepSettings>;
 }
 
 export type FormRouteProps = {
@@ -47,3 +44,10 @@ export type FileUploadProps = {
   errorMessage?: string;
   validationRules?: any;
 };
+
+export interface SubmissionConfirmationProps {
+  serviceTitle: string;
+  stepTitle: string;
+  nextSteps?: { title: string; content?: string; items?: string[] }[];
+  onTryAgain?: () => void;
+}

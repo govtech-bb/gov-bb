@@ -19,6 +19,7 @@ export const htmlTypesSchema = z.enum([
   "radio",
   "file",
   "select",
+  "show-hide",
 ]);
 export type HtmlTypes = z.infer<typeof htmlTypesSchema>;
 
@@ -110,6 +111,11 @@ export const filePrimitiveSchema = basePrimitiveSchema.extend({
 });
 export type FilePrimitive = z.infer<typeof filePrimitiveSchema>;
 
+export const showHidePrimitiveSchema = basePrimitiveSchema.extend({
+  htmlType: z.literal("show-hide"),
+});
+export type ShowHidePrimitive = z.infer<typeof showHidePrimitiveSchema>;
+
 export const primitiveSchema = z.discriminatedUnion("htmlType", [
   textPrimitiveSchema,
   textAreaPrimitiveSchema,
@@ -121,19 +127,24 @@ export const primitiveSchema = z.discriminatedUnion("htmlType", [
   selectPrimitiveSchema,
   radioPrimitiveSchema,
   filePrimitiveSchema,
+  showHidePrimitiveSchema,
 ]);
 export type Primitive = z.infer<typeof primitiveSchema>;
 
-export const fieldOverridesSchema = basePrimitiveSchema.pick({
-  label: true,
-  hint: true,
-  placeholder: true,
-  validations: true,
-  defaultValue: true,
-  isDisabled: true,
-  isHidden: true,
-  multiple: true,
-  options: true,
-  ui: true,
-});
+export const fieldOverridesSchema = basePrimitiveSchema
+  .pick({
+    fieldId: true,
+    label: true,
+    hint: true,
+    placeholder: true,
+    validations: true,
+    defaultValue: true,
+    isDisabled: true,
+    isHidden: true,
+    behaviours: true,
+    multiple: true,
+    options: true,
+    ui: true,
+  })
+  .partial();
 export type FieldOverrides = z.infer<typeof fieldOverridesSchema>;

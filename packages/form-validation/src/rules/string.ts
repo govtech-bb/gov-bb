@@ -49,7 +49,7 @@ export const strictEqualityRunner: RuleRunner = (value, config, allValues) => {
   const msg = config.error ?? "Values do not match";
   const resolved = resolveReference(config, allValues);
   if (resolved === MISSING)
-    return config.reference !== undefined
+    return config.referenceFieldId !== undefined
       ? null
       : str(value) === String(config.value ?? "")
         ? null

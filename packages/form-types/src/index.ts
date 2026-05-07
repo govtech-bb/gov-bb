@@ -13,6 +13,7 @@ export {
   selectPrimitiveSchema,
   radioPrimitiveSchema,
   filePrimitiveSchema,
+  showHidePrimitiveSchema,
   primitiveSchema,
   fieldOverridesSchema,
   primitiveUISchema,
@@ -33,6 +34,7 @@ export type {
   TelPrimitive,
   EmailPrimitive,
   CheckboxPrimitive,
+  ShowHidePrimitive,
   Primitive,
   HtmlTypes,
   PrimitiveUI,
@@ -42,12 +44,17 @@ export {
   validationConfigSchema,
   validationTypeSchema,
   validationRuleSchema,
+  fieldValueSchema,
+  dateValueInputSchema,
 } from "./validation.type";
 
 export type {
   ValidationConfig,
   ValidationType,
   ValidationRule,
+  FieldValue,
+  DateValue,
+  DateValueInput,
 } from "./validation.type";
 
 export {

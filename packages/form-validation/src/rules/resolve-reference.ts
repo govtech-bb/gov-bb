@@ -8,22 +8,23 @@ export function resolveReference(
   allValues: StepScopedValues,
   stepValues: Record<string, unknown> = {},
 ): unknown | typeof MISSING {
-  const { reference, targetStepId } = config;
-  if (reference === undefined) return MISSING;
+  const { referenceFieldId, targetStepId } = config;
+  if (referenceFieldId === undefined) return MISSING;
 
   if (targetStepId !== undefined) {
     const target = allValues[targetStepId];
-    if (target !== undefined && reference in target) return target[reference];
+    if (target !== undefined && referenceFieldId in target)
+      return target[referenceFieldId];
     // targetStepId not in allValues yet — fall back to stepValues
-    if (reference in stepValues) return stepValues[reference];
+    if (referenceFieldId in stepValues) return stepValues[referenceFieldId];
     return MISSING;
   }
 
   // Flat fallback — scan all saved steps, then the current step's values
   for (const saved of Object.values(allValues)) {
-    if (reference in saved) return saved[reference];
+    if (referenceFieldId in saved) return saved[referenceFieldId];
   }
-  if (reference in stepValues) return stepValues[reference];
+  if (referenceFieldId in stepValues) return stepValues[referenceFieldId];
 
   return MISSING;
 }

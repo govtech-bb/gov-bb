@@ -6,9 +6,6 @@ import {
   FieldValidationProperties,
   ValidationResults,
   ValidationArgs,
-  DateValue,
-  DateValueInput,
-  FieldValue,
 } from "@web/types";
 import z from "zod";
 import {
@@ -40,7 +37,12 @@ import {
 import { AnyFieldApi } from "@tanstack/react-form";
 import { ValidationRule } from "@govtech-bb/form-types";
 import { validate } from "@govtech-bb/form-validation";
-import type { Primitive } from "@govtech-bb/form-types";
+import type {
+  DateValue,
+  DateValueInput,
+  FieldValue,
+  Primitive,
+} from "@govtech-bb/form-types";
 
 export const buildValidation = (
   contract: ClientServiceContract,
@@ -71,6 +73,19 @@ export const buildValidation = (
 export const buildFieldValidation = (
   field: ClientPrimitive,
 ): FieldValidation => {
+  // The show-hide toggle stores a boolean (open/closed state) and
+  // never has its own validation rules.  Return a pass-through schema and
+  // empty handlers so the validation pipeline ignores it entirely.
+  if (field.htmlType === "show-hide") {
+    return {
+      fieldSchema: z.boolean().optional(),
+      properties: {
+        onBlur() {},
+        onChange() {},
+      },
+    };
+  }
+
   const primitive = clientPrimitiveToPrimitive(field);
 
   const fieldSchema = z.any().superRefine((value, ctx) => {
@@ -157,7 +172,7 @@ export const buildFieldValidationProperties = (
 
       const requiredState = checkRequired({
         fieldId: field.id,
-        fieldLabel: field.label,
+        fieldName: field.name,
         value,
         results,
         validations,
@@ -178,7 +193,7 @@ export const buildFieldValidationProperties = (
         // If it passes the required check, then it has all 3 parts
         runDateValidations(
           field.id,
-          field.label,
+          field.name,
           value as DateValue,
           validations,
           results,
@@ -191,7 +206,7 @@ export const buildFieldValidationProperties = (
           return undefined;
         runCheckboxValidations(
           field.id,
-          field.label,
+          field.name,
           value as boolean | string[],
           validations,
           results,
@@ -202,7 +217,7 @@ export const buildFieldValidationProperties = (
       if (typeof value === "string") {
         runStringValidations(
           field.id,
-          field.label,
+          field.name,
           value as string,
           validations,
           results,
@@ -219,7 +234,7 @@ export const buildFieldValidationProperties = (
             if (element.length === 0) continue;
             runStringValidations(
               field.id,
-              field.label,
+              field.name,
               element,
               validations,
               results,
@@ -233,7 +248,7 @@ export const buildFieldValidationProperties = (
       if (field.htmlType === "file") {
         runFileValidations(
           field.id,
-          field.label,
+          field.name,
           value as FileList,
           validations,
           results,
@@ -248,7 +263,7 @@ export const buildFieldValidationProperties = (
 
 const runDateValidations = (
   fieldId: string,
-  fieldLabel: string,
+  fieldName: string,
   value: DateValue,
   validations: ValidationRule,
   results: ValidationResults,
@@ -264,7 +279,7 @@ const runDateValidations = (
   const argsDate: ValidationArgs<Date> = {
     value: date,
     fieldId,
-    fieldLabel,
+    fieldName,
     validations,
     results,
   };
@@ -281,7 +296,7 @@ const runDateValidations = (
   const argsDateValue: ValidationArgs<DateValue> = {
     value: dateValue,
     fieldId,
-    fieldLabel,
+    fieldName,
     validations,
     results,
   };
@@ -292,7 +307,7 @@ const runDateValidations = (
 
 const runCheckboxValidations = (
   fieldId: string,
-  fieldLabel: string,
+  fieldName: string,
   value: string[] | boolean,
   validations: ValidationRule,
   results: ValidationResults,
@@ -303,14 +318,14 @@ const runCheckboxValidations = (
       value,
       validations,
       results,
-      fieldLabel,
+      fieldName,
     });
   }
 };
 
 const runStringValidations = (
   fieldId: string,
-  fieldLabel: string,
+  fieldName: string,
   value: string,
   validations: ValidationRule,
   results: ValidationResults,
@@ -318,7 +333,7 @@ const runStringValidations = (
 ) => {
   const args: ValidationArgs<string> = {
     fieldId,
-    fieldLabel,
+    fieldName,
     value,
     validations,
     results,
@@ -334,14 +349,14 @@ const runStringValidations = (
 
 const runFileValidations = (
   fieldId: string,
-  fieldLabel: string,
+  fieldName: string,
   value: FileList,
   validations: ValidationRule,
   results: ValidationResults,
 ) => {
   const args: ValidationArgs<FileList> = {
     fieldId,
-    fieldLabel,
+    fieldName,
     value,
     validations,
     results,

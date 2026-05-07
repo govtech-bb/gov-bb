@@ -1,13 +1,9 @@
 import { AnyFieldApi } from "@tanstack/react-form";
-import {
-  ClientPrimitive,
-  DateValue,
-  FieldValidationProperties,
-} from "@web/types";
+import { ClientPrimitive, FieldValidationProperties } from "@web/types";
 import React, { JSX } from "react";
 import ErrorMessage from "./error-message";
 import { RequiredState, checkConditionalOn } from "@web/lib";
-import { FieldArrayBehaviour } from "@govtech-bb/form-types";
+import { DateValue, FieldArrayBehaviour } from "@govtech-bb/form-types";
 import FileUpload from "./file-upload";
 
 export default function FieldRenderer({
@@ -20,11 +16,6 @@ export default function FieldRenderer({
   validationProperties: FieldValidationProperties;
 }) {
   if (field.hidden) return null;
-
-  const formatter = new Intl.ListFormat("en", {
-    style: "long",
-    type: "conjunction",
-  });
 
   let conditionalRequiredState: RequiredState = "unknownState";
   let fieldArray: FieldArrayBehaviour;
@@ -65,7 +56,7 @@ export default function FieldRenderer({
 
         let errorMessage = "";
         if (!f.state.meta.isValid) {
-          errorMessage = formatter.format(f.state.meta.errors);
+          errorMessage = f.state.meta.errors[0];
         }
 
         switch (field.htmlType) {
@@ -334,6 +325,26 @@ export default function FieldRenderer({
                 validationRules={field.validations}
               />
             );
+          case "show-hide": {
+            // Value is a boolean: false = collapsed (default), true = expanded.
+            // The toggle itself carries no validation. Hint text and controlled
+            // sibling fields are rendered by form-renderer inside a shared
+            // data-show-hide-content wrapper so the left border spans them all.
+            const isOpen = (f.state.value as boolean | undefined) ?? false;
+            return (
+              <div data-show-hide>
+                <button
+                  type="button"
+                  data-show-hide-toggle
+                  aria-expanded={isOpen}
+                  onClick={() => f.handleChange(!isOpen)}
+                >
+                  <span data-show-hide-arrow aria-hidden="true" />
+                  {field.label}
+                </button>
+              </div>
+            );
+          }
           default:
             return (
               <div style={{ color: "red" }}>
