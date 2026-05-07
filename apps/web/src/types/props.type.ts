@@ -44,3 +44,10 @@ export type FileUploadProps = {
   errorMessage?: string;
   validationRules?: any;
 };
+
+export interface SubmissionConfirmationProps {
+  serviceTitle: string;
+  stepTitle: string;
+  nextSteps?: { title: string; content?: string; items?: string[] }[];
+  onTryAgain?: () => void;
+}

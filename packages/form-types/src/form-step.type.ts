@@ -8,6 +8,15 @@ export const formStepSchema = z.object({
   description: z.string().optional(),
   elements: z.array(primitiveSchema),
   behaviours: z.array(behaviourSchema).optional(),
+  nextSteps: z
+    .array(
+      z.object({
+        title: z.string(),
+        content: z.string().optional(),
+        items: z.array(z.string()).optional(),
+      }),
+    )
+    .optional(),
 });
 export type FormStep = z.infer<typeof formStepSchema>;
 
