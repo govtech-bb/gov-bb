@@ -96,6 +96,29 @@ describe("ProcessorFactory", () => {
     });
   });
 
+  describe("resolveByType", () => {
+    let factory: ProcessorFactory;
+    const emailProcessor = makeProcessor("email");
+
+    beforeEach(async () => {
+      const module = await Test.createTestingModule({
+        providers: [
+          ProcessorFactory,
+          { provide: SUBMISSION_PROCESSORS, useValue: [emailProcessor] },
+        ],
+      }).compile();
+      factory = module.get(ProcessorFactory);
+    });
+
+    it("returns the processor instance for a registered type", () => {
+      expect(factory.resolveByType("email")).toBe(emailProcessor);
+    });
+
+    it("returns undefined for an unregistered type", () => {
+      expect(factory.resolveByType("unknown")).toBeUndefined();
+    });
+  });
+
   describe("resolveSplit", () => {
     let factory: ProcessorFactory;
     const emailProcessor = makeProcessor("email");

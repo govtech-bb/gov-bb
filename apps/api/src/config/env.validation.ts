@@ -25,6 +25,21 @@ export const envValidationSchema = Joi.object({
   // Spreadsheet export (optional — defaults to <cwd>/exports)
   SPREADSHEET_EXPORT_DIR: Joi.string().optional(),
 
+  // SQS (optional — required only when SQS_ENABLED=true)
+  // Single shared queue; processor type is carried inside each message body.
+  //   Main: modular-forms-submissions-sandbox
+  //   DLQ:  modular-forms-submissions-dlq-sandbox  (auto-routed after 3 failures)
+  SQS_ENABLED: Joi.boolean().default(false),
+  SQS_REGION: Joi.string().optional(),
+  SQS_ENDPOINT: Joi.string().uri().optional(), // LocalStack / custom endpoint
+  SQS_QUEUE_URL: Joi.string()
+    .uri()
+    .when("SQS_ENABLED", {
+      is: true,
+      then: Joi.required(),
+      otherwise: Joi.optional().allow(""),
+    }),
+
   // EzPay (required only when forms use the payment processor)
   EZPAY_BASE_URL: Joi.string().uri().required(),
   EZPAY_DEPARTMENT_API_KEYS: Joi.string().required(),
