@@ -293,7 +293,7 @@
             },
             "equal": {
               "referenceFieldId": "email",
-              "referenceStepId": "step2ContactInformation",
+              "referenceStepId": "step-2-contact-information",
               "error": "Email addresses do not match"
             }
           }
@@ -519,7 +519,7 @@
               "error": "Postcode is required"
             },
             "pattern": {
-              "value": "^[A-Z]{1,2}[0-9][0-9A-Z]?\\s?[0-9][A-Z]{2}$",
+              "value": "^BB[0-9]{5}$",
               "error": "Please enter a valid BB postcode"
             }
           }
@@ -929,11 +929,11 @@
             },
             "minLength": {
               "value": 4,
-              "error": "Account number must be 8 digits"
+              "error": "Account number must be at least 4 digits"
             },
             "maxLength": {
               "value": 20,
-              "error": "Account number must be 8 digits"
+              "error": "Account number must be at most 20 digits"
             }
           }
         },
@@ -1076,7 +1076,7 @@
       "behaviours": [
         {
           "type": "repeatable",
-          "min": 2,
+          "min": 0,
           "max": 6
         },
         {
