@@ -131,16 +131,20 @@ export const primitiveSchema = z.discriminatedUnion("htmlType", [
 ]);
 export type Primitive = z.infer<typeof primitiveSchema>;
 
-export const fieldOverridesSchema = basePrimitiveSchema.pick({
-  label: true,
-  hint: true,
-  placeholder: true,
-  validations: true,
-  defaultValue: true,
-  isDisabled: true,
-  isHidden: true,
-  multiple: true,
-  options: true,
-  ui: true,
-});
+export const fieldOverridesSchema = basePrimitiveSchema
+  .pick({
+    fieldId: true,
+    label: true,
+    hint: true,
+    placeholder: true,
+    validations: true,
+    defaultValue: true,
+    isDisabled: true,
+    isHidden: true,
+    behaviours: true,
+    multiple: true,
+    options: true,
+    ui: true,
+  })
+  .partial();
 export type FieldOverrides = z.infer<typeof fieldOverridesSchema>;
