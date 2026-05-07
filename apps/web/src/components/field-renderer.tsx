@@ -216,6 +216,7 @@ export default function FieldRenderer({
               >
                 <label> {field.label} </label>
                 {field.hint && <p data-hint>{field.hint}</p>}
+                <ErrorMessage message={errorMessage} />
                 <div data-select-control>
                   <select
                     {...sharedProps}
