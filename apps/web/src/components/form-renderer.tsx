@@ -1,8 +1,4 @@
-import {
-  ClientFormStep,
-  FieldValidationErrors,
-  FormRendererProps,
-} from "@web/types";
+import { FieldValidationErrors, FormRendererProps } from "@web/types";
 import FieldRenderer from "./field-renderer";
 import designSystem from "../lib/design-system";
 import React from "react";
@@ -124,6 +120,7 @@ export default function FormRenderer({
             key={"submission-confirmation"}
             serviceTitle={formMeta.formTitle}
             stepTitle={currentStep.title}
+            whatsNext={currentStep.whatsNext}
             onTryAgain={() => navigateToStep("check-your-answers")}
           />
         )}

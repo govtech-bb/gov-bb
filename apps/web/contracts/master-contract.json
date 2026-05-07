@@ -1215,7 +1215,18 @@
     {
       "stepId": "submission-confirmation",
       "title": "Thank you for your application!",
-      "elements": []
+      "elements": [],
+      "whatsNext": [
+        {
+          "step": "Your submission has been received and will be reviewed by our team."
+        },
+        {
+          "step": "You will be contacted if any additional information is required."
+        },
+        {
+          "step": "A decision will be communicated to you within the specified timeframe."
+        }
+      ]
     }
   ]
 }
