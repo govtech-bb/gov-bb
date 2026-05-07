@@ -13,46 +13,92 @@ export default function SubmissionConfirmation({
   onTryAgain,
 }: SubmissionConfirmationProps) {
   // TODO: Dynamically render this content from backend response
-  const hasPayment = false;
+  const hasPayment = true;
   const serviceName = "Example Service";
   const amount = "$100.00";
   const quantity = 1;
-  const success = true;
+  const submissionSuccess = true;
+  const paymentSuccess = true;
+  const referenceNumber = "ABC123456789";
+  const date = "07/05/2026";
 
   return (
     <div className={designSystem.confirmation}>
-      {success ? (
+      {submissionSuccess ? (
         <>
-          <div className={designSystem.successHeader}>
-            <p className={designSystem.successServiceTitle}>{serviceTitle}</p>
-            <h1 className={designSystem.successStepTitle}>{stepTitle}</h1>
-            <p className={designSystem.successSubheading}>
-              Your application has been submitted successfully.
-            </p>
-          </div>
+          {hasPayment ? (
+            paymentSuccess ? (
+              <div>
+                <div className={designSystem.successHeader}>
+                  <p className={designSystem.successServiceTitle}>
+                    {serviceTitle}
+                  </p>
+                  <h1 className={designSystem.successStepTitle}>{stepTitle}</h1>
+                  <p className={designSystem.successSubheading}>
+                    Your submission has been saved
+                  </p>
+                </div>
 
-          {hasPayment && (
-            <div className={designSystem.paymentSummary}>
-              <h2>Complete your payment</h2>
-              <p>
-                Please review and complete your payment to finalize your
-                application
-              </p>
-
-              <div className={designSystem.paymentSummaryTable}>
-                <p>Service</p>
-                <p>{serviceName}</p>
-                <p>Quantity</p>
-                <p>{quantity}</p>
-                <p>Amount</p>
-                <p>{amount}</p>
+                <div className={designSystem.paymentSuccessSummary}>
+                  <h2>Your payment was successful</h2>
+                  <p>
+                    Your payment has been received. We've sent a confirmation
+                    email to the address you provided.
+                  </p>
+                  <div className={designSystem.paymentSummaryTable}>
+                    <p>Service</p>
+                    <p>{serviceName}</p>
+                    <p>Amount</p>
+                    <p>{amount}</p>
+                    <p>Reference Number</p>
+                    <p>{referenceNumber}</p>
+                    <p>Date</p>
+                    <p>{date}</p>
+                  </div>
+                </div>
               </div>
+            ) : (
+              <div>
+                <div>
+                  <p className={designSystem.formTitle}>{serviceTitle}</p>
+                  <h1>{stepTitle}</h1>
+                  <p>Complete your payment below to finalize your submission</p>
+                </div>
+                <div className={designSystem.paymentSummary}>
+                  <h2>Complete your payment</h2>
+                  <p>
+                    Please review and complete your payment to finalize your
+                    application
+                  </p>
 
-              <button data-variant="primary">Continue to payment</button>
-              <p className={designSystem.paymentHint}>
-                You will be redirected to EZ Pay to securely complete your
-                payment.
-              </p>
+                  <div className={designSystem.paymentSummaryTable}>
+                    <p>Service</p>
+                    <p>{serviceName}</p>
+                    <p>Quantity</p>
+                    <p>{quantity}</p>
+                    <p>Amount</p>
+                    <p>{amount}</p>
+                  </div>
+
+                  <button data-variant="primary">Continue to payment</button>
+                  <p className={designSystem.paymentHint}>
+                    You will be redirected to EZ Pay to securely complete your
+                    payment.
+                  </p>
+                </div>
+              </div>
+            )
+          ) : (
+            <div>
+              <div className={designSystem.successHeader}>
+                <p className={designSystem.successServiceTitle}>
+                  {serviceTitle}
+                </p>
+                <h1 className={designSystem.successStepTitle}>{stepTitle}</h1>
+                <p className={designSystem.successSubheading}>
+                  Your submission has been saved
+                </p>
+              </div>
             </div>
           )}
 

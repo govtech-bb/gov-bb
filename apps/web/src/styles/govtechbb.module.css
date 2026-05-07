@@ -682,14 +682,25 @@
   margin: 0 0 var(--spacing-m) 0;
 }
 
+.formRoot .paymentSuccessSummary {
+  background-color: var(--color-green-00);
+  color: var(--color-white-00);
+  padding: var(--spacing-m);
+  border-radius: 0.25rem;
+  margin-bottom: var(--spacing-m);
+  max-width: 100%;
+}
+
 .formRoot .paymentSummaryTable {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--spacing-s);
   margin: var(--spacing-m) 0;
   padding-top: var(--spacing-m);
-  border-top: 0.125rem solid rgba(0, 0, 0, 0.1);
+  border-top: 0.1rem solid var(--color-white-00);
 }
+
+
 
 .formRoot .paymentHint {
   font-size: var(--font-size-caption);
@@ -721,7 +732,8 @@
     width: 50%;
   }
 
-  .formRoot .paymentSummary {
+  .formRoot .paymentSummary,
+  .formRoot .paymentSuccessSummary {
     max-width: 60%;
   }
 }
