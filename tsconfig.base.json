@@ -24,7 +24,8 @@
       "@govtech-bb/form-conditions": ["packages/form-conditions/src/index.ts"],
       "@govtech-bb/form-validation": ["packages/form-validation/src/index.ts"],
       "@web/types": ["apps/web/src/types/index.ts"],
-      "@web/lib": ["apps/web/src/lib/form-builder"],
+      "@web/lib": ["apps/web/src/lib/form-builder/index.ts"],
+      "@web/form-api": ["apps/web/src/lib/api/forms.ts"],
       "@web/components": ["apps/web/src/components"]
     }
   },

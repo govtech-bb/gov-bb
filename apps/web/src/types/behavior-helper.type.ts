@@ -12,7 +12,7 @@ export interface RepeatableConfig {
   minRepeats: number;
   maxRepeats: number;
   // Current Repeats: stepData.length
-  stepData: Record<stepId, FormValues[]>;
+  stepData: Record<stepId, FormValues>;
   orderedStepIds: string[];
   sharedData?: FormValues;
 }
@@ -25,7 +25,7 @@ export interface AddRepeatableStepParams {
   repeatableBehaviour?: RepeatableBehaviour;
   sharedFieldsBehaviour?: SharedFieldsBehaviour;
   visibleSteps: ClientFormStep[];
-  stepValues: FormValues[];
+  stepValues: FormValues;
   formMeta: FormMeta;
 }
 

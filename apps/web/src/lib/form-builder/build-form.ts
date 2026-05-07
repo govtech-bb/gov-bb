@@ -25,6 +25,7 @@ export const buildForm = (contract: ClientServiceContract): FormMeta => {
   // Return FormMeta object with everything configured.
   return {
     formId: contract.formId,
+    version: contract.version,
     formTitle: contract.title,
     formDescription: contract.description,
     schema,
