@@ -13,6 +13,12 @@ export default function Review({
 }) {
   const navigate = useNavigate({ from: "/forms/$formId/" });
 
+  const excludeStepIds = [
+    "check-your-answers",
+    "declaration",
+    "submission-confirmation",
+  ];
+
   const formatDate = (dateValue: {
     day: number;
     month: number;
@@ -105,11 +111,7 @@ export default function Review({
   return (
     <div className={designSystem.review}>
       {formMeta.steps
-        .filter(
-          (step) =>
-            step.stepId !== "check-your-answers" &&
-            step.stepId !== "declaration",
-        )
+        .filter((step) => !excludeStepIds.includes(step.stepId))
         .map((step) => (
           <div key={step.stepId} className={designSystem.reviewStep}>
             <div className={designSystem.reviewStepTitle}>

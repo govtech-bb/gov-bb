@@ -36,8 +36,9 @@ function RouteComponent() {
     },
   });
 
-  const [repeatableStepSettings, setRepeatableStepSettings] =
-    React.useState<RepeatableStepSettings>(formMeta.repeatSettings);
+  const repeatableStepSettingsRef = React.useRef<RepeatableStepSettings>(
+    formMeta.repeatSettings,
+  );
 
   const formValues = useStore(
     form.store,
@@ -73,8 +74,7 @@ function RouteComponent() {
       formMeta={formMeta}
       stepId={step ?? ""}
       visibleSteps={visibleSteps}
-      repeatableStepSettings={repeatableStepSettings}
-      setRepeatableStepSettings={setRepeatableStepSettings}
+      repeatableStepSettingsRef={repeatableStepSettingsRef}
     />
   );
 }

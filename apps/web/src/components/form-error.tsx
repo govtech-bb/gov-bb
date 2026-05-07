@@ -1,4 +1,4 @@
-import { FormFetchError } from "@web/lib";
+import { FormFetchError } from "@web/form-api";
 
 interface FormErrorProps {
   error: Error;

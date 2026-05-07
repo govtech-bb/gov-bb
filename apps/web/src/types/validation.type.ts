@@ -1,4 +1,4 @@
-import { ValidationRule } from "@govtech-bb/form-types";
+import { FieldValue, ValidationRule } from "@govtech-bb/form-types";
 import { AnyFieldApi } from "@tanstack/react-form";
 import { ZodObject, ZodType } from "zod";
 
@@ -35,29 +35,10 @@ export interface ValidationResults {
 
 export interface ValidationArgs<TValueType = unknown> {
   fieldId: string;
-  fieldLabel: string;
+  fieldName: string;
   value: TValueType;
   validations: ValidationRule;
   results: ValidationResults;
 }
 
 export type FieldValidationErrors = Record<string, string[]>;
-
-export interface DateValueInput {
-  day?: number;
-  month?: number;
-  year?: number;
-}
-
-export interface DateValue {
-  day: number;
-  month: number;
-  year: number;
-}
-
-export type FieldValue =
-  | string
-  | number
-  | boolean
-  | Array<string | number | boolean>
-  | DateValueInput;
