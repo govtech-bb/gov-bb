@@ -32,7 +32,7 @@ export const buildForm = (contract: ClientServiceContract): FormMeta => {
       "Review all the information you have provided before submitting your application.",
   };
 
-  steps.splice(-1, 0, checkAnswers);
+  steps.splice(-2, 0, checkAnswers);
 
   // Return FormMeta object with everything configured.
   return {
