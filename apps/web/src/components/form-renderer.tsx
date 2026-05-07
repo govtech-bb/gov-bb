@@ -67,7 +67,18 @@ export default function FormRenderer({
 
   const baseStepId = stepId.split(repeatStepConcactenator)[0];
   const repeatableStepSettings = repeatableStepSettingsRef.current;
-  const handleContinue = () => {
+  const handleContinue = async () => {
+    // Validate current step fields
+
+    const results = await Promise.all(
+      currentFields.map((field) => form.validateField(field.id, "change")),
+    );
+
+    const hasError = results.some((r) => r.length > 0);
+    if (hasError) {
+      return;
+    }
+
     // Handle navigation to repeatable step.
     if (repeatableBehaviour) {
       const anotherFieldId = getFullFieldId(currentStep.stepId, "addAnother");
