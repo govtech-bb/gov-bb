@@ -254,6 +254,10 @@ describe("SqsConsumerService", () => {
 
   describe("onApplicationShutdown", () => {
     it("sets running to false to stop polling loops", () => {
+      // Mock pollQueue so onApplicationBootstrap does not start a real loop
+      // (which would create a dangling sleep timer and leak the worker process).
+      jest.spyOn(service as any, "pollQueue").mockResolvedValue(undefined);
+
       service.onApplicationBootstrap();
       service.onApplicationShutdown();
 

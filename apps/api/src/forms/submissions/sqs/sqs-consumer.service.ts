@@ -72,7 +72,7 @@ export class SqsConsumerService
           }),
         );
 
-        if (!response.Messages?.length) continue;
+        if (!response?.Messages?.length) continue;
 
         await Promise.all(
           response.Messages.map((msg) => this.processMessage(queueUrl, msg)),
