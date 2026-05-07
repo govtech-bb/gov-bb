@@ -1206,6 +1206,62 @@
       ]
     },
     {
+      "stepId": "step-7-identification",
+      "title": "Identification",
+      "description": "Provide your identification details. You can use a National ID number or a passport number.",
+      "elements": [
+        {
+          "fieldId": "national-id-number",
+          "label": "National Identification (ID) Number",
+          "htmlType": "text",
+          "placeholder": "Enter your National ID number",
+          "ui": { "width": "medium" },
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "National ID number is required"
+            }
+          }
+        },
+        {
+          "fieldId": "use-passport-instead",
+          "label": "Use passport number instead",
+          "hint": "If you don't have a National ID number, you can use your passport number instead.",
+          "htmlType": "show-hide",
+          "defaultValue": false
+        },
+        {
+          "fieldId": "passport-number",
+          "label": "Passport Number",
+          "htmlType": "text",
+          "placeholder": "Enter your passport number",
+          "ui": { "width": "medium" },
+          "behaviours": [
+            {
+              "type": "fieldConditionalOn",
+              "targetFieldId": "use-passport-instead",
+              "operator": "equal",
+              "value": true
+            }
+          ],
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Passport number is required"
+            },
+            "minLength": {
+              "value": 6,
+              "error": "Passport number must be at least 6 characters"
+            },
+            "maxLength": {
+              "value": 20,
+              "error": "Passport number must not exceed 20 characters"
+            }
+          }
+        }
+      ]
+    },
+    {
       "stepId": "check-your-answers",
       "title": "Check Your Answers",
       "description": "Review all the information you have provided before submitting your application.",

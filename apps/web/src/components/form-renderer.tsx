@@ -1,5 +1,6 @@
 import {
   ClientFormStep,
+  ClientPrimitive,
   FieldValidationErrors,
   FormRendererProps,
 } from "@web/types";
@@ -18,6 +19,47 @@ import {
   getRepeatStepCount,
   repeatStepConcactenator,
 } from "@web/lib";
+
+// ---------------------------------------------------------------------------
+// Show-hide grouping
+// ---------------------------------------------------------------------------
+
+type PlainFieldGroup = { type: "plain"; field: ClientPrimitive };
+type ShowHideFieldGroup = {
+  type: "show-hide";
+  toggle: ClientPrimitive;
+  controlled: ClientPrimitive[];
+};
+type FieldGroup = PlainFieldGroup | ShowHideFieldGroup;
+
+/** Groups each show-hide toggle with the sibling fields whose
+ *  `fieldConditionalOn` behaviour targets it, so they can all be wrapped
+ *  inside a single `data-show-hide-content` container. */
+function buildFieldGroups(fields: ClientPrimitive[]): FieldGroup[] {
+  const groups: FieldGroup[] = [];
+  const controlledIds = new Set<string>();
+
+  for (const field of fields) {
+    if (controlledIds.has(field.id)) continue;
+
+    if (field.htmlType === "show-hide") {
+      const controlled = fields.filter((f) =>
+        f.behaviours?.some(
+          (b) =>
+            b.type === "fieldConditionalOn" &&
+            "targetFieldId" in b &&
+            b.targetFieldId === field.fieldId,
+        ),
+      );
+      controlled.forEach((f) => controlledIds.add(f.id));
+      groups.push({ type: "show-hide", toggle: field, controlled });
+    } else {
+      groups.push({ type: "plain", field });
+    }
+  }
+
+  return groups;
+}
 
 export default function FormRenderer({
   form,
@@ -195,6 +237,23 @@ export default function FormRenderer({
     return fieldValidationErrors;
   });
 
+  // Build show-hide groups so the left-border content wrapper spans the toggle
+  // hint AND all conditionally-controlled sibling fields.
+  const fieldGroups = buildFieldGroups(currentFields);
+
+  // Reactively read every show-hide toggle value so the content wrapper
+  // appears/disappears when the user clicks the toggle.
+  const showHideValues = useStore(form.store, (state) => {
+    const values = state.values as Record<string, unknown>;
+    const result: Record<string, boolean> = {};
+    for (const group of fieldGroups) {
+      if (group.type === "show-hide") {
+        result[group.toggle.id] = !!values[group.toggle.id];
+      }
+    }
+    return result;
+  });
+
   return (
     <div className={designSystem.formRoot}>
       <p className={designSystem.formTitle}> {formMeta.formTitle} </p>
@@ -208,14 +267,50 @@ export default function FormRenderer({
           <Review key={"review-step"} formMeta={formMeta} form={form} />
         )}
 
-        {currentFields.map((field) => (
-          <FieldRenderer
-            key={field.id}
-            form={form}
-            field={field}
-            validationProperties={formMeta.validationProperties[field.id]}
-          />
-        ))}
+        {fieldGroups.map((group) => {
+          if (group.type === "show-hide") {
+            const isOpen = showHideValues[group.toggle.id] ?? false;
+            return (
+              <React.Fragment key={group.toggle.id}>
+                {/* Toggle button — hint and controlled fields live outside the
+                    FieldRenderer so we can wrap them all in the content border */}
+                <FieldRenderer
+                  form={form}
+                  field={group.toggle}
+                  validationProperties={
+                    formMeta.validationProperties[group.toggle.id]
+                  }
+                />
+                {isOpen && (
+                  <div data-show-hide-content>
+                    {group.toggle.hint && <p data-hint>{group.toggle.hint}</p>}
+                    {group.controlled.map((field) => (
+                      <FieldRenderer
+                        key={field.id}
+                        form={form}
+                        field={field}
+                        validationProperties={
+                          formMeta.validationProperties[field.id]
+                        }
+                      />
+                    ))}
+                  </div>
+                )}
+              </React.Fragment>
+            );
+          }
+
+          return (
+            <FieldRenderer
+              key={group.field.id}
+              form={form}
+              field={group.field}
+              validationProperties={
+                formMeta.validationProperties[group.field.id]
+              }
+            />
+          );
+        })}
 
         <div className={designSystem.formNavigation}>
           {!hidePrevious && (
