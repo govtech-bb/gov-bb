@@ -4,14 +4,14 @@ import designSystem from "../styles/govtechbb.module.css";
 interface SubmissionConfirmationProps {
   serviceTitle: string;
   stepTitle: string;
-  whatsNext?: { step: string }[];
+  nextSteps?: { step: string }[];
   onTryAgain?: () => void;
 }
 
 export default function SubmissionConfirmation({
   serviceTitle,
   stepTitle,
-  whatsNext,
+  nextSteps,
   onTryAgain,
 }: SubmissionConfirmationProps) {
   // TODO: Dynamically render this content from backend response
@@ -104,10 +104,10 @@ export default function SubmissionConfirmation({
             </div>
           )}
 
-          {whatsNext && whatsNext.length > 0 && (
+          {nextSteps && nextSteps.length > 0 && (
             <div className={designSystem.nextSteps}>
               <h2>What happens next</h2>
-              {whatsNext.map((item, index) => (
+              {nextSteps.map((item, index) => (
                 <p key={index}>{item.step}</p>
               ))}
             </div>

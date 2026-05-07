@@ -1216,7 +1216,7 @@
       "stepId": "submission-confirmation",
       "title": "Thank you for your application!",
       "elements": [],
-      "whatsNext": [
+      "nextSteps": [
         {
           "step": "Your submission has been received and will be reviewed by our team."
         },

@@ -33,7 +33,7 @@ export interface ClientFormStep {
   description?: string;
   fields: ClientPrimitive[];
   behaviours?: Behaviour[];
-  whatsNext?: { step: string }[];
+  nextSteps?: { step: string }[];
 }
 
 export interface ClientServiceContract {

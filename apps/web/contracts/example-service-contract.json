@@ -584,7 +584,7 @@
       "stepId": "submission-confirmation",
       "title": "Thank you for your application!",
       "elements": [],
-      "whatsNext": [
+      "nextSteps": [
         { "step": "We will review your application within 5 working days." },
         {
           "step": "You will receive an email confirmation once your mail redirection is active."
