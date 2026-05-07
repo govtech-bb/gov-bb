@@ -73,6 +73,19 @@ export const buildValidation = (
 export const buildFieldValidation = (
   field: ClientPrimitive,
 ): FieldValidation => {
+  // The show-hide toggle stores a boolean (open/closed state) and
+  // never has its own validation rules.  Return a pass-through schema and
+  // empty handlers so the validation pipeline ignores it entirely.
+  if (field.htmlType === "show-hide") {
+    return {
+      fieldSchema: z.boolean().optional(),
+      properties: {
+        onBlur() {},
+        onChange() {},
+      },
+    };
+  }
+
   const primitive = clientPrimitiveToPrimitive(field);
 
   const fieldSchema = z.any().superRefine((value, ctx) => {
