@@ -1,12 +1,12 @@
-import { ValidationConfig, EqualityOperations } from "@govtech-bb/form-types";
-import { AnyFieldApi } from "@tanstack/react-form";
 import {
-  ValidationArgs,
+  ValidationConfig,
+  EqualityOperations,
   DateValue,
   DateValueInput,
-  ValidationResults,
   FieldValue,
-} from "@web/types";
+} from "@govtech-bb/form-types";
+import { AnyFieldApi } from "@tanstack/react-form";
+import { ValidationArgs, ValidationResults } from "@web/types";
 import z from "zod";
 import { getFullFieldId, stepFieldIdConcactenator } from "./field-mapper";
 

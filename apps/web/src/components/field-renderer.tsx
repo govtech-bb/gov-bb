@@ -1,13 +1,9 @@
 import { AnyFieldApi } from "@tanstack/react-form";
-import {
-  ClientPrimitive,
-  DateValue,
-  FieldValidationProperties,
-} from "@web/types";
+import { ClientPrimitive, FieldValidationProperties } from "@web/types";
 import React, { JSX } from "react";
 import ErrorMessage from "./error-message";
 import { RequiredState, checkConditionalOn } from "@web/lib";
-import { FieldArrayBehaviour } from "@govtech-bb/form-types";
+import { DateValue, FieldArrayBehaviour } from "@govtech-bb/form-types";
 import FileUpload from "./file-upload";
 
 export default function FieldRenderer({

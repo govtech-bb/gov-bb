@@ -1,4 +1,9 @@
-import { FieldValidationErrors, FormRendererProps } from "@web/types";
+import {
+  ClientFormStep,
+  FieldValidationErrors,
+  FormRendererProps,
+  FormValues,
+} from "@web/types";
 import FieldRenderer from "./field-renderer";
 import designSystem from "../lib/design-system";
 import React from "react";
@@ -12,6 +17,7 @@ import {
   repeatStepConcactenator,
   addRepeatableStep,
   removeRepeatableStep,
+  stepFieldIdConcactenator,
 } from "@web/lib";
 
 export default function FormRenderer({
@@ -49,7 +55,15 @@ export default function FormRenderer({
     (b) => b.type === "sharedFields",
   )[0];
 
-  const stepValues = useStore(form.store, (state) => state.values[stepId]);
+  const stepValues = useStore(
+    form.store,
+    (state) =>
+      Object.fromEntries(
+        Object.entries(state.values).filter(([key]) =>
+          key.startsWith(`${stepId}${stepFieldIdConcactenator}`),
+        ),
+      ) as FormValues,
+  );
 
   const baseStepId = stepId.split(repeatStepConcactenator)[0];
   const repeatableStepSettings = repeatableStepSettingsRef.current;

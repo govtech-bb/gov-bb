@@ -13,7 +13,7 @@ import type {
 } from "./submissions.types";
 
 export interface PipelineResult {
-  draft: FormDraftEntity;
+  draft: FormDraftEntity | null;
   contract: ServiceContract;
   auditTrail: SubmissionAuditTrail;
 }
@@ -35,15 +35,16 @@ export class SubmissionPipelineService {
 
   private async pinVersion(
     dto: SubmitDto,
-  ): Promise<{ draft: FormDraftEntity; contract: ServiceContract }> {
-    const draft = await this.formDraftsService.findById(dto.draftId);
-
-    if (draft.formVersion !== dto.formVersion) {
-      throw AppError.badRequest(
-        `Form version mismatch: draft is pinned to ${draft.formVersion}, client sent ${dto.formVersion}`,
-      );
+  ): Promise<{ draft: FormDraftEntity | null; contract: ServiceContract }> {
+    if (!dto.draftId) {
+      const contract = await this.formDefinitionsService.findByFormId({
+        formId: dto.formId,
+        version: dto.formVersion,
+      });
+      return { draft: null, contract };
     }
 
+    const draft = await this.formDraftsService.findById(dto.draftId);
     const contract = await this.formDefinitionsService.findByFormId({
       formId: dto.formId,
       version: draft.formVersion,
@@ -87,13 +88,12 @@ export class SubmissionPipelineService {
 
   private buildAuditTrail(
     dto: SubmitDto,
-    draft: FormDraftEntity,
+    draft: FormDraftEntity | null,
     conditionResult: ReturnType<typeof evaluateFormConditions>,
   ): SubmissionAuditTrail {
-    const visitedPages = Array.from(
-      { length: draft.lastActivePage + 1 },
-      (_, i) => i,
-    );
+    const visitedPages = draft
+      ? Array.from({ length: draft.lastActivePage + 1 }, (_, i) => i)
+      : [];
 
     const activeFieldIds: Record<string, string[]> = {};
     for (const [stepId, fieldSet] of conditionResult.activeFieldIds) {
@@ -107,8 +107,8 @@ export class SubmissionPipelineService {
 
     return {
       schemaVersion: 1,
-      pinnedFormVersion: draft.formVersion,
-      draftId: dto.draftId,
+      pinnedFormVersion: draft?.formVersion ?? dto.formVersion,
+      draftId: dto.draftId ?? null,
       activeStepIds: Array.from(conditionResult.activeStepIds),
       hiddenStepIds: Array.from(conditionResult.hiddenStepIds),
       activeFieldIds,

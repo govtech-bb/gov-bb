@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsObject, IsString } from "class-validator";
+import { IsNotEmpty, IsObject, IsOptional, IsString } from "class-validator";
 import { ApiProperty } from "@nestjs/swagger";
 import type { StepScopedValues } from "../submissions.types";
 
@@ -12,7 +12,8 @@ export class CreateSubmissionDto {
   formId!: string;
 
   @ApiProperty({
-    description: "The form version the draft was pinned to",
+    description:
+      "The form version to submit against. When a draftId is supplied this must match the draft's pinned version.",
     example: "1.0.0",
   })
   @IsString()
@@ -20,12 +21,15 @@ export class CreateSubmissionDto {
   formVersion!: string;
 
   @ApiProperty({
-    description: "The draft ID being finalised into a submission",
+    description:
+      "Optional draft ID being finalised into a submission. Omit for stateless submissions that don't go through draft state.",
     example: "user-123-passport-draft",
+    required: false,
   })
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
-  draftId!: string;
+  draftId?: string;
 
   @ApiProperty({
     description: "Step-scoped field values keyed by stepId",

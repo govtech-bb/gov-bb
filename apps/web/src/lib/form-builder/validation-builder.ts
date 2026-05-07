@@ -6,9 +6,6 @@ import {
   FieldValidationProperties,
   ValidationResults,
   ValidationArgs,
-  DateValue,
-  DateValueInput,
-  FieldValue,
 } from "@web/types";
 import z from "zod";
 import {
@@ -40,7 +37,12 @@ import {
 import { AnyFieldApi } from "@tanstack/react-form";
 import { ValidationRule } from "@govtech-bb/form-types";
 import { validate } from "@govtech-bb/form-validation";
-import type { Primitive } from "@govtech-bb/form-types";
+import type {
+  DateValue,
+  DateValueInput,
+  FieldValue,
+  Primitive,
+} from "@govtech-bb/form-types";
 
 export const buildValidation = (
   contract: ClientServiceContract,

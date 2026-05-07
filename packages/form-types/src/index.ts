@@ -42,12 +42,17 @@ export {
   validationConfigSchema,
   validationTypeSchema,
   validationRuleSchema,
+  fieldValueSchema,
+  dateValueInputSchema,
 } from "./validation.type";
 
 export type {
   ValidationConfig,
   ValidationType,
   ValidationRule,
+  FieldValue,
+  DateValue,
+  DateValueInput,
 } from "./validation.type";
 
 export {

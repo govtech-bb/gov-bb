@@ -6,7 +6,7 @@ export type StepScopedValues = Record<string, Record<string, unknown>>;
 export interface SubmissionAuditTrail {
   schemaVersion: 1;
   pinnedFormVersion: string;
-  draftId: string;
+  draftId: string | null;
   activeStepIds: string[];
   hiddenStepIds: string[];
   activeFieldIds: Record<string, string[]>;
@@ -29,7 +29,7 @@ export interface SubmitDto {
   idempotencyKey: string;
   formId: string;
   formVersion: string;
-  draftId: string;
+  draftId?: string;
   values: StepScopedValues;
 }
 
