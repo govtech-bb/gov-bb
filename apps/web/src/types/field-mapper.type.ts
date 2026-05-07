@@ -1,12 +1,12 @@
 import {
   Behaviour,
   DateTimeFormat,
+  fieldValueSchema,
   HtmlTypes,
   Option,
   PrimitiveUI,
   ValidationRule,
 } from "@govtech-bb/form-types";
-import { FieldValue, fieldValueSchema } from "./validation.type";
 import z from "zod";
 
 export interface ClientPrimitive {

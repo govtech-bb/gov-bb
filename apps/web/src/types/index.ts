@@ -13,11 +13,7 @@ export type {
   FieldValidationErrors,
   ValidationResults,
   ValidationArgs,
-  DateValueInput,
-  DateValue,
-  FieldValue,
 } from "./validation.type.ts";
-export { fieldValueSchema } from "./validation.type";
 export type {
   FormRendererProps,
   UseStepGuardProps,
