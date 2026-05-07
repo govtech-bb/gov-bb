@@ -27,8 +27,8 @@ export class SubmissionProcessorListener {
 
     for (const processor of nonGating) {
       if (this.sqsConf.enabled) {
-        // ── SQS path ────────────────────────────────────────────────────────
-        // Enqueue for durable async processing with automatic retry and DLQ.
+        /* SQS path */
+        /* Enqueue for durable async processing with automatic retry and DLQ. */
         try {
           await this.sqsProducer.enqueue(payload, processor.type);
         } catch (err) {
@@ -38,8 +38,8 @@ export class SubmissionProcessorListener {
           );
         }
       } else {
-        // ── Direct path (fallback) ───────────────────────────────────────────
-        // In-process execution — used when SQS_ENABLED is false or unset.
+        /* Direct path (fallback) */
+        /* In-process execution */
         try {
           await processor.process(payload);
         } catch (err) {

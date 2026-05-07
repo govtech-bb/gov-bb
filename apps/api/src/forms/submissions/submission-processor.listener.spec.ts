@@ -4,9 +4,7 @@ import type { ISubmissionProcessor } from "./processors/submission-processor.int
 import type { SqsProducerService } from "./sqs/sqs-producer.service";
 import type { SubmissionCreatedEvent } from "./submissions.types";
 
-// ---------------------------------------------------------------------------
-// Fixtures
-// ---------------------------------------------------------------------------
+/* Fixtures */
 
 const EVENT: SubmissionCreatedEvent = {
   submissionId: "sub-1",
@@ -57,9 +55,7 @@ function makeSqsConfig(enabled: boolean) {
   return { enabled };
 }
 
-// ---------------------------------------------------------------------------
-// Tests — SQS disabled (direct execution path)
-// ---------------------------------------------------------------------------
+/* Tests — SQS disabled (direct execution path) */
 
 describe("SubmissionProcessorListener — SQS disabled", () => {
   it("runs only non-gating processors directly", async () => {
@@ -110,9 +106,7 @@ describe("SubmissionProcessorListener — SQS disabled", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Tests — SQS enabled (enqueue path)
-// ---------------------------------------------------------------------------
+/* Tests — SQS enabled (enqueue path) */
 
 describe("SubmissionProcessorListener — SQS enabled", () => {
   it("enqueues each non-gating processor via the SQS producer", async () => {

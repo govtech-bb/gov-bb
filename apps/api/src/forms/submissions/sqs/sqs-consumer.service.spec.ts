@@ -15,9 +15,7 @@ jest.mock("@aws-sdk/client-sqs");
 
 const MockedSQSClient = SQSClient as jest.MockedClass<typeof SQSClient>;
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+/* Fixtures */
 
 const QUEUE_URL =
   "https://sqs.ca-central-1.amazonaws.com/123/modular-forms-submissions-sandbox";
@@ -79,9 +77,7 @@ function makeProcessor(
   } as unknown as ISubmissionProcessor;
 }
 
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
+/* Tests */
 
 describe("SqsConsumerService", () => {
   let sendMock: jest.Mock;
@@ -100,7 +96,7 @@ describe("SqsConsumerService", () => {
     service = new SqsConsumerService(makeConfig() as any, factory as any);
   });
 
-  // ── processMessage ──────────────────────────────────────────────────────
+  /* processMessage */
 
   describe("processMessage", () => {
     it("calls the resolved processor with the reconstructed event", async () => {

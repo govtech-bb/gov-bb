@@ -54,9 +54,7 @@ export class SqsConsumerService
     this.logger.log("SQS consumer stopped");
   }
 
-  // ---------------------------------------------------------------------------
-  // Internal polling loop
-  // ---------------------------------------------------------------------------
+  /* Internal polling loop */
 
   private async pollQueue(queueUrl: string): Promise<void> {
     while (this.running) {
@@ -87,9 +85,7 @@ export class SqsConsumerService
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Single-message handler
-  // ---------------------------------------------------------------------------
+  /* Single-message handler */
 
   async processMessage(queueUrl: string, message: Message): Promise<void> {
     const receiveCount = parseInt(
@@ -155,9 +151,7 @@ export class SqsConsumerService
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Helpers
-  // ---------------------------------------------------------------------------
+  /* Helpers */
 
   private async deleteMessage(
     queueUrl: string,
