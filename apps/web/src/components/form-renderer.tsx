@@ -110,14 +110,25 @@ export default function FormRenderer({
   const repeatableStepSettings = repeatableStepSettingsRef.current;
   const handleContinue = async () => {
     // Validate current step fields
-
     const results = await Promise.all(
       currentFields.map((field) => form.validateField(field.id, "change")),
     );
 
+    const scrollToTop = () => {
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth", // Smooth animation
+      });
+    };
+
     const hasError = results.some((r) => r.length > 0);
     if (hasError) {
-      // return;
+      scrollToTop();
+      if (
+        !process.env.SKIP_CONTINUE_VALIDATION ||
+        process.env.SKIP_CONTINUE_VALIDATION === "false"
+      )
+        return;
     }
 
     // Handle navigation to repeatable step.
