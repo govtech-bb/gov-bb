@@ -12,6 +12,7 @@ import { useStore } from "@tanstack/react-form";
 import { useStepGuard } from "../hooks/use-step-guard";
 import Review from "./review";
 import SubmissionConfirmation from "./submission-confirmation";
+import ApplicantNameDisplay from "./applicant-name-display";
 import {
   getFullFieldId,
   repeatStepConcactenator,
@@ -209,6 +210,10 @@ export default function FormRenderer({
       <div className={designSystem.formStep}>
         {currentStep.stepId === "check-your-answers" && (
           <Review key={"review-step"} formMeta={formMeta} form={form} />
+        )}
+
+        {currentStep.stepId === "declaration" && (
+          <ApplicantNameDisplay form={form} />
         )}
 
         {isSubmissionConfirmation && (
