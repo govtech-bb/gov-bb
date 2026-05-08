@@ -48,6 +48,12 @@
   color: var(--color-text-muted);
 }
 
+.formRoot .formStepDescription {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
 .formRoot .formNavigation {
   display: flex;
   gap: 1.25rem;

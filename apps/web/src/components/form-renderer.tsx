@@ -12,6 +12,7 @@ import { useStore } from "@tanstack/react-form";
 import { useStepGuard } from "../hooks/use-step-guard";
 import Review from "./review";
 import SubmissionConfirmation from "./submission-confirmation";
+import ApplicantNameDisplay from "./applicant-name-display";
 import {
   getFullFieldId,
   repeatStepConcactenator,
@@ -67,6 +68,7 @@ export default function FormRenderer({
   stepId,
   visibleSteps,
   repeatableStepSettingsRef,
+  submissionState,
 }: FormRendererProps) {
   const { navigateToStep, completeAndContinue, currentIndex } = useStepGuard({
     formId: formMeta.formId,
@@ -179,6 +181,7 @@ export default function FormRenderer({
 
   const isSubmissionConfirmation =
     currentStep.stepId === "submission-confirmation";
+  const isLastFormStep = currentStep.stepId === "declaration";
   // Build show-hide groups so the left-border content wrapper spans the toggle
   // hint AND all conditionally-controlled sibling fields.
   const fieldGroups = buildFieldGroups(currentFields);
@@ -203,12 +206,25 @@ export default function FormRenderer({
       )}
 
       {!isSubmissionConfirmation && <h1>{currentStep.title}</h1>}
-      {/* {step.description && <p>{step.description}</p>} */}
+      {!isSubmissionConfirmation && currentStep.description && (
+        <p className={designSystem.formStepDescription}>
+          {currentStep.description}
+        </p>
+      )}
       <ErrorSummary errors={errors} />
 
       <div className={designSystem.formStep}>
         {currentStep.stepId === "check-your-answers" && (
-          <Review key={"review-step"} formMeta={formMeta} form={form} />
+          <Review
+            key={"review-step"}
+            formMeta={formMeta}
+            form={form}
+            visibleSteps={visibleSteps}
+          />
+        )}
+
+        {currentStep.stepId === "declaration" && (
+          <ApplicantNameDisplay form={form} />
         )}
 
         {isSubmissionConfirmation && (
@@ -218,6 +234,7 @@ export default function FormRenderer({
             stepTitle={currentStep.title}
             nextSteps={currentStep.nextSteps}
             onTryAgain={() => navigateToStep("check-your-answers")}
+            submissionState={submissionState}
           />
         )}
 
@@ -280,13 +297,9 @@ export default function FormRenderer({
             <button
               data-variant="primary"
               type="button"
-              onClick={
-                stepIndex === visibleSteps.length - 2
-                  ? handleSubmit
-                  : handleContinue
-              }
+              onClick={isLastFormStep ? handleSubmit : handleContinue}
             >
-              {stepIndex === visibleSteps.length - 2 ? "Submit" : "Continue"}
+              {isLastFormStep ? "Submit" : "Continue"}
             </button>
           </div>
         )}

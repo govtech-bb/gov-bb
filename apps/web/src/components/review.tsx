@@ -2,14 +2,16 @@ import designSystem from "../lib/design-system";
 import React from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { AnyFormApi } from "@tanstack/react-form";
-import { ClientPrimitive, FormMeta } from "@web/types";
+import { ClientFormStep, ClientPrimitive, FormMeta } from "@web/types";
 
 export default function Review({
   formMeta,
   form,
+  visibleSteps,
 }: {
   formMeta: FormMeta;
   form: AnyFormApi;
+  visibleSteps: ClientFormStep[];
 }) {
   const navigate = useNavigate({ from: "/forms/$formId/" });
 
@@ -110,7 +112,7 @@ export default function Review({
 
   return (
     <div className={designSystem.review}>
-      {formMeta.steps
+      {visibleSteps
         .filter((step) => !excludeStepIds.includes(step.stepId))
         .map((step) => (
           <div key={step.stepId} className={designSystem.reviewStep}>
@@ -126,7 +128,7 @@ export default function Review({
 
             <table className={designSystem.reviewFieldTable}>
               <tbody>
-                {step.fields.map((field) => (
+                {step.fields.map((field: ClientPrimitive) => (
                   <tr key={field.id} className={designSystem.reviewFieldRow}>
                     <td className={designSystem.reviewFieldLabel}>
                       {field.label}
