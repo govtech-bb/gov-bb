@@ -179,6 +179,7 @@ export default function FormRenderer({
 
   const isSubmissionConfirmation =
     currentStep.stepId === "submission-confirmation";
+  const isLastFormStep = currentStep.stepId === "declaration";
   // Build show-hide groups so the left-border content wrapper spans the toggle
   // hint AND all conditionally-controlled sibling fields.
   const fieldGroups = buildFieldGroups(currentFields);
@@ -289,13 +290,9 @@ export default function FormRenderer({
             <button
               data-variant="primary"
               type="button"
-              onClick={
-                stepIndex === visibleSteps.length - 2
-                  ? handleSubmit
-                  : handleContinue
-              }
+              onClick={isLastFormStep ? handleSubmit : handleContinue}
             >
-              {stepIndex === visibleSteps.length - 2 ? "Submit" : "Continue"}
+              {isLastFormStep ? "Submit" : "Continue"}
             </button>
           </div>
         )}
