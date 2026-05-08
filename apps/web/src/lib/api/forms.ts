@@ -1,5 +1,5 @@
 import { ServiceContract, serviceContractSchema } from "@govtech-bb/form-types";
-import { stepFieldIdConcactenator } from "@web/lib";
+import { repeatStepConcactenator, stepFieldIdConcactenator } from "@web/lib";
 import {
   ApiResponse,
   FormDefinitionResponse,
@@ -14,6 +14,7 @@ import {
   FormSubmissionResponse,
   formSubmissionResponseBodySchema,
   FormValuesByStep,
+  RepeatableStepSettings,
 } from "@web/types";
 
 const API_URL = process.env.VITE_API_URL ?? "http://localhost:3001";
@@ -243,6 +244,7 @@ export const postFormSubmission = async (
 
 export const formatDataForSubmission = (
   values: FormValues,
+  repeatableSettings: RepeatableStepSettings,
 ): FormValuesByStep => {
   const formValuesByStep: FormValuesByStep = {};
   //  The values of any fields that are conditionally invisible, should be set to undefined, and not sent to the server.
@@ -251,15 +253,41 @@ export const formatDataForSubmission = (
 
   // The values for repeatable steps should be collapsed under the step id of the source step, becoming an array.Similarly, the values for shared fields shall be put in each array instance.
 
+  const collapsedRepeatables: FormValuesByStep = {};
+  const toDelete: string[] = [];
+
+  for (const stepId of Object.keys(repeatableSettings)) {
+    collapsedRepeatables[stepId] = [
+      repeatableSettings[stepId].stepData[stepId],
+    ];
+
+    for (const subStepId of repeatableSettings[stepId].orderedStepIds.slice(
+      1,
+    )) {
+      const hasVisibleValues = Object.keys(values).filter((stepFieldID) =>
+        stepFieldID.startsWith(subStepId),
+      );
+      if (!hasVisibleValues) break; // IF this step isn't valid, then the subsequent ones aren't either
+      // If it's valid, then we just grab their data.
+      collapsedRepeatables[stepId].push(
+        repeatableSettings[stepId].stepData[subStepId],
+      );
+    }
+    toDelete.push(...repeatableSettings[stepId].orderedStepIds.slice(1));
+  }
+
   // The structure of values should be changed from Record < stepAndFieldID, fieldValue > to Record<stepId, Record<fieldId, fieldValue>>, where stepAndFieldID is the identifier of the form stepId_fieldId.
 
   for (const [stepFieldId, value] of Object.entries(values)) {
     const [stepId, fieldId] = stepFieldId.split(stepFieldIdConcactenator);
+    if (toDelete.includes(stepId)) continue;
 
     formValuesByStep[stepId] = {
       [fieldId]: value,
     };
   }
 
-  return formValuesByStep;
+  // Apply the collapsedRepeatables
+
+  return { ...formValuesByStep, ...collapsedRepeatables };
 };

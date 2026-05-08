@@ -37,6 +37,10 @@ function RouteComponent() {
     SubmissionState | undefined
   >(undefined);
 
+  const repeatableStepSettingsRef = React.useRef<RepeatableStepSettings>(
+    formMeta.repeatSettings,
+  );
+
   const form = useForm({
     defaultValues: {
       ...(formMeta.defaultValues as FormValues),
@@ -46,7 +50,10 @@ function RouteComponent() {
       // TODO: Handle form submission
 
       const values = value as FormValues;
-      const formattedData: FormValuesByStep = formatDataForSubmission(values);
+      const formattedData: FormValuesByStep = formatDataForSubmission(
+        values,
+        repeatableStepSettingsRef.current,
+      );
       console.log({ formattedData });
       const response = await postFormSubmission(formMeta, formattedData);
       const responseData: FormSubmissionResponseBody = response.data;
@@ -97,10 +104,6 @@ function RouteComponent() {
       }
     },
   });
-
-  const repeatableStepSettingsRef = React.useRef<RepeatableStepSettings>(
-    formMeta.repeatSettings,
-  );
 
   const formValues = useStore(
     form.store,
