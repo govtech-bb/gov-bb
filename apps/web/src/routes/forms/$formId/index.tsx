@@ -8,7 +8,13 @@ import {
 import { FormRenderer, FormError } from "@web/components";
 import { formSearchParamSchema } from "apps/web/src/types/form-search-param.type";
 import { useForm, useStore } from "@tanstack/react-form";
-import { RepeatableStepSettings, FormValues, FormMeta } from "@web/types";
+import {
+  RepeatableStepSettings,
+  FormValues,
+  FormMeta,
+  SubmissionState,
+  FormSubmissionResponseBody,
+} from "@web/types";
 import React from "react";
 import { getFormData, storeFormData } from "../../../lib/session-storage";
 import { postFormSubmission } from "@web/form-api";
@@ -26,6 +32,9 @@ export const Route = createFileRoute("/forms/$formId/")({
 function RouteComponent() {
   const formMeta = Route.useLoaderData();
   const { step } = Route.useSearch();
+  const [submissionState, setSubmissionState] = React.useState<
+    SubmissionState | undefined
+  >(undefined);
 
   const form = useForm({
     defaultValues: {
@@ -36,25 +45,51 @@ function RouteComponent() {
       // TODO: Handle form submission
       console.log("Form submitted:", values);
       const response = await postFormSubmission(formMeta, values);
+      const responseData: FormSubmissionResponseBody = response.data;
+
+      let subState: SubmissionState;
+      const baseSubState = {
+        referenceNumber: responseData.id,
+        date: responseData.submittedAt,
+        serviceName: responseData.formId,
+      };
 
       switch (response.status) {
         case "submitted":
-          break;
-        case "failed":
-          break;
-        case "draft":
-          break;
-        case "error":
-          break;
         case "success":
-          break;
         case "complete":
+          subState = {
+            submissionSuccess: true,
+            hasPayment: false, // Get this value from response
+            ...baseSubState,
+          };
+          setSubmissionState(subState);
           break;
         case "processing":
           break;
+        case "draft":
+          break;
         case "pending_payment":
+          if (response.meta?.deferred) {
+            const { amount, paymentUrl, paymentId, description } =
+              response.meta?.deferred;
+            subState = {
+              ...baseSubState,
+              submissionSuccess: true,
+              hasPayment: true,
+              amount: amount.toString(),
+              paymentUrl,
+              paymentId,
+              paymentDescription: description,
+            };
+          }
+          break;
+        case "failed":
+          break;
+        case "error":
           break;
         default:
+          console.error("Have no idea what to do here");
       }
     },
   });
@@ -98,6 +133,7 @@ function RouteComponent() {
       stepId={step ?? ""}
       visibleSteps={visibleSteps}
       repeatableStepSettingsRef={repeatableStepSettingsRef}
+      submissionState={submissionState}
     />
   );
 }

@@ -7,16 +7,33 @@ export default function SubmissionConfirmation({
   stepTitle,
   nextSteps,
   onTryAgain,
+  submissionState,
 }: SubmissionConfirmationProps) {
-  // TODO: Dynamically render this content from backend response
-  const hasPayment = true;
-  const serviceName = "Example Service";
-  const amount = "$100.00";
-  const quantity = 1;
-  const submissionSuccess = true;
-  const paymentSuccess = true;
-  const referenceNumber = "ABC123456789";
-  const date = "07/05/2026";
+  const {
+    hasPayment,
+    serviceName,
+    amount,
+    quantity,
+    submissionSuccess,
+    paymentSuccess,
+    referenceNumber,
+    date,
+    paymentUrl,
+    paymentId,
+    paymentDescription,
+  } = submissionState ?? {
+    hasPayment: true,
+    serviceName: "Example Service",
+    amount: "$100.00",
+    quantity: 1,
+    submissionSuccess: true,
+    paymentSuccess: true,
+    referenceNumber: "ABC123456789",
+    date: "07/05/2026",
+    paymentDescription: undefined,
+    paymentId: undefined,
+    paymentUrl: undefined,
+  };
 
   return (
     <div className={designSystem.confirmation}>
@@ -64,7 +81,8 @@ export default function SubmissionConfirmation({
                   <h2>Complete your payment</h2>
                   <p>
                     Please review and complete your payment to finalize your
-                    application
+                    application{" "}
+                    {paymentDescription ? `for ${paymentDescription}.` : "."}
                   </p>
 
                   <div className={designSystem.paymentSummaryTable}>
@@ -76,7 +94,9 @@ export default function SubmissionConfirmation({
                     <p>{amount}</p>
                   </div>
 
-                  <button data-variant="primary">Continue to payment</button>
+                  <a href={paymentUrl}>
+                    <button data-variant="primary">Continue to payment</button>
+                  </a>
                   <p className={designSystem.paymentHint}>
                     You will be redirected to EZ Pay to securely complete your
                     payment.

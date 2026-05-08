@@ -67,6 +67,7 @@ export default function FormRenderer({
   stepId,
   visibleSteps,
   repeatableStepSettingsRef,
+  submissionState,
 }: FormRendererProps) {
   const { navigateToStep, completeAndContinue, currentIndex } = useStepGuard({
     formId: formMeta.formId,
@@ -218,6 +219,7 @@ export default function FormRenderer({
             stepTitle={currentStep.title}
             nextSteps={currentStep.nextSteps}
             onTryAgain={() => navigateToStep("check-your-answers")}
+            submissionState={submissionState}
           />
         )}
 

@@ -1,5 +1,6 @@
 import { ServiceContract } from "@govtech-bb/form-types";
 import { FormDraftResponseBody } from "./form-draft.type";
+import { FormSubmissionResponseBody } from "./form-submission.type";
 
 type FormSubmissionStatus =
   | "draft"
@@ -25,5 +26,13 @@ export interface FormDraftResponse extends ApiResponse {
 }
 
 export interface FormSubmissionResponse extends ApiResponse {
-  data: FormDraftResponseBody;
+  data: FormSubmissionResponseBody;
+  meta?: {
+    deferred?: {
+      paymentUrl: string;
+      paymentId: string;
+      amount: number;
+      description: string;
+    };
+  };
 }
