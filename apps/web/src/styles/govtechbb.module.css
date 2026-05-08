@@ -545,7 +545,7 @@
   text-decoration: underline;
 }
 
- /* show/hide */
+/* show/hide */
 .formRoot [data-show-hide] {
   display: flex;
   flex-direction: column;
@@ -554,7 +554,7 @@
 
 /* Toggle button */
 .formRoot [data-show-hide-toggle] {
-  all: unset;          /* reset button defaults */
+  all: unset; /* reset button defaults */
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
@@ -623,7 +623,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-s);
-  width: calc(100% * 2 / 3);
+  width: 100%;
   border-bottom: 4px solid var(--color-grey-00);
   padding: var(--spacing-s) 0;
 }
@@ -655,7 +655,7 @@
   font-size: var(--font-size-body);
   line-height: var(--line-height-body);
   font-weight: var(--font-weight-bold);
-  width: 25%;
+  width: 50%;
   padding: var(--spacing-xs) 0;
   text-align: left;
 }
@@ -683,7 +683,7 @@
 }
 
 .formRoot .successServiceTitle {
-    font-size: var(--font-size-h4);
+  font-size: var(--font-size-h4);
   line-height: var(--line-height-h4);
   border-left: var(--color-teal-00) 0.25rem solid;
   color: var(--color-black-00);
@@ -713,7 +713,7 @@
 }
 
 .formRoot .errorServiceTitle {
-    font-size: var(--font-size-h4);
+  font-size: var(--font-size-h4);
   line-height: var(--line-height-h4);
   border-left: var(--color-red-00) 0.25rem solid;
   color: var(--color-black-00);
@@ -770,8 +770,6 @@
   border-top: 0.1rem solid var(--color-white-00);
 }
 
-
-
 .formRoot .paymentHint {
   font-size: var(--font-size-caption);
   color: var(--color-mid-grey-00);
@@ -800,6 +798,14 @@
 
   .formRoot .formStep [data-field][data-field-width="medium"] {
     width: 50%;
+  }
+
+  .formRoot .reviewStep {
+    width: calc(100% * 2 / 3);
+  }
+
+  .formRoot .reviewFieldLabel {
+    width: 25%;
   }
 
   .formRoot .paymentSummary,
