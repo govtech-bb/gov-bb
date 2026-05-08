@@ -13,6 +13,8 @@ import {
 import { DepartmentKeyResolver } from "../forms/submissions/processors/payment/ezpay/department-keys";
 import { PaymentWebhookController } from "./payment-webhook.controller";
 import { PaymentWebhookService } from "./payment-webhook.service";
+import { PaymentReconciliationService } from "./payment-reconciliation.service";
+import { AbandonedPaymentCleanupService } from "./abandoned-payment-cleanup.service";
 import { FormDefinitionsModule } from "../forms/form-definitions/form-definitions.module";
 
 @Module({
@@ -41,6 +43,8 @@ import { FormDefinitionsModule } from "../forms/form-definitions/form-definition
       inject: [ConfigService],
     },
     PaymentWebhookService,
+    PaymentReconciliationService,
+    AbandonedPaymentCleanupService,
   ],
   exports: [PaymentRepository, EzpayClient, DepartmentKeyResolver],
 })

@@ -1,5 +1,8 @@
 import { Injectable, Logger } from "@nestjs/common";
-import type { Processor, PaymentProcessorConfig } from "@govtech-bb/form-types";
+import type {
+  Processor,
+  ResolvedPaymentProcessorConfig,
+} from "@govtech-bb/form-types";
 import type {
   ISubmissionProcessor,
   ProcessorOutput,
@@ -32,10 +35,10 @@ export class PaymentProcessor implements ISubmissionProcessor {
     if (
       typeof cfg.amount !== "number" ||
       !Number.isFinite(cfg.amount) ||
-      cfg.amount <= 0
+      cfg.amount < 0
     ) {
       throw new Error(
-        `PaymentProcessor: amount must be a positive number, got ${JSON.stringify(cfg.amount)}`,
+        `PaymentProcessor: amount must be a non-negative number, got ${JSON.stringify(cfg.amount)}`,
       );
     }
 
@@ -117,12 +120,16 @@ export class PaymentProcessor implements ISubmissionProcessor {
     };
   }
 
-  private extractConfig(processors: Processor[]): PaymentProcessorConfig {
+  private extractConfig(
+    processors: Processor[],
+  ): ResolvedPaymentProcessorConfig {
     const p = processors.find(isPaymentProcessor);
     if (!p) {
       throw new Error("PaymentProcessor: no payment config in processors[]");
     }
-    return p.config;
+    // ExpressionsService.resolveProcessors validates against
+    // resolvedProcessorSchema before dispatch, so this cast is sound.
+    return p.config as ResolvedPaymentProcessorConfig;
   }
 }
 

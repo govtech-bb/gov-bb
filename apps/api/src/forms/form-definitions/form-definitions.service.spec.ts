@@ -20,6 +20,8 @@ const MOCK_HYDRATED = {
   steps: [],
 };
 
+const { processors: _processors, ...MOCK_HYDRATED_STRIPPED } = MOCK_HYDRATED;
+
 function makeEntity(
   overrides: Partial<FormDefinitionEntity> = {},
 ): FormDefinitionEntity {
@@ -61,7 +63,7 @@ describe("FormDefinitionsService", () => {
         order: { createdAt: "DESC" },
       });
       expect(registry.hydrateForm).toHaveBeenCalledWith(MOCK_RECIPE);
-      expect(result).toEqual(MOCK_HYDRATED);
+      expect(result).toEqual(MOCK_HYDRATED_STRIPPED);
     });
 
     it("returns a specific version when version is given", async () => {
@@ -78,7 +80,7 @@ describe("FormDefinitionsService", () => {
         order: { createdAt: "DESC" },
       });
       expect(registry.hydrateForm).toHaveBeenCalled();
-      expect(result).toEqual(MOCK_HYDRATED);
+      expect(result).toEqual(MOCK_HYDRATED_STRIPPED);
     });
 
     it("throws NotFoundException when formId is not found", async () => {
@@ -97,6 +99,55 @@ describe("FormDefinitionsService", () => {
       await expect(
         service.findByFormId({ formId: "ghost", version: "9.9.9" }),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe("findByFormId — processors stripping", () => {
+    const HYDRATED_WITH_PROCESSORS = {
+      ...MOCK_HYDRATED,
+      processors: [{ type: "email", config: { to: "ops@example.com" } }],
+    };
+
+    it("strips processors by default (includeProcessors omitted)", async () => {
+      const { repo, registry, service } = makeMocks();
+      (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
+      (registry.hydrateForm as jest.Mock).mockResolvedValue(
+        HYDRATED_WITH_PROCESSORS,
+      );
+
+      const result = await service.findByFormId({ formId: "f" });
+
+      expect("processors" in result).toBe(false);
+    });
+
+    it("strips processors when includeProcessors:false", async () => {
+      const { repo, registry, service } = makeMocks();
+      (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
+      (registry.hydrateForm as jest.Mock).mockResolvedValue(
+        HYDRATED_WITH_PROCESSORS,
+      );
+
+      const result = await service.findByFormId({
+        formId: "f",
+        includeProcessors: false,
+      });
+
+      expect("processors" in result).toBe(false);
+    });
+
+    it("keeps processors when includeProcessors:true", async () => {
+      const { repo, registry, service } = makeMocks();
+      (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
+      (registry.hydrateForm as jest.Mock).mockResolvedValue(
+        HYDRATED_WITH_PROCESSORS,
+      );
+
+      const result = await service.findByFormId({
+        formId: "f",
+        includeProcessors: true,
+      });
+
+      expect(result.processors).toEqual(HYDRATED_WITH_PROCESSORS.processors);
     });
   });
 });

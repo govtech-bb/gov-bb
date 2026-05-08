@@ -95,9 +95,22 @@ export type {
   RecipeBlockField,
 } from "./form-step.type";
 
-export { processorSchema } from "./processor.type";
+export { processorSchema, resolvedProcessorSchema } from "./processor.type";
 
-export type { Processor, PaymentProcessorConfig } from "./processor.type";
+export type {
+  Processor,
+  ResolvedProcessor,
+  PaymentProcessorConfig,
+  ResolvedPaymentProcessorConfig,
+} from "./processor.type";
+
+export { dynamic } from "./dynamic";
+
+export { validateFormContract } from "./validate-form-contract";
+export type {
+  ValidationIssue,
+  ValidationResult,
+} from "./validate-form-contract";
 
 export {
   dateTimeFormatSchema,

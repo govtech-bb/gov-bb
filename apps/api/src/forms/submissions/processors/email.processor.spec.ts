@@ -134,7 +134,7 @@ describe("EmailProcessor", () => {
     it("skips and warns when recipientField is missing from processor config", async () => {
       const warn = jest.spyOn(Logger.prototype, "warn").mockImplementation();
       const payload = makePayload();
-      payload.processors = [{ type: "email", config: {} }];
+      payload.processors = [{ type: "email", config: {} as never }];
 
       await processor.process(payload);
 

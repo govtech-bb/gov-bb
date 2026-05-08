@@ -15,9 +15,15 @@ import { PaymentProcessor } from "./processors/payment/payment.processor";
 import { FormDefinitionsModule } from "../form-definitions/form-definitions.module";
 import { FormDraftsModule } from "../form-drafts/form-drafts.module";
 import { PaymentsModule } from "../../payments/payments.module";
+import { ExpressionsModule } from "../../expressions/expressions.module";
 
 @Module({
-  imports: [FormDefinitionsModule, FormDraftsModule, PaymentsModule],
+  imports: [
+    FormDefinitionsModule,
+    FormDraftsModule,
+    PaymentsModule,
+    ExpressionsModule,
+  ],
   controllers: [SubmissionsController],
   providers: [
     SubmissionsService,

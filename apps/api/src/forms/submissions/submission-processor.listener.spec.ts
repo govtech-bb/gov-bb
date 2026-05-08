@@ -2,6 +2,15 @@ import { SubmissionProcessorListener } from "./submission-processor.listener";
 import type { ProcessorFactory } from "./processors/processor-factory.service";
 import type { ISubmissionProcessor } from "./processors/submission-processor.interface";
 import type { SubmissionCreatedEvent } from "./submissions.types";
+import type { ExpressionsService } from "../../expressions/expressions.service";
+
+const expressions = {
+  resolveConfig: jest.fn((cfg: Record<string, unknown>) => cfg),
+  resolveProcessors: jest.fn(
+    (processors: Array<{ type: string; config: Record<string, unknown> }>) =>
+      processors,
+  ),
+} as unknown as ExpressionsService;
 
 const EVENT: SubmissionCreatedEvent = {
   submissionId: "sub-1",
@@ -46,7 +55,7 @@ describe("SubmissionProcessorListener", () => {
         .mockReturnValue({ gating: [paymentStub], nonGating: [emailStub] }),
     } as unknown as ProcessorFactory;
 
-    const listener = new SubmissionProcessorListener(factory);
+    const listener = new SubmissionProcessorListener(factory, expressions);
 
     await listener.handleSubmissionCreated(EVENT);
 
@@ -68,11 +77,53 @@ describe("SubmissionProcessorListener", () => {
         .mockReturnValue({ gating: [], nonGating: [failing, succeeding] }),
     } as unknown as ProcessorFactory;
 
-    const listener = new SubmissionProcessorListener(factory);
+    const listener = new SubmissionProcessorListener(factory, expressions);
 
     await listener.handleSubmissionCreated(EVENT);
 
     expect(failing.process).toHaveBeenCalledTimes(1);
     expect(succeeding.process).toHaveBeenCalledTimes(1);
+  });
+
+  it("resolves processor configs and dispatches the resolved payload", async () => {
+    const transformingExpressions = {
+      resolveProcessors: jest.fn((processors: Array<{ type: string }>) =>
+        processors.map((p) => ({ ...p, config: { resolved: true } })),
+      ),
+    } as unknown as ExpressionsService;
+
+    const emailStub = makeProcessor("email", false);
+    const factory = {
+      resolveSplit: jest
+        .fn()
+        .mockReturnValue({ gating: [], nonGating: [emailStub] }),
+    } as unknown as ProcessorFactory;
+
+    const listener = new SubmissionProcessorListener(
+      factory,
+      transformingExpressions,
+    );
+
+    await listener.handleSubmissionCreated({
+      ...EVENT,
+      processors: [
+        { type: "email", config: { recipientField: "personal.email" } },
+      ],
+    });
+
+    expect(
+      transformingExpressions.resolveProcessors as jest.Mock,
+    ).toHaveBeenCalledWith(
+      [{ type: "email", config: { recipientField: "personal.email" } }],
+      expect.objectContaining({
+        submission: expect.objectContaining({ id: "sub-1" }),
+      }),
+    );
+
+    expect(emailStub.process).toHaveBeenCalledWith(
+      expect.objectContaining({
+        processors: [{ type: "email", config: { resolved: true } }],
+      }),
+    );
   });
 });

@@ -10,6 +10,24 @@ import { EventEmitter2 } from "@nestjs/event-emitter";
 import { ProcessorFactory } from "./processors/processor-factory.service";
 import type { ISubmissionProcessor } from "./processors/submission-processor.interface";
 import type { SubmitDto } from "./submissions.types";
+import type { ExpressionsService } from "../../expressions/expressions.service";
+
+function makeExpressions(
+  impl: (cfg: Record<string, unknown>) => Record<string, unknown> = (cfg) =>
+    cfg,
+) {
+  return {
+    resolveConfig: jest.fn(impl),
+    resolveProcessors: jest.fn(
+      (
+        processors: Array<{ type: string; config: Record<string, unknown> }>,
+        _ctx,
+      ) => processors.map((p) => ({ ...p, config: impl(p.config) })),
+    ),
+  } as unknown as ExpressionsService;
+}
+
+const expressions = makeExpressions();
 
 function makeEntity(
   overrides: Partial<FormSubmissionEntity> = {},
@@ -82,6 +100,7 @@ function makeMocks(options: MakeMocksOptions = {}) {
     pipeline,
     eventEmitter,
     processorFactory,
+    expressions,
   );
   return {
     txRepo,
@@ -144,6 +163,52 @@ describe("SubmissionsService", () => {
           submissionId: expect.any(String),
           idempotencyKey: "key-abc",
         }),
+      );
+    });
+
+    it("emits the submission event with raw processors (resolution happens in the listener)", async () => {
+      const customExpressions = makeExpressions(() => ({ resolved: true }));
+      const rawProcessors = [{ type: "email", config: { to: "raw@x" } }];
+      const customPipeline = {
+        run: jest.fn().mockResolvedValue({
+          draft: { formVersion: "1.0.0", lastActivePage: 0 },
+          contract: { processors: rawProcessors },
+          auditTrail: AUDIT_TRAIL,
+        }),
+      } as unknown as SubmissionPipelineService;
+
+      const txRepo = {
+        findOne: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockImplementation((data) => ({ ...data })),
+        save: jest.fn().mockResolvedValue(makeEntity({ id: "uuid-resolved" })),
+      };
+      const submissionRepo = {
+        findOne: jest.fn().mockResolvedValue(null),
+        tx: jest.fn().mockImplementation((cb) => cb(txRepo)),
+      } as unknown as FormSubmissionRepository;
+
+      const eventEmitter = { emit: jest.fn() } as unknown as EventEmitter2;
+      const processorFactory = {
+        resolveSplit: jest.fn().mockReturnValue({ gating: [], nonGating: [] }),
+      } as unknown as ProcessorFactory;
+
+      const service = new SubmissionsService(
+        submissionRepo,
+        customPipeline,
+        eventEmitter,
+        processorFactory,
+        customExpressions,
+      );
+
+      await service.submit(BASE_DTO);
+
+      expect(
+        customExpressions.resolveProcessors as jest.Mock,
+      ).not.toHaveBeenCalled();
+
+      expect(eventEmitter.emit as jest.Mock).toHaveBeenCalledWith(
+        "submission.created",
+        expect.objectContaining({ processors: rawProcessors }),
       );
     });
 
