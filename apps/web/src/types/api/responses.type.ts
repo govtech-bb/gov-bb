@@ -8,8 +8,17 @@ export interface ApiResponse {
   statusCode?: number;
 }
 
+export interface FormDefinitionSummary {
+  formId: string;
+  title: string;
+}
+
 export interface FormDefinitionResponse extends ApiResponse {
   data: ServiceContract;
+}
+
+export interface FormDefinitionsListResponse extends ApiResponse {
+  data: FormDefinitionSummary[];
 }
 
 export interface FormDraftResponse extends ApiResponse {

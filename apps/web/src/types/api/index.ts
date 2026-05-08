@@ -3,6 +3,8 @@ export type {
   FormSubmissionResponse,
   FormDraftResponse,
   FormDefinitionResponse,
+  FormDefinitionsListResponse,
+  FormDefinitionSummary,
 } from "./responses.type.ts";
 export type { FormDraft, FormDraftResponseBody } from "./form-draft.type.ts";
 export { formDraftResponseBodySchema } from "./form-draft.type";
