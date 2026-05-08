@@ -3,6 +3,7 @@ export type {
   ClientFormStep,
   ClientPrimitive,
   FormValues,
+  FormValuesByStep,
 } from "./field-mapper.type.ts";
 export { formValuesSchema } from "./field-mapper.type";
 export type { FormMeta } from "./renderer.type.ts";

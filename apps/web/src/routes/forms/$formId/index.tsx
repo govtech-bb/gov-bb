@@ -14,10 +14,11 @@ import {
   FormMeta,
   SubmissionState,
   FormSubmissionResponseBody,
+  FormValuesByStep,
 } from "@web/types";
 import React from "react";
 import { getFormData, storeFormData } from "../../../lib/session-storage";
-import { postFormSubmission } from "@web/form-api";
+import { formatDataForSubmission, postFormSubmission } from "@web/form-api";
 
 export const Route = createFileRoute("/forms/$formId/")({
   component: RouteComponent,
@@ -41,9 +42,13 @@ function RouteComponent() {
       ...(formMeta.defaultValues as FormValues),
       ...(getFormData(formMeta.formId) ?? {}),
     },
-    onSubmit: async ({ value: values }) => {
+    onSubmit: async ({ value }) => {
       // TODO: Handle form submission
-      const response = await postFormSubmission(formMeta, values);
+
+      const values = value as FormValues;
+      const formattedData: FormValuesByStep = formatDataForSubmission(values);
+      console.log({ formattedData });
+      const response = await postFormSubmission(formMeta, formattedData);
       const responseData: FormSubmissionResponseBody = response.data;
 
       let subState: SubmissionState;

@@ -1,4 +1,5 @@
 import { ServiceContract, serviceContractSchema } from "@govtech-bb/form-types";
+import { stepFieldIdConcactenator } from "@web/lib";
 import {
   ApiResponse,
   FormDefinitionResponse,
@@ -12,6 +13,7 @@ import {
   FormDraftResponse,
   FormSubmissionResponse,
   formSubmissionResponseBodySchema,
+  FormValuesByStep,
 } from "@web/types";
 
 const API_URL = process.env.VITE_API_URL ?? "http://localhost:3001";
@@ -205,7 +207,7 @@ export const postEzpay = async () => {};
 
 export const postFormSubmission = async (
   { formId, version: formVersion, idempotencyKey }: FormMeta,
-  values: Record<string, FormValues>,
+  valuesBySteps: FormValuesByStep,
 ) => {
   const endpoint = `/submissions`;
   const errorMessage = {};
@@ -217,7 +219,7 @@ export const postFormSubmission = async (
     body: JSON.stringify({
       formId,
       formVersion,
-      values,
+      values: valuesBySteps,
     }),
   } as const;
 
@@ -237,4 +239,27 @@ export const postFormSubmission = async (
       400,
     );
   }
+};
+
+export const formatDataForSubmission = (
+  values: FormValues,
+): FormValuesByStep => {
+  const formValuesByStep: FormValuesByStep = {};
+  //  The values of any fields that are conditionally invisible, should be set to undefined, and not sent to the server.
+
+  // The values of any steps that are conditionally invisible, should have all their values set to undefined, and not sent to the server.
+
+  // The values for repeatable steps should be collapsed under the step id of the source step, becoming an array.Similarly, the values for shared fields shall be put in each array instance.
+
+  // The structure of values should be changed from Record < stepAndFieldID, fieldValue > to Record<stepId, Record<fieldId, fieldValue>>, where stepAndFieldID is the identifier of the form stepId_fieldId.
+
+  for (const [stepFieldId, value] of Object.entries(values)) {
+    const [stepId, fieldId] = stepFieldId.split(stepFieldIdConcactenator);
+
+    formValuesByStep[stepId] = {
+      [fieldId]: value,
+    };
+  }
+
+  return formValuesByStep;
 };
