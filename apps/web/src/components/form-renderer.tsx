@@ -205,7 +205,11 @@ export default function FormRenderer({
       )}
 
       {!isSubmissionConfirmation && <h1>{currentStep.title}</h1>}
-      {/* {step.description && <p>{step.description}</p>} */}
+      {!isSubmissionConfirmation && currentStep.description && (
+        <p className={designSystem.formStepDescription}>
+          {currentStep.description}
+        </p>
+      )}
       <ErrorSummary errors={errors} />
 
       <div className={designSystem.formStep}>
