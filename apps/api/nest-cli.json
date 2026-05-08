@@ -1,5 +1,13 @@
 {
   "collection": "@nestjs/schematics",
   "sourceRoot": "src",
-  "entryFile": "apps/api/src/main"
+  "entryFile": "apps/api/src/main",
+  "compilerOptions": {
+    "assets": [
+      {
+        "include": "email/templates/**/*.hbs",
+        "outDir": "./dist"
+      }
+    ]
+  }
 }
