@@ -213,6 +213,7 @@ export const postFormSubmission = async (
   const fetchArgs = {
     method: "POST",
     headers: {
+      "Content-Type": "application/json",
       "idempotency-key": idempotencyKey,
     },
     body: JSON.stringify({
