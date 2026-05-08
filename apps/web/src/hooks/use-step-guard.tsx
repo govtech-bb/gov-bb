@@ -80,6 +80,7 @@ export function useStepGuard({
    */
   const completeAndContinue = useCallback(
     (completedStepId: string, stepsOverride?: ClientFormStep[]) => {
+      // TODO: Validate current step before marking as completed and navigating to the next step
       markStepCompleted(formId, completedStepId);
       const steps = stepsOverride ?? activeSteps;
       const currentIdx = steps.findIndex((s) => s.stepId === completedStepId);

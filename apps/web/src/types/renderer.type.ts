@@ -11,6 +11,7 @@ type fieldId = string;
 export interface FormMeta {
   // Meta information for the client to render.
   formId: string;
+  version: string;
   formTitle: string;
   formDescription?: string;
   schema: z.ZodObject<Record<string, z.ZodType<unknown>>>;
@@ -19,4 +20,5 @@ export interface FormMeta {
   validationProperties: Record<string, FieldValidationProperties>;
   stepConditionalTargets: Record<stepId, fieldId>;
   repeatSettings: RepeatableStepSettings;
+  idempotencyKey: string;
 }

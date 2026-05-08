@@ -13,6 +13,7 @@ export {
   selectPrimitiveSchema,
   radioPrimitiveSchema,
   filePrimitiveSchema,
+  showHidePrimitiveSchema,
   primitiveSchema,
   fieldOverridesSchema,
   primitiveUISchema,
@@ -33,6 +34,7 @@ export type {
   TelPrimitive,
   EmailPrimitive,
   CheckboxPrimitive,
+  ShowHidePrimitive,
   Primitive,
   HtmlTypes,
   PrimitiveUI,
@@ -42,12 +44,17 @@ export {
   validationConfigSchema,
   validationTypeSchema,
   validationRuleSchema,
+  fieldValueSchema,
+  dateValueInputSchema,
 } from "./validation.type";
 
 export type {
   ValidationConfig,
   ValidationType,
   ValidationRule,
+  FieldValue,
+  DateValue,
+  DateValueInput,
 } from "./validation.type";
 
 export {
@@ -88,9 +95,22 @@ export type {
   RecipeBlockField,
 } from "./form-step.type";
 
-export { processorSchema } from "./processor.type";
+export { processorSchema, resolvedProcessorSchema } from "./processor.type";
 
-export type { Processor, PaymentProcessorConfig } from "./processor.type";
+export type {
+  Processor,
+  ResolvedProcessor,
+  PaymentProcessorConfig,
+  ResolvedPaymentProcessorConfig,
+} from "./processor.type";
+
+export { dynamic } from "./dynamic";
+
+export { validateFormContract } from "./validate-form-contract";
+export type {
+  ValidationIssue,
+  ValidationResult,
+} from "./validate-form-contract";
 
 export {
   dateTimeFormatSchema,

@@ -1,12 +1,13 @@
 import {
   Behaviour,
   DateTimeFormat,
+  fieldValueSchema,
   HtmlTypes,
   Option,
   PrimitiveUI,
   ValidationRule,
 } from "@govtech-bb/form-types";
-import { FieldValue } from "./validation.type";
+import z from "zod";
 
 export interface ClientPrimitive {
   id: string; // Step ID + field ID
@@ -33,6 +34,7 @@ export interface ClientFormStep {
   description?: string;
   fields: ClientPrimitive[];
   behaviours?: Behaviour[];
+  nextSteps?: { title: string; content?: string; items?: string[] }[];
 }
 
 export interface ClientServiceContract {
@@ -45,5 +47,6 @@ export interface ClientServiceContract {
   version: string;
 }
 
-type fieldId = string;
-export type FormValues = Record<fieldId, FieldValue>;
+const fieldId = z.string();
+export const formValuesSchema = z.record(fieldId, fieldValueSchema);
+export type FormValues = z.infer<typeof formValuesSchema>;

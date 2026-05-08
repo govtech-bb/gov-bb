@@ -33,13 +33,18 @@ export const mapFieldToLocale = (
     ...field,
     id: getFullFieldId(step.stepId, field.fieldId),
     stepId: step.stepId,
-    name: field.name ?? field.label,
+    name: field.name ?? toSentenceCase(field.label),
     disabled: field.isDisabled ?? false,
     hidden: field.isHidden ?? false,
   };
 };
 
-export const stepFieldIdConcactenator = "-";
+const toSentenceCase = (str?: string): string => {
+  if (!str) return "";
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+};
+
+export const stepFieldIdConcactenator = "_";
 
 export const getFullFieldId = (stepId: string, fieldId: string): string => {
   return `${stepId}${stepFieldIdConcactenator}${fieldId}`;

@@ -529,17 +529,12 @@
               "error": "End date is required"
             },
             "after": {
-              "reference": "redirection-start-date",
+              "referenceFieldId": "redirection-start-date",
               "error": "End date must be after start date"
             }
           }
         }
       ]
-    },
-    {
-      "stepId": "check-your-answers",
-      "title": "Check your answers",
-      "elements": []
     },
     {
       "stepId": "declaration",
@@ -577,6 +572,20 @@
               "error": "Date of declaration must be today or earlier"
             }
           }
+        }
+      ]
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Thank you for your application!",
+      "elements": [],
+      "nextSteps": [
+        { "step": "We will review your application within 5 working days." },
+        {
+          "step": "You will receive an email confirmation once your mail redirection is active."
+        },
+        {
+          "step": "Your mail redirection will begin on the requested start date."
         }
       ]
     }

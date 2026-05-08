@@ -5,9 +5,11 @@ import {
   FormMeta,
   RepeatableStepSettings,
   FormValidation,
+  ClientFormStep,
 } from "@web/types";
 import { buildValidation } from "./validation-builder";
 import { getStepConditonalTargets, setupRepeatSteps } from "@web/lib";
+import { v4 as uuidv4 } from "uuid";
 
 export const buildForm = (contract: ClientServiceContract): FormMeta => {
   // Build the Validation Schema
@@ -22,9 +24,24 @@ export const buildForm = (contract: ClientServiceContract): FormMeta => {
 
   const steps = setupRepeatSteps(contract.steps, repeatSettings);
 
+  // Configure check-your-answer step
+  const checkAnswers: ClientFormStep = {
+    stepId: "check-your-answers",
+    fields: [],
+    title: "Check your answers",
+    description:
+      "Review all the information you have provided before submitting your application.",
+  };
+
+  steps.splice(-2, 0, checkAnswers);
+
+  // Generate Idempotency Key
+  const idempotencyKey = uuidv4();
+
   // Return FormMeta object with everything configured.
   return {
     formId: contract.formId,
+    version: contract.version,
     formTitle: contract.title,
     formDescription: contract.description,
     schema,
@@ -33,5 +50,6 @@ export const buildForm = (contract: ClientServiceContract): FormMeta => {
     validationProperties: properties,
     stepConditionalTargets,
     repeatSettings,
+    idempotencyKey,
   };
 };

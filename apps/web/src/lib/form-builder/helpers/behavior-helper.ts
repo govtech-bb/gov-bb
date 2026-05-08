@@ -1,9 +1,10 @@
 import {
   FieldConditionalOnBehaviour,
+  FieldValue,
   StepConditionalOnBehaviour,
 } from "@govtech-bb/form-types";
 import { AnyFormApi } from "@tanstack/react-form";
-import { ClientFormStep, FieldValue } from "@web/types";
+import { ClientFormStep } from "@web/types";
 import { evaluateCondition, RequiredState } from "../validation-methods";
 import { getFullFieldId } from "../field-mapper";
 

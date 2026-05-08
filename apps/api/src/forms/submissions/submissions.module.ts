@@ -19,6 +19,7 @@ import { PaymentsModule } from "../../payments/payments.module";
 import { SqsProducerService } from "./sqs/sqs-producer.service";
 import { SqsConsumerService } from "./sqs/sqs-consumer.service";
 import sqsConfig from "../../config/sqs.config";
+import { ExpressionsModule } from "../../expressions/expressions.module";
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import sqsConfig from "../../config/sqs.config";
     FormDraftsModule,
     PaymentsModule,
     ConfigModule.forFeature(sqsConfig),
+    ExpressionsModule,
   ],
   controllers: [SubmissionsController],
   providers: [

@@ -40,6 +40,7 @@ export class SubmissionPipelineService {
       const contract = await this.formDefinitionsService.findByFormId({
         formId: dto.formId,
         version: dto.formVersion,
+        includeProcessors: true,
       });
       return { draft: null, contract };
     }
@@ -48,6 +49,7 @@ export class SubmissionPipelineService {
     const contract = await this.formDefinitionsService.findByFormId({
       formId: dto.formId,
       version: draft.formVersion,
+      includeProcessors: true,
     });
 
     return { draft, contract };

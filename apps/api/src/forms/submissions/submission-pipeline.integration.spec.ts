@@ -14,7 +14,7 @@
  *     - employer-name  text    required, minLength: 2
  *     - job-title      text    required  [visible only when contract-type === "permanent"]
  *     - contract-type  text    required
- *     - salary         number  required, gt: { reference: "minimum-wage" }
+ *     - salary         number  required, gt: { referenceFieldId: "minimum-wage" }
  *     - minimum-wage   number  required, min: 0
  *
  *   Step: supporting-docs  (always visible)
@@ -117,7 +117,7 @@ const CONTRACT: ServiceContract = {
           validations: {
             required: { error: "Salary is required" },
             gt: {
-              reference: "minimum-wage",
+              referenceFieldId: "minimum-wage",
               targetStepId: "employment-info",
               error: "Salary must exceed minimum wage",
             },
