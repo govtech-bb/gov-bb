@@ -13,15 +13,12 @@ export default function ApplicantNameDisplay({
     (state: any) => state.values as FormValues,
   );
 
-  // TODO: Standardize the way applicant's name is captured across forms, and update this logic accordingly. For example, we could require that all forms capture the applicant's first and last name in a consistent way (e.g. "applicant-first-name" and "applicant-last-name"), which would simplify this component and make it more reliable.
-  const firstName =
-    formValues["applicant-details_applicant-first-name"] ??
-    formValues["personal-details_first-name"] ??
-    undefined;
-  const lastName =
-    formValues["applicant-details_applicant-last-name"] ??
-    formValues["personal-details_last-name"] ??
-    undefined;
+  const firstName = formValues["applicant-details_applicant-first-name"] as
+    | string
+    | undefined;
+  const lastName = formValues["applicant-details_applicant-last-name"] as
+    | string
+    | undefined;
 
   if (!firstName && !lastName) {
     return null;
