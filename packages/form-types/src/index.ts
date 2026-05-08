@@ -99,6 +99,12 @@ export type {
 
 export { dynamic } from "./dynamic";
 
+export { validateFormContract } from "./validate-form-contract";
+export type {
+  ValidationIssue,
+  ValidationResult,
+} from "./validate-form-contract";
+
 export {
   dateTimeFormatSchema,
   serviceContractSchema,
