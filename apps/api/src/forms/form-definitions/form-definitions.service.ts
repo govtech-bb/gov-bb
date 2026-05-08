@@ -11,6 +11,22 @@ export class FormDefinitionsService {
     private readonly registryService: RegistryService,
   ) {}
 
+  async findAll(): Promise<{ formId: string; title: string }[]> {
+    const entities = await this.formDefRepo.find({
+      order: { createdAt: "DESC" },
+    });
+
+    const seen = new Set<string>();
+    const result: { formId: string; title: string }[] = [];
+    for (const entity of entities) {
+      if (!seen.has(entity.formId)) {
+        seen.add(entity.formId);
+        result.push({ formId: entity.formId, title: entity.schema.title });
+      }
+    }
+    return result;
+  }
+
   async findByFormId({
     formId,
     version,

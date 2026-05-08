@@ -14,13 +14,28 @@ export class FormDefinitionsController {
     private readonly formDefinitionsService: FormDefinitionsService,
   ) {}
 
+  @Get()
+  async getAll(): Promise<
+    ApiResponseShape<{ formId: string; title: string }[]>
+  > {
+    const data = await this.formDefinitionsService.findAll();
+    return AppApiResponse.success(data, {
+      message: "Form definitions retrieved",
+    });
+  }
+
   @Get(":formId")
   @GetFormDefinitionDocs()
   async get(
     @Param("formId") formId: string,
     @Query("version") version?: string,
   ): Promise<ApiResponseShape<ServiceContract>> {
-    const data = await this.formDefinitionsService.findByFormId({ formId, version });
-    return AppApiResponse.success(data, { message: "Form definition retrieved" });
+    const data = await this.formDefinitionsService.findByFormId({
+      formId,
+      version,
+    });
+    return AppApiResponse.success(data, {
+      message: "Form definition retrieved",
+    });
   }
 }
