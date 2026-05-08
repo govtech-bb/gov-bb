@@ -36,6 +36,26 @@ function RouteComponent() {
       // TODO: Handle form submission
       console.log("Form submitted:", values);
       const response = await postFormSubmission(formMeta, values);
+
+      switch (response.status) {
+        case "submitted":
+          break;
+        case "failed":
+          break;
+        case "draft":
+          break;
+        case "error":
+          break;
+        case "success":
+          break;
+        case "complete":
+          break;
+        case "processing":
+          break;
+        case "pending_payment":
+          break;
+        default:
+      }
     },
   });
 
