@@ -7,9 +7,11 @@ import { ClientPrimitive, FormMeta } from "@web/types";
 export default function Review({
   formMeta,
   form,
+  visibleSteps,
 }: {
   formMeta: FormMeta;
   form: AnyFormApi;
+  visibleSteps: ClientFormStep[];
 }) {
   const navigate = useNavigate({ from: "/forms/$formId/" });
 
@@ -110,7 +112,7 @@ export default function Review({
 
   return (
     <div className={designSystem.review}>
-      {formMeta.steps
+      {visibleSteps
         .filter((step) => !excludeStepIds.includes(step.stepId))
         .map((step) => (
           <div key={step.stepId} className={designSystem.reviewStep}>
