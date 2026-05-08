@@ -22,6 +22,7 @@
   font-size: var(--font-size-h1);
   line-height: var(--line-height-h1);
   font-weight: var(--font-weight-bold);
+  margin-bottom: var(--spacing-s);
 }
 
 .formRoot h2 {
@@ -80,8 +81,8 @@
   margin: 0;
 }
 
-.formRoot .formStep .formStepDescription {
-  display: none;
+.formRoot .formStepDescription {
+  margin-bottom: var(--spacing-s);
 }
 
 .formRoot .formNavigation {
