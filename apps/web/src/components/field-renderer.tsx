@@ -123,8 +123,27 @@ export default function FieldRenderer({
               </fieldset>
             );
           }
+          case "textarea": {
+            let textareaElement: JSX.Element;
+
+            if (!fieldArray) {
+              const value = f.state.value as string | undefined;
+              textareaElement = (
+                <div data-field data-field-width={field.ui?.width}>
+                  <label> {field.label} </label>
+                  {field.hint && <p data-hint>{field.hint}</p>}
+                  <textarea
+                    key={field.id}
+                    {...sharedProps}
+                    value={value ?? ""}
+                    onChange={(e) => f.handleChange(e.target.value)}
+                  />
+                </div>
+              );
+              return textareaElement;
+            }
+          }
           case "text":
-          case "textarea":
           case "number":
           case "tel":
           case "email": {
