@@ -11,6 +11,48 @@ import { trace, SpanStatusCode } from "@opentelemetry/api";
 import { ApiResponse } from "./response";
 import { MetricsService } from "../telemetry/metrics.service";
 
+interface ParsedError {
+  statusCode: number;
+  message: string;
+  errors?: unknown;
+}
+
+function parseException(exception: unknown): ParsedError {
+  if (!(exception instanceof HttpException)) {
+    return {
+      statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+      message: "An unexpected error occurred",
+    };
+  }
+
+  const statusCode = exception.getStatus();
+  const response = exception.getResponse();
+
+  if (typeof response === "string") {
+    return { statusCode, message: response };
+  }
+
+  const body = response as Record<string, unknown>;
+  const rawMessage = body["message"];
+  const fieldErrors = body["errors"];
+
+  // AppError.unprocessable: { errors: { fieldId: string[] } }
+  if (fieldErrors !== undefined) {
+    return { statusCode, message: "Validation failed", errors: fieldErrors };
+  }
+
+  // ValidationPipe (class-validator): { message: string[] }
+  if (Array.isArray(rawMessage)) {
+    return { statusCode, message: "Validation failed", errors: rawMessage };
+  }
+
+  if (typeof rawMessage === "string") {
+    return { statusCode, message: rawMessage };
+  }
+
+  return { statusCode, message: exception.message };
+}
+
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(GlobalExceptionFilter.name);
@@ -22,23 +64,16 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const res = ctx.getResponse<Response>();
     const req = ctx.getRequest<Request>();
 
-    const statusCode =
-      exception instanceof HttpException
-        ? exception.getStatus()
-        : HttpStatus.INTERNAL_SERVER_ERROR;
-
-    const message =
-      exception instanceof HttpException
-        ? ((exception.getResponse() as any)?.message ?? exception.message)
-        : "An unexpected error occurred";
+    const { statusCode, message, errors } = parseException(exception);
+    const meta = errors !== undefined ? { errors } : undefined;
 
     this.logger.error(`${req.method} ${req.url} ${statusCode} — ${message}`);
 
     const span = trace.getActiveSpan();
     if (span) {
-      span.setStatus({ code: SpanStatusCode.ERROR, message: String(message) });
+      span.setStatus({ code: SpanStatusCode.ERROR, message });
       span.recordException(
-        exception instanceof Error ? exception : new Error(String(message)),
+        exception instanceof Error ? exception : new Error(message),
       );
       span.setAttributes({ "http.status_code": statusCode });
     }
@@ -51,6 +86,8 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     }
     this.metricsService.recordHttpError(statusCode, req.method, req.path);
 
-    res.status(statusCode).json(ApiResponse.failed({ message, statusCode }));
+    res
+      .status(statusCode)
+      .json(ApiResponse.failed({ message, statusCode, meta }));
   }
 }
