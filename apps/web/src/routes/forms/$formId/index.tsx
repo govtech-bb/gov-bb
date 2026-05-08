@@ -43,7 +43,6 @@ function RouteComponent() {
     },
     onSubmit: async ({ value: values }) => {
       // TODO: Handle form submission
-      console.log("Form submitted:", values);
       const response = await postFormSubmission(formMeta, values);
       const responseData: FormSubmissionResponseBody = response.data;
 
@@ -85,8 +84,8 @@ function RouteComponent() {
           }
           break;
         case "failed":
-          break;
         case "error":
+          //TODO: Add state handling for errors
           break;
         default:
           console.error("Have no idea what to do here");
