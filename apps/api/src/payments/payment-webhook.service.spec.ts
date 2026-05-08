@@ -156,6 +156,7 @@ describe("PaymentWebhookService", () => {
     expect(formDefs.findByFormId).toHaveBeenCalledWith({
       formId: "passport-renewal",
       version: "1.0.0",
+      includeProcessors: true,
     });
     expect(payment.status).toBe(PaymentStatus.SUCCESS);
     expect(paymentRepo.save).toHaveBeenCalledWith(payment);

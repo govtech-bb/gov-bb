@@ -11,12 +11,30 @@ export class FormDefinitionsService {
     private readonly registryService: RegistryService,
   ) {}
 
+  async findAll(): Promise<{ formId: string; title: string }[]> {
+    const entities = await this.formDefRepo.find({
+      order: { createdAt: "DESC" },
+    });
+
+    const seen = new Set<string>();
+    const result: { formId: string; title: string }[] = [];
+    for (const entity of entities) {
+      if (!seen.has(entity.formId)) {
+        seen.add(entity.formId);
+        result.push({ formId: entity.formId, title: entity.schema.title });
+      }
+    }
+    return result;
+  }
+
   async findByFormId({
     formId,
     version,
+    includeProcessors = false,
   }: {
     formId: string;
     version?: string;
+    includeProcessors?: boolean;
   }): Promise<ServiceContract> {
     const entity = await this.formDefRepo.findOne({
       where: { formId, ...(version && { version }) },
@@ -26,6 +44,11 @@ export class FormDefinitionsService {
     if (!entity) {
       throw AppError.notFound("Form definition", { formId, version });
     }
-    return this.registryService.hydrateForm(entity.schema);
+
+    const contract = await this.registryService.hydrateForm(entity.schema);
+    if (includeProcessors) return contract;
+
+    const { processors: _processors, ...stripped } = contract;
+    return stripped as ServiceContract;
   }
 }

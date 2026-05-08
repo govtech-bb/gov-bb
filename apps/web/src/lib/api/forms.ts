@@ -2,6 +2,8 @@ import { ServiceContract, serviceContractSchema } from "@govtech-bb/form-types";
 import {
   ApiResponse,
   FormDefinitionResponse,
+  FormDefinitionsListResponse,
+  FormDefinitionSummary,
   FormDraft,
   FormDraftResponseBody,
   formDraftResponseBodySchema,
@@ -99,6 +101,16 @@ export const fetchFormDefinition = async (
   }
 };
 
+export const fetchFormDefinitions = async (): Promise<
+  FormDefinitionSummary[]
+> => {
+  const { body } = await makeFetch<FormDefinitionsListResponse>(
+    `/form-definitions`,
+    { not_found: "Form definitions could not be found." },
+  );
+  return body.data;
+};
+
 export const createFormDraft = async (
   { formId, version }: FormMeta,
   draftId: string,
@@ -193,9 +205,8 @@ export const deleteFormDraft = async (draftId: string): Promise<number> => {
 export const postEzpay = async () => {};
 
 export const postFormSubmission = async (
-  { formId, version: formVersion }: FormMeta,
+  { formId, version: formVersion, idempotencyKey }: FormMeta,
   values: Record<string, FormValues>,
-  idempotencyKey: string,
 ) => {
   const endpoint = `/submissions`;
   const errorMessage = {};

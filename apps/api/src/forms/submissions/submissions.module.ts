@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { ConfigModule } from "@nestjs/config";
 import { SubmissionsController } from "./submissions.controller";
 import { SubmissionsService } from "./submissions.service";
 import { FormSubmissionRepository } from "./form-submission.repository";
@@ -15,9 +16,19 @@ import { PaymentProcessor } from "./processors/payment/payment.processor";
 import { FormDefinitionsModule } from "../form-definitions/form-definitions.module";
 import { FormDraftsModule } from "../form-drafts/form-drafts.module";
 import { PaymentsModule } from "../../payments/payments.module";
+import { SqsProducerService } from "./sqs/sqs-producer.service";
+import { SqsConsumerService } from "./sqs/sqs-consumer.service";
+import sqsConfig from "../../config/sqs.config";
+import { ExpressionsModule } from "../../expressions/expressions.module";
 
 @Module({
-  imports: [FormDefinitionsModule, FormDraftsModule, PaymentsModule],
+  imports: [
+    FormDefinitionsModule,
+    FormDraftsModule,
+    PaymentsModule,
+    ConfigModule.forFeature(sqsConfig),
+    ExpressionsModule,
+  ],
   controllers: [SubmissionsController],
   providers: [
     SubmissionsService,
@@ -44,6 +55,8 @@ import { PaymentsModule } from "../../payments/payments.module";
       ],
     },
     ProcessorFactory,
+    SqsProducerService,
+    SqsConsumerService,
     SubmissionProcessorListener,
   ],
   exports: [SubmissionsService],
