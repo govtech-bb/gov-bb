@@ -16,6 +16,12 @@ export class ProcessorFactory {
     this.registry = new Map(processors.map((p) => [p.type, p]));
   }
 
+  /** Resolve a single processor by its string type — used by the SQS consumer
+   *  to reconstruct the handler from a queue message. */
+  resolveByType(type: string): ISubmissionProcessor | undefined {
+    return this.registry.get(type);
+  }
+
   resolve(processorConfigs: Processor[]): ISubmissionProcessor[] {
     return processorConfigs.flatMap((cfg) => {
       const handler = this.registry.get(cfg.type);

@@ -1,7 +1,10 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Inject, Injectable, Logger } from "@nestjs/common";
 import { OnEvent } from "@nestjs/event-emitter";
+import { ConfigType } from "@nestjs/config";
 import { ExpressionsService } from "../../expressions/expressions.service";
 import { ProcessorFactory } from "./processors/processor-factory.service";
+import { SqsProducerService } from "./sqs/sqs-producer.service";
+import sqsConfig from "../../config/sqs.config";
 import type { SubmissionCreatedEvent } from "./submissions.types";
 
 @Injectable()
@@ -10,6 +13,9 @@ export class SubmissionProcessorListener {
 
   constructor(
     private readonly processorFactory: ProcessorFactory,
+    private readonly sqsProducer: SqsProducerService,
+    @Inject(sqsConfig.KEY)
+    private readonly sqsConf: ConfigType<typeof sqsConfig>,
     private readonly expressions: ExpressionsService,
   ) {}
 
@@ -44,13 +50,26 @@ export class SubmissionProcessorListener {
     );
 
     for (const processor of nonGating) {
-      try {
-        await processor.process(resolvedPayload);
-      } catch (err) {
-        this.logger.error(
-          `Processor "${processor.type}" failed for submission ${payload.submissionId}`,
-          err,
-        );
+      if (this.sqsConf.enabled) {
+        /* SQS path — enqueue for durable async processing with automatic retry and DLQ. */
+        try {
+          await this.sqsProducer.enqueue(resolvedPayload, processor.type);
+        } catch (err) {
+          this.logger.error(
+            `Failed to enqueue processor="${processor.type}" for submissionId="${payload.submissionId}"`,
+            err,
+          );
+        }
+      } else {
+        /* Direct path (fallback) — in-process execution. */
+        try {
+          await processor.process(resolvedPayload);
+        } catch (err) {
+          this.logger.error(
+            `Processor "${processor.type}" failed for submission ${payload.submissionId}`,
+            err,
+          );
+        }
       }
     }
   }
