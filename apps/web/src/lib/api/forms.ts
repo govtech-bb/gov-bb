@@ -11,7 +11,6 @@ import {
   FormValues,
   FormDraftResponse,
   FormSubmissionResponse,
-  FormSubmissionResponseBody,
   formSubmissionResponseBodySchema,
 } from "@web/types";
 
@@ -223,19 +222,18 @@ export const postFormSubmission = async (
   } as const;
 
   //TODO: Do special things based on response status
-  const { body, response } = await makeFetch<FormSubmissionResponse>(
+  const { body } = await makeFetch<FormSubmissionResponse>(
     endpoint,
     errorMessage,
     fetchArgs,
   );
 
   try {
-    const resp: FormSubmissionResponseBody =
-      formSubmissionResponseBodySchema.parse(body.data);
-    return resp;
+    formSubmissionResponseBodySchema.parse(body.data);
+    return body;
   } catch {
     throw new FormFetchError(
-      "The draft fetched is of an incorrect format and can not be parsed.",
+      "The data returned is of an incorrect format and can not be parsed.",
       400,
     );
   }

@@ -12,6 +12,7 @@ import { useStore } from "@tanstack/react-form";
 import { useStepGuard } from "../hooks/use-step-guard";
 import Review from "./review";
 import SubmissionConfirmation from "./submission-confirmation";
+import ApplicantNameDisplay from "./applicant-name-display";
 import {
   getFullFieldId,
   repeatStepConcactenator,
@@ -67,6 +68,7 @@ export default function FormRenderer({
   stepId,
   visibleSteps,
   repeatableStepSettingsRef,
+  submissionState,
 }: FormRendererProps) {
   const { navigateToStep, completeAndContinue, currentIndex } = useStepGuard({
     formId: formMeta.formId,
@@ -221,6 +223,10 @@ export default function FormRenderer({
           />
         )}
 
+        {currentStep.stepId === "declaration" && (
+          <ApplicantNameDisplay form={form} />
+        )}
+
         {isSubmissionConfirmation && (
           <SubmissionConfirmation
             key={"submission-confirmation"}
@@ -228,6 +234,7 @@ export default function FormRenderer({
             stepTitle={currentStep.title}
             nextSteps={currentStep.nextSteps}
             onTryAgain={() => navigateToStep("check-your-answers")}
+            submissionState={submissionState}
           />
         )}
 

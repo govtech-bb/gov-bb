@@ -13,6 +13,7 @@ export interface FormRendererProps {
   visibleSteps: ClientFormStep[];
   stepId: string;
   repeatableStepSettingsRef: React.MutableRefObject<RepeatableStepSettings>;
+  submissionState?: SubmissionState;
 }
 
 export type FormRouteProps = {
@@ -45,9 +46,24 @@ export type FileUploadProps = {
   validationRules?: any;
 };
 
+export interface SubmissionState {
+  hasPayment: boolean;
+  serviceName: string;
+  amount?: string;
+  quantity?: number;
+  submissionSuccess: boolean;
+  paymentSuccess?: boolean;
+  referenceNumber: string;
+  date: string;
+  paymentUrl?: string;
+  paymentId?: string;
+  paymentDescription?: string;
+}
+
 export interface SubmissionConfirmationProps {
   serviceTitle: string;
   stepTitle: string;
   nextSteps?: { title: string; content?: string; items?: string[] }[];
   onTryAgain?: () => void;
+  submissionState?: SubmissionState;
 }

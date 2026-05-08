@@ -18,6 +18,7 @@ export type {
   FormRendererProps,
   UseStepGuardProps,
   FileUploadProps,
+  SubmissionState,
 } from "./props.type.ts";
 export type {
   RepeatableStepSettings,
