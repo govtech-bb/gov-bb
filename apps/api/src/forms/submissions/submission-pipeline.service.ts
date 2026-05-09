@@ -67,6 +67,8 @@ export class SubmissionPipelineService {
     values: StepScopedValues,
     conditionResult: ReturnType<typeof evaluateFormConditions>,
   ): void {
+    const errors: Record<string, Record<string, string[]>> = {};
+
     for (const step of contract.steps) {
       if (!conditionResult.activeStepIds.has(step.stepId)) continue;
 
@@ -83,8 +85,12 @@ export class SubmissionPipelineService {
       });
 
       if (!result.valid) {
-        throw AppError.unprocessable(result.errors);
+        errors[step.stepId] = result.errors;
       }
+    }
+
+    if (Object.keys(errors).length > 0) {
+      throw AppError.unprocessable(errors);
     }
   }
 
