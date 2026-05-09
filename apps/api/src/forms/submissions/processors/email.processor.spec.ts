@@ -6,6 +6,7 @@ import {
   type SendEmailCommandInput,
 } from "@aws-sdk/client-sesv2";
 import { EmailProcessor } from "./email.processor";
+import type { EmailTemplateService } from "../../../email/email-template.service";
 import type { SubmissionCreatedEvent } from "../submissions.types";
 
 jest.mock("@aws-sdk/client-sesv2");
@@ -66,6 +67,15 @@ function getSentInput() {
   // input object — the real .input property is absent from the auto-mocked class.
   const MockedCmd = SendEmailCommand as unknown as jest.Mock;
   return MockedCmd.mock.calls[0][0] as SendEmailCommandInput;
+}
+
+function makeTemplateService(
+  html: string | null = "<p>Rendered</p>",
+): jest.Mocked<EmailTemplateService> {
+  return {
+    has: jest.fn().mockReturnValue(html !== null),
+    render: jest.fn().mockReturnValue(html),
+  } as unknown as jest.Mocked<EmailTemplateService>;
 }
 
 describe("EmailProcessor", () => {
@@ -157,5 +167,88 @@ describe("EmailProcessor", () => {
       );
       warn.mockRestore();
     });
+  });
+});
+
+describe("EmailProcessor — template rendering", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("uses rendered template HTML when a template exists for the formId", async () => {
+    const templateSvc = makeTemplateService("<h1>Project Protege</h1>");
+    const processor = new EmailProcessor(makeConfig(), templateSvc);
+    const payload = makePayload(
+      {},
+      {
+        personal: { email: "jane@example.com", firstName: "Jane" },
+      },
+    );
+    // formId is "passport-renewal" — template service returns rendered HTML
+    (payload as { formId: string }).formId = "project-protege-mentor";
+
+    await processor.process(payload);
+
+    expect(templateSvc.render).toHaveBeenCalledWith(
+      "project-protege-mentor",
+      expect.objectContaining({
+        personal: expect.objectContaining({ email: "jane@example.com" }),
+        submissionId: "sub-001",
+      }),
+    );
+    const html =
+      (getSentInput().Content?.Simple?.Body?.Html?.Data as string) ?? "";
+    expect(html).toContain("Project Protege");
+  });
+
+  it("uses explicit templateId from processor config over formId", async () => {
+    const templateSvc = makeTemplateService("<h1>Custom Template</h1>");
+    const processor = new EmailProcessor(makeConfig(), templateSvc);
+    const payload = makePayload({ templateId: "birth-certificate" });
+
+    await processor.process(payload);
+
+    expect(templateSvc.render).toHaveBeenCalledWith(
+      "birth-certificate",
+      expect.objectContaining({ submissionId: "sub-001" }),
+    );
+  });
+
+  it("falls back to generic HTML body when no template matches", async () => {
+    const templateSvc = makeTemplateService(null); // render returns null
+    const processor = new EmailProcessor(makeConfig(), templateSvc);
+
+    await processor.process(makePayload());
+
+    const html =
+      (getSentInput().Content?.Simple?.Body?.Html?.Data as string) ?? "";
+    // Generic body contains the submission table
+    expect(html).toContain("sub-001");
+    expect(html).not.toContain("Custom Template");
+  });
+
+  it("falls back to generic HTML body when no template service is injected", async () => {
+    // No templateService — processor was constructed without one
+    const processor = new EmailProcessor(makeConfig());
+
+    await processor.process(makePayload());
+
+    const html =
+      (getSentInput().Content?.Simple?.Body?.Html?.Data as string) ?? "";
+    expect(html).toContain("sub-001");
+  });
+
+  it("includes submittedAt and processedAt in the template context", async () => {
+    const templateSvc = makeTemplateService("<p>ok</p>");
+    const processor = new EmailProcessor(makeConfig(), templateSvc);
+
+    await processor.process(makePayload());
+
+    const ctx = (templateSvc.render as jest.Mock).mock.calls[0][1] as Record<
+      string,
+      unknown
+    >;
+    expect(typeof ctx["processedAt"]).toBe("string");
+    expect(ctx["submittedAt"]).toBe("2026-04-29T10:00:00.000Z");
   });
 });

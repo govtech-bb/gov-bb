@@ -1,6 +1,7 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, Optional } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
+import { EmailTemplateService } from "../../../email/email-template.service";
 import type {
   ISubmissionProcessor,
   ProcessorOutput,
@@ -15,7 +16,11 @@ export class EmailProcessor implements ISubmissionProcessor {
   private readonly from: string;
   private readonly configurationSet: string | undefined;
 
-  constructor(config: ConfigService) {
+  constructor(
+    config: ConfigService,
+    @Optional()
+    private readonly templateService: EmailTemplateService | null = null,
+  ) {
     this.from = config.get<string>("email.from") ?? "noreply@gov.bb";
     this.configurationSet = config.get<string>("email.configurationSet");
     this.client = new SESv2Client({
@@ -50,6 +55,8 @@ export class EmailProcessor implements ISubmissionProcessor {
       (cfg["subject"] as string | undefined) ??
       "Your form submission has been received";
 
+    const htmlBody = this.resolveHtmlBody(payload, cfg);
+
     await this.client.send(
       new SendEmailCommand({
         FromEmailAddress: this.from,
@@ -63,7 +70,7 @@ export class EmailProcessor implements ISubmissionProcessor {
                 Charset: "UTF-8",
               },
               Html: {
-                Data: this.buildHtmlBody(payload),
+                Data: htmlBody,
                 Charset: "UTF-8",
               },
             },
@@ -86,6 +93,58 @@ export class EmailProcessor implements ISubmissionProcessor {
     );
 
     return { kind: "completed" };
+  }
+
+  /**
+   * Determines the HTML email body.
+   *
+   * Resolution order:
+   * 1. `templateId` from processor config — explicit per-processor override
+   * 2. `payload.formId` — auto-maps the form slug to its `.hbs` template
+   * 3. Generic inline HTML — fallback when no template is found
+   */
+  private resolveHtmlBody(
+    payload: SubmissionCreatedEvent,
+    cfg: Record<string, unknown>,
+  ): string {
+    if (this.templateService) {
+      const templateId =
+        (cfg["templateId"] as string | undefined) ?? payload.formId;
+
+      const rendered = this.templateService.render(
+        templateId,
+        this.buildTemplateContext(payload),
+      );
+
+      if (rendered !== null) return rendered;
+
+      this.logger.debug(
+        `[email] No template found for "${templateId}", falling back to generic body`,
+      );
+    }
+
+    return this.buildHtmlBody(payload);
+  }
+
+  /**
+   * Builds the Handlebars rendering context from the submission payload.
+   *
+   * Each step's field map is spread as a top-level key so that template
+   * expressions like `{{personal.firstName}}` resolve directly against
+   * `payload.values.personal.firstName`.
+   *
+   * Additionally, `submissionId`, `processedAt`, and `submittedAt` are
+   * injected at the root level for use in template footers / headers.
+   */
+  private buildTemplateContext(
+    payload: SubmissionCreatedEvent,
+  ): Record<string, unknown> {
+    return {
+      ...payload.values,
+      submissionId: payload.submissionId,
+      processedAt: new Date().toISOString(),
+      submittedAt: payload.meta.submittedAt,
+    };
   }
 
   private buildTextBody(payload: SubmissionCreatedEvent): string {

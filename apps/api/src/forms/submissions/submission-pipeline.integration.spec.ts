@@ -394,9 +394,9 @@ describe("SubmissionPipelineService — integration (real conditions + validatio
       }
 
       expect(error).toBeInstanceOf(UnprocessableEntityException);
-      expect((error!.getResponse() as any).errors.salary).toContain(
-        "Salary must exceed minimum wage",
-      );
+      expect(
+        (error!.getResponse() as any).errors["employment-info"].salary,
+      ).toContain("Salary must exceed minimum wage");
     });
 
     it("resolves when salary exceeds minimum-wage", async () => {
@@ -448,9 +448,11 @@ describe("SubmissionPipelineService — integration (real conditions + validatio
       }
 
       expect(error).toBeInstanceOf(UnprocessableEntityException);
-      expect((error!.getResponse() as any).errors["upload-document"]).toContain(
-        "Only PDF or JPG accepted",
-      );
+      expect(
+        (error!.getResponse() as any).errors["supporting-docs"][
+          "upload-document"
+        ],
+      ).toContain("Only PDF or JPG accepted");
     });
   });
 
@@ -478,19 +480,19 @@ describe("SubmissionPipelineService — integration (real conditions + validatio
     });
   });
 
-  // ─── Validation: stops at first failing step ───────────────────────────────
+  // ─── Validation: aggregates errors across all failing steps ───────────────
 
-  describe("validation — stops at first failing step", () => {
-    it("only returns errors from personal-info when it fails, not from later steps", async () => {
+  describe("validation — aggregates errors across steps", () => {
+    it("returns errors from every failing step, nested under stepId", async () => {
       const values = {
         "personal-info": {
           "first-name": "", // required → fails
-          nationality: "", // required → fails
+          nationality: "JM", // valid — keeps employment-info active
         },
         "employment-info": {
-          "employer-name": "", // would also fail required, but never reached
+          "employer-name": "", // required → also fails
           "contract-type": "temporary",
-          salary: 0,
+          salary: 50_000,
           "minimum-wage": 40_000,
         },
         "supporting-docs": {
@@ -508,12 +510,8 @@ describe("SubmissionPipelineService — integration (real conditions + validatio
       expect(error).toBeInstanceOf(UnprocessableEntityException);
       const errors = (error!.getResponse() as any).errors;
 
-      // personal-info errors are present
-      expect(errors["first-name"]).toBeDefined();
-      expect(errors["nationality"]).toBeDefined();
-
-      // employment-info errors are NOT present — pipeline stopped at personal-info
-      expect(errors["employer-name"]).toBeUndefined();
+      expect(errors["personal-info"]["first-name"]).toBeDefined();
+      expect(errors["employment-info"]["employer-name"]).toBeDefined();
     });
   });
 

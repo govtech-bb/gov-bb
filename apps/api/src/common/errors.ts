@@ -44,7 +44,7 @@ export class AppError {
   }
 
   static unprocessable(
-    errors: Record<string, string[]>,
+    errors: Record<string, string[] | Record<string, string[]>>,
   ): UnprocessableEntityException {
     return new UnprocessableEntityException({ errors });
   }
