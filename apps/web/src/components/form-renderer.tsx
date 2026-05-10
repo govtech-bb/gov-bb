@@ -19,6 +19,7 @@ import {
   removeRepeatableStep,
   stepFieldIdConcactenator,
   repeatStepConcactenator,
+  getRepeatStepCount,
 } from "@web/lib";
 
 // ---------------------------------------------------------------------------
@@ -103,10 +104,29 @@ export default function FormRenderer({
 
   React.useEffect(() => {
     if (!repeatableStepValues) return;
-    const baseStepId = currentStep.stepId.split(repeatStepConcactenator)[0];
-    if (repeatableStepSettingsRef.current[baseStepId] === undefined) return;
-    repeatableStepSettingsRef.current[baseStepId].stepData[currentStep.stepId] =
-      repeatableStepValues;
+    const [baseStepId, stepRepeatId] = [
+      currentStep.stepId.split(repeatStepConcactenator)[0],
+      getRepeatStepCount(currentStep.stepId),
+    ];
+    const repeatableStepSettings =
+      repeatableStepSettingsRef.current[baseStepId];
+    if (repeatableStepSettings === undefined || stepRepeatId === undefined)
+      return;
+
+    repeatableStepSettings.stepData[currentStep.stepId] = repeatableStepValues;
+
+    // If this is the source step (that contains shared fields)
+    if (repeatableStepSettings.sharedData && stepRepeatId === 0) {
+      // Then set those shared fields
+      for (const [stepFieldId, fieldValue] of Object.entries(
+        repeatableStepValues,
+      )) {
+        const fieldId = stepFieldId.split(stepFieldIdConcactenator)[1];
+        if (!fieldId) continue;
+        if (repeatableStepSettings.sharedData[fieldId] !== undefined)
+          repeatableStepSettings.sharedData[fieldId] = fieldValue;
+      }
+    }
   }, [repeatableStepValues]);
 
   const repeatableStepSettings = repeatableStepSettingsRef.current;
@@ -172,7 +192,7 @@ export default function FormRenderer({
 
   const handleSubmit = () => {
     form.handleSubmit();
-    // completeAndContinue(currentStep.stepId);
+    completeAndContinue(currentStep.stepId);
   };
 
   const errors = useStore(form.store, (state) => {
