@@ -22,6 +22,8 @@ COPY --from=builder /app/tsconfig.base.json ./
 COPY --from=builder /app/apps/api/tsconfig.json ./apps/api/
 COPY --from=builder /app/apps/api/typeorm.config.ts ./apps/api/
 COPY --from=builder /app/apps/api/src/database/ ./apps/api/src/database/
+# Form Builder AI system prompt
+COPY --from=builder /app/apps/api/src/form-builder/prompts/ ./apps/api/src/form-builder/prompts/
 
 ENV NODE_ENV=production
 EXPOSE 3001

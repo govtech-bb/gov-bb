@@ -27,16 +27,29 @@ export class AiService implements OnModuleInit {
   async onModuleInit() {
     // Load system prompt from file
     try {
-      this.systemPrompt = readFileSync(
+      const possiblePaths = [
         join(__dirname, "prompts", "system-prompt.md"),
-        "utf-8",
-      );
-      this.logger.log(
-        `System prompt loaded (${this.systemPrompt.length} chars)`,
-      );
+        join(__dirname, "..", "form-builder", "prompts", "system-prompt.md"),
+        join(process.cwd(), "apps", "api", "src", "form-builder", "prompts", "system-prompt.md"),
+        join(process.cwd(), "src", "form-builder", "prompts", "system-prompt.md"),
+      ];
+      
+      for (const p of possiblePaths) {
+        try {
+          this.systemPrompt = readFileSync(p, "utf-8");
+          this.logger.log(`System prompt loaded from ${p} (${this.systemPrompt.length} chars)`);
+          break;
+        } catch {
+          // try next path
+        }
+      }
+      
+      if (!this.systemPrompt) {
+        this.logger.warn("Could not load system-prompt.md from any path — AI will work but without form creation context");
+      }
     } catch (err) {
       this.logger.warn(
-        "Could not load system-prompt.md — AI features will not work",
+        "Could not load system-prompt.md — AI features will work but without form creation context",
       );
     }
 

@@ -8,6 +8,7 @@ import {
   HttpStatus,
 } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
+import { SkipThrottle } from "@nestjs/throttler";
 import { FormBuilderService } from "./form-builder.service";
 import {
   CreateSessionDto,
@@ -19,6 +20,7 @@ import {
 import { AiService } from "./ai.service";
 
 @ApiTags("Form Builder")
+@SkipThrottle()
 @Controller("form-builder")
 export class FormBuilderController {
   constructor(
