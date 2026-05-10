@@ -5,6 +5,7 @@ import {
   RepeatableConfig,
   AddRepeatableStepParams,
   RemoveRepeatableStepParams,
+  FormValues,
 } from "@web/types";
 import { getFullFieldId } from "@web/lib";
 import {
@@ -27,7 +28,10 @@ export const setupRepeatSteps = (
     const sharedBehaviour: SharedFieldsBehaviour | undefined =
       step.behaviours.filter((b) => b.type === "sharedFields")[0];
 
-    const sharedFields: string[] = sharedBehaviour?.fieldIds ?? [];
+    const sharedFieldsIds: string[] = sharedBehaviour?.fieldIds ?? [];
+    const sharedData: FormValues = {};
+
+    for (const sharedFieldId of sharedFieldsIds) sharedData[sharedFieldId] = "";
 
     // Need to see if this is the original step
 
@@ -41,13 +45,13 @@ export const setupRepeatSteps = (
       maxRepeats: repeatBehaviour.max,
       orderedStepIds: [step.stepId],
       stepData: {},
-      sharedData: {},
+      sharedData,
     };
 
     // Update fields for source step based on sharedFields
     const sourceFields = handleMissingTargetStepIds(
       structuredClone(step.fields),
-      sharedFields,
+      sharedFieldsIds,
       step.stepId,
     );
 
@@ -67,7 +71,7 @@ export const setupRepeatSteps = (
         // Need to ensure that each fieldConditionalOn in a repeatable behaviour has a `targetStepId`
         currentFields = handleMissingTargetStepIds(
           currentFields,
-          sharedFields,
+          sharedFieldsIds,
           nextStepId,
         );
 
