@@ -285,11 +285,11 @@ export default function FieldRenderer({
                     <input
                       {...sharedProps}
                       checked={option.value === value}
-                      onChange={() => {
-                        option.value === value
-                          ? f.handleChange("")
-                          : f.handleChange(option.value);
-                      }}
+                      onChange={() =>
+                        f.handleChange(
+                          option.value === value ? "" : option.value,
+                        )
+                      }
                     />
                     <label>{option.label}</label>
                   </div>
