@@ -269,23 +269,31 @@ export const formatDataForSubmission = (
 
   for (const stepId of Object.keys(repeatableSettings)) {
     const currentRepeatSettings = repeatableSettings[stepId];
-    collapsedRepeatables[stepId] = [currentRepeatSettings.stepData[stepId]];
+    collapsedRepeatables[stepId] = [];
 
     const sharedData = currentRepeatSettings.sharedData;
-    console.log({ sharedData });
 
-    for (const subStepId of currentRepeatSettings.orderedStepIds.slice(1)) {
-      const hasVisibleValues = Object.keys(values).filter((stepFieldID) =>
-        stepFieldID.startsWith(subStepId),
-      );
-      // If this step isn't valid, then the subsequent ones aren't either
-      if (hasVisibleValues.length === 0) break;
+    for (const orderedStepId of currentRepeatSettings.orderedStepIds) {
+      if (orderedStepId !== stepId) {
+        const hasVisibleValues = Object.keys(values).filter((stepFieldID) =>
+          stepFieldID.startsWith(orderedStepId),
+        );
+        // If this step isn't valid, then the subsequent ones aren't either
+        if (hasVisibleValues.length === 0) break;
+      }
 
       // If it's valid, then we just grab their data.
+      const data = currentRepeatSettings.stepData[orderedStepId];
+
+      const currentRepeatable: FormValues = {};
+
+      for (const [stepFieldId, value] of Object.entries(data)) {
+        const fieldId = stepFieldId.split(stepFieldIdConcactenator)[1];
+        currentRepeatable[fieldId] = value;
+      }
+
       // Similarly, the values for shared fields shall be put in each array instance.
-      collapsedRepeatables[stepId].push(
-        currentRepeatSettings.stepData[subStepId],
-      );
+      collapsedRepeatables[stepId].push(currentRepeatable);
     }
     toDelete.push(...currentRepeatSettings.orderedStepIds.slice(1));
   }
@@ -304,7 +312,5 @@ export const formatDataForSubmission = (
   }
 
   // Apply the collapsedRepeatables
-
-  console.log({ results: { ...formValuesByStep, ...collapsedRepeatables } });
   return { ...formValuesByStep, ...collapsedRepeatables };
 };
