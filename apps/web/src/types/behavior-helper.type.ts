@@ -25,13 +25,12 @@ export interface AddRepeatableStepParams {
   repeatableBehaviour?: RepeatableBehaviour;
   sharedFieldsBehaviour?: SharedFieldsBehaviour;
   visibleSteps: ClientFormStep[];
-  stepValues: FormValues;
   formMeta: FormMeta;
 }
 
 export interface RemoveRepeatableStepParams {
   currentStep: ClientFormStep;
   visibleSteps: ClientFormStep[];
-  currentRepeatConfig: RepeatableConfig;
+  repeatableStepSettings: RepeatableStepSettings;
   formMeta: FormMeta;
 }

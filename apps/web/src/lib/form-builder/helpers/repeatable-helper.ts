@@ -178,7 +178,6 @@ export const addRepeatableStep = ({
   repeatableBehaviour,
   visibleSteps,
   sharedFieldsBehaviour,
-  stepValues,
   formMeta,
 }: AddRepeatableStepParams): ClientFormStep[] => {
   const [baseStepId, stepRepeatId] = [
@@ -214,7 +213,6 @@ export const addRepeatableStep = ({
     nextStepFields.push(generateRepeatableAddAnotherField(nextStepId));
   }
 
-  currentRepeatConfig.stepData[currentStep.stepId] = stepValues;
   currentRepeatConfig.orderedStepIds.push(nextStepId);
   repeatableStepSettings[baseStepId] = currentRepeatConfig;
 
@@ -241,7 +239,7 @@ export const addRepeatableStep = ({
 export const removeRepeatableStep = ({
   currentStep,
   visibleSteps,
-  currentRepeatConfig,
+  repeatableStepSettings,
   formMeta,
 }: RemoveRepeatableStepParams): ClientFormStep[] => {
   const [baseStepId, stepRepeatId] = [
@@ -253,6 +251,8 @@ export const removeRepeatableStep = ({
     baseStepId,
     stepRepeatId ? stepRepeatId + 1 : 1,
   );
+
+  const currentRepeatConfig = repeatableStepSettings[baseStepId];
 
   if (!currentRepeatConfig.orderedStepIds.includes(targetStepId))
     return visibleSteps;
