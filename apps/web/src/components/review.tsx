@@ -131,7 +131,10 @@ export default function Review({
             <table className={designSystem.reviewFieldTable}>
               <tbody>
                 {step.fields
-                  .filter((field) => !hiddenFields.includes(field.id))
+                  .filter(
+                    (field) =>
+                      !field.hidden && !hiddenFields.includes(field.id),
+                  )
                   .map((field: ClientPrimitive) => (
                     <tr key={field.id} className={designSystem.reviewFieldRow}>
                       <td className={designSystem.reviewFieldLabel}>
