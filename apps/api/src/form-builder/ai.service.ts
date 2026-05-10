@@ -183,8 +183,9 @@ export class AiService implements OnModuleInit {
     const bedrockMessages = messages.map((msg, idx) => {
       if (msg.role === "user" && pdfPages && idx === 0) {
         const content: any[] = pdfPages.map((page) => ({
-          image: {
-            format: "png" as const,
+          document: {
+            format: "pdf" as const,
+            name: "uploaded-form",
             source: { bytes: Buffer.from(page, "base64") },
           },
         }));
