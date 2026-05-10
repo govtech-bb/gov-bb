@@ -306,7 +306,7 @@ const handleMissingTargetStepIds = (
       }
       return b;
     });
-    return field;
+    return { ...field };
   });
   return currentFields;
 };
