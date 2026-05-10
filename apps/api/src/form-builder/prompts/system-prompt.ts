@@ -173,6 +173,6 @@ Put the full statement in options[0].label (shown NEXT TO the checkbox), not in 
 When outputting the final recipe, wrap it in this SQL:
 \`\`\`sql
 INSERT INTO form_definitions (id, form_id, version, schema, published_at, created_at, updated_at)
-VALUES (gen_random_uuid(), 'form-slug-here', '1.0.0', $recipe${ ...recipe JSON... }$recipe$, NOW(), NOW(), NOW());
+VALUES (gen_random_uuid(), 'form-slug-here', '1.0.0', $recipe$ ...recipe JSON... $recipe$, NOW(), NOW(), NOW());
 \`\`\`
 `;
