@@ -15,10 +15,11 @@ import SubmissionConfirmation from "./submission-confirmation";
 import ApplicantNameDisplay from "./applicant-name-display";
 import {
   getFullFieldId,
-  repeatStepConcactenator,
   addRepeatableStep,
   removeRepeatableStep,
   stepFieldIdConcactenator,
+  repeatStepConcactenator,
+  getRepeatStepCount,
 } from "@web/lib";
 
 // ---------------------------------------------------------------------------
@@ -91,14 +92,7 @@ export default function FormRenderer({
     if (prevStep) navigateToStep(prevStep.stepId);
   };
 
-  const repeatableBehaviour = currentStep.behaviours?.filter(
-    (b) => b.type === "repeatable",
-  )[0];
-  const sharedFieldsBehaviour = currentStep.behaviours?.filter(
-    (b) => b.type === "sharedFields",
-  )[0];
-
-  const stepValues = useStore(
+  const repeatableStepValues = useStore(
     form.store,
     (state) =>
       Object.fromEntries(
@@ -108,7 +102,33 @@ export default function FormRenderer({
       ) as FormValues,
   );
 
-  const baseStepId = stepId.split(repeatStepConcactenator)[0];
+  React.useEffect(() => {
+    if (!repeatableStepValues) return;
+    const [baseStepId, stepRepeatId] = [
+      currentStep.stepId.split(repeatStepConcactenator)[0],
+      getRepeatStepCount(currentStep.stepId),
+    ];
+    const repeatableStepSettings =
+      repeatableStepSettingsRef.current[baseStepId];
+    if (repeatableStepSettings === undefined || stepRepeatId === undefined)
+      return;
+
+    repeatableStepSettings.stepData[currentStep.stepId] = repeatableStepValues;
+
+    // If this is the source step (that contains shared fields)
+    if (repeatableStepSettings.sharedData && stepRepeatId === 0) {
+      // Then set those shared fields
+      for (const [stepFieldId, fieldValue] of Object.entries(
+        repeatableStepValues,
+      )) {
+        const fieldId = stepFieldId.split(stepFieldIdConcactenator)[1];
+        if (!fieldId) continue;
+        if (repeatableStepSettings.sharedData[fieldId] !== undefined)
+          repeatableStepSettings.sharedData[fieldId] = fieldValue;
+      }
+    }
+  }, [repeatableStepValues]);
+
   const repeatableStepSettings = repeatableStepSettingsRef.current;
   const handleContinue = async () => {
     // Validate current step fields
@@ -134,6 +154,13 @@ export default function FormRenderer({
     }
 
     // Handle navigation to repeatable step.
+    const repeatableBehaviour = currentStep.behaviours?.filter(
+      (b) => b.type === "repeatable",
+    )[0];
+    const sharedFieldsBehaviour = currentStep.behaviours?.filter(
+      (b) => b.type === "sharedFields",
+    )[0];
+
     if (repeatableBehaviour) {
       const anotherFieldId = getFullFieldId(currentStep.stepId, "addAnother");
 
@@ -144,7 +171,6 @@ export default function FormRenderer({
           repeatableBehaviour,
           sharedFieldsBehaviour,
           visibleSteps,
-          stepValues,
           formMeta,
           repeatableStepSettings,
         });
@@ -155,7 +181,7 @@ export default function FormRenderer({
           currentStep,
           visibleSteps,
           formMeta,
-          currentRepeatConfig: repeatableStepSettings[baseStepId],
+          repeatableStepSettings: repeatableStepSettings,
         });
         completeAndContinue(currentStep.stepId, updatedSteps);
         return;

@@ -5,6 +5,7 @@ import {
   RepeatableConfig,
   AddRepeatableStepParams,
   RemoveRepeatableStepParams,
+  FormValues,
 } from "@web/types";
 import { getFullFieldId } from "@web/lib";
 import {
@@ -24,15 +25,19 @@ export const setupRepeatSteps = (
       (b) => b.type === "repeatable",
     )[0];
     if (!repeatBehaviour) continue;
-    const sharedBehaviour: SharedFieldsBehaviour = step.behaviours.filter(
-      (b) => b.type === "sharedFields",
-    )[0];
+    const sharedBehaviour: SharedFieldsBehaviour | undefined =
+      step.behaviours.filter((b) => b.type === "sharedFields")[0];
+
+    const sharedFieldsIds: string[] = sharedBehaviour?.fieldIds ?? [];
+    const sharedData: FormValues = {};
+
+    for (const sharedFieldId of sharedFieldsIds) sharedData[sharedFieldId] = "";
 
     // Need to see if this is the original step
 
     const repeatStepCount = getRepeatStepCount(step.stepId);
     // If not the original, just skip
-    if (repeatStepCount > 0) continue;
+    if (repeatStepCount === undefined || repeatStepCount > 0) continue;
 
     // We can setup the config first.
     const repeatConfig: RepeatableConfig = {
@@ -40,18 +45,38 @@ export const setupRepeatSteps = (
       maxRepeats: repeatBehaviour.max,
       orderedStepIds: [step.stepId],
       stepData: {},
-      sharedData: {},
+      sharedData,
     };
 
+    // Update fields for source step based on sharedFields
+    const sourceFields = handleMissingTargetStepIds(
+      structuredClone(step.fields),
+      sharedFieldsIds,
+      step.stepId,
+    );
+
     if (repeatBehaviour.min) {
+      // Update source step:
+      updatedSteps[i] = {
+        ...step,
+        fields: sourceFields,
+      };
+
       // Start at 1 to account for source step
       for (let j = 1; j <= repeatBehaviour.min; j++) {
         const repeatStepCount = j;
-        // const nextStepId = `${step.stepId}--${repeatStepCount}`;
         const nextStepId = getRepeatStepId(step.stepId, repeatStepCount);
+        let currentFields = structuredClone(step.fields);
+
+        // Need to ensure that each fieldConditionalOn in a repeatable behaviour has a `targetStepId`
+        currentFields = handleMissingTargetStepIds(
+          currentFields,
+          sharedFieldsIds,
+          nextStepId,
+        );
 
         const nextStepFields = generateRepeatStepFields(
-          step.fields,
+          currentFields,
           nextStepId,
           undefined,
           sharedBehaviour,
@@ -72,7 +97,7 @@ export const setupRepeatSteps = (
       }
     } else {
       const addAnother = generateRepeatableAddAnotherField(step.stepId);
-      const newStepFields = [...step.fields, addAnother];
+      const newStepFields = [...sourceFields, addAnother];
       updatedSteps[i] = {
         ...step,
         fields: newStepFields,
@@ -120,6 +145,7 @@ export const generateRepeatableAddAnotherField = (
     htmlType: "radio",
     disabled: false,
     hidden: false,
+    conditionallyHidden: false,
     options: [
       { label: "Yes", value: "yes" },
       { label: "No", value: "no" },
@@ -143,11 +169,11 @@ export const getRepeatStepId = (
   return `${stepId}${repeatStepConcactenator}${repeatStepCount}`;
 };
 
-export const getRepeatStepCount = (stepId: string): number => {
+export const getRepeatStepCount = (stepId: string): number | undefined => {
   const parts = stepId.split(repeatStepConcactenator);
   if (parts.length <= 1) return 0;
   const count = Number(parts[parts.length - 1]);
-  return isNaN(count) ? 0 : count;
+  return isNaN(count) ? undefined : count;
 };
 
 export const addRepeatableStep = ({
@@ -156,13 +182,14 @@ export const addRepeatableStep = ({
   repeatableBehaviour,
   visibleSteps,
   sharedFieldsBehaviour,
-  stepValues,
   formMeta,
 }: AddRepeatableStepParams): ClientFormStep[] => {
   const [baseStepId, stepRepeatId] = [
     currentStep.stepId.split(repeatStepConcactenator)[0],
     getRepeatStepCount(currentStep.stepId),
   ];
+
+  if (stepRepeatId === undefined) return visibleSteps;
 
   const currentRepeatConfig = repeatableStepSettings[baseStepId];
   if (!currentRepeatConfig) return visibleSteps;
@@ -190,7 +217,6 @@ export const addRepeatableStep = ({
     nextStepFields.push(generateRepeatableAddAnotherField(nextStepId));
   }
 
-  currentRepeatConfig.stepData[currentStep.stepId] = stepValues;
   currentRepeatConfig.orderedStepIds.push(nextStepId);
   repeatableStepSettings[baseStepId] = currentRepeatConfig;
 
@@ -217,18 +243,20 @@ export const addRepeatableStep = ({
 export const removeRepeatableStep = ({
   currentStep,
   visibleSteps,
-  currentRepeatConfig,
+  repeatableStepSettings,
   formMeta,
 }: RemoveRepeatableStepParams): ClientFormStep[] => {
   const [baseStepId, stepRepeatId] = [
     currentStep.stepId.split(repeatStepConcactenator)[0],
     getRepeatStepCount(currentStep.stepId),
   ];
-  if (stepRepeatId === 0) return visibleSteps;
+  if (stepRepeatId === undefined) return visibleSteps;
   const targetStepId = getRepeatStepId(
     baseStepId,
     stepRepeatId ? stepRepeatId + 1 : 1,
   );
+
+  const currentRepeatConfig = repeatableStepSettings[baseStepId];
 
   if (!currentRepeatConfig.orderedStepIds.includes(targetStepId))
     return visibleSteps;
@@ -237,7 +265,10 @@ export const removeRepeatableStep = ({
   if (!step) {
     const pos = currentRepeatConfig.orderedStepIds.indexOf(targetStepId);
     if (pos !== -1) {
-      currentRepeatConfig.orderedStepIds.splice(pos, 1);
+      currentRepeatConfig.orderedStepIds.splice(
+        pos,
+        currentRepeatConfig.orderedStepIds.length - 2,
+      );
     }
     return visibleSteps;
   }
@@ -263,4 +294,29 @@ export const removeRepeatableStep = ({
 
   // Filter visible steps
   return visibleSteps.filter((step) => !toRemove.includes(step.stepId));
+};
+
+const handleMissingTargetStepIds = (
+  currentFields: ClientPrimitive[],
+  sharedFields: string[],
+  nextStepId: string,
+) => {
+  currentFields = currentFields.map((field) => {
+    field.behaviours = field.behaviours?.map((b) => {
+      // If it does not have a targetStepId...
+      if (b.type === "fieldConditionalOn" && !b.targetStepId) {
+        // If no shared fields, then set it to "nextStepId"
+        if (sharedFields.length === 0) b.targetStepId = nextStepId;
+        //  And it's not a shared field, then it can have the id of its repeat step.
+        else if (!sharedFields.includes(b.targetFieldId))
+          b.targetStepId = nextStepId;
+        // BUT! If it is a shared field...
+        // Then it should have the id of the source step.
+        else b.targetStepId = field.stepId;
+      }
+      return b;
+    });
+    return { ...field };
+  });
+  return currentFields;
 };

@@ -1,4 +1,5 @@
 import { ServiceContract, serviceContractSchema } from "@govtech-bb/form-types";
+import { stepFieldIdConcactenator } from "@web/lib";
 import {
   ApiResponse,
   FormDefinitionResponse,
@@ -12,7 +13,11 @@ import {
   FormDraftResponse,
   FormSubmissionResponse,
   formSubmissionResponseBodySchema,
+  FormValuesByStep,
+  RepeatableStepSettings,
+  ClientPrimitive,
 } from "@web/types";
+import { valueIsEmpty } from "../form-builder/validation-methods";
 
 const API_URL = process.env.VITE_API_URL ?? "http://localhost:3001";
 
@@ -205,7 +210,7 @@ export const postEzpay = async () => {};
 
 export const postFormSubmission = async (
   { formId, version: formVersion, idempotencyKey }: FormMeta,
-  values: Record<string, FormValues>,
+  valuesBySteps: FormValuesByStep,
 ) => {
   const endpoint = `/submissions`;
   const errorMessage = {};
@@ -218,7 +223,7 @@ export const postFormSubmission = async (
     body: JSON.stringify({
       formId,
       formVersion,
-      values,
+      values: valuesBySteps,
     }),
   } as const;
 
@@ -238,4 +243,78 @@ export const postFormSubmission = async (
       400,
     );
   }
+};
+
+export const formatDataForSubmission = (
+  values: FormValues,
+  repeatableSettings: RepeatableStepSettings,
+  hiddenFields: ClientPrimitive[],
+): FormValuesByStep => {
+  const formValuesByStep: FormValuesByStep = {};
+
+  //  The values of any fields that are conditionally invisible, should be removed
+  for (const field of hiddenFields) delete values[field.id];
+
+  // Any field values that are undefined or empty, should be stripped out.
+  values = Object.fromEntries(
+    Object.entries(values).filter(
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      ([_key, value]) => value !== undefined && !valueIsEmpty(value),
+    ),
+  );
+
+  // The values for repeatable steps should be collapsed under the step id of the source step, becoming an array.
+
+  const collapsedRepeatables: FormValuesByStep = {};
+  const toDelete: string[] = [];
+
+  for (const stepId of Object.keys(repeatableSettings)) {
+    const currentRepeatSettings = repeatableSettings[stepId];
+    collapsedRepeatables[stepId] = [];
+
+    const sharedData = currentRepeatSettings.sharedData;
+
+    for (const orderedStepId of currentRepeatSettings.orderedStepIds) {
+      if (orderedStepId !== stepId) {
+        const hasVisibleValues = Object.keys(values).filter((stepFieldID) =>
+          stepFieldID.startsWith(orderedStepId),
+        );
+        // If this step isn't valid, then the subsequent ones aren't either
+        if (hasVisibleValues.length === 0) break;
+      }
+
+      // If it's valid, then we just grab their data.
+      const data = currentRepeatSettings.stepData[orderedStepId];
+
+      const currentRepeatable: FormValues = {};
+
+      for (const [stepFieldId, value] of Object.entries(data)) {
+        const fieldId = stepFieldId.split(stepFieldIdConcactenator)[1];
+        currentRepeatable[fieldId] = value;
+      }
+
+      // Similarly, the values for shared fields shall be put in each array instance.
+      collapsedRepeatables[stepId].push({
+        ...currentRepeatable,
+        ...sharedData,
+      });
+    }
+    toDelete.push(...currentRepeatSettings.orderedStepIds.slice(1));
+  }
+
+  // The structure of values should be changed from Record <stepAndFieldID, fieldValue> to Record<stepId, Record<fieldId, fieldValue>>,
+  // where stepAndFieldID is the identifier of the form stepId_fieldId.
+
+  for (const [stepFieldId, value] of Object.entries(values)) {
+    const [stepId, fieldId] = stepFieldId.split(stepFieldIdConcactenator);
+    if (toDelete.includes(stepId)) continue;
+
+    formValuesByStep[stepId] = {
+      ...(formValuesByStep[stepId] ?? {}),
+      [fieldId]: value,
+    };
+  }
+
+  // Apply the collapsedRepeatables
+  return { ...formValuesByStep, ...collapsedRepeatables };
 };
