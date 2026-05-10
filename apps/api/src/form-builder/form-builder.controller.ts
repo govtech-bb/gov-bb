@@ -155,4 +155,24 @@ export class FormBuilderController {
       );
     }
   }
+
+  /**
+   * Delete the form published in this session (scoped — can only delete own form).
+   */
+  @Post("sessions/:sessionId/delete")
+  async deletePublished(
+    @Param("sessionId") sessionId: string,
+  ) {
+    try {
+      return await this.formBuilderService.deletePublished(sessionId);
+    } catch (err: any) {
+      if (err.message?.includes("not found") || err.message?.includes("No form")) {
+        throw new HttpException(err.message, HttpStatus.NOT_FOUND);
+      }
+      throw new HttpException(
+        err.message ?? "Delete failed",
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 }
