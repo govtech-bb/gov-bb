@@ -68,7 +68,6 @@ export default function FormRenderer({
   stepId,
   visibleSteps,
   repeatableStepSettingsRef,
-  hiddenFieldsRef,
   submissionState,
 }: FormRendererProps) {
   const { navigateToStep, completeAndContinue, currentIndex } = useStepGuard({
@@ -221,7 +220,6 @@ export default function FormRenderer({
             formMeta={formMeta}
             form={form}
             visibleSteps={visibleSteps}
-            hiddenFields={hiddenFieldsRef.current}
           />
         )}
 
@@ -253,7 +251,6 @@ export default function FormRenderer({
                   validationProperties={
                     formMeta.validationProperties[group.toggle.id]
                   }
-                  hiddenFieldsRef={hiddenFieldsRef}
                 />
                 {isOpen && (
                   <div data-show-hide-content>
@@ -266,7 +263,6 @@ export default function FormRenderer({
                         validationProperties={
                           formMeta.validationProperties[field.id]
                         }
-                        hiddenFieldsRef={hiddenFieldsRef}
                       />
                     ))}
                   </div>
@@ -283,7 +279,6 @@ export default function FormRenderer({
               validationProperties={
                 formMeta.validationProperties[group.field.id]
               }
-              hiddenFieldsRef={hiddenFieldsRef}
             />
           );
         })}

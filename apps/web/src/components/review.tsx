@@ -8,12 +8,10 @@ export default function Review({
   formMeta,
   form,
   visibleSteps,
-  hiddenFields,
 }: {
   formMeta: FormMeta;
   form: AnyFormApi;
   visibleSteps: ClientFormStep[];
-  hiddenFields: string[];
 }) {
   const navigate = useNavigate({ from: "/forms/$formId/" });
 
@@ -132,8 +130,7 @@ export default function Review({
               <tbody>
                 {step.fields
                   .filter(
-                    (field) =>
-                      !field.hidden && !hiddenFields.includes(field.id),
+                    (field) => !field.hidden && !field.conditionallyHidden,
                   )
                   .map((field: ClientPrimitive) => (
                     <tr key={field.id} className={designSystem.reviewFieldRow}>
