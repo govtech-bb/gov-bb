@@ -262,29 +262,32 @@ export const formatDataForSubmission = (
     ),
   );
 
-  // The values for repeatable steps should be collapsed under the step id of the source step, becoming an array.Similarly, the values for shared fields shall be put in each array instance.
+  // The values for repeatable steps should be collapsed under the step id of the source step, becoming an array.
+
   const collapsedRepeatables: FormValuesByStep = {};
   const toDelete: string[] = [];
 
   for (const stepId of Object.keys(repeatableSettings)) {
-    collapsedRepeatables[stepId] = [
-      repeatableSettings[stepId].stepData[stepId],
-    ];
+    const currentRepeatSettings = repeatableSettings[stepId];
+    collapsedRepeatables[stepId] = [currentRepeatSettings.stepData[stepId]];
 
-    for (const subStepId of repeatableSettings[stepId].orderedStepIds.slice(
-      1,
-    )) {
+    const sharedData = currentRepeatSettings.sharedData;
+    console.log({ sharedData });
+
+    for (const subStepId of currentRepeatSettings.orderedStepIds.slice(1)) {
       const hasVisibleValues = Object.keys(values).filter((stepFieldID) =>
         stepFieldID.startsWith(subStepId),
       );
       // If this step isn't valid, then the subsequent ones aren't either
       if (hasVisibleValues.length === 0) break;
+
       // If it's valid, then we just grab their data.
+      // Similarly, the values for shared fields shall be put in each array instance.
       collapsedRepeatables[stepId].push(
-        repeatableSettings[stepId].stepData[subStepId],
+        currentRepeatSettings.stepData[subStepId],
       );
     }
-    toDelete.push(...repeatableSettings[stepId].orderedStepIds.slice(1));
+    toDelete.push(...currentRepeatSettings.orderedStepIds.slice(1));
   }
 
   // The structure of values should be changed from Record <stepAndFieldID, fieldValue> to Record<stepId, Record<fieldId, fieldValue>>,
@@ -302,5 +305,6 @@ export const formatDataForSubmission = (
 
   // Apply the collapsedRepeatables
 
+  console.log({ results: { ...formValuesByStep, ...collapsedRepeatables } });
   return { ...formValuesByStep, ...collapsedRepeatables };
 };
