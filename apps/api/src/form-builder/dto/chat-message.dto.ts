@@ -30,4 +30,5 @@ export interface PublishResponse {
   formId: string;
   message: string;
   sql: string;
+  previewUrl?: string;
 }

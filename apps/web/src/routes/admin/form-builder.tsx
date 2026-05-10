@@ -33,6 +33,7 @@ function FormBuilderPage() {
   const [pdfName, setPdfName] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
   const [publishResult, setPublishResult] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -154,10 +155,29 @@ function FormBuilderPage() {
       );
       const data = await res.json();
       setPublishResult(data.message ?? "Published!");
+      if (data.previewUrl) {
+        setPreviewUrl(data.previewUrl);
+      }
     } catch (err: any) {
       setPublishResult(`Error: ${err.message}`);
     }
     setPublishing(false);
+  };
+
+  const handleDelete = async () => {
+    if (!session.sessionId) return;
+    if (!confirm("Are you sure you want to delete this form?")) return;
+    try {
+      const res = await fetch(
+        `${API_URL}/form-builder/sessions/${session.sessionId}/delete`,
+        { method: "POST" },
+      );
+      const data = await res.json();
+      setPublishResult(data.message ?? "Deleted!");
+      setPreviewUrl(null);
+    } catch (err: any) {
+      setPublishResult(`Error: ${err.message}`);
+    }
   };
 
   const handleExportSql = async () => {
@@ -372,6 +392,37 @@ function FormBuilderPage() {
             }}
           >
             {publishResult}
+          </div>
+        )}
+
+        {previewUrl && (
+          <div
+            style={{
+              padding: "8px 16px",
+              background: "#e3f2fd",
+              fontSize: "13px",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <a href={previewUrl} target="_blank" rel="noopener noreferrer" style={{ color: "#1976d2" }}>
+              🔗 Preview form
+            </a>
+            <button
+              onClick={handleDelete}
+              style={{
+                padding: "4px 8px",
+                background: "#f44336",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+                fontSize: "11px",
+              }}
+            >
+              Delete
+            </button>
           </div>
         )}
 

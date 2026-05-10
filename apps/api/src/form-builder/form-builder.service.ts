@@ -18,6 +18,7 @@ interface Session {
   recipe: Record<string, unknown> | null;
   systemPrompt: string;
   pdfPages?: string[];
+  publishedFormId?: string;
   createdAt: Date;
 }
 
@@ -146,7 +147,10 @@ export class FormBuilderService {
     // Build the SQL for export
     const sql = this.buildSql(formId, recipe);
 
-    // Write to database
+    // Write to database (upsert — if re-publishing after edits, delete old version first)
+    if (session.publishedFormId) {
+      await this.formDefRepo.delete({ formId: session.publishedFormId });
+    }
     const entity = this.formDefRepo.create({
       formId,
       version: recipe.version ?? "1.0.0",
@@ -155,13 +159,40 @@ export class FormBuilderService {
     });
     await this.formDefRepo.save(entity);
 
+    // Track what we published so we can delete it later
+    session.publishedFormId = formId;
+
     this.logger.log(`Published form: ${formId}`);
+
+    const previewUrl = `https://app-sandbox.alpha.gov.bb/forms/${formId}`;
 
     return {
       formId,
       message: `Form "${formId}" published successfully.`,
       sql,
+      previewUrl,
     };
+  }
+
+  /**
+   * Delete the form published in this session. Only allows deleting forms
+   * that were created in this specific session — cannot delete other forms.
+   */
+  async deletePublished(sessionId: string): Promise<{ message: string }> {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      throw new Error(`Session ${sessionId} not found`);
+    }
+    if (!session.publishedFormId) {
+      throw new Error("No form has been published in this session.");
+    }
+
+    await this.formDefRepo.delete({ formId: session.publishedFormId });
+    const deletedFormId = session.publishedFormId;
+    session.publishedFormId = undefined;
+
+    this.logger.log(`Deleted form: ${deletedFormId}`);
+    return { message: `Form "${deletedFormId}" deleted successfully.` };
   }
 
   /**
