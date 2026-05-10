@@ -47,12 +47,15 @@ function RouteComponent() {
       ...(getFormData(formMeta.formId) ?? {}),
     },
     onSubmit: async ({ value }) => {
-      // TODO: Handle form submission
-
       const values = value as FormValues;
+      const hiddenFields = visibleSteps
+        .map((step) => step.fields)
+        .flat()
+        .filter((field) => field.hidden || field.conditionallyHidden);
       const formattedData: FormValuesByStep = formatDataForSubmission(
         values,
         repeatableStepSettingsRef.current,
+        hiddenFields,
       );
       console.log({ formattedData });
       const response = await postFormSubmission(formMeta, formattedData);

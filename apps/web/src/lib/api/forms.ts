@@ -15,6 +15,7 @@ import {
   formSubmissionResponseBodySchema,
   FormValuesByStep,
   RepeatableStepSettings,
+  ClientPrimitive,
 } from "@web/types";
 import { valueIsEmpty } from "../form-builder/validation-methods";
 
@@ -246,12 +247,14 @@ export const postFormSubmission = async (
 export const formatDataForSubmission = (
   values: FormValues,
   repeatableSettings: RepeatableStepSettings,
+  hiddenFields: ClientPrimitive[],
 ): FormValuesByStep => {
   const formValuesByStep: FormValuesByStep = {};
-  //  The values of any fields that are conditionally invisible, should be set to undefined
+
+  //  The values of any fields that are conditionally invisible, should be removed
+  for (const field of hiddenFields) delete values[field.id];
 
   // Any field values that are undefined or empty, should be stripped out.
-
   values = Object.fromEntries(
     Object.entries(values).filter(
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -260,7 +263,6 @@ export const formatDataForSubmission = (
   );
 
   // The values for repeatable steps should be collapsed under the step id of the source step, becoming an array.Similarly, the values for shared fields shall be put in each array instance.
-
   const collapsedRepeatables: FormValuesByStep = {};
   const toDelete: string[] = [];
 
