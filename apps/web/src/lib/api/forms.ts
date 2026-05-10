@@ -16,6 +16,7 @@ import {
   FormValuesByStep,
   RepeatableStepSettings,
 } from "@web/types";
+import { valueIsEmpty } from "../form-builder/validation-methods";
 
 const API_URL = process.env.VITE_API_URL ?? "http://localhost:3001";
 
@@ -247,9 +248,16 @@ export const formatDataForSubmission = (
   repeatableSettings: RepeatableStepSettings,
 ): FormValuesByStep => {
   const formValuesByStep: FormValuesByStep = {};
-  //  The values of any fields that are conditionally invisible, should be set to undefined, and not sent to the server.
+  //  The values of any fields that are conditionally invisible, should be set to undefined
 
-  // The values of any steps that are conditionally invisible, should have all their values set to undefined, and not sent to the server.
+  // Any field values that are undefined or empty, should be stripped out.
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  values = Object.fromEntries(
+    Object.entries(values).filter(
+      ([_key, value]) => value !== undefined && !valueIsEmpty(value),
+    ),
+  );
 
   // The values for repeatable steps should be collapsed under the step id of the source step, becoming an array.Similarly, the values for shared fields shall be put in each array instance.
 
@@ -276,7 +284,8 @@ export const formatDataForSubmission = (
     toDelete.push(...repeatableSettings[stepId].orderedStepIds.slice(1));
   }
 
-  // The structure of values should be changed from Record < stepAndFieldID, fieldValue > to Record<stepId, Record<fieldId, fieldValue>>, where stepAndFieldID is the identifier of the form stepId_fieldId.
+  // The structure of values should be changed from Record <stepAndFieldID, fieldValue> to Record<stepId, Record<fieldId, fieldValue>>,
+  // where stepAndFieldID is the identifier of the form stepId_fieldId.
 
   for (const [stepFieldId, value] of Object.entries(values)) {
     const [stepId, fieldId] = stepFieldId.split(stepFieldIdConcactenator);
