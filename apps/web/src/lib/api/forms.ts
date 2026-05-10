@@ -293,7 +293,10 @@ export const formatDataForSubmission = (
       }
 
       // Similarly, the values for shared fields shall be put in each array instance.
-      collapsedRepeatables[stepId].push(currentRepeatable);
+      collapsedRepeatables[stepId].push({
+        ...currentRepeatable,
+        ...sharedData,
+      });
     }
     toDelete.push(...currentRepeatSettings.orderedStepIds.slice(1));
   }
