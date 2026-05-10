@@ -44,12 +44,25 @@ export const setupRepeatSteps = (
       sharedData: {},
     };
 
+    // Update fields for source step based on sharedFields
+    const sourceFields = handleMissingTargetStepIds(
+      structuredClone(step.fields),
+      sharedFields,
+      step.stepId,
+    );
+
     if (repeatBehaviour.min) {
+      // Update source step:
+      updatedSteps[i] = {
+        ...step,
+        fields: sourceFields,
+      };
+
       // Start at 1 to account for source step
       for (let j = 1; j <= repeatBehaviour.min; j++) {
         const repeatStepCount = j;
         const nextStepId = getRepeatStepId(step.stepId, repeatStepCount);
-        let currentFields = [...step.fields];
+        let currentFields = structuredClone(step.fields);
 
         // Need to ensure that each fieldConditionalOn in a repeatable behaviour has a `targetStepId`
         currentFields = handleMissingTargetStepIds(
@@ -80,12 +93,7 @@ export const setupRepeatSteps = (
       }
     } else {
       const addAnother = generateRepeatableAddAnotherField(step.stepId);
-      const currentFields = handleMissingTargetStepIds(
-        [...step.fields],
-        sharedFields,
-        step.stepId,
-      );
-      const newStepFields = [...currentFields, addAnother];
+      const newStepFields = [...sourceFields, addAnother];
       updatedSteps[i] = {
         ...step,
         fields: newStepFields,
@@ -287,12 +295,14 @@ const handleMissingTargetStepIds = (
     field.behaviours = field.behaviours?.map((b) => {
       // If it does not have a targetStepId...
       if (b.type === "fieldConditionalOn" && !b.targetStepId) {
+        // If no shared fields, then set it to "nextStepId"
+        if (sharedFields.length === 0) b.targetStepId = nextStepId;
         //  And it's not a shared field, then it can have the id of its repeat step.
+        else if (!sharedFields.includes(b.targetFieldId))
+          b.targetStepId = nextStepId;
         // BUT! If it is a shared field...
         // Then it should have the id of the source step.
-        b.targetStepId = !sharedFields.includes(b.targetFieldId)
-          ? nextStepId
-          : field.stepId;
+        else b.targetStepId = field.stepId;
       }
       return b;
     });
