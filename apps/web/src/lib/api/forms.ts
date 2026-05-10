@@ -292,6 +292,7 @@ export const formatDataForSubmission = (
     if (toDelete.includes(stepId)) continue;
 
     formValuesByStep[stepId] = {
+      ...(formValuesByStep[stepId] ?? {}),
       [fieldId]: value,
     };
   }
