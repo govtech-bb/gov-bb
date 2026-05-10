@@ -1,5 +1,5 @@
 import { ServiceContract, serviceContractSchema } from "@govtech-bb/form-types";
-import { repeatStepConcactenator, stepFieldIdConcactenator } from "@web/lib";
+import { stepFieldIdConcactenator } from "@web/lib";
 import {
   ApiResponse,
   FormDefinitionResponse,
@@ -252,9 +252,9 @@ export const formatDataForSubmission = (
 
   // Any field values that are undefined or empty, should be stripped out.
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   values = Object.fromEntries(
     Object.entries(values).filter(
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       ([_key, value]) => value !== undefined && !valueIsEmpty(value),
     ),
   );
