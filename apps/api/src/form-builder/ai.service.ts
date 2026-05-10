@@ -20,7 +20,7 @@ export class AiService implements OnModuleInit {
   private client: any; // Anthropic SDK client or Bedrock client
   private provider: "anthropic" | "bedrock" = "anthropic";
   private model: string = "claude-sonnet-4-20250514";
-  private bedrockModelId: string = "anthropic.claude-sonnet-4-6";
+  private bedrockModelId: string = "us.anthropic.claude-sonnet-4-6-20250514-v1:0";
 
   constructor(private readonly configService: ConfigService) {}
 
@@ -45,6 +45,8 @@ export class AiService implements OnModuleInit {
       (this.configService.get<string>("AI_PROVIDER") as any) ?? "anthropic";
     this.model =
       this.configService.get<string>("AI_MODEL") ?? "claude-sonnet-4-20250514";
+    this.bedrockModelId =
+      this.configService.get<string>("AI_MODEL") ?? "us.anthropic.claude-sonnet-4-6-20250514-v1:0";
 
     if (this.provider === "bedrock") {
       await this.initBedrock();
