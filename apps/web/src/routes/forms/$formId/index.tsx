@@ -14,10 +14,11 @@ import {
   FormMeta,
   SubmissionState,
   FormSubmissionResponseBody,
+  FormValuesByStep,
 } from "@web/types";
 import React from "react";
 import { getFormData, storeFormData } from "../../../lib/session-storage";
-import { postFormSubmission } from "@web/form-api";
+import { formatDataForSubmission, postFormSubmission } from "@web/form-api";
 
 export const Route = createFileRoute("/forms/$formId/")({
   component: RouteComponent,
@@ -36,14 +37,28 @@ function RouteComponent() {
     SubmissionState | undefined
   >(undefined);
 
+  const repeatableStepSettingsRef = React.useRef<RepeatableStepSettings>(
+    formMeta.repeatSettings,
+  );
+
   const form = useForm({
     defaultValues: {
       ...(formMeta.defaultValues as FormValues),
       ...(getFormData(formMeta.formId) ?? {}),
     },
-    onSubmit: async ({ value: values }) => {
-      // TODO: Handle form submission
-      const response = await postFormSubmission(formMeta, values);
+    onSubmit: async ({ value }) => {
+      const values = value as FormValues;
+      const hiddenFields = visibleSteps
+        .map((step) => step.fields)
+        .flat()
+        .filter((field) => field.hidden || field.conditionallyHidden);
+      const formattedData: FormValuesByStep = formatDataForSubmission(
+        values,
+        repeatableStepSettingsRef.current,
+        hiddenFields,
+      );
+      console.log({ formattedData });
+      const response = await postFormSubmission(formMeta, formattedData);
       const responseData: FormSubmissionResponseBody = response.data;
 
       let subState: SubmissionState;
@@ -92,10 +107,6 @@ function RouteComponent() {
       }
     },
   });
-
-  const repeatableStepSettingsRef = React.useRef<RepeatableStepSettings>(
-    formMeta.repeatSettings,
-  );
 
   const formValues = useStore(
     form.store,
