@@ -60,7 +60,7 @@ export class FormBuilderController {
   async sendMessage(
     @Param("sessionId") sessionId: string,
     @Body("message") message: string,
-    @UploadedFile() file?: Express.Multer.File,
+    @UploadedFile() file?: any,
   ): Promise<SessionResponse> {
     if (!this.aiService.isAvailable()) {
       throw new HttpException(
