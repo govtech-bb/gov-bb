@@ -1,0 +1,413 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useState, useRef, useEffect } from "react";
+
+const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
+
+interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+interface SessionState {
+  sessionId: string | null;
+  messages: ChatMessage[];
+  recipe: Record<string, unknown> | null;
+  loading: boolean;
+  error: string | null;
+}
+
+export const Route = createFileRoute("/admin/form-builder")({
+  component: FormBuilderPage,
+});
+
+function FormBuilderPage() {
+  const [session, setSession] = useState<SessionState>({
+    sessionId: null,
+    messages: [],
+    recipe: null,
+    loading: false,
+    error: null,
+  });
+  const [input, setInput] = useState("");
+  const [pdfPages, setPdfPages] = useState<string[]>([]);
+  const [pdfName, setPdfName] = useState<string | null>(null);
+  const [publishing, setPublishing] = useState(false);
+  const [publishResult, setPublishResult] = useState<string | null>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [session.messages]);
+
+  const startSession = async () => {
+    setSession((s) => ({ ...s, loading: true, error: null }));
+    try {
+      const res = await fetch(`${API_URL}/form-builder/sessions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: pdfName ?? "New form" }),
+      });
+      const data = await res.json();
+      setSession((s) => ({
+        ...s,
+        sessionId: data.sessionId,
+        loading: false,
+      }));
+      return data.sessionId;
+    } catch (err: any) {
+      setSession((s) => ({
+        ...s,
+        loading: false,
+        error: err.message,
+      }));
+      return null;
+    }
+  };
+
+  const sendMessage = async (overrideSessionId?: string) => {
+    const sessionId = overrideSessionId ?? session.sessionId;
+    if (!sessionId || !input.trim()) return;
+
+    const userMessage = input.trim();
+    setInput("");
+    setSession((s) => ({
+      ...s,
+      messages: [...s.messages, { role: "user", content: userMessage }],
+      loading: true,
+      error: null,
+    }));
+
+    try {
+      const res = await fetch(
+        `${API_URL}/form-builder/sessions/${sessionId}/messages`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: userMessage,
+            pdfPages: pdfPages.length > 0 ? pdfPages : undefined,
+          }),
+        },
+      );
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.message ?? `HTTP ${res.status}`);
+      }
+
+      const data = await res.json();
+      // Clear PDF pages after first send
+      if (pdfPages.length > 0) setPdfPages([]);
+
+      setSession((s) => ({
+        ...s,
+        messages: data.messages,
+        recipe: data.recipe,
+        loading: false,
+      }));
+    } catch (err: any) {
+      setSession((s) => ({
+        ...s,
+        loading: false,
+        error: err.message,
+      }));
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim()) return;
+
+    if (!session.sessionId) {
+      const newSessionId = await startSession();
+      if (newSessionId) {
+        await sendMessage(newSessionId);
+      }
+    } else {
+      await sendMessage();
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setPdfName(file.name);
+
+    // Convert PDF to images using canvas (simplified — sends as data URL)
+    // For a real implementation, use pdf.js to render pages to canvas
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = (reader.result as string).split(",")[1];
+      setPdfPages([base64]);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handlePublish = async () => {
+    if (!session.sessionId || !session.recipe) return;
+    setPublishing(true);
+    try {
+      const res = await fetch(
+        `${API_URL}/form-builder/sessions/${session.sessionId}/publish`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        },
+      );
+      const data = await res.json();
+      setPublishResult(data.message ?? "Published!");
+    } catch (err: any) {
+      setPublishResult(`Error: ${err.message}`);
+    }
+    setPublishing(false);
+  };
+
+  const handleExportSql = async () => {
+    if (!session.sessionId) return;
+    try {
+      const res = await fetch(
+        `${API_URL}/form-builder/sessions/${session.sessionId}/sql`,
+      );
+      const data = await res.json();
+      if (data.sql) {
+        const blob = new Blob([data.sql], { type: "text/sql" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${(session.recipe as any)?.formId ?? "form"}.sql`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    } catch (err: any) {
+      setSession((s) => ({ ...s, error: err.message }));
+    }
+  };
+
+  return (
+    <div style={{ display: "flex", height: "100vh", fontFamily: "system-ui" }}>
+      {/* Chat Panel */}
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          borderRight: "1px solid #e0e0e0",
+        }}
+      >
+        <div
+          style={{
+            padding: "16px",
+            borderBottom: "1px solid #e0e0e0",
+            background: "#f8f9fa",
+          }}
+        >
+          <h2 style={{ margin: 0 }}>Form Builder AI</h2>
+          <p style={{ margin: "4px 0 0", color: "#666", fontSize: "14px" }}>
+            Upload a PDF form and I'll convert it to a digital form recipe.
+          </p>
+        </div>
+
+        {/* Messages */}
+        <div style={{ flex: 1, overflow: "auto", padding: "16px" }}>
+          {session.messages.length === 0 && (
+            <div
+              style={{ color: "#999", textAlign: "center", marginTop: "40px" }}
+            >
+              <p>Upload a PDF or describe a form to get started.</p>
+            </div>
+          )}
+          {session.messages.map((msg, i) => (
+            <div
+              key={i}
+              style={{
+                marginBottom: "12px",
+                padding: "12px",
+                borderRadius: "8px",
+                background: msg.role === "user" ? "#e3f2fd" : "#f5f5f5",
+                maxWidth: "85%",
+                marginLeft: msg.role === "user" ? "auto" : "0",
+                whiteSpace: "pre-wrap",
+                fontSize: "14px",
+              }}
+            >
+              <strong style={{ fontSize: "12px", color: "#666" }}>
+                {msg.role === "user" ? "You" : "AI Assistant"}
+              </strong>
+              <div style={{ marginTop: "4px" }}>{msg.content}</div>
+            </div>
+          ))}
+          {session.loading && (
+            <div style={{ color: "#666", fontStyle: "italic" }}>
+              Thinking...
+            </div>
+          )}
+          {session.error && (
+            <div style={{ color: "red", padding: "8px" }}>
+              Error: {session.error}
+            </div>
+          )}
+          <div ref={chatEndRef} />
+        </div>
+
+        {/* Input */}
+        <form
+          onSubmit={handleSubmit}
+          style={{
+            padding: "16px",
+            borderTop: "1px solid #e0e0e0",
+            display: "flex",
+            gap: "8px",
+            alignItems: "center",
+          }}
+        >
+          <label
+            style={{
+              cursor: "pointer",
+              padding: "8px 12px",
+              background: pdfPages.length > 0 ? "#4caf50" : "#e0e0e0",
+              borderRadius: "4px",
+              fontSize: "14px",
+              color: pdfPages.length > 0 ? "white" : "#333",
+            }}
+          >
+            {pdfPages.length > 0 ? `✓ ${pdfName}` : "📎 PDF"}
+            <input
+              type="file"
+              accept=".pdf,.png,.jpg,.jpeg"
+              onChange={handleFileUpload}
+              style={{ display: "none" }}
+            />
+          </label>
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Describe the form or ask a question..."
+            style={{
+              flex: 1,
+              padding: "10px 12px",
+              border: "1px solid #ddd",
+              borderRadius: "4px",
+              fontSize: "14px",
+            }}
+            disabled={session.loading}
+          />
+          <button
+            type="submit"
+            disabled={session.loading || !input.trim()}
+            style={{
+              padding: "10px 20px",
+              background: "#1976d2",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              cursor: "pointer",
+              fontSize: "14px",
+            }}
+          >
+            Send
+          </button>
+        </form>
+      </div>
+
+      {/* Recipe / Preview Panel */}
+      <div
+        style={{
+          width: "450px",
+          display: "flex",
+          flexDirection: "column",
+          background: "#fafafa",
+        }}
+      >
+        <div
+          style={{
+            padding: "16px",
+            borderBottom: "1px solid #e0e0e0",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <h3 style={{ margin: 0 }}>Recipe Output</h3>
+          <div style={{ display: "flex", gap: "8px" }}>
+            <button
+              onClick={handleExportSql}
+              disabled={!session.recipe}
+              style={{
+                padding: "6px 12px",
+                background: session.recipe ? "#ff9800" : "#e0e0e0",
+                color: session.recipe ? "white" : "#999",
+                border: "none",
+                borderRadius: "4px",
+                cursor: session.recipe ? "pointer" : "default",
+                fontSize: "12px",
+              }}
+            >
+              Export SQL
+            </button>
+            <button
+              onClick={handlePublish}
+              disabled={!session.recipe || publishing}
+              style={{
+                padding: "6px 12px",
+                background: session.recipe ? "#4caf50" : "#e0e0e0",
+                color: session.recipe ? "white" : "#999",
+                border: "none",
+                borderRadius: "4px",
+                cursor: session.recipe ? "pointer" : "default",
+                fontSize: "12px",
+              }}
+            >
+              {publishing ? "Publishing..." : "Publish"}
+            </button>
+          </div>
+        </div>
+
+        {publishResult && (
+          <div
+            style={{
+              padding: "8px 16px",
+              background: publishResult.startsWith("Error")
+                ? "#ffebee"
+                : "#e8f5e9",
+              fontSize: "13px",
+            }}
+          >
+            {publishResult}
+          </div>
+        )}
+
+        <div style={{ flex: 1, overflow: "auto", padding: "16px" }}>
+          {session.recipe ? (
+            <pre
+              style={{
+                fontSize: "11px",
+                background: "#263238",
+                color: "#eeffff",
+                padding: "16px",
+                borderRadius: "8px",
+                overflow: "auto",
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
+              }}
+            >
+              {JSON.stringify(session.recipe, null, 2)}
+            </pre>
+          ) : (
+            <div
+              style={{
+                color: "#999",
+                textAlign: "center",
+                marginTop: "40px",
+              }}
+            >
+              <p>Recipe will appear here once the AI generates it.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
