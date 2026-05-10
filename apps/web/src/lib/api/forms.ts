@@ -275,7 +275,8 @@ export const formatDataForSubmission = (
       const hasVisibleValues = Object.keys(values).filter((stepFieldID) =>
         stepFieldID.startsWith(subStepId),
       );
-      if (!hasVisibleValues) break; // IF this step isn't valid, then the subsequent ones aren't either
+      // If this step isn't valid, then the subsequent ones aren't either
+      if (hasVisibleValues.length === 0) break;
       // If it's valid, then we just grab their data.
       collapsedRepeatables[stepId].push(
         repeatableSettings[stepId].stepData[subStepId],
