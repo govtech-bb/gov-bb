@@ -32,7 +32,13 @@ export class AiService implements OnModuleInit {
         join(__dirname, "..", "form-builder", "prompts", "system-prompt.md"),
         join(process.cwd(), "apps", "api", "src", "form-builder", "prompts", "system-prompt.md"),
         join(process.cwd(), "src", "form-builder", "prompts", "system-prompt.md"),
+        join(process.cwd(), "dist", "src", "form-builder", "prompts", "system-prompt.md"),
+        "/app/apps/api/src/form-builder/prompts/system-prompt.md",
       ];
+      
+      this.logger.log(`Looking for system prompt in paths: ${possiblePaths.join(", ")}`);
+      this.logger.log(`__dirname = ${__dirname}, cwd = ${process.cwd()}`);
+      
       
       for (const p of possiblePaths) {
         try {
