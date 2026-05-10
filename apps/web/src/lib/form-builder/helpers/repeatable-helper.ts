@@ -24,9 +24,10 @@ export const setupRepeatSteps = (
       (b) => b.type === "repeatable",
     )[0];
     if (!repeatBehaviour) continue;
-    const sharedBehaviour: SharedFieldsBehaviour = step.behaviours.filter(
-      (b) => b.type === "sharedFields",
-    )[0];
+    const sharedBehaviour: SharedFieldsBehaviour | undefined =
+      step.behaviours.filter((b) => b.type === "sharedFields")[0];
+
+    const sharedFields: string[] = sharedBehaviour?.fieldIds ?? [];
 
     // Need to see if this is the original step
 
@@ -43,15 +44,35 @@ export const setupRepeatSteps = (
       sharedData: {},
     };
 
+    // Update fields for source step based on sharedFields
+    const sourceFields = handleMissingTargetStepIds(
+      structuredClone(step.fields),
+      sharedFields,
+      step.stepId,
+    );
+
     if (repeatBehaviour.min) {
+      // Update source step:
+      updatedSteps[i] = {
+        ...step,
+        fields: sourceFields,
+      };
+
       // Start at 1 to account for source step
       for (let j = 1; j <= repeatBehaviour.min; j++) {
         const repeatStepCount = j;
-        // const nextStepId = `${step.stepId}--${repeatStepCount}`;
         const nextStepId = getRepeatStepId(step.stepId, repeatStepCount);
+        let currentFields = structuredClone(step.fields);
+
+        // Need to ensure that each fieldConditionalOn in a repeatable behaviour has a `targetStepId`
+        currentFields = handleMissingTargetStepIds(
+          currentFields,
+          sharedFields,
+          nextStepId,
+        );
 
         const nextStepFields = generateRepeatStepFields(
-          step.fields,
+          currentFields,
           nextStepId,
           undefined,
           sharedBehaviour,
@@ -72,7 +93,7 @@ export const setupRepeatSteps = (
       }
     } else {
       const addAnother = generateRepeatableAddAnotherField(step.stepId);
-      const newStepFields = [...step.fields, addAnother];
+      const newStepFields = [...sourceFields, addAnother];
       updatedSteps[i] = {
         ...step,
         fields: newStepFields,
@@ -269,4 +290,29 @@ export const removeRepeatableStep = ({
 
   // Filter visible steps
   return visibleSteps.filter((step) => !toRemove.includes(step.stepId));
+};
+
+const handleMissingTargetStepIds = (
+  currentFields: ClientPrimitive[],
+  sharedFields: string[],
+  nextStepId: string,
+) => {
+  currentFields = currentFields.map((field) => {
+    field.behaviours = field.behaviours?.map((b) => {
+      // If it does not have a targetStepId...
+      if (b.type === "fieldConditionalOn" && !b.targetStepId) {
+        // If no shared fields, then set it to "nextStepId"
+        if (sharedFields.length === 0) b.targetStepId = nextStepId;
+        //  And it's not a shared field, then it can have the id of its repeat step.
+        else if (!sharedFields.includes(b.targetFieldId))
+          b.targetStepId = nextStepId;
+        // BUT! If it is a shared field...
+        // Then it should have the id of the source step.
+        else b.targetStepId = field.stepId;
+      }
+      return b;
+    });
+    return { ...field };
+  });
+  return currentFields;
 };
