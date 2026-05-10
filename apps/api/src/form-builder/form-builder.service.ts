@@ -85,11 +85,11 @@ export class FormBuilderService {
     // Add user message
     session.messages.push({ role: "user", content: message });
 
-    // Call Claude
+    // Call Claude — always include PDF pages so the AI retains form context
     const assistantResponse = await this.aiService.chat(
       session.systemPrompt,
       session.messages,
-      session.messages.length === 1 ? session.pdfPages : undefined,
+      session.pdfPages,
     );
 
     // Add assistant response
