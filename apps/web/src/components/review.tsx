@@ -128,16 +128,20 @@ export default function Review({
 
             <table className={designSystem.reviewFieldTable}>
               <tbody>
-                {step.fields.map((field: ClientPrimitive) => (
-                  <tr key={field.id} className={designSystem.reviewFieldRow}>
-                    <td className={designSystem.reviewFieldLabel}>
-                      {field.label}
-                    </td>
-                    <td className={designSystem.reviewFieldValue}>
-                      {getFieldDisplayValue(field)}
-                    </td>
-                  </tr>
-                ))}
+                {step.fields
+                  .filter(
+                    (field) => !field.hidden && !field.conditionallyHidden,
+                  )
+                  .map((field: ClientPrimitive) => (
+                    <tr key={field.id} className={designSystem.reviewFieldRow}>
+                      <td className={designSystem.reviewFieldLabel}>
+                        {field.label}
+                      </td>
+                      <td className={designSystem.reviewFieldValue}>
+                        {getFieldDisplayValue(field)}
+                      </td>
+                    </tr>
+                  ))}
               </tbody>
             </table>
           </div>

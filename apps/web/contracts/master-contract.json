@@ -1076,7 +1076,7 @@
       "behaviours": [
         {
           "type": "repeatable",
-          "min": 0,
+          "min": 1,
           "max": 6
         },
         {
@@ -1086,125 +1086,10 @@
       ]
     },
     {
-      "stepId": "step-6-declarations",
+      "stepId": "declaration",
       "title": "Declarations & Consent",
       "description": "Legal declarations and consent with checkbox validations",
-      "elements": [
-        {
-          "fieldId": "declaration1",
-          "label": "I confirm that all information provided in this form is true and accurate to the best of my knowledge.",
-          "htmlType": "checkbox",
-          "options": [
-            {
-              "label": "I accept",
-              "value": "confirmed"
-            }
-          ],
-          "defaultValue": false,
-          "validations": {
-            "required": {
-              "value": true,
-              "error": "You must confirm this declaration"
-            }
-          }
-        },
-        {
-          "fieldId": "declaration2",
-          "label": "I understand that providing false information may result in my application being rejected and may constitute a criminal offence.",
-          "htmlType": "checkbox",
-          "options": [
-            {
-              "label": "I accept",
-              "value": "confirmed"
-            }
-          ],
-          "defaultValue": false,
-          "validations": {
-            "required": {
-              "value": true,
-              "error": "You must confirm this declaration"
-            }
-          }
-        },
-        {
-          "fieldId": "consent-marketing",
-          "label": "I consent to receiving marketing communications about products and services that may be of interest to me.",
-          "htmlType": "checkbox",
-          "options": [
-            {
-              "label": "I accept",
-              "value": "confirmed"
-            }
-          ],
-          "defaultValue": false
-        },
-        {
-          "fieldId": "consent-third-party",
-          "label": "I consent to my information being shared with third parties for the purpose of processing this application.",
-          "htmlType": "checkbox",
-          "options": [
-            {
-              "label": "I accept",
-              "value": "confirmed"
-            }
-          ],
-          "defaultValue": false,
-          "validations": {
-            "required": {
-              "value": true,
-              "error": "Third party consent is required for application processing"
-            }
-          }
-        },
-        {
-          "fieldId": "data-retention",
-          "label": "I understand that my data will be retained in accordance with the data retention policy.",
-          "htmlType": "checkbox",
-          "options": [
-            {
-              "label": "I accept",
-              "value": "confirmed"
-            }
-          ],
-          "defaultValue": false,
-          "validations": {
-            "required": {
-              "value": true,
-              "error": "You must confirm data retention understanding"
-            }
-          }
-        },
-        {
-          "fieldId": "additional-comments",
-          "label": "Additional Comments (Optional)",
-          "htmlType": "textarea",
-          "placeholder": "Any additional information you'd like to provide..."
-        },
-        {
-          "fieldId": "agreed-date",
-          "label": "Date",
-          "htmlType": "date",
-          "hint": "Today's date will be used as the agreement date",
-          "validations": {
-            "required": {
-              "value": true,
-              "error": "Date is required"
-            },
-            "pastOrToday": {
-              "value": true,
-              "error": "Date cannot be in the future"
-            }
-          }
-        }
-      ],
-      "behaviours": [
-        {
-          "type": "fieldConditionalOn",
-          "targetFieldId": "consent-marketing",
-          "operator": "equal",
-          "value": true
-        }
-      ]
+      "elements": []
     },
     {
       "stepId": "submission-confirmation",
