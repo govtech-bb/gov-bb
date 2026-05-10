@@ -32,7 +32,7 @@ export const setupRepeatSteps = (
 
     const repeatStepCount = getRepeatStepCount(step.stepId);
     // If not the original, just skip
-    if (repeatStepCount > 0) continue;
+    if (repeatStepCount === undefined || repeatStepCount > 0) continue;
 
     // We can setup the config first.
     const repeatConfig: RepeatableConfig = {
@@ -143,11 +143,11 @@ export const getRepeatStepId = (
   return `${stepId}${repeatStepConcactenator}${repeatStepCount}`;
 };
 
-export const getRepeatStepCount = (stepId: string): number => {
+export const getRepeatStepCount = (stepId: string): number | undefined => {
   const parts = stepId.split(repeatStepConcactenator);
   if (parts.length <= 1) return 0;
   const count = Number(parts[parts.length - 1]);
-  return isNaN(count) ? 0 : count;
+  return isNaN(count) ? undefined : count;
 };
 
 export const addRepeatableStep = ({
@@ -163,6 +163,8 @@ export const addRepeatableStep = ({
     currentStep.stepId.split(repeatStepConcactenator)[0],
     getRepeatStepCount(currentStep.stepId),
   ];
+
+  if (stepRepeatId === undefined) return visibleSteps;
 
   const currentRepeatConfig = repeatableStepSettings[baseStepId];
   if (!currentRepeatConfig) return visibleSteps;
@@ -224,7 +226,7 @@ export const removeRepeatableStep = ({
     currentStep.stepId.split(repeatStepConcactenator)[0],
     getRepeatStepCount(currentStep.stepId),
   ];
-  if (stepRepeatId === 0) return visibleSteps;
+  if (stepRepeatId === undefined) return visibleSteps;
   const targetStepId = getRepeatStepId(
     baseStepId,
     stepRepeatId ? stepRepeatId + 1 : 1,
@@ -237,7 +239,10 @@ export const removeRepeatableStep = ({
   if (!step) {
     const pos = currentRepeatConfig.orderedStepIds.indexOf(targetStepId);
     if (pos !== -1) {
-      currentRepeatConfig.orderedStepIds.splice(pos, 1);
+      currentRepeatConfig.orderedStepIds.splice(
+        pos,
+        currentRepeatConfig.orderedStepIds.length - 2,
+      );
     }
     return visibleSteps;
   }
