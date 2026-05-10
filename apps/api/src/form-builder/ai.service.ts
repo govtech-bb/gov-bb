@@ -1,8 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { readFileSync } from "fs";
-import { join } from "path";
 import { ChatMessage } from "./dto/chat-message.dto";
+import { getSystemPrompt } from "./prompts/system-prompt";
 
 /**
  * Wraps the Anthropic SDK or AWS Bedrock to call Claude for form recipe generation.
@@ -25,39 +24,9 @@ export class AiService implements OnModuleInit {
   constructor(private readonly configService: ConfigService) {}
 
   async onModuleInit() {
-    // Load system prompt from file
-    try {
-      const possiblePaths = [
-        join(__dirname, "prompts", "system-prompt.md"),
-        join(__dirname, "..", "form-builder", "prompts", "system-prompt.md"),
-        join(process.cwd(), "apps", "api", "src", "form-builder", "prompts", "system-prompt.md"),
-        join(process.cwd(), "src", "form-builder", "prompts", "system-prompt.md"),
-        join(process.cwd(), "dist", "src", "form-builder", "prompts", "system-prompt.md"),
-        "/app/apps/api/src/form-builder/prompts/system-prompt.md",
-      ];
-      
-      this.logger.log(`Looking for system prompt in paths: ${possiblePaths.join(", ")}`);
-      this.logger.log(`__dirname = ${__dirname}, cwd = ${process.cwd()}`);
-      
-      
-      for (const p of possiblePaths) {
-        try {
-          this.systemPrompt = readFileSync(p, "utf-8");
-          this.logger.log(`System prompt loaded from ${p} (${this.systemPrompt.length} chars)`);
-          break;
-        } catch {
-          // try next path
-        }
-      }
-      
-      if (!this.systemPrompt) {
-        this.logger.warn("Could not load system-prompt.md from any path — AI will work but without form creation context");
-      }
-    } catch (err) {
-      this.logger.warn(
-        "Could not load system-prompt.md — AI features will work but without form creation context",
-      );
-    }
+    // Load system prompt from embedded TypeScript constant (no file I/O needed)
+    this.systemPrompt = getSystemPrompt();
+    this.logger.log(`System prompt loaded (${this.systemPrompt.length} chars)`);
 
     // Determine provider
     this.provider =
