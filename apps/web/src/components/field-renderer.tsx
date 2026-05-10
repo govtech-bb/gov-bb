@@ -38,7 +38,13 @@ export default function FieldRenderer({
     );
   }
 
-  if (conditionalRequiredState === "notRequired") return null;
+  if (conditionalRequiredState === "notRequired") {
+    field.conditionallyHidden = true;
+    return null;
+  }
+
+  // If the field was conditionally hidden before, but reaches here, then it's fine
+  if (field.conditionallyHidden) field.conditionallyHidden = false;
 
   return (
     <form.Field name={field.id} validators={validationProperties}>
@@ -268,11 +274,11 @@ export default function FieldRenderer({
                     <input
                       {...sharedProps}
                       checked={option.value === value}
-                      onChange={() => {
-                        option.value === value
-                          ? f.handleChange("")
-                          : f.handleChange(option.value);
-                      }}
+                      onChange={() =>
+                        f.handleChange(
+                          option.value === value ? "" : option.value,
+                        )
+                      }
                     />
                     <label>{option.label}</label>
                   </div>

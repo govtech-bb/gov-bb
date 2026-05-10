@@ -36,6 +36,7 @@ export const mapFieldToLocale = (
     name: field.name ?? toSentenceCase(field.label),
     disabled: field.isDisabled ?? false,
     hidden: field.isHidden ?? false,
+    conditionallyHidden: false,
   };
 };
 

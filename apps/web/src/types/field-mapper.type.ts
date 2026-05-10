@@ -21,6 +21,7 @@ export interface ClientPrimitive {
   defaultValue?: unknown;
   disabled: boolean;
   hidden: boolean;
+  conditionallyHidden: boolean;
   options?: Option[];
   multiple?: boolean;
   validations?: ValidationRule;

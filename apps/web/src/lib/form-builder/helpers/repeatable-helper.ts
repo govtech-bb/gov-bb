@@ -120,6 +120,7 @@ export const generateRepeatableAddAnotherField = (
     htmlType: "radio",
     disabled: false,
     hidden: false,
+    conditionallyHidden: false,
     options: [
       { label: "Yes", value: "yes" },
       { label: "No", value: "no" },
