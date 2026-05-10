@@ -6,7 +6,10 @@ import {
   Body,
   HttpException,
   HttpStatus,
+  UseInterceptors,
+  UploadedFile,
 } from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiTags } from "@nestjs/swagger";
 import { SkipThrottle } from "@nestjs/throttler";
 import { FormBuilderService } from "./form-builder.service";
@@ -50,12 +53,14 @@ export class FormBuilderController {
   }
 
   /**
-   * Send a message to an existing session (text + optional PDF pages).
+   * Send a message to an existing session (text + optional PDF upload via multipart).
    */
   @Post("sessions/:sessionId/messages")
+  @UseInterceptors(FileInterceptor("pdf", { limits: { fileSize: 50 * 1024 * 1024 } }))
   async sendMessage(
     @Param("sessionId") sessionId: string,
-    @Body() dto: SendMessageDto,
+    @Body("message") message: string,
+    @UploadedFile() file?: Express.Multer.File,
   ): Promise<SessionResponse> {
     if (!this.aiService.isAvailable()) {
       throw new HttpException(
@@ -64,11 +69,21 @@ export class FormBuilderController {
       );
     }
 
+    if (!message) {
+      throw new HttpException("Message is required", HttpStatus.BAD_REQUEST);
+    }
+
     try {
+      // Convert uploaded PDF to base64 for the AI
+      let pdfPages: string[] | undefined;
+      if (file) {
+        pdfPages = [file.buffer.toString("base64")];
+      }
+
       return await this.formBuilderService.sendMessage(
         sessionId,
-        dto.message,
-        dto.pdfPages,
+        message,
+        pdfPages,
       );
     } catch (err: any) {
       if (err.message?.includes("not found")) {

@@ -29,7 +29,7 @@ function FormBuilderPage() {
     error: null,
   });
   const [input, setInput] = useState("");
-  const [pdfPages, setPdfPages] = useState<string[]>([]);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [pdfName, setPdfName] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
   const [publishResult, setPublishResult] = useState<string | null>(null);
@@ -78,15 +78,18 @@ function FormBuilderPage() {
     }));
 
     try {
+      // Use FormData for multipart upload (supports PDF files)
+      const formData = new FormData();
+      formData.append("message", userMessage);
+      if (pdfFile) {
+        formData.append("pdf", pdfFile);
+      }
+
       const res = await fetch(
         `${API_URL}/form-builder/sessions/${sessionId}/messages`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            message: userMessage,
-            pdfPages: pdfPages.length > 0 ? pdfPages : undefined,
-          }),
+          body: formData,
         },
       );
 
@@ -96,8 +99,10 @@ function FormBuilderPage() {
       }
 
       const data = await res.json();
-      // Clear PDF pages after first send
-      if (pdfPages.length > 0) setPdfPages([]);
+      // Clear PDF after first send
+      if (pdfFile) {
+        setPdfFile(null);
+      }
 
       setSession((s) => ({
         ...s,
@@ -131,17 +136,8 @@ function FormBuilderPage() {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setPdfName(file.name);
-
-    // Convert PDF to images using canvas (simplified — sends as data URL)
-    // For a real implementation, use pdf.js to render pages to canvas
-    const reader = new FileReader();
-    reader.onload = () => {
-      const base64 = (reader.result as string).split(",")[1];
-      setPdfPages([base64]);
-    };
-    reader.readAsDataURL(file);
+    setPdfFile(file);
   };
 
   const handlePublish = async () => {
@@ -266,13 +262,13 @@ function FormBuilderPage() {
             style={{
               cursor: "pointer",
               padding: "8px 12px",
-              background: pdfPages.length > 0 ? "#4caf50" : "#e0e0e0",
+              background: pdfFile ? "#4caf50" : "#e0e0e0",
               borderRadius: "4px",
               fontSize: "14px",
-              color: pdfPages.length > 0 ? "white" : "#333",
+              color: pdfFile ? "white" : "#333",
             }}
           >
-            {pdfPages.length > 0 ? `✓ ${pdfName}` : "📎 PDF"}
+            {pdfFile ? `✓ ${pdfName}` : "📎 PDF"}
             <input
               type="file"
               accept=".pdf,.png,.jpg,.jpeg"
