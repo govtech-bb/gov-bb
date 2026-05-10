@@ -68,6 +68,7 @@ export default function FormRenderer({
   stepId,
   visibleSteps,
   repeatableStepSettingsRef,
+  hiddenFieldsRef,
   submissionState,
 }: FormRendererProps) {
   const { navigateToStep, completeAndContinue, currentIndex } = useStepGuard({
@@ -279,6 +280,7 @@ export default function FormRenderer({
               validationProperties={
                 formMeta.validationProperties[group.field.id]
               }
+              hiddenFieldsRef={hiddenFieldsRef}
             />
           );
         })}

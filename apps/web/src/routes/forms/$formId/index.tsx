@@ -35,6 +35,7 @@ function RouteComponent() {
   const [submissionState, setSubmissionState] = React.useState<
     SubmissionState | undefined
   >(undefined);
+  const hiddenFieldsRef = React.useRef<string[]>([]);
 
   const form = useForm({
     defaultValues: {
@@ -133,6 +134,7 @@ function RouteComponent() {
       visibleSteps={visibleSteps}
       repeatableStepSettingsRef={repeatableStepSettingsRef}
       submissionState={submissionState}
+      hiddenFieldsRef={hiddenFieldsRef}
     />
   );
 }

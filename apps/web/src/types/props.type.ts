@@ -13,6 +13,7 @@ export interface FormRendererProps {
   visibleSteps: ClientFormStep[];
   stepId: string;
   repeatableStepSettingsRef: React.MutableRefObject<RepeatableStepSettings>;
+  hiddenFieldsRef: React.MutableRefObject<string[]>;
   submissionState?: SubmissionState;
 }
 

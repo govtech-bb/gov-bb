@@ -10,12 +10,18 @@ export default function FieldRenderer({
   form,
   field,
   validationProperties,
+  hiddenFieldsRef,
 }: {
   form: any;
   field: ClientPrimitive;
   validationProperties: FieldValidationProperties;
+  hiddenFieldsRef: React.MutableRefObject<string[]>;
 }) {
-  if (field.hidden) return null;
+  if (field.hidden) {
+    if (!hiddenFieldsRef.current.includes(field.id))
+      hiddenFieldsRef.current.push(field.id);
+    return null;
+  }
 
   let conditionalRequiredState: RequiredState = "unknownState";
   let fieldArray: FieldArrayBehaviour;
@@ -38,7 +44,18 @@ export default function FieldRenderer({
     );
   }
 
-  if (conditionalRequiredState === "notRequired") return null;
+  if (conditionalRequiredState === "notRequired") {
+    if (!hiddenFieldsRef.current.includes(field.id))
+      hiddenFieldsRef.current.push(field.id);
+    return null;
+  }
+
+  if (hiddenFieldsRef.current.includes(field.id)) {
+    const index = hiddenFieldsRef.current.findIndex(
+      (fieldId) => field.id === fieldId,
+    );
+    if (index > -1) hiddenFieldsRef.current.splice(index, 1);
+  }
 
   return (
     <form.Field name={field.id} validators={validationProperties}>
