@@ -8,10 +8,12 @@ export default function Review({
   formMeta,
   form,
   visibleSteps,
+  hiddenFields,
 }: {
   formMeta: FormMeta;
   form: AnyFormApi;
   visibleSteps: ClientFormStep[];
+  hiddenFields: string[];
 }) {
   const navigate = useNavigate({ from: "/forms/$formId/" });
 
@@ -128,16 +130,18 @@ export default function Review({
 
             <table className={designSystem.reviewFieldTable}>
               <tbody>
-                {step.fields.map((field: ClientPrimitive) => (
-                  <tr key={field.id} className={designSystem.reviewFieldRow}>
-                    <td className={designSystem.reviewFieldLabel}>
-                      {field.label}
-                    </td>
-                    <td className={designSystem.reviewFieldValue}>
-                      {getFieldDisplayValue(field)}
-                    </td>
-                  </tr>
-                ))}
+                {step.fields
+                  .filter((field) => !hiddenFields.includes(field.id))
+                  .map((field: ClientPrimitive) => (
+                    <tr key={field.id} className={designSystem.reviewFieldRow}>
+                      <td className={designSystem.reviewFieldLabel}>
+                        {field.label}
+                      </td>
+                      <td className={designSystem.reviewFieldValue}>
+                        {getFieldDisplayValue(field)}
+                      </td>
+                    </tr>
+                  ))}
               </tbody>
             </table>
           </div>
