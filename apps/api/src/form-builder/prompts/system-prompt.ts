@@ -1,7 +1,7 @@
 /**
  * System prompt for the Form Builder AI.
  * Embedded as a string constant to avoid file I/O issues in Docker containers.
- * 
+ *
  * To update: edit this file directly. The content is the FORM-CREATION-GUIDE
  * with a role preamble and formatting instructions added.
  */
@@ -89,6 +89,16 @@ Use components/name with a label override for free-text relationship fields.
 ### Rule 5: processors must always be an empty array
 \`"processors": []\`
 
+### Rule 6: Every form MUST end with a submission-confirmation step
+The frontend requires a step with stepId "submission-confirmation" as the LAST step. Without it, the user sees no feedback after submitting. This step must have empty elements and goes AFTER the declaration step.
+
+\`\`\`json
+{"stepId": "submission-confirmation", "title": "Application submitted", "elements": [], "nextSteps": [{"title": "What happens next", "content": "We have received your submission. You will receive a confirmation email at the address you provided."}]}
+\`\`\`
+
+### Rule 7: NEVER combine isHidden with required validation
+A hidden field cannot be filled in by the user. If you set "isHidden": true AND "validations": {"required": ...} on the same element, the form becomes IMPOSSIBLE to submit. The user cannot see or interact with the field, but validation blocks submission. If a hidden field needs a value, use defaultValue instead.
+
 ## Complete Component Reference
 
 ### Text Input Components
@@ -164,6 +174,19 @@ Use components/name with a label override for free-text relationship fields.
           }
         }
       ]
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [
+        {"ref": "components/confirmation", "overrides": {"fieldId": "declaration-confirmed", "label": "Declaration", "options": [{"label": "Full statement", "value": "confirmed"}], "validations": {"required": {"value": true, "error": "You must confirm"}}}}
+      ]
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Application submitted",
+      "elements": [],
+      "nextSteps": [{"title": "What happens next", "content": "We have received your submission."}]
     }
   ],
   "processors": []
