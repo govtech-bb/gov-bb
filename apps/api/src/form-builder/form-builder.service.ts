@@ -96,8 +96,19 @@ export class FormBuilderService {
     // Add assistant response
     session.messages.push({ role: "assistant", content: assistantResponse });
 
-    // Try to extract recipe JSON from the response
-    const recipe = this.extractRecipe(assistantResponse);
+    // Try to extract recipe JSON from the latest response
+    let recipe = this.extractRecipe(assistantResponse);
+    
+    // If not found in latest, scan all assistant messages (recipe might be in an earlier one)
+    if (!recipe) {
+      for (let i = session.messages.length - 1; i >= 0; i--) {
+        if (session.messages[i].role === "assistant") {
+          recipe = this.extractRecipe(session.messages[i].content);
+          if (recipe) break;
+        }
+      }
+    }
+    
     if (recipe) {
       session.recipe = recipe;
     }
@@ -223,38 +234,68 @@ VALUES (
 
   /**
    * Try to extract a JSON recipe from the assistant's response.
-   * Looks for a JSON code block containing a formId field.
+   * Uses multiple strategies to find the recipe JSON.
    */
   private extractRecipe(text: string): Record<string, unknown> | null {
-    // Look for ```json ... ``` blocks
+    // Strategy 1: Look for ```json ... ``` blocks
     const jsonBlockRegex = /```json\s*([\s\S]*?)```/g;
     let match: RegExpExecArray | null;
 
     while ((match = jsonBlockRegex.exec(text)) !== null) {
-      try {
-        const parsed = JSON.parse(match[1]);
-        if (parsed.formId && parsed.steps) {
-          return parsed;
+      const parsed = this.tryParseRecipe(match[1]);
+      if (parsed) return parsed;
+    }
+
+    // Strategy 2: Look for ``` ... ``` blocks (without json language tag)
+    const codeBlockRegex = /```\s*([\s\S]*?)```/g;
+    while ((match = codeBlockRegex.exec(text)) !== null) {
+      const parsed = this.tryParseRecipe(match[1]);
+      if (parsed) return parsed;
+    }
+
+    // Strategy 3: Find the largest JSON object in the text that has formId
+    const bracePositions: number[] = [];
+    for (let i = 0; i < text.length; i++) {
+      if (text[i] === "{") bracePositions.push(i);
+    }
+
+    // Try from each opening brace, find matching close
+    for (const start of bracePositions) {
+      let depth = 0;
+      let end = -1;
+      for (let i = start; i < text.length; i++) {
+        if (text[i] === "{") depth++;
+        if (text[i] === "}") depth--;
+        if (depth === 0) {
+          end = i + 1;
+          break;
         }
-      } catch {
-        // Not valid JSON, skip
+      }
+      if (end > start) {
+        const candidate = text.substring(start, end);
+        if (candidate.includes('"formId"') && candidate.includes('"steps"')) {
+          const parsed = this.tryParseRecipe(candidate);
+          if (parsed) return parsed;
+        }
       }
     }
 
-    // Also try to find raw JSON objects with formId
-    const rawJsonRegex = /\{[\s\S]*?"formId"[\s\S]*?"steps"[\s\S]*?\}/;
-    const rawMatch = rawJsonRegex.exec(text);
-    if (rawMatch) {
-      try {
-        const parsed = JSON.parse(rawMatch[0]);
-        if (parsed.formId && parsed.steps) {
-          return parsed;
-        }
-      } catch {
-        // Not valid JSON
-      }
-    }
+    return null;
+  }
 
+  /**
+   * Try to parse a string as a recipe JSON. Returns null if invalid.
+   */
+  private tryParseRecipe(text: string): Record<string, unknown> | null {
+    try {
+      const trimmed = text.trim();
+      const parsed = JSON.parse(trimmed);
+      if (parsed && typeof parsed === "object" && parsed.formId && parsed.steps && Array.isArray(parsed.steps)) {
+        return parsed;
+      }
+    } catch {
+      // Not valid JSON
+    }
     return null;
   }
 }
