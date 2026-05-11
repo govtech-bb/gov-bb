@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { randomUUID } from "crypto";
+import { serviceContractRecipeSchema } from "@govtech-bb/form-types";
 import { AiService } from "./ai.service";
 import {
   ChatMessage,
@@ -153,6 +154,17 @@ export class FormBuilderService {
 
     if (!formId) {
       throw new Error("Recipe has no formId. Provide one via the request.");
+    }
+
+    // Validate recipe against the platform schema before publishing
+    const validation = serviceContractRecipeSchema.safeParse(recipe);
+    if (!validation.success) {
+      const errors = validation.error.issues
+        .map((i) => `${i.path.join(".")}: ${i.message}`)
+        .join("; ");
+      throw new Error(
+        `Recipe validation failed: ${errors}. Ask the AI to fix these issues.`,
+      );
     }
 
     // Build the SQL for export
