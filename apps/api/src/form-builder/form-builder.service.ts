@@ -321,8 +321,25 @@ VALUES (
    */
   private tryParseRecipe(text: string): Record<string, unknown> | null {
     try {
-      const trimmed = text.trim();
-      const parsed = JSON.parse(trimmed);
+      // Strip $recipe$ wrappers if present (AI sometimes outputs inside SQL)
+      let cleaned = text.trim();
+      if (cleaned.includes("$recipe$")) {
+        const start = cleaned.indexOf("$recipe$") + "$recipe$".length;
+        const end = cleaned.lastIndexOf("$recipe$");
+        if (end > start) {
+          cleaned = cleaned.substring(start, end).trim();
+        }
+      }
+      // Strip SQL wrapper if the text starts with INSERT
+      if (cleaned.toUpperCase().startsWith("INSERT")) {
+        const jsonStart = cleaned.indexOf("{");
+        const jsonEnd = cleaned.lastIndexOf("}");
+        if (jsonStart >= 0 && jsonEnd > jsonStart) {
+          cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
+        }
+      }
+      
+      const parsed = JSON.parse(cleaned);
       if (parsed && typeof parsed === "object" && parsed.formId && parsed.steps && Array.isArray(parsed.steps)) {
         return parsed;
       }
