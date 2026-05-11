@@ -349,6 +349,38 @@ function FormBuilderPage() {
           <h3 style={{ margin: 0 }}>Recipe Output</h3>
           <div style={{ display: "flex", gap: "8px" }}>
             <button
+              onClick={async () => {
+                if (!session.sessionId) return;
+                try {
+                  const res = await fetch(
+                    `${API_URL}/form-builder/sessions/${session.sessionId}/extract`,
+                    { method: "POST" },
+                  );
+                  if (res.ok) {
+                    const data = await res.json();
+                    setSession((s) => ({ ...s, recipe: data.recipe }));
+                  } else {
+                    const err = await res.json();
+                    setPublishResult(err.message ?? "No recipe found in conversation");
+                  }
+                } catch {
+                  setPublishResult("Failed to extract recipe");
+                }
+              }}
+              disabled={!session.sessionId || !!session.recipe}
+              style={{
+                padding: "6px 12px",
+                background: session.sessionId && !session.recipe ? "#2196f3" : "#e0e0e0",
+                color: session.sessionId && !session.recipe ? "white" : "#999",
+                border: "none",
+                borderRadius: "4px",
+                cursor: session.sessionId && !session.recipe ? "pointer" : "default",
+                fontSize: "12px",
+              }}
+            >
+              Extract
+            </button>
+            <button
               onClick={handleExportSql}
               disabled={!session.recipe}
               style={{
