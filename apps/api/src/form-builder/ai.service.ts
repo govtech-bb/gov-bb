@@ -171,7 +171,7 @@ export class AiService implements OnModuleInit {
       modelId: this.bedrockModelId,
       system: [{ text: systemPrompt }],
       messages: bedrockMessages as any,
-      inferenceConfig: { maxTokens: 8192 },
+      inferenceConfig: { maxTokens: 16384 },
     });
 
     const response = await this.client.send(command);
