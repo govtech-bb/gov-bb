@@ -137,6 +137,27 @@ export class FormBuilderService {
     return session?.recipe ?? null;
   }
 
+  /**
+   * Manually scan all assistant messages and try to extract a recipe.
+   * Called when automatic extraction missed it.
+   */
+  manualExtract(sessionId: string): Record<string, unknown> | null {
+    const session = this.sessions.get(sessionId);
+    if (!session) return null;
+
+    for (let i = session.messages.length - 1; i >= 0; i--) {
+      if (session.messages[i].role === "assistant") {
+        const recipe = this.extractRecipe(session.messages[i].content);
+        if (recipe) {
+          session.recipe = recipe;
+          this.logger.log(`Manual extraction found recipe in message ${i}`);
+          return recipe;
+        }
+      }
+    }
+    return null;
+  }
+
   async publish(
     sessionId: string,
     formIdOverride?: string,

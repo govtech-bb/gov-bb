@@ -121,6 +121,21 @@ export class FormBuilderController {
   }
 
   /**
+   * Manually trigger recipe extraction from all messages in the session.
+   */
+  @Post("sessions/:sessionId/extract")
+  extractRecipe(@Param("sessionId") sessionId: string) {
+    const result = this.formBuilderService.manualExtract(sessionId);
+    if (!result) {
+      throw new HttpException(
+        "Could not find a valid recipe in the conversation. The AI must output JSON with formId and steps fields.",
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    return { recipe: result };
+  }
+
+  /**
    * Get the SQL export for the current recipe.
    */
   @Get("sessions/:sessionId/sql")
