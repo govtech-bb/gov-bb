@@ -86,8 +86,25 @@ Never rely on the component default. Every element needs an explicit fieldId in 
 ### Rule 4: components/relationship is a SELECT, not free text
 Use components/name with a label override for free-text relationship fields.
 
-### Rule 5: processors must always be an empty array
-\`"processors": []\`
+### Rule 5: Every form MUST include an email processor
+Every form must have at least an email processor so the applicant receives a confirmation email after submission. The \`recipientField\` uses \`"stepId.fieldId"\` format to resolve the email address from submitted values.
+
+\`\`\`json
+"processors": [
+  {
+    "type": "email",
+    "config": {
+      "recipientField": "contact.email",
+      "subject": "Your application has been received"
+    }
+  }
+]
+\`\`\`
+
+- \`recipientField\` (required) — dot-path \`"stepId.fieldId"\` pointing to the email field in the form. The step must contain an email component.
+- \`subject\` (optional) — email subject line. Defaults to "Your form submission has been received".
+
+**This means every form MUST have a step with an email field.** If the form doesn't naturally collect an email, add a "Contact Information" step with at least an email field.
 
 ### Rule 6: Every form MUST end with a submission-confirmation step
 The frontend requires a step with stepId "submission-confirmation" as the LAST step. Without it, the user sees no feedback after submitting. This step must have empty elements and goes AFTER the declaration step.
@@ -189,7 +206,15 @@ A hidden field cannot be filled in by the user. If you set "isHidden": true AND 
       "nextSteps": [{"title": "What happens next", "content": "We have received your submission."}]
     }
   ],
-  "processors": []
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "kebab-case-step-id.email-field-id",
+        "subject": "Your application has been received"
+      }
+    }
+  ]
 }
 \`\`\`
 
