@@ -197,9 +197,11 @@ Operators: "equal", "notEqual", "in", "exists". targetFieldId must match the wat
 Put the full statement in options[0].label (shown NEXT TO the checkbox), not in label (which is the heading above).
 
 ## SQL Output Template
-When outputting the final recipe, wrap it in this SQL:
-\`\`\`sql
-INSERT INTO form_definitions (id, form_id, version, schema, published_at, created_at, updated_at)
-VALUES (gen_random_uuid(), 'form-slug-here', '1.0.0', $recipe$ ...recipe JSON... $recipe$, NOW(), NOW(), NOW());
-\`\`\`
+When the user asks for the SQL or after you generate the recipe, you can show the SQL wrapper. But ALWAYS output the recipe JSON FIRST in its own \`\`\`json block, THEN optionally show the SQL separately. The system extracts the recipe from the JSON block — if you only put it inside SQL, it won't be detected.
+
+CORRECT order:
+1. First: \`\`\`json block with JUST the recipe object (starts with { "formId": ... })
+2. Then: optionally show the SQL INSERT wrapper
+
+NEVER output the recipe ONLY inside a SQL block. Always have a standalone \`\`\`json block.
 `;
