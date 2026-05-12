@@ -1,0 +1,148 @@
+<html>
+  <head>
+    <meta charset='utf-8' />
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+        line-height: 1.6;
+        color: #1a202c;
+        margin: 0;
+        padding: 0;
+        background-color: #f7fafc;
+      }
+      .wrapper {
+        max-width: 680px;
+        margin: 32px auto;
+        background: #ffffff;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+      }
+      .header {
+        background-color: #00267f;
+        color: #ffffff;
+        padding: 28px 32px;
+      }
+      .header h1 {
+        margin: 0 0 6px;
+        font-size: 22px;
+        font-weight: 700;
+        line-height: 1.3;
+      }
+      .header p {
+        margin: 0;
+        font-size: 14px;
+        opacity: 0.85;
+      }
+      .body {
+        padding: 28px 32px;
+      }
+      .intro {
+        font-size: 15px;
+        color: #2d3748;
+        margin: 0 0 24px;
+      }
+      .section {
+        margin-bottom: 28px;
+      }
+      .section-title {
+        font-size: 13px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #718096;
+        margin: 0 0 10px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid #e2e8f0;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      td {
+        padding: 9px 0;
+        font-size: 14px;
+        vertical-align: top;
+        border-bottom: 1px solid #edf2f7;
+      }
+      td:last-child {
+        border-bottom: none;
+      }
+      tr:last-child td {
+        border-bottom: none;
+      }
+      .field-label {
+        color: #718096;
+        width: 42%;
+        padding-right: 16px;
+        font-weight: 500;
+      }
+      .field-value {
+        color: #1a202c;
+      }
+      .footer {
+        background-color: #edf2f7;
+        padding: 20px 32px;
+        font-size: 12px;
+        color: #718096;
+      }
+      .footer table {
+        width: auto;
+      }
+      .footer td {
+        padding: 3px 0;
+        font-size: 12px;
+        color: #718096;
+        border: none;
+      }
+      .footer .footer-label {
+        font-weight: 600;
+        padding-right: 12px;
+        color: #4a5568;
+      }
+    </style>
+  </head>
+  <body>
+    <div class='wrapper'>
+      <div class='header'>
+        <h1>{{formTitle}}</h1>
+        <p>Submission Confirmation</p>
+      </div>
+
+      <div class='body'>
+        <p class='intro'>
+          Your submission has been received. Please keep this email for your
+          records. A summary of your submission is shown below.
+        </p>
+
+        {{#each sections}}
+          <div class='section'>
+            <div class='section-title'>{{title}}</div>
+            <table>
+              {{#each fields}}
+                <tr>
+                  <td class='field-label'>{{label}}</td>
+                  <td class='field-value'>{{value}}</td>
+                </tr>
+              {{/each}}
+            </table>
+          </div>
+        {{/each}}
+      </div>
+
+      <div class='footer'>
+        <table>
+          <tr>
+            <td class='footer-label'>Reference</td>
+            <td>{{submissionId}}</td>
+          </tr>
+          <tr>
+            <td class='footer-label'>Submitted</td>
+            <td>{{submittedAt}}</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </body>
+</html>
