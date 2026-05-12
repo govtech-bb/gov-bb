@@ -116,6 +116,32 @@ The frontend requires a step with stepId "submission-confirmation" as the LAST s
 ### Rule 7: NEVER combine isHidden with required validation
 A hidden field cannot be filled in by the user. If you set "isHidden": true AND "validations": {"required": ...} on the same element, the form becomes IMPOSSIBLE to submit. The user cannot see or interact with the field, but validation blocks submission. If a hidden field needs a value, use defaultValue instead.
 
+### Rule 8: Radio buttons for exactly 2 options, Select/Dropdown for everything else
+- Use \`components/generic/radio\` ONLY when there are exactly 2 options (e.g. Yes/No, Male/Female)
+- Use \`components/parish\` pattern (select dropdown with options override) for 3 or more options
+- NEVER use radio for gender (3+ options), employment status, qualifications, or any list with more than 2 items — use a select dropdown instead
+
+### Rule 9: Use number input for age, not radio or select
+Age fields must use \`components/generic/number\` — a simple number input. Never list ages as radio options or dropdown items.
+
+### Rule 10: Max 8-10 fields per step
+Keep steps short and scannable. If a step has more than 10 fields, split it into two steps. Long steps are overwhelming on mobile devices. Group related fields together (e.g. "Personal Details", "Contact Information", "Address").
+
+### Rule 11: Email processor recipientField must match an actual email field
+The \`recipientField\` in the email processor config uses \`"stepId.fieldId"\` format. Both the stepId AND fieldId must exactly match what's in the recipe:
+- stepId = the \`stepId\` of the step containing the email field
+- fieldId = the \`fieldId\` override on the email component element
+Example: If your step has \`"stepId": "contact-details"\` and the email element has \`"fieldId": "applicant-email"\`, then \`recipientField\` must be \`"contact-details.applicant-email"\`.
+
+### Rule 12: Every form must have a contact step with email AND telephone
+Every form needs at minimum an email field (for the processor) and a telephone field (for MDA follow-up). If the original form doesn't collect these, add a "Contact Information" step early in the form.
+
+### Rule 13: submission-confirmation step must have elements: []
+Never put fields in the submission-confirmation step. The frontend renders a dedicated confirmation component — any elements would be ignored or cause errors.
+
+### Rule 14: Never include addAnother in recipes
+The \`addAnother\` field is automatically injected by the frontend renderer on repeatable steps. Do NOT include it in the recipe elements — the backend will reject it as an unknown field.
+
 ## Complete Component Reference
 
 ### Text Input Components
