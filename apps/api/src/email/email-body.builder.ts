@@ -89,8 +89,33 @@ export class EmailBodyBuilder {
     const sections = contract.steps
       .filter((step) => meta.activeStepIds.includes(step.stepId))
       .filter((step) => !meta.hiddenStepIds.includes(step.stepId))
-      .map((step) => this.buildSection(step, values[step.stepId] ?? {}, meta))
-      .filter((section) => section.fields.length > 0);
+      .flatMap((step) => {
+        const rawVal = values[step.stepId];
+
+        if (Array.isArray(rawVal)) {
+          // Repeatable step (V2 submission values) — one section per instance.
+          // Number titles only when there is more than one instance so that a
+          // single-instance repeatable reads identically to a normal step.
+          const needsIndex = rawVal.length > 1;
+          return rawVal
+            .map((instance, i) =>
+              this.buildSection(
+                step,
+                instance as Record<string, unknown>,
+                meta,
+                needsIndex ? `${step.title} (${i + 1})` : step.title,
+              ),
+            )
+            .filter((s) => s.fields.length > 0);
+        }
+
+        const section = this.buildSection(
+          step,
+          (rawVal as Record<string, unknown>) ?? {},
+          meta,
+        );
+        return section.fields.length > 0 ? [section] : [];
+      });
 
     return {
       formTitle: contract.title,
@@ -121,12 +146,30 @@ export class EmailBodyBuilder {
     step: FormStep,
     stepValues: Record<string, unknown>,
     meta: SubmissionAuditTrail,
+    titleOverride?: string,
   ): EmailSection {
     // When activeFieldIds for a step is absent, default to showing all fields.
     // This keeps new form versions working correctly even if the submission
     // audit trail schema is extended later without recording per-field visibility.
-    const activeFieldIds = meta.activeFieldIds[step.stepId];
-    const hiddenFieldIds = meta.hiddenFieldIds[step.stepId] ?? [];
+    //
+    // V2 audit trails (repeatable steps, PR #156) store per-instance arrays as
+    // string[][] instead of string[]. Flatten to a union set so that .includes()
+    // works correctly regardless of schema version.
+    const rawActive: unknown = meta.activeFieldIds[step.stepId];
+    const activeFieldIds: string[] | undefined =
+      rawActive === undefined
+        ? undefined
+        : isNestedArray(rawActive)
+          ? [...new Set((rawActive as string[][]).flat())]
+          : (rawActive as string[]);
+
+    const rawHidden: unknown = meta.hiddenFieldIds[step.stepId];
+    const hiddenFieldIds: string[] =
+      rawHidden === undefined
+        ? []
+        : isNestedArray(rawHidden)
+          ? [...new Set((rawHidden as string[][]).flat())]
+          : (rawHidden as string[]);
 
     const SKIP_TYPES = new Set<Primitive["htmlType"]>(["file", "show-hide"]);
 
@@ -144,7 +187,7 @@ export class EmailBodyBuilder {
       }))
       .filter((f) => f.value !== "");
 
-    return { title: step.title, fields };
+    return { title: titleOverride ?? step.title, fields };
   }
 
   private formatValue(field: Primitive, raw: unknown): string {
@@ -189,4 +232,13 @@ export class EmailBodyBuilder {
       )
       .join(", ");
   }
+}
+
+/**
+ * Returns true when `value` is a non-empty array whose first element is also
+ * an array — i.e. the `string[][]` shape used by V2 audit trails for repeatable
+ * steps.  A plain `string[]` (V1) returns false.
+ */
+function isNestedArray(value: unknown): boolean {
+  return Array.isArray(value) && value.length > 0 && Array.isArray(value[0]);
 }

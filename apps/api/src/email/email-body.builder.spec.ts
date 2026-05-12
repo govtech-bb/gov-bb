@@ -273,7 +273,16 @@ describe("EmailBodyBuilder", () => {
       builder = new EmailBodyBuilder(formSvc);
 
       const payload = makePayload();
-      payload.meta.activeFieldIds["personal"]!.push("cv", "note");
+      payload.meta.activeFieldIds["personal"] = [
+        "firstName",
+        "lastName",
+        "gender",
+        "interests",
+        "country",
+        "languages",
+        "cv",
+        "note",
+      ];
 
       const ctx = await builder.build(payload);
       const labels = ctx.sections[0].fields.map((f) => f.label);
@@ -302,6 +311,189 @@ describe("EmailBodyBuilder", () => {
       const field = ctx.sections[0].fields.find((f) => f.label === "Gender");
 
       expect(field?.value).toBe("other");
+    });
+  });
+
+  describe("repeatable step handling (V2 submission values)", () => {
+    function makeRepeatableContract(): ServiceContract {
+      return makeContract({
+        steps: [
+          {
+            stepId: "directors",
+            title: "Director",
+            repeatable: true,
+            elements: [
+              { fieldId: "name", label: "Full Name", htmlType: "text" },
+              { fieldId: "role", label: "Role", htmlType: "text" },
+            ],
+          } as unknown as ServiceContract["steps"][number],
+        ],
+      });
+    }
+
+    it("emits one section per repeatable instance when values is an array", async () => {
+      formSvc = makeFormDefinitionsService(makeRepeatableContract());
+      builder = new EmailBodyBuilder(formSvc);
+
+      const payload = makePayload({
+        values: {
+          directors: [
+            { name: "Alice", role: "CEO" },
+            { name: "Bob", role: "CFO" },
+          ] as unknown as Record<string, unknown>,
+        },
+        meta: {
+          schemaVersion: 1,
+          pinnedFormVersion: "1.0.0",
+          draftId: null,
+          activeStepIds: ["directors"],
+          hiddenStepIds: [],
+          activeFieldIds: { directors: ["name", "role"] },
+          hiddenFieldIds: {},
+          visitedPages: [0],
+          submittedAt: "2026-05-12T10:00:00.000Z",
+        },
+      });
+
+      const ctx = await builder.build(payload);
+
+      expect(ctx.sections).toHaveLength(2);
+      expect(ctx.sections[0].title).toBe("Director (1)");
+      expect(ctx.sections[1].title).toBe("Director (2)");
+      expect(ctx.sections[0].fields).toEqual([
+        { label: "Full Name", value: "Alice" },
+        { label: "Role", value: "CEO" },
+      ]);
+      expect(ctx.sections[1].fields).toEqual([
+        { label: "Full Name", value: "Bob" },
+        { label: "Role", value: "CFO" },
+      ]);
+    });
+
+    it("omits the instance index when there is only one repeatable instance", async () => {
+      formSvc = makeFormDefinitionsService(makeRepeatableContract());
+      builder = new EmailBodyBuilder(formSvc);
+
+      const payload = makePayload({
+        values: {
+          directors: [{ name: "Alice", role: "CEO" }] as unknown as Record<
+            string,
+            unknown
+          >,
+        },
+        meta: {
+          schemaVersion: 1,
+          pinnedFormVersion: "1.0.0",
+          draftId: null,
+          activeStepIds: ["directors"],
+          hiddenStepIds: [],
+          activeFieldIds: { directors: ["name", "role"] },
+          hiddenFieldIds: {},
+          visitedPages: [0],
+          submittedAt: "2026-05-12T10:00:00.000Z",
+        },
+      });
+
+      const ctx = await builder.build(payload);
+
+      expect(ctx.sections).toHaveLength(1);
+      expect(ctx.sections[0].title).toBe("Director");
+    });
+
+    it("skips repeatable instances whose every field is empty", async () => {
+      formSvc = makeFormDefinitionsService(makeRepeatableContract());
+      builder = new EmailBodyBuilder(formSvc);
+
+      const payload = makePayload({
+        values: {
+          directors: [
+            { name: "Alice", role: "CEO" },
+            { name: "", role: "" }, // empty instance
+          ] as unknown as Record<string, unknown>,
+        },
+        meta: {
+          schemaVersion: 1,
+          pinnedFormVersion: "1.0.0",
+          draftId: null,
+          activeStepIds: ["directors"],
+          hiddenStepIds: [],
+          activeFieldIds: { directors: ["name", "role"] },
+          hiddenFieldIds: {},
+          visitedPages: [0],
+          submittedAt: "2026-05-12T10:00:00.000Z",
+        },
+      });
+
+      const ctx = await builder.build(payload);
+
+      // Only the non-empty instance should appear; index is still applied
+      // because the raw array had length > 1
+      expect(ctx.sections).toHaveLength(1);
+      expect(ctx.sections[0].title).toBe("Director (1)");
+    });
+  });
+
+  describe("V2 audit trail activeFieldIds (string[][])", () => {
+    // Helper that builds a payload with V2-style nested arrays injected via
+    // unknown so TypeScript does not widen the type of `meta` used in other tests.
+    function makeV2Payload(
+      activeOverride: Record<string, unknown>,
+      hiddenOverride: Record<string, unknown> = {},
+    ): SubmissionCreatedEvent {
+      return {
+        ...makePayload(),
+        meta: {
+          ...makePayload().meta,
+          activeFieldIds: activeOverride as unknown as Record<string, string[]>,
+          hiddenFieldIds: hiddenOverride as unknown as Record<string, string[]>,
+        },
+      };
+    }
+
+    it("flattens string[][] activeFieldIds and filters fields correctly", async () => {
+      // Simulate V2 per-instance activeFieldIds where different instances expose
+      // different fields — the union should be shown in the email.
+      const payload = makeV2Payload({
+        personal: [
+          ["firstName", "gender"],
+          ["firstName", "lastName"],
+        ],
+        contact: ["email", "phone"],
+      });
+
+      const ctx = await builder.build(payload);
+      const labels = ctx.sections[0].fields.map((f) => f.label);
+
+      // Union across both instances: firstName ∪ gender ∪ lastName
+      expect(labels).toContain("First Name");
+      expect(labels).toContain("Last Name");
+      expect(labels).toContain("Gender");
+      // country/languages/interests not in any instance's activeFieldIds
+      expect(labels).not.toContain("Country");
+      expect(labels).not.toContain("Languages");
+    });
+
+    it("flattens string[][] hiddenFieldIds and hides fields correctly", async () => {
+      const payload = makeV2Payload(
+        {
+          personal: [
+            "firstName",
+            "lastName",
+            "gender",
+            "interests",
+            "country",
+            "languages",
+          ],
+          contact: ["email", "phone"],
+        },
+        { personal: [["lastName"], ["lastName"]] },
+      );
+
+      const ctx = await builder.build(payload);
+      const labels = ctx.sections[0].fields.map((f) => f.label);
+
+      expect(labels).not.toContain("Last Name");
+      expect(labels).toContain("First Name");
     });
   });
 
