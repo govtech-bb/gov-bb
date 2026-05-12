@@ -395,7 +395,11 @@ describe("SubmissionPipelineService — integration (real conditions + validatio
 
       expect(error).toBeInstanceOf(UnprocessableEntityException);
       expect(
-        (error!.getResponse() as any).errors["employment-info"].salary,
+        (
+          error!.getResponse() as {
+            errors: Record<string, Record<string, string[]>>;
+          }
+        ).errors["employment-info"].salary,
       ).toContain("Salary must exceed minimum wage");
     });
 
@@ -449,9 +453,11 @@ describe("SubmissionPipelineService — integration (real conditions + validatio
 
       expect(error).toBeInstanceOf(UnprocessableEntityException);
       expect(
-        (error!.getResponse() as any).errors["supporting-docs"][
-          "upload-document"
-        ],
+        (
+          error!.getResponse() as {
+            errors: Record<string, Record<string, string[]>>;
+          }
+        ).errors["supporting-docs"]["upload-document"],
       ).toContain("Only PDF or JPG accepted");
     });
   });
@@ -508,7 +514,11 @@ describe("SubmissionPipelineService — integration (real conditions + validatio
       }
 
       expect(error).toBeInstanceOf(UnprocessableEntityException);
-      const errors = (error!.getResponse() as any).errors;
+      const errors = (
+        error!.getResponse() as {
+          errors: Record<string, Record<string, string[]>>;
+        }
+      ).errors;
 
       expect(errors["personal-info"]["first-name"]).toBeDefined();
       expect(errors["employment-info"]["employer-name"]).toBeDefined();
@@ -534,9 +544,9 @@ describe("SubmissionPipelineService — integration (real conditions + validatio
       },
     };
 
-    it("schemaVersion is 1", async () => {
+    it("schemaVersion is 2", async () => {
       const { auditTrail } = await service.run(makeDto(VALUES));
-      expect(auditTrail.schemaVersion).toBe(1);
+      expect(auditTrail.schemaVersion).toBe(2);
     });
 
     it("pinnedFormVersion matches draft", async () => {
@@ -550,5 +560,253 @@ describe("SubmissionPipelineService — integration (real conditions + validatio
         auditTrail.submittedAt,
       );
     });
+  });
+});
+
+// ─── Repeatable step handling (E2E pipeline) ────────────────────────────────
+
+import type { RepeatableBehaviour } from "@govtech-bb/form-types";
+
+// Test contract: one non-repeatable step + one repeatable step with a
+// conditionally-required field inside.
+const REPEAT_CONTRACT: ServiceContract = {
+  formId: "f-repeat",
+  title: "Repeatable",
+  version: "1.0.0",
+  createdAt: "2026-01-01T00:00:00",
+  updatedAt: "2026-01-01T00:00:00",
+  steps: [
+    {
+      stepId: "personal",
+      title: "personal",
+      behaviours: [],
+      elements: [
+        {
+          fieldId: "first-name",
+          label: "First name",
+          htmlType: "text",
+          validations: {
+            required: { value: true, error: "First name is required" },
+          },
+        },
+      ],
+    },
+    {
+      stepId: "jobs",
+      title: "jobs",
+      behaviours: [
+        { type: "repeatable", min: 1, max: 3 } as RepeatableBehaviour,
+      ],
+      elements: [
+        {
+          fieldId: "has-job",
+          label: "Has job?",
+          htmlType: "radio",
+          options: [
+            { label: "Yes", value: "yes" },
+            { label: "No", value: "no" },
+          ],
+          validations: {
+            required: { value: true, error: "Select an option" },
+          },
+        },
+        {
+          fieldId: "employer",
+          label: "Employer",
+          htmlType: "text",
+          behaviours: [
+            {
+              type: "fieldConditionalOn",
+              targetFieldId: "has-job",
+              operator: "equal",
+              value: "yes",
+            },
+          ],
+          validations: {
+            required: { value: true, error: "Employer is required" },
+          },
+        },
+      ],
+    },
+  ],
+} as ServiceContract;
+
+function buildModuleWith(contract: ServiceContract): Promise<{
+  service: SubmissionPipelineService;
+}> {
+  return Test.createTestingModule({
+    providers: [
+      SubmissionPipelineService,
+      {
+        provide: FormDraftsService,
+        useValue: { findById: jest.fn().mockResolvedValue(null) },
+      },
+      {
+        provide: FormDefinitionsService,
+        useValue: { findByFormId: jest.fn().mockResolvedValue(contract) },
+      },
+    ],
+  })
+    .compile()
+    .then((m) => ({ service: m.get(SubmissionPipelineService) }));
+}
+
+function repeatDto(values: Record<string, unknown>): SubmitDto {
+  return {
+    idempotencyKey: "ik",
+    formId: "f-repeat",
+    formVersion: "1.0.0",
+    values: values as SubmitDto["values"],
+  };
+}
+
+describe("repeatable step handling (E2E pipeline)", () => {
+  let service: SubmissionPipelineService;
+
+  beforeEach(async () => {
+    ({ service } = await buildModuleWith(REPEAT_CONTRACT));
+  });
+
+  it("validates each instance independently — instance 0 valid, instance 1 missing required", async () => {
+    const dto = repeatDto({
+      personal: { "first-name": "Marcus" },
+      jobs: [
+        { "has-job": "yes", employer: "ACME" },
+        { "has-job": "yes" }, // missing employer
+      ],
+    });
+
+    await expect(service.run(dto)).rejects.toMatchObject({
+      response: {
+        errors: {
+          jobs: {
+            instances: [
+              {},
+              expect.objectContaining({ employer: expect.any(Array) }),
+            ],
+          },
+        },
+      },
+    });
+  });
+
+  it("emits step-level _step error when count below min (empty array)", async () => {
+    const dto = repeatDto({
+      personal: { "first-name": "Marcus" },
+      jobs: [],
+    });
+
+    await expect(service.run(dto)).rejects.toMatchObject({
+      response: {
+        errors: {
+          jobs: {
+            _step: [expect.stringMatching(/at least 1 entry/i)],
+            instances: [],
+          },
+        },
+      },
+    });
+  });
+
+  it("evaluates fieldConditionalOn per instance — employer hidden when has-job=no", async () => {
+    const dto = repeatDto({
+      personal: { "first-name": "Marcus" },
+      jobs: [
+        { "has-job": "no" }, // employer hidden → not required
+        { "has-job": "yes", employer: "Initech" },
+      ],
+    });
+
+    const result = await service.run(dto);
+    expect(result.normalizedValues.jobs).toEqual([
+      { "has-job": "no" },
+      { "has-job": "yes", employer: "Initech" },
+    ]);
+  });
+
+  it("rejects unknown fieldIds inside a repeatable instance with 400, not 422", async () => {
+    const dto = repeatDto({
+      personal: { "first-name": "Marcus" },
+      jobs: [{ "has-job": "no", addAnother: "no" }],
+    });
+
+    await expect(service.run(dto)).rejects.toMatchObject({
+      response: {
+        message: "Bad submission payload",
+        errors: expect.arrayContaining([
+          expect.objectContaining({
+            stepId: "jobs",
+            reason: "unknown_field",
+            detail: expect.objectContaining({ fieldId: "addAnother" }),
+          }),
+        ]),
+      },
+    });
+  });
+
+  it("skips min enforcement when repeatable step is hidden by stepConditionalOn", async () => {
+    const gatedContract: ServiceContract = {
+      ...REPEAT_CONTRACT,
+      steps: REPEAT_CONTRACT.steps.map((s) =>
+        s.stepId !== "jobs"
+          ? s
+          : {
+              ...s,
+              behaviours: [
+                { type: "repeatable", min: 1, max: 3 } as RepeatableBehaviour,
+                {
+                  type: "stepConditionalOn",
+                  targetFieldId: "first-name",
+                  targetStepId: "personal",
+                  operator: "equal",
+                  value: "show-jobs",
+                } as never,
+              ],
+            },
+      ),
+    };
+    ({ service } = await buildModuleWith(gatedContract));
+
+    const dto = repeatDto({
+      personal: { "first-name": "Marcus" }, // != "show-jobs" → step hidden
+      // jobs omitted
+    });
+
+    const result = await service.run(dto);
+    expect(result.normalizedValues.jobs).toBeUndefined();
+  });
+
+  it("persists normalized values — hidden field dropped from instance", async () => {
+    const dto = repeatDto({
+      personal: { "first-name": "Marcus" },
+      jobs: [
+        // employer is conditionally hidden when has-job=no; if present in
+        // payload it must be dropped from storage.
+        { "has-job": "no", employer: "leaked" },
+      ],
+    });
+
+    const result = await service.run(dto);
+    expect(result.normalizedValues.jobs).toEqual([{ "has-job": "no" }]);
+  });
+
+  it("audit trail schemaVersion=2 — repeatable step has string[][] activeFieldIds", async () => {
+    const dto = repeatDto({
+      personal: { "first-name": "Marcus" },
+      jobs: [{ "has-job": "yes", employer: "ACME" }, { "has-job": "no" }],
+    });
+
+    const result = await service.run(dto);
+    expect(result.auditTrail.schemaVersion).toBe(2);
+    const jobsActive = result.auditTrail.activeFieldIds["jobs"];
+    expect(Array.isArray(jobsActive)).toBe(true);
+    // Repeatable with >1 instance → string[][].
+    expect(Array.isArray((jobsActive as unknown[])[0])).toBe(true);
+    // Instance 0 (has-job=yes): both has-job and employer active.
+    expect((jobsActive as string[][])[0]).toEqual(
+      expect.arrayContaining(["has-job", "employer"]),
+    );
+    // Instance 1 (has-job=no): only has-job; employer hidden.
+    expect((jobsActive as string[][])[1]).toEqual(["has-job"]);
   });
 });

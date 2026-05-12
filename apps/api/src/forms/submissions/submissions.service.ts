@@ -45,7 +45,8 @@ export class SubmissionsService {
       };
     }
 
-    const { draft, contract, auditTrail } = await this.pipeline.run(dto);
+    const { draft, contract, auditTrail, normalizedValues } =
+      await this.pipeline.run(dto);
     const pinnedVersion = draft?.formVersion ?? dto.formVersion;
 
     const rawProcessors = contract.processors ?? [];
@@ -66,7 +67,7 @@ export class SubmissionsService {
         idempotencyKey,
         formId: dto.formId,
         formVersion: pinnedVersion,
-        values: dto.values,
+        values: normalizedValues,
         meta: auditTrail as unknown as Record<string, unknown>,
         status: hasGating
           ? FormSubmissionStatus.PENDING_PAYMENT
@@ -83,7 +84,7 @@ export class SubmissionsService {
       formVersion: pinnedVersion,
       idempotencyKey: dto.idempotencyKey,
       processors: rawProcessors,
-      values: dto.values,
+      values: normalizedValues,
       meta: auditTrail,
     };
 
@@ -91,7 +92,7 @@ export class SubmissionsService {
       const resolvedForGating = this.expressions.resolveProcessors(
         rawProcessors,
         {
-          values: dto.values,
+          values: normalizedValues,
           meta: auditTrail as unknown as Record<string, unknown>,
           submission: {
             id: saved.id,

@@ -2,11 +2,14 @@ import { Injectable, Logger, Optional } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
 import { EmailTemplateService } from "../../../email/email-template.service";
+import { EmailBodyBuilder } from "../../../email/email-body.builder";
 import type {
   ISubmissionProcessor,
   ProcessorOutput,
 } from "./submission-processor.interface";
 import type { SubmissionCreatedEvent } from "../submissions.types";
+
+const CONFIRMATION_TEMPLATE = "submission-confirmation";
 
 @Injectable()
 export class EmailProcessor implements ISubmissionProcessor {
@@ -20,6 +23,8 @@ export class EmailProcessor implements ISubmissionProcessor {
     config: ConfigService,
     @Optional()
     private readonly templateService: EmailTemplateService | null = null,
+    @Optional()
+    private readonly emailBodyBuilder: EmailBodyBuilder | null = null,
   ) {
     this.from = config.get<string>("email.from") ?? "noreply@gov.bb";
     this.configurationSet = config.get<string>("email.configurationSet");
@@ -40,9 +45,15 @@ export class EmailProcessor implements ISubmissionProcessor {
       return { kind: "completed" };
     }
 
-    // recipientField format: "stepId.fieldId"
+    // recipientField format: "stepId.fieldId". Targeting fields inside a
+    // repeatable step is not supported here — falls through to the
+    // warning below.
     const [stepId, fieldId] = recipientField.split(".");
-    const to = payload.values[stepId]?.[fieldId] as string | undefined;
+    const stepValues = payload.values[stepId];
+    const to =
+      stepValues && !Array.isArray(stepValues)
+        ? (stepValues[fieldId] as string | undefined)
+        : undefined;
 
     if (!to) {
       this.logger.warn(
@@ -55,7 +66,7 @@ export class EmailProcessor implements ISubmissionProcessor {
       (cfg["subject"] as string | undefined) ??
       "Your form submission has been received";
 
-    const htmlBody = this.resolveHtmlBody(payload, cfg);
+    const htmlBody = await this.resolveHtmlBody(payload);
 
     await this.client.send(
       new SendEmailCommand({
@@ -77,11 +88,7 @@ export class EmailProcessor implements ISubmissionProcessor {
           },
         },
         // EmailTags are forwarded to the SES event destination (SNS/EventBridge).
-        // Tagging with submissionId lets the configuration set's bounce/complaint
-        // stream filter or deduplicate events per submission without extra plumbing.
         EmailTags: [{ Name: "submissionId", Value: payload.submissionId }],
-        // ConfigurationSetName wires this send into the SES event destination
-        // so bounces and complaints are tracked automatically.
         ...(this.configurationSet && {
           ConfigurationSetName: this.configurationSet,
         }),
@@ -96,55 +103,33 @@ export class EmailProcessor implements ISubmissionProcessor {
   }
 
   /**
-   * Determines the HTML email body.
+   * Builds the HTML body for the confirmation email.
    *
-   * Resolution order:
-   * 1. `templateId` from processor config — explicit per-processor override
-   * 2. `payload.formId` — auto-maps the form slug to its `.hbs` template
-   * 3. Generic inline HTML — fallback when no template is found
+   * Delegates to EmailBodyBuilder (which handles form contract fetching and
+   * caching) then renders the shared `submission-confirmation` template.
+   * Falls back to a minimal inline table if either dependency is unavailable
+   * or an error is thrown — ensuring the email is always sent.
    */
-  private resolveHtmlBody(
+  private async resolveHtmlBody(
     payload: SubmissionCreatedEvent,
-    cfg: Record<string, unknown>,
-  ): string {
-    if (this.templateService) {
-      const templateId =
-        (cfg["templateId"] as string | undefined) ?? payload.formId;
-
-      const rendered = this.templateService.render(
-        templateId,
-        this.buildTemplateContext(payload),
-      );
-
-      if (rendered !== null) return rendered;
-
-      this.logger.debug(
-        `[email] No template found for "${templateId}", falling back to generic body`,
-      );
+  ): Promise<string> {
+    if (this.templateService && this.emailBodyBuilder) {
+      try {
+        const ctx = await this.emailBodyBuilder.build(payload);
+        const rendered = this.templateService.render(
+          CONFIRMATION_TEMPLATE,
+          ctx as unknown as Record<string, unknown>,
+        );
+        if (rendered !== null) return rendered;
+      } catch (err) {
+        this.logger.warn(
+          `[email] Could not render confirmation template for form "${payload.formId}" — falling back to generic body`,
+          err,
+        );
+      }
     }
 
     return this.buildHtmlBody(payload);
-  }
-
-  /**
-   * Builds the Handlebars rendering context from the submission payload.
-   *
-   * Each step's field map is spread as a top-level key so that template
-   * expressions like `{{personal.firstName}}` resolve directly against
-   * `payload.values.personal.firstName`.
-   *
-   * Additionally, `submissionId`, `processedAt`, and `submittedAt` are
-   * injected at the root level for use in template footers / headers.
-   */
-  private buildTemplateContext(
-    payload: SubmissionCreatedEvent,
-  ): Record<string, unknown> {
-    return {
-      ...payload.values,
-      submissionId: payload.submissionId,
-      processedAt: new Date().toISOString(),
-      submittedAt: payload.meta.submittedAt,
-    };
   }
 
   private buildTextBody(payload: SubmissionCreatedEvent): string {

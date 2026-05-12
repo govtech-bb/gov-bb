@@ -1,42 +1,91 @@
-import { IsNotEmpty, IsObject, IsOptional, IsString } from "class-validator";
+import {
+  IsNotEmpty,
+  IsObject,
+  IsOptional,
+  IsString,
+  Validate,
+  ValidatorConstraint,
+  type ValidatorConstraintInterface,
+} from "class-validator";
 import { ApiProperty } from "@nestjs/swagger";
-import type { StepScopedValues } from "../submissions.types";
+import type { SubmissionValues } from "../submissions.types";
+
+const MAX_INSTANCES_HARD = 500;
+const MAX_TOTAL_INSTANCES = 2000;
+
+function describeShapeFailure(value: unknown): string | null {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return "values must be an object keyed by stepId";
+  }
+  const obj = value as Record<string, unknown>;
+
+  let totalInstances = 0;
+  for (const [stepId, stepVal] of Object.entries(obj)) {
+    if (Array.isArray(stepVal)) {
+      if (stepVal.length > MAX_INSTANCES_HARD) {
+        return `step '${stepId}' exceeds ${MAX_INSTANCES_HARD} instances`;
+      }
+      totalInstances += stepVal.length;
+      for (let i = 0; i < stepVal.length; i++) {
+        const inst = stepVal[i];
+        if (typeof inst !== "object" || inst === null || Array.isArray(inst)) {
+          return `step '${stepId}' instance ${i} must be an object`;
+        }
+      }
+    } else if (typeof stepVal !== "object" || stepVal === null) {
+      return `step '${stepId}' must be an object or array`;
+    } else {
+      totalInstances += 1;
+    }
+  }
+  if (totalInstances > MAX_TOTAL_INSTANCES) {
+    return `total instances across all steps exceeds ${MAX_TOTAL_INSTANCES}`;
+  }
+
+  return null;
+}
+
+// class-validator caches one instance of this constraint and reuses it
+// across concurrent requests, so any field on `this` would leak between
+// requests. `validate` and `defaultMessage` both call the pure
+// `describeShapeFailure` instead.
+@ValidatorConstraint({ name: "submissionValuesShape", async: false })
+class SubmissionValuesShape implements ValidatorConstraintInterface {
+  validate(value: unknown): boolean {
+    return describeShapeFailure(value) === null;
+  }
+  defaultMessage(args?: { value?: unknown }): string {
+    return describeShapeFailure(args?.value) ?? "Invalid submission values";
+  }
+}
 
 export class CreateSubmissionDto {
-  @ApiProperty({
-    description: "The ID of the form being submitted",
-    example: "passport-renewal",
-  })
+  @ApiProperty({ description: "Form ID", example: "passport-renewal" })
   @IsString()
   @IsNotEmpty()
   formId!: string;
 
-  @ApiProperty({
-    description:
-      "The form version to submit against. When a draftId is supplied this must match the draft's pinned version.",
-    example: "1.0.0",
-  })
+  @ApiProperty({ description: "Form version", example: "1.0.0" })
   @IsString()
   @IsNotEmpty()
   formVersion!: string;
 
-  @ApiProperty({
-    description:
-      "Optional draft ID being finalised into a submission. Omit for stateless submissions that don't go through draft state.",
-    example: "user-123-passport-draft",
-    required: false,
-  })
+  @ApiProperty({ description: "Optional draft ID", required: false })
   @IsOptional()
   @IsString()
   @IsNotEmpty()
   draftId?: string;
 
   @ApiProperty({
-    description: "Step-scoped field values keyed by stepId",
+    description: "Step-scoped field values; repeatable steps are arrays",
     type: "object",
     additionalProperties: true,
-    example: { personalDetails: { firstName: "Jane", surname: "Doe" } },
+    example: {
+      personal: { firstName: "Jane" },
+      jobs: [{ employer: "ACME" }],
+    },
   })
   @IsObject()
-  values!: StepScopedValues;
+  @Validate(SubmissionValuesShape)
+  values!: SubmissionValues;
 }
