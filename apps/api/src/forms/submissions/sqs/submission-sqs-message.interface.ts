@@ -1,6 +1,6 @@
 import type { Processor } from "@govtech-bb/form-types";
 import type {
-  StepScopedValues,
+  SubmissionValues,
   SubmissionAuditTrail,
 } from "../submissions.types";
 
@@ -17,7 +17,7 @@ export interface SubmissionSqsMessage {
   formId: string;
   formVersion: string;
   idempotencyKey: string;
-  values: StepScopedValues;
+  values: SubmissionValues;
   meta: SubmissionAuditTrail;
   processors: Processor[];
   enqueuedAt: string; // ISO-8601

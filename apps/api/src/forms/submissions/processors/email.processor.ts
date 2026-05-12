@@ -40,9 +40,15 @@ export class EmailProcessor implements ISubmissionProcessor {
       return { kind: "completed" };
     }
 
-    // recipientField format: "stepId.fieldId"
+    // recipientField format: "stepId.fieldId". Targeting fields inside a
+    // repeatable step is not supported here — falls through to the
+    // warning below.
     const [stepId, fieldId] = recipientField.split(".");
-    const to = payload.values[stepId]?.[fieldId] as string | undefined;
+    const stepValues = payload.values[stepId];
+    const to =
+      stepValues && !Array.isArray(stepValues)
+        ? (stepValues[fieldId] as string | undefined)
+        : undefined;
 
     if (!to) {
       this.logger.warn(

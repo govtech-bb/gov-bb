@@ -9,7 +9,7 @@ import type {
 } from "./submission-processor.interface";
 import type {
   SubmissionCreatedEvent,
-  StepScopedValues,
+  SubmissionValues,
 } from "../submissions.types";
 
 /** Column index (1-based) where the submission ID is stored — used for dedup checks. */
@@ -98,12 +98,14 @@ export class SpreadsheetProcessor implements ISubmissionProcessor {
 }
 
 /**
- * Flatten step-scoped values into a single record keyed by "stepId.fieldId".
- * This produces a stable, predictable column order for the spreadsheet.
+ * Flatten step-scoped values to "stepId.fieldId" keys for a stable column
+ * order. Repeatable steps are skipped — column-mapping syntax for them is
+ * not defined yet.
  */
-function flattenValues(values: StepScopedValues): Record<string, unknown> {
+function flattenValues(values: SubmissionValues): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   for (const [stepId, fields] of Object.entries(values)) {
+    if (Array.isArray(fields)) continue;
     for (const [fieldId, value] of Object.entries(fields)) {
       result[`${stepId}.${fieldId}`] = value;
     }

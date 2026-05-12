@@ -13,20 +13,28 @@ export function resolveReference(
 
   if (targetStepId !== undefined) {
     const target = allValues[targetStepId];
-    if (target !== undefined && referenceFieldId in target)
-      return target[referenceFieldId];
-    // targetStepId not in allValues yet — fall back to stepValues
+    if (target === undefined) {
+      if (referenceFieldId in stepValues) return stepValues[referenceFieldId];
+      return MISSING;
+    }
+    if (Array.isArray(target)) {
+      const inst = target[0];
+      if (inst && referenceFieldId in inst) return inst[referenceFieldId];
+      return MISSING;
+    }
+    if (referenceFieldId in target) return target[referenceFieldId];
     if (referenceFieldId in stepValues) return stepValues[referenceFieldId];
     return MISSING;
   }
 
-  // Flat fallback — scan all saved steps, then the current step's values
-  for (const saved of Object.values(allValues)) {
-    if (referenceFieldId in saved) return saved[referenceFieldId];
-  }
   if (referenceFieldId in stepValues) return stepValues[referenceFieldId];
 
-  return MISSING;
+  let resolved: unknown = MISSING;
+  for (const saved of Object.values(allValues)) {
+    if (Array.isArray(saved)) continue;
+    if (referenceFieldId in saved) resolved = saved[referenceFieldId];
+  }
+  return resolved;
 }
 
 export { MISSING };
