@@ -4,6 +4,7 @@ import {
   buildForm,
   getVisibleSteps,
   getFullFieldId,
+  restoreRepeatableStepsFromStorage,
 } from "@web/lib";
 import { FormRenderer, FormError } from "@web/components";
 import { formSearchParamSchema } from "apps/web/src/types/form-search-param.type";
@@ -41,10 +42,29 @@ function RouteComponent() {
     formMeta.repeatSettings,
   );
 
+  // Read session-storage once here so we can use it for both restoration and
+  // form default values without issuing two reads.
+  const savedFormData = getFormData(formMeta.formId);
+
+  // Re-create any extra repeatable-step instances the user had added before
+  // the refresh.  Must happen before useForm so the saved field values land
+  // on the correct (restored) steps.
+  const hasRestoredRef = React.useRef(false);
+  if (!hasRestoredRef.current) {
+    if (savedFormData) {
+      restoreRepeatableStepsFromStorage(
+        savedFormData,
+        formMeta,
+        repeatableStepSettingsRef.current,
+      );
+    }
+    hasRestoredRef.current = true;
+  }
+
   const form = useForm({
     defaultValues: {
       ...(formMeta.defaultValues as FormValues),
-      ...(getFormData(formMeta.formId) ?? {}),
+      ...(savedFormData ?? {}),
     },
     onSubmit: async ({ value }) => {
       const values = value as FormValues;

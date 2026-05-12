@@ -15,6 +15,7 @@ export {
   getRepeatStepCount,
   removeRepeatableStep,
   addRepeatableStep,
+  restoreRepeatableStepsFromStorage,
 } from "./helpers/repeatable-helper";
 export {
   checkConditionalOn,
