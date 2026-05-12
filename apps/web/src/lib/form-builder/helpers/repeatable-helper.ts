@@ -6,6 +6,7 @@ import {
   AddRepeatableStepParams,
   RemoveRepeatableStepParams,
   FormValues,
+  FormMeta,
 } from "@web/types";
 import { getFullFieldId } from "@web/lib";
 import {
@@ -294,6 +295,86 @@ export const removeRepeatableStep = ({
 
   // Filter visible steps
   return visibleSteps.filter((step) => !toRemove.includes(step.stepId));
+};
+
+// Restores any extra repeatable-step instances that were added at runtime
+// (via "Add another?") but are absent from `formMeta` after a page refresh.
+// On refresh `buildForm` / `setupRepeatSteps` only materialises the minimum
+// number of repeat instances from the contract.  Any instances the user added
+// beyond that minimum exist only as field values in session storage
+// (e.g. `personalInfo~2_firstName`).  This function:
+//
+//  1. Scans every key in `savedData` and extracts the step-ID prefix
+//     (everything before the last `_`, matching the `getFullFieldId` pattern).
+//  2. For each base repeatable step in `repeatableStepSettings`, identifies
+//     which `baseStep~N` (N > existing min) instances have saved data but are
+//     absent from `formMeta.steps`.
+//  3. Re-runs `addRepeatableStep` for each missing instance in ascending order
+//     so that `formMeta.steps` and `repeatableStepSettings` are brought back
+//     to the state they were in before the refresh.
+// // Must be called **before** `useForm` is initialised so that default values
+// merged from session storage map correctly onto the restored steps.
+export const restoreRepeatableStepsFromStorage = (
+  savedData: Record<string, unknown>,
+  formMeta: FormMeta,
+  repeatableStepSettings: RepeatableStepSettings,
+): void => {
+  // ── 1. Collect every step ID referenced by a saved form-data key ─────────
+  // Key format:  `${stepId}_${fieldId}`  (see getFullFieldId)
+  // stepId is everything before the last underscore.
+  const savedStepIds = new Set<string>();
+  for (const key of Object.keys(savedData)) {
+    const sep = key.lastIndexOf("_");
+    if (sep !== -1) savedStepIds.add(key.substring(0, sep));
+  }
+
+  // ── 2. For every base repeatable step, recreate missing instances ─────────
+  for (const [baseStepId, config] of Object.entries(repeatableStepSettings)) {
+    // Only consider IDs of the form  `baseStep~N`  (repeat count > 0) that
+    // aren't already present in the current ordered list.
+    const missingInstances = [...savedStepIds]
+      .filter(
+        (id) =>
+          id.startsWith(baseStepId + repeatStepConcactenator) &&
+          !config.orderedStepIds.includes(id),
+      )
+      .sort(
+        (a, b) => (getRepeatStepCount(a) ?? 0) - (getRepeatStepCount(b) ?? 0),
+      );
+
+    for (const instanceId of missingInstances) {
+      const instanceCount = getRepeatStepCount(instanceId) ?? 1;
+
+      // The step that immediately precedes this instance in the sequence.
+      const prevStepId =
+        instanceCount <= 1
+          ? baseStepId
+          : getRepeatStepId(baseStepId, instanceCount - 1);
+
+      const prevStep = formMeta.steps.find((s) => s.stepId === prevStepId);
+      if (!prevStep) continue;
+
+      const repeatableBehaviour = prevStep.behaviours?.find(
+        (b) => b.type === "repeatable",
+      ) as RepeatableBehaviour | undefined;
+
+      const sharedFieldsBehaviour = prevStep.behaviours?.find(
+        (b) => b.type === "sharedFields",
+      ) as SharedFieldsBehaviour | undefined;
+
+      // addRepeatableStep mutates both formMeta.steps and
+      // repeatableStepSettings in-place; the returned visibleSteps copy is
+      // not needed here.
+      addRepeatableStep({
+        currentStep: prevStep,
+        repeatableStepSettings,
+        repeatableBehaviour,
+        sharedFieldsBehaviour,
+        visibleSteps: formMeta.steps,
+        formMeta,
+      });
+    }
+  }
 };
 
 const handleMissingTargetStepIds = (
