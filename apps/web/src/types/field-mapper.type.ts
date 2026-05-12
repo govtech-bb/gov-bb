@@ -21,6 +21,7 @@ export interface ClientPrimitive {
   defaultValue?: unknown;
   disabled: boolean;
   hidden: boolean;
+  conditionallyHidden: boolean;
   options?: Option[];
   multiple?: boolean;
   validations?: ValidationRule;
@@ -50,3 +51,6 @@ export interface ClientServiceContract {
 const fieldId = z.string();
 export const formValuesSchema = z.record(fieldId, fieldValueSchema);
 export type FormValues = z.infer<typeof formValuesSchema>;
+
+type stepId = string;
+export type FormValuesByStep = Record<stepId, FormValues | Array<FormValues>>;

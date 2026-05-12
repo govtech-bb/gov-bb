@@ -38,7 +38,13 @@ export default function FieldRenderer({
     );
   }
 
-  if (conditionalRequiredState === "notRequired") return null;
+  if (conditionalRequiredState === "notRequired") {
+    field.conditionallyHidden = true;
+    return null;
+  }
+
+  // If the field was conditionally hidden before, but reaches here, then it's fine
+  if (field.conditionallyHidden) field.conditionallyHidden = false;
 
   return (
     <form.Field name={field.id} validators={validationProperties}>
@@ -123,8 +129,27 @@ export default function FieldRenderer({
               </fieldset>
             );
           }
+          case "textarea": {
+            let textareaElement: JSX.Element;
+
+            if (!fieldArray) {
+              const value = f.state.value as string | undefined;
+              textareaElement = (
+                <div data-field data-field-width={field.ui?.width}>
+                  <label> {field.label} </label>
+                  {field.hint && <p data-hint>{field.hint}</p>}
+                  <textarea
+                    key={field.id}
+                    {...sharedProps}
+                    value={value ?? ""}
+                    onChange={(e) => f.handleChange(e.target.value)}
+                  />
+                </div>
+              );
+              return textareaElement;
+            }
+          }
           case "text":
-          case "textarea":
           case "number":
           case "tel":
           case "email": {
@@ -249,11 +274,11 @@ export default function FieldRenderer({
                     <input
                       {...sharedProps}
                       checked={option.value === value}
-                      onChange={() => {
-                        option.value === value
-                          ? f.handleChange("")
-                          : f.handleChange(option.value);
-                      }}
+                      onChange={() =>
+                        f.handleChange(
+                          option.value === value ? "" : option.value,
+                        )
+                      }
                     />
                     <label>{option.label}</label>
                   </div>

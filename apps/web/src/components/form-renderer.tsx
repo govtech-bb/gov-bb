@@ -12,12 +12,14 @@ import { useStore } from "@tanstack/react-form";
 import { useStepGuard } from "../hooks/use-step-guard";
 import Review from "./review";
 import SubmissionConfirmation from "./submission-confirmation";
+import ApplicantNameDisplay from "./applicant-name-display";
 import {
   getFullFieldId,
-  repeatStepConcactenator,
   addRepeatableStep,
   removeRepeatableStep,
   stepFieldIdConcactenator,
+  repeatStepConcactenator,
+  getRepeatStepCount,
 } from "@web/lib";
 
 // ---------------------------------------------------------------------------
@@ -67,6 +69,7 @@ export default function FormRenderer({
   stepId,
   visibleSteps,
   repeatableStepSettingsRef,
+  submissionState,
 }: FormRendererProps) {
   const { navigateToStep, completeAndContinue, currentIndex } = useStepGuard({
     formId: formMeta.formId,
@@ -89,14 +92,7 @@ export default function FormRenderer({
     if (prevStep) navigateToStep(prevStep.stepId);
   };
 
-  const repeatableBehaviour = currentStep.behaviours?.filter(
-    (b) => b.type === "repeatable",
-  )[0];
-  const sharedFieldsBehaviour = currentStep.behaviours?.filter(
-    (b) => b.type === "sharedFields",
-  )[0];
-
-  const stepValues = useStore(
+  const repeatableStepValues = useStore(
     form.store,
     (state) =>
       Object.fromEntries(
@@ -106,7 +102,33 @@ export default function FormRenderer({
       ) as FormValues,
   );
 
-  const baseStepId = stepId.split(repeatStepConcactenator)[0];
+  React.useEffect(() => {
+    if (!repeatableStepValues) return;
+    const [baseStepId, stepRepeatId] = [
+      currentStep.stepId.split(repeatStepConcactenator)[0],
+      getRepeatStepCount(currentStep.stepId),
+    ];
+    const repeatableStepSettings =
+      repeatableStepSettingsRef.current[baseStepId];
+    if (repeatableStepSettings === undefined || stepRepeatId === undefined)
+      return;
+
+    repeatableStepSettings.stepData[currentStep.stepId] = repeatableStepValues;
+
+    // If this is the source step (that contains shared fields)
+    if (repeatableStepSettings.sharedData && stepRepeatId === 0) {
+      // Then set those shared fields
+      for (const [stepFieldId, fieldValue] of Object.entries(
+        repeatableStepValues,
+      )) {
+        const fieldId = stepFieldId.split(stepFieldIdConcactenator)[1];
+        if (!fieldId) continue;
+        if (repeatableStepSettings.sharedData[fieldId] !== undefined)
+          repeatableStepSettings.sharedData[fieldId] = fieldValue;
+      }
+    }
+  }, [repeatableStepValues]);
+
   const repeatableStepSettings = repeatableStepSettingsRef.current;
   const handleContinue = async () => {
     // Validate current step fields
@@ -132,6 +154,13 @@ export default function FormRenderer({
     }
 
     // Handle navigation to repeatable step.
+    const repeatableBehaviour = currentStep.behaviours?.filter(
+      (b) => b.type === "repeatable",
+    )[0];
+    const sharedFieldsBehaviour = currentStep.behaviours?.filter(
+      (b) => b.type === "sharedFields",
+    )[0];
+
     if (repeatableBehaviour) {
       const anotherFieldId = getFullFieldId(currentStep.stepId, "addAnother");
 
@@ -142,7 +171,6 @@ export default function FormRenderer({
           repeatableBehaviour,
           sharedFieldsBehaviour,
           visibleSteps,
-          stepValues,
           formMeta,
           repeatableStepSettings,
         });
@@ -153,7 +181,7 @@ export default function FormRenderer({
           currentStep,
           visibleSteps,
           formMeta,
-          currentRepeatConfig: repeatableStepSettings[baseStepId],
+          repeatableStepSettings: repeatableStepSettings,
         });
         completeAndContinue(currentStep.stepId, updatedSteps);
         return;
@@ -179,6 +207,7 @@ export default function FormRenderer({
 
   const isSubmissionConfirmation =
     currentStep.stepId === "submission-confirmation";
+  const isLastFormStep = currentStep.stepId === "declaration";
   // Build show-hide groups so the left-border content wrapper spans the toggle
   // hint AND all conditionally-controlled sibling fields.
   const fieldGroups = buildFieldGroups(currentFields);
@@ -203,12 +232,25 @@ export default function FormRenderer({
       )}
 
       {!isSubmissionConfirmation && <h1>{currentStep.title}</h1>}
-      {/* {step.description && <p>{step.description}</p>} */}
+      {!isSubmissionConfirmation && currentStep.description && (
+        <p className={designSystem.formStepDescription}>
+          {currentStep.description}
+        </p>
+      )}
       <ErrorSummary errors={errors} />
 
       <div className={designSystem.formStep}>
         {currentStep.stepId === "check-your-answers" && (
-          <Review key={"review-step"} formMeta={formMeta} form={form} />
+          <Review
+            key={"review-step"}
+            formMeta={formMeta}
+            form={form}
+            visibleSteps={visibleSteps}
+          />
+        )}
+
+        {currentStep.stepId === "declaration" && (
+          <ApplicantNameDisplay form={form} />
         )}
 
         {isSubmissionConfirmation && (
@@ -218,6 +260,7 @@ export default function FormRenderer({
             stepTitle={currentStep.title}
             nextSteps={currentStep.nextSteps}
             onTryAgain={() => navigateToStep("check-your-answers")}
+            submissionState={submissionState}
           />
         )}
 
@@ -280,13 +323,9 @@ export default function FormRenderer({
             <button
               data-variant="primary"
               type="button"
-              onClick={
-                stepIndex === visibleSteps.length - 2
-                  ? handleSubmit
-                  : handleContinue
-              }
+              onClick={isLastFormStep ? handleSubmit : handleContinue}
             >
-              {stepIndex === visibleSteps.length - 2 ? "Submit" : "Continue"}
+              {isLastFormStep ? "Submit" : "Continue"}
             </button>
           </div>
         )}

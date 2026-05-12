@@ -33,7 +33,13 @@ export const buildForm = (contract: ClientServiceContract): FormMeta => {
       "Review all the information you have provided before submitting your application.",
   };
 
-  steps.splice(-2, 0, checkAnswers);
+  const declarationIndex = steps.findIndex((s) => s.stepId === "declaration");
+  const submissionIndex = steps.findIndex(
+    (s) => s.stepId === "submission-confirmation",
+  );
+  const insertBefore =
+    declarationIndex !== -1 ? declarationIndex : submissionIndex;
+  steps.splice(insertBefore, 0, checkAnswers);
 
   // Generate Idempotency Key
   const idempotencyKey = uuidv4();
