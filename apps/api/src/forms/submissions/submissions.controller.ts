@@ -7,6 +7,7 @@ import { CreateSubmissionDocs } from "./submissions.docs";
 import { ApiResponse } from "../../common/response";
 import type { ApiResponseShape } from "../../common/response";
 import type { FormSubmissionEntity } from "../../database/entities/form-submission.entity";
+import { SubmissionPayloadSizePipe } from "./submission-payload-size.pipe";
 
 @ApiTags("Submissions")
 @ApiBearerAuth()
@@ -19,7 +20,7 @@ export class SubmissionsController {
   @CreateSubmissionDocs()
   async create(
     @Headers("idempotency-key") idempotencyKey: string,
-    @Body() body: CreateSubmissionDto,
+    @Body(SubmissionPayloadSizePipe) body: CreateSubmissionDto,
   ): Promise<ApiResponseShape<FormSubmissionEntity>> {
     const { data, message, statusCode, deferred } =
       await this.submissionsService.submit({

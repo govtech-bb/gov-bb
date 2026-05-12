@@ -24,7 +24,9 @@ export class AppError {
     return new NotFoundException(detail);
   }
 
-  static badRequest(detail: string): BadRequestException {
+  static badRequest(
+    detail: string | Record<string, unknown>,
+  ): BadRequestException {
     return new BadRequestException(detail);
   }
 
@@ -44,7 +46,7 @@ export class AppError {
   }
 
   static unprocessable(
-    errors: Record<string, string[] | Record<string, string[]>>,
+    errors: Record<string, unknown>,
   ): UnprocessableEntityException {
     return new UnprocessableEntityException({ errors });
   }
