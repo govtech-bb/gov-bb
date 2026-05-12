@@ -314,6 +314,16 @@ export const formatDataForSubmission = (
     toDelete.push(...currentRepeatSettings.orderedStepIds.slice(1));
   }
 
+  // Strip UI-only control fields from repeatable instances.
+  // The "addAnother" radio is a navigation control injected by the renderer —
+  // it is not form data and the backend rejects it as an unknown field.
+  for (const stepId of Object.keys(collapsedRepeatables)) {
+    const instances = collapsedRepeatables[stepId] as Record<string, unknown>[];
+    for (const instance of instances) {
+      delete instance.addAnother;
+    }
+  }
+
   // The structure of values should be changed from Record <stepAndFieldID, fieldValue> to Record<stepId, Record<fieldId, fieldValue>>,
   // where stepAndFieldID is the identifier of the form stepId_fieldId.
 
