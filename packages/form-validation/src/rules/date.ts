@@ -2,7 +2,15 @@ import type { RuleRunner } from "../types";
 import { resolveReference, MISSING } from "./resolve-reference";
 
 const parseDate = (v: unknown): Date | null => {
-  if (!v || typeof v !== "string") return null;
+  if (!v) return null;
+  // Handle DateValue object format: { day, month, year }
+  if (typeof v === "object" && "day" in v && "month" in v && "year" in v) {
+    const obj = v as { day: number; month: number; year: number };
+    if (!obj.day || !obj.month || !obj.year) return null;
+    const d = new Date(Date.UTC(obj.year, obj.month - 1, obj.day));
+    return isNaN(d.getTime()) ? null : d;
+  }
+  if (typeof v !== "string") return null;
   const d = new Date(v);
   return isNaN(d.getTime()) ? null : d;
 };
