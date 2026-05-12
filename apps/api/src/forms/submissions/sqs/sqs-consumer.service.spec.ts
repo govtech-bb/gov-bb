@@ -175,6 +175,36 @@ describe("SqsConsumerService", () => {
       expect(deleteCallArgs).toBeDefined();
     });
 
+    it("deletes a message whose `values` is not a plain object (defensive shape guard)", async () => {
+      factory.resolveByType.mockReturnValue(makeProcessor());
+      sendMock.mockResolvedValue({});
+
+      const malformed: Message = {
+        MessageId: "bad-shape",
+        ReceiptHandle: "bad-shape-receipt",
+        Body: JSON.stringify({
+          processorType: "email",
+          submissionId: "s",
+          formId: "f",
+          formVersion: "1",
+          idempotencyKey: "i",
+          values: "not-an-object",
+          meta: {},
+          processors: [],
+        }),
+        Attributes: { ApproximateReceiveCount: "1" },
+      };
+
+      await service.processMessage(QUEUE_URL, malformed);
+
+      expect(factory.resolveByType).not.toHaveBeenCalled();
+      const deleteCallArgs = MockedDeleteMessageCommand.mock.calls.find(
+        ([args]: [{ ReceiptHandle?: string }]) =>
+          args.ReceiptHandle === "bad-shape-receipt",
+      );
+      expect(deleteCallArgs).toBeDefined();
+    });
+
     it("deletes the message when no handler is registered for the processor type", async () => {
       factory.resolveByType.mockReturnValue(undefined);
       sendMock.mockResolvedValue({});

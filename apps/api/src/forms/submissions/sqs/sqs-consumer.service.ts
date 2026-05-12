@@ -108,6 +108,21 @@ export class SqsConsumerService
       return;
     }
 
+    // Defensive shape guard against corrupted or pre-v2 messages. We do
+    // not re-validate against the contract here — that ran synchronously
+    // before enqueue.
+    if (
+      typeof payload.values !== "object" ||
+      payload.values === null ||
+      Array.isArray(payload.values)
+    ) {
+      this.logger.error(
+        `Malformed values shape in SQS message messageId="${message.MessageId}" — deleting`,
+      );
+      await this.deleteMessage(queueUrl, message.ReceiptHandle!);
+      return;
+    }
+
     // processorType is carried inside the message body — all types share one queue.
     const { submissionId, processorType } = payload;
 

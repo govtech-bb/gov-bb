@@ -5,7 +5,9 @@ import type {
   FieldConditionalOnBehaviour,
   StepConditionalOnBehaviour,
   ServiceContract,
+  ServiceContract as SC,
   Primitive,
+  RepeatableBehaviour,
 } from "@govtech-bb/form-types";
 
 // ─── helpers ───────────────────────────────────────────────────────────────
@@ -532,5 +534,160 @@ describe("evaluateFormConditions", () => {
 
       expect(isActive(result, "confirmation", "show-section")).toBe(true);
     });
+  });
+});
+
+// ─── Instance-aware evaluation (NEW) ────────────────────────────────────────
+
+describe("evaluateFormConditions — repeatable steps", () => {
+  function repeatableStep(
+    stepId: string,
+    fieldIds: string[],
+    fieldBehaviours?: Record<string, FieldConditionalOnBehaviour[]>,
+  ) {
+    return {
+      stepId,
+      title: stepId,
+      behaviours: [
+        { type: "repeatable", min: 0, max: 5 } as RepeatableBehaviour,
+      ],
+      elements: fieldIds.map((id) => ({
+        fieldId: id,
+        label: id,
+        htmlType: "text",
+        behaviours: fieldBehaviours?.[id],
+      })) as SC["steps"][number]["elements"],
+    };
+  }
+
+  it("resolves fieldConditionalOn instance-locally inside a repeatable step", () => {
+    const contract: SC = {
+      formId: "f",
+      title: "F",
+      version: "1",
+      createdAt: "",
+      updatedAt: "",
+      steps: [
+        repeatableStep("jobs", ["has-job", "employer"], {
+          employer: [
+            {
+              type: "fieldConditionalOn",
+              targetFieldId: "has-job",
+              operator: "equal",
+              value: "yes",
+            },
+          ],
+        }),
+      ],
+    } as SC;
+
+    const values = {
+      jobs: [{ "has-job": "yes" }, { "has-job": "no" }],
+    };
+
+    const result = evaluateFormConditions(contract, values);
+
+    expect(result.activeFieldsByInstance?.get("jobs")?.[0]).toEqual(
+      new Set(["has-job", "employer"]),
+    );
+    expect(result.activeFieldsByInstance?.get("jobs")?.[1]).toEqual(
+      new Set(["has-job"]),
+    );
+    expect(result.hiddenFieldsByInstance?.get("jobs")?.[1]).toEqual(
+      new Set(["employer"]),
+    );
+  });
+
+  it("hides the entire repeatable step when stepConditionalOn evaluates false", () => {
+    const contract: SC = {
+      formId: "f",
+      title: "F",
+      version: "1",
+      createdAt: "",
+      updatedAt: "",
+      steps: [
+        {
+          stepId: "gate",
+          title: "g",
+          behaviours: [],
+          elements: [
+            { fieldId: "wants-jobs", label: "x", htmlType: "text" },
+          ] as SC["steps"][number]["elements"],
+        },
+        {
+          stepId: "jobs",
+          title: "j",
+          behaviours: [
+            { type: "repeatable", min: 1, max: 3 } as RepeatableBehaviour,
+            {
+              type: "stepConditionalOn",
+              targetFieldId: "wants-jobs",
+              targetStepId: "gate",
+              operator: "equal",
+              value: "yes",
+            },
+          ],
+          elements: [
+            { fieldId: "employer", label: "x", htmlType: "text" },
+          ] as SC["steps"][number]["elements"],
+        },
+      ],
+    } as SC;
+
+    const values = {
+      gate: { "wants-jobs": "no" },
+      jobs: [{ employer: "ACME" }],
+    };
+
+    const result = evaluateFormConditions(contract, values);
+
+    expect(result.hiddenStepIds.has("jobs")).toBe(true);
+    expect(result.activeFieldsByInstance?.get("jobs")).toBeUndefined();
+  });
+
+  it("treats primitive.isHidden=true as permanently hidden (BUG FIX)", () => {
+    const contract: SC = {
+      formId: "f",
+      title: "F",
+      version: "1",
+      createdAt: "",
+      updatedAt: "",
+      steps: [
+        {
+          stepId: "s",
+          title: "s",
+          behaviours: [],
+          elements: [
+            { fieldId: "visible", label: "v", htmlType: "text" },
+            {
+              fieldId: "hidden-prim",
+              label: "h",
+              htmlType: "text",
+              isHidden: true,
+            },
+          ] as SC["steps"][number]["elements"],
+        },
+      ],
+    } as SC;
+
+    const result = evaluateFormConditions(contract, {
+      s: { visible: "x", "hidden-prim": "y" },
+    });
+
+    expect(result.activeFieldIds.get("s")).toEqual(new Set(["visible"]));
+    expect(result.hiddenFieldIds.get("s")).toEqual(new Set(["hidden-prim"]));
+  });
+});
+
+// ─── flattenStepValues — must skip arrays (E21) ─────────────────────────────
+
+describe("flattenStepValues — array safety", () => {
+  it("skips array-valued (repeatable) step entries", () => {
+    const flat = flattenStepValues({
+      personal: { name: "Marcus" },
+      jobs: [{ employer: "ACME" }],
+    } as unknown as StepScopedValues);
+    expect(flat).toEqual({ name: "Marcus" });
+    expect("employer" in flat).toBe(false);
   });
 });

@@ -147,6 +147,21 @@ describe("SubmissionPipelineService", () => {
       );
     });
 
+    it("returns flat per-field errors for non-repeatable steps (backwards-compat)", async () => {
+      const dto = baseDto();
+      dto.values = { "personal-info": { "first-name": "", surname: "" } };
+      await expect(service.run(dto)).rejects.toMatchObject({
+        response: {
+          errors: {
+            "personal-info": expect.objectContaining({
+              "first-name": expect.any(Array),
+              surname: expect.any(Array),
+            }),
+          },
+        },
+      });
+    });
+
     it("only validates active primitives — skips hidden fields", async () => {
       const contract = mockContract({
         steps: [
@@ -184,12 +199,12 @@ describe("SubmissionPipelineService", () => {
   });
 
   describe("buildAuditTrail", () => {
-    it("schemaVersion is 1", async () => {
+    it("schemaVersion is 2", async () => {
       draftsService.findById.mockResolvedValue(mockDraft());
       definitionsService.findByFormId.mockResolvedValue(mockContract());
 
       const { auditTrail } = await service.run(baseDto());
-      expect(auditTrail.schemaVersion).toBe(1);
+      expect(auditTrail.schemaVersion).toBe(2);
     });
 
     it("records activeFieldIds and hiddenFieldIds from ConditionResult", async () => {
