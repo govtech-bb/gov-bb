@@ -22,4 +22,10 @@ export const Title: SelectPrimitive = {
   ui: {
     width: "short",
   },
+  validations: {
+    required: {
+      value: true,
+      error: "Title is required",
+    },
+  },
 };

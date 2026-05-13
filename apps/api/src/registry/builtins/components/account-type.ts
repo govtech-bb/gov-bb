@@ -6,4 +6,10 @@ export const AccountType: SelectPrimitive = {
     htmlType: "select",
     options: [],
     multiple: false,
-}
+    validations: {
+        required: {
+            value: true,
+            error: "Account type is required",
+        },
+    },
+};

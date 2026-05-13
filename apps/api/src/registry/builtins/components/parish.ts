@@ -9,4 +9,10 @@ export const Parish: SelectPrimitive = {
     ui: {
         width: "short",
     },
+    validations: {
+        required: {
+            value: true,
+            error: "Parish is required",
+        },
+    },
 }

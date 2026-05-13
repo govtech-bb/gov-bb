@@ -6,4 +6,10 @@ export const Relationship: SelectPrimitive = {
   label: "Relationship",
   options: [],
   multiple: false,
-}
+  validations: {
+    required: {
+      value: true,
+      error: "Relationship is required",
+    },
+  },
+};

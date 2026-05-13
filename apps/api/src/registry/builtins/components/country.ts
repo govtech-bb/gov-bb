@@ -6,4 +6,10 @@ export const Country: SelectPrimitive = {
     htmlType: "select",
     options: [],
     multiple: false,
-}
+    validations: {
+        required: {
+            value: true,
+            error: "Country is required",
+        },
+    },
+};

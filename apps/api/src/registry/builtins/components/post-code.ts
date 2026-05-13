@@ -7,4 +7,10 @@ export const Postcode: TextPrimitive = {
     ui: {
         width: "short",
     },
-}
+    validations: {
+        pattern: {
+            value: "^BB\\d{5}$",
+            error: "Enter a valid postcode (for example, BB17004)",
+        },
+    },
+};

@@ -6,4 +6,10 @@ export const Nationality: SelectPrimitive = {
   label: "Nationality / Citizenship",
   options: [],
   multiple: false,
-}
+  validations: {
+    required: {
+      value: true,
+      error: "Nationality is required",
+    },
+  },
+};

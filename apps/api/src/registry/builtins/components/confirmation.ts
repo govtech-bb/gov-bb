@@ -5,4 +5,10 @@ export const Confirmation: CheckboxPrimitive = {
   htmlType: "checkbox",
   label: "I confirm...",
   options: [{ label: "I confirm", value: "confirmed" }],
-}
+  validations: {
+    required: {
+      value: true,
+      error: "You must confirm the declaration to continue",
+    },
+  },
+};
