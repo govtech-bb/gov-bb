@@ -23,7 +23,7 @@ import {
 } from "@web/lib";
 
 // ---------------------------------------------------------------------------
-// Show-hide grouping
+// Field grouping (show-hide + radio conditional reveal)
 // ---------------------------------------------------------------------------
 
 type PlainFieldGroup = { type: "plain"; field: ClientPrimitive };
@@ -32,11 +32,27 @@ type ShowHideFieldGroup = {
   toggle: ClientPrimitive;
   controlled: ClientPrimitive[];
 };
-type FieldGroup = PlainFieldGroup | ShowHideFieldGroup;
+/**
+ * A radio field that has one or more sibling fields that should be revealed
+ * inline (inset) when a specific option is selected.  Each entry in the map
+ * keys on the option value and holds the ordered list of fields to reveal.
+ */
+type RadioConditionalFieldGroup = {
+  type: "radio-conditional";
+  radio: ClientPrimitive;
+  conditionalsByOption: Map<string, ClientPrimitive[]>;
+};
+type FieldGroup =
+  | PlainFieldGroup
+  | ShowHideFieldGroup
+  | RadioConditionalFieldGroup;
 
-/** Groups each show-hide toggle with the sibling fields whose
- *  `fieldConditionalOn` behaviour targets it, so they can all be wrapped
- *  inside a single `data-show-hide-content` container. */
+/**
+ * Groups fields into rendering units:
+ * - show-hide: toggle + its controlled siblings share a bordered container.
+ * - radio-conditional: a radio whose options each have inset reveal fields.
+ * - plain: everything else.
+ */
 function buildFieldGroups(fields: ClientPrimitive[]): FieldGroup[] {
   const groups: FieldGroup[] = [];
   const controlledIds = new Set<string>();
@@ -55,6 +71,42 @@ function buildFieldGroups(fields: ClientPrimitive[]): FieldGroup[] {
       );
       controlled.forEach((f) => controlledIds.add(f.id));
       groups.push({ type: "show-hide", toggle: field, controlled });
+    } else if (field.htmlType === "radio") {
+      // Collect sibling fields that are revealed by a specific option value
+      // on this radio (fieldConditionalOn + operator "equal").
+      const conditionalsByOption = new Map<string, ClientPrimitive[]>();
+
+      for (const other of fields) {
+        if (controlledIds.has(other.id) || other.id === field.id) continue;
+
+        const revealBehaviour = other.behaviours?.find(
+          (b) =>
+            b.type === "fieldConditionalOn" &&
+            "targetFieldId" in b &&
+            b.targetFieldId === field.fieldId &&
+            "operator" in b &&
+            b.operator === "equal",
+        );
+
+        if (revealBehaviour && "value" in revealBehaviour) {
+          const optionValue = String(revealBehaviour.value);
+          if (!conditionalsByOption.has(optionValue)) {
+            conditionalsByOption.set(optionValue, []);
+          }
+          conditionalsByOption.get(optionValue)!.push(other);
+          controlledIds.add(other.id);
+        }
+      }
+
+      if (conditionalsByOption.size > 0) {
+        groups.push({
+          type: "radio-conditional",
+          radio: field,
+          conditionalsByOption,
+        });
+      } else {
+        groups.push({ type: "plain", field });
+      }
     } else {
       groups.push({ type: "plain", field });
     }
@@ -294,6 +346,34 @@ export default function FormRenderer({
                   </div>
                 )}
               </React.Fragment>
+            );
+          }
+
+          if (group.type === "radio-conditional") {
+            // Build a map of option value → [{field, validationProperties}]
+            // so the radio FieldRenderer can render inset fields per option.
+            const insetFieldsByOption = new Map(
+              [...group.conditionalsByOption.entries()].map(
+                ([optVal, insetFields]) => [
+                  optVal,
+                  insetFields.map((f) => ({
+                    field: f,
+                    validationProperties: formMeta.validationProperties[f.id],
+                  })),
+                ],
+              ),
+            );
+
+            return (
+              <FieldRenderer
+                key={group.radio.id}
+                form={form}
+                field={group.radio}
+                validationProperties={
+                  formMeta.validationProperties[group.radio.id]
+                }
+                insetFieldsByOption={insetFieldsByOption}
+              />
             );
           }
 

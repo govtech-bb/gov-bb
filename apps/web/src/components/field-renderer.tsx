@@ -6,14 +6,23 @@ import { RequiredState, checkConditionalOn } from "@web/lib";
 import { DateValue, FieldArrayBehaviour } from "@govtech-bb/form-types";
 import FileUpload from "./file-upload";
 
+/** An inset field entry passed from the parent radio group. */
+export interface InsetFieldEntry {
+  field: ClientPrimitive;
+  validationProperties: FieldValidationProperties;
+}
+
 export default function FieldRenderer({
   form,
   field,
   validationProperties,
+  insetFieldsByOption,
 }: {
   form: any;
   field: ClientPrimitive;
   validationProperties: FieldValidationProperties;
+  /** Option-value → inset fields that reveal when that option is selected. */
+  insetFieldsByOption?: Map<string, InsetFieldEntry[]>;
 }) {
   if (field.hidden) return null;
 
@@ -327,16 +336,39 @@ export default function FieldRenderer({
                 {field.hint && <p data-hint>{field.hint}</p>}
                 <ErrorMessage message={errorMessage} />
                 <div data-radio-group>
-                  {field.options?.map((option) => (
-                    <div key={option.value} data-radio-item>
-                      <input
-                        {...sharedProps}
-                        checked={option.value === value ? true : false}
-                        onChange={() => f.handleChange(option.value)}
-                      />
-                      <label>{option.label}</label>
-                    </div>
-                  ))}
+                  {field.options?.map((option) => {
+                    const insetEntries = insetFieldsByOption?.get(option.value);
+                    const isSelected = option.value === value;
+                    return (
+                      <div key={option.value} data-radio-item>
+                        <input
+                          {...sharedProps}
+                          checked={isSelected}
+                          onChange={() => f.handleChange(option.value)}
+                        />
+                        <label>{option.label}</label>
+                        {/* Conditional reveal: inset fields shown below the
+                            selected option with an indented left-border style */}
+                        {insetEntries && isSelected && (
+                          <div data-radio-conditional>
+                            {insetEntries.map(
+                              ({
+                                field: insetField,
+                                validationProperties: insetValidation,
+                              }) => (
+                                <FieldRenderer
+                                  key={insetField.id}
+                                  form={form}
+                                  field={insetField}
+                                  validationProperties={insetValidation}
+                                />
+                              ),
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </fieldset>
             );

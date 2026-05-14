@@ -380,8 +380,10 @@
   margin-bottom: 0.25rem;
 }
 
-/* Radio Button Styles */
-.formRoot [data-radio-group] input {
+/* Radio Button Styles
+   All selectors use :not([data-radio-conditional] *) to prevent radio-circle
+   styles from leaking into inset conditional fields rendered inside the group. */
+.formRoot [data-radio-group] input:not([data-radio-conditional] input) {
   width: 3rem;
   height: 3rem;
   appearance: none;
@@ -399,22 +401,39 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);
+  flex-wrap: wrap; /* allows conditional reveal content to flow below the option row */
 }
 
-.formRoot [data-radio-group] input:hover {
+/* Radio conditional reveal — inset fields shown below the selected option.
+   Bar is centred on the radio circle (margin-left = half radio width = 1.5rem).
+   margin-top: 20px adds 20px of space above the left grey bar.
+   padding-left is 50% wider than before (2rem → 3rem) to shift content further right. */
+.formRoot [data-radio-group] [data-radio-item] [data-radio-conditional] {
+  flex: 0 0 auto;
+  width: calc(100% - 1.5rem);     /* compensate for margin so no overflow */
+  margin-left: 1.5rem;            /* centre bar under the radio circle */
+  margin-top: 20px;               /* push block 20px down from the radio button */
+  padding: var(--spacing-s) 0 var(--spacing-s) calc(var(--spacing-m) * 1.5); /* 50% more right */
+  border-left: 0.5rem solid var(--color-grey-00);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s);
+}
+
+.formRoot [data-radio-group] input:not([data-radio-conditional] input):hover {
   cursor: pointer;
   box-shadow: inset 0 0 0 0.25rem rgba(0, 0, 0, 0.1);
 }
 
-.formRoot [data-radio-group] input:focus,
-.formRoot [data-radio-group] input:focus-visible,
+.formRoot [data-radio-group] input:not([data-radio-conditional] input):focus,
+.formRoot [data-radio-group] input:not([data-radio-conditional] input):focus-visible,
 .formRoot [data-checkbox-group] input:focus,
 .formRoot [data-checkbox-group] input:focus-visible {
   outline: none;
   box-shadow: none;
 }
 
-.formRoot [data-radio-group] input:checked {
+.formRoot [data-radio-group] input:not([data-radio-conditional] input):checked {
   background: radial-gradient(
     circle,
     var(--color-teal-00) 35%,
@@ -422,7 +441,7 @@
   );
 }
 
-.formRoot [data-radio-group] input:disabled {
+.formRoot [data-radio-group] input:not([data-radio-conditional] input):disabled {
   opacity: 0.4;
 }
 
