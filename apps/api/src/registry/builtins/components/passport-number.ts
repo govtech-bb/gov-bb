@@ -7,4 +7,10 @@ export const PassportNumber: TextPrimitive = {
     ui: {
         width: "short",
     },
-}
+    validations: {
+        minLength: {
+            value: 6,
+            error: "Passport number must be at least 6 characters",
+        },
+    },
+};
