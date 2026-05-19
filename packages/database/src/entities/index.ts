@@ -15,3 +15,4 @@ export {
   PaymentTransactionEntity,
   PaymentTransactionStatus,
 } from "./payment-transaction.entity";
+export * from "./custom-component.entity";

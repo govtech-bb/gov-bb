@@ -6,7 +6,7 @@
   "types": "./src/index.d.ts",
   "dependencies": {
     "@govtech-bb/form-types": "*",
-    "typeorm": "^0.3.26"
+    "typeorm": "^0.3.28"
   },
   "devDependencies": {
     "lint-staged": "^16.4.0"

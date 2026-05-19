@@ -5,14 +5,14 @@ import { ServiceContractRecipe } from "@govtech-bb/form-types";
 @Entity({ name: "form_definitions" })
 export class FormDefinitionEntity extends TimestampedEntity {
   @Column({ name: "form_id", type: "varchar", length: 100 })
-  formId: string;
+  formId!: string;
 
   @Column({ type: "varchar", length: 20 })
-  version: string;
+  version!: string;
 
   @Column({ type: "jsonb" })
-  schema: ServiceContractRecipe;
+  schema!: ServiceContractRecipe;
 
   @Column({ name: "published_at", type: "timestamp", nullable: true })
-  publishedAt: Date | null;
+  publishedAt!: Date | null;
 }

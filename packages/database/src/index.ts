@@ -7,6 +7,7 @@ import { FormDraftEntity } from "./entities/form-draft.entity";
 import { FormSubmissionEntity } from "./entities/form-submission.entity";
 import { PaymentEntity } from "./entities/payment.entity";
 import { PaymentTransactionEntity } from "./entities/payment-transaction.entity";
+import { CustomComponent } from "./entities/custom-component.entity";
 
 // Migrations
 import { CreateFormsTables1774544962999 } from "./migrations/1774544962999-CreateFormsTables";
@@ -24,6 +25,7 @@ export const entities = [
   FormSubmissionEntity,
   PaymentEntity,
   PaymentTransactionEntity,
+  CustomComponent,
 ];
 
 export const migrations = [
