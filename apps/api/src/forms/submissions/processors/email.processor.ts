@@ -113,6 +113,9 @@ export class EmailProcessor implements ISubmissionProcessor {
   private async resolveHtmlBody(
     payload: SubmissionCreatedEvent,
   ): Promise<string> {
+    this.logger.log(
+      `[email] resolveHtmlBody: templateService=${!!this.templateService}, bodyBuilder=${!!this.emailBodyBuilder}`,
+    );
     if (this.templateService && this.emailBodyBuilder) {
       try {
         const ctx = await this.emailBodyBuilder.build(payload);
@@ -121,6 +124,9 @@ export class EmailProcessor implements ISubmissionProcessor {
           ctx as unknown as Record<string, unknown>,
         );
         if (rendered !== null) return rendered;
+        this.logger.warn(
+          `[email] Template render returned null for "${CONFIRMATION_TEMPLATE}"`,
+        );
       } catch (err) {
         this.logger.warn(
           `[email] Could not render confirmation template for form "${payload.formId}" — falling back to generic body`,
