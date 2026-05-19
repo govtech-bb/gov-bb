@@ -1,0 +1,33 @@
+{
+  "name": "@govtech-bb/form-builder-app",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vinxi dev",
+    "build": "vinxi build",
+    "start": "vinxi start"
+  },
+  "dependencies": {
+    "@govtech-bb/database": "*",
+    "@govtech-bb/form-builder": "*",
+    "@govtech-bb/form-types": "*",
+    "@tanstack/react-router": "^1.170.4",
+    "@tanstack/react-start": "^1.168.6",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "pg": "^8.20.0",
+    "reflect-metadata": "^0.2.0",
+    "typeorm": "^0.3.28",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@tanstack/router-plugin": "^1.167.22",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@types/node": "^22.0.0",
+    "@vitejs/plugin-react": "^6.0.1",
+    "typescript": "^5.7.0",
+    "vite": "^8.0.0"
+  }
+}
