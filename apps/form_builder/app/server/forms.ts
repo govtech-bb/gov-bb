@@ -14,7 +14,7 @@ export const listForms = createServerFn({ method: "GET" }).handler(
     >(`
       SELECT DISTINCT ON (form_id) id, form_id, schema->>'title' AS title, version
       FROM form_definitions
-      ORDER BY form_id, version DESC
+      ORDER BY form_id, string_to_array(version, '.')::int[] DESC
     `);
     return rows.map((r) => ({
       id: r.id,
