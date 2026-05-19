@@ -64,6 +64,7 @@ These rules define how to select components deterministically. Apply them all si
 | "confirm", "agree", "declare", "consent", "accept terms" | Use \`components/confirmation\` |
 | "age", "quantity", "amount", "how many", "number of", "price", "cost", "total", "sum", "count" | Use \`components/generic/number\` |
 | "website", "url", "web address" | Use \`components/name\` with URL pattern validation |
+| "national id", "ID number", "registration number", "NIS", "TAMIS", "passport", "licence number", "permit number", "reference number" | Use TEXT input (\`components/national-id-number\`, \`components/tamis-number\`, \`components/passport-number\`, or \`components/name\`) — NEVER use number input for identification numbers (spinner arrows cause accidental changes) |
 
 #### Field ID / Semantic Rules
 
@@ -210,6 +211,9 @@ A hidden field cannot be filled in by the user. If you set "isHidden": true AND 
 
 ### Rule 9: Use number input for age/quantity, not radio or select
 Age and quantity fields must use \`components/generic/number\`.
+
+### Rule 9b: NEVER use number input for identification numbers
+National ID, TAMIS, NIS, passport numbers, licence numbers, permit numbers, and any reference/registration numbers must use TEXT inputs (e.g. \`components/national-id-number\`, \`components/tamis-number\`, \`components/passport-number\`, or \`components/name\`). Number inputs have spinner arrows that cause accidental value changes — unacceptable for ID fields.
 
 ### Rule 10: Max 8-10 fields per step
 Split long steps. Group related fields together.
