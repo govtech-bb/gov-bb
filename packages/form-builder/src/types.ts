@@ -21,5 +21,6 @@ export interface RecipeStepDraft {
 export interface RecipeDraft {
   formId: string;
   title: string;
+  description?: string;
   steps: RecipeStepDraft[];
 }

@@ -1,5 +1,6 @@
 import { BUILTIN_COMPONENTS, BUILTIN_BLOCKS } from "./builtins/index";
 import type { ComponentDefinition, BlockDefinition } from "./definition-types";
+import type { Primitive } from "@govtech-bb/form-types";
 
 export type { ComponentDefinition, BlockDefinition };
 
@@ -31,7 +32,18 @@ export function getRegistryItem(
   catalog: RegistryCatalog,
 ): ComponentDefinition | BlockDefinition | undefined {
   if (ref.startsWith("components/")) {
-    return catalog.components.find((c) => c.ref === ref);
+    const found = catalog.components.find((c) => c.ref === ref);
+    if (found) return found;
+
+    const custom = catalog.custom.find((c) => c.ref === ref);
+    if (custom) {
+      return {
+        ref: custom.ref,
+        displayName: custom.displayName,
+        primitive: custom.definition as unknown as Primitive,
+      };
+    }
+    return undefined;
   }
   if (ref.startsWith("blocks/")) {
     return catalog.blocks.find((b) => b.ref === ref);

@@ -5,6 +5,7 @@ import type {
   FieldOverrides,
 } from "@govtech-bb/form-types";
 import type { RecipeDraft, RecipeStepDraft, RecipeFieldDraft } from "./types";
+import type { RegistryCatalog } from "./catalog";
 
 /**
  * Serialize a RecipeDraft (UI state) into a ServiceContractRecipe (persisted format).
@@ -63,7 +64,11 @@ export function serializeRecipeDraft(
   return {
     formId: draft.formId,
     title: draft.title,
+    ...(draft.description !== undefined
+      ? { description: draft.description }
+      : {}),
     version: opts.version,
+    // processors are managed outside the builder (e.g. by the API); never set here
     steps,
     createdAt: now,
     updatedAt: now,
@@ -73,12 +78,23 @@ export function serializeRecipeDraft(
 /**
  * Deserialize a ServiceContractRecipe (persisted format) into a RecipeDraft (UI state).
  */
-export function deserializeRecipe(recipe: ServiceContractRecipe): RecipeDraft {
+export function deserializeRecipe(
+  recipe: ServiceContractRecipe,
+  catalog?: RegistryCatalog,
+): RecipeDraft {
   const steps: RecipeStepDraft[] = recipe.steps.map(
     (recipeStep: RecipeFormStep): RecipeStepDraft => {
       const fields: RecipeFieldDraft[] = (recipeStep.elements ?? []).map(
         (field: RecipeFormStepField): RecipeFieldDraft => {
-          if (field.ref.startsWith("blocks/")) {
+          const isCustom =
+            catalog?.custom.some((c) => c.ref === field.ref) ?? false;
+          const kind: RecipeFieldDraft["kind"] = field.ref.startsWith("blocks/")
+            ? "block"
+            : isCustom
+              ? "custom"
+              : "component";
+
+          if (kind === "block") {
             return {
               kind: "block",
               ref: field.ref,
@@ -93,7 +109,7 @@ export function deserializeRecipe(recipe: ServiceContractRecipe): RecipeDraft {
             };
           } else {
             return {
-              kind: "component",
+              kind,
               ref: field.ref,
               overrides:
                 (field as { ref: string; overrides?: FieldOverrides })
@@ -118,6 +134,9 @@ export function deserializeRecipe(recipe: ServiceContractRecipe): RecipeDraft {
   return {
     formId: recipe.formId,
     title: recipe.title,
+    ...(recipe.description !== undefined
+      ? { description: recipe.description }
+      : {}),
     steps,
   };
 }

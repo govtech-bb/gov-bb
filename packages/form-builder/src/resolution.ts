@@ -32,11 +32,15 @@ function applyOverrides(
   const { validations: baseValidations, ...restPrimitive } = primitive;
   const { validations: overrideValidations, ...restOverrides } = overrides;
 
+  const mergedValidations = mergeValidations(
+    baseValidations,
+    overrideValidations,
+  );
   return {
     ...restPrimitive,
     ...restOverrides,
-    ...(mergeValidations(baseValidations, overrideValidations) !== undefined
-      ? { validations: mergeValidations(baseValidations, overrideValidations) }
+    ...(mergedValidations !== undefined
+      ? { validations: mergedValidations }
       : {}),
   } as Primitive;
 }
