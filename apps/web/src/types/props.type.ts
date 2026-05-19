@@ -1,3 +1,4 @@
+import { ContactDetails } from "@govtech-bb/form-types";
 import { AnyFormApi } from "@tanstack/react-form";
 import {
   ClientFormStep,
@@ -64,6 +65,7 @@ export interface SubmissionConfirmationProps {
   serviceTitle: string;
   stepTitle: string;
   nextSteps?: { title: string; content?: string; items?: string[] }[];
+  contactDetails?: ContactDetails;
   onTryAgain?: () => void;
   submissionState?: SubmissionState;
 }

@@ -689,7 +689,7 @@
 
 /* Confirmation Styles */
 .formRoot .confirmation {
-  gap: var(--spacing-s);
+  gap: var(--spacing-xs);
 }
 
 /* Success Header Styles */
@@ -798,6 +798,28 @@
 
 .formRoot .nextSteps {
   margin-top: var(--spacing-m);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+
+.formRoot .contactDetails {
+  margin-top: var(--spacing-m);
+}
+
+.formRoot .contactDetailsBody {
+  font-size: 1.25rem;
+  line-height: 1.5;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s);
+}
+
+.formRoot .contactDetailsBody p {
+  margin: 0;
+}
+
+.formRoot .contactLabel {
+  font-weight: bold;
 }
 
 .formRoot .feedback {
