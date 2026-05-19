@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
-  fetchContract,
-  buildForm,
   getVisibleSteps,
   getFullFieldId,
   restoreRepeatableStepsFromStorage,
+  contractQueryOptions,
+  formMetaQueryOptions,
 } from "@web/lib";
 import { FormRenderer, FormError } from "@web/components";
 import { formSearchParamSchema } from "apps/web/src/types/form-search-param.type";
@@ -24,9 +24,37 @@ import { formatDataForSubmission, postFormSubmission } from "@web/form-api";
 export const Route = createFileRoute("/forms/$formId/")({
   component: RouteComponent,
   errorComponent: FormError,
-  loader: async ({ params }): Promise<FormMeta> => {
-    const contract = await fetchContract(params.formId);
-    return buildForm(contract);
+  /**
+   * Two-tier caching loader:
+   *
+   * 1. Tier 1 — Fetch (or serve from cache) the ClientServiceContract.
+   *    Cache key: ["service-contract", formId]
+   *    This gives us the current `version` without building the form first.
+   *
+   * 2. Version check — The formMetaQueryOptions key includes the version.
+   *    If a FormMeta for this exact (formId, version) pair is already in the
+   *    TanStack Query cache, ensureQueryData returns it immediately (sub-ms).
+   *    If the version has changed (or this is the first load), the queryFn
+   *    runs buildForm() and the result is stored under the new key.
+   *
+   *    Cache key: ["form-schema", formId, version]
+   *
+   * On navigation back to this route, the first call resolves from the
+   * in-memory cache; the contract re-validates after 60 s in the background
+   * so version bumps are caught on the next full navigation.
+   */
+  loader: async ({ params, context }): Promise<FormMeta> => {
+    const { queryClient } = context;
+
+    // Tier 1: get the contract (from cache or server).
+    const clientContract = await queryClient.ensureQueryData(
+      contractQueryOptions(params.formId),
+    );
+
+    // Tier 2: get or build the FormMeta for this specific version.
+    return queryClient.ensureQueryData(
+      formMetaQueryOptions(params.formId, clientContract),
+    );
   },
   validateSearch: (search) => formSearchParamSchema.parse(search),
 });
