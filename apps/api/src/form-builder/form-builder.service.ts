@@ -98,7 +98,7 @@ export class FormBuilderService {
 
     // Try to extract recipe JSON from the latest response
     let recipe = this.extractRecipe(assistantResponse);
-    
+
     // If not found in latest, scan all assistant messages (recipe might be in an earlier one)
     if (!recipe) {
       for (let i = session.messages.length - 1; i >= 0; i--) {
@@ -108,7 +108,7 @@ export class FormBuilderService {
         }
       }
     }
-    
+
     if (recipe) {
       session.recipe = recipe;
     }
@@ -183,21 +183,38 @@ export class FormBuilderService {
     }
     for (let i = 0; i < recipe.steps.length; i++) {
       const step = recipe.steps[i];
-      if (!step.stepId || !step.title || !step.elements || !Array.isArray(step.elements)) {
-        throw new Error(`Step ${i} must have stepId, title, and elements array.`);
+      if (
+        !step.stepId ||
+        !step.title ||
+        !step.elements ||
+        !Array.isArray(step.elements)
+      ) {
+        throw new Error(
+          `Step ${i} must have stepId, title, and elements array.`,
+        );
       }
       for (let j = 0; j < step.elements.length; j++) {
         const el = step.elements[j];
-        if (!el.ref || !el.ref.startsWith("components/")) {
-          throw new Error(`Step "${step.stepId}" element ${j}: ref must start with "components/" (got "${el.ref}").`);
+        if (
+          !el.ref ||
+          (!el.ref.startsWith("components/") && !el.ref.startsWith("blocks/"))
+        ) {
+          throw new Error(
+            `Step "${step.stepId}" element ${j}: ref must start with "components/" or "blocks/" (got "${el.ref}").`,
+          );
         }
-        if (!el.overrides?.fieldId) {
-          throw new Error(`Step "${step.stepId}" element ${j} (ref: ${el.ref}): missing fieldId in overrides.`);
+        // Blocks have internal fieldIds — only require fieldId override for components
+        if (el.ref.startsWith("components/") && !el.overrides?.fieldId) {
+          throw new Error(
+            `Step "${step.stepId}" element ${j} (ref: ${el.ref}): missing fieldId in overrides.`,
+          );
         }
       }
     }
     if (!recipe.createdAt || !recipe.updatedAt || !recipe.version) {
-      throw new Error("Recipe must have createdAt, updatedAt, and version fields.");
+      throw new Error(
+        "Recipe must have createdAt, updatedAt, and version fields.",
+      );
     }
 
     // Build the SQL for export
@@ -350,9 +367,15 @@ VALUES (
           cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
         }
       }
-      
+
       const parsed = JSON.parse(cleaned);
-      if (parsed && typeof parsed === "object" && parsed.formId && parsed.steps && Array.isArray(parsed.steps)) {
+      if (
+        parsed &&
+        typeof parsed === "object" &&
+        parsed.formId &&
+        parsed.steps &&
+        Array.isArray(parsed.steps)
+      ) {
         return parsed;
       }
     } catch {
