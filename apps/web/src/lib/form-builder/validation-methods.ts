@@ -540,17 +540,23 @@ export const checkFileMaxSize = ({
   results,
   validations,
 }: ValidationArgs<FileList>) => {
-  const fileMaxSize = validations.maxSize?.value;
-  if (!fileMaxSize || fileMaxSize === undefined) return;
+  // Per-file size limit (itemMaxSize)
+  const itemMaxSize = validations.itemMaxSize;
+  if (itemMaxSize?.value !== undefined) {
+    for (const file of value) {
+      if (file.size > itemMaxSize.value) {
+        setValidationError(fieldName, itemMaxSize, results);
+        break; // Report once per field
+      }
+    }
+  }
 
-  for (const file of value) {
-    if (file.size > fileMaxSize) {
-      setValidationError(
-        fieldName,
-        fileMaxSize,
-        results,
-        `File ${file.name} exceeds the maximum size of ${(fileMaxSize / (1024 * 1024)).toPrecision(2)} MB.`,
-      );
+  // Total size limit across all files (maxSize)
+  const maxSize = validations.maxSize;
+  if (maxSize?.value !== undefined) {
+    const totalSize = Array.from(value).reduce((sum, f) => sum + f.size, 0);
+    if (totalSize > maxSize.value) {
+      setValidationError(fieldName, maxSize, results);
     }
   }
 };

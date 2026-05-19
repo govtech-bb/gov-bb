@@ -115,6 +115,12 @@ export default function SubmissionConfirmation({
                   Your submission has been saved
                 </p>
               </div>
+              {referenceNumber && (
+                <div className={designSystem.paymentSummaryTable}>
+                  <p>Reference Number</p>
+                  <p>{referenceNumber}</p>
+                </div>
+              )}
             </div>
           )}
 

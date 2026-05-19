@@ -33,6 +33,14 @@
       "options": {
         "lintFilePatterns": ["apps/web/**/*.{ts,tsx}"]
       }
+    },
+    "e2e": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npm run test:e2e",
+        "cwd": "apps/web"
+      },
+      "dependsOn": []
     }
   },
   "tags": []
