@@ -13,6 +13,12 @@
         "main": "packages/form-validation/src/index.ts"
       }
     },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "options": {
+        "jestConfig": "packages/form-validation/jest.config.ts"
+      }
+    },
     "lint": {
       "executor": "@nx/eslint:lint",
       "options": {

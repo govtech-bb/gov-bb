@@ -9,6 +9,7 @@
   "scripts": {
     "build": "nx run-many -t build",
     "lint": "nx run-many -t lint",
+    "test:all": "nx run-many -t test",
     "dev:web": "nx dev web",
     "dev:api": "nx dev api",
     "start:web": "nx start web",
