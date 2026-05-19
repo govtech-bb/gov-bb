@@ -6,6 +6,13 @@ import { getDataSource } from "./db";
 import { bumpMinor } from "../lib/version";
 import type { FormDefinitionSummary } from "../types/index";
 
+type FormDefinitionRow = {
+  id: string;
+  version: string;
+  schema: ServiceContractRecipe;
+  published_at: Date | null;
+};
+
 export const listForms = createServerFn({ method: "GET" }).handler(
   async (): Promise<FormDefinitionSummary[]> => {
     const ds = await getDataSource();
@@ -29,15 +36,18 @@ export const getRecipe = createServerFn({ method: "GET", strict: false })
   .inputValidator(z.object({ formId: z.string() }))
   .handler(async ({ data }): Promise<ServiceContractRecipe> => {
     const ds = await getDataSource();
-    const repo = ds.getRepository(FormDefinitionEntity);
-    const entity = await repo.findOne({
-      where: { formId: data.formId },
-      order: { version: "DESC" },
-    });
-    if (!entity) {
+    const rows = await ds.query<FormDefinitionRow[]>(
+      `SELECT id, version, schema, published_at
+       FROM form_definitions
+       WHERE form_id = $1
+       ORDER BY string_to_array(version, '.')::int[] DESC
+       LIMIT 1`,
+      [data.formId],
+    );
+    if (!rows.length) {
       throw new Error(`No recipe found for formId: ${data.formId}`);
     }
-    return entity.schema;
+    return rows[0].schema;
   });
 
 export const submitRecipe = createServerFn({ method: "POST" })
@@ -79,21 +89,32 @@ export const updateRecipe = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<void> => {
     const recipe = data.recipe as ServiceContractRecipe;
     const ds = await getDataSource();
-    const repo = ds.getRepository(FormDefinitionEntity);
 
-    const entity = await repo.findOne({
-      where: { formId: data.formId },
-      order: { version: "DESC" },
-    });
-    if (!entity) {
+    const rows = await ds.query<FormDefinitionRow[]>(
+      `SELECT id, version, schema, published_at
+       FROM form_definitions
+       WHERE form_id = $1
+       ORDER BY string_to_array(version, '.')::int[] DESC
+       LIMIT 1`,
+      [data.formId],
+    );
+    if (!rows.length) {
       throw new Error(`No recipe found for formId: ${data.formId}`);
     }
-    if (entity.publishedAt !== null) {
+    const row = rows[0];
+    if (row.published_at !== null) {
       throw new Error("Cannot update a published recipe");
     }
+    if (recipe.version !== row.version) {
+      throw new Error(
+        `Version mismatch: stored version is ${row.version}, recipe version is ${recipe.version}`,
+      );
+    }
 
-    entity.schema = recipe;
-    await repo.save(entity);
+    await ds.query(`UPDATE form_definitions SET schema = $1 WHERE id = $2`, [
+      recipe,
+      row.id,
+    ]);
   });
 
 export const nextVersion = createServerFn({ method: "GET" })
@@ -103,20 +124,23 @@ export const nextVersion = createServerFn({ method: "GET" })
       data,
     }): Promise<{ currentVersion: string | null; nextVersion: string }> => {
       const ds = await getDataSource();
-      const repo = ds.getRepository(FormDefinitionEntity);
 
-      const entity = await repo.findOne({
-        where: { formId: data.formId },
-        order: { version: "DESC" },
-      });
+      const rows = await ds.query<FormDefinitionRow[]>(
+        `SELECT id, version, schema, published_at
+         FROM form_definitions
+         WHERE form_id = $1
+         ORDER BY string_to_array(version, '.')::int[] DESC
+         LIMIT 1`,
+        [data.formId],
+      );
 
-      if (!entity) {
+      if (!rows.length) {
         return { currentVersion: null, nextVersion: "1.0.0" };
       }
 
       return {
-        currentVersion: entity.version,
-        nextVersion: bumpMinor(entity.version),
+        currentVersion: rows[0].version,
+        nextVersion: bumpMinor(rows[0].version),
       };
     },
   );

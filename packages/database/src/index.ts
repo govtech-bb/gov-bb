@@ -17,6 +17,7 @@ import { AddIdempotencyKeyToFormSubmissions1776119150309 } from "./migrations/17
 import { AddPendingPaymentSubmissionStatus1777896617226 } from "./migrations/1777896617226-AddPendingPaymentSubmissionStatus";
 import { CreatePaymentTables1777896888080 } from "./migrations/1777896888080-CreatePaymentTables";
 import { AddAbandonedPaymentIndex1778195854282 } from "./migrations/1778195854282-AddAbandonedPaymentIndex";
+import { AddFormDefinitionUniqueConstraint1778500000000 } from "./migrations/1778500000000-AddFormDefinitionUniqueConstraint";
 
 export const entities = [
   FormComponentEntity,
@@ -36,6 +37,7 @@ export const migrations = [
   AddPendingPaymentSubmissionStatus1777896617226,
   CreatePaymentTables1777896888080,
   AddAbandonedPaymentIndex1778195854282,
+  AddFormDefinitionUniqueConstraint1778500000000,
 ];
 
 /**

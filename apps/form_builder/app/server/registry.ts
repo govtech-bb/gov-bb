@@ -20,10 +20,16 @@ import type { ValidationResult } from "@govtech-bb/form-builder";
 import { CustomComponent } from "@govtech-bb/database";
 import { getDataSource } from "./db";
 
+let _catalogCache: { data: RegistryCatalog; expiresAt: number } | null = null;
+
 export const getCatalogFn = createServerFn({
   method: "GET",
   strict: false,
 }).handler(async (): Promise<RegistryCatalog> => {
+  const now = Date.now();
+  if (_catalogCache && _catalogCache.expiresAt > now) {
+    return _catalogCache.data;
+  }
   const builtinCatalog = getCatalog();
   const ds = await getDataSource();
   const repo = ds.getRepository(CustomComponent);
@@ -35,7 +41,9 @@ export const getCatalogFn = createServerFn({
     type: c.type,
     definition: c.definition,
   }));
-  return { ...builtinCatalog, custom: customEntries };
+  const catalog = { ...builtinCatalog, custom: customEntries };
+  _catalogCache = { data: catalog, expiresAt: now + 60_000 };
+  return catalog;
 });
 
 export const getRegistryItemFn = createServerFn({ method: "GET" })
