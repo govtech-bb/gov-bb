@@ -10,12 +10,12 @@ import {
 const cfg = (
   value?: unknown,
   error?: string,
-  reference?: string,
+  referenceFieldId?: string,
   targetStepId?: string,
 ) => ({
   value,
   error,
-  reference,
+  referenceFieldId,
   targetStepId,
 });
 
