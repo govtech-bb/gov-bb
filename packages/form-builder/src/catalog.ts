@@ -1,0 +1,40 @@
+import { BUILTIN_COMPONENTS, BUILTIN_BLOCKS } from "./builtins/index";
+import type { ComponentDefinition, BlockDefinition } from "./definition-types";
+
+export type { ComponentDefinition, BlockDefinition };
+
+export interface CustomComponentEntry {
+  ref: string; // e.g. "components/custom-my-widget"
+  displayName: string;
+  namespace: string;
+  type: string;
+  definition: Record<string, unknown>;
+}
+
+export interface RegistryCatalog {
+  components: ComponentDefinition[];
+  blocks: BlockDefinition[];
+  custom: CustomComponentEntry[]; // populated by server layer; empty here
+}
+
+// Returns builtin catalog only (no DB — server layer merges custom)
+export function getCatalog(): RegistryCatalog {
+  return {
+    components: BUILTIN_COMPONENTS,
+    blocks: BUILTIN_BLOCKS,
+    custom: [],
+  };
+}
+
+export function getRegistryItem(
+  ref: string,
+  catalog: RegistryCatalog,
+): ComponentDefinition | BlockDefinition | undefined {
+  if (ref.startsWith("components/")) {
+    return catalog.components.find((c) => c.ref === ref);
+  }
+  if (ref.startsWith("blocks/")) {
+    return catalog.blocks.find((b) => b.ref === ref);
+  }
+  return undefined;
+}
