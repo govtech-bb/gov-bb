@@ -7,8 +7,8 @@ import { type Page, type Locator, expect } from "@playwright/test";
  * `step-5-financial-information~1_bank-name` would break `#id` selectors).
  */
 function escId(id: string): string {
-  // For [id="..."] selectors we only need to escape double-quotes
-  return id.replace(/"/g, '\\"');
+  // For [id="..."] selectors, escape backslashes first, then double-quotes.
+  return id.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
 /** Playwright FilePayload accepted by setInputFiles */
