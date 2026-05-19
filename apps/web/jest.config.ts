@@ -22,6 +22,17 @@ const config: Config = {
   transform: {
     "^.+\\.tsx?$": ["ts-jest", { useESM: false }],
   },
+  collectCoverage: true,
+  collectCoverageFrom: ["**/*.ts", "!**/*.spec.ts", "!**/*.d.ts"],
+  coverageReporters: ["text-summary", "lcov", "html"],
+  coverageThreshold: {
+    global: {
+      branches: 50,
+      functions: 60,
+      lines: 60,
+      statements: 60,
+    },
+  },
 };
 
 export default config;
