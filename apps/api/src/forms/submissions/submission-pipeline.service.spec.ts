@@ -100,6 +100,23 @@ describe("SubmissionPipelineService", () => {
       });
     });
 
+    it("no draftId → calls findByFormId directly, returns draft: null", async () => {
+      const contract = mockContract();
+      definitionsService.findByFormId.mockResolvedValue(contract);
+
+      const dto = { ...baseDto(), draftId: undefined };
+      const result = await service.run(dto);
+
+      expect(draftsService.findById).not.toHaveBeenCalled();
+      expect(definitionsService.findByFormId).toHaveBeenCalledWith({
+        formId: dto.formId,
+        version: dto.formVersion,
+        includeProcessors: true,
+      });
+      expect(result.draft).toBeNull();
+      expect(result.contract).toBe(contract);
+    });
+
     it("throws NotFound when draft does not exist", async () => {
       draftsService.findById.mockRejectedValue(new Error("Draft not found"));
 

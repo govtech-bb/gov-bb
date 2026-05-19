@@ -2,9 +2,10 @@ import type { Config } from "jest";
 
 const config: Config = {
   preset: "ts-jest",
-  testEnvironment: "node",
+  testEnvironment: "jsdom",
   rootDir: "src",
-  testRegex: ".*\\.spec\\.ts$",
+  testRegex: ".*\\.spec\\.tsx?$",
+  setupFilesAfterEnv: ["<rootDir>/test/setup.ts"],
   moduleNameMapper: {
     // Internal workspace packages
     "^@govtech-bb/form-types$":
@@ -18,15 +19,30 @@ const config: Config = {
     "^@web/lib$": "<rootDir>/lib/form-builder/index.ts",
     "^@web/form-api$": "<rootDir>/lib/api/forms.ts",
     "^@web/components$": "<rootDir>/components/index.ts",
+    // CSS modules
+    "\\.module\\.css$": "<rootDir>/test/styleMock.js",
   },
   transform: {
-    "^.+\\.tsx?$": ["ts-jest", { useESM: false }],
+    "^.+\\.tsx?$": [
+      "ts-jest",
+      {
+        useESM: false,
+        tsconfig: "<rootDir>/../tsconfig.jest.json",
+        diagnostics: false,
+      },
+    ],
   },
   collectCoverage: true,
-  collectCoverageFrom: ["**/*.ts", "!**/*.spec.ts", "!**/*.d.ts"],
+  collectCoverageFrom: [
+    "**/*.ts",
+    "**/*.tsx",
+    "!**/*.spec.ts",
+    "!**/*.spec.tsx",
+    "!**/*.d.ts",
+  ],
   coverageReporters: ["text-summary", "lcov", "html"],
   coverageThreshold: {
-    global: { branches: 0, functions: 1, lines: 15, statements: 20 },
+    global: { branches: 10, functions: 7, lines: 19, statements: 22 },
   },
 };
 
