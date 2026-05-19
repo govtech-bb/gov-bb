@@ -6,6 +6,7 @@ export default function SubmissionConfirmation({
   serviceTitle,
   stepTitle,
   nextSteps,
+  contactDetails,
   onTryAgain,
   submissionState,
 }: SubmissionConfirmationProps) {
@@ -133,6 +134,35 @@ export default function SubmissionConfirmation({
                   )}
                 </div>
               ))}
+            </div>
+          )}
+
+          {contactDetails && (
+            <div className={designSystem.contactDetails}>
+              <p>If you need help with your application, contact:</p>
+              <h3>{contactDetails.title}</h3>
+              <div className={designSystem.contactDetailsBody}>
+                {contactDetails.address && (
+                  <>
+                    <p>{contactDetails.address.line1}</p>
+                    {contactDetails.address.line2 && (
+                      <p>{contactDetails.address.line2}</p>
+                    )}
+                    <p>{contactDetails.address.city}</p>
+                    {contactDetails.address.country && (
+                      <p>{contactDetails.address.country}</p>
+                    )}
+                  </>
+                )}
+                <p>
+                  <span className={designSystem.contactLabel}>Telephone:</span>{" "}
+                  {contactDetails.telephoneNumber}
+                </p>
+                <p>
+                  <span className={designSystem.contactLabel}>Email:</span>{" "}
+                  {contactDetails.email}
+                </p>
+              </div>
             </div>
           )}
 
