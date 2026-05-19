@@ -24,6 +24,11 @@ export type FormRouteProps = {
 export type UseStepGuardProps = {
   formId: string;
   /**
+   * Contract version of the form. Passed through to tracking events so funnels
+   * can be sliced by contract version when a form schema changes.
+   */
+  formVersion: string;
+  /**
    * The condition-filtered list of steps that are currently visible/active.
    * Hidden or conditionally-removed steps must NOT be included — the guard
    * derives all accessibility decisions from this list.

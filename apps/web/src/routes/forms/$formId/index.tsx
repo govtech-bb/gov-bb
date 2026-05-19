@@ -20,6 +20,7 @@ import {
 import React from "react";
 import { getFormData, storeFormData } from "../../../lib/session-storage";
 import { formatDataForSubmission, postFormSubmission } from "@web/form-api";
+import { trackFormStarted, trackFormSubmitted } from "../../../lib/tracking";
 
 export const Route = createFileRoute("/forms/$formId/")({
   component: RouteComponent,
@@ -70,6 +71,12 @@ function RouteComponent() {
     formMeta.repeatSettings,
   );
 
+  const formStartedAtRef = React.useRef<number | null>(null);
+  React.useEffect(() => {
+    formStartedAtRef.current = performance.now();
+    trackFormStarted(formMeta.formId, formMeta.version);
+  }, [formMeta.formId, formMeta.version]);
+
   // Read session-storage once here so we can use it for both restoration and
   // form default values without issuing two reads.
   const savedFormData = getFormData(formMeta.formId);
@@ -116,6 +123,11 @@ function RouteComponent() {
         serviceName: responseData.formId,
       };
 
+      const totalDurationMs =
+        formStartedAtRef.current !== null
+          ? Math.round(performance.now() - formStartedAtRef.current)
+          : 0;
+
       switch (response.status) {
         case "submitted":
         case "success":
@@ -126,6 +138,11 @@ function RouteComponent() {
             ...baseSubState,
           };
           setSubmissionState(subState);
+          trackFormSubmitted(
+            formMeta.formId,
+            formMeta.version,
+            totalDurationMs,
+          );
           break;
         case "processing":
           break;
@@ -144,6 +161,11 @@ function RouteComponent() {
               paymentId,
               paymentDescription: description,
             };
+            trackFormSubmitted(
+              formMeta.formId,
+              formMeta.version,
+              totalDurationMs,
+            );
           }
           break;
         case "failed":

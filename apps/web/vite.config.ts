@@ -12,6 +12,10 @@ export default ({ mode }) => {
         VITE_API_URL: env["VITE_API_URL"],
         DESIGN_SYSTEM: env["DESIGN_SYSTEM"],
         SKIP_CONTINUE_VALIDATION: env["SKIP_CONTINUE_VALIDATION"],
+        VITE_POSTHOG_KEY: env["VITE_POSTHOG_KEY"],
+        VITE_POSTHOG_HOST: env["VITE_POSTHOG_HOST"],
+        VITE_POSTHOG_ENV: env["VITE_POSTHOG_ENV"],
+        NODE_ENV: env["NODE_ENV"] ?? mode,
       },
     },
     resolve: {

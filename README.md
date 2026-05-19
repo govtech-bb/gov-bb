@@ -55,6 +55,9 @@ cp apps/api/.env.example apps/api/.env
 |---|---|---|---|
 | `PORT` | web | `4200` | Next.js server port |
 | `VITE_API_URL` | web | `http://localhost:3001` | API base URL |
+| `VITE_POSTHOG_KEY` | web | _unset_ | PostHog project key. Leave unset to disable form analytics. |
+| `VITE_POSTHOG_HOST` | web | `https://us.i.posthog.com` | PostHog ingestion host. |
+| `VITE_POSTHOG_ENV` | web | `development` | Environment tag attached to every event (`development`, `staging`, `production`). |
 | `API_PORT` | api | `3001` | NestJS server port |
 | `DB_HOST` | api | `localhost` | PostgreSQL host |
 | `DB_PORT` | api | `5432` | PostgreSQL port |

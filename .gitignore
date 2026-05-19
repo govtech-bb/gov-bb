@@ -153,3 +153,6 @@ amplify/#current-cloud-backend
 # Working/presentation files
 PRESENTATION-*.yml
 cicd-policy*.json
+
+# Playwright MCP tool artifacts
+.playwright-mcp/

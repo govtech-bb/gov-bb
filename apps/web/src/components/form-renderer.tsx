@@ -21,6 +21,7 @@ import {
   repeatStepConcactenator,
   getRepeatStepCount,
 } from "@web/lib";
+import { trackFieldValidationError } from "../lib/tracking";
 
 // ---------------------------------------------------------------------------
 // Field grouping (show-hide + radio conditional reveal)
@@ -123,11 +124,13 @@ export default function FormRenderer({
   repeatableStepSettingsRef,
   submissionState,
 }: FormRendererProps) {
-  const { navigateToStep, completeAndContinue, currentIndex } = useStepGuard({
-    formId: formMeta.formId,
-    activeSteps: visibleSteps,
-    currentStepId: stepId,
-  });
+  const { navigateToStep, completeAndContinue, goBack, currentIndex } =
+    useStepGuard({
+      formId: formMeta.formId,
+      formVersion: formMeta.version,
+      activeSteps: visibleSteps,
+      currentStepId: stepId,
+    });
 
   // currentIndex is -1 for the brief moment the guard effect is redirecting
   // away from a step that was just hidden by a condition change.
@@ -141,7 +144,7 @@ export default function FormRenderer({
 
   const handlePrevious = () => {
     const prevStep = visibleSteps[stepIndex - 1];
-    if (prevStep) navigateToStep(prevStep.stepId);
+    if (prevStep) goBack(currentStep.stepId, prevStep.stepId);
   };
 
   const repeatableStepValues = useStore(
@@ -197,6 +200,23 @@ export default function FormRenderer({
 
     const hasError = results.some((r) => r.length > 0);
     if (hasError) {
+      results.forEach((fieldErrors, idx) => {
+        if (fieldErrors.length === 0) return;
+        const field = currentFields[idx];
+        if (!field) return;
+        // The validator returns rendered messages, not rule keys.
+        // The first message is sufficient categorisation for v1 funnels.
+        const firstError = fieldErrors[0];
+        const errorType =
+          typeof firstError === "string" ? firstError : String(firstError);
+        trackFieldValidationError(
+          formMeta.formId,
+          formMeta.version,
+          currentStep.stepId,
+          field.id,
+          errorType,
+        );
+      });
       scrollToTop();
       if (
         !process.env.SKIP_CONTINUE_VALIDATION ||

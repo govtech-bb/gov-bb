@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/query-client";
+import { PostHogProvider } from "./lib/tracking";
 
 // Import the generated route tree
 import { routeTree } from "./routeTree.gen";
@@ -34,7 +35,9 @@ if (!rootElement.innerHTML) {
        * the loaders used for prefetching.
        */}
       <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
+        <PostHogProvider>
+          <RouterProvider router={router} />
+        </PostHogProvider>
       </QueryClientProvider>
     </StrictMode>,
   );

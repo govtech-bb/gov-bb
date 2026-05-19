@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { ClientFormStep, UseStepGuardProps } from "@web/types";
 import {
@@ -6,6 +6,11 @@ import {
   isStepAccessible,
   markStepCompleted,
 } from "../lib/session-storage";
+import {
+  trackStepViewed,
+  trackStepCompleted,
+  trackStepBack,
+} from "../lib/tracking";
 
 /**
  * Condition-aware step guard for multi-step form navigation.
@@ -25,10 +30,16 @@ import {
  */
 export function useStepGuard({
   formId,
+  formVersion,
   activeSteps,
   currentStepId,
 }: UseStepGuardProps) {
   const navigate = useNavigate({ from: "/forms/$formId/" });
+
+  // Timing ref for the step currently being viewed. Set when step_viewed
+  // fires, read (and reset) when step_completed or step_back fires.
+  const stepStartedAtRef = useRef<number | null>(null);
+  const trackedStepIdRef = useRef<string | null>(null);
 
   // ─── Internal primitive: write the step ID into the URL ──────────────────
   const navigateToStepId = useCallback(
@@ -81,13 +92,49 @@ export function useStepGuard({
   const completeAndContinue = useCallback(
     (completedStepId: string, stepsOverride?: ClientFormStep[]) => {
       // TODO: Validate current step before marking as completed and navigating to the next step
-      markStepCompleted(formId, completedStepId);
       const steps = stepsOverride ?? activeSteps;
       const currentIdx = steps.findIndex((s) => s.stepId === completedStepId);
+
+      if (
+        stepStartedAtRef.current !== null &&
+        trackedStepIdRef.current === completedStepId
+      ) {
+        const durationMs = Math.round(
+          performance.now() - stepStartedAtRef.current,
+        );
+        trackStepCompleted(
+          formId,
+          formVersion,
+          completedStepId,
+          currentIdx,
+          durationMs,
+        );
+        stepStartedAtRef.current = null;
+        trackedStepIdRef.current = null;
+      }
+
+      markStepCompleted(formId, completedStepId);
       const nextStep = steps[currentIdx + 1];
       if (nextStep) navigateToStepId(nextStep.stepId);
     },
-    [formId, activeSteps, navigateToStepId],
+    [formId, formVersion, activeSteps, navigateToStepId],
+  );
+
+  // ─── Back navigation with tracking ───────────────────────────────────────
+  /**
+   * Navigate to `toStepId` from `fromStepId`, firing a `step_back` event.
+   * Use this instead of `navigateToStep` whenever the user is going backwards
+   * (e.g. via a Previous button) so the funnel can distinguish forward
+   * progression from back navigation.
+   */
+  const goBack = useCallback(
+    (fromStepId: string, toStepId: string) => {
+      trackStepBack(formId, formVersion, fromStepId, toStepId);
+      stepStartedAtRef.current = null;
+      trackedStepIdRef.current = null;
+      navigateToStep(toStepId);
+    },
+    [formId, formVersion, navigateToStep],
   );
 
   // ─── Guard effect: enforce access rules on every relevant change ─────────
@@ -132,9 +179,24 @@ export function useStepGuard({
    */
   const currentIndex = activeSteps.findIndex((s) => s.stepId === currentStepId);
 
+  // ─── step_viewed tracking ────────────────────────────────────────────────
+  // Fires once per landing on a valid, accessible step. The guard effect above
+  // will have redirected away from any inaccessible step before this runs.
+  useEffect(() => {
+    if (!currentStepId) return;
+    if (currentIndex === -1) return;
+    if (!isStepAccessible(formId, currentStepId, activeSteps)) return;
+    if (trackedStepIdRef.current === currentStepId) return;
+
+    trackedStepIdRef.current = currentStepId;
+    stepStartedAtRef.current = performance.now();
+    trackStepViewed(formId, formVersion, currentStepId, currentIndex);
+  }, [currentStepId, currentIndex, activeSteps, formId, formVersion]);
+
   return {
     navigateToStep,
     completeAndContinue,
+    goBack,
     currentIndex,
   };
 }
