@@ -32,7 +32,7 @@ export const recipeBlockFieldSchema = z.object({
 });
 export type RecipeBlockField = z.infer<typeof recipeBlockFieldSchema>;
 
-export const recipeFormStepFieldSchema = z.discriminatedUnion("ref", [
+export const recipeFormStepFieldSchema = z.union([
   recipeComponentFieldSchema,
   recipeBlockFieldSchema,
 ]);
