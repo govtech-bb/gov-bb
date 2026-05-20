@@ -301,3 +301,40 @@
   border-left: 3px solid var(--color-accent, #1565c0);
   padding-left: 8px;
 }
+
+/* ── Select fields ────────────────────────────────── */
+
+.formGroup select {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--color-border, #d4d4d4);
+  border-radius: 4px;
+  background: var(--color-surface, #fff);
+  font-size: 0.9rem;
+  appearance: auto;
+}
+
+.formGroup select:focus {
+  outline: 2px solid var(--color-accent, #1565c0);
+  outline-offset: -1px;
+}
+
+/* ── Checkbox rows ────────────────────────────────── */
+
+.checkRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkRow label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+
+.checkRow input[type="checkbox"] {
+  margin: 0;
+  vertical-align: middle;
+}

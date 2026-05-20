@@ -74,7 +74,7 @@ function OverrideForm({
           onChange={(e) => patch({ hint: e.target.value || undefined })}
         />
       </div>
-      <div className={fg(overrides.isDisabled === true)}>
+      <div className={`${fg(overrides.isDisabled === true)} ${styles.checkRow}`}>
         <label>
           <input
             type="checkbox"
@@ -84,7 +84,7 @@ function OverrideForm({
           {" "}Disabled
         </label>
       </div>
-      <div className={fg(overrides.isHidden === true)}>
+      <div className={`${fg(overrides.isHidden === true)} ${styles.checkRow}`}>
         <label>
           <input
             type="checkbox"
@@ -94,7 +94,7 @@ function OverrideForm({
           {" "}Hidden
         </label>
       </div>
-      <div className={fg(overrides.validations?.required !== undefined)}>
+      <div className={`${fg(overrides.validations?.required !== undefined)} ${styles.checkRow}`}>
         <label>
           <input
             type="checkbox"
