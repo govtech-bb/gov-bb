@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useRef, useEffect } from "react";
 import {
   createSession,
@@ -37,6 +37,7 @@ async function fileToBase64(file: File): Promise<string> {
 }
 
 function AiFormBuilderPage() {
+  const navigate = useNavigate();
   const [session, setSession] = useState<SessionState>({
     sessionId: null,
     messages: [],
@@ -173,6 +174,16 @@ function AiFormBuilderPage() {
     }
   };
 
+  const handleSwitchToUi = () => {
+    if (
+      session.sessionId !== null &&
+      !window.confirm("Unsaved changes will be lost. Continue?")
+    ) {
+      return;
+    }
+    navigate({ to: "/builder/ui" });
+  };
+
   return (
     <div style={{ display: "flex", height: "100vh", fontFamily: "system-ui" }}>
       <div
@@ -184,7 +195,24 @@ function AiFormBuilderPage() {
         }}
       >
         <div style={{ padding: "16px", borderBottom: "1px solid #e0e0e0", background: "#f8f9fa" }}>
-          <h2 style={{ margin: 0 }}>Form Builder AI</h2>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <h2 style={{ margin: 0 }}>Form Builder AI</h2>
+            <button
+              type="button"
+              onClick={handleSwitchToUi}
+              style={{
+                padding: "6px 12px",
+                background: "#7c3aed",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+                fontSize: "12px",
+              }}
+            >
+              Switch to UI Builder
+            </button>
+          </div>
           <p style={{ margin: "4px 0 0", color: "#666", fontSize: "14px" }}>
             Upload a PDF form and I'll convert it to a digital form recipe.
           </p>

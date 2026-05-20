@@ -1,5 +1,5 @@
 import "../../../styles/builder.global.css";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useReducer, useState, useRef, useEffect } from "react";
 import { getCatalogFn } from "../../../server/registry";
 import { listForms, nextVersion, submitRecipe, updateRecipe } from "../../../server/forms";
@@ -33,6 +33,7 @@ export const Route = createFileRoute("/builder/ui/")({
 
 function BuilderPage() {
   const { catalog, forms } = Route.useLoaderData();
+  const navigate = useNavigate();
   const [draft, dispatch] = useReducer(recipeReducer, EMPTY_DRAFT);
 
   // UI state
@@ -213,6 +214,11 @@ function BuilderPage() {
     setLastSaveStatus("idle");
   };
 
+  const handleSwitchToAi = () => {
+    if (isDirty && !window.confirm("Unsaved changes will be lost. Continue?")) return;
+    navigate({ to: "/builder/ai" });
+  };
+
   const handleNew = () => {
     dispatch({ type: "RESET" });
     setSelectedStepId(null);
@@ -293,6 +299,7 @@ function BuilderPage() {
           onRemove={handleRemoveStep}
           onMoveUp={handleMoveStepUp}
           onMoveDown={handleMoveStepDown}
+          onSwitchToAi={handleSwitchToAi}
         />
 
         {selectedStep !== null ? (

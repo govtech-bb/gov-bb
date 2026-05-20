@@ -10,6 +10,7 @@ interface StepListProps {
   onRemove: (stepId: string) => void;
   onMoveUp: (index: number) => void;
   onMoveDown: (index: number) => void;
+  onSwitchToAi: () => void;
 }
 
 export function StepList({
@@ -20,6 +21,7 @@ export function StepList({
   onRemove,
   onMoveUp,
   onMoveDown,
+  onSwitchToAi,
 }: StepListProps) {
   const editableCount = steps.length - REQUIRED_STEP_IDS.length;
 
@@ -30,6 +32,14 @@ export function StepList({
 
   return (
     <div className={styles.stepList}>
+      <button
+        type="button"
+        onClick={onSwitchToAi}
+        className={styles.btnSwitch}
+        style={{ width: "100%", marginBottom: "8px" }}
+      >
+        Switch to AI Builder
+      </button>
       <button type="button" onClick={onAdd} className={styles.stepListAddButton}>+ Add Step</button>
       {steps.map((step, index) => (
         <div

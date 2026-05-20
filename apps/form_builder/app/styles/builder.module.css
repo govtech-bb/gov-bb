@@ -22,6 +22,17 @@
   border-color: #b91c1c;
 }
 
+.btnSwitch {
+  background: #7c3aed;
+  color: white;
+  border-color: #7c3aed;
+}
+
+.btnSwitch:hover:not(:disabled) {
+  background: #6d28d9;
+  border-color: #6d28d9;
+}
+
 /* ── Inputs & textareas ───────────────────────────── */
 
 .formGroup input,
