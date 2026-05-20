@@ -17,6 +17,15 @@ import styles from "../../styles/builder.module.css";
 const STEP_ID_PATTERN = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
 const STEP_ID_ERROR =
   "Use lowercase letters, digits, and hyphens only. Must start with a letter (e.g. my-step, step-1).";
+const STEP_ID_DEFAULT_PATTERN = /^step-\d+$/;
+
+function kebabize(input: string): string {
+  return input
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
 
 interface StepEditorProps {
   step: RecipeStepDraft;
@@ -131,6 +140,25 @@ export function StepEditor({
               meta: { title: e.target.value },
             })
           }
+          onBlur={(e) => {
+            const title = e.target.value;
+            if (!title) return;
+            // Auto-derive stepId only if it's still the default placeholder (step-N)
+            // and the user has not started editing it manually.
+            const isDefault = STEP_ID_DEFAULT_PATTERN.test(step.stepId);
+            const localUntouched = localStepId === step.stepId;
+            if (isDefault && localUntouched) {
+              const derived = kebabize(title);
+              if (derived && derived !== step.stepId) {
+                dispatch({
+                  type: "UPDATE_STEP_META",
+                  stepId: step.stepId,
+                  meta: { stepId: derived },
+                });
+                onStepIdChange(step.stepId, derived);
+              }
+            }
+          }}
         />
       </div>
       <div className={styles.formGroup}>
