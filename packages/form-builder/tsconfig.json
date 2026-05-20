@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "outDir": "../../dist/packages/form-builder",
+    "rootDir": "src",
+    "strictPropertyInitialization": false,
+    "module": "commonjs",
+    "lib": ["ES2022"],
+    "types": ["jest", "node"]
+  },
+  "include": ["src/**/*"],
+  "references": [{ "path": "../form-types" }]
+}

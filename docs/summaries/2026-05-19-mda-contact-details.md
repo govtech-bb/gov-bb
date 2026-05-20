@@ -28,15 +28,15 @@ Added optional MDA (Ministry, Department, Agency) contact details to the service
 | `packages/form-types/src/service-contract.type.ts` | New `contactDetailsSchema` + `ContactDetails` type; optional field on both contract schemas |
 | `packages/form-types/src/service-contract.type.spec.ts` | New — 15 tests for schema validation |
 | `packages/form-types/src/index.ts` | Exports for new schema and type |
-| `apps/web/src/types/field-mapper.type.ts` | `contactDetails?` on `ClientServiceContract` |
-| `apps/web/src/types/renderer.type.ts` | `contactDetails?` on `FormMeta` |
-| `apps/web/src/types/props.type.ts` | `contactDetails?` on `SubmissionConfirmationProps` |
-| `apps/web/src/lib/form-builder/build-form.ts` | Pass-through to `FormMeta` |
-| `apps/web/src/components/form-renderer.tsx` | Prop forwarded to `SubmissionConfirmation` |
-| `apps/web/src/components/submission-confirmation.tsx` | Contact panel rendered between `nextSteps` and feedback |
-| `apps/web/src/styles/govtechbb.module.css` | `.contactDetails`, `.contactDetailsBody`, `.contactLabel` |
-| `apps/web/contracts/master-contract.json` | `contactDetails` moved from step to top level |
-| `apps/web/contracts/example-service-contract.json` | Barbados Post Office contact added |
+| `apps/forms/src/types/field-mapper.type.ts` | `contactDetails?` on `ClientServiceContract` |
+| `apps/forms/src/types/renderer.type.ts` | `contactDetails?` on `FormMeta` |
+| `apps/forms/src/types/props.type.ts` | `contactDetails?` on `SubmissionConfirmationProps` |
+| `apps/forms/src/lib/form-builder/build-form.ts` | Pass-through to `FormMeta` |
+| `apps/forms/src/components/form-renderer.tsx` | Prop forwarded to `SubmissionConfirmation` |
+| `apps/forms/src/components/submission-confirmation.tsx` | Contact panel rendered between `nextSteps` and feedback |
+| `apps/forms/src/styles/govtechbb.module.css` | `.contactDetails`, `.contactDetailsBody`, `.contactLabel` |
+| `apps/forms/contracts/master-contract.json` | `contactDetails` moved from step to top level |
+| `apps/forms/contracts/example-service-contract.json` | Barbados Post Office contact added |
 
 ## What wasn't done
 

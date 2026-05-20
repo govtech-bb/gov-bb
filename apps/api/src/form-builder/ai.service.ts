@@ -34,7 +34,8 @@ export class AiService implements OnModuleInit {
     this.model =
       this.configService.get<string>("AI_MODEL") ?? "claude-sonnet-4-20250514";
     this.bedrockModelId =
-      this.configService.get<string>("AI_MODEL") ?? "us.anthropic.claude-sonnet-4-6";
+      this.configService.get<string>("AI_MODEL") ??
+      "us.anthropic.claude-sonnet-4-6";
 
     if (this.provider === "bedrock") {
       await this.initBedrock();

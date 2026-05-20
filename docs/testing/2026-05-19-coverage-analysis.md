@@ -11,7 +11,7 @@
 
 The repository has a solid testing foundation for its business logic layer. All shared packages (`form-conditions`, `form-validation`) and the API service layer are well-tested with meaningful unit and integration tests. Since the initial analysis, three significant feature merges have substantially raised the floor:
 
-- **PR #168 (Playwright E2E)** — added a full E2E test suite for `apps/web` covering navigation, conditionals, validation, repeatable steps, and file uploads
+- **PR #168 (Playwright E2E)** — added a full E2E test suite for `apps/forms` covering navigation, conditionals, validation, repeatable steps, and file uploads
 - **PR #171 (TanStack Query + Jest for web)** — added Jest config and a unit spec for the form caching layer
 - **PR #174 (MDA contact details + email module tests)** — added schema tests for `form-types` and a comprehensive test suite for the new email body builder and template service
 
@@ -25,8 +25,8 @@ No coverage reporting tool is currently configured in any package, so numeric co
 | `apps/api` (service layer) | ~80% | Good |
 | `apps/api` (controller/infra layer) | ~15% | Needs work |
 | `apps/api` (email module) | ~85% | Good |
-| `apps/web` (Playwright E2E) | ~55% | Partially addressed |
-| `apps/web` (Jest unit) | ~5% | Needs work |
+| `apps/forms` (Playwright E2E) | ~55% | Partially addressed |
+| `apps/forms` (Jest unit) | ~5% | Needs work |
 
 **Total test files found:** 37 (31 Jest `.spec.ts` + 6 Playwright `.spec.ts`)  
 **Test frameworks:** Jest with `ts-jest` preset; Playwright for E2E  
@@ -41,18 +41,18 @@ No coverage reporting tool is currently configured in any package, so numeric co
 | Package | Jest Config | Playwright Config | Test Script | Coverage Config |
 |---|---|---|---|---|
 | `apps/api` | `jest.config.ts` ✓ | — | `"test": "jest --config jest.config.ts"` ✓ | None |
-| `apps/web` | `jest.config.ts` ✓ | `playwright.config.ts` ✓ | None ✗ | None |
+| `apps/forms` | `jest.config.ts` ✓ | `playwright.config.ts` ✓ | None ✗ | None |
 | `packages/form-conditions` | `jest.config.ts` ✓ | — | None ✗ | None |
 | `packages/form-validation` | `jest.config.ts` ✓ | — | None ✗ | None |
 | `packages/form-types` | `jest.config.ts` ✓ | — | None ✗ | None |
 
-**Note on `apps/web` Jest config:** The newly added `jest.config.ts` sets `testEnvironment: "node"`. This means the Jest suite can test pure TypeScript logic (query factories, utilities, type guards) but **cannot unit-test React components** — that requires `testEnvironment: "jsdom"` with React Testing Library. The E2E layer (Playwright) handles user-facing behaviour coverage.
+**Note on `apps/forms` Jest config:** The newly added `jest.config.ts` sets `testEnvironment: "node"`. This means the Jest suite can test pure TypeScript logic (query factories, utilities, type guards) but **cannot unit-test React components** — that requires `testEnvironment: "jsdom"` with React Testing Library. The E2E layer (Playwright) handles user-facing behaviour coverage.
 
 ### 2.2 Missing Infrastructure
 
 - **No coverage collection** — no `collectCoverage: true`, no `collectCoverageFrom`, no `coverageThreshold`, no reporter (lcov, html, text-summary) in any Jest config
 - **No package test scripts** — `packages/*` have Jest configs but no `npm test` to run them; they are only discoverable via Nx targets
-- **No React component unit tests** — `apps/web` Jest is `testEnvironment: "node"`; adding React Testing Library requires switching to `jsdom` and configuring a setup file
+- **No React component unit tests** — `apps/forms` Jest is `testEnvironment: "node"`; adding React Testing Library requires switching to `jsdom` and configuring a setup file
 - **No CI coverage reporting** — no CodeCov, Codecov, or SonarQube integration
 - **No API E2E / HTTP-layer tests** — Playwright covers the browser side; no Supertest integration tests exercise the NestJS HTTP layer
 
@@ -333,7 +333,7 @@ These files have no corresponding `.spec.ts` file.
 
 ---
 
-### 3.6 `apps/web` — E2E and Unit Coverage
+### 3.6 `apps/forms` — E2E and Unit Coverage
 
 #### 3.6.1 Playwright E2E Suite
 
@@ -360,7 +360,7 @@ These files have no corresponding `.spec.ts` file.
 
 #### 3.6.2 Jest Unit Suite
 
-**Config:** `apps/web/jest.config.ts` — `ts-jest`, `testEnvironment: "node"`, `rootDir: "src"`, `testRegex: ".*\\.spec\\.ts$"`. Path aliases mapped for `@govtech-bb/*` workspace packages and `@web/*` internal aliases.
+**Config:** `apps/forms/jest.config.ts` — `ts-jest`, `testEnvironment: "node"`, `rootDir: "src"`, `testRegex: ".*\\.spec\\.ts$"`. Path aliases mapped for `@govtech-bb/*` workspace packages and `@forms/*` internal aliases.
 
 **Spec file:** `src/lib/form-builder/form-query.spec.ts` (13 tests)
 
@@ -411,7 +411,7 @@ The following source files have no Jest spec and are not individually exercised 
 1. **No coverage numbers** — without `collectCoverage: true`, estimated percentages in this document cannot be verified automatically.
 2. **Controller layer untested** — no HTTP-level tests means request parsing (path params, body DTOs, query params), response serialisation, and HTTP status codes are unverified.
 3. **GlobalExceptionFilter untested** — the global error handler shapes every error response the client sees; it also integrates OpenTelemetry span recording and metric counters, none of which are exercised in tests.
-4. **No React component unit tests** — `apps/web` Jest config uses `testEnvironment: "node"`; component rendering, hook state, and accessibility cannot be verified without `jsdom`.
+4. **No React component unit tests** — `apps/forms` Jest config uses `testEnvironment: "node"`; component rendering, hook state, and accessibility cannot be verified without `jsdom`.
 5. **E2E depends on a running dev server** — Playwright tests are slow to run in CI (Chromium launch + Vite startup), are brittle to UI text/selector changes, and do not provide branch-level coverage data.
 6. **`form-types` coverage is partial** — step schemas, field schemas, condition behaviour schemas, and validation rule schemas remain untested.
 7. **No test scripts for shared packages** — `packages/form-conditions`, `packages/form-validation`, `packages/form-types` cannot be tested via `npm test`; they require an Nx command, making them invisible to developers running `npm test` at the root.
@@ -429,9 +429,9 @@ The following source files have no Jest spec and are not individually exercised 
 | `FormDraftsController` — all four CRUD endpoints | `apps/api/src/forms/form-drafts/form-drafts.controller.ts` | Medium |
 | `SubmissionPipelineService.pinVersion` — no `draftId` path | `apps/api/src/forms/submissions/submission-pipeline.service.ts:39` | Medium — `draftId` is optional; the codepath returning `null` draft has no test |
 | `payment-reference.ts` — reference generation algorithm | `apps/api/src/payments/payment-reference.ts` | Medium — payment references must be deterministic and unique |
-| Web `form-renderer` — draft save, submit, error boundary | `apps/web/src/components/form-renderer.tsx` | Medium — step navigation covered by E2E, but component-level state not unit tested |
-| Web `use-step-guard` — hook state machine in isolation | `apps/web/src/hooks/use-step-guard.tsx` | Medium — guard behaviour covered by E2E navigation spec, not unit tested |
-| Web `field-renderer` — prop edge cases per field type | `apps/web/src/components/field-renderer.tsx` | Medium — all field types covered by E2E validation spec, not unit tested |
+| Web `form-renderer` — draft save, submit, error boundary | `apps/forms/src/components/form-renderer.tsx` | Medium — step navigation covered by E2E, but component-level state not unit tested |
+| Web `use-step-guard` — hook state machine in isolation | `apps/forms/src/hooks/use-step-guard.tsx` | Medium — guard behaviour covered by E2E navigation spec, not unit tested |
+| Web `field-renderer` — prop edge cases per field type | `apps/forms/src/components/field-renderer.tsx` | Medium — all field types covered by E2E validation spec, not unit tested |
 
 ### 5.2 Medium Priority (Edge Cases in Tested Code)
 
@@ -552,7 +552,7 @@ Tests needed:
 
 **Status:** Playwright E2E is now installed and covers all major user journeys. The remaining gap is React component unit tests, which require switching the Jest environment to `jsdom`.
 
-1. Update `apps/web/jest.config.ts` to enable React component testing:
+1. Update `apps/forms/jest.config.ts` to enable React component testing:
 
 ```typescript
 const config: Config = {
@@ -613,7 +613,7 @@ Once tooling is in place (Phase 1), aim for the following thresholds within 4 sp
 | `packages/form-validation` | ~90% | 90% (enforce) | 95% |
 | `packages/form-types` | ~50% | 60% | 80% |
 | `apps/api` (all files) | ~60% | 70% | 85% |
-| `apps/web` (Jest unit — after jsdom) | ~5% | 30% | 65% |
+| `apps/forms` (Jest unit — after jsdom) | ~5% | 30% | 65% |
 
 ---
 
@@ -657,15 +657,15 @@ apps/api/src/payments/payment.repository.spec.ts
 apps/api/src/registry/registry.service.spec.ts
 
 # Web app — Jest unit
-apps/web/src/lib/form-builder/form-query.spec.ts               ← new (PR #171)
+apps/forms/src/lib/form-builder/form-query.spec.ts               ← new (PR #171)
 
 # Web app — Playwright E2E
-apps/web/e2e/master-contract.spec.ts                           ← new (PR #168)
-apps/web/e2e/navigation.spec.ts                                ← new (PR #168)
-apps/web/e2e/conditionals.spec.ts                              ← new (PR #168)
-apps/web/e2e/validations.spec.ts                               ← new (PR #168)
-apps/web/e2e/repeatable.spec.ts                                ← new (PR #168)
-apps/web/e2e/file-upload.spec.ts                               ← new (PR #168)
+apps/forms/e2e/master-contract.spec.ts                           ← new (PR #168)
+apps/forms/e2e/navigation.spec.ts                                ← new (PR #168)
+apps/forms/e2e/conditionals.spec.ts                              ← new (PR #168)
+apps/forms/e2e/validations.spec.ts                               ← new (PR #168)
+apps/forms/e2e/repeatable.spec.ts                                ← new (PR #168)
+apps/forms/e2e/file-upload.spec.ts                               ← new (PR #168)
 ```
 
 ### Untested Production Files (no `.spec.ts`)
@@ -685,17 +685,17 @@ apps/api/src/payments/payment-reference.ts
 apps/api/src/telemetry/metrics.service.ts
 
 # Web app — React components (E2E coverage only, no unit specs)
-apps/web/src/components/form-renderer.tsx        ← HIGH PRIORITY (unit tests blocked by node env)
-apps/web/src/components/field-renderer.tsx       ← HIGH PRIORITY (unit tests blocked by node env)
-apps/web/src/components/review.tsx
-apps/web/src/components/file-upload.tsx
-apps/web/src/components/error-summary.tsx
-apps/web/src/components/error-message.tsx
-apps/web/src/components/form-error.tsx
-apps/web/src/components/submission-confirmation.tsx
-apps/web/src/hooks/use-step-guard.tsx            ← HIGH PRIORITY (unit tests blocked by node env)
-apps/web/src/routes/forms/$formId/index.tsx      ← HIGH PRIORITY (unit tests blocked by node env)
-apps/web/src/routes/index.tsx
+apps/forms/src/components/form-renderer.tsx        ← HIGH PRIORITY (unit tests blocked by node env)
+apps/forms/src/components/field-renderer.tsx       ← HIGH PRIORITY (unit tests blocked by node env)
+apps/forms/src/components/review.tsx
+apps/forms/src/components/file-upload.tsx
+apps/forms/src/components/error-summary.tsx
+apps/forms/src/components/error-message.tsx
+apps/forms/src/components/form-error.tsx
+apps/forms/src/components/submission-confirmation.tsx
+apps/forms/src/hooks/use-step-guard.tsx            ← HIGH PRIORITY (unit tests blocked by node env)
+apps/forms/src/routes/forms/$formId/index.tsx      ← HIGH PRIORITY (unit tests blocked by node env)
+apps/forms/src/routes/index.tsx
 ```
 
 ---
