@@ -284,3 +284,22 @@
   background: var(--color-danger-light);
   border-radius: 4px;
 }
+
+/* ── Override indicators ──────────────────────────── */
+
+.overrideDot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-accent, #1565c0);
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.overrideField input,
+.overrideField textarea,
+.overrideField select {
+  border-left: 3px solid var(--color-accent, #1565c0);
+  padding-left: 8px;
+}

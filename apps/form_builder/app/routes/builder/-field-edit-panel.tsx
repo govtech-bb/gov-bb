@@ -43,9 +43,13 @@ function OverrideForm({
     onChange({ ...overrides, ...partial });
   }
 
+  function fg(isOverridden: boolean) {
+    return `${styles.formGroup} ${isOverridden ? styles.overrideField : ""}`;
+  }
+
   return (
     <div>
-      <div className={styles.formGroup}>
+      <div className={fg(overrides.fieldId !== undefined && overrides.fieldId !== "")}>
         <label>Field ID Override</label>
         <input
           type="text"
@@ -54,7 +58,7 @@ function OverrideForm({
           placeholder="Leave blank to use default"
         />
       </div>
-      <div className={styles.formGroup}>
+      <div className={fg(overrides.label !== undefined && overrides.label !== "")}>
         <label>Label</label>
         <input
           type="text"
@@ -62,7 +66,7 @@ function OverrideForm({
           onChange={(e) => patch({ label: e.target.value || undefined })}
         />
       </div>
-      <div className={styles.formGroup}>
+      <div className={fg(overrides.hint !== undefined && overrides.hint !== "")}>
         <label>Hint</label>
         <input
           type="text"
@@ -70,7 +74,7 @@ function OverrideForm({
           onChange={(e) => patch({ hint: e.target.value || undefined })}
         />
       </div>
-      <div className={styles.formGroup}>
+      <div className={fg(overrides.isDisabled === true)}>
         <label>
           <input
             type="checkbox"
@@ -80,7 +84,7 @@ function OverrideForm({
           {" "}Disabled
         </label>
       </div>
-      <div className={styles.formGroup}>
+      <div className={fg(overrides.isHidden === true)}>
         <label>
           <input
             type="checkbox"
@@ -90,7 +94,7 @@ function OverrideForm({
           {" "}Hidden
         </label>
       </div>
-      <div className={styles.formGroup}>
+      <div className={fg(overrides.validations?.required !== undefined)}>
         <label>
           <input
             type="checkbox"

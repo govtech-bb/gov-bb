@@ -186,9 +186,15 @@ export function StepEditor({
       {step.fields.map((field, idx) => {
         const item = getRegistryItem(field.ref, catalog);
         const displayName = item?.displayName ?? field.ref;
+        const hasOverrides =
+          Object.keys(field.overrides ?? {}).length > 0 ||
+          (field.kind === "block" && Object.keys(field.childOverrides ?? {}).length > 0);
         return (
           <div key={field.ref} className={styles.fieldRow}>
-            <span style={{ flex: 1 }}>{displayName}</span>
+            <span style={{ flex: 1 }}>
+              {hasOverrides && <span className={styles.overrideDot} title="Has overrides" />}
+              {displayName}
+            </span>
             <span className={styles.badge}>{field.kind}</span>
             <button
               type="button"
