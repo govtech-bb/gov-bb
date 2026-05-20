@@ -1,6 +1,7 @@
 {
-  "short_name": "Gov Services",
-  "name": "Government Services | Government of Barbados",
+  "short_name": "Barbados Gov",
+  "name": "The Government Of Barbados",
+  "description": "Access official Barbados government services online — apply for passports, birth certificates, driver's licences, and more at alpha.gov.bb.",
   "icons": [
     {
       "src": "favicon.ico",
