@@ -361,7 +361,9 @@ function FormBuilderPage() {
                     setSession((s) => ({ ...s, recipe: data.recipe }));
                   } else {
                     const err = await res.json();
-                    setPublishResult(err.message ?? "No recipe found in conversation");
+                    setPublishResult(
+                      err.message ?? "No recipe found in conversation",
+                    );
                   }
                 } catch {
                   setPublishResult("Failed to extract recipe");
@@ -370,11 +372,13 @@ function FormBuilderPage() {
               disabled={!session.sessionId || !!session.recipe}
               style={{
                 padding: "6px 12px",
-                background: session.sessionId && !session.recipe ? "#2196f3" : "#e0e0e0",
+                background:
+                  session.sessionId && !session.recipe ? "#2196f3" : "#e0e0e0",
                 color: session.sessionId && !session.recipe ? "white" : "#999",
                 border: "none",
                 borderRadius: "4px",
-                cursor: session.sessionId && !session.recipe ? "pointer" : "default",
+                cursor:
+                  session.sessionId && !session.recipe ? "pointer" : "default",
                 fontSize: "12px",
               }}
             >
@@ -438,7 +442,12 @@ function FormBuilderPage() {
               alignItems: "center",
             }}
           >
-            <a href={previewUrl} target="_blank" rel="noopener noreferrer" style={{ color: "#1976d2" }}>
+            <a
+              href={previewUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: "#1976d2" }}
+            >
               🔗 Preview form
             </a>
             <button
