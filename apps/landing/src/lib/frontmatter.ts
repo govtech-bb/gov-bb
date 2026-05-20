@@ -7,6 +7,8 @@ export const FrontmatterSchema = z.object({
   category: z.string().optional(),
   /** Multi-category form. A page is listed under every slug it claims. */
   categories: z.array(z.string()).optional(),
+  /** Optional sub-category slug. Must belong to one of the page's categories. */
+  subcategory: z.string().optional(),
   publish_date: z.coerce.date().optional(),
   source_url: z.url().optional(),
   stage: z.enum(['alpha']).optional(),
@@ -22,9 +24,13 @@ export type RawFrontmatter = z.infer<typeof FrontmatterSchema>
  * - `title` is always a string (derived from slug if absent)
  * - `categories` is always an array (folded from `category` or `categories`; possibly empty)
  */
-export type Frontmatter = Omit<RawFrontmatter, 'title' | 'category' | 'categories'> & {
+export type Frontmatter = Omit<
+  RawFrontmatter,
+  'title' | 'category' | 'categories'
+> & {
   title: string
   categories: Array<string>
+  subcategory?: string
 }
 
 export function titleFromSlug(slug: string): string {

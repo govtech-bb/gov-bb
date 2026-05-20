@@ -1,14 +1,23 @@
 import { Link, useLocation } from '@tanstack/react-router'
 import { linkVariants } from '@govtech-bb/react'
-import { getCategoryTitle, getPageTitle } from '../content/registry'
+import {
+  getCategoryTitle,
+  getPageTitle,
+  getSubcategoryTitle,
+} from '../content/registry'
 
 function titleCase(slug: string): string {
   const raw = slug.replace(/-/g, ' ')
   return raw.charAt(0).toUpperCase() + raw.slice(1)
 }
 
-function titleForSegment(seg: string): string {
-  return getCategoryTitle(seg) ?? getPageTitle(seg) ?? titleCase(seg)
+function titleForSegment(seg: string, previousSegment?: string): string {
+  const subTitle = previousSegment
+    ? getSubcategoryTitle(previousSegment, seg)
+    : undefined
+  return (
+    getCategoryTitle(seg) ?? subTitle ?? getPageTitle(seg) ?? titleCase(seg)
+  )
 }
 
 export function Breadcrumbs() {
@@ -36,7 +45,7 @@ export function Breadcrumbs() {
         </li>
         {crumbs.map((segment, index) => {
           const href = `/${segments.slice(0, index + 1).join('/')}`
-          const title = titleForSegment(segment)
+          const title = titleForSegment(segment, crumbs[index - 1])
           return (
             <li
               key={href}
