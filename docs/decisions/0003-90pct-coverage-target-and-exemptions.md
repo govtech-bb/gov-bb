@@ -36,5 +36,5 @@ This policy extends and operationalises the approach established in `0001-covera
 - Every workspace must have `coverageThreshold` configured in its `jest.config.ts`. A workspace without a threshold is outside the quality gate.
 - PRs that add tests should update the relevant thresholds to reflect the new floor. PRs that lower a threshold without a documented reason should be rejected.
 - `packages/form-types` reviewers must not raise the functions threshold as a proxy for "more tests needed" — the metric is structurally inert for this package. Statement and line coverage are the meaningful signals.
-- Once `apps/web` Phase 3 measurements are complete, a follow-up task must set the functions threshold and, if the scope decision excludes `form-renderer`, create a new decision record documenting that exemption.
+- Once `apps/web` Phase 3 measurements are complete, a follow-up task must set the functions threshold and, if the scope decision excludes `form-renderer`, create a new decision record documenting that exemption. Update the status of Exemption 2 to either "resolved" (threshold set) or "permanent" (new decision record created). Do not leave the deferral open indefinitely.
 - The 90% target applies to all future packages added to the monorepo. New packages must have coverage tooling configured before their first merge to main.
