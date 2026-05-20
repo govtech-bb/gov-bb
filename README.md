@@ -17,8 +17,9 @@ npm install
 
 ```
 apps/
-  web/          Next.js frontend (port 4200)
-  api/          NestJS backend  (port 3001)
+  web/          Next.js frontend, modular forms (port 4200)
+  api/          NestJS backend (port 3001)
+  landing/      TanStack Start landing site (port 3000)
 
 packages/
   form-types/       Shared TypeScript types
@@ -31,8 +32,10 @@ packages/
 |---|---|
 | `npm run dev:web` | Start web app in dev mode |
 | `npm run dev:api` | Start API in dev mode |
+| `npm run dev:landing` | Start landing site in dev mode |
 | `npm run start:web` | Start web app in production mode |
 | `npm run start:api` | Start API in production mode |
+| `npm run start:landing` | Start landing site in production mode |
 | `npm run build` | Build all apps and packages |
 | `npm run lint` | Lint all apps and packages |
 | `npm run format` | Format all files with Prettier |
@@ -122,3 +125,17 @@ npx nx graph          # Visualize the dependency graph
 npx nx show projects  # List all projects
 npx nx build web      # Build a single project
 ```
+
+## Toolchain divergence
+
+`apps/landing` pins its own versions of React, TypeScript, ESLint, Vite, and Vitest in `apps/landing/package.json`. It tracks the upstream [`alphagovbb`](https://github.com/govtech-bb/alphagovbb) repo on TanStack Start, which sits ahead of the rest of this monorepo:
+
+| Package | `apps/web`, `apps/api`, root | `apps/landing` |
+|---|---|---|
+| React | 18 | 19 |
+| TypeScript | 5.7 | 6 |
+| ESLint | 8 (legacy config) | 9 (flat config) |
+| Build tool | Next.js / tsc | Vite 8 |
+| Test runner | — | Vitest 4 |
+
+npm workspaces install landing's pinned versions into `apps/landing/node_modules` without affecting the rest of the workspace. If you bump versions for `web`/`api`, leave `apps/landing` alone unless you're also syncing with upstream.
