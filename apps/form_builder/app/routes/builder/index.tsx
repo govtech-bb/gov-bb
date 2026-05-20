@@ -9,7 +9,7 @@ import { bumpMinor } from "../../lib/version";
 import type { ServiceContract } from "@govtech-bb/form-types";
 import type { RecipeDraft, ValidationResult, RecipeValidateResponse } from "@govtech-bb/form-builder";
 
-import { recipeReducer, EMPTY_DRAFT, nextStepId, REQUIRED_STEP_IDS } from "./-recipe-reducer";
+import { recipeReducer, EMPTY_DRAFT, nextStepId, REQUIRED_STEP_IDS, isRequiredStep } from "./-recipe-reducer";
 import { Toolbar } from "./-toolbar";
 import { StepList } from "./-step-list";
 import { StepEditor } from "./-step-editor";
@@ -59,13 +59,11 @@ function BuilderPage() {
     draft.steps.length > REQUIRED_STEP_IDS.length ||
     draft.formId !== "" ||
     draft.title !== "";
-  const editableSteps = draft.steps.filter(
-    (s) => s.stepId !== "declaration" && s.stepId !== "submission-confirmation",
-  );
+  const editableSteps = draft.steps.filter((s) => !isRequiredStep(s.stepId));
   const hasEditableSteps = editableSteps.length > 0;
-  const allStepsHaveFields = draft.steps.every((s) => s.fields.length > 0);
+  const allEditableStepsHaveFields = editableSteps.every((s) => s.fields.length > 0);
   const canSubmit =
-    validateResult?.valid === true && hasEditableSteps && allStepsHaveFields;
+    validateResult?.valid === true && hasEditableSteps && allEditableStepsHaveFields;
 
   // Debounced nextVersion fetch when formId changes
   const nextVersionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -110,7 +108,7 @@ function BuilderPage() {
         setLastSaveStatus("error");
         return;
       }
-      const emptyStep = draft.steps.find((s) => s.fields.length === 0);
+      const emptyStep = editableSteps.find((s) => s.fields.length === 0);
       if (emptyStep) {
         const result: RecipeValidateResponse = {
           valid: false,
