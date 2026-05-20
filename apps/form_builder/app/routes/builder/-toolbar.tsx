@@ -19,6 +19,8 @@ interface ToolbarProps {
   onSubmit: () => void;
   onPublish: () => void;
   onUnpublish: () => void;
+  publishError?: string | null;
+  onClearPublishError?: () => void;
 }
 
 export function Toolbar({
@@ -40,6 +42,8 @@ export function Toolbar({
   onSubmit,
   onPublish,
   onUnpublish,
+  publishError,
+  onClearPublishError,
 }: ToolbarProps) {
   function handleNew() {
     if (isDirty && !window.confirm("Unsaved changes will be lost. Continue?")) return;
@@ -86,6 +90,14 @@ export function Toolbar({
         <button type="button" onClick={onUnpublish} disabled={isPublishing}>
           {isPublishing ? "Unpublishing…" : "Unpublish"}
         </button>
+      )}
+      {publishError && (
+        <div style={{ color: "red", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: 4 }}>
+          <span>{publishError}</span>
+          <button type="button" onClick={onClearPublishError} style={{ fontSize: "0.75rem", padding: "0 4px" }}>
+            ✕
+          </button>
+        </div>
       )}
     </div>
   );

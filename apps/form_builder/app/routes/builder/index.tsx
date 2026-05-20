@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useReducer, useState, useRef, useEffect } from "react";
 import { getCatalogFn } from "../../server/registry";
 import { listForms, nextVersion, submitRecipe, updateRecipe, publishRecipe, unpublishRecipe } from "../../server/forms";
@@ -57,6 +57,9 @@ function BuilderPage() {
   const [isPublishing, setIsPublishing] = useState(false);
   const [activeFieldEdit, setActiveFieldEdit] = useState<{ stepId: string; fieldRef: string } | null>(null);
   const [activeFieldPickerStepId, setActiveFieldPickerStepId] = useState<string | null>(null);
+  const [publishError, setPublishError] = useState<string | null>(null);
+
+  const router = useRouter();
 
   // Derived
   const fieldRefs = useFieldRefs(draft, catalog);
@@ -126,6 +129,7 @@ function BuilderPage() {
         await submitRecipe({ data: { recipe } });
       }
       setSubmitSuccess(true);
+      setIsPublished(false);
       setCurrentVersion(submitVersion);
       setLoadedFromId(draft.formId);
     } catch (e) {
@@ -161,11 +165,13 @@ function BuilderPage() {
   const handlePublish = async () => {
     if (!loadedFromId) return;
     setIsPublishing(true);
+    setPublishError(null);
     try {
-      await publishRecipe({ data: { formId: loadedFromId } }) as void;
+      await publishRecipe({ data: { formId: loadedFromId } });
       setIsPublished(true);
+      router.invalidate();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Publish failed");
+      setPublishError(e instanceof Error ? e.message : "Publish failed");
     } finally {
       setIsPublishing(false);
     }
@@ -174,11 +180,13 @@ function BuilderPage() {
   const handleUnpublish = async () => {
     if (!loadedFromId) return;
     setIsPublishing(true);
+    setPublishError(null);
     try {
-      await unpublishRecipe({ data: { formId: loadedFromId } }) as void;
+      await unpublishRecipe({ data: { formId: loadedFromId } });
       setIsPublished(false);
+      router.invalidate();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Unpublish failed");
+      setPublishError(e instanceof Error ? e.message : "Unpublish failed");
     } finally {
       setIsPublishing(false);
     }
@@ -237,6 +245,8 @@ function BuilderPage() {
         onSubmit={() => { setSubmitSuccess(false); setSubmitError(null); setIsSubmitOpen(true); }}
         onPublish={handlePublish}
         onUnpublish={handleUnpublish}
+        publishError={publishError}
+        onClearPublishError={() => setPublishError(null)}
       />
 
       <div className={styles.builderBody}>
