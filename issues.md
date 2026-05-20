@@ -1,0 +1,1 @@
+- Changing the step ID of a step in the builder UI causes the open step to be closed.

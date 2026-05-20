@@ -5,9 +5,8 @@
     "outDir": "../../dist/packages/form-builder",
     "rootDir": "src",
     "strictPropertyInitialization": false,
-    "declaration": true,
     "module": "commonjs",
-    "lib": ["ES2022", "dom"],
+    "lib": ["ES2022"],
     "types": ["jest"]
   },
   "include": ["src/**/*"],
