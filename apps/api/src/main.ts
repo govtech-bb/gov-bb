@@ -3,6 +3,7 @@ import { NestFactory } from "@nestjs/core";
 import { ValidationPipe } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
+import helmet from "helmet";
 import { AppModule } from "./app.module";
 import { GlobalExceptionFilter } from "./common/exception.filter";
 import { ResponseInterceptor } from "./common/response.interceptor";
@@ -19,6 +20,11 @@ async function bootstrap() {
   const corsOrigins = corsOrigin.includes(",")
     ? corsOrigin.split(",").map((o) => o.trim())
     : corsOrigin;
+
+  // contentSecurityPolicy is disabled because the only HTML this API serves is
+  // Swagger UI at /api-docs, which needs inline scripts/styles. CSP for the
+  // web app lives in apps/web (see Amplify customHeaders).
+  app.use(helmet({ contentSecurityPolicy: false }));
 
   app.enableCors({
     origin: corsOrigins,

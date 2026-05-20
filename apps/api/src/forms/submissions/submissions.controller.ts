@@ -1,6 +1,6 @@
-import { Body, Controller, Headers, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Headers, Post } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
-import { ThrottlerGuard } from "@nestjs/throttler";
+import { Throttle } from "@nestjs/throttler";
 import { SubmissionsService } from "./submissions.service";
 import { CreateSubmissionDto } from "./dto";
 import { CreateSubmissionDocs } from "./submissions.docs";
@@ -16,7 +16,11 @@ export class SubmissionsController {
   constructor(private readonly submissionsService: SubmissionsService) {}
 
   @Post()
-  @UseGuards(ThrottlerGuard)
+  @Throttle({
+    short: { limit: 3, ttl: 10_000 },
+    medium: { limit: 10, ttl: 60_000 },
+    long: { limit: 50, ttl: 3_600_000 },
+  })
   @CreateSubmissionDocs()
   async create(
     @Headers("idempotency-key") idempotencyKey: string,
