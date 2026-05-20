@@ -8,7 +8,7 @@
 @import "@govtech-bb/design";
 
 /* Scan the design system's compiled output for Tailwind class names */
-@source "../node_modules/@govtech-bb/react/dist/**/*.{js,cjs}";
+@source "../../../node_modules/@govtech-bb/react/dist/**/*.{js,cjs}";
 @plugin "@tailwindcss/typography";
 
 @theme {
