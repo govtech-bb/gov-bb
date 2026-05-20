@@ -3,4 +3,5 @@ export interface FormDefinitionSummary {
   formId: string;
   title: string;
   version: string;
+  isPublished: boolean;
 }

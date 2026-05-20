@@ -7,6 +7,9 @@ interface ToolbarProps {
   isDirty: boolean;
   isValidating: boolean;
   isPreviewing: boolean;
+  isPublished: boolean;
+  isPublishing: boolean;
+  loadedFromId: string | null;
   onFormIdChange: (id: string) => void;
   onTitleChange: (title: string) => void;
   onNew: () => void;
@@ -14,6 +17,8 @@ interface ToolbarProps {
   onValidate: () => void;
   onPreview: () => void;
   onSubmit: () => void;
+  onPublish: () => void;
+  onUnpublish: () => void;
 }
 
 export function Toolbar({
@@ -23,6 +28,9 @@ export function Toolbar({
   isDirty,
   isValidating,
   isPreviewing,
+  isPublished,
+  isPublishing,
+  loadedFromId,
   onFormIdChange,
   onTitleChange,
   onNew,
@@ -30,6 +38,8 @@ export function Toolbar({
   onValidate,
   onPreview,
   onSubmit,
+  onPublish,
+  onUnpublish,
 }: ToolbarProps) {
   function handleNew() {
     if (isDirty && !window.confirm("Unsaved changes will be lost. Continue?")) return;
@@ -66,7 +76,17 @@ export function Toolbar({
       <button type="button" onClick={onPreview} disabled={isPreviewing}>
         {isPreviewing ? "Previewing…" : "Preview"}
       </button>
-      <button type="button" onClick={onSubmit}>Submit</button>
+      <button type="button" onClick={onSubmit} disabled={isPublished}>Submit</button>
+      {loadedFromId !== null && !isPublished && (
+        <button type="button" onClick={onPublish} disabled={isPublishing}>
+          {isPublishing ? "Publishing…" : "Publish"}
+        </button>
+      )}
+      {loadedFromId !== null && isPublished && (
+        <button type="button" onClick={onUnpublish} disabled={isPublishing}>
+          {isPublishing ? "Unpublishing…" : "Unpublish"}
+        </button>
+      )}
     </div>
   );
 }

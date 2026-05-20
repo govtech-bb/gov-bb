@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useReducer, useState, useRef, useEffect } from "react";
 import { getCatalogFn } from "../../server/registry";
-import { listForms, nextVersion, submitRecipe, updateRecipe } from "../../server/forms";
+import { listForms, nextVersion, submitRecipe, updateRecipe, publishRecipe, unpublishRecipe } from "../../server/forms";
 import { validateRecipe, previewRecipe } from "../../server/registry";
 import { serializeRecipeDraft } from "@govtech-bb/form-builder";
 import { bumpMinor } from "../../lib/version";
@@ -53,6 +53,8 @@ function BuilderPage() {
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [isSubmitOpen, setIsSubmitOpen] = useState(false);
+  const [isPublished, setIsPublished] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
   const [activeFieldEdit, setActiveFieldEdit] = useState<{ stepId: string; fieldRef: string } | null>(null);
   const [activeFieldPickerStepId, setActiveFieldPickerStepId] = useState<string | null>(null);
 
@@ -140,6 +142,7 @@ function BuilderPage() {
     setVersion(ver);
     setSelectedStepId(null);
     setValidateResult(null);
+    setIsPublished(forms.find((f) => f.formId === formId)?.isPublished ?? false);
   };
 
   const handleNew = () => {
@@ -152,6 +155,33 @@ function BuilderPage() {
     setSubmitSuccess(false);
     setSubmitError(null);
     setPreviewData(null);
+    setIsPublished(false);
+  };
+
+  const handlePublish = async () => {
+    if (!loadedFromId) return;
+    setIsPublishing(true);
+    try {
+      await publishRecipe({ data: { formId: loadedFromId } }) as void;
+      setIsPublished(true);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Publish failed");
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  const handleUnpublish = async () => {
+    if (!loadedFromId) return;
+    setIsPublishing(true);
+    try {
+      await unpublishRecipe({ data: { formId: loadedFromId } }) as void;
+      setIsPublished(false);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Unpublish failed");
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
   const handleFormIdChange = (id: string) => {
@@ -195,6 +225,9 @@ function BuilderPage() {
         isDirty={isDirty}
         isValidating={isValidating}
         isPreviewing={isPreviewing}
+        isPublished={isPublished}
+        isPublishing={isPublishing}
+        loadedFromId={loadedFromId}
         onFormIdChange={handleFormIdChange}
         onTitleChange={handleTitleChange}
         onNew={handleNew}
@@ -202,6 +235,8 @@ function BuilderPage() {
         onValidate={handleValidate}
         onPreview={handlePreview}
         onSubmit={() => { setSubmitSuccess(false); setSubmitError(null); setIsSubmitOpen(true); }}
+        onPublish={handlePublish}
+        onUnpublish={handleUnpublish}
       />
 
       <div className={styles.builderBody}>

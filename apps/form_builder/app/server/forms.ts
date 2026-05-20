@@ -17,9 +17,15 @@ export const listForms = createServerFn({ method: "GET" }).handler(
   async (): Promise<FormDefinitionSummary[]> => {
     const ds = await getDataSource();
     const rows = await ds.query<
-      { id: string; form_id: string; title: string; version: string }[]
+      {
+        id: string;
+        form_id: string;
+        title: string;
+        version: string;
+        published_at: Date | null;
+      }[]
     >(`
-      SELECT DISTINCT ON (form_id) id, form_id, schema->>'title' AS title, version
+      SELECT DISTINCT ON (form_id) id, form_id, schema->>'title' AS title, version, published_at
       FROM form_definitions
       ORDER BY form_id, string_to_array(version, '.')::int[] DESC
     `);
@@ -28,6 +34,7 @@ export const listForms = createServerFn({ method: "GET" }).handler(
       formId: r.form_id,
       title: r.title,
       version: r.version,
+      isPublished: r.published_at !== null,
     }));
   },
 );
@@ -144,3 +151,53 @@ export const nextVersion = createServerFn({ method: "GET" })
       };
     },
   );
+
+export const publishRecipe = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ formId: z.string() }))
+  .handler(async ({ data }): Promise<void> => {
+    const ds = await getDataSource();
+    const rows = await ds.query<FormDefinitionRow[]>(
+      `SELECT id, version, schema, published_at
+       FROM form_definitions
+       WHERE form_id = $1
+       ORDER BY string_to_array(version, '.')::int[] DESC
+       LIMIT 1`,
+      [data.formId],
+    );
+    if (!rows.length) {
+      throw new Error(`No recipe found for formId: ${data.formId}`);
+    }
+    const row = rows[0];
+    if (row.published_at !== null) {
+      throw new Error("Already published");
+    }
+    await ds.query(
+      `UPDATE form_definitions SET published_at = NOW() WHERE id = $1`,
+      [row.id],
+    );
+  });
+
+export const unpublishRecipe = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ formId: z.string() }))
+  .handler(async ({ data }): Promise<void> => {
+    const ds = await getDataSource();
+    const rows = await ds.query<FormDefinitionRow[]>(
+      `SELECT id, version, schema, published_at
+       FROM form_definitions
+       WHERE form_id = $1
+       ORDER BY string_to_array(version, '.')::int[] DESC
+       LIMIT 1`,
+      [data.formId],
+    );
+    if (!rows.length) {
+      throw new Error(`No recipe found for formId: ${data.formId}`);
+    }
+    const row = rows[0];
+    if (row.published_at === null) {
+      throw new Error("Not published");
+    }
+    await ds.query(
+      `UPDATE form_definitions SET published_at = NULL WHERE id = $1`,
+      [row.id],
+    );
+  });
