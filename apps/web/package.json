@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@govtech-bb/form-conditions": "*",
-    "@govtech-bb/form-types": "*",
+    "@govtech-bb/form-conditions": "workspace:*",
+    "@govtech-bb/form-types": "workspace:*",
     "@tanstack/react-form": "^1.29.0",
     "@tanstack/react-query": "^5.100.11",
     "@tanstack/react-router": "^1.168.22",
@@ -49,6 +49,6 @@
     "vite": "^8.0.0"
   },
   "lint-staged": {
-    "*.{json,ts,tsx}": "npx prettier --write"
+    "*.{json,ts,tsx}": "pnpm exec prettier --write"
   }
 }

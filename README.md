@@ -5,12 +5,12 @@ Modular form component system for Barbados government services.
 ## Prerequisites
 
 - Node.js >= 20
-- npm >= 10
+- pnpm >= 10 (`npm install -g pnpm@10` or `corepack enable && corepack prepare pnpm@10.33.4 --activate`)
 
 ## Getting started
 
 ```bash
-npm install
+pnpm install
 ```
 
 ## Project structure
@@ -30,20 +30,20 @@ packages/
 
 | Command | Description |
 |---|---|
-| `npm run dev:web` | Start web app in dev mode |
-| `npm run dev:api` | Start API in dev mode |
-| `npm run dev:landing` | Start landing site in dev mode |
-| `npm run start:web` | Start web app in production mode |
-| `npm run start:api` | Start API in production mode |
-| `npm run start:landing` | Start landing site in production mode |
-| `npm run build` | Build all apps and packages |
-| `npm run lint` | Lint all apps and packages |
-| `npm run format` | Format all files with Prettier |
-| `npm run format:check` | Check formatting without writing |
-| `npm run migration:generate -- <path>` | Generate a migration from entity changes |
-| `npm run migration:run` | Run all pending migrations |
-| `npm run migration:revert` | Revert the last migration |
-| `npm run migration:show` | Show applied / pending migration status |
+| `pnpm dev:web` | Start web app in dev mode |
+| `pnpm dev:api` | Start API in dev mode |
+| `pnpm dev:landing` | Start landing site in dev mode |
+| `pnpm start:web` | Start web app in production mode |
+| `pnpm start:api` | Start API in production mode |
+| `pnpm start:landing` | Start landing site in production mode |
+| `pnpm build` | Build all apps and packages |
+| `pnpm lint` | Lint all apps and packages |
+| `pnpm format` | Format all files with Prettier |
+| `pnpm format:check` | Check formatting without writing |
+| `pnpm migration:generate <path>` | Generate a migration from entity changes |
+| `pnpm migration:run` | Run all pending migrations |
+| `pnpm migration:revert` | Revert the last migration |
+| `pnpm migration:show` | Show applied / pending migration status |
 
 ## Environment variables
 
@@ -71,7 +71,7 @@ cp apps/api/.env.example apps/api/.env
 
 ### Web (AWS Amplify)
 
-The `amplify.yml` at the repo root configures the build. Amplify runs `npx nx build web` and serves from `apps/web/.next`.
+The `amplify.yml` at the repo root configures the build. Amplify installs `pnpm`, runs `pnpm exec nx run web:build`, and serves from `apps/web/dist`.
 
 Set environment variables in the Amplify console.
 
@@ -95,16 +95,16 @@ The TypeORM CLI DataSource is at `apps/api/typeorm.config.ts`. Run migrations fr
 
 ```bash
 # Generate a new migration from entity changes
-npm run migration:generate -- src/database/migrations/<MigrationName>
+pnpm migration:generate src/database/migrations/<MigrationName>
 
 # Run pending migrations
-npm run migration:run
+pnpm migration:run
 
 # Revert the last migration
-npm run migration:revert
+pnpm migration:revert
 
 # Show migration status
-npm run migration:show
+pnpm migration:show
 ```
 
 Migration files are stored in `apps/api/src/database/migrations/`.
@@ -121,9 +121,9 @@ Shared packages are available via these TypeScript path aliases (configured in `
 ## Nx
 
 ```bash
-npx nx graph          # Visualize the dependency graph
-npx nx show projects  # List all projects
-npx nx build web      # Build a single project
+pnpm exec nx graph          # Visualize the dependency graph
+pnpm exec nx show projects  # List all projects
+pnpm exec nx build web      # Build a single project
 ```
 
 ## Toolchain divergence
@@ -137,4 +137,6 @@ npx nx build web      # Build a single project
 | Build tool | Next.js / tsc | Vite 8 |
 | Test runner | Jest | Vitest 4 |
 
-npm workspaces install landing's pinned versions into `apps/landing/node_modules` without affecting the rest of the workspace. If you bump versions for `web`/`api`, leave `apps/landing` alone unless you're also syncing with upstream.
+pnpm respects each workspace's pinned versions when resolving dependencies. Per-workspace `package.json` (like `apps/landing`'s) drives what each app gets. If you bump versions for `web`/`api`, leave `apps/landing` alone unless you're also syncing with upstream.
+
+> **Note on `node-linker=hoisted`.** The repo's `.npmrc` sets `node-linker=hoisted`, which makes pnpm produce a flat `node_modules` tree like npm/yarn. This matches what the codebase has historically assumed (some packages rely on transitively-hoisted dev types — e.g. `@types/jest`). Moving to pnpm's stricter default (`isolated`) is a separate, follow-up task that would require declaring those types in each package that uses them.
