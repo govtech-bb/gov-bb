@@ -68,7 +68,7 @@ import { WorkTelephone } from "./work-telephone";
 import { Title } from "./title";
 import type { Primitive } from "@govtech-bb/form-types";
 
-const ALL: Primitive[] = [
+const ALL = [
   AccountName,
   AccountNumber,
   AccountType,
@@ -102,7 +102,10 @@ const ALL: Primitive[] = [
   Title,
   UploadDocument,
   WorkTelephone,
-];
+] as const satisfies Primitive[];
 
-export const REGISTRY_COMPONENTS: Record<string, Primitive> =
+// Compile-time guard: bump the literal type whenever ALL changes length.
+const _componentCount: 33 = ALL.length;
+
+export const REGISTRY_COMPONENTS: Record<`components/${string}`, Primitive> =
   Object.fromEntries(ALL.map((c) => [`components/${c.fieldId}`, c]));
