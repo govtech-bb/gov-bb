@@ -297,9 +297,7 @@
   vertical-align: middle;
 }
 
-.overrideField input,
-.overrideField textarea,
-.overrideField select {
+.overrideField {
   border-left: 3px solid var(--color-accent, #1565c0);
   padding-left: 8px;
 }
