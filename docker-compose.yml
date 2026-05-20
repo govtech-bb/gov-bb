@@ -1,0 +1,120 @@
+# Local-dev stack for the gov-bb monorepo. One command brings up postgres,
+# api, landing, and web; the api waits for postgres to be healthy before
+# starting, runs migrations on boot, and optionally seeds an example
+# FormDefinition (controlled by SEED_ON_BOOT in .env.docker).
+#
+# Bring it up:    docker compose up
+# Tear it down:   docker compose down
+# Reset the DB:   docker compose down -v
+# Hot reload:     docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# Configure env in .env.docker (copy from .env.docker.example).
+
+name: gov-bb
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-modular_forms}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${DB_USERNAME:-postgres} -d ${DB_NAME:-modular_forms}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Override the image's NODE_ENV=production so data-source.ts doesn't try
+      # to negotiate SSL with the local postgres container (alpine image has
+      # no SSL enabled). Production deploys keep NODE_ENV=production via ECS.
+      NODE_ENV: development
+      API_PORT: ${API_PORT:-3001}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000,http://localhost:4200}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_NAME: ${DB_NAME:-modular_forms}
+      DB_SYNCHRONIZE: "false"
+      DB_LOGGING: ${DB_LOGGING:-false}
+      SEED_ON_BOOT: ${SEED_ON_BOOT:-true}
+      EZPAY_BASE_URL: ${EZPAY_BASE_URL:-https://test.ezpay.gov.bb}
+      EZPAY_DEPARTMENT_API_KEYS: ${EZPAY_DEPARTMENT_API_KEYS:-{}}
+      EZPAY_WEBHOOK_VERIFY_SIGNATURE: ${EZPAY_WEBHOOK_VERIFY_SIGNATURE:-false}
+      EZPAY_WEBHOOK_SECRET: ${EZPAY_WEBHOOK_SECRET:-}
+    ports:
+      - "${API_PORT:-3001}:3001"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+
+  landing:
+    build:
+      context: .
+      dockerfile: apps/landing/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    # Landing has no runtime dependency on api or postgres — it serves
+    # static-ish content. Start in parallel.
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      # Browser-side fetches go to the host-mapped api port.
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:3001}
+    ports:
+      # Container listens on 3000; host gets 4200 to match the historical
+      # convention in the repo README.
+      - "4200:3000"
+
+  # ----------------------------------------------------------------------
+  # Placeholder for the chat app — to be wired in by the chat dev. Fill in
+  # the build context (or image:), port, and env vars when the chat repo
+  # is ready to integrate.
+  #
+  # chat:
+  #   build:
+  #     context: ../govbb-chat
+  #     dockerfile: Dockerfile
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - api
+  #   environment:
+  #     # TODO: confirm env-var contract with the chat dev
+  #     BEDROCK_MODEL_ID: ${BEDROCK_MODEL_ID:-}
+  #     AWS_REGION: ${AWS_REGION:-us-east-1}
+  #     FORMS_API_URL: http://api:3001
+  #   ports:
+  #     - "3002:3000"
+  # ----------------------------------------------------------------------
+
+volumes:
+  postgres-data:
