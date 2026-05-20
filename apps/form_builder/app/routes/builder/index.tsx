@@ -59,7 +59,13 @@ function BuilderPage() {
     draft.steps.length > REQUIRED_STEP_IDS.length ||
     draft.formId !== "" ||
     draft.title !== "";
-  const canSubmit = validateResult?.valid === true;
+  const editableSteps = draft.steps.filter(
+    (s) => s.stepId !== "declaration" && s.stepId !== "submission-confirmation",
+  );
+  const hasEditableSteps = editableSteps.length > 0;
+  const allStepsHaveFields = draft.steps.every((s) => s.fields.length > 0);
+  const canSubmit =
+    validateResult?.valid === true && hasEditableSteps && allStepsHaveFields;
 
   // Debounced nextVersion fetch when formId changes
   const nextVersionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -88,6 +94,38 @@ function BuilderPage() {
   const handleValidate = async () => {
     setIsValidating(true);
     try {
+      // Pre-flight checks that the server schema would also fail, but with friendlier messages.
+      if (!hasEditableSteps) {
+        const result: RecipeValidateResponse = {
+          valid: false,
+          issues: [
+            {
+              path: "steps",
+              message:
+                "Add at least one step before the required Declaration and Submission Confirmation steps.",
+            },
+          ],
+        };
+        setValidateResult(result);
+        setLastSaveStatus("error");
+        return;
+      }
+      const emptyStep = draft.steps.find((s) => s.fields.length === 0);
+      if (emptyStep) {
+        const result: RecipeValidateResponse = {
+          valid: false,
+          issues: [
+            {
+              path: `steps[${emptyStep.stepId}].fields`,
+              message: `Step "${emptyStep.title || emptyStep.stepId}" has no fields.`,
+            },
+          ],
+        };
+        setValidateResult(result);
+        setLastSaveStatus("error");
+        return;
+      }
+
       const recipe = serializeRecipeDraft(draft, { version });
       const raw = (await validateRecipe({ data: { recipe } })) as ValidationResult;
       const result: RecipeValidateResponse = {
