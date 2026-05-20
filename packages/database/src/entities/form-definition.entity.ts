@@ -1,6 +1,6 @@
 import { Column, Entity, Unique } from "typeorm";
 import { TimestampedEntity } from "./entity-base";
-import { ServiceContractRecipe } from "@govtech-bb/form-types";
+import type { ServiceContractRecipe } from "@govtech-bb/form-types";
 
 @Entity({ name: "form_definitions" })
 @Unique(["formId", "version"])
