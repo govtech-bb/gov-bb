@@ -24,7 +24,13 @@ export function Breadcrumbs() {
     <nav aria-label="Breadcrumb" className="flex items-center">
       <ol className="flex flex-wrap items-center gap-y-1 [&>li:not(:first-child):not(:last-child)]:hidden [&>li:not(:first-child):not(:last-child)]:md:flex">
         <li className="flex items-center">
-          <Link to="/" className={linkVariants()}>
+          <Link
+            to="/"
+            className={linkVariants()}
+            data-umami-event="breadcrumb"
+            data-umami-event-to="/"
+            data-umami-event-depth={0}
+          >
             Home
           </Link>
         </li>
@@ -36,7 +42,13 @@ export function Breadcrumbs() {
               key={href}
               className="flex items-center before:mx-[0.5em] before:inline-block before:h-[0.4375em] before:w-[0.4375em] before:shrink-0 before:rotate-45 before:border-mid-grey-00 before:border-t before:border-r before:content-['']"
             >
-              <a href={href} className={`${linkVariants()} break-anywhere`}>
+              <a
+                href={href}
+                className={`${linkVariants()} break-anywhere`}
+                data-umami-event="breadcrumb"
+                data-umami-event-to={href}
+                data-umami-event-depth={index + 1}
+              >
                 {title}
               </a>
             </li>

@@ -1,4 +1,5 @@
 import { Heading, Link, LinkButton, Text } from '@govtech-bb/react'
+import { useLocation } from '@tanstack/react-router'
 import { format } from 'date-fns'
 import type { ReactNode } from 'react'
 import ReactMarkdown from 'react-markdown'
@@ -9,6 +10,26 @@ import rehypeHideStartLinks from '../lib/rehype-hide-start-links'
 import rehypeSectionise from '../lib/rehype-sectionise'
 import type { Frontmatter } from '../lib/frontmatter'
 import { MigrationBanner } from './MigrationBanner'
+import { deriveStartEventName } from '../lib/analytics'
+
+type StartLinkProps = {
+  href: string
+  children: ReactNode
+} & Record<string, unknown>
+
+function StartLink({ href, children, ...rest }: StartLinkProps) {
+  const { pathname } = useLocation()
+  return (
+    <LinkButton
+      href={href}
+      {...rest}
+      data-umami-event={deriveStartEventName(href)}
+      data-umami-event-from={pathname}
+    >
+      {children}
+    </LinkButton>
+  )
+}
 
 const PHONE_SLASH_RE = /^\((\d{3})\)\s*(\d{3})-(\d{4})\s*\/\s*(\d{4})$/
 const PHONE_RE = /^\((\d{3})\)\s*(\d{3})-(\d{4})$/
@@ -79,9 +100,9 @@ export const markdownComponents: Components = {
 
     if (isStartLink) {
       return (
-        <LinkButton href={safeHref} {...rest}>
+        <StartLink href={safeHref} {...rest}>
           {children}
-        </LinkButton>
+        </StartLink>
       )
     }
 

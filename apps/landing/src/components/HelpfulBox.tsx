@@ -20,7 +20,13 @@ export function HelpfulBox({ className }: HelpfulBoxProps) {
     >
       <Heading as="h3">Was this helpful?</Heading>
       <Text as="p">Give us your feedback about this page.</Text>
-      <Link href="/feedback" onClick={handleClick} variant="secondary">
+      <Link
+        href="/feedback"
+        onClick={handleClick}
+        variant="secondary"
+        data-umami-event="helpful-feedback"
+        data-umami-event-path={pathname}
+      >
         Help us improve alpha.gov.bb
       </Link>
     </aside>

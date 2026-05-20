@@ -6,6 +6,7 @@ import { DEPARTMENTS } from '../content/departments'
 import { MINISTRIES } from '../content/ministries'
 import { orgHref } from '../content/orgs'
 import { STATE_BODIES } from '../content/state-bodies'
+import { trackEvent } from '../lib/analytics'
 
 interface Org {
   slug: string
@@ -113,6 +114,12 @@ function OrganisationsPage() {
               label="Search for a department, agency or public body"
               buttonLabel="Search"
               defaultValue={query}
+              onSearch={(submitted) => {
+                trackEvent('org-search-submit', { query: submitted })
+                window.location.href = submitted
+                  ? `${basePath}?q=${encodeURIComponent(submitted)}`
+                  : basePath
+              }}
             />
           </div>
         </div>
@@ -191,6 +198,8 @@ function OrganisationsPage() {
                           <Link
                             href={item.href}
                             className="wrap-break-word text-[19px] leading-normal"
+                            data-umami-event={`org-${item.slug}`}
+                            data-umami-event-name={item.name}
                           >
                             {item.name}
                           </Link>
