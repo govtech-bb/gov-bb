@@ -5,6 +5,35 @@ import type {
 } from "@govtech-bb/form-builder";
 import type { Behaviour, FieldOverrides } from "@govtech-bb/form-types";
 
+export const REQUIRED_STEP_IDS = [
+  "declaration",
+  "submission-confirmation",
+] as const;
+export type RequiredStepId = (typeof REQUIRED_STEP_IDS)[number];
+
+export function isRequiredStep(stepId: string): stepId is RequiredStepId {
+  return (REQUIRED_STEP_IDS as readonly string[]).includes(stepId);
+}
+
+function makeRequiredSteps(): RecipeStepDraft[] {
+  return [
+    {
+      stepId: "declaration",
+      title: "Declaration",
+      description: undefined,
+      fields: [],
+      behaviours: [],
+    },
+    {
+      stepId: "submission-confirmation",
+      title: "Submission Confirmation",
+      description: undefined,
+      fields: [],
+      behaviours: [],
+    },
+  ];
+}
+
 export type RecipeAction =
   | { type: "ADD_STEP" }
   | { type: "REMOVE_STEP"; stepId: string }
@@ -42,7 +71,7 @@ export type RecipeAction =
 export const EMPTY_DRAFT: RecipeDraft = {
   formId: "",
   title: "",
-  steps: [],
+  steps: makeRequiredSteps(),
 };
 
 export function nextStepId(steps: RecipeStepDraft[]): string {
@@ -71,10 +100,15 @@ export function recipeReducer(
         fields: [],
         behaviours: [],
       };
-      return { ...state, steps: [...state.steps, newStep] };
+      const requiredCount = REQUIRED_STEP_IDS.length;
+      const insertAt = Math.max(0, state.steps.length - requiredCount);
+      const before = state.steps.slice(0, insertAt);
+      const after = state.steps.slice(insertAt);
+      return { ...state, steps: [...before, newStep, ...after] };
     }
 
     case "REMOVE_STEP": {
+      if (isRequiredStep(action.stepId)) return state; // ignore
       return {
         ...state,
         steps: state.steps.filter((s) => s.stepId !== action.stepId),
@@ -151,10 +185,16 @@ export function recipeReducer(
     }
 
     case "REORDER_STEPS": {
+      const requiredCount = REQUIRED_STEP_IDS.length;
+      const lastEditableIndex = state.steps.length - requiredCount - 1;
+      const { fromIndex, toIndex } = action;
+      // Refuse to move into or out of the required tail.
+      if (fromIndex > lastEditableIndex || toIndex > lastEditableIndex)
+        return state;
       const steps = [...state.steps];
-      const tmp = steps[action.fromIndex];
-      steps[action.fromIndex] = steps[action.toIndex];
-      steps[action.toIndex] = tmp;
+      const tmp = steps[fromIndex];
+      steps[fromIndex] = steps[toIndex];
+      steps[toIndex] = tmp;
       return { ...state, steps };
     }
 
@@ -173,11 +213,27 @@ export function recipeReducer(
     }
 
     case "LOAD_DRAFT": {
-      return action.draft;
+      const incoming = action.draft.steps;
+      const byId = new Map(incoming.map((s) => [s.stepId, s]));
+      const editable = incoming.filter((s) => !isRequiredStep(s.stepId));
+      const required = REQUIRED_STEP_IDS.map((id) => {
+        const existing = byId.get(id);
+        return (
+          existing ?? {
+            stepId: id,
+            title:
+              id === "declaration" ? "Declaration" : "Submission Confirmation",
+            description: undefined,
+            fields: [],
+            behaviours: [],
+          }
+        );
+      });
+      return { ...action.draft, steps: [...editable, ...required] };
     }
 
     case "RESET": {
-      return { formId: "", title: "", steps: [] };
+      return { formId: "", title: "", steps: makeRequiredSteps() };
     }
 
     case "SET_FORM_META": {

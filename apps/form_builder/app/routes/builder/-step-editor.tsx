@@ -8,6 +8,7 @@ import type {
 import { getRegistryItem } from "@govtech-bb/form-builder";
 import type { Behaviour } from "@govtech-bb/form-types";
 import type { RecipeAction } from "./-recipe-reducer";
+import { isRequiredStep } from "./-recipe-reducer";
 import { getFieldRefs, getStepRefs } from "./-recipe-refs";
 import { BehavioursEditor } from "./-behaviours-editor";
 import { FieldPicker } from "./-field-picker";
@@ -119,7 +120,11 @@ export function StepEditor({
         <input
           type="text"
           value={localStepId}
-          onChange={(e) => handleStepIdChange(e.target.value)}
+          readOnly={isRequiredStep(step.stepId)}
+          onChange={(e) => {
+            if (isRequiredStep(step.stepId)) return;
+            handleStepIdChange(e.target.value);
+          }}
           aria-invalid={stepIdError ? true : undefined}
         />
         {stepIdError && (

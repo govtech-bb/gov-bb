@@ -1,5 +1,6 @@
 import type { RecipeStepDraft } from "@govtech-bb/form-builder";
 import styles from "../../styles/builder.module.css";
+import { isRequiredStep } from "./-recipe-reducer";
 
 interface StepListProps {
   steps: RecipeStepDraft[];
@@ -35,29 +36,33 @@ export function StepList({
           onClick={() => onSelect(step.stepId)}
         >
           <span style={{ flex: 1, fontSize: "0.9rem" }}>{step.title || step.stepId}</span>
-          <button
-            type="button"
-            title="Move up"
-            disabled={index === 0}
-            onClick={(e) => { e.stopPropagation(); onMoveUp(index); }}
-          >
-            ▲
-          </button>
-          <button
-            type="button"
-            title="Move down"
-            disabled={index === steps.length - 1}
-            onClick={(e) => { e.stopPropagation(); onMoveDown(index); }}
-          >
-            ▼
-          </button>
-          <button
-            type="button"
-            title="Delete"
-            onClick={(e) => { e.stopPropagation(); handleRemove(step.stepId); }}
-          >
-            ×
-          </button>
+          {!isRequiredStep(step.stepId) && (
+            <>
+              <button
+                type="button"
+                title="Move up"
+                disabled={index === 0}
+                onClick={(e) => { e.stopPropagation(); onMoveUp(index); }}
+              >
+                ▲
+              </button>
+              <button
+                type="button"
+                title="Move down"
+                disabled={index === steps.length - 1}
+                onClick={(e) => { e.stopPropagation(); onMoveDown(index); }}
+              >
+                ▼
+              </button>
+              <button
+                type="button"
+                title="Delete"
+                onClick={(e) => { e.stopPropagation(); handleRemove(step.stepId); }}
+              >
+                ×
+              </button>
+            </>
+          )}
         </div>
       ))}
     </div>
