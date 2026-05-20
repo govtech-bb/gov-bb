@@ -6,7 +6,7 @@ export interface ChatMessage {
 export interface SessionResponse {
   sessionId: string;
   messages: ChatMessage[];
-  recipe: Record<string, unknown> | null;
+  recipe: Record<string, any> | null;
 }
 
 export interface PublishResponse {

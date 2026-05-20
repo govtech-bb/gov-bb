@@ -5,7 +5,7 @@ export interface Session {
   id: string;
   name: string;
   messages: ChatMessage[];
-  recipe: Record<string, unknown> | null;
+  recipe: Record<string, any> | null;
   systemPrompt: string;
   pdfPages?: string[];
   publishedFormId?: string;

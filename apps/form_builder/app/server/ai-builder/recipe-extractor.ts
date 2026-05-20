@@ -3,7 +3,7 @@
  * Tries fenced JSON blocks, fenced code blocks, then the largest brace-balanced
  * substring that contains "formId" and "steps".
  */
-export function extractRecipe(text: string): Record<string, unknown> | null {
+export function extractRecipe(text: string): Record<string, any> | null {
   // Strategy 1: ```json ... ``` fenced blocks
   const jsonBlockRegex = /```json\s*([\s\S]*?)```/g;
   let match: RegExpExecArray | null;
@@ -46,7 +46,7 @@ export function extractRecipe(text: string): Record<string, unknown> | null {
   return null;
 }
 
-function tryParseRecipe(text: string): Record<string, unknown> | null {
+function tryParseRecipe(text: string): Record<string, any> | null {
   try {
     let cleaned = text.trim();
     if (cleaned.includes("$recipe$")) {

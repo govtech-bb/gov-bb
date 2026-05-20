@@ -3,10 +3,7 @@
  * Uses Postgres dollar-quoted strings ($recipe$ ... $recipe$) so the JSON
  * literal can contain single quotes without escaping.
  */
-export function buildSql(
-  formId: string,
-  recipe: Record<string, unknown>,
-): string {
+export function buildSql(formId: string, recipe: Record<string, any>): string {
   const json = JSON.stringify(recipe, null, 2);
   return `INSERT INTO form_definitions (id, form_id, version, schema, published_at, created_at, updated_at)
 VALUES (
