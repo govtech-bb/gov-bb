@@ -85,7 +85,7 @@ describe("FormSubmissionRepository", () => {
   });
 
   describe("tx (inherited from BaseRepository) — error path", () => {
-    it("re-throws the original error and rolls back when the callback throws", async () => {
+    it("re-throws the original error when the callback throws", async () => {
       const dataSource = makeDataSource();
       const repo = new FormSubmissionRepository(dataSource);
 
