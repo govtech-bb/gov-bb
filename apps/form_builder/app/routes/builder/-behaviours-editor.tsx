@@ -60,7 +60,7 @@ export function BehavioursEditor({
       {behaviours.map((behaviour, index) => {
         const descriptor = BEHAVIOUR_TYPE_DESCRIPTORS.find((d) => d.type === behaviour.type);
         return (
-          <div key={index} className={styles.fieldRow} style={{ flexDirection: "column", alignItems: "flex-start" }}>
+          <div key={behaviour.type} className={styles.fieldRow} style={{ flexDirection: "column", alignItems: "flex-start" }}>
             <div style={{ display: "flex", gap: 8, alignItems: "center", width: "100%" }}>
               <strong>{descriptor?.label ?? behaviour.type}</strong>
               <button type="button" onClick={() => handleDelete(index)}>×</button>

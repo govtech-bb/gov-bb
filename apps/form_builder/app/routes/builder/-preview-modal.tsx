@@ -4,10 +4,11 @@ import styles from "../../styles/builder.module.css";
 interface PreviewModalProps {
   contract: ServiceContract | null;
   isLoading: boolean;
+  error?: string | null;
   onClose: () => void;
 }
 
-export function PreviewModal({ contract, isLoading, onClose }: PreviewModalProps) {
+export function PreviewModal({ contract, isLoading, error, onClose }: PreviewModalProps) {
   return (
     <div className={styles.modal} onClick={onClose}>
       <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
@@ -17,6 +18,8 @@ export function PreviewModal({ contract, isLoading, onClose }: PreviewModalProps
         </div>
 
         {isLoading && <p>Loading preview…</p>}
+
+        {error && <p style={{ color: "red" }}>{error}</p>}
 
         {!isLoading && contract && (
           <div>

@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useReducer, useState, useRef, useEffect } from "react";
 import { getCatalogFn } from "../../server/registry";
-import { listForms, nextVersion } from "../../server/forms";
+import { listForms, nextVersion, submitRecipe, updateRecipe } from "../../server/forms";
 import { validateRecipe, previewRecipe } from "../../server/registry";
 import { serializeRecipeDraft } from "@govtech-bb/form-builder";
 import { bumpMinor } from "../../lib/version";
@@ -50,6 +50,7 @@ function BuilderPage() {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [previewData, setPreviewData] = useState<ServiceContract | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [isSubmitOpen, setIsSubmitOpen] = useState(false);
   const [activeFieldEdit, setActiveFieldEdit] = useState<{ stepId: string; fieldRef: string } | null>(null);
@@ -88,6 +89,11 @@ function BuilderPage() {
       const recipe = serializeRecipeDraft(draft, { version });
       const result = await validateRecipe({ data: { recipe } }) as any;
       setValidateResult({ valid: result.ok, errors: result.ok ? [] : result.issues });
+    } catch (e) {
+      setValidateResult({
+        valid: false,
+        errors: [{ path: "", message: e instanceof Error ? e.message : "Validation request failed" }],
+      });
     } finally {
       setIsValidating(false);
     }
@@ -96,10 +102,13 @@ function BuilderPage() {
   const handlePreview = async () => {
     setIsPreviewOpen(true);
     setIsPreviewing(true);
+    setPreviewError(null);
     try {
       const recipe = serializeRecipeDraft(draft, { version });
       const contract = await previewRecipe({ data: { recipe } }) as any;
       setPreviewData(contract as ServiceContract);
+    } catch (e) {
+      setPreviewError(e instanceof Error ? e.message : "Preview request failed");
     } finally {
       setIsPreviewing(false);
     }
@@ -111,10 +120,8 @@ function BuilderPage() {
     try {
       const recipe = serializeRecipeDraft(draft, { version: submitVersion });
       if (loadedFromId) {
-        const { updateRecipe } = await import("../../server/forms");
         await updateRecipe({ data: { formId: loadedFromId, recipe } });
       } else {
-        const { submitRecipe } = await import("../../server/forms");
         await submitRecipe({ data: { recipe } });
       }
       setSubmitSuccess(true);
@@ -295,7 +302,8 @@ function BuilderPage() {
         <PreviewModal
           contract={previewData}
           isLoading={isPreviewing}
-          onClose={() => { setIsPreviewOpen(false); setPreviewData(null); }}
+          error={previewError}
+          onClose={() => { setIsPreviewOpen(false); setPreviewData(null); setPreviewError(null); }}
         />
       )}
 

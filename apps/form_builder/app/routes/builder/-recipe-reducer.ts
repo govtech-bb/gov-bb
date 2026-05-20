@@ -51,10 +51,17 @@ export function recipeReducer(
 ): RecipeDraft {
   switch (action.type) {
     case "ADD_STEP": {
-      const n = state.steps.length + 1;
+      const existingNums = state.steps
+        .map((s) => {
+          const m = s.stepId.match(/^step-(\d+)$/);
+          return m ? parseInt(m[1], 10) : 0;
+        })
+        .filter((n) => n > 0);
+      const n = existingNums.length > 0 ? Math.max(...existingNums) + 1 : 1;
       const newStep: RecipeStepDraft = {
         stepId: `step-${n}`,
         title: `Step ${n}`,
+        description: undefined,
         fields: [],
         behaviours: [],
       };

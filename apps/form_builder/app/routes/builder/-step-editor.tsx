@@ -72,7 +72,7 @@ export function StepEditor({
         const item = getRegistryItem(field.ref, catalog);
         const displayName = item?.displayName ?? field.ref;
         return (
-          <div key={field.ref} className={styles.fieldRow}>
+          <div key={index} className={styles.fieldRow}>
             <span style={{ flex: 1 }}>{displayName}</span>
             <span className={styles.badge}>{field.kind}</span>
             <button

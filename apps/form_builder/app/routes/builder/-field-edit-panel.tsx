@@ -73,7 +73,6 @@ function OverrideForm({ overrides, htmlType, fieldRefs, stepRefs, onChange }: Ov
         htmlType={htmlType}
         rules={overrides.validations}
         fieldRefs={fieldRefs}
-        stepRefs={stepRefs}
         onChange={(validations) => patch({ validations })}
       />
 
