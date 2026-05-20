@@ -159,6 +159,9 @@ export function FieldEditPanel({
     return "text";
   })();
 
+  // These initializers only run on mount. Callers must unmount + remount the
+  // modal when switching to a different field — re-rendering with a new `field`
+  // prop would leave stale local state.
   const [overrides, setOverrides] = useState<FieldOverrides>({ ...field.overrides });
   const [childOverrides, setChildOverrides] = useState<ChildOverrides>(
     field.childOverrides ? { ...field.childOverrides } : {},

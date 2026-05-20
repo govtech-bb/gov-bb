@@ -68,6 +68,8 @@ export type RecipeAction =
       description?: string;
     };
 
+// Shared module-level constant; treat as immutable. RESET / new-form flows
+// call makeRequiredSteps() afresh, so don't mutate this object's arrays in place.
 export const EMPTY_DRAFT: RecipeDraft = {
   formId: "",
   title: "",
