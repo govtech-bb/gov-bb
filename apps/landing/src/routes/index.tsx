@@ -6,6 +6,7 @@ import {
   Text,
   linkVariants,
 } from '@govtech-bb/react'
+import { HelpfulBox } from '../components/HelpfulBox'
 import { CATEGORIES } from '../content/categories'
 
 export const Route = createFileRoute('/')({
@@ -100,6 +101,9 @@ function Home() {
         </div>
       </section>
 
+      <div className="container">
+        <HelpfulBox className="mb-4 lg:mb-16" />
+      </div>
     </>
   )
 }

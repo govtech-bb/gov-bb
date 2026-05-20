@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { Heading, Link, Search, Text } from '@govtech-bb/react'
+import { HelpfulBox } from '../components/HelpfulBox'
 import { PAGES } from '../content/registry'
 
 export const Route = createFileRoute('/services')({
@@ -82,6 +83,9 @@ function ServicesPage() {
         </div>
       </section>
 
+      <div className="container">
+        <HelpfulBox className="mb-4 lg:mb-16" />
+      </div>
     </>
   )
 }

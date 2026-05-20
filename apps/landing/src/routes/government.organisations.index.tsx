@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { Heading, Link, Search, Text } from '@govtech-bb/react'
 import { z } from 'zod'
+import { HelpfulBox } from '../components/HelpfulBox'
 import { DEPARTMENTS } from '../content/departments'
 import { MINISTRIES } from '../content/ministries'
 import { orgHref } from '../content/orgs'
@@ -204,6 +205,9 @@ function OrganisationsPage() {
         </div>
       </section>
 
+      <div className="container">
+        <HelpfulBox className="mb-4 lg:mb-16" />
+      </div>
     </>
   )
 }
