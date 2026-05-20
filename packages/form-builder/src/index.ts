@@ -33,4 +33,8 @@ export type { ValidationRuleDescriptor } from "./behaviors/validation-builder";
 export { hydrateForm } from "./resolution";
 export { serializeRecipeDraft, deserializeRecipe } from "./serialization";
 export { validateFormContract } from "./validation";
-export type { ValidationResult, ValidationIssue } from "./validation";
+export type {
+  ValidationResult,
+  ValidationIssue,
+  RecipeValidateResponse,
+} from "./validation";

@@ -7,7 +7,7 @@ import { validateRecipe, previewRecipe } from "../../server/registry";
 import { serializeRecipeDraft } from "@govtech-bb/form-builder";
 import { bumpMinor } from "../../lib/version";
 import type { ServiceContract } from "@govtech-bb/form-types";
-import type { RecipeDraft, ValidationIssue, ValidationResult } from "@govtech-bb/form-builder";
+import type { RecipeDraft, ValidationResult, RecipeValidateResponse } from "@govtech-bb/form-builder";
 
 import { recipeReducer, EMPTY_DRAFT, nextStepId } from "./-recipe-reducer";
 import { useFieldRefs, useStepRefs } from "./-recipe-refs";
@@ -44,7 +44,7 @@ function BuilderPage() {
   const [currentVersion, setCurrentVersion] = useState<string | null>(null);
   const [loadedFromId, setLoadedFromId] = useState<string | null>(null);
   const [isValidating, setIsValidating] = useState(false);
-  const [validateResult, setValidateResult] = useState<{ valid: boolean; errors: ValidationIssue[] } | null>(null);
+  const [validateResult, setValidateResult] = useState<RecipeValidateResponse | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -93,16 +93,30 @@ function BuilderPage() {
     setIsValidating(true);
     try {
       const recipe = serializeRecipeDraft(draft, { version });
-      const result = await validateRecipe({ data: { recipe } }) as ValidationResult;
-      setValidateResult({ valid: result.ok, errors: result.ok ? [] : result.issues });
+      const raw = (await validateRecipe({ data: { recipe } })) as ValidationResult;
+      const result: RecipeValidateResponse = {
+        valid: raw.ok,
+        issues: raw.ok ? [] : raw.issues,
+      };
+      setValidateResult(result);
+      setLastSaveStatus(raw.ok ? "success" : "error");
     } catch (e) {
-      setValidateResult({
+      const result: RecipeValidateResponse = {
         valid: false,
-        errors: [{ path: "", message: e instanceof Error ? e.message : "Validation request failed" }],
-      });
+        issues: [
+          { path: "", message: e instanceof Error ? e.message : "Validation request failed" },
+        ],
+      };
+      setValidateResult(result);
+      setLastSaveStatus("error");
     } finally {
       setIsValidating(false);
     }
+  };
+
+  const handleDismissValidation = () => {
+    setValidateResult(null);
+    setLastSaveStatus("idle");
   };
 
   const handlePreview = async () => {
@@ -291,7 +305,7 @@ function BuilderPage() {
         )}
       </div>
 
-      <ValidationPanel result={validateResult} />
+      <ValidationPanel result={validateResult} onDismiss={handleDismissValidation} />
 
       {isPickerOpen && (
         <FormPicker
