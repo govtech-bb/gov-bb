@@ -1,1 +1,0 @@
-The mission of BADMC is to develop agriculture through innovative technological applications, technical and marketing research, and to create opportunities for investment that engenders enterprise, food security and prosperity in the agricultural sector.
