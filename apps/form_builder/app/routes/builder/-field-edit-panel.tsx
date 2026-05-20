@@ -32,6 +32,15 @@ function OverrideForm({ overrides, htmlType, fieldRefs, stepRefs, onChange }: Ov
   return (
     <div>
       <div className={styles.formGroup}>
+        <label>Field ID Override</label>
+        <input
+          type="text"
+          value={overrides.fieldId ?? ""}
+          onChange={(e) => patch({ fieldId: e.target.value || undefined })}
+          placeholder="Leave blank to use default"
+        />
+      </div>
+      <div className={styles.formGroup}>
         <label>Label</label>
         <input
           type="text"
@@ -65,6 +74,24 @@ function OverrideForm({ overrides, htmlType, fieldRefs, stepRefs, onChange }: Ov
             onChange={(e) => patch({ isHidden: e.target.checked || undefined })}
           />
           {" "}Hidden
+        </label>
+      </div>
+      <div className={styles.formGroup}>
+        <label>
+          <input
+            type="checkbox"
+            checked={overrides.validations?.required !== undefined}
+            onChange={(e) => {
+              const next = { ...(overrides.validations ?? {}) };
+              if (e.target.checked) {
+                next.required = {};
+              } else {
+                delete next.required;
+              }
+              patch({ validations: Object.keys(next).length > 0 ? next : undefined });
+            }}
+          />
+          {" "}Required
         </label>
       </div>
 

@@ -23,7 +23,12 @@ export function getDataSource(): Promise<DataSource> {
           ? { rejectUnauthorized: false }
           : false,
     } as any);
-    await ds.initialize();
+    try {
+      await ds.initialize();
+    } catch (err) {
+      _initPromise = null;
+      throw err;
+    }
     _dataSource = ds;
     return ds;
   })();
