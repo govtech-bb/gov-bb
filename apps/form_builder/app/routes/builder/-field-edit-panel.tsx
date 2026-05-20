@@ -1,8 +1,16 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { getRegistryItem } from "@govtech-bb/form-builder";
-import type { RecipeFieldDraft, RegistryCatalog, ChildOverrides, BlockDefinition } from "@govtech-bb/form-builder";
+import type {
+  RecipeFieldDraft,
+  RegistryCatalog,
+  ChildOverrides,
+  BlockDefinition,
+  RecipeDraft,
+} from "@govtech-bb/form-builder";
 import type { FieldOverrides, HtmlTypes } from "@govtech-bb/form-types";
 import type { FieldRef, StepRef } from "./-recipe-refs";
+import { getFieldRefs, getStepRefs } from "./-recipe-refs";
+import type { RecipeAction } from "./-recipe-reducer";
 import { ValidationRulesEditor } from "./-validation-rules-editor";
 import { BehavioursEditor } from "./-behaviours-editor";
 import styles from "../../styles/builder.module.css";
@@ -10,9 +18,9 @@ import styles from "../../styles/builder.module.css";
 interface FieldEditPanelProps {
   field: RecipeFieldDraft;
   catalog: RegistryCatalog;
-  fieldRefs: FieldRef[];
-  stepRefs: StepRef[];
-  onSave: (overrides: FieldOverrides, childOverrides?: ChildOverrides) => void;
+  draft: RecipeDraft;
+  stepId: string;
+  dispatch: React.Dispatch<RecipeAction>;
   onClose: () => void;
 }
 
@@ -24,7 +32,13 @@ interface OverrideFormProps {
   onChange: (overrides: FieldOverrides) => void;
 }
 
-function OverrideForm({ overrides, htmlType, fieldRefs, stepRefs, onChange }: OverrideFormProps) {
+function OverrideForm({
+  overrides,
+  htmlType,
+  fieldRefs,
+  stepRefs,
+  onChange,
+}: OverrideFormProps) {
   function patch(partial: Partial<FieldOverrides>) {
     onChange({ ...overrides, ...partial });
   }
@@ -109,7 +123,9 @@ function OverrideForm({ overrides, htmlType, fieldRefs, stepRefs, onChange }: Ov
         behaviours={overrides.behaviours ?? []}
         fieldRefs={fieldRefs}
         stepRefs={stepRefs}
-        onChange={(behaviours) => patch({ behaviours: behaviours.length > 0 ? behaviours : undefined })}
+        onChange={(behaviours) =>
+          patch({ behaviours: behaviours.length > 0 ? behaviours : undefined })
+        }
       />
     </div>
   );
@@ -118,11 +134,17 @@ function OverrideForm({ overrides, htmlType, fieldRefs, stepRefs, onChange }: Ov
 export function FieldEditPanel({
   field,
   catalog,
-  fieldRefs,
-  stepRefs,
-  onSave,
+  draft,
+  stepId,
+  dispatch,
   onClose,
 }: FieldEditPanelProps) {
+  const fieldRefs: FieldRef[] = useMemo(
+    () => getFieldRefs(draft, catalog),
+    [draft, catalog],
+  );
+  const stepRefs: StepRef[] = useMemo(() => getStepRefs(draft), [draft]);
+
   const item = getRegistryItem(field.ref, catalog);
 
   // Determine htmlType for component/custom fields
@@ -139,15 +161,20 @@ export function FieldEditPanel({
   );
 
   function handleSave() {
-    if (field.kind === "block") {
-      onSave(overrides, childOverrides);
-    } else {
-      onSave(overrides);
-    }
+    dispatch({
+      type: "UPDATE_FIELD_OVERRIDES",
+      stepId,
+      fieldRef: field.ref,
+      overrides,
+      childOverrides: field.kind === "block" ? childOverrides : undefined,
+    });
     onClose();
   }
 
-  function handleChildOverrideChange(childFieldId: string, childOverride: FieldOverrides) {
+  function handleChildOverrideChange(
+    childFieldId: string,
+    childOverride: FieldOverrides,
+  ) {
     setChildOverrides((prev) => ({ ...prev, [childFieldId]: childOverride }));
   }
 
@@ -155,46 +182,62 @@ export function FieldEditPanel({
   const blockDef = isBlock ? (item as BlockDefinition) : null;
 
   return (
-    <div className={styles.modal} onClick={onClose}>
-      <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
-          <strong>Edit Field: {item?.displayName ?? field.ref}</strong>
-          <button type="button" onClick={onClose}>Close</button>
-        </div>
+    <div className={styles.fieldEditPanel}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          marginBottom: 12,
+        }}
+      >
+        <strong>Edit Field: {item?.displayName ?? field.ref}</strong>
+        <button type="button" onClick={onClose}>Close</button>
+      </div>
 
-        {isBlock && blockDef ? (
-          <div>
-            {blockDef.block.elements.map((element) => {
-              const childHtmlType: HtmlTypes = element.htmlType;
-              const childOverride = childOverrides[element.fieldId] ?? {};
-              return (
-                <div key={element.fieldId} style={{ marginBottom: 16, border: "1px solid #eee", padding: 12, borderRadius: 4 }}>
-                  <div className={styles.sectionTitle}>{element.label} ({element.fieldId})</div>
-                  <OverrideForm
-                    overrides={childOverride}
-                    htmlType={childHtmlType}
-                    fieldRefs={fieldRefs}
-                    stepRefs={stepRefs}
-                    onChange={(updated) => handleChildOverrideChange(element.fieldId, updated)}
-                  />
+      {isBlock && blockDef ? (
+        <div>
+          {blockDef.block.elements.map((element) => {
+            const childHtmlType: HtmlTypes = element.htmlType;
+            const childOverride = childOverrides[element.fieldId] ?? {};
+            return (
+              <div
+                key={element.fieldId}
+                style={{
+                  marginBottom: 16,
+                  border: "1px solid #eee",
+                  padding: 12,
+                  borderRadius: 4,
+                }}
+              >
+                <div className={styles.sectionTitle}>
+                  {element.label} ({element.fieldId})
                 </div>
-              );
-            })}
-          </div>
-        ) : (
-          <OverrideForm
-            overrides={overrides}
-            htmlType={htmlType}
-            fieldRefs={fieldRefs}
-            stepRefs={stepRefs}
-            onChange={setOverrides}
-          />
-        )}
-
-        <div style={{ marginTop: 16, display: "flex", gap: 8 }}>
-          <button type="button" onClick={handleSave}>Save</button>
-          <button type="button" onClick={onClose}>Cancel</button>
+                <OverrideForm
+                  overrides={childOverride}
+                  htmlType={childHtmlType}
+                  fieldRefs={fieldRefs}
+                  stepRefs={stepRefs}
+                  onChange={(updated) =>
+                    handleChildOverrideChange(element.fieldId, updated)
+                  }
+                />
+              </div>
+            );
+          })}
         </div>
+      ) : (
+        <OverrideForm
+          overrides={overrides}
+          htmlType={htmlType}
+          fieldRefs={fieldRefs}
+          stepRefs={stepRefs}
+          onChange={setOverrides}
+        />
+      )}
+
+      <div style={{ marginTop: 16, display: "flex", gap: 8 }}>
+        <button type="button" onClick={handleSave}>Save</button>
+        <button type="button" onClick={onClose}>Cancel</button>
       </div>
     </div>
   );
