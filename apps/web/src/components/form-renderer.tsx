@@ -311,6 +311,7 @@ export default function FormRenderer({
             serviceTitle={formMeta.formTitle}
             stepTitle={currentStep.title}
             nextSteps={currentStep.nextSteps}
+            contactDetails={formMeta.contactDetails}
             onTryAgain={() => navigateToStep("check-your-answers")}
             submissionState={submissionState}
           />

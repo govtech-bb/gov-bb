@@ -10,12 +10,12 @@ import {
 const cfg = (
   value?: unknown,
   error?: string,
-  reference?: string,
+  referenceFieldId?: string,
   targetStepId?: string,
 ) => ({
   value,
   error,
-  reference,
+  referenceFieldId,
   targetStepId,
 });
 
@@ -79,6 +79,13 @@ describe("gtRunner", () => {
 
   it("uses custom error", () => {
     expect(gtRunner(5, cfg(5, "Must be greater"), {})).toBe("Must be greater");
+  });
+
+  it("returns an error when referenced field value is a non-numeric string", () => {
+    const result = gtRunner(10, cfg(undefined, undefined, "minAge"), {
+      "step-1": { minAge: "not-a-number" },
+    });
+    expect(result).not.toBeNull();
   });
 });
 

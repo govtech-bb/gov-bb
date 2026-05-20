@@ -7,6 +7,10 @@
       {
         "include": "email/templates/**/*.hbs",
         "outDir": "./dist"
+      },
+      {
+        "include": "form-builder/prompts/**/*.md",
+        "watchAssets": true
       }
     ]
   }

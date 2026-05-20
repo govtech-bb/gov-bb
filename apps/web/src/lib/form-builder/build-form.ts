@@ -50,6 +50,7 @@ export const buildForm = (contract: ClientServiceContract): FormMeta => {
     version: contract.version,
     formTitle: contract.title,
     formDescription: contract.description,
+    contactDetails: contract.contactDetails,
     schema,
     steps,
     defaultValues: defaults,
