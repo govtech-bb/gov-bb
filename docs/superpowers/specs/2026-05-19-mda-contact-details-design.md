@@ -46,9 +46,9 @@ contactDetails: contactDetailsSchema.optional(),
 | File | Change |
 |------|--------|
 | `packages/form-types/src/service-contract.type.ts` | Add `contactDetailsSchema` and `ContactDetails` type |
-| `apps/web/src/types/field-mapper.type.ts` — `ClientServiceContract` | Add `contactDetails?: ContactDetails` |
-| `apps/web/src/types/renderer.type.ts` — `FormMeta` | Add `contactDetails?: ContactDetails` |
-| `apps/web/src/types/props.type.ts` — `SubmissionConfirmationProps` | Add `contactDetails?: ContactDetails` |
+| `apps/forms/src/types/field-mapper.type.ts` — `ClientServiceContract` | Add `contactDetails?: ContactDetails` |
+| `apps/forms/src/types/renderer.type.ts` — `FormMeta` | Add `contactDetails?: ContactDetails` |
+| `apps/forms/src/types/props.type.ts` — `SubmissionConfirmationProps` | Add `contactDetails?: ContactDetails` |
 
 ## Data Flow
 
@@ -65,12 +65,12 @@ serviceContractSchema (Zod parse)
 
 `mapContractToLocale` spreads `...contract`, so `contactDetails` passes through automatically.
 
-`buildForm` (`apps/web/src/lib/form-builder/build-form.ts`) adds:
+`buildForm` (`apps/forms/src/lib/form-builder/build-form.ts`) adds:
 ```ts
 contactDetails: contract.contactDetails,
 ```
 
-`FormRenderer` (`apps/web/src/components/form-renderer.tsx`) passes it to `SubmissionConfirmation`:
+`FormRenderer` (`apps/forms/src/components/form-renderer.tsx`) passes it to `SubmissionConfirmation`:
 ```tsx
 <SubmissionConfirmation
   ...
@@ -111,7 +111,7 @@ contactDetails: contract.contactDetails,
 
 ## CSS
 
-Three classes added to `apps/web/src/styles/govtechbb.module.css`:
+Three classes added to `apps/forms/src/styles/govtechbb.module.css`:
 
 ```css
 .formRoot .contactDetails {

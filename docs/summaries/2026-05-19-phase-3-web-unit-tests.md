@@ -12,9 +12,9 @@ Phase 2 closed the highest-risk API gaps and pushed API coverage to ~79% stateme
 **Infrastructure (new):**
 
 - Installed `jest-environment-jsdom`, `@testing-library/react`, `@testing-library/user-event`, `@testing-library/jest-dom`, `jest-axe`, `@types/jest-axe` at root.
-- Created `apps/web/tsconfig.jest.json` — a Jest-specific TypeScript config that extends `tsconfig.base.json` with `"module": "CommonJS"` and `"jsx": "react-jsx"`. The main `tsconfig.json` (Vite) uses `"module": "ESNext"` and `"jsx": "preserve"` and cannot be shared with ts-jest. See [decision record 0002](../decisions/0002-web-jest-uses-separate-tsconfig.md).
-- Updated `apps/web/jest.config.ts`: switched `testEnvironment` to `"jsdom"`, extended `testRegex` to `.tsx?`, added `setupFilesAfterEnv`, CSS module mapper, and expanded `collectCoverageFrom` to include `.tsx`.
-- Created `apps/web/src/test/setup.ts` (imports `@testing-library/jest-dom` and `jest-axe/extend-expect`) and `apps/web/src/test/styleMock.js` (Proxy-based CSS module stub).
+- Created `apps/forms/tsconfig.jest.json` — a Jest-specific TypeScript config that extends `tsconfig.base.json` with `"module": "CommonJS"` and `"jsx": "react-jsx"`. The main `tsconfig.json` (Vite) uses `"module": "ESNext"` and `"jsx": "preserve"` and cannot be shared with ts-jest. See [decision record 0002](../decisions/0002-web-jest-uses-separate-tsconfig.md).
+- Updated `apps/forms/jest.config.ts`: switched `testEnvironment` to `"jsdom"`, extended `testRegex` to `.tsx?`, added `setupFilesAfterEnv`, CSS module mapper, and expanded `collectCoverageFrom` to include `.tsx`.
+- Created `apps/forms/src/test/setup.ts` (imports `@testing-library/jest-dom` and `jest-axe/extend-expect`) and `apps/forms/src/test/styleMock.js` (Proxy-based CSS module stub).
 
 **Spec files (five new, 46 tests total):**
 

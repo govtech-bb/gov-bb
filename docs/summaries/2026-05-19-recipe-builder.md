@@ -28,7 +28,7 @@ During review: custom component lookup in `getRegistryItem` was found to never s
 
 ### `apps/form_builder` server layer
 
-A TanStack Start application scaffolded on top of `@tanstack/react-start` 1.168.6. The existing monorepo already had TanStack Start installed (used by `apps/web` for the router plugin), so no new npm installs were needed.
+A TanStack Start application scaffolded on top of `@tanstack/react-start` 1.168.6. The existing monorepo already had TanStack Start installed (used by `apps/forms` for the router plugin), so no new npm installs were needed.
 
 Key server-side decisions made or discovered during review:
 - `getDataSource()` used an in-flight promise guard (`_initPromise`) to prevent concurrent initialization races, with a reset on failure so transient DB errors don't permanently break the singleton.
