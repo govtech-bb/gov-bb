@@ -4,6 +4,9 @@
   "private": true,
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
+  "scripts": {
+    "test": "jest --config jest.config.ts"
+  },
   "lint-staged": {
     "*.ts": "npx prettier --write"
   },

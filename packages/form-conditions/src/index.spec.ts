@@ -679,6 +679,36 @@ describe("evaluateFormConditions — repeatable steps", () => {
   });
 });
 
+// ─── Edge cases ─────────────────────────────────────────────────────────────
+
+describe("evaluateFormConditions — edge cases", () => {
+  it("returns empty active/hidden sets when steps array is empty", () => {
+    const contract = makeContract([]);
+    const result = evaluateFormConditions(contract, {});
+    expect(result.activeStepIds.size).toBe(0);
+    expect(result.hiddenStepIds.size).toBe(0);
+    expect(result.activeFieldIds.size).toBe(0);
+    expect(result.hiddenFieldIds.size).toBe(0);
+  });
+});
+
+describe("evaluateCondition — unknown operator", () => {
+  it("returns false and does not throw for an unrecognised operator", () => {
+    const behaviour = {
+      type: "fieldConditionalOn" as const,
+      targetFieldId: "x",
+      operator: "startsWith" as unknown as "equal",
+      value: "foo",
+    };
+    expect(() =>
+      evaluateCondition(behaviour, EMPTY_VALUES, { x: "foobar" }),
+    ).not.toThrow();
+    expect(evaluateCondition(behaviour, EMPTY_VALUES, { x: "foobar" })).toBe(
+      false,
+    );
+  });
+});
+
 // ─── flattenStepValues — must skip arrays (E21) ─────────────────────────────
 
 describe("flattenStepValues — array safety", () => {

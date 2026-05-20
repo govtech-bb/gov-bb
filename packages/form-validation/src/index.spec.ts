@@ -215,6 +215,20 @@ describe("validate()", () => {
     expect(result.valid).toBe(true);
   });
 
+  it("treats an unknown rule key as a no-op — field is valid", () => {
+    const result = validate({
+      primitives: [
+        text("name", {
+          required: {},
+          unknownRule: { value: "anything" },
+        } as unknown as Primitive["validations"]),
+      ],
+      stepValues: { name: "Alice" },
+    });
+    expect(result.valid).toBe(true);
+    expect(result.errors["name"]).toBeUndefined();
+  });
+
   describe("same-step cross-field fallback", () => {
     it("resolves a reference within the current step when allValues is empty", () => {
       const result = validate({

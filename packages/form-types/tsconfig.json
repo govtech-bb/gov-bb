@@ -4,7 +4,8 @@
     "composite": true,
     "outDir": "./dist",
     "declaration": true,
-    "module": "commonjs"
+    "module": "commonjs",
+    "types": ["jest"]
   },
   "include": [
     "src/**/*.ts"

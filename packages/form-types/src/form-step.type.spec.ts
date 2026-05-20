@@ -1,0 +1,95 @@
+import { formStepSchema, recipeFormStepSchema } from "./form-step.type";
+import { stepConditionalOnBehaviourSchema } from "./behavior.type";
+
+const validStep = {
+  stepId: "personal-info",
+  title: "Personal Information",
+  elements: [],
+};
+
+describe("formStepSchema", () => {
+  it("accepts a valid step with required fields", () => {
+    expect(formStepSchema.safeParse(validStep).success).toBe(true);
+  });
+
+  it("accepts a step with optional fields", () => {
+    const full = {
+      ...validStep,
+      description: "Enter your details",
+      behaviours: [],
+      nextSteps: [{ title: "What happens next" }],
+    };
+    expect(formStepSchema.safeParse(full).success).toBe(true);
+  });
+
+  it("rejects missing stepId", () => {
+    const { stepId: _s, ...noStepId } = validStep;
+    expect(formStepSchema.safeParse(noStepId).success).toBe(false);
+  });
+
+  it("rejects missing title", () => {
+    const { title: _t, ...noTitle } = validStep;
+    expect(formStepSchema.safeParse(noTitle).success).toBe(false);
+  });
+});
+
+describe("recipeFormStepSchema", () => {
+  it("accepts a valid recipe step with ref elements", () => {
+    const recipeStep = {
+      stepId: "personal-info",
+      title: "Personal Information",
+      elements: [{ ref: "components/first-name" }],
+    };
+    expect(recipeFormStepSchema.safeParse(recipeStep).success).toBe(true);
+  });
+
+  it("rejects plain primitives in elements (must use ref objects)", () => {
+    const invalidStep = {
+      ...validStep,
+      elements: [{ fieldId: "first-name", htmlType: "text", label: "Name" }],
+    };
+    expect(recipeFormStepSchema.safeParse(invalidStep).success).toBe(false);
+  });
+
+  it("rejects missing stepId", () => {
+    const { stepId: _s, ...noStepId } = validStep;
+    expect(recipeFormStepSchema.safeParse(noStepId).success).toBe(false);
+  });
+
+  it("rejects missing title", () => {
+    const { title: _t, ...noTitle } = validStep;
+    expect(recipeFormStepSchema.safeParse(noTitle).success).toBe(false);
+  });
+});
+
+describe("stepConditionalOnBehaviourSchema", () => {
+  const validCondition = {
+    type: "stepConditionalOn",
+    targetFieldId: "country",
+    targetStepId: "location-step",
+    operator: "equal",
+    value: "BB",
+  };
+
+  it("accepts a valid step condition", () => {
+    expect(
+      stepConditionalOnBehaviourSchema.safeParse(validCondition).success,
+    ).toBe(true);
+  });
+
+  it("rejects missing operator", () => {
+    const { operator: _o, ...noOperator } = validCondition;
+    expect(stepConditionalOnBehaviourSchema.safeParse(noOperator).success).toBe(
+      false,
+    );
+  });
+
+  it("rejects invalid operator value", () => {
+    expect(
+      stepConditionalOnBehaviourSchema.safeParse({
+        ...validCondition,
+        operator: "unknown-op",
+      }).success,
+    ).toBe(false);
+  });
+});
