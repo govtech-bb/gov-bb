@@ -150,15 +150,34 @@ describe("serviceContractRecipeSchema", () => {
     );
   });
 
-  // Note: recipeFormStepFieldSchema uses z.discriminatedUnion("ref", [...]) with
-  // regex-constrained strings. Zod v4 requires literal discriminators, so parsing
-  // any non-empty elements array throws. Steps-with-elements tests are skipped here.
-  it("accepts a recipe step with empty elements", () => {
+  it("accepts a recipe step with component ref elements", () => {
     const recipe = {
       ...baseRecipe,
-      steps: [{ stepId: "step-1", title: "Step One", elements: [] }],
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step One",
+          elements: [{ ref: "components/first-name" }],
+        },
+      ],
     };
     expect(serviceContractRecipeSchema.safeParse(recipe).success).toBe(true);
+  });
+
+  it("rejects a recipe step containing plain primitive elements", () => {
+    const recipe = {
+      ...baseRecipe,
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step One",
+          elements: [
+            { fieldId: "first-name", htmlType: "text", label: "Name" },
+          ],
+        },
+      ],
+    };
+    expect(serviceContractRecipeSchema.safeParse(recipe).success).toBe(false);
   });
 
   it("rejects missing formId", () => {
