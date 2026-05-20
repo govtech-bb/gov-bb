@@ -139,21 +139,27 @@ function BuilderPage() {
     setSubmitError(null);
     try {
       const recipe = serializeRecipeDraft(draft, { version: submitVersion });
-      if (loadedFromId) {
-        if (currentVersion && submitVersion === currentVersion) {
-          // In-place draft update (same version, update content)
-          await updateRecipe({ data: { formId: loadedFromId, recipe } });
-        } else {
-          // New version row (version > currentVersion, or currentVersion unknown)
-          await submitRecipe({ data: { recipe } });
-        }
+      if (loadedFromId && currentVersion && submitVersion === currentVersion) {
+        await updateRecipe({ data: { formId: loadedFromId, recipe } });
       } else {
         await submitRecipe({ data: { recipe } });
       }
       setSubmitSuccess(true);
-      setCurrentVersion(submitVersion);
-      setVersion(submitVersion);          // sync the toolbar version badge
+      setLastSaveStatus("submitted");
       setLoadedFromId(draft.formId);
+
+      // Bump to next version so a follow-up submit doesn't conflict
+      try {
+        const next = (await nextVersion({ data: { formId: draft.formId } })) as {
+          currentVersion: string | null;
+          nextVersion: string;
+        };
+        setCurrentVersion(next.currentVersion ?? submitVersion);
+        setVersion(next.nextVersion);
+      } catch {
+        setCurrentVersion(submitVersion);
+        setVersion(bumpMinor(submitVersion));
+      }
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : "Submission failed");
     } finally {
