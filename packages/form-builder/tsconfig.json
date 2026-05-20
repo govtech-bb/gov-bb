@@ -4,7 +4,11 @@
     "composite": true,
     "outDir": "../../dist/packages/form-builder",
     "rootDir": "src",
-    "strictPropertyInitialization": false
+    "strictPropertyInitialization": false,
+    "declaration": true,
+    "module": "commonjs",
+    "lib": ["ES2022", "dom"],
+    "types": ["jest"]
   },
   "include": ["src/**/*"],
   "references": [{ "path": "../form-types" }]
