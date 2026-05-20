@@ -1,11 +1,11 @@
-import "../../styles/builder.global.css";
+import "../../../styles/builder.global.css";
 import { createFileRoute } from "@tanstack/react-router";
 import { useReducer, useState, useRef, useEffect } from "react";
-import { getCatalogFn } from "../../server/registry";
-import { listForms, nextVersion, submitRecipe, updateRecipe } from "../../server/forms";
-import { validateRecipe, previewRecipe } from "../../server/registry";
+import { getCatalogFn } from "../../../server/registry";
+import { listForms, nextVersion, submitRecipe, updateRecipe } from "../../../server/forms";
+import { validateRecipe, previewRecipe } from "../../../server/registry";
 import { serializeRecipeDraft } from "@govtech-bb/form-builder";
-import { bumpMinor } from "../../lib/version";
+import { bumpMinor } from "../../../lib/version";
 import type { ServiceContract } from "@govtech-bb/form-types";
 import type { RecipeDraft, ValidationResult, RecipeValidateResponse } from "@govtech-bb/form-builder";
 
@@ -18,9 +18,9 @@ import { PreviewModal } from "./-preview-modal";
 import { SubmitModal } from "./-submit-modal";
 import { FormPicker } from "./-form-picker";
 
-import styles from "../../styles/builder.module.css";
+import styles from "../../../styles/builder.module.css";
 
-export const Route = createFileRoute("/builder/")({
+export const Route = createFileRoute("/builder/ui/")({
   loader: async () => {
     const [catalog, forms] = await Promise.all([
       getCatalogFn(),

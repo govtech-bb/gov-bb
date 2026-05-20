@@ -1,5 +1,5 @@
 import type { RecipeStepDraft } from "@govtech-bb/form-builder";
-import styles from "../../styles/builder.module.css";
+import styles from "../../../styles/builder.module.css";
 import { isRequiredStep, REQUIRED_STEP_IDS } from "./-recipe-reducer";
 
 interface StepListProps {
