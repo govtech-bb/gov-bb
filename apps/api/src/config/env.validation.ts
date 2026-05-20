@@ -64,6 +64,11 @@ export const envValidationSchema = Joi.object({
       otherwise: Joi.optional().allow(""),
     }),
 
+  // AI / Form Builder (optional — required only for form-builder feature)
+  AI_PROVIDER: Joi.string().valid("anthropic", "bedrock").default("anthropic"),
+  AI_MODEL: Joi.string().default("claude-sonnet-4-20250514"),
+  ANTHROPIC_API_KEY: Joi.string().optional().allow(""),
+
   // EzPay (required only when forms use the payment processor)
   EZPAY_BASE_URL: Joi.string().uri().required(),
   EZPAY_DEPARTMENT_API_KEYS: Joi.string().required(),

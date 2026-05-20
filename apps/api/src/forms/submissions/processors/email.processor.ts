@@ -1,4 +1,4 @@
-import { Injectable, Logger, Optional } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
 import { EmailTemplateService } from "../../../email/email-template.service";
@@ -21,10 +21,8 @@ export class EmailProcessor implements ISubmissionProcessor {
 
   constructor(
     config: ConfigService,
-    @Optional()
-    private readonly templateService: EmailTemplateService | null = null,
-    @Optional()
-    private readonly emailBodyBuilder: EmailBodyBuilder | null = null,
+    private readonly templateService: EmailTemplateService,
+    private readonly emailBodyBuilder: EmailBodyBuilder,
   ) {
     this.from = config.get<string>("email.from") ?? "noreply@gov.bb";
     this.configurationSet = config.get<string>("email.configurationSet");
@@ -113,20 +111,21 @@ export class EmailProcessor implements ISubmissionProcessor {
   private async resolveHtmlBody(
     payload: SubmissionCreatedEvent,
   ): Promise<string> {
-    if (this.templateService && this.emailBodyBuilder) {
-      try {
-        const ctx = await this.emailBodyBuilder.build(payload);
-        const rendered = this.templateService.render(
-          CONFIRMATION_TEMPLATE,
-          ctx as unknown as Record<string, unknown>,
-        );
-        if (rendered !== null) return rendered;
-      } catch (err) {
-        this.logger.warn(
-          `[email] Could not render confirmation template for form "${payload.formId}" — falling back to generic body`,
-          err,
-        );
-      }
+    try {
+      const ctx = await this.emailBodyBuilder.build(payload);
+      const rendered = this.templateService.render(
+        CONFIRMATION_TEMPLATE,
+        ctx as unknown as Record<string, unknown>,
+      );
+      if (rendered !== null) return rendered;
+      this.logger.warn(
+        `[email] Template render returned null for "${CONFIRMATION_TEMPLATE}"`,
+      );
+    } catch (err) {
+      this.logger.warn(
+        `[email] Could not render confirmation template for form "${payload.formId}" — falling back to generic body`,
+        err,
+      );
     }
 
     return this.buildHtmlBody(payload);
