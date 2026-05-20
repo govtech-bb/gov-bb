@@ -17,15 +17,15 @@
 | `packages/form-types/src/service-contract.type.ts` | Add `contactDetailsSchema` + `ContactDetails` type; add optional field to both contract schemas |
 | `packages/form-types/src/index.ts` | Export `contactDetailsSchema` and `ContactDetails` |
 | `packages/form-types/src/service-contract.type.spec.ts` | New — Zod schema tests for `contactDetailsSchema` |
-| `apps/web/src/types/field-mapper.type.ts` | Add `contactDetails?: ContactDetails` to `ClientServiceContract` |
-| `apps/web/src/types/renderer.type.ts` | Add `contactDetails?: ContactDetails` to `FormMeta` |
-| `apps/web/src/types/props.type.ts` | Add `contactDetails?: ContactDetails` to `SubmissionConfirmationProps` |
-| `apps/web/src/lib/form-builder/build-form.ts` | Pass `contactDetails` into returned `FormMeta` |
-| `apps/web/src/components/form-renderer.tsx` | Pass `contactDetails` prop to `SubmissionConfirmation` |
-| `apps/web/src/components/submission-confirmation.tsx` | Render contact panel when `contactDetails` is present |
-| `apps/web/src/styles/govtechbb.module.css` | Add `.contactDetails`, `.contactDetailsBody`, `.contactLabel` |
-| `apps/web/contracts/master-contract.json` | Move `contactDetails` from `submission-confirmation` step to top level |
-| `apps/web/contracts/example-service-contract.json` | Add `contactDetails` at top level (Barbados Post Office sample data) |
+| `apps/forms/src/types/field-mapper.type.ts` | Add `contactDetails?: ContactDetails` to `ClientServiceContract` |
+| `apps/forms/src/types/renderer.type.ts` | Add `contactDetails?: ContactDetails` to `FormMeta` |
+| `apps/forms/src/types/props.type.ts` | Add `contactDetails?: ContactDetails` to `SubmissionConfirmationProps` |
+| `apps/forms/src/lib/form-builder/build-form.ts` | Pass `contactDetails` into returned `FormMeta` |
+| `apps/forms/src/components/form-renderer.tsx` | Pass `contactDetails` prop to `SubmissionConfirmation` |
+| `apps/forms/src/components/submission-confirmation.tsx` | Render contact panel when `contactDetails` is present |
+| `apps/forms/src/styles/govtechbb.module.css` | Add `.contactDetails`, `.contactDetailsBody`, `.contactLabel` |
+| `apps/forms/contracts/master-contract.json` | Move `contactDetails` from `submission-confirmation` step to top level |
+| `apps/forms/contracts/example-service-contract.json` | Add `contactDetails` at top level (Barbados Post Office sample data) |
 
 ---
 
@@ -235,9 +235,9 @@ git commit -m "feat(form-types): add contactDetailsSchema and export ContactDeta
 ### Task 2: Add `contactDetails` to web app TypeScript types
 
 **Files:**
-- Modify: `apps/web/src/types/field-mapper.type.ts`
-- Modify: `apps/web/src/types/renderer.type.ts`
-- Modify: `apps/web/src/types/props.type.ts`
+- Modify: `apps/forms/src/types/field-mapper.type.ts`
+- Modify: `apps/forms/src/types/renderer.type.ts`
+- Modify: `apps/forms/src/types/props.type.ts`
 
 These are pure type changes. TypeScript compilation is the verification step.
 
@@ -349,13 +349,13 @@ export interface SubmissionConfirmationProps {
 - [ ] **Step 4: Verify TypeScript compiles cleanly**
 
 ```bash
-npx nx run web:typecheck
+npx nx run forms:typecheck
 ```
 
 If `typecheck` target doesn't exist, use the build instead:
 
 ```bash
-npx nx run web:build
+npx nx run forms:build
 ```
 
 Expected: No TypeScript errors.
@@ -363,7 +363,7 @@ Expected: No TypeScript errors.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add apps/web/src/types/field-mapper.type.ts apps/web/src/types/renderer.type.ts apps/web/src/types/props.type.ts
+git add apps/forms/src/types/field-mapper.type.ts apps/forms/src/types/renderer.type.ts apps/forms/src/types/props.type.ts
 git commit -m "feat(web): add contactDetails to ClientServiceContract, FormMeta, and SubmissionConfirmationProps"
 ```
 
@@ -372,14 +372,14 @@ git commit -m "feat(web): add contactDetails to ClientServiceContract, FormMeta,
 ### Task 3: Thread `contactDetails` through `buildForm` and `FormRenderer`
 
 **Files:**
-- Modify: `apps/web/src/lib/form-builder/build-form.ts`
-- Modify: `apps/web/src/components/form-renderer.tsx`
+- Modify: `apps/forms/src/lib/form-builder/build-form.ts`
+- Modify: `apps/forms/src/components/form-renderer.tsx`
 
 Note: `mapContractToLocale` in `field-mapper.ts` already spreads `...contract`, so `contactDetails` passes from `ServiceContract` to `ClientServiceContract` automatically — no change needed there.
 
 - [ ] **Step 1: Update `buildForm` to include `contactDetails` in `FormMeta`**
 
-In `apps/web/src/lib/form-builder/build-form.ts`, find the return statement (currently around line 48). Add `contactDetails: contract.contactDetails,` after `formDescription`:
+In `apps/forms/src/lib/form-builder/build-form.ts`, find the return statement (currently around line 48). Add `contactDetails: contract.contactDetails,` after `formDescription`:
 
 ```ts
 return {
@@ -400,7 +400,7 @@ return {
 
 - [ ] **Step 2: Update `FormRenderer` to pass `contactDetails` to `SubmissionConfirmation`**
 
-In `apps/web/src/components/form-renderer.tsx`, find the `SubmissionConfirmation` JSX block (currently around line 231). Add the `contactDetails` prop:
+In `apps/forms/src/components/form-renderer.tsx`, find the `SubmissionConfirmation` JSX block (currently around line 231). Add the `contactDetails` prop:
 
 ```tsx
 {isSubmissionConfirmation && (
@@ -419,13 +419,13 @@ In `apps/web/src/components/form-renderer.tsx`, find the `SubmissionConfirmation
 - [ ] **Step 3: Verify TypeScript compiles cleanly**
 
 ```bash
-npx nx run web:typecheck
+npx nx run forms:typecheck
 ```
 
 Or if `typecheck` is not a target:
 
 ```bash
-npx nx run web:build
+npx nx run forms:build
 ```
 
 Expected: No TypeScript errors.
@@ -433,7 +433,7 @@ Expected: No TypeScript errors.
 - [ ] **Step 4: Commit**
 
 ```bash
-git add apps/web/src/lib/form-builder/build-form.ts apps/web/src/components/form-renderer.tsx
+git add apps/forms/src/lib/form-builder/build-form.ts apps/forms/src/components/form-renderer.tsx
 git commit -m "feat(web): thread contactDetails through buildForm and FormRenderer"
 ```
 
@@ -442,12 +442,12 @@ git commit -m "feat(web): thread contactDetails through buildForm and FormRender
 ### Task 4: Render contact details in `SubmissionConfirmation` and add CSS
 
 **Files:**
-- Modify: `apps/web/src/components/submission-confirmation.tsx`
-- Modify: `apps/web/src/styles/govtechbb.module.css`
+- Modify: `apps/forms/src/components/submission-confirmation.tsx`
+- Modify: `apps/forms/src/styles/govtechbb.module.css`
 
 - [ ] **Step 1: Update `SubmissionConfirmation` to accept and render `contactDetails`**
 
-In `apps/web/src/components/submission-confirmation.tsx`, add `contactDetails` to the destructured props in the function signature:
+In `apps/forms/src/components/submission-confirmation.tsx`, add `contactDetails` to the destructured props in the function signature:
 
 ```tsx
 export default function SubmissionConfirmation({
@@ -517,7 +517,7 @@ The `nextSteps` block and `feedback` block already sit **outside** all three pay
 
 - [ ] **Step 2: Add CSS classes to `govtechbb.module.css`**
 
-In `apps/web/src/styles/govtechbb.module.css`, add the following after the `.formRoot .nextSteps` block (currently around line 782):
+In `apps/forms/src/styles/govtechbb.module.css`, add the following after the `.formRoot .nextSteps` block (currently around line 782):
 
 ```css
 .formRoot .contactDetails {
@@ -540,13 +540,13 @@ In `apps/web/src/styles/govtechbb.module.css`, add the following after the `.for
 - [ ] **Step 3: Verify TypeScript compiles cleanly**
 
 ```bash
-npx nx run web:typecheck
+npx nx run forms:typecheck
 ```
 
 Or if `typecheck` is not a target:
 
 ```bash
-npx nx run web:build
+npx nx run forms:build
 ```
 
 Expected: No TypeScript errors.
@@ -554,7 +554,7 @@ Expected: No TypeScript errors.
 - [ ] **Step 4: Commit**
 
 ```bash
-git add apps/web/src/components/submission-confirmation.tsx apps/web/src/styles/govtechbb.module.css
+git add apps/forms/src/components/submission-confirmation.tsx apps/forms/src/styles/govtechbb.module.css
 git commit -m "feat(web): render MDA contact details panel on submission confirmation"
 ```
 
@@ -563,12 +563,12 @@ git commit -m "feat(web): render MDA contact details panel on submission confirm
 ### Task 5: Update contract JSON files
 
 **Files:**
-- Modify: `apps/web/contracts/master-contract.json`
-- Modify: `apps/web/contracts/example-service-contract.json`
+- Modify: `apps/forms/contracts/master-contract.json`
+- Modify: `apps/forms/contracts/example-service-contract.json`
 
 - [ ] **Step 1: Update `master-contract.json` — move `contactDetails` to top level**
 
-Open `apps/web/contracts/master-contract.json`.
+Open `apps/forms/contracts/master-contract.json`.
 
 Remove the entire `contactDetails` object from inside the `submission-confirmation` step. The `submission-confirmation` step should become:
 
@@ -620,7 +620,7 @@ Add `contactDetails` at the top level of the JSON object, after `"version"`:
 
 - [ ] **Step 2: Update `example-service-contract.json` — add `contactDetails`**
 
-Add `contactDetails` at the top level of `apps/web/contracts/example-service-contract.json`, after `"version"`:
+Add `contactDetails` at the top level of `apps/forms/contracts/example-service-contract.json`, after `"version"`:
 
 ```json
 {
@@ -651,7 +651,7 @@ Add `contactDetails` at the top level of `apps/web/contracts/example-service-con
 Run the form-types tests (the `serviceContractSchema` tests use a minimal contract, but the real contracts are parsed at runtime via `serviceContractSchema.parse()` in `form-fetcher.ts`). Start the dev server and load both the `example` and `master` forms to confirm no parse errors:
 
 ```bash
-npx nx run web:serve
+npx nx run forms:serve
 ```
 
 Navigate to:
@@ -661,6 +661,6 @@ Navigate to:
 - [ ] **Step 4: Commit**
 
 ```bash
-git add apps/web/contracts/master-contract.json apps/web/contracts/example-service-contract.json
+git add apps/forms/contracts/master-contract.json apps/forms/contracts/example-service-contract.json
 git commit -m "feat(contracts): move contactDetails to top level; add sample MDA contact to example contract"
 ```

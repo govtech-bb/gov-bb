@@ -26,10 +26,10 @@
       "@govtech-bb/form-validation": ["packages/form-validation/src/index.ts"],
       "@govtech-bb/registry": ["packages/registry/src/index.ts"],
       "@govtech-bb/database": ["packages/database/src/index.ts"],
-      "@web/types": ["apps/web/src/types/index.ts"],
-      "@web/lib": ["apps/web/src/lib/form-builder/index.ts"],
-      "@web/form-api": ["apps/web/src/lib/api/forms.ts"],
-      "@web/components": ["apps/web/src/components"]
+      "@forms/types": ["apps/forms/src/types/index.ts"],
+      "@forms/lib": ["apps/forms/src/lib/form-builder/index.ts"],
+      "@forms/form-api": ["apps/forms/src/lib/api/forms.ts"],
+      "@forms/components": ["apps/forms/src/components"]
     }
   },
   "exclude": ["node_modules", "tmp"]

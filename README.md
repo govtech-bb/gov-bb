@@ -17,7 +17,7 @@ npm install
 
 ```
 apps/
-  web/          Next.js frontend (port 4200)
+  forms/        Next.js frontend (port 4200)
   api/          NestJS backend  (port 3001)
 
 packages/
@@ -29,9 +29,9 @@ packages/
 
 | Command | Description |
 |---|---|
-| `npm run dev:web` | Start web app in dev mode |
+| `npm run dev:forms` | Start forms app in dev mode |
 | `npm run dev:api` | Start API in dev mode |
-| `npm run start:web` | Start web app in production mode |
+| `npm run start:forms` | Start forms app in production mode |
 | `npm run start:api` | Start API in production mode |
 | `npm run build` | Build all apps and packages |
 | `npm run lint` | Lint all apps and packages |
@@ -47,14 +47,14 @@ packages/
 Copy the example files and adjust as needed:
 
 ```bash
-cp apps/web/.env.example apps/web/.env
+cp apps/forms/.env.example apps/forms/.env
 cp apps/api/.env.example apps/api/.env
 ```
 
 | Variable | App | Default | Description |
 |---|---|---|---|
-| `PORT` | web | `4200` | Next.js server port |
-| `VITE_API_URL` | web | `http://localhost:3001` | API base URL |
+| `PORT` | forms | `4200` | Next.js server port |
+| `VITE_API_URL` | forms | `http://localhost:3001` | API base URL |
 | `API_PORT` | api | `3001` | NestJS server port |
 | `DB_HOST` | api | `localhost` | PostgreSQL host |
 | `DB_PORT` | api | `5432` | PostgreSQL port |
@@ -66,9 +66,9 @@ cp apps/api/.env.example apps/api/.env
 
 ## Deployment
 
-### Web (AWS Amplify)
+### Forms (AWS Amplify)
 
-The `amplify.yml` at the repo root configures the build. Amplify runs `npx nx build web` and serves from `apps/web/.next`.
+The `amplify.yml` at the repo root configures the build. Amplify runs `npx nx build forms` and serves from `apps/forms/.next`.
 
 Set environment variables in the Amplify console.
 
@@ -120,5 +120,5 @@ Shared packages are available via these TypeScript path aliases (configured in `
 ```bash
 npx nx graph          # Visualize the dependency graph
 npx nx show projects  # List all projects
-npx nx build web      # Build a single project
+npx nx build forms    # Build a single project
 ```

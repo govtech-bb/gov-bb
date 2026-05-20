@@ -51,7 +51,7 @@ Four sequential phases, each independently shippable:
   },
   ```
 
-- [ ] **`apps/web/jest.config.ts`** — add the same coverage block, scoped to `src/**/*.ts` (exclude `.tsx` until Phase 3 jsdom switch):
+- [ ] **`apps/forms/jest.config.ts`** — add the same coverage block, scoped to `src/**/*.ts` (exclude `.tsx` until Phase 3 jsdom switch):
   ```typescript
   collectCoverageFrom: [
     "**/*.ts",
@@ -138,7 +138,7 @@ Use `Test.createTestingModule` with a mocked `FormDraftsService` (all methods `j
 
 #### 3.1 — Install dependencies
 
-- [ ] Add to `apps/web` devDependencies:
+- [ ] Add to `apps/forms` devDependencies:
   ```
   @testing-library/react
   @testing-library/user-event
@@ -147,21 +147,21 @@ Use `Test.createTestingModule` with a mocked `FormDraftsService` (all methods `j
   @types/jest-axe
   ```
 
-#### 3.2 — Update `apps/web/jest.config.ts`
+#### 3.2 — Update `apps/forms/jest.config.ts`
 
 - [ ] Switch `testEnvironment` from `"node"` to `"jsdom"`
 - [ ] Add `setupFilesAfterFramework: ["<rootDir>/test/setup.ts"]`
 - [ ] Extend `testRegex` to `".*\\.spec\\.tsx?$"` (allow `.tsx` specs)
 - [ ] Update `collectCoverageFrom` to include `**/*.tsx`
 
-#### 3.3 — Create `apps/web/src/test/setup.ts`
+#### 3.3 — Create `apps/forms/src/test/setup.ts`
 
 - [ ] Import `@testing-library/jest-dom` (extends `expect` matchers)
 - [ ] Import `jest-axe/extend-expect`
 
 #### 3.4 — `use-step-guard` hook spec
 
-**File to create:** `apps/web/src/hooks/use-step-guard.spec.ts`
+**File to create:** `apps/forms/src/hooks/use-step-guard.spec.ts`
 
 - [ ] Returns `true` (accessible) for the first step when no steps are complete
 - [ ] Returns `true` for a step when all prior steps are complete
@@ -173,7 +173,7 @@ Use `renderHook` from React Testing Library; mock the form context/store with th
 
 #### 3.5 — `error-summary` component spec
 
-**File to create:** `apps/web/src/components/error-summary.spec.tsx`
+**File to create:** `apps/forms/src/components/error-summary.spec.tsx`
 
 - [ ] Renders nothing when `errors` is empty
 - [ ] Renders a list item per error when `errors` is non-empty
@@ -183,7 +183,7 @@ Use `renderHook` from React Testing Library; mock the form context/store with th
 
 #### 3.6 — `error-message` component spec
 
-**File to create:** `apps/web/src/components/error-message.spec.tsx`
+**File to create:** `apps/forms/src/components/error-message.spec.tsx`
 
 - [ ] Renders the message string
 - [ ] Applies the correct Gov Design System error class
@@ -192,7 +192,7 @@ Use `renderHook` from React Testing Library; mock the form context/store with th
 
 #### 3.7 — `submission-confirmation` component spec
 
-**File to create:** `apps/web/src/components/submission-confirmation.spec.tsx`
+**File to create:** `apps/forms/src/components/submission-confirmation.spec.tsx`
 
 - [ ] Renders reference number when provided
 - [ ] Renders contact details panel when `contactDetails` is present
@@ -201,7 +201,7 @@ Use `renderHook` from React Testing Library; mock the form context/store with th
 
 #### 3.8 — `field-renderer` dispatch spec
 
-**File to create:** `apps/web/src/components/field-renderer.spec.tsx`
+**File to create:** `apps/forms/src/components/field-renderer.spec.tsx`
 
 - [ ] Schema type `"text"` → renders a text input
 - [ ] Schema type `"textarea"` → renders a textarea
@@ -216,7 +216,7 @@ Keep these as render-smoke tests (does the right element appear), not full inter
 
 ### Verify
 
-- `npx nx run web:test` runs all Jest specs (existing `form-query.spec.ts` + new specs) under jsdom.
+- `npx nx run forms:test` runs all Jest specs (existing `form-query.spec.ts` + new specs) under jsdom.
 - `form-query.spec.ts` continues to pass unchanged (pure logic, unaffected by env switch).
 - No Playwright spec is removed or modified as a result of this phase.
 
@@ -298,7 +298,7 @@ Keep these as render-smoke tests (does the right element appear), not full inter
 | File | Change |
 |---|---|
 | `apps/api/jest.config.ts` | Add coverage config + thresholds |
-| `apps/web/jest.config.ts` | Add coverage config; switch to `jsdom`; extend testRegex for `.tsx` |
+| `apps/forms/jest.config.ts` | Add coverage config; switch to `jsdom`; extend testRegex for `.tsx` |
 | `packages/form-conditions/jest.config.ts` | Add coverage config + thresholds |
 | `packages/form-validation/jest.config.ts` | Add coverage config + thresholds |
 | `packages/form-types/jest.config.ts` | Add coverage config + thresholds |
@@ -306,18 +306,18 @@ Keep these as render-smoke tests (does the right element appear), not full inter
 | `packages/form-validation/package.json` | Add `"test"` script |
 | `packages/form-types/package.json` | Add `"test"` script |
 | Root `package.json` | Add `"test:all"` script |
-| `apps/web/src/test/setup.ts` | New — jest-dom + jest-axe extends |
+| `apps/forms/src/test/setup.ts` | New — jest-dom + jest-axe extends |
 | `apps/api/src/common/exception.filter.spec.ts` | New |
 | `apps/api/src/forms/form-drafts/form-drafts.controller.spec.ts` | New |
 | `apps/api/src/forms/form-definitions/form-definitions.controller.spec.ts` | New |
 | `apps/api/src/common/response.interceptor.spec.ts` | New |
 | `apps/api/src/payments/payment-reference.spec.ts` | New |
 | `apps/api/src/forms/submissions/submission-pipeline.service.spec.ts` | Add `pinVersion` no-draftId test |
-| `apps/web/src/hooks/use-step-guard.spec.ts` | New |
-| `apps/web/src/components/error-summary.spec.tsx` | New |
-| `apps/web/src/components/error-message.spec.tsx` | New |
-| `apps/web/src/components/submission-confirmation.spec.tsx` | New |
-| `apps/web/src/components/field-renderer.spec.tsx` | New |
+| `apps/forms/src/hooks/use-step-guard.spec.ts` | New |
+| `apps/forms/src/components/error-summary.spec.tsx` | New |
+| `apps/forms/src/components/error-message.spec.tsx` | New |
+| `apps/forms/src/components/submission-confirmation.spec.tsx` | New |
+| `apps/forms/src/components/field-renderer.spec.tsx` | New |
 | `packages/form-types/src/form-step.type.spec.ts` | New |
 | `packages/form-types/src/form-field.type.spec.ts` | New |
 | `packages/form-types/src/service-contract.type.spec.ts` | Add `recipeSchema` + `dateTimeFormat` tests |
@@ -333,5 +333,5 @@ Keep these as render-smoke tests (does the right element appear), not full inter
 
 - **`use-step-guard` internals** — the spec tasks assume the hook accepts `activeStepIds` and `completedStepIds` as inputs. Confirm the actual hook signature before writing the spec; adjust task 3.4 accordingly.
 - **`payment-reference.ts`** — the current code has not been read. The spec tasks assume it is a deterministic pure function. If it wraps a UUID generator or timestamp, the determinism test needs a mock; read the source before implementing Phase 2.4.
-- **Coverage thresholds** — the Phase 1 thresholds (70/75/75/75 for `apps/api`, 50/60/60/60 for `apps/web`) are conservative starting points. After Phase 1 runs produce real numbers, tighten them to match actuals before merging.
-- **`testEnvironment` switch impact** — switching `apps/web` Jest from `"node"` to `"jsdom"` in Phase 3 may affect the existing `form-query.spec.ts` (TanStack Query + `QueryClient`). Verify it still passes under jsdom before adding the new component specs.
+- **Coverage thresholds** — the Phase 1 thresholds (70/75/75/75 for `apps/api`, 50/60/60/60 for `apps/forms`) are conservative starting points. After Phase 1 runs produce real numbers, tighten them to match actuals before merging.
+- **`testEnvironment` switch impact** — switching `apps/forms` Jest from `"node"` to `"jsdom"` in Phase 3 may affect the existing `form-query.spec.ts` (TanStack Query + `QueryClient`). Verify it still passes under jsdom before adding the new component specs.
