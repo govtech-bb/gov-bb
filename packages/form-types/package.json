@@ -4,6 +4,9 @@
   "private": true,
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
+  "scripts": {
+    "test": "jest --config jest.config.ts"
+  },
   "dependencies": {
     "zod": "^4.3.6"
   },

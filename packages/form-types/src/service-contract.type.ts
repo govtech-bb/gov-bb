@@ -7,10 +7,26 @@ import { processorSchema } from "./processor.type";
 export const dateTimeFormatSchema = z.string().datetime({ offset: true });
 export type DateTimeFormat = z.infer<typeof dateTimeFormatSchema>;
 
+export const contactDetailsSchema = z.object({
+  title: z.string().min(1),
+  telephoneNumber: z.string().min(1),
+  email: z.string().email(),
+  address: z
+    .object({
+      line1: z.string().min(1),
+      line2: z.string().optional(),
+      city: z.string().min(1),
+      country: z.string().optional(),
+    })
+    .optional(),
+});
+export type ContactDetails = z.infer<typeof contactDetailsSchema>;
+
 export const serviceContractSchema = z.object({
   formId: z.string(),
   title: z.string(),
   description: z.string().optional(),
+  contactDetails: contactDetailsSchema.optional(),
   steps: z.array(formStepSchema),
   processors: z.array(processorSchema).optional(),
   createdAt: dateTimeFormatSchema,
@@ -23,6 +39,7 @@ export const serviceContractRecipeSchema = z.object({
   formId: z.string(),
   title: z.string(),
   description: z.string().optional(),
+  contactDetails: contactDetailsSchema.optional(),
   steps: z.array(recipeFormStepSchema),
   processors: z.array(processorSchema).optional(),
   createdAt: dateTimeFormatSchema,

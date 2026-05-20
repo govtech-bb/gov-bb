@@ -28,6 +28,7 @@
     "lint": "eslint",
     "lint:fix": "eslint --fix",
     "format": "prettier --parser typescript --write **/*.{ts,tsx}",
+    "test": "jest --config jest.config.ts",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report"
