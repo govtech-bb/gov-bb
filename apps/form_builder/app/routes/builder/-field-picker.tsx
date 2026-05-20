@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { RegistryCatalog, RecipeFieldDraft } from "@govtech-bb/form-builder";
+import { REGISTRY_COMPONENTS } from "@govtech-bb/registry";
 import styles from "../../styles/builder.module.css";
 
 interface FieldPickerProps {
@@ -7,11 +8,11 @@ interface FieldPickerProps {
   onAddField: (field: RecipeFieldDraft) => void;
 }
 
-type Tab = "Components" | "Blocks" | "Custom";
-const TABS: Tab[] = ["Components", "Blocks", "Custom"];
+type Tab = "Primitives" | "Components" | "Blocks" | "Custom";
+const TABS: Tab[] = ["Primitives", "Components", "Blocks", "Custom"];
 
 export function FieldPicker({ catalog, onAddField }: FieldPickerProps) {
-  const [activeTab, setActiveTab] = useState<Tab>("Components");
+  const [activeTab, setActiveTab] = useState<Tab>("Primitives");
 
   return (
     <div>
@@ -28,7 +29,7 @@ export function FieldPicker({ catalog, onAddField }: FieldPickerProps) {
         ))}
       </div>
 
-      {activeTab === "Components" && (
+      {activeTab === "Primitives" && (
         <div>
           {catalog.components.map((item) => (
             <div
@@ -41,6 +42,27 @@ export function FieldPicker({ catalog, onAddField }: FieldPickerProps) {
             >
               <span style={{ flex: 1 }}>{item.displayName}</span>
               <span className={styles.badge}>{item.ref}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {activeTab === "Components" && (
+        <div>
+          {Object.entries(REGISTRY_COMPONENTS).length === 0 && (
+            <p style={{ color: "#888" }}>No registry components available.</p>
+          )}
+          {Object.entries(REGISTRY_COMPONENTS).map(([ref, primitive]) => (
+            <div
+              key={ref}
+              className={styles.fieldRow}
+              style={{ cursor: "pointer" }}
+              onClick={() =>
+                onAddField({ kind: "component", ref, overrides: {} })
+              }
+            >
+              <span style={{ flex: 1 }}>{primitive.label}</span>
+              <span className={styles.badge}>{primitive.fieldId}</span>
             </div>
           ))}
         </div>
