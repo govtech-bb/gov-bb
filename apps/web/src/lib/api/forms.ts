@@ -284,13 +284,25 @@ export const formatDataForSubmission = (
       }
 
       // If it's valid, then we just grab their data.
+      // Fall back to extracting from flat form values if stepData wasn't populated
+      // (e.g. useEffect race condition on fast navigation).
       const data = currentRepeatSettings.stepData[orderedStepId];
 
       const currentRepeatable: FormValues = {};
 
-      for (const [stepFieldId, value] of Object.entries(data)) {
-        const fieldId = stepFieldId.split(stepFieldIdConcactenator)[1];
-        currentRepeatable[fieldId] = value;
+      if (data && Object.keys(data).length > 0) {
+        for (const [stepFieldId, value] of Object.entries(data)) {
+          const fieldId = stepFieldId.split(stepFieldIdConcactenator)[1];
+          currentRepeatable[fieldId] = value;
+        }
+      } else {
+        // Derive from flat values as fallback
+        for (const [key, value] of Object.entries(values)) {
+          if (key.startsWith(`${orderedStepId}${stepFieldIdConcactenator}`)) {
+            const fieldId = key.split(stepFieldIdConcactenator)[1];
+            currentRepeatable[fieldId] = value;
+          }
+        }
       }
 
       // Similarly, the values for shared fields shall be put in each array instance.
@@ -300,6 +312,16 @@ export const formatDataForSubmission = (
       });
     }
     toDelete.push(...currentRepeatSettings.orderedStepIds.slice(1));
+  }
+
+  // Strip UI-only control fields from repeatable instances.
+  // The "addAnother" radio is a navigation control injected by the renderer —
+  // it is not form data and the backend rejects it as an unknown field.
+  for (const stepId of Object.keys(collapsedRepeatables)) {
+    const instances = collapsedRepeatables[stepId] as Record<string, unknown>[];
+    for (const instance of instances) {
+      delete instance.addAnother;
+    }
   }
 
   // The structure of values should be changed from Record <stepAndFieldID, fieldValue> to Record<stepId, Record<fieldId, fieldValue>>,

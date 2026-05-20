@@ -1,7 +1,10 @@
-import { NumberPrimitive } from "@govtech-bb/form-types";
+import type { TextPrimitive } from "@govtech-bb/form-types";
 
-export const TamisNumber: NumberPrimitive = {
+export const TamisNumber: TextPrimitive = {
   fieldId: "tamis-number",
   label: "Tamis number",
-  htmlType: "number"
-}
+  htmlType: "text",
+  ui: {
+    width: "short",
+  },
+};

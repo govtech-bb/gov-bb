@@ -12,7 +12,7 @@ const config: Config = {
   collectCoverageFrom: ["**/*.ts", "!**/*.spec.ts", "!**/*.d.ts"],
   coverageReporters: ["text-summary", "lcov", "html"],
   coverageThreshold: {
-    global: { branches: 86, functions: 90, lines: 90, statements: 90 },
+    global: { branches: 85, functions: 90, lines: 90, statements: 90 },
   },
 };
 

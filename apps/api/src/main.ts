@@ -14,6 +14,10 @@ async function bootstrap() {
   const config = app.get(ConfigService);
   const metricsService = app.get(MetricsService);
   const port = config.get<number>("app.port") ?? 3001;
+
+  // Increase body size limit for form-builder PDF uploads (base64-encoded pages)
+  app.use(require("express").json({ limit: "50mb" }));
+  app.use(require("express").urlencoded({ limit: "50mb", extended: true }));
   const corsOrigin =
     config.get<string>("app.corsOrigin") ?? "http://localhost:3000";
   const corsOrigins = corsOrigin.includes(",")
