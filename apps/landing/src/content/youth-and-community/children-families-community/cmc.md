@@ -22,7 +22,7 @@ Volunteer to review requests for use of community centres, review programme prop
 
 Complete the short application form to register your interest. Your progress is saved automatically.
 
-[Apply now](https://alpha.gov.bb/youth-and-community/children-families-community/cmc/form)
+<!-- [Apply now](https://alpha.gov.bb/youth-and-community/children-families-community/cmc/form) -->
 
 ## More information
 

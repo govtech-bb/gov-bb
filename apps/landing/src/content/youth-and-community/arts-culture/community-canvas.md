@@ -22,7 +22,7 @@ Video/TV series on YouTube featuring activities and programs at Resource Centres
 
 Complete the short application form to register your interest. Your progress is saved automatically.
 
-[Apply now](https://alpha.gov.bb/youth-and-community/arts-culture/community-canvas/form)
+<!-- [Apply now](https://alpha.gov.bb/youth-and-community/arts-culture/community-canvas/form) -->
 
 ## More information
 

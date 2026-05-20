@@ -28,7 +28,7 @@ Free vocational training in 20+ courses: Motor Vehicle Engineering, Professional
 
 Complete the short application form to register your interest. Your progress is saved automatically.
 
-[Apply now](https://alpha.gov.bb/youth-and-community/skills-trades-vocational-training/btu/form)
+<!-- [Apply now](https://alpha.gov.bb/youth-and-community/skills-trades-vocational-training/btu/form) -->
 
 ## More information
 

@@ -23,7 +23,7 @@ Structured instruction in airbrushing, animation, automotive painting, basic bod
 
 Complete the short application form to register your interest. Your progress is saved automatically.
 
-[Apply now](https://alpha.gov.bb/youth-and-community/skills-trades-vocational-training/cap/form)
+<!-- [Apply now](https://alpha.gov.bb/youth-and-community/skills-trades-vocational-training/cap/form) -->
 
 ## More information
 

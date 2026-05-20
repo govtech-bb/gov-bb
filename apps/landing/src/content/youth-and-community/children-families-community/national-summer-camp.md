@@ -23,7 +23,7 @@ Summer camps across 46 locations island-wide. Hosted by the Ministry of Youth, S
 
 Complete the short application form to register your interest. Your progress is saved automatically.
 
-[Apply now](https://alpha.gov.bb/youth-and-community/children-families-community/national-summer-camp/form)
+<!-- [Apply now](https://alpha.gov.bb/youth-and-community/children-families-community/national-summer-camp/form) -->
 
 ## More information
 

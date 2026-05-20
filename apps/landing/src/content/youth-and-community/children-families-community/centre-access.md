@@ -22,7 +22,7 @@ Access community centres for events and activities.
 
 Complete the short application form to register your interest. Your progress is saved automatically.
 
-[Apply now](https://alpha.gov.bb/youth-and-community/children-families-community/centre-access/form)
+<!-- [Apply now](https://alpha.gov.bb/youth-and-community/children-families-community/centre-access/form) -->
 
 ## More information
 

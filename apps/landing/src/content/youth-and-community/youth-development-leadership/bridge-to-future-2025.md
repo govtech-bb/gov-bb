@@ -23,7 +23,7 @@ Career and skills workshop under the Youth Development Programme.
 
 Complete the short application form to register your interest. Your progress is saved automatically.
 
-[Apply now](https://alpha.gov.bb/youth-and-community/youth-development-leadership/bridge-to-future-2025/form)
+<!-- [Apply now](https://alpha.gov.bb/youth-and-community/youth-development-leadership/bridge-to-future-2025/form) -->
 
 ## More information
 

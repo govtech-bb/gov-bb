@@ -22,7 +22,7 @@ National initiative around six 2030 missions: sustainability, social cohesion, f
 
 Complete the short application form to register your interest. Your progress is saved automatically.
 
-[Apply now](https://alpha.gov.bb/youth-and-community/children-families-community/mission-barbados/form)
+<!-- [Apply now](https://alpha.gov.bb/youth-and-community/children-families-community/mission-barbados/form) -->
 
 ## More information
 

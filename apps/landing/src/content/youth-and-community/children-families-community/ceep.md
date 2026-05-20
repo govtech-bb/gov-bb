@@ -23,7 +23,7 @@ Education and assistance with tax, NIS/social security, and financial services. 
 
 Complete the short application form to register your interest. Your progress is saved automatically.
 
-[Apply now](https://alpha.gov.bb/youth-and-community/children-families-community/ceep/form)
+<!-- [Apply now](https://alpha.gov.bb/youth-and-community/children-families-community/ceep/form) -->
 
 ## More information
 

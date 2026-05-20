@@ -22,7 +22,7 @@ Free little libraries placed across the island to revive reading post-COVID. Don
 
 Complete the short application form to register your interest. Your progress is saved automatically.
 
-[Apply now](https://alpha.gov.bb/youth-and-community/children-families-community/barbados-blooming-libraries/form)
+<!-- [Apply now](https://alpha.gov.bb/youth-and-community/children-families-community/barbados-blooming-libraries/form) -->
 
 ## More information
 

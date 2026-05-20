@@ -23,7 +23,7 @@ Cyber security training under the Youth Development Programme.
 
 Complete the short application form to register your interest. Your progress is saved automatically.
 
-[Apply now](https://alpha.gov.bb/youth-and-community/skills-trades-vocational-training/cyber-security-training/form)
+<!-- [Apply now](https://alpha.gov.bb/youth-and-community/skills-trades-vocational-training/cyber-security-training/form) -->
 
 ## More information
 

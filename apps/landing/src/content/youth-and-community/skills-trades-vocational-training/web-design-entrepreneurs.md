@@ -23,7 +23,7 @@ Workshop teaching young entrepreneurs to design and maintain their own websites.
 
 Complete the short application form to register your interest. Your progress is saved automatically.
 
-[Apply now](https://alpha.gov.bb/youth-and-community/skills-trades-vocational-training/web-design-entrepreneurs/form)
+<!-- [Apply now](https://alpha.gov.bb/youth-and-community/skills-trades-vocational-training/web-design-entrepreneurs/form) -->
 
 ## More information
 

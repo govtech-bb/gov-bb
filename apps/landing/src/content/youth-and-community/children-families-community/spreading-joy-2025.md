@@ -19,7 +19,7 @@ Festive motorcades visit communities with staff, cultural characters, and gift d
 
 Complete the short application form to register your interest. Your progress is saved automatically.
 
-[Apply now](https://alpha.gov.bb/youth-and-community/children-families-community/spreading-joy-2025/form)
+<!-- [Apply now](https://alpha.gov.bb/youth-and-community/children-families-community/spreading-joy-2025/form) -->
 
 ## More information
 

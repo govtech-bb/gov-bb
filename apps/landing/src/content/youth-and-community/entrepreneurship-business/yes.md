@@ -22,7 +22,7 @@ From idea to enterprise. Direct technical assistance from Youth Enterprise Offic
 
 Complete the short application form to register your interest. Your progress is saved automatically.
 
-[Apply now](https://alpha.gov.bb/youth-and-community/entrepreneurship-business/yes/form)
+<!-- [Apply now](https://alpha.gov.bb/youth-and-community/entrepreneurship-business/yes/form) -->
 
 ## More information
 

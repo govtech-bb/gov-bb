@@ -23,7 +23,7 @@ Educational project under the Youth Development Programme.
 
 Complete the short application form to register your interest. Your progress is saved automatically.
 
-[Apply now](https://alpha.gov.bb/youth-and-community/youth-development-leadership/bright-sparks-2/form)
+<!-- [Apply now](https://alpha.gov.bb/youth-and-community/youth-development-leadership/bright-sparks-2/form) -->
 
 ## More information
 

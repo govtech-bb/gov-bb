@@ -23,7 +23,7 @@ Practical demand-driven skill training in 25+ courses across trades, creative se
 
 Complete the short application form to register your interest. Your progress is saved automatically.
 
-[Apply now](https://alpha.gov.bb/youth-and-community/skills-trades-vocational-training/cip/form)
+<!-- [Apply now](https://alpha.gov.bb/youth-and-community/skills-trades-vocational-training/cip/form) -->
 
 ## More information
 

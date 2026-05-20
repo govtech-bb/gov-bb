@@ -23,7 +23,7 @@ Two-year developmental training. Year 1: 10 weeks residential technical/vocation
 
 Complete the short application form to register your interest. Your progress is saved automatically.
 
-[Apply now](https://alpha.gov.bb/youth-and-community/youth-development-leadership/byac/form)
+<!-- [Apply now](https://alpha.gov.bb/youth-and-community/youth-development-leadership/byac/form) -->
 
 ## More information
 

@@ -23,7 +23,7 @@ Job attachment and mentorship programme. Life and job skills, work ethic, employ
 
 Complete the short application form to register your interest. Your progress is saved automatically.
 
-[Apply now](https://alpha.gov.bb/youth-and-community/youth-development-leadership/pathways/form)
+<!-- [Apply now](https://alpha.gov.bb/youth-and-community/youth-development-leadership/pathways/form) -->
 
 ## More information
 

@@ -23,7 +23,7 @@ Programming channel of the Division of Youth Affairs to engage and empower youth
 
 Complete the short application form to register your interest. Your progress is saved automatically.
 
-[Apply now](https://alpha.gov.bb/youth-and-community/youth-development-leadership/ydp/form)
+<!-- [Apply now](https://alpha.gov.bb/youth-and-community/youth-development-leadership/ydp/form) -->
 
 ## More information
 
