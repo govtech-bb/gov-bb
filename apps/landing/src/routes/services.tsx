@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { Heading, Link, Search, Text } from '@govtech-bb/react'
 import { HelpfulBox } from '../components/HelpfulBox'
 import { PAGES } from '../content/registry'
+import { trackEvent } from '../lib/analytics'
 
 export const Route = createFileRoute('/services')({
   head: () => ({
@@ -45,6 +46,12 @@ function ServicesPage() {
               name="q"
               label="Search for a service"
               buttonLabel="Search"
+              onSearch={(q) => {
+                trackEvent('search-submit', { query: q, source: 'services' })
+                window.location.href = q
+                  ? `/search-results?q=${encodeURIComponent(q)}`
+                  : '/search-results'
+              }}
             />
           </div>
         </div>
@@ -68,6 +75,8 @@ function ServicesPage() {
                   <Link
                     href={item.href}
                     className="text-[20px] leading-normal"
+                    data-umami-event={`service-${item.slug.replace(/\//g, '-')}`}
+                    data-umami-event-title={item.title}
                   >
                     {item.title}
                   </Link>

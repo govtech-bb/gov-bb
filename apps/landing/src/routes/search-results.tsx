@@ -3,6 +3,7 @@ import { Heading, Link, Search as SearchInput, Text } from '@govtech-bb/react'
 import { z } from 'zod'
 import { search  } from '../lib/search'
 import type {SearchHit} from '../lib/search';
+import { trackEvent } from '../lib/analytics'
 
 const SearchParams = z.object({
   q: z.string().optional().default(''),
@@ -42,6 +43,12 @@ function SearchResultsPage() {
               label="Search for a service"
               buttonLabel="Search"
               defaultValue={query}
+              onSearch={(submitted) => {
+                trackEvent('search-submit', { query: submitted, source: 'results' })
+                window.location.href = submitted
+                  ? `/search-results?q=${encodeURIComponent(submitted)}`
+                  : '/search-results'
+              }}
             />
           </div>
         </div>

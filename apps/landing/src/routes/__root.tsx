@@ -8,6 +8,7 @@ import { TanStackDevtools } from '@tanstack/react-devtools'
 import { Footer, textVariants } from '@govtech-bb/react'
 import Header from '../components/Header'
 import { ErrorPage } from '../components/ErrorPage'
+import { trackEvent } from '../lib/analytics'
 
 import TanStackQueryDevtools from '../integrations/tanstack-query/devtools'
 
@@ -16,13 +17,25 @@ import appCss from '../styles.css?url'
 import type { QueryClient } from '@tanstack/react-query'
 
 const FOOTER_LINKS = [
-  { label: 'Home', href: '/' },
-  { label: 'Terms & Conditions', href: '/terms-conditions' },
+  { label: 'Home', href: '/', onClick: () => trackEvent('footer-home') },
+  {
+    label: 'Terms & Conditions',
+    href: '/terms-conditions',
+    onClick: () => trackEvent('footer-terms'),
+  },
   {
     label: 'Careers',
     href: 'https://job-boards.greenhouse.io/govtechbarbados',
+    onClick: () => trackEvent('footer-careers'),
   },
 ]
+
+const UMAMI_WEBSITE_ID = import.meta.env.VITE_UMAMI_WEBSITE_ID as
+  | string
+  | undefined
+const UMAMI_SRC =
+  (import.meta.env.VITE_UMAMI_SRC as string | undefined) ??
+  'https://cloud.umami.is/script.js'
 
 interface MyRouterContext {
   queryClient: QueryClient
@@ -41,6 +54,16 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
         href: appCss,
       },
     ],
+    scripts: UMAMI_WEBSITE_ID
+      ? [
+          {
+            src: UMAMI_SRC,
+            defer: true,
+            'data-website-id': UMAMI_WEBSITE_ID,
+            'data-auto-track': 'false',
+          },
+        ]
+      : undefined,
   }),
   shellComponent: RootDocument,
   notFoundComponent: NotFoundPage,

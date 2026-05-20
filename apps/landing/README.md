@@ -193,6 +193,32 @@ function PeopleComponent() {
 
 Loaders simplify your data fetching logic dramatically. Check out more information in the [Loader documentation](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#loader-parameters).
 
+## Analytics (Umami)
+
+The landing app sends pageview and click events to [Umami Cloud](https://umami.is/) when configured.
+
+### Enabling
+
+Set `VITE_UMAMI_WEBSITE_ID` (and optionally `VITE_UMAMI_SRC`) in the deploy environment. See `apps/landing/.env.example` for the contract. When the variable is unset (including in local `dev`), no script is loaded and no events are sent — keeping dev traffic out of the dataset.
+
+### How it works
+
+- **Script injection** happens at SSR time in `src/routes/__root.tsx`, gated on the env var. The script is loaded with `data-auto-track="false"` so Umami doesn't double-count alongside our manual tracking.
+- **Pageviews** fire from `router.subscribe('onResolved', ...)` in `src/router.tsx` — one event per resolved route, including SPA navigations.
+- **Click and form-lifecycle events** are tagged via `data-umami-event="..."` attributes (and `data-umami-event-*` for properties) on the relevant elements, plus `trackEvent()` calls from React effects where the event is about state transition (form submit / success / error).
+- A typed helper at `src/lib/analytics.ts` (`trackEvent`, `trackPageview`, `deriveStartEventName`) provides a no-op wrapper around `window.umami` so component code doesn't need defensive checks.
+
+### Event-naming conventions
+
+| Pattern | Example | Used for |
+|---|---|---|
+| `<surface>-<action>` | `header-home`, `footer-careers`, `feedback-submit` | Fixed UI elements |
+| `service-<slug>` | `service-renew-passport` | Per-service clicks on `/services` list |
+| `org-<slug>` | `org-ministry-of-finance` | Per-organisation clicks on `/government/organisations` |
+| `<slug>-start` | `renew-passport-start`, `travel-renew-passport-start` | Slug-prefixed start CTA clicks from a service root page into its `/start` flow (derived automatically by `deriveStartEventName()` from the link href) |
+
+The per-service and per-org named events let each item show up as its own metric in Umami's dashboard. The `<slug>-start` events measure the conversion from root page to start page and are grouped separately so they're easy to find.
+
 # Demo files
 
 Files prefixed with `demo` can be safely deleted. They are there to provide a starting point for you to play around with the features you've installed.

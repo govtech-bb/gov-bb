@@ -8,6 +8,7 @@ import {
 } from '@govtech-bb/react'
 import { HelpfulBox } from '../components/HelpfulBox'
 import { CATEGORIES } from '../content/categories'
+import { trackEvent } from '../lib/analytics'
 
 export const Route = createFileRoute('/')({
   head: () => ({
@@ -25,6 +26,7 @@ export const Route = createFileRoute('/')({
 
 function Home() {
   const handleSearch = (q: string) => {
+    trackEvent('search-submit', { query: q, source: 'home' })
     if (q === '') {
       window.location.href = '/services'
       return
@@ -44,7 +46,12 @@ function Home() {
               It will be clearer, simpler and faster for citizens to get things
               done.
             </Text>
-            <LinkButton href="/tell-us" variant="primary">
+            <LinkButton
+              href="/tell-us"
+              variant="primary"
+              data-umami-event="tell-us-cta"
+              data-umami-event-source="home"
+            >
               Tell us what's important
             </LinkButton>
           </div>

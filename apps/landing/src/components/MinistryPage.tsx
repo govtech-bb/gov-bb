@@ -15,14 +15,24 @@ function renderContactValue(item: ContactItem): ReactNode {
   if (item.type === 'phone') {
     const tel = item.value.replace(/[^\d+]/g, '')
     return (
-      <Link className="text-teal-00" href={`tel:${tel}`}>
+      <Link
+        className="text-teal-00"
+        href={`tel:${tel}`}
+        data-umami-event="ministry-contact"
+        data-umami-event-type="phone"
+      >
         {item.value}
       </Link>
     )
   }
   if (item.type === 'email') {
     return (
-      <Link className="break-all text-teal-00" href={`mailto:${item.value}`}>
+      <Link
+        className="break-all text-teal-00"
+        href={`mailto:${item.value}`}
+        data-umami-event="ministry-contact"
+        data-umami-event-type="email"
+      >
         {item.value}
       </Link>
     )
@@ -37,6 +47,8 @@ function renderContactValue(item: ContactItem): ReactNode {
         href={href}
         rel="noopener noreferrer"
         target="_blank"
+        data-umami-event="ministry-contact"
+        data-umami-event-type="website"
       >
         {item.display ?? item.value}
       </Link>
@@ -148,7 +160,13 @@ export function MinistryPage({
                       key={service.href}
                     >
                       <Heading as="h3">
-                        <Link href={service.href}>{service.title}</Link>
+                        <Link
+                          href={service.href}
+                          data-umami-event="ministry-link"
+                          data-umami-event-href={service.href}
+                        >
+                          {service.title}
+                        </Link>
                       </Heading>
                       <Text as="p">{service.description}</Text>
                     </li>
@@ -244,7 +262,11 @@ export function MinistryPage({
                             key={dept.name}
                           >
                             {dept.slug ? (
-                              <Link href={orgHref(dept.slug)}>
+                              <Link
+                                href={orgHref(dept.slug)}
+                                data-umami-event="ministry-link"
+                                data-umami-event-href={orgHref(dept.slug)}
+                              >
                                 {dept.name}
                               </Link>
                             ) : (

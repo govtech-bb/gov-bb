@@ -9,6 +9,7 @@ import type {ErrorItem} from '@govtech-bb/react';
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { sendFeedback  } from '../lib/send-feedback'
 import type {FeedbackState} from '../lib/send-feedback';
+import { trackEvent } from '../lib/analytics'
 
 const INITIAL: FeedbackState = { error: null }
 
@@ -25,7 +26,10 @@ export function FeedbackForm() {
   }, [])
 
   useEffect(() => {
-    if (state.success) formRef.current?.reset()
+    if (state.success) {
+      formRef.current?.reset()
+      trackEvent('feedback-success')
+    }
   }, [state.success])
 
   useEffect(() => {
@@ -35,8 +39,15 @@ export function FeedbackForm() {
         behavior: 'smooth',
         block: 'start',
       })
+      trackEvent('feedback-error', { reason: 'validation' })
     }
   }, [state.fieldErrors])
+
+  useEffect(() => {
+    if (state.error && !state.fieldErrors) {
+      trackEvent('feedback-error', { reason: 'server' })
+    }
+  }, [state.error, state.fieldErrors])
 
   const fieldErrors = state.fieldErrors ?? {}
   const errorItems: Array<ErrorItem> = Object.entries(fieldErrors).map(
@@ -57,6 +68,7 @@ export function FeedbackForm() {
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    trackEvent('feedback-submit')
     const formData = new FormData(e.currentTarget)
     const data = Object.fromEntries(formData) as Record<string, string>
     startTransition(async () => {
