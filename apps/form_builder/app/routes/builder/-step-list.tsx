@@ -1,6 +1,6 @@
 import type { RecipeStepDraft } from "@govtech-bb/form-builder";
 import styles from "../../styles/builder.module.css";
-import { isRequiredStep } from "./-recipe-reducer";
+import { isRequiredStep, REQUIRED_STEP_IDS } from "./-recipe-reducer";
 
 interface StepListProps {
   steps: RecipeStepDraft[];
@@ -21,6 +21,8 @@ export function StepList({
   onMoveUp,
   onMoveDown,
 }: StepListProps) {
+  const editableCount = steps.length - REQUIRED_STEP_IDS.length;
+
   function handleRemove(stepId: string) {
     if (!window.confirm("Delete this step?")) return;
     onRemove(stepId);
@@ -49,7 +51,7 @@ export function StepList({
               <button
                 type="button"
                 title="Move down"
-                disabled={index === steps.length - 1}
+                disabled={index === editableCount - 1}
                 onClick={(e) => { e.stopPropagation(); onMoveDown(index); }}
               >
                 ▼

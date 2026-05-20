@@ -9,7 +9,7 @@ import { bumpMinor } from "../../lib/version";
 import type { ServiceContract } from "@govtech-bb/form-types";
 import type { RecipeDraft, ValidationResult, RecipeValidateResponse } from "@govtech-bb/form-builder";
 
-import { recipeReducer, EMPTY_DRAFT, nextStepId } from "./-recipe-reducer";
+import { recipeReducer, EMPTY_DRAFT, nextStepId, REQUIRED_STEP_IDS } from "./-recipe-reducer";
 import { Toolbar } from "./-toolbar";
 import { StepList } from "./-step-list";
 import { StepEditor } from "./-step-editor";
@@ -55,7 +55,10 @@ function BuilderPage() {
 
   // Derived
   const selectedStep = draft.steps.find((s) => s.stepId === selectedStepId) ?? null;
-  const isDirty = draft.steps.length > 0 || draft.formId !== "" || draft.title !== "";
+  const isDirty =
+    draft.steps.length > REQUIRED_STEP_IDS.length ||
+    draft.formId !== "" ||
+    draft.title !== "";
   const canSubmit = validateResult?.valid === true;
 
   // Debounced nextVersion fetch when formId changes
