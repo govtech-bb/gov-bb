@@ -68,6 +68,9 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const meta = errors !== undefined ? { errors } : undefined;
 
     this.logger.error(`${req.method} ${req.url} ${statusCode} — ${message}`);
+    if (errors) {
+      this.logger.error(`Validation errors: ${JSON.stringify(errors)}`);
+    }
 
     const span = trace.getActiveSpan();
     if (span) {
