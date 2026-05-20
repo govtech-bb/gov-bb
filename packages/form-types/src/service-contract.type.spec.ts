@@ -1,5 +1,7 @@
 import {
   contactDetailsSchema,
+  dateTimeFormatSchema,
+  serviceContractRecipeSchema,
   serviceContractSchema,
 } from "./service-contract.type";
 
@@ -69,6 +71,34 @@ describe("contactDetailsSchema", () => {
   });
 });
 
+describe("dateTimeFormatSchema", () => {
+  it("accepts UTC datetime", () => {
+    expect(dateTimeFormatSchema.safeParse("2026-01-01T00:00:00Z").success).toBe(
+      true,
+    );
+  });
+
+  it("accepts datetime with timezone offset", () => {
+    expect(
+      dateTimeFormatSchema.safeParse("2026-01-01T00:00:00+05:30").success,
+    ).toBe(true);
+  });
+
+  it("accepts datetime with milliseconds and Z", () => {
+    expect(
+      dateTimeFormatSchema.safeParse("2026-01-01T00:00:00.000Z").success,
+    ).toBe(true);
+  });
+
+  it("rejects a date-only string", () => {
+    expect(dateTimeFormatSchema.safeParse("2026-01-01").success).toBe(false);
+  });
+
+  it("rejects a plain string", () => {
+    expect(dateTimeFormatSchema.safeParse("not-a-date").success).toBe(false);
+  });
+});
+
 describe("serviceContractSchema with contactDetails", () => {
   const baseContract = {
     formId: "test-form",
@@ -101,5 +131,66 @@ describe("serviceContractSchema with contactDetails", () => {
       contactDetails: { title: "Post Office" }, // missing telephoneNumber and email
     };
     expect(serviceContractSchema.safeParse(withBadContact).success).toBe(false);
+  });
+});
+
+describe("serviceContractRecipeSchema", () => {
+  const baseRecipe = {
+    formId: "test-form",
+    title: "Test Form",
+    version: "1.0.0",
+    createdAt: "2026-01-01T00:00:00Z",
+    updatedAt: "2026-01-01T00:00:00Z",
+    steps: [],
+  };
+
+  it("accepts a recipe with no steps", () => {
+    expect(serviceContractRecipeSchema.safeParse(baseRecipe).success).toBe(
+      true,
+    );
+  });
+
+  it("accepts a recipe step with component ref elements", () => {
+    const recipe = {
+      ...baseRecipe,
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step One",
+          elements: [{ ref: "components/first-name" }],
+        },
+      ],
+    };
+    expect(serviceContractRecipeSchema.safeParse(recipe).success).toBe(true);
+  });
+
+  it("rejects a recipe step containing plain primitive elements", () => {
+    const recipe = {
+      ...baseRecipe,
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step One",
+          elements: [
+            { fieldId: "first-name", htmlType: "text", label: "Name" },
+          ],
+        },
+      ],
+    };
+    expect(serviceContractRecipeSchema.safeParse(recipe).success).toBe(false);
+  });
+
+  it("rejects missing formId", () => {
+    const { formId: _f, ...noFormId } = baseRecipe;
+    expect(serviceContractRecipeSchema.safeParse(noFormId).success).toBe(false);
+  });
+
+  it("rejects malformed createdAt", () => {
+    expect(
+      serviceContractRecipeSchema.safeParse({
+        ...baseRecipe,
+        createdAt: "2026-01-01",
+      }).success,
+    ).toBe(false);
   });
 });
