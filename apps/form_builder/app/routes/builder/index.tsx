@@ -1,3 +1,4 @@
+import "../../styles/builder.global.css";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useReducer, useState, useRef, useEffect } from "react";
 import { getCatalogFn } from "../../server/registry";

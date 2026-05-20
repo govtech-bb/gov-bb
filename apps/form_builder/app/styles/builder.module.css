@@ -1,41 +1,4 @@
-:root {
-  --color-bg:            #f6f7f9;
-  --color-surface:       #ffffff;
-  --color-border:        #e2e5ea;
-  --color-border-strong: #c9cdd4;
-  --color-text:          #1a1d23;
-  --color-text-muted:    #6b7280;
-  --color-accent:        #2563eb;
-  --color-accent-hover:  #1d4ed8;
-  --color-accent-light:  #eff6ff;
-  --color-danger:        #dc2626;
-  --color-danger-light:  #fef2f2;
-  --color-success:       #16a34a;
-  --color-success-light: #f0fdf4;
-  --color-warning-light: #fffbeb;
-  --color-warning-text:  #92400e;
-
-  font-family: system-ui, -apple-system, sans-serif;
-  font-size: 14px;
-  line-height: 1.5;
-}
-
 /* ── Buttons ─────────────────────────────────────── */
-
-button {
-  padding: 5px 12px;
-  border: 1px solid var(--color-border-strong);
-  border-radius: 6px;
-  background: var(--color-surface);
-  cursor: pointer;
-  font-size: 0.875rem;
-  transition: background 0.15s, border-color 0.15s;
-}
-
-button:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
 
 .btnPrimary {
   background: var(--color-accent);
@@ -60,22 +23,6 @@ button:disabled {
 }
 
 /* ── Inputs & textareas ───────────────────────────── */
-
-input,
-textarea {
-  padding: 6px 10px;
-  border: 1px solid var(--color-border-strong);
-  border-radius: 6px;
-  font-size: 0.875rem;
-  font-family: inherit;
-}
-
-input:focus,
-textarea:focus {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 1px;
-  border-color: var(--color-accent);
-}
 
 .formGroup input,
 .formGroup textarea {
@@ -135,7 +82,6 @@ textarea:focus {
   background: var(--color-surface);
 }
 
-.stepList > button:first-of-type,
 .stepListAddButton {
   border: 1px dashed var(--color-border-strong);
   color: var(--color-text-muted);

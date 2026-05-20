@@ -27,9 +27,7 @@ export function StepList({
 
   return (
     <div className={styles.stepList}>
-      <div style={{ marginBottom: 8 }}>
-        <button type="button" onClick={onAdd} style={{ width: "100%" }}>+ Add Step</button>
-      </div>
+      <button type="button" onClick={onAdd} className={styles.stepListAddButton}>+ Add Step</button>
       {steps.map((step, index) => (
         <div
           key={step.stepId}
