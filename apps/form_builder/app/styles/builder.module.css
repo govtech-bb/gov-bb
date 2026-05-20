@@ -267,9 +267,17 @@
   font-size: 0.875rem;
 }
 
-/* ── Publish error ────────────────────────────────── */
+/* ── Toolbar status badge ─────────────────────────── */
 
-.publishError {
+.statusOk {
+  color: var(--color-success, #1f7a3a);
+  font-size: 0.8rem;
+  padding: 2px 6px;
+  background: var(--color-success-light, #e6f4ea);
+  border-radius: 4px;
+}
+
+.statusError {
   color: var(--color-danger);
   font-size: 0.8rem;
   padding: 2px 6px;

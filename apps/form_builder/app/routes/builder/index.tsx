@@ -1,8 +1,8 @@
 import "../../styles/builder.global.css";
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useReducer, useState, useRef, useEffect } from "react";
 import { getCatalogFn } from "../../server/registry";
-import { listForms, nextVersion, submitRecipe, updateRecipe, publishRecipe, unpublishRecipe } from "../../server/forms";
+import { listForms, nextVersion, submitRecipe, updateRecipe } from "../../server/forms";
 import { validateRecipe, previewRecipe } from "../../server/registry";
 import { serializeRecipeDraft } from "@govtech-bb/form-builder";
 import { bumpMinor } from "../../lib/version";
@@ -54,19 +54,16 @@ function BuilderPage() {
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [isSubmitOpen, setIsSubmitOpen] = useState(false);
-  const [isPublished, setIsPublished] = useState(false);
-  const [isPublishing, setIsPublishing] = useState(false);
   const [activeFieldEdit, setActiveFieldEdit] = useState<{ stepId: string; fieldRef: string } | null>(null);
   const [activeFieldPickerStepId, setActiveFieldPickerStepId] = useState<string | null>(null);
-  const [publishError, setPublishError] = useState<string | null>(null);
-
-  const router = useRouter();
+  const [lastSaveStatus, setLastSaveStatus] = useState<"idle" | "success" | "error" | "submitted">("idle");
 
   // Derived
   const fieldRefs = useFieldRefs(draft, catalog);
   const stepRefs = useStepRefs(draft);
   const selectedStep = draft.steps.find((s) => s.stepId === selectedStepId) ?? null;
   const isDirty = draft.steps.length > 0 || draft.formId !== "" || draft.title !== "";
+  const canSubmit = validateResult?.valid === true;
 
   // Debounced nextVersion fetch when formId changes
   const nextVersionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -140,7 +137,6 @@ function BuilderPage() {
         await submitRecipe({ data: { recipe } });
       }
       setSubmitSuccess(true);
-      setIsPublished(false);
       setCurrentVersion(submitVersion);
       setVersion(submitVersion);          // sync the toolbar version badge
       setLoadedFromId(draft.formId);
@@ -158,12 +154,11 @@ function BuilderPage() {
     setVersion(ver);
     setSelectedStepId(null);
     setValidateResult(null);
-    setIsPublished(forms.find((f) => f.formId === formId)?.isPublished ?? false);
     setSubmitSuccess(false);
     setSubmitError(null);
     setPreviewData(null);
     setPreviewError(null);
-    setPublishError(null);
+    setLastSaveStatus("idle");
     setActiveFieldEdit(null);
     setActiveFieldPickerStepId(null);
   };
@@ -178,7 +173,7 @@ function BuilderPage() {
     setSubmitSuccess(false);
     setSubmitError(null);
     setPreviewData(null);
-    setIsPublished(false);
+    setLastSaveStatus("idle");
     // Close all open panels/modals
     setIsPickerOpen(false);
     setIsSubmitOpen(false);
@@ -186,38 +181,7 @@ function BuilderPage() {
     setActiveFieldEdit(null);
     setActiveFieldPickerStepId(null);
     // Clear transient errors
-    setPublishError(null);
     setPreviewError(null);
-  };
-
-  const handlePublish = async () => {
-    if (!loadedFromId) return;
-    setIsPublishing(true);
-    setPublishError(null);
-    try {
-      await publishRecipe({ data: { formId: loadedFromId } });
-      setIsPublished(true);
-      router.invalidate();
-    } catch (e) {
-      setPublishError(e instanceof Error ? e.message : "Publish failed");
-    } finally {
-      setIsPublishing(false);
-    }
-  };
-
-  const handleUnpublish = async () => {
-    if (!loadedFromId) return;
-    setIsPublishing(true);
-    setPublishError(null);
-    try {
-      await unpublishRecipe({ data: { formId: loadedFromId } });
-      setIsPublished(false);
-      router.invalidate();
-    } catch (e) {
-      setPublishError(e instanceof Error ? e.message : "Unpublish failed");
-    } finally {
-      setIsPublishing(false);
-    }
   };
 
   const handleFormIdChange = (id: string) => {
@@ -263,9 +227,9 @@ function BuilderPage() {
         isDirty={isDirty}
         isValidating={isValidating}
         isPreviewing={isPreviewing}
-        isPublished={isPublished}
-        isPublishing={isPublishing}
-        loadedFromId={loadedFromId}
+        isSubmitting={isSubmitting}
+        canSubmit={canSubmit}
+        lastSaveStatus={lastSaveStatus}
         onFormIdChange={handleFormIdChange}
         onTitleChange={handleTitleChange}
         onNew={handleNew}
@@ -273,10 +237,6 @@ function BuilderPage() {
         onValidate={handleValidate}
         onPreview={handlePreview}
         onSubmit={() => { setSubmitSuccess(false); setSubmitError(null); setIsSubmitOpen(true); }}
-        onPublish={handlePublish}
-        onUnpublish={handleUnpublish}
-        publishError={publishError}
-        onClearPublishError={() => setPublishError(null)}
       />
 
       <div className={styles.builderBody}>

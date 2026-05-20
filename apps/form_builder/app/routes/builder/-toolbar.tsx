@@ -7,9 +7,9 @@ interface ToolbarProps {
   isDirty: boolean;
   isValidating: boolean;
   isPreviewing: boolean;
-  isPublished: boolean;
-  isPublishing: boolean;
-  loadedFromId: string | null;
+  isSubmitting: boolean;
+  canSubmit: boolean;
+  lastSaveStatus: "idle" | "success" | "error" | "submitted";
   onFormIdChange: (id: string) => void;
   onTitleChange: (title: string) => void;
   onNew: () => void;
@@ -17,10 +17,6 @@ interface ToolbarProps {
   onValidate: () => void;
   onPreview: () => void;
   onSubmit: () => void;
-  onPublish: () => void;
-  onUnpublish: () => void;
-  publishError?: string | null;
-  onClearPublishError?: () => void;
 }
 
 export function Toolbar({
@@ -30,9 +26,9 @@ export function Toolbar({
   isDirty,
   isValidating,
   isPreviewing,
-  isPublished,
-  isPublishing,
-  loadedFromId,
+  isSubmitting,
+  canSubmit,
+  lastSaveStatus,
   onFormIdChange,
   onTitleChange,
   onNew,
@@ -40,10 +36,6 @@ export function Toolbar({
   onValidate,
   onPreview,
   onSubmit,
-  onPublish,
-  onUnpublish,
-  publishError,
-  onClearPublishError,
 }: ToolbarProps) {
   function handleNew() {
     if (isDirty && !window.confirm("Unsaved changes will be lost. Continue?")) return;
@@ -74,30 +66,38 @@ export function Toolbar({
       <span className={styles.badge}>v{version}</span>
       <button type="button" onClick={handleNew}>New</button>
       <button type="button" onClick={onOpen}>Open</button>
-      <button type="button" onClick={onValidate} disabled={isValidating}>
+      <button
+        type="button"
+        onClick={onValidate}
+        disabled={isValidating}
+      >
         {isValidating ? "Validating…" : "Validate"}
       </button>
-      <button type="button" onClick={onPreview} disabled={isPreviewing}>
+      <button
+        type="button"
+        onClick={onPreview}
+        disabled={isPreviewing}
+      >
         {isPreviewing ? "Previewing…" : "Preview"}
       </button>
-      <button type="button" className={styles.btnPrimary} onClick={onSubmit} disabled={isPublished}>Submit</button>
-      {loadedFromId !== null && !isPublished && (
-        <button type="button" className={styles.btnPrimary} onClick={onPublish} disabled={isPublishing}>
-          {isPublishing ? "Publishing…" : "Publish"}
-        </button>
-      )}
-      {loadedFromId !== null && isPublished && (
-        <button type="button" className={styles.btnDanger} onClick={onUnpublish} disabled={isPublishing}>
-          {isPublishing ? "Unpublishing…" : "Unpublish"}
-        </button>
-      )}
-      {publishError && (
-        <div className={styles.publishError} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <span>{publishError}</span>
-          <button type="button" onClick={onClearPublishError}>
-            ✕
-          </button>
-        </div>
+      <button
+        type="button"
+        className={styles.btnPrimary}
+        onClick={onSubmit}
+        disabled={!canSubmit || isSubmitting}
+      >
+        {isSubmitting ? "Submitting…" : "Submit"}
+      </button>
+      {lastSaveStatus !== "idle" && (
+        <span
+          className={
+            lastSaveStatus === "error" ? styles.statusError : styles.statusOk
+          }
+        >
+          {lastSaveStatus === "success" && "✓ Valid"}
+          {lastSaveStatus === "error" && "✗ Invalid"}
+          {lastSaveStatus === "submitted" && "✓ Submitted"}
+        </span>
       )}
     </div>
   );
