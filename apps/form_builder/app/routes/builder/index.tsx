@@ -10,12 +10,9 @@ import type { ServiceContract } from "@govtech-bb/form-types";
 import type { RecipeDraft, ValidationResult, RecipeValidateResponse } from "@govtech-bb/form-builder";
 
 import { recipeReducer, EMPTY_DRAFT, nextStepId } from "./-recipe-reducer";
-import { useFieldRefs, useStepRefs } from "./-recipe-refs";
 import { Toolbar } from "./-toolbar";
 import { StepList } from "./-step-list";
 import { StepEditor } from "./-step-editor";
-import { FieldPicker } from "./-field-picker";
-import { FieldEditPanel } from "./-field-edit-panel";
 import { ValidationPanel } from "./-validation-panel";
 import { PreviewModal } from "./-preview-modal";
 import { SubmitModal } from "./-submit-modal";
@@ -54,13 +51,9 @@ function BuilderPage() {
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [isSubmitOpen, setIsSubmitOpen] = useState(false);
-  const [activeFieldEdit, setActiveFieldEdit] = useState<{ stepId: string; fieldRef: string } | null>(null);
-  const [activeFieldPickerStepId, setActiveFieldPickerStepId] = useState<string | null>(null);
   const [lastSaveStatus, setLastSaveStatus] = useState<"idle" | "success" | "error" | "submitted">("idle");
 
   // Derived
-  const fieldRefs = useFieldRefs(draft, catalog);
-  const stepRefs = useStepRefs(draft);
   const selectedStep = draft.steps.find((s) => s.stepId === selectedStepId) ?? null;
   const isDirty = draft.steps.length > 0 || draft.formId !== "" || draft.title !== "";
   const canSubmit = validateResult?.valid === true;
@@ -179,8 +172,6 @@ function BuilderPage() {
     setPreviewData(null);
     setPreviewError(null);
     setLastSaveStatus("idle");
-    setActiveFieldEdit(null);
-    setActiveFieldPickerStepId(null);
   };
 
   const handleNew = () => {
@@ -198,8 +189,6 @@ function BuilderPage() {
     setIsPickerOpen(false);
     setIsSubmitOpen(false);
     setIsPreviewOpen(false);
-    setActiveFieldEdit(null);
-    setActiveFieldPickerStepId(null);
     // Clear transient errors
     setPreviewError(null);
   };
@@ -231,12 +220,9 @@ function BuilderPage() {
     dispatch({ type: "REORDER_STEPS", fromIndex: index, toIndex: index + 1 });
   };
 
-  // Find the field being edited
-  const fieldBeingEdited = activeFieldEdit
-    ? draft.steps
-        .find((s) => s.stepId === activeFieldEdit.stepId)
-        ?.fields.find((f) => f.ref === activeFieldEdit.fieldRef) ?? null
-    : null;
+  const handleStepIdChange = (_oldId: string, newId: string) => {
+    setSelectedStepId(newId);
+  };
 
   return (
     <div className={styles.builderRoot}>
@@ -270,41 +256,13 @@ function BuilderPage() {
           onMoveDown={handleMoveStepDown}
         />
 
-        {selectedStep ? (
+        {selectedStep !== null ? (
           <StepEditor
             step={selectedStep}
+            draft={draft}
+            dispatch={dispatch}
             catalog={catalog}
-            fieldRefs={fieldRefs}
-            stepRefs={stepRefs}
-            onUpdateMeta={(meta) =>
-              dispatch({ type: "UPDATE_STEP_META", stepId: selectedStep.stepId, meta })
-            }
-            onSetBehaviours={(behaviours) =>
-              dispatch({ type: "SET_STEP_BEHAVIOURS", stepId: selectedStep.stepId, behaviours })
-            }
-            onAddField={() => setActiveFieldPickerStepId(selectedStep.stepId)}
-            onEditField={(fieldRef) =>
-              setActiveFieldEdit({ stepId: selectedStep.stepId, fieldRef })
-            }
-            onRemoveField={(fieldRef) =>
-              dispatch({ type: "REMOVE_FIELD", stepId: selectedStep.stepId, fieldRef })
-            }
-            onMoveFieldUp={(index) =>
-              dispatch({
-                type: "REORDER_FIELDS",
-                stepId: selectedStep.stepId,
-                fromIndex: index,
-                toIndex: index - 1,
-              })
-            }
-            onMoveFieldDown={(index) =>
-              dispatch({
-                type: "REORDER_FIELDS",
-                stepId: selectedStep.stepId,
-                fromIndex: index,
-                toIndex: index + 1,
-              })
-            }
+            onStepIdChange={handleStepIdChange}
           />
         ) : (
           <div className={styles.noStepSelected}>Select or add a step to begin</div>
@@ -320,35 +278,6 @@ function BuilderPage() {
           catalog={catalog}
           onLoad={handleLoad}
           onClose={() => setIsPickerOpen(false)}
-        />
-      )}
-
-      {activeFieldPickerStepId && (
-        <FieldPicker
-          catalog={catalog}
-          onPick={(field) =>
-            dispatch({ type: "ADD_FIELD", stepId: activeFieldPickerStepId, field })
-          }
-          onClose={() => setActiveFieldPickerStepId(null)}
-        />
-      )}
-
-      {activeFieldEdit && fieldBeingEdited && (
-        <FieldEditPanel
-          field={fieldBeingEdited}
-          catalog={catalog}
-          fieldRefs={fieldRefs}
-          stepRefs={stepRefs}
-          onSave={(overrides, childOverrides) =>
-            dispatch({
-              type: "UPDATE_FIELD_OVERRIDES",
-              stepId: activeFieldEdit.stepId,
-              fieldRef: activeFieldEdit.fieldRef,
-              overrides,
-              childOverrides,
-            })
-          }
-          onClose={() => setActiveFieldEdit(null)}
         />
       )}
 
