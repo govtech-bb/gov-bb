@@ -71,7 +71,11 @@ function BuilderPage() {
   // Debounced nextVersion fetch when formId changes
   const nextVersionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    if (!draft.formId) return;
+    if (!draft.formId) {
+      setVersion("1.0.0");
+      setCurrentVersion(null);
+      return;
+    }
     if (nextVersionTimerRef.current) clearTimeout(nextVersionTimerRef.current);
     nextVersionTimerRef.current = setTimeout(async () => {
       try {
@@ -125,13 +129,20 @@ function BuilderPage() {
     try {
       const recipe = serializeRecipeDraft(draft, { version: submitVersion });
       if (loadedFromId) {
-        await updateRecipe({ data: { formId: loadedFromId, recipe } });
+        if (submitVersion === currentVersion) {
+          // Update content in place (same version — fix a draft)
+          await updateRecipe({ data: { formId: loadedFromId, recipe } });
+        } else {
+          // Create a new version row (version > currentVersion)
+          await submitRecipe({ data: { recipe } });
+        }
       } else {
         await submitRecipe({ data: { recipe } });
       }
       setSubmitSuccess(true);
       setIsPublished(false);
       setCurrentVersion(submitVersion);
+      setVersion(submitVersion);          // sync the toolbar version badge
       setLoadedFromId(draft.formId);
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : "Submission failed");
@@ -148,6 +159,13 @@ function BuilderPage() {
     setSelectedStepId(null);
     setValidateResult(null);
     setIsPublished(forms.find((f) => f.formId === formId)?.isPublished ?? false);
+    setSubmitSuccess(false);
+    setSubmitError(null);
+    setPreviewData(null);
+    setPreviewError(null);
+    setPublishError(null);
+    setActiveFieldEdit(null);
+    setActiveFieldPickerStepId(null);
   };
 
   const handleNew = () => {
@@ -161,6 +179,17 @@ function BuilderPage() {
     setSubmitError(null);
     setPreviewData(null);
     setIsPublished(false);
+    // Close all open panels/modals
+    setIsPickerOpen(false);
+    setIsSubmitOpen(false);
+    setIsPreviewOpen(false);
+    setActiveFieldEdit(null);
+    setActiveFieldPickerStepId(null);
+    // Clear transient errors
+    setPublishError(null);
+    setPreviewError(null);
+    setSubmitError(null);
+    setPreviewData(null);
   };
 
   const handlePublish = async () => {
@@ -202,7 +231,12 @@ function BuilderPage() {
   };
 
   const handleAddStep = () => {
+    const existingNums = draft.steps
+      .map((s) => { const m = s.stepId.match(/^step-(\d+)$/); return m ? parseInt(m[1], 10) : 0; })
+      .filter((n) => n > 0);
+    const n = existingNums.length > 0 ? Math.max(...existingNums) + 1 : 1;
     dispatch({ type: "ADD_STEP" });
+    setSelectedStepId(`step-${n}`);
   };
 
   const handleRemoveStep = (stepId: string) => {

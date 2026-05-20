@@ -41,8 +41,8 @@ export function SubmitModal({
     }
 
     if (isUpdate && currentVersion) {
-      if (compare(versionInput, currentVersion) <= 0) {
-        setClientError(`Version must be greater than the current version (${currentVersion})`);
+      if (compare(versionInput, currentVersion) < 0) {
+        setClientError(`Version must be at least the current version (${currentVersion})`);
         return;
       }
     }
