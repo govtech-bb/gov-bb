@@ -63,7 +63,7 @@ export function FormPicker({ forms, isDirty, catalog, onLoad, onClose }: FormPic
               <strong>{form.title || form.formId}</strong>{" "}
               <span className={styles.badge}>v{form.version}</span>
               {form.isPublished && (
-                <span className={styles.badge} style={{ marginLeft: 4 }}>Published</span>
+                <span className={styles.publishedBadge}>Published</span>
               )}
             </span>
             <span style={{ color: "#888", fontSize: "0.8rem" }}>{form.formId}</span>

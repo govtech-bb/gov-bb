@@ -80,21 +80,21 @@ export function Toolbar({
       <button type="button" onClick={onPreview} disabled={isPreviewing}>
         {isPreviewing ? "Previewing…" : "Preview"}
       </button>
-      <button type="button" onClick={onSubmit} disabled={isPublished}>Submit</button>
+      <button type="button" className={styles.btnPrimary} onClick={onSubmit} disabled={isPublished}>Submit</button>
       {loadedFromId !== null && !isPublished && (
-        <button type="button" onClick={onPublish} disabled={isPublishing}>
+        <button type="button" className={styles.btnPrimary} onClick={onPublish} disabled={isPublishing}>
           {isPublishing ? "Publishing…" : "Publish"}
         </button>
       )}
       {loadedFromId !== null && isPublished && (
-        <button type="button" onClick={onUnpublish} disabled={isPublishing}>
+        <button type="button" className={styles.btnDanger} onClick={onUnpublish} disabled={isPublishing}>
           {isPublishing ? "Unpublishing…" : "Unpublish"}
         </button>
       )}
       {publishError && (
-        <div style={{ color: "red", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: 4 }}>
+        <div className={styles.publishError} style={{ display: "flex", alignItems: "center", gap: 4 }}>
           <span>{publishError}</span>
-          <button type="button" onClick={onClearPublishError} style={{ fontSize: "0.75rem", padding: "0 4px" }}>
+          <button type="button" onClick={onClearPublishError}>
             ✕
           </button>
         </div>

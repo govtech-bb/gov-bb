@@ -93,7 +93,7 @@ export function SubmitModal({
             )}
 
             <div style={{ display: "flex", gap: 8 }}>
-              <button type="button" onClick={handleSubmit} disabled={isSubmitting}>
+              <button type="button" className={styles.btnPrimary} onClick={handleSubmit} disabled={isSubmitting}>
                 {isSubmitting ? "Submitting…" : mode}
               </button>
               <button type="button" onClick={onClose}>Cancel</button>
