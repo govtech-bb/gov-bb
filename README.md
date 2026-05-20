@@ -66,6 +66,7 @@ cp apps/api/.env.example apps/api/.env
 | `DB_NAME` | api | `modular_forms` | Database name |
 | `DB_SYNCHRONIZE` | api | `false` | Auto-sync schema (dev only — never `true` in production) |
 | `DB_LOGGING` | api | `false` | Log all SQL queries |
+| `DB_SSL_CA` | api | _(unset)_ | Optional CA bundle (PEM contents or path) for verifying the DB TLS cert in production. If unset, Node's built-in trust store is used. |
 
 ## Deployment
 
