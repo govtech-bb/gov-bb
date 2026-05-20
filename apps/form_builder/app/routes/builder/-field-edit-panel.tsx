@@ -182,62 +182,64 @@ export function FieldEditPanel({
   const blockDef = isBlock ? (item as BlockDefinition) : null;
 
   return (
-    <div className={styles.fieldEditPanel}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          marginBottom: 12,
-        }}
-      >
-        <strong>Edit Field: {item?.displayName ?? field.ref}</strong>
-        <button type="button" onClick={onClose}>Close</button>
-      </div>
-
-      {isBlock && blockDef ? (
-        <div>
-          {blockDef.block.elements.map((element) => {
-            const childHtmlType: HtmlTypes = element.htmlType;
-            const childOverride = childOverrides[element.fieldId] ?? {};
-            return (
-              <div
-                key={element.fieldId}
-                style={{
-                  marginBottom: 16,
-                  border: "1px solid #eee",
-                  padding: 12,
-                  borderRadius: 4,
-                }}
-              >
-                <div className={styles.sectionTitle}>
-                  {element.label} ({element.fieldId})
-                </div>
-                <OverrideForm
-                  overrides={childOverride}
-                  htmlType={childHtmlType}
-                  fieldRefs={fieldRefs}
-                  stepRefs={stepRefs}
-                  onChange={(updated) =>
-                    handleChildOverrideChange(element.fieldId, updated)
-                  }
-                />
-              </div>
-            );
-          })}
+    <div className={styles.modal} onClick={onClose}>
+      <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            marginBottom: 12,
+          }}
+        >
+          <strong>Edit Field: {item?.displayName ?? field.ref}</strong>
+          <button type="button" onClick={onClose}>Close</button>
         </div>
-      ) : (
-        <OverrideForm
-          overrides={overrides}
-          htmlType={htmlType}
-          fieldRefs={fieldRefs}
-          stepRefs={stepRefs}
-          onChange={setOverrides}
-        />
-      )}
 
-      <div style={{ marginTop: 16, display: "flex", gap: 8 }}>
-        <button type="button" onClick={handleSave}>Save</button>
-        <button type="button" onClick={onClose}>Cancel</button>
+        {isBlock && blockDef ? (
+          <div>
+            {blockDef.block.elements.map((element) => {
+              const childHtmlType: HtmlTypes = element.htmlType;
+              const childOverride = childOverrides[element.fieldId] ?? {};
+              return (
+                <div
+                  key={element.fieldId}
+                  style={{
+                    marginBottom: 16,
+                    border: "1px solid #eee",
+                    padding: 12,
+                    borderRadius: 4,
+                  }}
+                >
+                  <div className={styles.sectionTitle}>
+                    {element.label} ({element.fieldId})
+                  </div>
+                  <OverrideForm
+                    overrides={childOverride}
+                    htmlType={childHtmlType}
+                    fieldRefs={fieldRefs}
+                    stepRefs={stepRefs}
+                    onChange={(updated) =>
+                      handleChildOverrideChange(element.fieldId, updated)
+                    }
+                  />
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <OverrideForm
+            overrides={overrides}
+            htmlType={htmlType}
+            fieldRefs={fieldRefs}
+            stepRefs={stepRefs}
+            onChange={setOverrides}
+          />
+        )}
+
+        <div style={{ marginTop: 16, display: "flex", gap: 8 }}>
+          <button type="button" onClick={handleSave}>Save</button>
+          <button type="button" onClick={onClose}>Cancel</button>
+        </div>
       </div>
     </div>
   );

@@ -130,14 +130,6 @@
   font-size: 0.9rem;
 }
 
-.fieldEditPanel {
-  margin-top: 16px;
-  padding: 16px;
-  border: 1px solid var(--color-border, #e2e2e2);
-  border-radius: 6px;
-  background: var(--color-surface);
-}
-
 /* ── Modal ───────────────────────────────────────── */
 
 .modal {
