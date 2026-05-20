@@ -22,6 +22,7 @@ export function getDataSource(): Promise<DataSource> {
         process.env.NODE_ENV === "production"
           ? { rejectUnauthorized: false }
           : false,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
     try {
       await ds.initialize();

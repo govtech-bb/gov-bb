@@ -6,7 +6,7 @@ import { validateRecipe, previewRecipe } from "../../server/registry";
 import { serializeRecipeDraft } from "@govtech-bb/form-builder";
 import { bumpMinor } from "../../lib/version";
 import type { ServiceContract } from "@govtech-bb/form-types";
-import type { RecipeDraft, ValidationIssue } from "@govtech-bb/form-builder";
+import type { RecipeDraft, ValidationIssue, ValidationResult } from "@govtech-bb/form-builder";
 
 import { recipeReducer, EMPTY_DRAFT } from "./-recipe-reducer";
 import { useFieldRefs, useStepRefs } from "./-recipe-refs";
@@ -69,7 +69,7 @@ function BuilderPage() {
     if (nextVersionTimerRef.current) clearTimeout(nextVersionTimerRef.current);
     nextVersionTimerRef.current = setTimeout(async () => {
       try {
-        const result = await nextVersion({ data: { formId: draft.formId } }) as any;
+        const result = await nextVersion({ data: { formId: draft.formId } }) as { currentVersion: string | null; nextVersion: string };
         setCurrentVersion(result.currentVersion ?? null);
         setVersion(result.nextVersion);
       } catch {
@@ -79,7 +79,6 @@ function BuilderPage() {
     return () => {
       if (nextVersionTimerRef.current) clearTimeout(nextVersionTimerRef.current);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft.formId]);
 
   // Handlers
@@ -87,7 +86,7 @@ function BuilderPage() {
     setIsValidating(true);
     try {
       const recipe = serializeRecipeDraft(draft, { version });
-      const result = await validateRecipe({ data: { recipe } }) as any;
+      const result = await validateRecipe({ data: { recipe } }) as ValidationResult;
       setValidateResult({ valid: result.ok, errors: result.ok ? [] : result.issues });
     } catch (e) {
       setValidateResult({
@@ -105,7 +104,7 @@ function BuilderPage() {
     setPreviewError(null);
     try {
       const recipe = serializeRecipeDraft(draft, { version });
-      const contract = await previewRecipe({ data: { recipe } }) as any;
+      const contract = await previewRecipe({ data: { recipe } }) as ServiceContract;
       setPreviewData(contract as ServiceContract);
     } catch (e) {
       setPreviewError(e instanceof Error ? e.message : "Preview request failed");

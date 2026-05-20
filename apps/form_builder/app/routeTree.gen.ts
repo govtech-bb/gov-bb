@@ -20,4 +20,5 @@ declare module "@tanstack/router-core" {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const routeTree = {} as any;

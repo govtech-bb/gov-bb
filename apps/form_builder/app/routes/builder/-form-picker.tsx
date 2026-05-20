@@ -2,6 +2,7 @@ import { useState } from "react";
 import { getRecipe } from "../../server/forms";
 import { deserializeRecipe } from "@govtech-bb/form-builder";
 import type { RecipeDraft, RegistryCatalog } from "@govtech-bb/form-builder";
+import type { ServiceContractRecipe } from "@govtech-bb/form-types";
 import type { FormDefinitionSummary } from "../../types/index";
 import styles from "../../styles/builder.module.css";
 
@@ -22,7 +23,7 @@ export function FormPicker({ forms, isDirty, catalog, onLoad, onClose }: FormPic
     setError(null);
     setLoadingId(form.formId);
     try {
-      const recipe = await getRecipe({ data: { formId: form.formId } }) as any;
+      const recipe = await getRecipe({ data: { formId: form.formId } }) as ServiceContractRecipe;
       const draft = deserializeRecipe(recipe, catalog);
       onLoad(draft, form.formId, form.version);
       onClose();
