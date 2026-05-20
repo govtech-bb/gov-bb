@@ -17,7 +17,6 @@ const sessionIdSchema = z.object({ sessionId: z.string() });
 
 export const getAiStatus = createServerFn({ method: "GET" }).handler(
   async () => {
-    await ensureInitialised();
     const available = await isAvailable();
     return {
       available,
