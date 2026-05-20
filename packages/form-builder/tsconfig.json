@@ -7,7 +7,7 @@
     "strictPropertyInitialization": false,
     "module": "commonjs",
     "lib": ["ES2022"],
-    "types": ["jest"]
+    "types": ["jest", "node"]
   },
   "include": ["src/**/*"],
   "references": [{ "path": "../form-types" }]
