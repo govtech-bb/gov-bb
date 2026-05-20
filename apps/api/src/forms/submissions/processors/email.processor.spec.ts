@@ -108,7 +108,11 @@ describe("EmailProcessor", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    processor = new EmailProcessor(makeConfig());
+    processor = new EmailProcessor(
+      makeConfig(),
+      makeTemplateService(),
+      makeBodyBuilder(),
+    );
   });
 
   describe("process", () => {
@@ -154,6 +158,8 @@ describe("EmailProcessor", () => {
     it("includes ConfigurationSetName when configured", async () => {
       processor = new EmailProcessor(
         makeConfig({ "email.configurationSet": "modular-forms-prod" }),
+        makeTemplateService(),
+        makeBodyBuilder(),
       );
       await processor.process(makePayload());
 
@@ -277,8 +283,14 @@ describe("EmailProcessor — dynamic template rendering", () => {
     expect(html).toContain("sub-001");
   });
 
-  it("falls back to generic HTML when no services are injected", async () => {
-    const processor = new EmailProcessor(makeConfig());
+  it("falls back to generic HTML when template render throws", async () => {
+    const bodyBuilder = makeBodyBuilder();
+    bodyBuilder.build.mockRejectedValue(new Error("DB unavailable"));
+    const processor = new EmailProcessor(
+      makeConfig(),
+      makeTemplateService(),
+      bodyBuilder,
+    );
 
     await processor.process(makePayload());
 

@@ -5,6 +5,16 @@
   "version": "1.0.0",
   "createdAt": "2026-04-02T00:00:00Z",
   "updatedAt": "2026-04-02T00:00:00Z",
+  "contactDetails": {
+    "title": "Barbados Post Office",
+    "telephoneNumber": "(246) 535-0200",
+    "email": "customerservice@post.gov.bb",
+    "address": {
+      "line1": "Cheapside",
+      "city": "Bridgetown",
+      "country": "Barbados"
+    }
+  },
   "steps": [
     {
       "stepId": "applicant-details",

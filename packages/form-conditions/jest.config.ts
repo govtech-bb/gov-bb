@@ -8,6 +8,12 @@ const config: Config = {
   moduleNameMapper: {
     "^@govtech-bb/(.*)$": "<rootDir>/../../packages/$1/src/index.ts",
   },
+  collectCoverage: true,
+  collectCoverageFrom: ["**/*.ts", "!**/*.spec.ts", "!**/*.d.ts"],
+  coverageReporters: ["text-summary", "lcov", "html"],
+  coverageThreshold: {
+    global: { branches: 84, functions: 90, lines: 90, statements: 90 },
+  },
 };
 
 export default config;
