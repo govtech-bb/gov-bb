@@ -45,21 +45,27 @@ export const EMPTY_DRAFT: RecipeDraft = {
   steps: [],
 };
 
+export function nextStepId(steps: RecipeStepDraft[]): string {
+  const existingNums = steps
+    .map((s) => {
+      const m = s.stepId.match(/^step-(\d+)$/);
+      return m ? parseInt(m[1], 10) : 0;
+    })
+    .filter((n) => n > 0);
+  const n = existingNums.length > 0 ? Math.max(...existingNums) + 1 : 1;
+  return `step-${n}`;
+}
+
 export function recipeReducer(
   state: RecipeDraft,
   action: RecipeAction,
 ): RecipeDraft {
   switch (action.type) {
     case "ADD_STEP": {
-      const existingNums = state.steps
-        .map((s) => {
-          const m = s.stepId.match(/^step-(\d+)$/);
-          return m ? parseInt(m[1], 10) : 0;
-        })
-        .filter((n) => n > 0);
-      const n = existingNums.length > 0 ? Math.max(...existingNums) + 1 : 1;
+      const stepId = nextStepId(state.steps);
+      const n = parseInt(stepId.replace("step-", ""), 10);
       const newStep: RecipeStepDraft = {
-        stepId: `step-${n}`,
+        stepId,
         title: `Step ${n}`,
         description: undefined,
         fields: [],

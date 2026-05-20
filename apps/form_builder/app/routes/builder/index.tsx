@@ -9,7 +9,7 @@ import { bumpMinor } from "../../lib/version";
 import type { ServiceContract } from "@govtech-bb/form-types";
 import type { RecipeDraft, ValidationIssue, ValidationResult } from "@govtech-bb/form-builder";
 
-import { recipeReducer, EMPTY_DRAFT } from "./-recipe-reducer";
+import { recipeReducer, EMPTY_DRAFT, nextStepId } from "./-recipe-reducer";
 import { useFieldRefs, useStepRefs } from "./-recipe-refs";
 import { Toolbar } from "./-toolbar";
 import { StepList } from "./-step-list";
@@ -129,11 +129,11 @@ function BuilderPage() {
     try {
       const recipe = serializeRecipeDraft(draft, { version: submitVersion });
       if (loadedFromId) {
-        if (submitVersion === currentVersion) {
-          // Update content in place (same version — fix a draft)
+        if (currentVersion && submitVersion === currentVersion) {
+          // In-place draft update (same version, update content)
           await updateRecipe({ data: { formId: loadedFromId, recipe } });
         } else {
-          // Create a new version row (version > currentVersion)
+          // New version row (version > currentVersion, or currentVersion unknown)
           await submitRecipe({ data: { recipe } });
         }
       } else {
@@ -188,8 +188,6 @@ function BuilderPage() {
     // Clear transient errors
     setPublishError(null);
     setPreviewError(null);
-    setSubmitError(null);
-    setPreviewData(null);
   };
 
   const handlePublish = async () => {
@@ -231,12 +229,9 @@ function BuilderPage() {
   };
 
   const handleAddStep = () => {
-    const existingNums = draft.steps
-      .map((s) => { const m = s.stepId.match(/^step-(\d+)$/); return m ? parseInt(m[1], 10) : 0; })
-      .filter((n) => n > 0);
-    const n = existingNums.length > 0 ? Math.max(...existingNums) + 1 : 1;
+    const stepId = nextStepId(draft.steps);
     dispatch({ type: "ADD_STEP" });
-    setSelectedStepId(`step-${n}`);
+    setSelectedStepId(stepId);
   };
 
   const handleRemoveStep = (stepId: string) => {
