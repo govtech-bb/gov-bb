@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
-    "start": "node dist/server/server.js"
+    "start": "node dist/server/server.js",
+    "test": "jest --no-coverage"
   },
   "dependencies": {
     "@govtech-bb/database": "*",
@@ -24,6 +25,7 @@
   },
   "devDependencies": {
     "@tanstack/router-plugin": "^1.167.22",
+    "@types/jest": "^30.0.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
