@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { axe } from "jest-axe";
 import Review from "./review";
 import type { ClientFormStep, FormMeta } from "@forms/types";
@@ -331,8 +332,36 @@ describe("Review", () => {
   });
 
   // -------------------------------------------------------------------------
-  // Radio and checkbox label resolution
+  // Field display value formatting
   // -------------------------------------------------------------------------
+
+  it("select field displays option label, not raw value", () => {
+    const selectField = makeField({
+      id: "step-1.country",
+      fieldId: "country",
+      label: "Country",
+      htmlType: "select",
+      options: [
+        { value: "bb", label: "Barbados" },
+        { value: "tt", label: "Trinidad and Tobago" },
+      ],
+    });
+    const steps: ClientFormStep[] = [
+      makeStep({ stepId: "step-1", title: "Step One", fields: [selectField] }),
+    ];
+    const form = makeMockForm({ "step-1.country": "bb" });
+
+    render(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={form as never}
+        visibleSteps={steps}
+      />,
+    );
+
+    expect(screen.getByText("Barbados")).toBeInTheDocument();
+    expect(screen.queryByText("bb")).not.toBeInTheDocument();
+  });
 
   it("radio field displays option label, not raw value", () => {
     const radioField = makeField({
@@ -395,6 +424,106 @@ describe("Review", () => {
     expect(screen.queryByText("sport")).not.toBeInTheDocument();
   });
 
+  it("date field displays a formatted date string", () => {
+    const dateField = makeField({
+      id: "step-1.dob",
+      fieldId: "dob",
+      label: "Date of birth",
+      htmlType: "date",
+    });
+    const steps: ClientFormStep[] = [
+      makeStep({ stepId: "step-1", title: "Step One", fields: [dateField] }),
+    ];
+    const form = makeMockForm({
+      "step-1.dob": { day: 1, month: 1, year: 2026 },
+    });
+
+    render(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={form as never}
+        visibleSteps={steps}
+      />,
+    );
+
+    const expectedDate = new Date(2026, 0, 1)
+      .toDateString()
+      .trim()
+      .replace(/^\w+\s/, "");
+    expect(screen.getByText(expectedDate)).toBeInTheDocument();
+  });
+
+  it("file field with no uploaded files displays 'No file selected'", () => {
+    const fileField = makeField({
+      id: "step-1.attachment",
+      fieldId: "attachment",
+      label: "Attachment",
+      htmlType: "file",
+    });
+    const steps: ClientFormStep[] = [
+      makeStep({ stepId: "step-1", title: "Step One", fields: [fileField] }),
+    ];
+    // value is an empty array — no files selected
+    const form = makeMockForm({ "step-1.attachment": [] });
+
+    render(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={form as never}
+        visibleSteps={steps}
+      />,
+    );
+
+    expect(screen.getByText("No file selected")).toBeInTheDocument();
+  });
+
+  it("file field with uploaded files — displays comma-joined file names", () => {
+    const fileField = makeField({
+      id: "step-1.attachment",
+      fieldId: "attachment",
+      label: "Attachment",
+      htmlType: "file",
+    });
+    const steps: ClientFormStep[] = [
+      makeStep({ stepId: "step-1", title: "Step One", fields: [fileField] }),
+    ];
+    const mockFiles = [{ name: "passport.pdf" }, { name: "id-card.jpg" }];
+    const form = makeMockForm({ "step-1.attachment": mockFiles });
+
+    render(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={form as never}
+        visibleSteps={steps}
+      />,
+    );
+
+    expect(screen.getByText("passport.pdf, id-card.jpg")).toBeInTheDocument();
+  });
+
+  it("default (text) field displays the raw string value", () => {
+    const textField = makeField({
+      id: "step-1.name",
+      fieldId: "name",
+      label: "Full name",
+      htmlType: "text",
+    });
+    const steps: ClientFormStep[] = [
+      makeStep({ stepId: "step-1", title: "Step One", fields: [textField] }),
+    ];
+    const form = makeMockForm({ "step-1.name": "Jane Doe" });
+
+    render(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={form as never}
+        visibleSteps={steps}
+      />,
+    );
+
+    expect(screen.getByText("Jane Doe")).toBeInTheDocument();
+  });
+
   // -------------------------------------------------------------------------
   // Change links
   // -------------------------------------------------------------------------
@@ -443,6 +572,29 @@ describe("Review", () => {
       "href",
       "/forms/my-form?step=step-personal",
     );
+  });
+
+  it("clicking a Change link triggers navigate", async () => {
+    const steps: ClientFormStep[] = [
+      makeStep({
+        stepId: "step-personal",
+        title: "Personal Details",
+        fields: [],
+      }),
+    ];
+
+    render(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={makeMockForm() as never}
+        visibleSteps={steps}
+      />,
+    );
+
+    const changeLink = screen.getByRole("link", { name: "Change" });
+    await userEvent.click(changeLink);
+
+    expect(mockNavigate).toHaveBeenCalled();
   });
 
   // -------------------------------------------------------------------------
