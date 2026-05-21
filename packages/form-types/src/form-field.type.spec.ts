@@ -1,4 +1,5 @@
 import { primitiveSchema } from "./primitive.type";
+import { fieldConditionalOnBehaviourSchema } from "./behavior.type";
 
 const base = { fieldId: "my-field", label: "My Field" };
 const option = { label: "Yes", value: "yes" };
@@ -128,6 +129,53 @@ describe("primitiveSchema", () => {
 
     it("rejects missing htmlType", () => {
       expect(primitiveSchema.safeParse(base).success).toBe(false);
+    });
+  });
+});
+
+describe("fieldConditionalOnBehaviourSchema", () => {
+  const baseConditional = {
+    type: "fieldConditionalOn" as const,
+    targetFieldId: "target-field",
+    operator: "equal" as const,
+    value: "test-value",
+  };
+
+  describe("operators", () => {
+    it("accepts notEqual operator", () => {
+      expect(
+        fieldConditionalOnBehaviourSchema.safeParse({
+          ...baseConditional,
+          operator: "notEqual",
+        }).success,
+      ).toBe(true);
+    });
+
+    it("accepts in operator", () => {
+      expect(
+        fieldConditionalOnBehaviourSchema.safeParse({
+          ...baseConditional,
+          operator: "in",
+          value: ["value1", "value2"],
+        }).success,
+      ).toBe(true);
+    });
+
+    it("accepts exists operator", () => {
+      expect(
+        fieldConditionalOnBehaviourSchema.safeParse({
+          ...baseConditional,
+          operator: "exists",
+          value: true,
+        }).success,
+      ).toBe(true);
+    });
+
+    it("rejects missing operator", () => {
+      const { operator: _o, ...noOperator } = baseConditional;
+      expect(
+        fieldConditionalOnBehaviourSchema.safeParse(noOperator).success,
+      ).toBe(false);
     });
   });
 });
