@@ -54,7 +54,7 @@ applications:
             # No manual copy needed - Nitro handles everything
             - echo "Build complete"
       artifacts:
-        baseDirectory: apps/landing/.amplify-hosting
+        baseDirectory: .amplify-hosting
         files:
           - "**/*"
       cache:
