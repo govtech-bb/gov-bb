@@ -2,6 +2,7 @@
 title: "Apply for a conductor's licence"
 stage: "alpha"
 publish_date: 2026-03-06
+form_id: apply-for-conductor-licence
 ---
 
 You should complete your application in one go. At the moment, it is not possible to save your answers and come back to them later.
@@ -27,4 +28,4 @@ We will review your application.
 
 You must contact the department (246-536-0282) to schedule your in-person oral test.
 
-<a data-start-link href="form:apply-for-conductor-licence">Start now</a>
+<a data-start-link>Start now</a>

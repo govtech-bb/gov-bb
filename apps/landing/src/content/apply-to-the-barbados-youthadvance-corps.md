@@ -17,11 +17,7 @@ You can apply to BYAC all year round.
 
 ## How to apply
 
-You can apply online, or collect a paper form from one of the addresses below.
-
-<a data-start-link href="form:apply-to-the-barbados-youthadvance-corps">Start now</a>
-
-### Get a paper application form
+### Get an application form
 
 Collect a paper form from either:
 

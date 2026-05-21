@@ -11,3 +11,6 @@ dist-ssr
 .vinxi
 __unconfig*
 todos.json
+
+# Generated at predev/prebuild by scripts/fetch-form-manifest.mjs.
+src/content/available-forms.gen.ts

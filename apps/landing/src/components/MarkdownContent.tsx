@@ -1,33 +1,40 @@
 import { Heading, Link, LinkButton, Text } from '@govtech-bb/react'
 import { useLocation } from '@tanstack/react-router'
 import { format } from 'date-fns'
+import { createContext, useContext } from 'react'
 import type { ReactNode } from 'react'
 import ReactMarkdown from 'react-markdown'
-import type { Components } from 'react-markdown';
+import type { Components } from 'react-markdown'
 import rehypeRaw from 'rehype-raw'
 import remarkGfm from 'remark-gfm'
 import rehypeHideStartLinks from '../lib/rehype-hide-start-links'
 import rehypeSectionise from '../lib/rehype-sectionise'
 import type { Frontmatter } from '../lib/frontmatter'
 import { MigrationBanner } from './MigrationBanner'
-import { deriveStartEventName } from '../lib/analytics'
-import { resolveFormHref } from '../content/form-ids'
+import { AVAILABLE_FORMS } from '../content/available-forms.gen'
 
-const FORM_HREF_PREFIX = 'form:'
+const FORMS_BASE_URL =
+  import.meta.env.VITE_FORMS_URL ?? 'https://forms.sandbox.alpha.gov.bb'
+
+/**
+ * Form ID for the currently-rendering page, read from frontmatter and
+ * provided so the Markdown anchor handler can decide whether to render
+ * a Start now button when it sees `<a data-start-link>`.
+ */
+const PageFormIdContext = createContext<string | undefined>(undefined)
 
 type StartLinkProps = {
-  href: string
+  formId: string
   children: ReactNode
-  eventName?: string
 } & Record<string, unknown>
 
-function StartLink({ href, children, eventName, ...rest }: StartLinkProps) {
+function StartLink({ formId, children, ...rest }: StartLinkProps) {
   const { pathname } = useLocation()
   return (
     <LinkButton
-      href={href}
+      href={`${FORMS_BASE_URL}/forms/${formId}`}
       {...rest}
-      data-umami-event={eventName ?? deriveStartEventName(href)}
+      data-umami-event={`${formId}-start`}
       data-umami-event-from={pathname}
     >
       {children}
@@ -100,29 +107,14 @@ export const markdownComponents: Components = {
   a: ({ node: _node, href, children, ...rest }) => {
     const safeHref = href ?? '#'
     const isStartLink = 'data-start-link' in rest
-    const isFormScheme = safeHref.startsWith(FORM_HREF_PREFIX)
-    const formSlug = isFormScheme
-      ? safeHref.slice(FORM_HREF_PREFIX.length)
-      : null
-    const resolvedHref = formSlug ? resolveFormHref(formSlug) : safeHref
-    const isExternal = !(
-      resolvedHref.startsWith('/') || resolvedHref.startsWith('#')
-    )
+    const isExternal = !(safeHref.startsWith('/') || safeHref.startsWith('#'))
 
     if (isStartLink) {
-      return (
-        <StartLink
-          href={resolvedHref}
-          eventName={formSlug ? `${formSlug}-start` : undefined}
-          {...rest}
-        >
-          {children}
-        </StartLink>
-      )
+      return <StartLinkFromContext rest={rest}>{children}</StartLinkFromContext>
     }
 
     return (
-      <Link external={isExternal} href={resolvedHref} {...rest}>
+      <Link external={isExternal} href={safeHref} {...rest}>
         {children}
       </Link>
     )
@@ -211,39 +203,74 @@ export const markdownComponents: Components = {
 }
 
 /**
- * ReactMarkdown sanitises hrefs and only allows http/https/mailto/tel by
- * default. We use a custom `form:<slug>` scheme that the anchor handler
- * resolves to the forms app URL via `resolveFormHref`. Without this
- * transform the href reaches the component as undefined and the link
- * silently falls back to the page URL.
+ * Inner component for `<a data-start-link>` anchors in Markdown. Reads
+ * the current page's `form_id` from `PageFormIdContext` (populated by
+ * `MarkdownBody` from frontmatter). Renders a Start now button only
+ * when that form ID exists in the build-time manifest. Silent miss in
+ * production; warns in dev so authoring typos surface during review.
+ *
+ * See docs/decisions/0005 for the convention.
  */
-function urlTransform(url: string): string {
-  if (url.startsWith(FORM_HREF_PREFIX)) return url
-  // Delegate everything else to react-markdown's default behaviour by
-  // returning the URL unchanged — we trust authored content.
-  return url
+function StartLinkFromContext({
+  rest,
+  children,
+}: {
+  rest: Record<string, unknown>
+  children: ReactNode
+}) {
+  const formId = useContext(PageFormIdContext)
+
+  if (!formId) {
+    if (import.meta.env.DEV) {
+      console.warn(
+        '[MarkdownContent] <a data-start-link> rendered on a page without ' +
+          '`form_id` in frontmatter — Start now button suppressed.',
+      )
+    }
+    return null
+  }
+
+  if (!AVAILABLE_FORMS.has(formId)) {
+    if (import.meta.env.DEV) {
+      console.warn(
+        `[MarkdownContent] form_id "${formId}" is not in the build-time ` +
+          'manifest (see src/content/available-forms.gen.ts) — Start now ' +
+          'button suppressed.',
+      )
+    }
+    return null
+  }
+
+  return (
+    <StartLink formId={formId} {...rest}>
+      {children}
+    </StartLink>
+  )
 }
 
 export function MarkdownBody({
   body,
+  formId,
   hasResearchAccess = false,
 }: {
   body: string
+  formId?: string
   hasResearchAccess?: boolean
 }) {
   return (
-    <ReactMarkdown
-      components={markdownComponents}
-      urlTransform={urlTransform}
-      rehypePlugins={[
-        rehypeRaw,
-        [rehypeHideStartLinks, { hasResearchAccess }],
-        rehypeSectionise,
-      ]}
-      remarkPlugins={[remarkGfm]}
-    >
-      {body}
-    </ReactMarkdown>
+    <PageFormIdContext.Provider value={formId}>
+      <ReactMarkdown
+        components={markdownComponents}
+        rehypePlugins={[
+          rehypeRaw,
+          [rehypeHideStartLinks, { hasResearchAccess }],
+          rehypeSectionise,
+        ]}
+        remarkPlugins={[remarkGfm]}
+      >
+        {body}
+      </ReactMarkdown>
+    </PageFormIdContext.Provider>
   )
 }
 
@@ -278,7 +305,11 @@ export function MarkdownContent({
             </div>
           ) : null}
         </div>
-        <MarkdownBody body={body} hasResearchAccess={hasResearchAccess} />
+        <MarkdownBody
+          body={body}
+          formId={frontmatter.form_id}
+          hasResearchAccess={hasResearchAccess}
+        />
       </div>
     </div>
   )

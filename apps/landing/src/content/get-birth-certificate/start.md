@@ -2,6 +2,7 @@
 title: "Get a copy of a birth certificate"
 stage: "alpha"
 publish_date: 2026-01-13
+form_id: get-birth-certificate
 ---
 
 You should complete your application in one go. At the moment, it is not possible to save your answers and come back to them later.
@@ -24,4 +25,4 @@ The form asks for:
 - the full name, date of birth, place of birth and place of baptism of the person named on the certificate
 - the full name(s) of the parent(s) of the person named on the certificate
 
-<a data-start-link href="form:get-birth-certificate">Start</a>
+<a data-start-link>Start</a>

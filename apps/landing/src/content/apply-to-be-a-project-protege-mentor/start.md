@@ -2,6 +2,7 @@
 title: "Apply to be a Project Protégé mentor"
 stage: "alpha"
 publish_date: 2026-01-13
+form_id: project-protege-mentor
 ---
 
 You should complete your application in one go. At the moment, it is not possible to save your answers and come back to them later.
@@ -11,7 +12,7 @@ You should complete your application in one go. At the moment, it is not possibl
 It should not take more than 30 minutes.
 
 
-<a data-start-link href="form:apply-to-be-a-project-protege-mentor">Start now</a>
+<a data-start-link>Start now</a>
 
 ## Information you will need to apply to online
 
