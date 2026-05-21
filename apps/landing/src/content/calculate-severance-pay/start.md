@@ -2,6 +2,7 @@
 title: "Find out how much severance payment you are owed"
 stage: "alpha"
 publish_date: 2026-05-12
+category: money-financial-support
 ---
 
 You should complete the calculator in one go. At the moment, it is not possible to save your answers and come back to them later.
