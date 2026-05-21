@@ -65,8 +65,12 @@ function ChatPage() {
     [presentChoices, openFormReview],
   );
 
+  // useChat re-creates its ChatClient on every connection identity change;
+  // construct once.
+  const connection = useMemo(() => fetchServerSentEvents("/api/chat"), []);
+
   const { messages, sendMessage, status, error, stop } = useChat({
-    connection: fetchServerSentEvents("/api/chat"),
+    connection,
     tools,
     onCustomEvent: (eventType, data) => {
       if (eventType === "sources") {

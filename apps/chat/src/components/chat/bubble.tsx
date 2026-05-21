@@ -109,7 +109,16 @@ function BubbleImpl({
   }
 
   const choicesPart = findToolCall(message, "present_choices");
-  const choicesArgs = parsePartialArgs<ChoicesArgs>(choicesPart?.arguments);
+  // Only render choice buttons once the tool args have fully streamed. While
+  // `input-streaming`, partial-JSON parsing returns half-built button labels
+  // that flicker; gate render on `input-complete` (or post-approval states).
+  const choicesReady =
+    choicesPart?.state === "input-complete" ||
+    choicesPart?.state === "approval-requested" ||
+    choicesPart?.state === "approval-responded";
+  const choicesArgs = choicesReady
+    ? parsePartialArgs<ChoicesArgs>(choicesPart?.arguments)
+    : undefined;
   const choices = (choicesArgs?.choices ?? []).filter(
     (c): c is string => typeof c === "string" && c.length > 0,
   );
@@ -132,7 +141,7 @@ function BubbleImpl({
             </div>
           )}
 
-          {choicesPart && (
+          {choicesPart && choicesReady && (
             <div className="flex flex-col gap-2.5">
               {choicesArgs?.question && (
                 <p className="font-medium text-black-00 text-sm leading-relaxed">
