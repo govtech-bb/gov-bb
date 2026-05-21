@@ -4,10 +4,12 @@ type TextPart = Extract<UIMessage["parts"][number], { type: "text" }>;
 type ToolCallPart = Extract<UIMessage["parts"][number], { type: "tool-call" }>;
 
 export function extractText(message: UIMessage): string {
+  // Concat text parts without inserting separators — the model emits its own
+  // whitespace and a space-join produces artefacts like ".You" → ". You".
   return message.parts
     .filter((p): p is TextPart => p.type === "text")
     .map((p) => p.content ?? "")
-    .join(" ")
+    .join("")
     .trim();
 }
 

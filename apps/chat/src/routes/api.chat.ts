@@ -1,8 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
-import type { StreamChunk, UIMessage } from "@tanstack/ai";
-import { chat, toServerSentEventsResponse } from "@tanstack/ai";
-import { anthropicText } from "@tanstack/ai-anthropic";
-import { z } from "zod";
+import type { StreamChunk, SystemPrompt, UIMessage } from "@tanstack/ai";
+import {
+  chat,
+  chatParamsFromRequest,
+  maxIterations,
+  toServerSentEventsResponse,
+} from "@tanstack/ai";
+import {
+  anthropicText,
+  type AnthropicSystemPromptMetadata,
+} from "@tanstack/ai-anthropic";
 import { summarizeFormFields } from "#/lib/chat/form-fields";
 import { knownFormSlugsInSources } from "#/lib/chat/known-forms";
 import { lastUserText } from "#/lib/chat/messages";
@@ -104,39 +111,6 @@ const NO_FORM_DISCLOSURE = `HARD OVERRIDE — NO ONLINE FORM AVAILABLE:
 - DO NOT end the message with "Want me to start the application/form for you?". Instead end with an informational follow-up (e.g. "Want the address of the registry office?", "Want the late-registration fees?").
 - Under NO circumstances call open_form_review this turn. The tool is not even available.`;
 
-const UIMessageSchema = z
-  .object({
-    id: z.string().optional(),
-    role: z.enum(["user", "assistant", "system"]),
-    parts: z.array(z.object({ type: z.string() }).passthrough()),
-  })
-  .passthrough();
-
-const ChatRequestSchema = z.object({
-  messages: z.array(UIMessageSchema).default([]),
-});
-
-type ParseResult =
-  | { ok: true; messages: UIMessage[] }
-  | { ok: false; reason: string };
-
-async function parseChatRequest(req: Request): Promise<ParseResult> {
-  let raw: unknown;
-  try {
-    raw = await req.json();
-  } catch {
-    return { ok: false, reason: "Request body is not valid JSON" };
-  }
-  const result = ChatRequestSchema.safeParse(raw);
-  if (!result.success) {
-    return {
-      ok: false,
-      reason: result.error.issues[0]?.message ?? "Invalid request body",
-    };
-  }
-  return { ok: true, messages: result.data.messages as unknown as UIMessage[] };
-}
-
 function jsonError(message: string, status: number): Response {
   return new Response(JSON.stringify({ error: message }), {
     status,
@@ -161,6 +135,14 @@ async function* withSourcesPrefix(
   for await (const chunk of inner) yield chunk;
 }
 
+type SystemEntry = SystemPrompt<AnthropicSystemPromptMetadata>;
+
+// Cache marker for static (per-deploy) system prompts so Anthropic skips
+// re-tokenising them every turn. The per-turn context block stays uncached.
+const CACHE_EPHEMERAL: AnthropicSystemPromptMetadata = {
+  cache_control: { type: "ephemeral" },
+};
+
 async function handlePost({
   request,
 }: {
@@ -170,11 +152,15 @@ async function handlePost({
     return jsonError("RAG_URL or ANTHROPIC_API_KEY missing", 500);
   }
 
-  const parsed = await parseChatRequest(request);
-  if (!parsed.ok) return jsonError(parsed.reason, 400);
-  const messages = parsed.messages.filter(
-    (m) => m.role !== "assistant" || m.parts.length > 0,
-  );
+  let messages: UIMessage[];
+  try {
+    const params = await chatParamsFromRequest(request);
+    messages = params.messages as unknown as UIMessage[];
+  } catch (err) {
+    const reason =
+      err instanceof Error ? err.message : "Invalid chat request body";
+    return jsonError(reason, 400);
+  }
 
   const query = buildRetrievalQuery(messages);
   const skipRetrieval = isGreetingOrTooShort(lastUserText(messages));
@@ -200,8 +186,10 @@ async function handlePost({
     ? [presentChoicesDef, openFormReviewDef]
     : [presentChoicesDef];
 
-  const systemPrompts = [
-    SYSTEM_PROMPT,
+  const systemPrompts: SystemEntry[] = [
+    // Static, big — caches well.
+    { content: SYSTEM_PROMPT, metadata: CACHE_EPHEMERAL },
+    // Volatile, per-turn.
     `Context for this turn:\n${contextBlock}`,
   ];
   if (formSlugs.length) {
@@ -218,18 +206,26 @@ async function handlePost({
       if (schema) systemPrompts.push(buildSchemaDisclosure(slug, schema));
     }
   } else {
-    systemPrompts.push(NO_FORM_DISCLOSURE);
+    // Static disclosure — caches well alongside SYSTEM_PROMPT when no forms.
+    systemPrompts.push({
+      content: NO_FORM_DISCLOSURE,
+      metadata: CACHE_EPHEMERAL,
+    });
   }
   if (onlyLegacySources(sources)) {
     systemPrompts.push(LEGACY_DISCLOSURE);
   }
 
+  // Single AbortController drives both the LLM stream and the SSE response,
+  // tracking client disconnects via request.signal.
   const abortController = new AbortController();
-  if (request.signal.aborted) abortController.abort();
-  else
+  if (request.signal.aborted) {
+    abortController.abort();
+  } else {
     request.signal.addEventListener("abort", () => abortController.abort(), {
       once: true,
     });
+  }
 
   const llmStream = chat({
     adapter: anthropicText(LLM_MODEL, { apiKey: ANTHROPIC_API_KEY }),
@@ -237,6 +233,11 @@ async function handlePost({
     systemPrompts,
     tools,
     maxTokens: 600,
+    // Low temperature for grounded RAG — counters capitulation under
+    // user pushback. See SYSTEM_PROMPT 'WHEN THE USER PUSHES BACK' rules.
+    temperature: 0.3,
+    // Both tools terminate the turn (client-side, single call). No agent loop.
+    agentLoopStrategy: maxIterations(1),
     abortController,
   });
 
