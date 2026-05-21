@@ -1,0 +1,16 @@
+{
+  "name": "@govtech-bb/content",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schemas": "./src/schemas.ts",
+    "./load": "./src/load.ts",
+    "./types": "./src/types.ts"
+  },
+  "dependencies": {
+    "gray-matter": "^4.0.3",
+    "zod": "^4.3.6"
+  }
+}
