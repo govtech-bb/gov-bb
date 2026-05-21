@@ -2,7 +2,7 @@ import {
   buildAuthorizeUrl,
   exchangeCodeForToken,
   fetchUserInfo,
-} from "./github-oauth";
+} from "./github-oauth.server";
 
 const ORIGINAL_ENV = { ...process.env };
 

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { FormDefinitionEntity } from "@govtech-bb/database";
 import type { ServiceContractRecipe } from "@govtech-bb/form-types";
 import { getDataSource } from "./db";
+import { requireSession } from "./auth-middleware.server";
 import { bumpMinor } from "../lib/version";
 import type { FormDefinitionSummary } from "../types/index";
 
@@ -15,6 +16,7 @@ type FormDefinitionRow = {
 
 export const listForms = createServerFn({ method: "GET" }).handler(
   async (): Promise<FormDefinitionSummary[]> => {
+    await requireSession();
     const ds = await getDataSource();
     const rows = await ds.query<
       {
@@ -42,6 +44,7 @@ export const listForms = createServerFn({ method: "GET" }).handler(
 export const getRecipe = createServerFn({ method: "GET", strict: false })
   .inputValidator(z.object({ formId: z.string() }))
   .handler(async ({ data }): Promise<ServiceContractRecipe> => {
+    await requireSession();
     const ds = await getDataSource();
     const rows = await ds.query<FormDefinitionRow[]>(
       `SELECT id, version, schema, published_at
@@ -64,6 +67,7 @@ export const submitRecipe = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }): Promise<void> => {
+    await requireSession();
     const recipe = data.recipe as ServiceContractRecipe;
     const ds = await getDataSource();
     const repo = ds.getRepository(FormDefinitionEntity);
@@ -94,6 +98,7 @@ export const updateRecipe = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }): Promise<void> => {
+    await requireSession();
     const recipe = data.recipe as ServiceContractRecipe;
     const ds = await getDataSource();
 
@@ -130,6 +135,7 @@ export const nextVersion = createServerFn({ method: "GET" })
     async ({
       data,
     }): Promise<{ currentVersion: string | null; nextVersion: string }> => {
+      await requireSession();
       const ds = await getDataSource();
 
       const rows = await ds.query<FormDefinitionRow[]>(

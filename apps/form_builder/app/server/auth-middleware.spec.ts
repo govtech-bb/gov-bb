@@ -1,4 +1,4 @@
-jest.mock("./session", () => ({
+jest.mock("./session.server", () => ({
   __esModule: true,
   getBuilderSession: jest.fn(),
 }));
@@ -8,8 +8,8 @@ import {
   UnauthorizedError,
   requirePublisher,
   requireSession,
-} from "./auth-middleware";
-import { getBuilderSession } from "./session";
+} from "./auth-middleware.server";
+import { getBuilderSession } from "./session.server";
 
 const mockedGetSession = getBuilderSession as jest.MockedFunction<
   typeof getBuilderSession

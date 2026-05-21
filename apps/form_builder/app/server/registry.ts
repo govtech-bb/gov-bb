@@ -19,6 +19,7 @@ import type {
 import type { ValidationResult } from "@govtech-bb/form-builder";
 import { CustomComponent } from "@govtech-bb/database";
 import { getDataSource } from "./db";
+import { requireSession } from "./auth-middleware.server";
 
 let _catalogCache: { data: RegistryCatalog; expiresAt: number } | null = null;
 
@@ -26,6 +27,7 @@ export const getCatalogFn = createServerFn({
   method: "GET",
   strict: false,
 }).handler(async (): Promise<RegistryCatalog> => {
+  await requireSession();
   const now = Date.now();
   if (_catalogCache && _catalogCache.expiresAt > now) {
     return _catalogCache.data;
@@ -49,6 +51,7 @@ export const getCatalogFn = createServerFn({
 export const getRegistryItemFn = createServerFn({ method: "GET" })
   .inputValidator(z.object({ ref: z.string() }))
   .handler(async ({ data }) => {
+    await requireSession();
     const catalog = await getCatalogFn();
     const item = getRegistryItem(data.ref, catalog);
     if (!item) {
@@ -59,6 +62,7 @@ export const getRegistryItemFn = createServerFn({ method: "GET" })
 
 export const getBuilderMetadata = createServerFn({ method: "GET" }).handler(
   async () => {
+    await requireSession();
     return {
       behaviourDescriptors: BEHAVIOUR_TYPE_DESCRIPTORS,
       validationDescriptors: VALIDATION_RULE_DESCRIPTORS,
@@ -69,12 +73,14 @@ export const getBuilderMetadata = createServerFn({ method: "GET" }).handler(
 export const validateRecipe = createServerFn({ method: "POST", strict: false })
   .inputValidator(z.object({ recipe: z.unknown() }))
   .handler(async ({ data }): Promise<ValidationResult> => {
+    await requireSession();
     return validateFormContract(data.recipe);
   });
 
 export const previewRecipe = createServerFn({ method: "POST", strict: false })
   .inputValidator(z.object({ recipe: z.unknown() }))
   .handler(async ({ data }): Promise<ServiceContract> => {
+    await requireSession();
     const recipe = data.recipe as ServiceContractRecipe;
     const catalog = await getCatalogFn();
     return hydrateForm(recipe, catalog);

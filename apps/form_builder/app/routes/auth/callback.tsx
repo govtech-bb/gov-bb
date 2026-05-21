@@ -1,10 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { z } from "zod";
-import { getBuilderSession } from "../../server/session";
-import {
-  exchangeCodeForToken,
-  fetchUserInfo,
-} from "../../server/github-oauth";
+import { completeLogin } from "../../server/auth";
 
 const searchSchema = z.object({
   code: z.string().min(1),
@@ -14,25 +10,12 @@ const searchSchema = z.object({
 export const Route = createFileRoute("/auth/callback")({
   validateSearch: searchSchema,
   beforeLoad: async ({ search }) => {
-    const session = await getBuilderSession();
-    const expectedState = session.data.oauthState;
-    if (!expectedState || expectedState !== search.state) {
-      // CSRF / replay protection — state must match what we issued at /auth/login.
-      await session.clear();
+    const result = await completeLogin({
+      data: { code: search.code, state: search.state },
+    });
+    if (!result.ok) {
       throw redirect({ to: "/auth/login" });
     }
-
-    const { accessToken, expiresAt } = await exchangeCodeForToken(search.code);
-    const { login, teamMemberships } = await fetchUserInfo(accessToken);
-
-    await session.update({
-      githubLogin: login,
-      accessToken,
-      teamMemberships,
-      expiresAt,
-      oauthState: undefined,
-    });
-
     throw redirect({ to: "/builder" });
   },
 });

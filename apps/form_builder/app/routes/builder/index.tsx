@@ -1,6 +1,7 @@
 import "../../styles/builder.global.css";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useReducer, useState, useRef, useEffect } from "react";
+import { getAuthContext } from "../../server/auth";
 import { getCatalogFn } from "../../server/registry";
 import { listForms, nextVersion, submitRecipe, updateRecipe } from "../../server/forms";
 import { validateRecipe, previewRecipe } from "../../server/registry";
@@ -21,6 +22,13 @@ import { FormPicker } from "./-form-picker";
 import styles from "../../styles/builder.module.css";
 
 export const Route = createFileRoute("/builder/")({
+  beforeLoad: async () => {
+    const auth = await getAuthContext();
+    if (!auth.authed) {
+      throw redirect({ to: "/auth/login" });
+    }
+    return { auth };
+  },
   loader: async () => {
     const [catalog, forms] = await Promise.all([
       getCatalogFn(),

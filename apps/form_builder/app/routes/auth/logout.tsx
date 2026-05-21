@@ -1,10 +1,9 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { getBuilderSession } from "../../server/session";
+import { signOut } from "../../server/auth";
 
 export const Route = createFileRoute("/auth/logout")({
   beforeLoad: async () => {
-    const session = await getBuilderSession();
-    await session.clear();
+    await signOut();
     throw redirect({ to: "/auth/login" });
   },
 });

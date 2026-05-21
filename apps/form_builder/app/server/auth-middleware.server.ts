@@ -1,4 +1,4 @@
-import { getBuilderSession } from "./session";
+import { getBuilderSession } from "./session.server";
 import { isSessionValid, type BuilderSessionData } from "./session-types";
 
 export class UnauthorizedError extends Error {
