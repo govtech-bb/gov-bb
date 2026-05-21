@@ -20,6 +20,7 @@ import {
 import React from "react";
 import { getFormData, storeFormData } from "../../../lib/session-storage";
 import { formatDataForSubmission, postFormSubmission } from "@forms/form-api";
+import { trackEvent } from "../../../lib/analytics";
 
 export const Route = createFileRoute("/forms/$formId/")({
   component: RouteComponent,
@@ -66,6 +67,10 @@ function RouteComponent() {
     SubmissionState | undefined
   >(undefined);
 
+  React.useEffect(() => {
+    trackEvent("form-open", { form_id: formMeta.formId });
+  }, [formMeta.formId]);
+
   const repeatableStepSettingsRef = React.useRef<RepeatableStepSettings>(
     formMeta.repeatSettings,
   );
@@ -105,7 +110,16 @@ function RouteComponent() {
         repeatableStepSettingsRef.current,
         hiddenFields,
       );
-      const response = await postFormSubmission(formMeta, formattedData);
+      let response;
+      try {
+        response = await postFormSubmission(formMeta, formattedData);
+      } catch {
+        trackEvent("form-submit-error", {
+          form_id: formMeta.formId,
+          reason: "network",
+        });
+        return;
+      }
       const responseData: FormSubmissionResponseBody = response.data;
 
       let subState: SubmissionState;
@@ -125,6 +139,10 @@ function RouteComponent() {
             ...baseSubState,
           };
           setSubmissionState(subState);
+          trackEvent("form-submit-success", {
+            form_id: formMeta.formId,
+            step_count: visibleSteps.length,
+          });
           break;
         case "processing":
           break;
@@ -144,10 +162,18 @@ function RouteComponent() {
               paymentDescription: description,
             };
           }
+          trackEvent("form-submit-success", {
+            form_id: formMeta.formId,
+            step_count: visibleSteps.length,
+          });
           break;
         case "failed":
         case "error":
           //TODO: Add state handling for errors
+          trackEvent("form-submit-error", {
+            form_id: formMeta.formId,
+            reason: "server",
+          });
           break;
         default:
           console.error("Have no idea what to do here");

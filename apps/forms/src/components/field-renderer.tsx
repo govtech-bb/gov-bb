@@ -17,12 +17,15 @@ export default function FieldRenderer({
   field,
   validationProperties,
   insetFieldsByOption,
+  formId,
 }: {
   form: any;
   field: ClientPrimitive;
   validationProperties: FieldValidationProperties;
   /** Option-value → inset fields that reveal when that option is selected. */
   insetFieldsByOption?: Map<string, InsetFieldEntry[]>;
+  /** Form ID, forwarded to FileUpload for analytics event payload. */
+  formId?: string;
 }) {
   if (field.hidden) return null;
 
@@ -361,6 +364,7 @@ export default function FieldRenderer({
                                   form={form}
                                   field={insetField}
                                   validationProperties={insetValidation}
+                                  formId={formId}
                                 />
                               ),
                             )}
@@ -381,6 +385,7 @@ export default function FieldRenderer({
                 onFileChange={(files) => f.handleChange(files)}
                 errorMessage={errorMessage}
                 validationRules={field.validations}
+                formId={formId}
               />
             );
           case "show-hide": {
