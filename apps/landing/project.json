@@ -8,21 +8,21 @@
       "executor": "nx:run-commands",
       "outputs": ["{projectRoot}/dist", "{projectRoot}/.output"],
       "options": {
-        "command": "npm run build",
+        "command": "pnpm build",
         "cwd": "apps/landing"
       }
     },
     "dev": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "npm run dev",
+        "command": "pnpm dev",
         "cwd": "apps/landing"
       }
     },
     "start": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "npm run start",
+        "command": "pnpm start",
         "cwd": "apps/landing"
       },
       "dependsOn": ["build"]
@@ -30,21 +30,21 @@
     "lint": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "npm run lint",
+        "command": "pnpm lint",
         "cwd": "apps/landing"
       }
     },
     "test": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "npm run test",
+        "command": "pnpm test",
         "cwd": "apps/landing"
       }
     },
     "typecheck": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "npm run typecheck",
+        "command": "pnpm typecheck",
         "cwd": "apps/landing"
       }
     }

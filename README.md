@@ -5,12 +5,12 @@ Modular form component system for Barbados government services.
 ## Prerequisites
 
 - Node.js >= 20
-- npm >= 10
+- pnpm >= 10 (`corepack enable` or `npm install -g pnpm@10.30.0`)
 
 ## Getting started
 
 ```bash
-npm install
+pnpm install
 ```
 
 ## Project structure
@@ -29,18 +29,19 @@ packages/
 
 | Command | Description |
 |---|---|
-| `npm run dev:forms` | Start forms app in dev mode |
-| `npm run dev:api` | Start API in dev mode |
-| `npm run start:forms` | Start forms app in production mode |
-| `npm run start:api` | Start API in production mode |
-| `npm run build` | Build all apps and packages |
-| `npm run lint` | Lint all apps and packages |
-| `npm run format` | Format all files with Prettier |
-| `npm run format:check` | Check formatting without writing |
-| `npm run migration:generate -- <path>` | Generate a migration from entity changes |
-| `npm run migration:run` | Run all pending migrations |
-| `npm run migration:revert` | Revert the last migration |
-| `npm run migration:show` | Show applied / pending migration status |
+| `pnpm dev:forms` | Start forms app in dev mode |
+| `pnpm dev:api` | Start API in dev mode |
+| `pnpm dev:landing` | Start landing app in dev mode |
+| `pnpm start:forms` | Start forms app in production mode |
+| `pnpm start:api` | Start API in production mode |
+| `pnpm build` | Build all apps and packages |
+| `pnpm lint` | Lint all apps and packages |
+| `pnpm format` | Format all files with Prettier |
+| `pnpm format:check` | Check formatting without writing |
+| `pnpm migration:generate -- <path>` | Generate a migration from entity changes |
+| `pnpm migration:run` | Run all pending migrations |
+| `pnpm migration:revert` | Revert the last migration |
+| `pnpm migration:show` | Show applied / pending migration status |
 
 ## Environment variables
 
@@ -69,7 +70,7 @@ cp apps/api/.env.example apps/api/.env
 
 ### Forms (AWS Amplify)
 
-The `amplify.yml` at the repo root configures the build. Amplify runs `npx nx build forms` and serves from `apps/forms/.next`.
+The `amplify.yml` at the repo root configures the build. Amplify runs `pnpm exec nx run forms:build` and serves from `apps/forms/dist`.
 
 Set environment variables in the Amplify console.
 
@@ -93,16 +94,16 @@ The TypeORM CLI DataSource is at `apps/api/typeorm.config.ts`. Run migrations fr
 
 ```bash
 # Generate a new migration from entity changes
-npm run migration:generate -- src/database/migrations/<MigrationName>
+pnpm migration:generate -- src/database/migrations/<MigrationName>
 
 # Run pending migrations
-npm run migration:run
+pnpm migration:run
 
 # Revert the last migration
-npm run migration:revert
+pnpm migration:revert
 
 # Show migration status
-npm run migration:show
+pnpm migration:show
 ```
 
 Migration files are stored in `apps/api/src/database/migrations/`.
@@ -119,7 +120,7 @@ Shared packages are available via these TypeScript path aliases (configured in `
 ## Nx
 
 ```bash
-npx nx graph          # Visualize the dependency graph
-npx nx show projects  # List all projects
-npx nx build forms    # Build a single project
+pnpm exec nx graph              # Visualize the dependency graph
+pnpm exec nx show projects      # List all projects
+pnpm exec nx run forms:build    # Build a single project
 ```
