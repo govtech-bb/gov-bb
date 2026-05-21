@@ -11,8 +11,8 @@ import {
   type AnthropicSystemPromptMetadata,
 } from "@tanstack/ai-anthropic";
 import { summarizeFormFields } from "#/lib/chat/form-fields";
-import { knownFormSlugsInSources } from "#/lib/chat/known-forms";
-import { lastUserText } from "#/lib/chat/messages";
+import { matchFormsFromText } from "#/lib/chat/known-forms";
+import { lastUserText, recentUserText } from "#/lib/chat/messages";
 import {
   buildContextBlock,
   buildRetrievalQuery,
@@ -22,7 +22,7 @@ import {
   retrieve,
 } from "#/lib/chat/retrieval";
 import type { RetrievedContext, Source } from "#/lib/chat/types";
-import { openFormReviewDef, presentChoicesDef } from "#/lib/chat-tools";
+import { presentChoicesDef, submitFormDef } from "#/lib/chat-tools";
 
 const RAG_URL = process.env.RAG_URL ?? "";
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY ?? "";
@@ -99,6 +99,12 @@ INTERACTIVE CHOICES:
 - Do NOT use \`present_choices\` for open-ended answers (names, dates, addresses, free text).
 - Do NOT call \`present_choices\` more than once per assistant turn.
 
+FORM SUBMISSION — STRICT:
+- The \`submit_form\` tool ACTUALLY submits the form via the official API. Only call it after collecting every required field AND the user explicitly confirms ("yes submit", "looks good, send it").
+- NEVER claim a form was submitted, that a reference number was issued, or that a confirmation email is on the way, unless \`submit_form\` returned \`ok: true\` with a \`referenceNumber\` in this same turn.
+- On success: report the exact \`referenceNumber\` from the tool result, nothing made up.
+- On failure: the tool returns \`errors[]\`. Apologise, ask the user to correct the listed fields, then call \`submit_form\` again.
+
 DEFAULT MODE — INFORMATIONAL (RAG):
 - Most questions are informational: "how do I get a passport?", "what's the fee?", "where do I go?". Answer these from the retrieved context. Do NOT start a form flow. Do NOT call \`present_choices\` for informational questions.`;
 
@@ -109,7 +115,7 @@ const NO_FORM_DISCLOSURE = `HARD OVERRIDE — NO ONLINE FORM AVAILABLE:
 - DO NOT use phrases like "pre-register online", "fill in the form online", "start the form", "I can start the application for you", or anything that implies an online submission is possible.
 - DO answer the substance of the question from the context (what documents, who registers, where to go), but frame the entire process as in-person / phone / by-mail according to what the context says.
 - DO NOT end the message with "Want me to start the application/form for you?". Instead end with an informational follow-up (e.g. "Want the address of the registry office?", "Want the late-registration fees?").
-- Under NO circumstances call open_form_review this turn. The tool is not even available.`;
+- Under NO circumstances call submit_form this turn. The tool is not even available.`;
 
 function jsonError(message: string, status: number): Response {
   return new Response(JSON.stringify({ error: message }), {
@@ -119,7 +125,7 @@ function jsonError(message: string, status: number): Response {
 }
 
 function buildSchemaDisclosure(slug: string, schema: string): string {
-  return `FORM SCHEMA for "${slug}". Collect every required field before calling open_form_review.\n\n${schema}`;
+  return `FORM SCHEMA for "${slug}". Collect every required field before calling submit_form.\n\n${schema}`;
 }
 
 async function* withSourcesPrefix(
@@ -181,9 +187,23 @@ async function handlePost({
   const sources = filterSources(rawSources, query);
   const contextBlock = buildContextBlock(contexts);
 
-  const formSlugs = knownFormSlugsInSources(sources.map((s) => s.url));
-  const tools = formSlugs.length
-    ? [presentChoicesDef, openFormReviewDef]
+  // Intent-based form match — independent of RAG. Look at recent user
+  // messages so the match persists once the user has named the form, even
+  // after a few turns of field collection ("Yes", "12 months", etc.).
+  const matched = await matchFormsFromText(recentUserText(messages));
+
+  const matchedSchema = matched
+    ? await summarizeFormFields(matched.formId)
+    : null;
+  const summaries =
+    matched && matchedSchema
+      ? [{ slug: matched.formId, schema: matchedSchema }]
+      : [];
+
+  // Fail closed: only expose submit_form when at least one schema loaded.
+  // Without the schema the LLM would hallucinate field names.
+  const tools = summaries.length
+    ? [presentChoicesDef, submitFormDef]
     : [presentChoicesDef];
 
   const systemPrompts: SystemEntry[] = [
@@ -192,18 +212,12 @@ async function handlePost({
     // Volatile, per-turn.
     `Context for this turn:\n${contextBlock}`,
   ];
-  if (formSlugs.length) {
+  if (summaries.length) {
     systemPrompts.push(
-      `Online forms available for this turn (these are the ONLY valid slugs for open_form_review): ${formSlugs.join(", ")}`,
-    );
-    const summaries = await Promise.all(
-      formSlugs.map(async (slug) => ({
-        slug,
-        schema: await summarizeFormFields(slug),
-      })),
+      `Online forms available for this turn (these are the ONLY valid slugs for submit_form): ${summaries.map((s) => s.slug).join(", ")}`,
     );
     for (const { slug, schema } of summaries) {
-      if (schema) systemPrompts.push(buildSchemaDisclosure(slug, schema));
+      systemPrompts.push(buildSchemaDisclosure(slug, schema));
     }
   } else {
     // Static disclosure — caches well alongside SYSTEM_PROMPT when no forms.
