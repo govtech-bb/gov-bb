@@ -36,16 +36,18 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body
-        className={`${textVariants({ size: 'body' })} grid min-h-screen grid-rows-[auto_1fr_auto] font-sans antialiased text-black-00 bg-white-00`}
+        className={`${textVariants({ size: 'body' })} grid min-h-dvh grid-rows-[auto_1fr_auto] font-sans antialiased text-black-00 bg-white-00`}
       >
         <Header />
         <main id="main" className="min-h-0">{children}</main>
-        <Footer
-          links={FOOTER_LINKS}
-          logoSrc="/images/coat-of-arms.png"
-          logoAlt="Barbados Coat of Arms"
-          copyrightText={`© ${new Date().getFullYear()} Government of Barbados`}
-        />
+        <div className="hidden md:block">
+          <Footer
+            links={FOOTER_LINKS}
+            logoSrc="/images/coat-of-arms.png"
+            logoAlt="Barbados Coat of Arms"
+            copyrightText={`© ${new Date().getFullYear()} Government of Barbados`}
+          />
+        </div>
         <TanStackDevtools
           config={{ position: 'bottom-right' }}
           plugins={[
