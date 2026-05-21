@@ -6,8 +6,7 @@ import { axe } from "jest-axe";
 // and renders <Link>, both of which require a router context in production
 // but can be stubbed out in unit tests.
 jest.mock("@tanstack/react-router", () => ({
-  createFileRoute: () => (routeConfig: { component: React.ComponentType }) =>
-    routeConfig,
+  createFileRoute: () => (routeConfig) => routeConfig,
   Link: ({
     children,
     to,
