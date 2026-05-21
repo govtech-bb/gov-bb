@@ -1,3 +1,4 @@
+import type { Frontmatter } from '../lib/frontmatter'
 import type { MdaEntry } from '../lib/mda-types'
 import type { MinistryPageProps } from '../components/MinistryPage'
 import { BODY_BY_SLUG, DEPARTMENTS, MINISTRIES, STATE_BODIES } from './mda'
@@ -36,20 +37,13 @@ export const ORG_PATH_PREFIX = '/government/organisations/'
 
 export const orgHref = (slug: string): string => `${ORG_PATH_PREFIX}${slug}`
 
-interface SyntheticFrontmatter {
-  title: string
-  description?: string
-  source_url?: string
-  categories: string[]
-}
-
 function syntheticPage(
   slug: string,
   entry: Ministry | MdaEntry,
 ): ContentPage | undefined {
   const body = BODY_BY_SLUG.get(slug)
   if (!body) return undefined
-  const frontmatter: SyntheticFrontmatter = {
+  const frontmatter: Frontmatter = {
     title: entry.name,
     description: entry.shortDescription,
     source_url: entry.originalSource,
@@ -58,7 +52,7 @@ function syntheticPage(
   return {
     slug: `government/organisations/${slug}`,
     url: orgHref(slug),
-    frontmatter: frontmatter as ContentPage['frontmatter'],
+    frontmatter,
     body,
   }
 }
