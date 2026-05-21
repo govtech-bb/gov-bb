@@ -53,8 +53,8 @@ applications:
             # Restructure Tanstack Start output for Amplify WEB_COMPUTE
             - mkdir -p .amplify-hosting/compute/default
             - mkdir -p .amplify-hosting/static
-            - cp -r dist/server/* .amplify-hosting/compute/default/
-            - cp -r dist/client/* .amplify-hosting/static/ 2>/dev/null || true
+            - cp -r apps/landing/dist/server/* .amplify-hosting/compute/default/
+            - cp -r apps/landing/dist/client/* .amplify-hosting/static/ 2>/dev/null || true
             - cp apps/landing/deploy-manifest.json .amplify-hosting/deploy-manifest.json
       artifacts:
         baseDirectory: .amplify-hosting
