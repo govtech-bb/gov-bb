@@ -20,6 +20,7 @@ import { Route as SplatRouteImport } from './routes/$'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as GovernmentOrganisationsRouteImport } from './routes/government.organisations'
 import { Route as GovernmentOrganisationsIndexRouteImport } from './routes/government.organisations.index'
+import { Route as PensionsAndGratuitiesCalculateYourPensionFormRouteImport } from './routes/pensions-and-gratuities.calculate-your-pension.form'
 import { Route as GovernmentOrganisationsSlugRouteImport } from './routes/government.organisations.$slug'
 import { Route as BusinessTradeCropOverPermitsFormRouteImport } from './routes/business-trade.crop-over-permits.form'
 
@@ -79,6 +80,12 @@ const GovernmentOrganisationsIndexRoute =
     path: '/',
     getParentRoute: () => GovernmentOrganisationsRoute,
   } as any)
+const PensionsAndGratuitiesCalculateYourPensionFormRoute =
+  PensionsAndGratuitiesCalculateYourPensionFormRouteImport.update({
+    id: '/pensions-and-gratuities/calculate-your-pension/form',
+    path: '/pensions-and-gratuities/calculate-your-pension/form',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const GovernmentOrganisationsSlugRoute =
   GovernmentOrganisationsSlugRouteImport.update({
     id: '/$slug',
@@ -105,6 +112,7 @@ export interface FileRoutesByFullPath {
   '/government/organisations': typeof GovernmentOrganisationsRouteWithChildren
   '/business-trade/crop-over-permits/form': typeof BusinessTradeCropOverPermitsFormRoute
   '/government/organisations/$slug': typeof GovernmentOrganisationsSlugRoute
+  '/pensions-and-gratuities/calculate-your-pension/form': typeof PensionsAndGratuitiesCalculateYourPensionFormRoute
   '/government/organisations/': typeof GovernmentOrganisationsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -119,6 +127,7 @@ export interface FileRoutesByTo {
   '/tell-us': typeof TellUsRoute
   '/business-trade/crop-over-permits/form': typeof BusinessTradeCropOverPermitsFormRoute
   '/government/organisations/$slug': typeof GovernmentOrganisationsSlugRoute
+  '/pensions-and-gratuities/calculate-your-pension/form': typeof PensionsAndGratuitiesCalculateYourPensionFormRoute
   '/government/organisations': typeof GovernmentOrganisationsIndexRoute
 }
 export interface FileRoutesById {
@@ -135,6 +144,7 @@ export interface FileRoutesById {
   '/government/organisations': typeof GovernmentOrganisationsRouteWithChildren
   '/business-trade/crop-over-permits/form': typeof BusinessTradeCropOverPermitsFormRoute
   '/government/organisations/$slug': typeof GovernmentOrganisationsSlugRoute
+  '/pensions-and-gratuities/calculate-your-pension/form': typeof PensionsAndGratuitiesCalculateYourPensionFormRoute
   '/government/organisations/': typeof GovernmentOrganisationsIndexRoute
 }
 export interface FileRouteTypes {
@@ -152,6 +162,7 @@ export interface FileRouteTypes {
     | '/government/organisations'
     | '/business-trade/crop-over-permits/form'
     | '/government/organisations/$slug'
+    | '/pensions-and-gratuities/calculate-your-pension/form'
     | '/government/organisations/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -166,6 +177,7 @@ export interface FileRouteTypes {
     | '/tell-us'
     | '/business-trade/crop-over-permits/form'
     | '/government/organisations/$slug'
+    | '/pensions-and-gratuities/calculate-your-pension/form'
     | '/government/organisations'
   id:
     | '__root__'
@@ -181,6 +193,7 @@ export interface FileRouteTypes {
     | '/government/organisations'
     | '/business-trade/crop-over-permits/form'
     | '/government/organisations/$slug'
+    | '/pensions-and-gratuities/calculate-your-pension/form'
     | '/government/organisations/'
   fileRoutesById: FileRoutesById
 }
@@ -196,6 +209,7 @@ export interface RootRouteChildren {
   TellUsRoute: typeof TellUsRoute
   GovernmentOrganisationsRoute: typeof GovernmentOrganisationsRouteWithChildren
   BusinessTradeCropOverPermitsFormRoute: typeof BusinessTradeCropOverPermitsFormRoute
+  PensionsAndGratuitiesCalculateYourPensionFormRoute: typeof PensionsAndGratuitiesCalculateYourPensionFormRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -277,6 +291,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GovernmentOrganisationsIndexRouteImport
       parentRoute: typeof GovernmentOrganisationsRoute
     }
+    '/pensions-and-gratuities/calculate-your-pension/form': {
+      id: '/pensions-and-gratuities/calculate-your-pension/form'
+      path: '/pensions-and-gratuities/calculate-your-pension/form'
+      fullPath: '/pensions-and-gratuities/calculate-your-pension/form'
+      preLoaderRoute: typeof PensionsAndGratuitiesCalculateYourPensionFormRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/government/organisations/$slug': {
       id: '/government/organisations/$slug'
       path: '/$slug'
@@ -322,6 +343,8 @@ const rootRouteChildren: RootRouteChildren = {
   TellUsRoute: TellUsRoute,
   GovernmentOrganisationsRoute: GovernmentOrganisationsRouteWithChildren,
   BusinessTradeCropOverPermitsFormRoute: BusinessTradeCropOverPermitsFormRoute,
+  PensionsAndGratuitiesCalculateYourPensionFormRoute:
+    PensionsAndGratuitiesCalculateYourPensionFormRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
