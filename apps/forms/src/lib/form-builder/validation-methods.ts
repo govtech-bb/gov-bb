@@ -67,7 +67,7 @@ export const checkRequired = ({
 
   const isEmpty = valueIsEmpty(value);
   if (isEmpty === undefined) {
-    console.error(`Value ${value} for field ${fieldId} is unknown.`);
+    console.error(`Value for field ${fieldId} is unknown.`);
     return "unknownState";
   }
 
