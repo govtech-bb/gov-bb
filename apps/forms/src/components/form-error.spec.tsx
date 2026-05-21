@@ -1,5 +1,6 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { axe } from "jest-axe";
 import { FormFetchError } from "@forms/form-api";
 import FormError from "./form-error";
@@ -73,11 +74,12 @@ describe("FormError", () => {
     expect(screen.getByText("Something broke badly")).toBeInTheDocument();
   });
 
-  it('renders a "Try again" button that calls reset when clicked', () => {
+  it('renders a "Try again" button that calls reset when clicked', async () => {
+    const user = userEvent.setup();
     const reset = jest.fn();
     const error = new Error("Oops");
     render(<FormError error={error} reset={reset} />);
-    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await user.click(screen.getByRole("button", { name: "Try again" }));
     expect(reset).toHaveBeenCalledTimes(1);
   });
 
