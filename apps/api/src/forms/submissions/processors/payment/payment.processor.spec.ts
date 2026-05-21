@@ -1,4 +1,4 @@
-import { Test } from "@nestjs/testing";
+import { Test, TestingModule } from "@nestjs/testing";
 import { PaymentProcessor } from "./payment.processor";
 import { EzpayClient } from "./ezpay/ezpay.client";
 import { DepartmentKeyResolver } from "./ezpay/department-keys";
@@ -11,6 +11,7 @@ import type { SubmissionCreatedEvent } from "../../submissions.types";
 
 describe("PaymentProcessor.process", () => {
   let processor: PaymentProcessor;
+  let module: TestingModule;
   const ezpay = { createPayment: jest.fn() };
   const paymentRepo = {
     create: jest.fn().mockImplementation((d) => d),
@@ -32,7 +33,7 @@ describe("PaymentProcessor.process", () => {
       status: PaymentStatus.PENDING,
     }));
     paymentRepo.save.mockImplementation(async (e) => e);
-    const module = await Test.createTestingModule({
+    module = await Test.createTestingModule({
       providers: [
         PaymentProcessor,
         { provide: EzpayClient, useValue: ezpay },
@@ -41,6 +42,10 @@ describe("PaymentProcessor.process", () => {
       ],
     }).compile();
     processor = module.get(PaymentProcessor);
+  });
+
+  afterEach(async () => {
+    if (module) await module.close();
   });
 
   const event = (): SubmissionCreatedEvent => ({
@@ -180,7 +185,11 @@ describe("PaymentProcessor.process", () => {
     }).compile();
     const isolated = moduleRef.get(PaymentProcessor);
 
-    await expect(isolated.process(event())).rejects.toThrow(/department/);
+    try {
+      await expect(isolated.process(event())).rejects.toThrow(/department/);
+    } finally {
+      await moduleRef.close();
+    }
   });
 
   it("propagates EzPay client errors", async () => {

@@ -1,4 +1,4 @@
-import { Test } from "@nestjs/testing";
+import { Test, TestingModule } from "@nestjs/testing";
 import { DataSource } from "typeorm";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { PaymentWebhookService } from "./payment-webhook.service";
@@ -71,6 +71,7 @@ function makeVerified(
 
 describe("PaymentWebhookService", () => {
   let service: PaymentWebhookService;
+  let module: TestingModule;
 
   const ezpay = { verifyPayment: jest.fn() };
   const paymentRepo = { findByReference: jest.fn(), save: jest.fn() };
@@ -107,7 +108,7 @@ describe("PaymentWebhookService", () => {
     txRepo.create.mockImplementation((d) => d);
     deptKeys.get.mockReturnValue("api-key");
 
-    const module = await Test.createTestingModule({
+    module = await Test.createTestingModule({
       providers: [
         PaymentWebhookService,
         { provide: EzpayClient, useValue: ezpay },
@@ -119,6 +120,10 @@ describe("PaymentWebhookService", () => {
       ],
     }).compile();
     service = module.get(PaymentWebhookService);
+  });
+
+  afterEach(async () => {
+    if (module) await module.close();
   });
 
   const callbackBody = {
