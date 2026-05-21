@@ -66,6 +66,13 @@ describe("FormBuilderController.sendMessage", () => {
     await expect(
       ctl.sendMessage("s1", "hello", undefined),
     ).rejects.toBeInstanceOf(HttpException);
+    try {
+      await ctl.sendMessage("s1", "hello", undefined);
+    } catch (err) {
+      expect((err as HttpException).getStatus()).toBe(
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
     expect(service.sendMessage).not.toHaveBeenCalled();
   });
 });
