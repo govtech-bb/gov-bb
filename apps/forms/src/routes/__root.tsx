@@ -25,7 +25,9 @@ const RootLayout = () => (
     <OfficialBanner />
     <SiteHeader />
     <main className="flex-1">
-      <Outlet />
+      <div className="mx-auto w-full max-w-[720px] px-4 py-8 lg:py-12">
+        <Outlet />
+      </div>
     </main>
     <Footer
       links={FOOTER_LINKS}
