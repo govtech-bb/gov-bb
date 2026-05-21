@@ -283,7 +283,7 @@ function Composer({
   const hasInput = input.trim().length > 0;
 
   return (
-    <footer className="px-4 pb-4">
+    <footer className="px-4 pt-3 pb-4 md:pt-4">
       <form
         className="relative mx-auto flex max-w-2xl flex-col rounded-3xl border border-grey-00 bg-white-00 p-4 pr-16 shadow-[0_1px_8px_-2px_rgb(0_22_74/0.06)] transition-colors focus-within:border-blue-100"
         onSubmit={(e) => {
