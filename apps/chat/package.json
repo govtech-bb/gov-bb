@@ -23,6 +23,7 @@
     "@fontsource/figtree": "^5.0.0",
     "@govtech-bb/content": "workspace:*",
     "@govtech-bb/design": "^1.0.0-alpha.16",
+    "@govtech-bb/react": "^1.0.0-alpha.14",
     "@standard-schema/spec": "^1.1.0",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/ai": "^0.20.1",
