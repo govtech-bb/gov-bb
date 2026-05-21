@@ -14,8 +14,6 @@
     "migration:show": "typeorm-ts-node-commonjs migration:show -d typeorm.config.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.39.0",
-    "@aws-sdk/client-bedrock-runtime": "^3.0.0",
     "@aws-sdk/client-sesv2": "^3.0.0",
     "@aws-sdk/client-sqs": "^3.1050.0",
     "@govtech-bb/expressions": "workspace:*",
