@@ -14,12 +14,10 @@ const config: Config = {
   coverageThreshold: {
     global: {
       branches: 98,
-      // functions exemption: this package exports Zod schema objects, not callable
-      // functions. 6.52% is the structural floor. Do not raise without adding
-      // runtime utility functions to the package intentionally.
-      functions: 5,
-      lines: 65,
-      statements: 63,
+      // functions: now at 100% after comprehensive testing of index.ts exports
+      functions: 98,
+      lines: 98,
+      statements: 98,
     },
   },
 };
