@@ -1,0 +1,476 @@
+{
+  "createdAt": "2026-01-01T00:00:00Z",
+  "description": "Apply to redirect business mail to a new address",
+  "formId": "post-office-redirection-business-test",
+  "processors": [
+    {
+      "config": {
+        "allowCredit": true,
+        "allowDebit": true,
+        "amount": 4,
+        "customerEmailPath": "applicant-details.applicant-email",
+        "customerNamePath": "applicant-details.applicant-first-name",
+        "department": "default",
+        "description": "Post office mail redirection (business)",
+        "paymentCode": "awR2Da5z7K",
+        "provider": "ezpay"
+      },
+      "type": "payment"
+    },
+    {
+      "config": {
+        "recipientField": "applicant-details.applicant-email",
+        "subject": "Your post office redirection request has been received"
+      },
+      "type": "email"
+    }
+  ],
+  "steps": [
+    {
+      "elements": [
+        {
+          "overrides": {
+            "fieldId": "applicant-title",
+            "validations": {
+              "required": {
+                "error": "Title is required",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/title"
+        },
+        {
+          "overrides": {
+            "fieldId": "applicant-first-name",
+            "label": "First name",
+            "validations": {
+              "minLength": {
+                "error": "First name must be at least 2 characters",
+                "value": 2
+              },
+              "required": {
+                "error": "First name is required",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/first-name"
+        },
+        {
+          "overrides": {
+            "fieldId": "applicant-middle-name",
+            "hint": "Enter all middle names in order",
+            "label": "Middle name"
+          },
+          "ref": "components/middle-name"
+        },
+        {
+          "overrides": {
+            "fieldId": "applicant-last-name",
+            "label": "Last name",
+            "validations": {
+              "minLength": {
+                "error": "Last name must be at least 2 characters",
+                "value": 2
+              },
+              "required": {
+                "error": "Last name is required",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/last-name"
+        },
+        {
+          "overrides": {
+            "fieldId": "applicant-id-number",
+            "label": "National Identification (ID) Number",
+            "validations": {
+              "required": {
+                "error": "ID Number is required",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/national-id-number"
+        },
+        {
+          "overrides": {
+            "fieldId": "passport-toggle",
+            "hint": "If you don't have a National ID number, you can use your passport number instead.",
+            "label": "Use passport number instead"
+          },
+          "ref": "components/generic/show-hide"
+        },
+        {
+          "overrides": {
+            "behaviours": [
+              {
+                "operator": "equal",
+                "targetFieldId": "passport-toggle",
+                "type": "fieldConditionalOn",
+                "value": true
+              }
+            ],
+            "fieldId": "applicant-passport-number",
+            "label": "Passport Number",
+            "validations": {
+              "minLength": {
+                "error": "Passport number must be at least 6 characters",
+                "value": 6
+              },
+              "required": {
+                "error": "Passport number is required",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/passport-number"
+        },
+        {
+          "overrides": {
+            "fieldId": "applicant-email",
+            "validations": {
+              "required": {
+                "error": "Email address is required",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/email"
+        },
+        {
+          "overrides": {
+            "fieldId": "applicant-telephone",
+            "label": "Telephone number",
+            "validations": {
+              "required": {
+                "error": "Telephone number is required",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/telephone"
+        }
+      ],
+      "stepId": "applicant-details",
+      "title": "Tell us about the person submitting this application"
+    },
+    {
+      "elements": [
+        {
+          "overrides": {
+            "fieldId": "business-name",
+            "label": "Business name",
+            "validations": {
+              "minLength": {
+                "error": "Business name must be at least 5 characters",
+                "value": 5
+              },
+              "required": {
+                "error": "Business name is required",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/name"
+        },
+        {
+          "overrides": {
+            "fieldId": "registration-number",
+            "label": "Registration number",
+            "validations": {
+              "minLength": {
+                "error": "Registration number must be at least 5 characters",
+                "value": 5
+              },
+              "required": {
+                "error": "Registration number is required",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/name"
+        }
+      ],
+      "stepId": "business-name",
+      "title": "Tell us about the business"
+    },
+    {
+      "elements": [
+        {
+          "overrides": {
+            "fieldId": "current-address-line-1",
+            "label": "Address line 1",
+            "validations": {
+              "minLength": {
+                "error": "Address must be at least 5 characters",
+                "value": 5
+              },
+              "required": {
+                "error": "Address line 1 is required",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/address"
+        },
+        {
+          "overrides": {
+            "fieldId": "current-address-line-2",
+            "label": "Address line 2"
+          },
+          "ref": "components/address"
+        },
+        {
+          "overrides": {
+            "fieldId": "current-address-parish",
+            "options": [
+              {
+                "label": "Christ Church",
+                "value": "christ-church"
+              },
+              {
+                "label": "St. Andrew",
+                "value": "st-andrew"
+              },
+              {
+                "label": "St. George",
+                "value": "st-george"
+              },
+              {
+                "label": "St. James",
+                "value": "st-james"
+              },
+              {
+                "label": "St. John",
+                "value": "st-john"
+              },
+              {
+                "label": "St. Joseph",
+                "value": "st-joseph"
+              },
+              {
+                "label": "St. Lucy",
+                "value": "st-lucy"
+              },
+              {
+                "label": "St. Michael",
+                "value": "st-michael"
+              },
+              {
+                "label": "St. Peter",
+                "value": "st-peter"
+              },
+              {
+                "label": "St. Philip",
+                "value": "st-philip"
+              },
+              {
+                "label": "St. Thomas",
+                "value": "st-thomas"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Parish is required",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/parish"
+        },
+        {
+          "overrides": {
+            "fieldId": "current-address-postcode",
+            "hint": "For example, BB17004 (optional)"
+          },
+          "ref": "components/postcode"
+        }
+      ],
+      "stepId": "current-address",
+      "title": "Current address of the business"
+    },
+    {
+      "elements": [
+        {
+          "overrides": {
+            "fieldId": "position-details",
+            "hint": "For example, are you a director, manager, or an appointed agent?",
+            "label": "Position",
+            "validations": {
+              "minLength": {
+                "error": "Position must be at least 5 characters",
+                "value": 5
+              },
+              "required": {
+                "error": "Position is required",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/name"
+        }
+      ],
+      "stepId": "position-details",
+      "title": "Tell us what position you hold in the business"
+    },
+    {
+      "elements": [
+        {
+          "overrides": {
+            "fieldId": "new-address-line-1",
+            "label": "Address line 1",
+            "validations": {
+              "minLength": {
+                "error": "Address must be at least 5 characters",
+                "value": 5
+              },
+              "required": {
+                "error": "Address line 1 is required",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/address"
+        },
+        {
+          "overrides": {
+            "fieldId": "new-address-line-2",
+            "label": "Address line 2"
+          },
+          "ref": "components/address"
+        },
+        {
+          "overrides": {
+            "fieldId": "new-address-parish",
+            "options": [
+              {
+                "label": "Christ Church",
+                "value": "christ-church"
+              },
+              {
+                "label": "St. Andrew",
+                "value": "st-andrew"
+              },
+              {
+                "label": "St. George",
+                "value": "st-george"
+              },
+              {
+                "label": "St. James",
+                "value": "st-james"
+              },
+              {
+                "label": "St. John",
+                "value": "st-john"
+              },
+              {
+                "label": "St. Joseph",
+                "value": "st-joseph"
+              },
+              {
+                "label": "St. Lucy",
+                "value": "st-lucy"
+              },
+              {
+                "label": "St. Michael",
+                "value": "st-michael"
+              },
+              {
+                "label": "St. Peter",
+                "value": "st-peter"
+              },
+              {
+                "label": "St. Philip",
+                "value": "st-philip"
+              },
+              {
+                "label": "St. Thomas",
+                "value": "st-thomas"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Parish is required",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/parish"
+        },
+        {
+          "overrides": {
+            "fieldId": "new-address-postcode",
+            "hint": "For example, BB17004 (optional)"
+          },
+          "ref": "components/postcode"
+        },
+        {
+          "overrides": {
+            "fieldId": "redirection-start-date",
+            "label": "When do you want the redirection to start?"
+          },
+          "ref": "components/date-of-birth"
+        },
+        {
+          "overrides": {
+            "fieldId": "redirection-end-date",
+            "hint": "A redirection notice lasts for a maximum of 6 months.",
+            "label": "When do you want the redirection to end?"
+          },
+          "ref": "components/date-of-birth"
+        }
+      ],
+      "stepId": "new-address",
+      "title": "Where should we redirect the mail?"
+    },
+    {
+      "elements": [
+        {
+          "overrides": {
+            "fieldId": "declaration-confirmed",
+            "label": "Declaration",
+            "options": [
+              {
+                "label": "I confirm that my information is correct and I am happy for it to be verified. I understand that false details may lead to my application being rejected, and that the Government of Barbados will keep my information confidential.",
+                "value": "confirmed"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "You must confirm the declaration to continue",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/confirmation"
+        },
+        {
+          "overrides": {
+            "fieldId": "declaration-date",
+            "label": "Date of declaration"
+          },
+          "ref": "components/date-of-birth"
+        }
+      ],
+      "stepId": "declaration",
+      "title": "Declaration"
+    },
+    {
+      "elements": [],
+      "nextSteps": [
+        {
+          "content": "We have received your submission. You will receive a confirmation email at the address you provided.",
+          "title": "What happens next"
+        }
+      ],
+      "stepId": "submission-confirmation",
+      "title": "Application submitted"
+    }
+  ],
+  "title": "Post Office Redirection - Business",
+  "updatedAt": "2026-01-01T00:00:00Z",
+  "version": "1.0.0"
+}

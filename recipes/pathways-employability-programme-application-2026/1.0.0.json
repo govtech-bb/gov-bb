@@ -1,0 +1,936 @@
+{
+  "createdAt": "2026-01-01T00:00:00Z",
+  "description": "Application form for the Division of Youth Affairs Pathways Employability Programme. All personal information collected through this form will be stored securely and treated with strict confidentiality in accordance with applicable data protection and privacy standards.",
+  "formId": "pathways-employability-programme-application-2026",
+  "processors": [
+    {
+      "config": {
+        "recipientField": "contact-information.applicant-email",
+        "subject": "Your Pathways Employability Programme Application Has Been Received"
+      },
+      "type": "email"
+    }
+  ],
+  "steps": [
+    {
+      "elements": [
+        {
+          "overrides": {
+            "fieldId": "continue-applying",
+            "hint": "The Division of Youth Affairs, Prime Minister's Office, will use the information you provide solely for the purposes of planning, evaluating, and improving its programmes and initiatives. By completing this form, you consent to the collection and use of your responses for these purposes. You may withdraw your consent at any time by contacting the Ministry.",
+            "label": "Would you like to continue applying?",
+            "options": [
+              {
+                "label": "Yes, I would like to continue applying.",
+                "value": "yes"
+              },
+              {
+                "label": "No, I do not wish to continue applying.",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Please indicate whether you wish to continue applying",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/generic/radio"
+        }
+      ],
+      "stepId": "informed-consent",
+      "title": "Informed Consent"
+    },
+    {
+      "elements": [
+        {
+          "overrides": {
+            "fieldId": "applicant-first-name",
+            "label": "First Name",
+            "validations": {
+              "required": {
+                "error": "Enter your first name",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/first-name"
+        },
+        {
+          "overrides": {
+            "fieldId": "applicant-last-name",
+            "label": "Last Name",
+            "validations": {
+              "required": {
+                "error": "Enter your last name",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/last-name"
+        },
+        {
+          "overrides": {
+            "fieldId": "applicant-gender",
+            "label": "Gender",
+            "options": [
+              {
+                "label": "Female",
+                "value": "female"
+              },
+              {
+                "label": "Male",
+                "value": "male"
+              },
+              {
+                "label": "Prefer not to say",
+                "value": "prefer-not-to-say"
+              },
+              {
+                "label": "Other",
+                "value": "other"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Please select your gender",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/generic/radio"
+        },
+        {
+          "overrides": {
+            "fieldId": "applicant-age",
+            "hint": "Please enter your current age",
+            "label": "Age",
+            "validations": {
+              "required": {
+                "error": "Please enter your age",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/generic/number"
+        },
+        {
+          "overrides": {
+            "fieldId": "applicant-dob",
+            "label": "Date of Birth",
+            "validations": {
+              "pastOrToday": {
+                "error": "Date of birth must be in the past",
+                "value": true
+              },
+              "required": {
+                "error": "Enter your date of birth",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/date-of-birth"
+        },
+        {
+          "overrides": {
+            "fieldId": "country-of-birth",
+            "label": "Country of Birth",
+            "validations": {
+              "required": {
+                "error": "Enter your country of birth",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/name"
+        },
+        {
+          "overrides": {
+            "fieldId": "applicant-nationality",
+            "label": "Nationality",
+            "options": [
+              {
+                "label": "Barbadian",
+                "value": "barbadian"
+              },
+              {
+                "label": "CARICOM National",
+                "value": "caricom-national"
+              },
+              {
+                "label": "European National",
+                "value": "european-national"
+              },
+              {
+                "label": "U.S. National",
+                "value": "us-national"
+              },
+              {
+                "label": "British Citizen",
+                "value": "british-citizen"
+              },
+              {
+                "label": "Other",
+                "value": "other"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Please select your nationality",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/generic/radio"
+        },
+        {
+          "overrides": {
+            "fieldId": "marital-status",
+            "label": "Marital Status",
+            "options": [
+              {
+                "label": "Single",
+                "value": "single"
+              },
+              {
+                "label": "Married",
+                "value": "married"
+              },
+              {
+                "label": "Divorced",
+                "value": "divorced"
+              },
+              {
+                "label": "Widowed",
+                "value": "widowed"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Please select your marital status",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/generic/radio"
+        },
+        {
+          "overrides": {
+            "fieldId": "applicant-religion",
+            "hint": "Optional",
+            "label": "Religion"
+          },
+          "ref": "components/name"
+        }
+      ],
+      "stepId": "demographic-information",
+      "title": "Demographic Information"
+    },
+    {
+      "elements": [
+        {
+          "overrides": {
+            "fieldId": "applicant-address",
+            "label": "Address",
+            "validations": {
+              "required": {
+                "error": "Enter your address",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/address"
+        },
+        {
+          "overrides": {
+            "fieldId": "applicant-parish",
+            "label": "Parish",
+            "options": [
+              {
+                "label": "Christ Church",
+                "value": "christ-church"
+              },
+              {
+                "label": "St. Andrew",
+                "value": "st-andrew"
+              },
+              {
+                "label": "St. George",
+                "value": "st-george"
+              },
+              {
+                "label": "St. James",
+                "value": "st-james"
+              },
+              {
+                "label": "St. John",
+                "value": "st-john"
+              },
+              {
+                "label": "St. Joseph",
+                "value": "st-joseph"
+              },
+              {
+                "label": "St. Lucy",
+                "value": "st-lucy"
+              },
+              {
+                "label": "St. Michael",
+                "value": "st-michael"
+              },
+              {
+                "label": "St. Peter",
+                "value": "st-peter"
+              },
+              {
+                "label": "St. Philip",
+                "value": "st-philip"
+              },
+              {
+                "label": "St. Thomas",
+                "value": "st-thomas"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Please select your parish",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/parish"
+        },
+        {
+          "overrides": {
+            "fieldId": "applicant-telephone",
+            "hint": "Please provide both your landline and cell numbers if available",
+            "label": "Telephone Number (Landline and Cell)",
+            "validations": {
+              "required": {
+                "error": "Enter your telephone number",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/telephone"
+        },
+        {
+          "overrides": {
+            "fieldId": "applicant-email",
+            "label": "Email Address",
+            "validations": {
+              "email": {
+                "error": "Enter a valid email address",
+                "value": true
+              },
+              "required": {
+                "error": "Enter your email address",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/email"
+        }
+      ],
+      "stepId": "contact-information",
+      "title": "Contact Information"
+    },
+    {
+      "elements": [
+        {
+          "overrides": {
+            "fieldId": "currently-employed-fulltime",
+            "hint": "Select all that apply",
+            "label": "I am currently:",
+            "options": [
+              {
+                "label": "Employed (Full-time)",
+                "value": "employed-fulltime"
+              }
+            ]
+          },
+          "ref": "components/confirmation"
+        },
+        {
+          "overrides": {
+            "fieldId": "currently-employed-parttime",
+            "label": " ",
+            "options": [
+              {
+                "label": "Employed (Part-time)",
+                "value": "employed-parttime"
+              }
+            ]
+          },
+          "ref": "components/confirmation"
+        },
+        {
+          "overrides": {
+            "fieldId": "currently-self-employed",
+            "label": " ",
+            "options": [
+              {
+                "label": "Self-employed",
+                "value": "self-employed"
+              }
+            ]
+          },
+          "ref": "components/confirmation"
+        },
+        {
+          "overrides": {
+            "fieldId": "currently-unemployed",
+            "label": " ",
+            "options": [
+              {
+                "label": "Unemployed",
+                "value": "unemployed"
+              }
+            ]
+          },
+          "ref": "components/confirmation"
+        },
+        {
+          "overrides": {
+            "fieldId": "currently-in-school-fulltime",
+            "label": " ",
+            "options": [
+              {
+                "label": "In School (Full-time)",
+                "value": "in-school-fulltime"
+              }
+            ]
+          },
+          "ref": "components/confirmation"
+        },
+        {
+          "overrides": {
+            "fieldId": "currently-in-school-parttime",
+            "label": " ",
+            "options": [
+              {
+                "label": "In School (Part-time)",
+                "value": "in-school-parttime"
+              }
+            ]
+          },
+          "ref": "components/confirmation"
+        },
+        {
+          "overrides": {
+            "fieldId": "currently-other",
+            "hint": "If none of the above apply, please describe your current status",
+            "label": "Other (please specify)"
+          },
+          "ref": "components/name"
+        }
+      ],
+      "stepId": "current-status",
+      "title": "Current Status"
+    },
+    {
+      "elements": [
+        {
+          "overrides": {
+            "fieldId": "national-registration-number",
+            "hint": "All information in this section is mandatory upon commencement of the programme. Assistance is available if you require help obtaining documentation.",
+            "label": "National Registration Number (ID No.)",
+            "ui": {
+              "width": "short"
+            },
+            "validations": {
+              "required": {
+                "error": "Enter your National Registration Number",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/national-id-number"
+        },
+        {
+          "overrides": {
+            "fieldId": "applicant-tamis-number",
+            "label": "TAMIS Number",
+            "ui": {
+              "width": "short"
+            }
+          },
+          "ref": "components/tamis-number"
+        },
+        {
+          "overrides": {
+            "fieldId": "applicant-nis-number",
+            "label": "National Insurance Number (NIS)",
+            "ui": {
+              "width": "short"
+            }
+          },
+          "ref": "components/national-insurance-number"
+        },
+        {
+          "overrides": {
+            "fieldId": "has-bank-account",
+            "label": "Do you have an active bank account or credit union account?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Please indicate whether you have an active bank or credit union account",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/generic/radio"
+        }
+      ],
+      "stepId": "required-information",
+      "title": "Required Information"
+    },
+    {
+      "elements": [
+        {
+          "overrides": {
+            "fieldId": "academic-qualifications",
+            "hint": "Please list your qualifications below. Include the grade awarded, the Examining Body and the date awarded. E.g. Math CXC – Grade 2 – 2020 | or | BSc. Management (Upper Second Class Honours) – UWI Cave Hill – 2020",
+            "label": "Academic Qualifications",
+            "ui": {
+              "width": "long"
+            },
+            "validations": {
+              "required": {
+                "error": "Please list your academic qualifications",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/additional-details"
+        },
+        {
+          "overrides": {
+            "fieldId": "employment-history",
+            "hint": "Please list your employment history below. Include name of employer, the position and the start–end date. E.g. Chef – Hilton Resort Barbados – April 2019 – April 2021",
+            "label": "Employment History",
+            "ui": {
+              "width": "long"
+            },
+            "validations": {
+              "required": {
+                "error": "Please list your employment history",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/additional-details"
+        },
+        {
+          "overrides": {
+            "fieldId": "job-interests",
+            "hint": "Please list your job interests in order of preference (maximum 3). E.g. 1. Chef  2. Sales Clerk  3. Accounting",
+            "label": "Job Interests",
+            "ui": {
+              "width": "long"
+            },
+            "validations": {
+              "required": {
+                "error": "Please list your job interests",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/additional-details"
+        }
+      ],
+      "stepId": "academic-and-employment",
+      "title": "Academic Records & Employment History"
+    },
+    {
+      "elements": [
+        {
+          "overrides": {
+            "fieldId": "medical-asthma",
+            "hint": "Are you suffering from any of the following medical conditions? Select all that apply. All medical information is handled in strict confidence and used solely for participant welfare and reasonable accommodation.",
+            "label": "Medical Conditions",
+            "options": [
+              {
+                "label": "Asthma",
+                "value": "asthma"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Please indicate your medical conditions or select None",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/confirmation"
+        },
+        {
+          "overrides": {
+            "fieldId": "medical-epilepsy",
+            "label": " ",
+            "options": [
+              {
+                "label": "Epilepsy",
+                "value": "epilepsy"
+              }
+            ]
+          },
+          "ref": "components/confirmation"
+        },
+        {
+          "overrides": {
+            "fieldId": "medical-hypertension",
+            "label": " ",
+            "options": [
+              {
+                "label": "Hypertension",
+                "value": "hypertension"
+              }
+            ]
+          },
+          "ref": "components/confirmation"
+        },
+        {
+          "overrides": {
+            "fieldId": "medical-diabetes",
+            "label": " ",
+            "options": [
+              {
+                "label": "Diabetes",
+                "value": "diabetes"
+              }
+            ]
+          },
+          "ref": "components/confirmation"
+        },
+        {
+          "overrides": {
+            "fieldId": "medical-allergies",
+            "label": " ",
+            "options": [
+              {
+                "label": "Allergies",
+                "value": "allergies"
+              }
+            ]
+          },
+          "ref": "components/confirmation"
+        },
+        {
+          "overrides": {
+            "fieldId": "medical-physical-disability",
+            "label": " ",
+            "options": [
+              {
+                "label": "Physical Disability",
+                "value": "physical-disability"
+              }
+            ]
+          },
+          "ref": "components/confirmation"
+        },
+        {
+          "overrides": {
+            "fieldId": "medical-learning-disability",
+            "label": " ",
+            "options": [
+              {
+                "label": "Learning Disability",
+                "value": "learning-disability"
+              }
+            ]
+          },
+          "ref": "components/confirmation"
+        },
+        {
+          "overrides": {
+            "fieldId": "medical-behavioural-challenges",
+            "label": " ",
+            "options": [
+              {
+                "label": "Behavioural Challenges",
+                "value": "behavioural-challenges"
+              }
+            ]
+          },
+          "ref": "components/confirmation"
+        },
+        {
+          "overrides": {
+            "fieldId": "medical-mental-health",
+            "label": " ",
+            "options": [
+              {
+                "label": "Mental Health Challenges",
+                "value": "mental-health-challenges"
+              }
+            ]
+          },
+          "ref": "components/confirmation"
+        },
+        {
+          "overrides": {
+            "fieldId": "medical-none",
+            "label": " ",
+            "options": [
+              {
+                "label": "None",
+                "value": "none"
+              }
+            ]
+          },
+          "ref": "components/confirmation"
+        },
+        {
+          "overrides": {
+            "fieldId": "medical-other",
+            "label": "Other medical condition (please specify)"
+          },
+          "ref": "components/name"
+        },
+        {
+          "overrides": {
+            "fieldId": "current-medications",
+            "hint": "What medication(s) do you take, if any?",
+            "label": "Current Medications",
+            "ui": {
+              "width": "long"
+            }
+          },
+          "ref": "components/additional-details"
+        }
+      ],
+      "stepId": "medical-history",
+      "title": "Medical History"
+    },
+    {
+      "elements": [
+        {
+          "overrides": {
+            "fieldId": "emergency-first-name",
+            "label": "Emergency Contact First Name",
+            "validations": {
+              "required": {
+                "error": "Enter the emergency contact's first name",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/first-name"
+        },
+        {
+          "overrides": {
+            "fieldId": "emergency-last-name",
+            "label": "Emergency Contact Last Name",
+            "validations": {
+              "required": {
+                "error": "Enter the emergency contact's last name",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/last-name"
+        },
+        {
+          "overrides": {
+            "fieldId": "emergency-relationship",
+            "hint": "E.g. parent, grand-parent, guardian",
+            "label": "Relationship to Applicant",
+            "validations": {
+              "required": {
+                "error": "Enter your relationship to this contact",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/name"
+        },
+        {
+          "overrides": {
+            "fieldId": "emergency-address",
+            "hint": "Leave blank if the same as your address",
+            "label": "Emergency Contact Address (if different from above)"
+          },
+          "ref": "components/address"
+        },
+        {
+          "overrides": {
+            "fieldId": "emergency-telephone",
+            "label": "Emergency Contact Telephone Numbers (Landline & Cell)",
+            "validations": {
+              "required": {
+                "error": "Enter the emergency contact's telephone number",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/telephone"
+        },
+        {
+          "overrides": {
+            "fieldId": "emergency-email",
+            "label": "Emergency Contact Email Address",
+            "validations": {
+              "email": {
+                "error": "Enter a valid email address",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/email"
+        }
+      ],
+      "stepId": "emergency-contact",
+      "title": "Emergency Contact Information"
+    },
+    {
+      "elements": [
+        {
+          "overrides": {
+            "fieldId": "heard-about-pathways",
+            "label": "How did you hear about the Pathways Employability Programme?",
+            "options": [
+              {
+                "label": "Division of Youth Affairs Website",
+                "value": "dya-website"
+              },
+              {
+                "label": "Division of Youth Affairs Facebook",
+                "value": "dya-facebook"
+              },
+              {
+                "label": "Division of Youth Affairs Instagram",
+                "value": "dya-instagram"
+              },
+              {
+                "label": "Youth Commissioner / Ministry Staff",
+                "value": "youth-commissioner-staff"
+              },
+              {
+                "label": "Advertisement (i.e. Radio/Television)",
+                "value": "advertisement"
+              },
+              {
+                "label": "Brochure/Flyer",
+                "value": "brochure-flyer"
+              },
+              {
+                "label": "Email Promotion",
+                "value": "email-promotion"
+              },
+              {
+                "label": "Family member",
+                "value": "family-member"
+              },
+              {
+                "label": "Friend",
+                "value": "friend"
+              },
+              {
+                "label": "Other",
+                "value": "other"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Please tell us how you heard about the programme",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/generic/radio"
+        }
+      ],
+      "stepId": "additional-information",
+      "title": "Additional Information"
+    },
+    {
+      "elements": [
+        {
+          "overrides": {
+            "fieldId": "publicity-consent-give",
+            "hint": "There may be cases where your photo is taken for marketing and promotional purposes. Your photo/video/story may be used in printed marketing materials, on social media pages, in the media, in advertising, and by partner organisations promoting the work of the Division of Youth Affairs, for up to three years. You may withdraw consent at any time by contacting mysce.pti@barbados.gov.bb.\n\nI understand my right to ask to see any information held about me by the Division of Youth Affairs. I understand that while the Division of Youth Affairs will make every effort to ensure all media coverage is positive, it does not have final control over how a journalist or social media user may portray me.",
+            "label": "Publicity Consent",
+            "options": [
+              {
+                "label": "I give consent for my photo, video or written case study to be used for marketing and promotional purposes",
+                "value": "consent-given"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Please indicate your publicity consent preference",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/confirmation"
+        },
+        {
+          "overrides": {
+            "fieldId": "publicity-consent-decline",
+            "label": " ",
+            "options": [
+              {
+                "label": "I do not give consent",
+                "value": "consent-declined"
+              }
+            ]
+          },
+          "ref": "components/confirmation"
+        }
+      ],
+      "stepId": "publicity-consent",
+      "title": "Publicity Consent"
+    },
+    {
+      "elements": [
+        {
+          "overrides": {
+            "fieldId": "applicant-declaration",
+            "label": "Declaration",
+            "options": [
+              {
+                "label": "I confirm that the information provided in this application is true, accurate and complete to the best of my knowledge. I understand that providing false or misleading information may result in my application being disqualified.",
+                "value": "confirmed"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "You must confirm the declaration to submit your application",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/confirmation"
+        }
+      ],
+      "stepId": "declaration",
+      "title": "Declaration"
+    },
+    {
+      "elements": [],
+      "nextSteps": [
+        {
+          "content": "Thank you for applying to the Pathways Employability Programme. We have received your application and you will receive a confirmation email at the address you provided. If you have any questions, please contact the Employability Unit at pathways@barbados.gov.bb or call (246) 535-3863.",
+          "title": "What happens next"
+        }
+      ],
+      "stepId": "submission-confirmation",
+      "title": "Application Submitted"
+    }
+  ],
+  "title": "Pathways Employability Programme: Application Form (2026)",
+  "updatedAt": "2026-01-01T00:00:00Z",
+  "version": "1.0.0"
+}

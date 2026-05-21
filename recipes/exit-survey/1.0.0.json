@@ -1,0 +1,183 @@
+{
+  "createdAt": "2026-05-07T00:00:00Z",
+  "description": "Your feedback helps us improve this service. This will take about 30 seconds and includes 4 short questions.",
+  "formId": "exit-survey-test",
+  "processors": [],
+  "steps": [
+    {
+      "elements": [
+        {
+          "overrides": {
+            "fieldId": "difficulty-rating",
+            "label": "How easy or difficult was it to complete this form?",
+            "options": [
+              {
+                "label": "Very Easy",
+                "value": "very-easy"
+              },
+              {
+                "label": "Easy",
+                "value": "easy"
+              },
+              {
+                "label": "Neither easy nor difficult",
+                "value": "neither"
+              },
+              {
+                "label": "Difficult",
+                "value": "difficult"
+              },
+              {
+                "label": "Very Difficult",
+                "value": "very-difficult"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select a difficulty rating",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/generic/radio"
+        }
+      ],
+      "stepId": "difficulty-rating",
+      "title": "Overall, how easy or difficult was it to complete this form?"
+    },
+    {
+      "elements": [
+        {
+          "overrides": {
+            "fieldId": "clarity-rating",
+            "label": "How clear were the instructions and information on this form?",
+            "options": [
+              {
+                "label": "Very Clear",
+                "value": "very-clear"
+              },
+              {
+                "label": "Clear",
+                "value": "clear"
+              },
+              {
+                "label": "Neither clear nor unclear",
+                "value": "neither"
+              },
+              {
+                "label": "Unclear",
+                "value": "unclear"
+              },
+              {
+                "label": "Very Unclear",
+                "value": "very-unclear"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select a clarity rating",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/generic/radio"
+        }
+      ],
+      "stepId": "clarity-rating",
+      "title": "How clear were the instructions and information on this form?"
+    },
+    {
+      "description": "Examples include a button not working, an error message you could not resolve, or difficulty using a screen reader or other assistive technology.",
+      "elements": [
+        {
+          "overrides": {
+            "fieldId": "technical-problems",
+            "label": "Did you experience any technical problems when using this form?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select yes or no",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/generic/radio"
+        },
+        {
+          "overrides": {
+            "behaviours": [
+              {
+                "operator": "equal",
+                "targetFieldId": "technical-problems",
+                "type": "fieldConditionalOn",
+                "value": "yes"
+              }
+            ],
+            "fieldId": "technical-problems-description",
+            "label": "Please briefly describe the problem you experienced",
+            "validations": {
+              "minLength": {
+                "error": "Please provide at least 2 characters",
+                "value": 2
+              },
+              "required": {
+                "error": "Please describe the problem you experienced",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/additional-details"
+        }
+      ],
+      "stepId": "technical-problems",
+      "title": "Did you experience any technical problems or barriers while using this form?"
+    },
+    {
+      "description": "You can comment on anything, such as the questions, wording, layout, or how easy the form was to use.",
+      "elements": [
+        {
+          "overrides": {
+            "fieldId": "areas-for-improvement",
+            "label": "What is one thing we could do to improve this form?",
+            "validations": {
+              "minLength": {
+                "error": "Please provide at least 10 characters",
+                "value": 10
+              },
+              "required": {
+                "error": "Areas for improvement is required",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/additional-details"
+        }
+      ],
+      "stepId": "areas-for-improvement",
+      "title": "What is one thing we could do to improve this form?"
+    },
+    {
+      "elements": [],
+      "nextSteps": [
+        {
+          "content": "We have received your submission. You will receive a confirmation email at the address you provided.",
+          "title": "What happens next"
+        }
+      ],
+      "stepId": "submission-confirmation",
+      "title": "Application submitted"
+    }
+  ],
+  "title": "Help us improve this service",
+  "updatedAt": "2026-05-07T00:00:00Z",
+  "version": "1.0.0"
+}

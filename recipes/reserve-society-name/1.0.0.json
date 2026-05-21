@@ -1,0 +1,386 @@
+{
+  "createdAt": "2026-05-07T00:00:00Z",
+  "description": "Request to search, reserve, or change a society name.",
+  "formId": "reserve-society-name-test",
+  "processors": [
+    {
+      "config": {
+        "recipientField": "applicant-details.applicant-email",
+        "subject": "Your society name request has been received"
+      },
+      "type": "email"
+    }
+  ],
+  "steps": [
+    {
+      "elements": [
+        {
+          "overrides": {
+            "fieldId": "request-purpose",
+            "label": "What do you want to do?",
+            "options": [
+              {
+                "label": "Search if society name is available",
+                "value": "request-search"
+              },
+              {
+                "label": "Reserve a society name",
+                "value": "reserve-name"
+              },
+              {
+                "label": "Change the name of an existing society",
+                "value": "change-name"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select an option",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/generic/radio"
+        },
+        {
+          "overrides": {
+            "behaviours": [
+              {
+                "operator": "equal",
+                "targetFieldId": "request-purpose",
+                "type": "fieldConditionalOn",
+                "value": "change-name"
+              }
+            ],
+            "fieldId": "current-society-name",
+            "label": "What is the current name of the society?",
+            "validations": {
+              "required": {
+                "error": "Current society name is required",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/name"
+        }
+      ],
+      "stepId": "request-details",
+      "title": "What do you want to do?"
+    },
+    {
+      "description": "You can suggest up to 3 names. Provide at least one.",
+      "elements": [
+        {
+          "overrides": {
+            "fieldId": "society-name-1",
+            "label": "First choice of society name",
+            "validations": {
+              "minLength": {
+                "error": "Must be at least 2 characters",
+                "value": 2
+              },
+              "required": {
+                "error": "At least one society name is required",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/name"
+        },
+        {
+          "overrides": {
+            "fieldId": "society-name-1-explanation",
+            "label": "How did you choose this name?",
+            "validations": {
+              "minLength": {
+                "error": "Must be at least 2 characters",
+                "value": 2
+              },
+              "required": {
+                "error": "Explanation is required",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/additional-details"
+        },
+        {
+          "overrides": {
+            "fieldId": "society-name-2",
+            "hint": "Leave blank if you only have one choice",
+            "label": "Second choice of society name (optional)"
+          },
+          "ref": "components/name"
+        },
+        {
+          "overrides": {
+            "fieldId": "society-name-2-explanation",
+            "label": "How did you choose this name?"
+          },
+          "ref": "components/additional-details"
+        },
+        {
+          "overrides": {
+            "fieldId": "society-name-3",
+            "hint": "Leave blank if you only have two choices",
+            "label": "Third choice of society name (optional)"
+          },
+          "ref": "components/name"
+        },
+        {
+          "overrides": {
+            "fieldId": "society-name-3-explanation",
+            "label": "How did you choose this name?"
+          },
+          "ref": "components/additional-details"
+        }
+      ],
+      "stepId": "proposed-names",
+      "title": "What are your proposed society names?"
+    },
+    {
+      "description": "List the main activities of the society (up to 3)",
+      "elements": [
+        {
+          "overrides": {
+            "fieldId": "activity-1",
+            "label": "Activity 1",
+            "validations": {
+              "required": {
+                "error": "At least one activity is required",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/additional-details"
+        },
+        {
+          "overrides": {
+            "fieldId": "activity-2",
+            "label": "Activity 2 (optional)"
+          },
+          "ref": "components/additional-details"
+        },
+        {
+          "overrides": {
+            "fieldId": "activity-3",
+            "label": "Activity 3 (optional)"
+          },
+          "ref": "components/additional-details"
+        }
+      ],
+      "stepId": "society-activities",
+      "title": "What does the society do?"
+    },
+    {
+      "elements": [
+        {
+          "overrides": {
+            "fieldId": "applicant-title"
+          },
+          "ref": "components/title"
+        },
+        {
+          "overrides": {
+            "fieldId": "applicant-first-name",
+            "validations": {
+              "minLength": {
+                "error": "First name must be at least 2 characters",
+                "value": 2
+              },
+              "required": {
+                "error": "First name is required",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/first-name"
+        },
+        {
+          "overrides": {
+            "fieldId": "applicant-middle-name",
+            "hint": "Optional. Provide only if known"
+          },
+          "ref": "components/middle-name"
+        },
+        {
+          "overrides": {
+            "fieldId": "applicant-last-name",
+            "validations": {
+              "minLength": {
+                "error": "Last name must be at least 2 characters",
+                "value": 2
+              },
+              "required": {
+                "error": "Last name is required",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/last-name"
+        },
+        {
+          "overrides": {
+            "fieldId": "address-line-1",
+            "label": "Address Line 1",
+            "validations": {
+              "minLength": {
+                "error": "Address must be at least 5 characters",
+                "value": 5
+              },
+              "required": {
+                "error": "Address line 1 is required",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/address"
+        },
+        {
+          "overrides": {
+            "fieldId": "address-line-2",
+            "label": "Address Line 2"
+          },
+          "ref": "components/address"
+        },
+        {
+          "overrides": {
+            "fieldId": "applicant-parish",
+            "options": [
+              {
+                "label": "Christ Church",
+                "value": "christ-church"
+              },
+              {
+                "label": "St. Andrew",
+                "value": "st-andrew"
+              },
+              {
+                "label": "St. George",
+                "value": "st-george"
+              },
+              {
+                "label": "St. James",
+                "value": "st-james"
+              },
+              {
+                "label": "St. John",
+                "value": "st-john"
+              },
+              {
+                "label": "St. Joseph",
+                "value": "st-joseph"
+              },
+              {
+                "label": "St. Lucy",
+                "value": "st-lucy"
+              },
+              {
+                "label": "St. Michael",
+                "value": "st-michael"
+              },
+              {
+                "label": "St. Peter",
+                "value": "st-peter"
+              },
+              {
+                "label": "St. Philip",
+                "value": "st-philip"
+              },
+              {
+                "label": "St. Thomas",
+                "value": "st-thomas"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Parish is required",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/parish"
+        },
+        {
+          "overrides": {
+            "fieldId": "applicant-postcode",
+            "hint": "For example, BB17004 (optional)"
+          },
+          "ref": "components/postcode"
+        },
+        {
+          "overrides": {
+            "fieldId": "applicant-email",
+            "validations": {
+              "required": {
+                "error": "Email address is required",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/email"
+        },
+        {
+          "overrides": {
+            "fieldId": "applicant-telephone",
+            "validations": {
+              "required": {
+                "error": "Telephone number is required",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/telephone"
+        }
+      ],
+      "stepId": "applicant-details",
+      "title": "Tell us about yourself"
+    },
+    {
+      "elements": [
+        {
+          "overrides": {
+            "fieldId": "declaration-confirmed",
+            "label": "Declaration",
+            "options": [
+              {
+                "label": "I confirm that my information is correct and I am happy for it to be verified. I understand that false details may lead to my application being rejected, and that the Government of Barbados will keep my information confidential.",
+                "value": "confirmed"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "You must confirm the declaration to continue",
+                "value": true
+              }
+            }
+          },
+          "ref": "components/confirmation"
+        },
+        {
+          "overrides": {
+            "fieldId": "declaration-date",
+            "isHidden": true,
+            "label": "Date of declaration"
+          },
+          "ref": "components/date-of-birth"
+        }
+      ],
+      "stepId": "declaration",
+      "title": "Declaration"
+    },
+    {
+      "elements": [],
+      "nextSteps": [
+        {
+          "content": "We have received your submission. You will receive a confirmation email at the address you provided.",
+          "title": "What happens next"
+        }
+      ],
+      "stepId": "submission-confirmation",
+      "title": "Application submitted"
+    }
+  ],
+  "title": "Reserve a Society Name",
+  "updatedAt": "2026-05-07T00:00:00Z",
+  "version": "1.0.0"
+}

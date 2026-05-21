@@ -1,0 +1,66 @@
+{
+  "createdAt": "2026-01-20T00:00:00.000Z",
+  "description": "Apply for a Barbados National ID card",
+  "formId": "national-id-application",
+  "processors": [
+    {
+      "config": {
+        "recipientField": "contact.email",
+        "subject": "Your National ID application has been received"
+      },
+      "type": "email"
+    }
+  ],
+  "steps": [
+    {
+      "elements": [
+        {
+          "ref": "blocks/proving-your-identity"
+        }
+      ],
+      "stepId": "identity",
+      "title": "Prove Your Identity"
+    },
+    {
+      "elements": [
+        {
+          "ref": "blocks/personal-information"
+        }
+      ],
+      "stepId": "personal-details",
+      "title": "Personal Details"
+    },
+    {
+      "elements": [
+        {
+          "ref": "blocks/contact-information"
+        }
+      ],
+      "stepId": "contact",
+      "title": "Contact Information"
+    },
+    {
+      "elements": [
+        {
+          "ref": "blocks/applicant-declaration"
+        }
+      ],
+      "stepId": "declaration",
+      "title": "Declaration"
+    },
+    {
+      "elements": [],
+      "nextSteps": [
+        {
+          "content": "We have received your submission. You will receive a confirmation email at the address you provided.",
+          "title": "What happens next"
+        }
+      ],
+      "stepId": "submission-confirmation",
+      "title": "Application submitted"
+    }
+  ],
+  "title": "National ID Application",
+  "updatedAt": "2026-01-20T00:00:00.000Z",
+  "version": "1.0.0"
+}
