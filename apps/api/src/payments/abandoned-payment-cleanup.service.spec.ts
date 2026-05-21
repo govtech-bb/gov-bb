@@ -1,4 +1,4 @@
-import { Test } from "@nestjs/testing";
+import { Test, TestingModule } from "@nestjs/testing";
 import { DataSource, In, LessThan } from "typeorm";
 import { AbandonedPaymentCleanupService } from "./abandoned-payment-cleanup.service";
 import {
@@ -8,6 +8,7 @@ import {
 
 describe("AbandonedPaymentCleanupService.runOnce", () => {
   let service: AbandonedPaymentCleanupService;
+  let module: TestingModule;
   const paymentsRepo = { find: jest.fn(), save: jest.fn() };
   const dataSource = {
     getRepository: jest.fn().mockReturnValue(paymentsRepo),
@@ -15,13 +16,17 @@ describe("AbandonedPaymentCleanupService.runOnce", () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
-    const module = await Test.createTestingModule({
+    module = await Test.createTestingModule({
       providers: [
         AbandonedPaymentCleanupService,
         { provide: DataSource, useValue: dataSource },
       ],
     }).compile();
     service = module.get(AbandonedPaymentCleanupService);
+  });
+
+  afterEach(async () => {
+    if (module) await module.close();
   });
 
   it("returns 0 when no stale payments exist", async () => {

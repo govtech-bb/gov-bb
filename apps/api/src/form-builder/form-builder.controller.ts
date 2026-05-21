@@ -56,7 +56,9 @@ export class FormBuilderController {
    * Send a message to an existing session (text + optional PDF upload via multipart).
    */
   @Post("sessions/:sessionId/messages")
-  @UseInterceptors(FileInterceptor("pdf", { limits: { fileSize: 50 * 1024 * 1024 } }))
+  @UseInterceptors(
+    FileInterceptor("pdf", { limits: { fileSize: 50 * 1024 * 1024 } }),
+  )
   async sendMessage(
     @Param("sessionId") sessionId: string,
     @Body("message") message: string,
@@ -175,13 +177,14 @@ export class FormBuilderController {
    * Delete the form published in this session (scoped — can only delete own form).
    */
   @Post("sessions/:sessionId/delete")
-  async deletePublished(
-    @Param("sessionId") sessionId: string,
-  ) {
+  async deletePublished(@Param("sessionId") sessionId: string) {
     try {
       return await this.formBuilderService.deletePublished(sessionId);
     } catch (err: any) {
-      if (err.message?.includes("not found") || err.message?.includes("No form")) {
+      if (
+        err.message?.includes("not found") ||
+        err.message?.includes("No form")
+      ) {
         throw new HttpException(err.message, HttpStatus.NOT_FOUND);
       }
       throw new HttpException(

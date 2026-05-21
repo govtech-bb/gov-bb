@@ -116,10 +116,12 @@ export {
   dateTimeFormatSchema,
   serviceContractSchema,
   serviceContractRecipeSchema,
+  contactDetailsSchema,
 } from "./service-contract.type";
 
 export type {
   ServiceContract,
   ServiceContractRecipe,
   DateTimeFormat,
+  ContactDetails,
 } from "./service-contract.type";

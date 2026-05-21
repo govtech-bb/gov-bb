@@ -10,12 +10,12 @@ import {
 const cfg = (
   value?: unknown,
   error?: string,
-  reference?: string,
+  referenceFieldId?: string,
   targetStepId?: string,
 ) => ({
   value,
   error,
-  reference,
+  referenceFieldId,
   targetStepId,
 });
 
@@ -80,6 +80,13 @@ describe("gtRunner", () => {
   it("uses custom error", () => {
     expect(gtRunner(5, cfg(5, "Must be greater"), {})).toBe("Must be greater");
   });
+
+  it("returns an error when referenced field value is a non-numeric string", () => {
+    const result = gtRunner(10, cfg(undefined, undefined, "minAge"), {
+      "step-1": { minAge: "not-a-number" },
+    });
+    expect(result).not.toBeNull();
+  });
 });
 
 describe("ltRunner", () => {
@@ -93,6 +100,30 @@ describe("ltRunner", () => {
 
   it("skips when reference is missing", () => {
     expect(ltRunner(100, cfg(undefined, undefined, "maxAge"), {})).toBeNull();
+  });
+
+  it("fails when value >= config.value with no referenceFieldId (MISSING path)", () => {
+    expect(ltRunner(10, cfg(5), {})).toBe("Must be less than 5");
+  });
+
+  it("passes when value < config.value with no referenceFieldId (MISSING path)", () => {
+    expect(ltRunner(3, cfg(5), {})).toBeNull();
+  });
+
+  it("uses referenced field via flat fallback", () => {
+    expect(
+      ltRunner(3, cfg(undefined, undefined, "maxAge"), {
+        "step-1": { maxAge: 5 },
+      }),
+    ).toBeNull();
+  });
+
+  it("fails when value >= resolved reference field", () => {
+    expect(
+      ltRunner(10, cfg(undefined, undefined, "maxAge"), {
+        "step-1": { maxAge: 5 },
+      }),
+    ).toBe("Must be less than maxAge");
   });
 });
 

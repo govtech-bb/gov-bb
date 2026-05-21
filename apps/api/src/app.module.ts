@@ -1,7 +1,8 @@
 import { Module } from "@nestjs/common";
+import { APP_GUARD } from "@nestjs/core";
 import { ConfigModule } from "@nestjs/config";
 import { ScheduleModule } from "@nestjs/schedule";
-import { ThrottlerModule } from "@nestjs/throttler";
+import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { EventEmitterModule } from "@nestjs/event-emitter";
 import { AppController } from "./app.controller";
 import { DatabaseModule } from "./database/database.module";
@@ -13,6 +14,12 @@ import { FormBuilderModule } from "./form-builder/form-builder.module";
 import { configs } from "./config";
 import { envValidationSchema } from "./config/env.validation";
 
+// Throttler buckets are per-process in-memory. When the API runs as multiple
+// Fargate tasks, each task owns its own counters, so the effective per-IP
+// ceiling is N× these limits. Acceptable as defense-in-depth alongside the
+// AWS WAF rate-based rule (see docs/runbooks/aws-security.md). Switch to a
+// shared store (Redis) if/when horizontal scaling makes that under-protection
+// material.
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -24,7 +31,11 @@ import { envValidationSchema } from "./config/env.validation";
         abortEarly: false,
       },
     }),
-    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 10 }]),
+    ThrottlerModule.forRoot([
+      { name: "short", ttl: 10_000, limit: 5 },
+      { name: "medium", ttl: 60_000, limit: 60 },
+      { name: "long", ttl: 3_600_000, limit: 1_000 },
+    ]),
     EventEmitterModule.forRoot(),
     TelemetryModule,
     ScheduleModule.forRoot(),
@@ -35,5 +46,6 @@ import { envValidationSchema } from "./config/env.validation";
     FormBuilderModule,
   ],
   controllers: [AppController],
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}

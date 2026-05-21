@@ -27,6 +27,38 @@ const past = "2000-01-01";
 const future = "2099-12-31";
 const todayStr = new Date().toISOString().split("T")[0]!;
 
+describe("parseDate — DateValue object format", () => {
+  it("parses a valid DateValue object", () => {
+    expect(pastRunner({ day: 1, month: 1, year: 2000 }, cfg(), {})).toBeNull();
+  });
+
+  it("returns error when DateValue has day=0", () => {
+    expect(pastRunner({ day: 0, month: 1, year: 2000 }, cfg(), {})).toBe(
+      "Date must be in the past",
+    );
+  });
+
+  it("returns error when DateValue has month=0", () => {
+    expect(pastRunner({ day: 1, month: 0, year: 2000 }, cfg(), {})).toBe(
+      "Date must be in the past",
+    );
+  });
+
+  it("returns error when DateValue has year=0", () => {
+    expect(pastRunner({ day: 1, month: 1, year: 0 }, cfg(), {})).toBe(
+      "Date must be in the past",
+    );
+  });
+
+  it("returns error for non-string non-object value", () => {
+    expect(pastRunner(12345, cfg(), {})).toBe("Date must be in the past");
+  });
+
+  it("returns error for null value", () => {
+    expect(pastRunner(null, cfg(), {})).toBe("Date must be in the past");
+  });
+});
+
 describe("pastRunner", () => {
   it("passes for a past date", () => {
     expect(pastRunner(past, cfg(), {})).toBeNull();
@@ -148,6 +180,15 @@ describe("afterRunner", () => {
       ),
     ).toBeNull();
   });
+
+  it("returns an error when referenced field resolves to a non-date string", () => {
+    const result = afterRunner(
+      "2020-06-01",
+      cfg(undefined, undefined, "startDate"),
+      { "step-1": { startDate: "not-a-date" } },
+    );
+    expect(result).not.toBeNull();
+  });
 });
 
 describe("beforeRunner", () => {
@@ -166,6 +207,22 @@ describe("beforeRunner", () => {
       beforeRunner("2020-06-01", cfg(undefined, undefined, "endDate"), {}),
     ).toBeNull();
   });
+
+  it("uses referenced field via flat fallback", () => {
+    expect(
+      beforeRunner("2020-01-01", cfg(undefined, undefined, "endDate"), {
+        "step-1": { endDate: "2020-06-01" },
+      }),
+    ).toBeNull();
+  });
+
+  it("fails when date is after resolved reference field", () => {
+    expect(
+      beforeRunner("2020-12-01", cfg(undefined, undefined, "endDate"), {
+        "step-1": { endDate: "2020-06-01" },
+      }),
+    ).toBe("Date must be before endDate");
+  });
 });
 
 describe("onOrAfterRunner", () => {
@@ -181,6 +238,28 @@ describe("onOrAfterRunner", () => {
     expect(onOrAfterRunner("2019-12-31", cfg("2020-01-01"), {})).toBe(
       "Date must be on or after 2020-01-01",
     );
+  });
+
+  it("skips when reference field is missing", () => {
+    expect(
+      onOrAfterRunner("2019-01-01", cfg(undefined, undefined, "startDate"), {}),
+    ).toBeNull();
+  });
+
+  it("uses referenced field via flat fallback", () => {
+    expect(
+      onOrAfterRunner("2020-06-01", cfg(undefined, undefined, "startDate"), {
+        "step-1": { startDate: "2020-01-01" },
+      }),
+    ).toBeNull();
+  });
+
+  it("fails when date is before resolved reference field", () => {
+    expect(
+      onOrAfterRunner("2019-12-31", cfg(undefined, undefined, "startDate"), {
+        "step-1": { startDate: "2020-01-01" },
+      }),
+    ).toBe("Date must be on or after startDate");
   });
 });
 

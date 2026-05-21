@@ -1,0 +1,77 @@
+export type BehaviourScope = "field" | "step";
+
+export type ParamKind =
+  | "fieldRef" // renders a FieldRefPicker
+  | "stepRef" // renders a StepRefPicker
+  | "operator" // renders an operator dropdown
+  | "value" // renders a value input
+  | "number" // renders a number input
+  | "stringArray"; // renders a comma-separated string input (for sharedFields.fieldIds)
+
+export interface BehaviourParamDescriptor {
+  name: string; // parameter key in the behaviour object
+  label: string; // display label
+  kind: ParamKind;
+  optional?: boolean;
+}
+
+export interface BehaviourTypeDescriptor {
+  type: string; // matches Behaviour["type"]
+  label: string; // display name
+  scopes: BehaviourScope[];
+  params: BehaviourParamDescriptor[];
+}
+
+export const BEHAVIOUR_TYPE_DESCRIPTORS: BehaviourTypeDescriptor[] = [
+  {
+    type: "fieldConditionalOn",
+    label: "Field Conditional On",
+    scopes: ["field"],
+    params: [
+      { name: "targetFieldId", label: "Target Field", kind: "fieldRef" },
+      {
+        name: "targetStepId",
+        label: "Target Step",
+        kind: "stepRef",
+        optional: true,
+      },
+      { name: "operator", label: "Operator", kind: "operator" },
+      { name: "value", label: "Value", kind: "value" },
+    ],
+  },
+  {
+    type: "stepConditionalOn",
+    label: "Step Conditional On",
+    scopes: ["step"],
+    params: [
+      { name: "targetFieldId", label: "Target Field", kind: "fieldRef" },
+      { name: "targetStepId", label: "Target Step", kind: "stepRef" },
+      { name: "operator", label: "Operator", kind: "operator" },
+      { name: "value", label: "Value", kind: "value" },
+    ],
+  },
+  {
+    type: "repeatable",
+    label: "Repeatable",
+    scopes: ["step"],
+    params: [
+      { name: "min", label: "Min", kind: "number" },
+      { name: "max", label: "Max", kind: "number" },
+    ],
+  },
+  {
+    type: "fieldArray",
+    label: "Field Array",
+    scopes: ["field"],
+    params: [
+      { name: "min", label: "Min", kind: "number" },
+      { name: "max", label: "Max", kind: "number" },
+    ],
+  },
+  {
+    type: "sharedFields",
+    label: "Shared Fields",
+    scopes: ["step"],
+    params: [{ name: "fieldIds", label: "Field IDs", kind: "stringArray" }],
+  },
+];

@@ -7,4 +7,10 @@ export const NationalIdNumber: TextPrimitive = {
     ui: {
         width: "short",
     },
-}
+    validations: {
+        pattern: {
+            value: "^\\d{6}-\\d{4}$",
+            error: "Enter a valid ID number (for example, 850101-0001)",
+        },
+    },
+};

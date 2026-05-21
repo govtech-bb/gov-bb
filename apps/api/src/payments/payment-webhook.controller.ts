@@ -12,6 +12,7 @@ import {
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { ApiTags } from "@nestjs/swagger";
+import { SkipThrottle } from "@nestjs/throttler";
 import type { Request } from "express";
 import { verifyEzpaySignature } from "../forms/submissions/processors/payment/ezpay/ezpay-signature";
 import {
@@ -19,8 +20,11 @@ import {
   EzpayCallbackBody,
 } from "./payment-webhook.service";
 
+// Auth for this endpoint is the HMAC signature, not IP-based limiting.
+// Throttling EzPay's retries would cause legitimate callbacks to be dropped.
 @ApiTags("Payments")
 @Controller("payments/ezpay")
+@SkipThrottle()
 export class PaymentWebhookController {
   private readonly logger = new Logger(PaymentWebhookController.name);
 

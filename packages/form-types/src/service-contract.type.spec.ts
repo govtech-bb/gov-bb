@@ -1,0 +1,196 @@
+import {
+  contactDetailsSchema,
+  dateTimeFormatSchema,
+  serviceContractRecipeSchema,
+  serviceContractSchema,
+} from "./service-contract.type";
+
+describe("contactDetailsSchema", () => {
+  const validFull = {
+    title: "Registration Department",
+    telephoneNumber: "(246) 535-8300",
+    email: "registrationdept@barbados.gov.bb",
+    address: {
+      line1: "Supreme Court Complex",
+      line2: "Whitepark Road",
+      city: "St. Michael",
+      country: "Barbados",
+    },
+  };
+
+  it("accepts a full valid contact details object", () => {
+    expect(contactDetailsSchema.safeParse(validFull).success).toBe(true);
+  });
+
+  it("accepts contact details without address", () => {
+    const { address: _a, ...noAddress } = validFull;
+    expect(contactDetailsSchema.safeParse(noAddress).success).toBe(true);
+  });
+
+  it("accepts contact details with address missing optional fields", () => {
+    const partial = {
+      ...validFull,
+      address: { line1: "Cheapside", city: "Bridgetown" },
+    };
+    expect(contactDetailsSchema.safeParse(partial).success).toBe(true);
+  });
+
+  it("rejects missing title", () => {
+    const { title: _t, ...noTitle } = validFull;
+    expect(contactDetailsSchema.safeParse(noTitle).success).toBe(false);
+  });
+
+  it("rejects missing telephoneNumber", () => {
+    const { telephoneNumber: _p, ...noPhone } = validFull;
+    expect(contactDetailsSchema.safeParse(noPhone).success).toBe(false);
+  });
+
+  it("rejects missing email", () => {
+    const { email: _e, ...noEmail } = validFull;
+    expect(contactDetailsSchema.safeParse(noEmail).success).toBe(false);
+  });
+
+  it("rejects invalid email format", () => {
+    expect(
+      contactDetailsSchema.safeParse({ ...validFull, email: "not-an-email" })
+        .success,
+    ).toBe(false);
+  });
+
+  it("rejects empty string title", () => {
+    expect(
+      contactDetailsSchema.safeParse({ ...validFull, title: "" }).success,
+    ).toBe(false);
+  });
+
+  it("rejects empty string telephoneNumber", () => {
+    expect(
+      contactDetailsSchema.safeParse({ ...validFull, telephoneNumber: "" })
+        .success,
+    ).toBe(false);
+  });
+});
+
+describe("dateTimeFormatSchema", () => {
+  it("accepts UTC datetime", () => {
+    expect(dateTimeFormatSchema.safeParse("2026-01-01T00:00:00Z").success).toBe(
+      true,
+    );
+  });
+
+  it("accepts datetime with timezone offset", () => {
+    expect(
+      dateTimeFormatSchema.safeParse("2026-01-01T00:00:00+05:30").success,
+    ).toBe(true);
+  });
+
+  it("accepts datetime with milliseconds and Z", () => {
+    expect(
+      dateTimeFormatSchema.safeParse("2026-01-01T00:00:00.000Z").success,
+    ).toBe(true);
+  });
+
+  it("rejects a date-only string", () => {
+    expect(dateTimeFormatSchema.safeParse("2026-01-01").success).toBe(false);
+  });
+
+  it("rejects a plain string", () => {
+    expect(dateTimeFormatSchema.safeParse("not-a-date").success).toBe(false);
+  });
+});
+
+describe("serviceContractSchema with contactDetails", () => {
+  const baseContract = {
+    formId: "test-form",
+    title: "Test Form",
+    version: "1.0.0",
+    createdAt: "2026-01-01T00:00:00Z",
+    updatedAt: "2026-01-01T00:00:00Z",
+    steps: [],
+  };
+
+  it("accepts a contract without contactDetails", () => {
+    expect(serviceContractSchema.safeParse(baseContract).success).toBe(true);
+  });
+
+  it("accepts a contract with valid contactDetails", () => {
+    const withContact = {
+      ...baseContract,
+      contactDetails: {
+        title: "Post Office",
+        telephoneNumber: "(246) 535-0200",
+        email: "customerservice@post.gov.bb",
+      },
+    };
+    expect(serviceContractSchema.safeParse(withContact).success).toBe(true);
+  });
+
+  it("rejects a contract with invalid contactDetails", () => {
+    const withBadContact = {
+      ...baseContract,
+      contactDetails: { title: "Post Office" }, // missing telephoneNumber and email
+    };
+    expect(serviceContractSchema.safeParse(withBadContact).success).toBe(false);
+  });
+});
+
+describe("serviceContractRecipeSchema", () => {
+  const baseRecipe = {
+    formId: "test-form",
+    title: "Test Form",
+    version: "1.0.0",
+    createdAt: "2026-01-01T00:00:00Z",
+    updatedAt: "2026-01-01T00:00:00Z",
+    steps: [],
+  };
+
+  it("accepts a recipe with no steps", () => {
+    expect(serviceContractRecipeSchema.safeParse(baseRecipe).success).toBe(
+      true,
+    );
+  });
+
+  it("accepts a recipe step with component ref elements", () => {
+    const recipe = {
+      ...baseRecipe,
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step One",
+          elements: [{ ref: "components/first-name" }],
+        },
+      ],
+    };
+    expect(serviceContractRecipeSchema.safeParse(recipe).success).toBe(true);
+  });
+
+  it("rejects a recipe step containing plain primitive elements", () => {
+    const recipe = {
+      ...baseRecipe,
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step One",
+          elements: [
+            { fieldId: "first-name", htmlType: "text", label: "Name" },
+          ],
+        },
+      ],
+    };
+    expect(serviceContractRecipeSchema.safeParse(recipe).success).toBe(false);
+  });
+
+  it("rejects missing formId", () => {
+    const { formId: _f, ...noFormId } = baseRecipe;
+    expect(serviceContractRecipeSchema.safeParse(noFormId).success).toBe(false);
+  });
+
+  it("rejects malformed createdAt", () => {
+    expect(
+      serviceContractRecipeSchema.safeParse({
+        ...baseRecipe,
+        createdAt: "2026-01-01",
+      }).success,
+    ).toBe(false);
+  });
+});

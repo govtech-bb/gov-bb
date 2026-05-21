@@ -33,6 +33,22 @@ describe("minLengthRunner", () => {
   it("uses custom error", () => {
     expect(minLengthRunner("hi", cfg(5, "Too short"), {})).toBe("Too short");
   });
+
+  it("coerces non-string value to string", () => {
+    expect(minLengthRunner(12345, cfg(3), {})).toBeNull();
+  });
+
+  it("coerces null to empty string", () => {
+    expect(minLengthRunner(null, cfg(1), {})).toBe(
+      "Must be at least 1 characters",
+    );
+  });
+
+  it("coerces undefined to empty string", () => {
+    expect(minLengthRunner(undefined, cfg(1), {})).toBe(
+      "Must be at least 1 characters",
+    );
+  });
 });
 
 describe("maxLengthRunner", () => {
@@ -165,6 +181,16 @@ describe("strictEqualityRunner", () => {
   it("uses custom error", () => {
     expect(strictEqualityRunner("a", cfg("b", "Does not match"), {})).toBe(
       "Does not match",
+    );
+  });
+
+  it("passes when resolved is MISSING, no referenceFieldId, and value matches config.value (non-string coercion)", () => {
+    expect(strictEqualityRunner(123, cfg(123), {})).toBeNull();
+  });
+
+  it("fails when resolved is MISSING, no referenceFieldId, and value does not match config.value (non-string coercion)", () => {
+    expect(strictEqualityRunner(123, cfg(456), {})).toBe(
+      "Values do not match",
     );
   });
 });

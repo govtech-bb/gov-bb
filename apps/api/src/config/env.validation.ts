@@ -1,8 +1,32 @@
 import * as Joi from "joi";
 
+const productionCorsOrigin = Joi.string()
+  .required()
+  .custom((value: string, helpers) => {
+    const origins = value.split(",").map((o: string) => o.trim());
+    for (const origin of origins) {
+      if (origin === "*" || /localhost|127\.0\.0\.1/i.test(origin)) {
+        return helpers.error("cors.unsafe", { value: origin });
+      }
+    }
+    return value;
+  })
+  .messages({
+    "cors.unsafe":
+      '"CORS_ORIGIN" must not contain {{#value}} when NODE_ENV=production',
+  });
+
 export const envValidationSchema = Joi.object({
   // App
+  NODE_ENV: Joi.string()
+    .valid("development", "production", "test")
+    .default("development"),
   API_PORT: Joi.number().default(3001),
+  CORS_ORIGIN: Joi.alternatives().conditional("NODE_ENV", {
+    is: "production",
+    then: productionCorsOrigin,
+    otherwise: Joi.string().default("http://localhost:3000"),
+  }),
 
   // Database
   DB_HOST: Joi.string().required(),
@@ -12,6 +36,7 @@ export const envValidationSchema = Joi.object({
   DB_NAME: Joi.string().required(),
   DB_SYNCHRONIZE: Joi.boolean().default(false),
   DB_LOGGING: Joi.boolean().default(false),
+  DB_SSL_CA: Joi.string().optional(),
 
   // OpenTelemetry (optional — telemetry is disabled if either is unset)
   OTEL_SERVICE_NAME: Joi.string().optional(),

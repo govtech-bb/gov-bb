@@ -8,6 +8,20 @@ const config: Config = {
   moduleNameMapper: {
     "^@govtech-bb/(.*)$": "<rootDir>/../../packages/$1/src/index.ts",
   },
+  collectCoverage: true,
+  collectCoverageFrom: ["**/*.ts", "!**/*.spec.ts", "!**/*.d.ts"],
+  coverageReporters: ["text-summary", "lcov", "html"],
+  coverageThreshold: {
+    global: {
+      branches: 98,
+      // functions exemption: this package exports Zod schema objects, not callable
+      // functions. 6.52% is the structural floor. Do not raise without adding
+      // runtime utility functions to the package intentionally.
+      functions: 5,
+      lines: 59,
+      statements: 58,
+    },
+  },
 };
 
 export default config;

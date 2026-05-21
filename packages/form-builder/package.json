@@ -1,0 +1,10 @@
+{
+  "name": "@govtech-bb/form-builder",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "dependencies": {
+    "@govtech-bb/form-types": "workspace:*"
+  }
+}

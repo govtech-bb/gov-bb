@@ -1,4 +1,4 @@
-import { Test } from "@nestjs/testing";
+import { Test, TestingModule } from "@nestjs/testing";
 import { UnprocessableEntityException } from "@nestjs/common";
 import { SubmissionPipelineService } from "./submission-pipeline.service";
 import { FormDefinitionsService } from "../form-definitions/form-definitions.service";
@@ -59,9 +59,10 @@ describe("SubmissionPipelineService", () => {
   let service: SubmissionPipelineService;
   let draftsService: jest.Mocked<FormDraftsService>;
   let definitionsService: jest.Mocked<FormDefinitionsService>;
+  let module: TestingModule;
 
   beforeEach(async () => {
-    const module = await Test.createTestingModule({
+    module = await Test.createTestingModule({
       providers: [
         SubmissionPipelineService,
         {
@@ -84,6 +85,10 @@ describe("SubmissionPipelineService", () => {
     ) as jest.Mocked<FormDefinitionsService>;
   });
 
+  afterEach(async () => {
+    if (module) await module.close();
+  });
+
   describe("pinVersion", () => {
     it("uses the draft's pinned version even when the client sends a different one", async () => {
       draftsService.findById.mockResolvedValue(
@@ -98,6 +103,23 @@ describe("SubmissionPipelineService", () => {
         version: "2.0.0",
         includeProcessors: true,
       });
+    });
+
+    it("no draftId → calls findByFormId directly, returns draft: null", async () => {
+      const contract = mockContract();
+      definitionsService.findByFormId.mockResolvedValue(contract);
+
+      const dto = { ...baseDto(), draftId: undefined };
+      const result = await service.run(dto);
+
+      expect(draftsService.findById).not.toHaveBeenCalled();
+      expect(definitionsService.findByFormId).toHaveBeenCalledWith({
+        formId: dto.formId,
+        version: dto.formVersion,
+        includeProcessors: true,
+      });
+      expect(result.draft).toBeNull();
+      expect(result.contract).toBe(contract);
     });
 
     it("throws NotFound when draft does not exist", async () => {

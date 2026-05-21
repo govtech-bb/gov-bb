@@ -13,5 +13,11 @@ export const Sex: RadioPrimitive = {
       label: "Female",
       value: "female"
     }
-  ]
-}
+  ],
+  validations: {
+    radio: {
+      value: true,
+      error: "Please select an option",
+    },
+  },
+};
