@@ -24,4 +24,4 @@ The form asks for:
 - the full name, date of birth, place of birth and place of baptism of the person named on the certificate
 - the full name(s) of the parent(s) of the person named on the certificate
 
-<a data-start-link href="/family-birth-relationships/get-birth-certificate/form">Start</a>
+<a data-start-link href="form:get-birth-certificate">Start</a>

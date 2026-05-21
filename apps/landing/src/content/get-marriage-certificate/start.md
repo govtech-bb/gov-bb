@@ -25,4 +25,4 @@ The form asks for:
 - the applicant’s name, address and National ID number
 - the full name, date of marriage, place of marriage and National ID number of the husband and the wife
 
-<a data-start-link href="/family-birth-relationships/get-marriage-certificate/form">Start</a>
+<a data-start-link href="form:get-marriage-certificate">Start</a>

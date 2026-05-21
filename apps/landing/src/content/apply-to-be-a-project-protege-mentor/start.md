@@ -11,7 +11,7 @@ You should complete your application in one go. At the moment, it is not possibl
 It should not take more than 30 minutes.
 
 
-<a data-start-link href="/work-employment/apply-to-be-a-project-protege-mentor/form">Start now</a>
+<a data-start-link href="form:apply-to-be-a-project-protege-mentor">Start now</a>
 
 ## Information you will need to apply to online
 

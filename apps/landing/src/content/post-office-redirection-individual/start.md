@@ -19,4 +19,4 @@ It shouldn’t take longer than 10 minutes.
 * start date of redirection
 * end date of the redirection
 
-<a data-start-link href="/travel-id-citizenship/post-office-redirection-individual/form">Start now</a>
+<a data-start-link href="form:post-office-redirection-individual">Start now</a>

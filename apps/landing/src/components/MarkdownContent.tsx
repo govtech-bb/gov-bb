@@ -3,7 +3,7 @@ import { useLocation } from '@tanstack/react-router'
 import { format } from 'date-fns'
 import type { ReactNode } from 'react'
 import ReactMarkdown from 'react-markdown'
-import type {Components} from 'react-markdown';
+import type { Components } from 'react-markdown';
 import rehypeRaw from 'rehype-raw'
 import remarkGfm from 'remark-gfm'
 import rehypeHideStartLinks from '../lib/rehype-hide-start-links'
@@ -11,19 +11,23 @@ import rehypeSectionise from '../lib/rehype-sectionise'
 import type { Frontmatter } from '../lib/frontmatter'
 import { MigrationBanner } from './MigrationBanner'
 import { deriveStartEventName } from '../lib/analytics'
+import { resolveFormHref } from '../content/form-ids'
+
+const FORM_HREF_PREFIX = 'form:'
 
 type StartLinkProps = {
   href: string
   children: ReactNode
+  eventName?: string
 } & Record<string, unknown>
 
-function StartLink({ href, children, ...rest }: StartLinkProps) {
+function StartLink({ href, children, eventName, ...rest }: StartLinkProps) {
   const { pathname } = useLocation()
   return (
     <LinkButton
       href={href}
       {...rest}
-      data-umami-event={deriveStartEventName(href)}
+      data-umami-event={eventName ?? deriveStartEventName(href)}
       data-umami-event-from={pathname}
     >
       {children}
@@ -96,18 +100,29 @@ export const markdownComponents: Components = {
   a: ({ node: _node, href, children, ...rest }) => {
     const safeHref = href ?? '#'
     const isStartLink = 'data-start-link' in rest
-    const isExternal = !(safeHref.startsWith('/') || safeHref.startsWith('#'))
+    const isFormScheme = safeHref.startsWith(FORM_HREF_PREFIX)
+    const formSlug = isFormScheme
+      ? safeHref.slice(FORM_HREF_PREFIX.length)
+      : null
+    const resolvedHref = formSlug ? resolveFormHref(formSlug) : safeHref
+    const isExternal = !(
+      resolvedHref.startsWith('/') || resolvedHref.startsWith('#')
+    )
 
     if (isStartLink) {
       return (
-        <StartLink href={safeHref} {...rest}>
+        <StartLink
+          href={resolvedHref}
+          eventName={formSlug ? `${formSlug}-start` : undefined}
+          {...rest}
+        >
           {children}
         </StartLink>
       )
     }
 
     return (
-      <Link external={isExternal} href={safeHref} {...rest}>
+      <Link external={isExternal} href={resolvedHref} {...rest}>
         {children}
       </Link>
     )
@@ -195,6 +210,20 @@ export const markdownComponents: Components = {
   },
 }
 
+/**
+ * ReactMarkdown sanitises hrefs and only allows http/https/mailto/tel by
+ * default. We use a custom `form:<slug>` scheme that the anchor handler
+ * resolves to the forms app URL via `resolveFormHref`. Without this
+ * transform the href reaches the component as undefined and the link
+ * silently falls back to the page URL.
+ */
+function urlTransform(url: string): string {
+  if (url.startsWith(FORM_HREF_PREFIX)) return url
+  // Delegate everything else to react-markdown's default behaviour by
+  // returning the URL unchanged — we trust authored content.
+  return url
+}
+
 export function MarkdownBody({
   body,
   hasResearchAccess = false,
@@ -205,6 +234,7 @@ export function MarkdownBody({
   return (
     <ReactMarkdown
       components={markdownComponents}
+      urlTransform={urlTransform}
       rehypePlugins={[
         rehypeRaw,
         [rehypeHideStartLinks, { hasResearchAccess }],

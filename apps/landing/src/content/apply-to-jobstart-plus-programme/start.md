@@ -11,7 +11,7 @@ You should complete your registration in one go. At the moment, it is not possib
 It should not take more than 20 minutes
 
 
-<a data-start-link href="/work-employment/apply-to-jobstart-plus-programme/form">Start now</a>
+<a data-start-link href="form:apply-to-jobstart-plus-programme">Start now</a>
 
 ## Information you will need to apply to online
 

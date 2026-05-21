@@ -23,4 +23,4 @@ You will also be asked to upload:
 - a [Police Certificate of Character](https://forms.gov.bb/CertificateOfCharacter)
 - 2 passport-sized photos of yourself
 
-<a data-start-link href="/business-trade/sell-goods-services-beach-park/form">Start now</a>
+<a data-start-link href="form:sell-goods-services-beach-park">Start now</a>

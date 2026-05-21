@@ -24,4 +24,4 @@ You will need to share:
 - start date of redirection
 - end date of the redirection
 
-<a data-start-link href="/travel-id-citizenship/post-office-redirection-deceased/form">Start</a>
+<a data-start-link href="form:post-office-redirection-deceased">Start</a>

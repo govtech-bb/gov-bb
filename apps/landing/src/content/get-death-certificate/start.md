@@ -28,4 +28,4 @@ The form asks for:
 - the deceased’s full name, date of death, place of death and National ID number
 - the cause of death
 
-<a data-start-link href="/family-birth-relationships/get-death-certificate/form">Start</a>
+<a data-start-link href="form:get-death-certificate">Start</a>

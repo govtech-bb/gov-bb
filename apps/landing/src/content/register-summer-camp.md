@@ -21,6 +21,8 @@ Parents and guardians can register for a summer camp on behalf of a child/ward o
 
 If you do not have access to the internet or a smart device, colleagues at any community centre can help you register.
 
+<a data-start-link href="form:register-summer-camp">Start now</a>
+
 You will be asked to choose a first, second and third choice camp in case your first choice is full, or, in case of unforeseen circumstances at a location.
 
 ---

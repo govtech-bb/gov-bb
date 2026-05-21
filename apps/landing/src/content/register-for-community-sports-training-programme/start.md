@@ -19,4 +19,4 @@ As well as your contact details and depending on what you’re registering for, 
 3. Your employment status to help with scheduling.
 4. The address and phone number for an emergency contact.
 
-<a data-start-link href="/work-employment/register-for-community-sports-training-programme/form">Start now</a>
+<a data-start-link href="form:register-for-community-sports-training-programme">Start now</a>

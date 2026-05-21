@@ -27,4 +27,4 @@ We will review your application.
 
 You must contact the department (246-536-0282) to schedule your in-person oral test.
 
-<a data-start-link href="/work-employment/apply-for-conductor-licence/form">Start now</a>
+<a data-start-link href="form:apply-for-conductor-licence">Start now</a>
