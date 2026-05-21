@@ -203,13 +203,18 @@ export const markdownComponents: Components = {
 }
 
 /**
- * Inner component for `<a data-start-link>` anchors in Markdown. Reads
- * the current page's `form_id` from `PageFormIdContext` (populated by
- * `MarkdownBody` from frontmatter). Renders a Start now button only
- * when that form ID exists in the build-time manifest. Silent miss in
- * production; warns in dev so authoring typos surface during review.
+ * Inner component for `<a data-start-link>` anchors in Markdown.
  *
- * See docs/decisions/0005 for the convention.
+ * Two routes:
+ *   1. Page frontmatter has `form_id` → look it up in the build-time manifest
+ *      and render `StartLink` (button → FORMS_BASE_URL/forms/{form_id}).
+ *   2. No `form_id`, but the markdown supplied an `href` → render a plain
+ *      `LinkButton` with that href. Lets index.md pages link to local
+ *      landing routes (built-in calculators etc.) while still getting the
+ *      button affordance.
+ *
+ * Silent miss in production when neither path resolves; warns in dev so
+ * authoring typos surface during review. See docs/decisions/0005.
  */
 function StartLinkFromContext({
   rest,
@@ -219,33 +224,41 @@ function StartLinkFromContext({
   children: ReactNode
 }) {
   const formId = useContext(PageFormIdContext)
+  const href = typeof rest.href === 'string' ? rest.href : undefined
 
-  if (!formId) {
-    if (import.meta.env.DEV) {
-      console.warn(
-        '[MarkdownContent] <a data-start-link> rendered on a page without ' +
-          '`form_id` in frontmatter — Start now button suppressed.',
-      )
+  if (formId) {
+    if (!AVAILABLE_FORMS.has(formId)) {
+      if (import.meta.env.DEV) {
+        console.warn(
+          `[MarkdownContent] form_id "${formId}" is not in the build-time ` +
+            'manifest (see src/content/available-forms.gen.ts) — Start now ' +
+            'button suppressed.',
+        )
+      }
+      return null
     }
-    return null
+    return (
+      <StartLink formId={formId} {...rest}>
+        {children}
+      </StartLink>
+    )
   }
 
-  if (!AVAILABLE_FORMS.has(formId)) {
-    if (import.meta.env.DEV) {
-      console.warn(
-        `[MarkdownContent] form_id "${formId}" is not in the build-time ` +
-          'manifest (see src/content/available-forms.gen.ts) — Start now ' +
-          'button suppressed.',
-      )
-    }
-    return null
+  if (href) {
+    return (
+      <LinkButton href={href} {...rest}>
+        {children}
+      </LinkButton>
+    )
   }
 
-  return (
-    <StartLink formId={formId} {...rest}>
-      {children}
-    </StartLink>
-  )
+  if (import.meta.env.DEV) {
+    console.warn(
+      '[MarkdownContent] <a data-start-link> rendered with neither ' +
+        '`form_id` in frontmatter nor an `href` attribute — button suppressed.',
+    )
+  }
+  return null
 }
 
 export function MarkdownBody({

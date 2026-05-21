@@ -5,6 +5,7 @@ publish_date: 2026-01-29
 stage: alpha
 section: "Travel, ID and citizenship"
 category: travel-id-citizenship
+form_id: post-office-redirection-individual
 ---
 
 You should use this service to tell the Post Office that you would like to change the address that your mail gets delivered to. You must complete one redirection notice per household.
