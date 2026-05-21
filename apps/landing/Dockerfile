@@ -36,8 +36,8 @@ WORKDIR /app
 RUN npm install -g pnpm@10.33.4
 
 # Bring across the installed deps + the entire landing app so `vite dev`
-# has everything it needs. compose can overlay bind-mounts on top of these
-# paths for hot reload (see docker-compose.dev.yml).
+# has everything it needs. docker-compose.yml bind-mounts the host's src/
+# and public/ on top of these paths for hot reload.
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/pnpm-workspace.yaml ./
