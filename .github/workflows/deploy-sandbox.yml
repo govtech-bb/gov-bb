@@ -165,10 +165,39 @@ jobs:
         run: |
           echo "## Sandbox Deployment Summary" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "**Image:** ${{ steps.build.outputs.image }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "**API Image:** ${{ steps.build.outputs.image }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Landing Image:** ${{ steps.landing-build.outputs.image }}" >> "$GITHUB_STEP_SUMMARY"
           echo "**Commit:** ${{ github.sha }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "**API URL:** https://app-sandbox.alpha.gov.bb" >> "$GITHUB_STEP_SUMMARY"
-          echo "**Amplify Job:** ${{ steps.amplify.outputs.job_id }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Check API logs: \`aws logs tail /ecs/modular-forms-api-sandbox --follow\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "Check migration logs: \`aws logs tail /ecs/modular-forms-api-sandbox --follow --filter-pattern migration\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "**API URL:** https://forms.api.sandbox.alpha.gov.bb" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Landing URL:** https://sandbox.alpha.gov.bb" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Forms URL:** https://forms.sandbox.alpha.gov.bb" >> "$GITHUB_STEP_SUMMARY"
+
+      # =====================================================================
+      # Landing App (apps/landing) — ECS container deployment
+      # =====================================================================
+
+      - name: Build and push landing image
+        id: landing-build
+        env:
+          REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          LANDING_URI="$REGISTRY/gov-bb-landing:$IMAGE_TAG"
+          LANDING_LATEST="$REGISTRY/gov-bb-landing:latest"
+
+          docker build --platform linux/amd64 -f apps/landing/Dockerfile -t "$LANDING_URI" -t "$LANDING_LATEST" .
+          docker push "$LANDING_URI"
+          docker push "$LANDING_LATEST"
+
+          echo "image=$LANDING_URI" >> "$GITHUB_OUTPUT"
+          echo "✅ Pushed landing image: $LANDING_URI"
+
+      - name: Deploy landing to ECS
+        run: |
+          # Update the service to force a new deployment with the latest image
+          aws ecs update-service \
+            --cluster $ECS_CLUSTER \
+            --service gov-bb-landing-sandbox \
+            --force-new-deployment \
+            --region $AWS_REGION
+          echo "✅ Landing ECS service updated"

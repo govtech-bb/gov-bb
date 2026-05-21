@@ -38,6 +38,11 @@ WORKDIR /app
 
 RUN npm install -g pnpm@10.33.4
 
+# Download AWS RDS CA bundle for TLS certificate verification.
+# This allows `rejectUnauthorized: true` to work with RDS in any region.
+RUN wget -O /app/rds-ca-bundle.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
+ENV NODE_EXTRA_CA_CERTS=/app/rds-ca-bundle.pem
+
 COPY --from=builder /app/dist/apps/api/ ./dist/
 COPY --from=builder /app/dist/packages/ ./packages/
 COPY --from=builder /app/packages/form-types/src/ ./packages/form-types/src/
