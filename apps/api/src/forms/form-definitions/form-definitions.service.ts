@@ -1,17 +1,12 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { FormDefinitionRepository } from "./form-definition.repository";
 import { RegistryService } from "../../registry/registry.service";
 import { RecipeFileLoader } from "../recipe-file-loader/recipe-file-loader.service";
 import { AppError } from "../../common/errors";
-import type {
-  ServiceContract,
-  ServiceContractRecipe,
-} from "@govtech-bb/form-types";
+import type { ServiceContract } from "@govtech-bb/form-types";
 
 @Injectable()
 export class FormDefinitionsService {
-  private readonly logger = new Logger(FormDefinitionsService.name);
-
   constructor(
     private readonly formDefRepo: FormDefinitionRepository,
     private readonly registryService: RegistryService,
@@ -43,7 +38,9 @@ export class FormDefinitionsService {
     version?: string;
     includeProcessors?: boolean;
   }): Promise<ServiceContract> {
-    const recipe = await this.loadRecipe(formId, version);
+    const recipe = version
+      ? this.recipeLoader.findVersion(formId, version)
+      : this.recipeLoader.findLatest(formId);
     if (!recipe) {
       throw AppError.notFound("Form definition", { formId, version });
     }
@@ -53,28 +50,5 @@ export class FormDefinitionsService {
 
     const { processors: _processors, ...stripped } = contract;
     return stripped as ServiceContract;
-  }
-
-  private async loadRecipe(
-    formId: string,
-    version?: string,
-  ): Promise<ServiceContractRecipe | null> {
-    const fromFile = version
-      ? this.recipeLoader.findVersion(formId, version)
-      : this.recipeLoader.findLatest(formId);
-    if (fromFile) return fromFile;
-
-    const entity = await this.formDefRepo.findOne({
-      where: { formId, ...(version && { version }) },
-      order: { createdAt: "DESC" },
-    });
-    if (!entity) return null;
-
-    this.logger.warn(
-      `Recipe served from DB fallback for formId="${formId}"${
-        version ? `, version="${version}"` : ""
-      } — migration to recipes/ tree is incomplete`,
-    );
-    return entity.schema as ServiceContractRecipe;
   }
 }
