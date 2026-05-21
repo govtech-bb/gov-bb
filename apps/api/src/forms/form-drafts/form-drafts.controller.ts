@@ -10,9 +10,15 @@ import {
   Post,
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { Throttle } from "@nestjs/throttler";
 import { FormDraftsService } from "./form-drafts.service";
 import { CreateFormDraftDto, UpdateFormDraftDto } from "./dto";
-import { AbandonDraftDocs, CreateDraftDocs, GetDraftDocs, UpdateDraftDocs } from "./form-drafts.docs";
+import {
+  AbandonDraftDocs,
+  CreateDraftDocs,
+  GetDraftDocs,
+  UpdateDraftDocs,
+} from "./form-drafts.docs";
 import { ApiResponse } from "../../common/response";
 import type { ApiResponseShape } from "../../common/response";
 import type { FormDraftEntity } from "../../database/entities/form-draft.entity";
@@ -20,6 +26,10 @@ import type { FormDraftEntity } from "../../database/entities/form-draft.entity"
 @ApiTags("Form Drafts")
 @ApiBearerAuth()
 @Controller("form-drafts")
+@Throttle({
+  short: { limit: 5, ttl: 10_000 },
+  medium: { limit: 30, ttl: 60_000 },
+})
 export class FormDraftsController {
   constructor(private readonly formDraftsService: FormDraftsService) {}
 

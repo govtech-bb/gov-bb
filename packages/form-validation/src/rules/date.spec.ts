@@ -148,6 +148,15 @@ describe("afterRunner", () => {
       ),
     ).toBeNull();
   });
+
+  it("returns an error when referenced field resolves to a non-date string", () => {
+    const result = afterRunner(
+      "2020-06-01",
+      cfg(undefined, undefined, "startDate"),
+      { "step-1": { startDate: "not-a-date" } },
+    );
+    expect(result).not.toBeNull();
+  });
 });
 
 describe("beforeRunner", () => {

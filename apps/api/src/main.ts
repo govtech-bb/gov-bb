@@ -3,6 +3,7 @@ import { NestFactory } from "@nestjs/core";
 import { ValidationPipe } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
+import helmet from "helmet";
 import { AppModule } from "./app.module";
 import { GlobalExceptionFilter } from "./common/exception.filter";
 import { ResponseInterceptor } from "./common/response.interceptor";
@@ -14,11 +15,20 @@ async function bootstrap() {
   const config = app.get(ConfigService);
   const metricsService = app.get(MetricsService);
   const port = config.get<number>("app.port") ?? 3001;
+
+  // Increase body size limit for form-builder PDF uploads (base64-encoded pages)
+  app.use(require("express").json({ limit: "50mb" }));
+  app.use(require("express").urlencoded({ limit: "50mb", extended: true }));
   const corsOrigin =
     config.get<string>("app.corsOrigin") ?? "http://localhost:3000";
   const corsOrigins = corsOrigin.includes(",")
     ? corsOrigin.split(",").map((o) => o.trim())
     : corsOrigin;
+
+  // contentSecurityPolicy is disabled because the only HTML this API serves is
+  // Swagger UI at /api-docs, which needs inline scripts/styles. CSP for the
+  // web app lives in apps/web (see Amplify customHeaders).
+  app.use(helmet({ contentSecurityPolicy: false }));
 
   app.enableCors({
     origin: corsOrigins,

@@ -2,20 +2,22 @@
   "name": "@govtech-bb/modular-forms-monorepo",
   "version": "0.0.0",
   "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "build": "nx run-many -t build",
     "lint": "nx run-many -t lint",
     "test:all": "nx run-many -t test",
-    "dev:web": "nx dev web",
+    "dev:forms": "nx dev forms",
     "dev:api": "nx dev api",
-    "dev:landing": "nx dev landing",
-    "start:web": "nx start web",
+    "start:forms": "nx start forms",
     "start:api": "nx start api",
-    "start:landing": "nx start landing",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "migration:create": "TS_NODE_PROJECT=apps/api/tsconfig.json typeorm-ts-node-commonjs migration:create",
-    "migration:create:help": "node -e \"console.log('Usage: pnpm migration:create <path/to/migrations>/<migration-name>'); console.log('Example: pnpm migration:create apps/api/src/database/migrations/AddFormSubmissionIndexes'); console.log('This creates an empty migration file; use migration:generate for diff-based migrations.');\"",
+    "migration:create:help": "node -e \"console.log('Usage: npm run migration:create -- <path/to/migrations>/<migration-name>'); console.log('Example: npm run migration:create -- apps/api/src/database/migrations/AddFormSubmissionIndexes'); console.log('This creates an empty migration file; use migration:generate for diff-based migrations.');\"",
     "migration:generate": "TS_NODE_PROJECT=apps/api/tsconfig.json typeorm-ts-node-commonjs migration:generate -d apps/api/typeorm.config.ts",
     "migration:run": "TS_NODE_PROJECT=apps/api/tsconfig.json typeorm-ts-node-commonjs migration:run -d apps/api/typeorm.config.ts",
     "migration:revert": "TS_NODE_PROJECT=apps/api/tsconfig.json typeorm-ts-node-commonjs migration:revert -d apps/api/typeorm.config.ts",
@@ -26,6 +28,7 @@
     "@eslint/css": "^1.1.0",
     "@eslint/js": "^10.0.1",
     "@eslint/json": "^1.2.0",
+    "@nx/eslint": "^22.7.2",
     "@nx/jest": "^22.6.5",
     "@nx/js": "^22.6.5",
     "@testing-library/jest-dom": "^6.9.1",
@@ -50,7 +53,7 @@
     "typescript": "^5.7.0",
     "typescript-eslint": "^8.58.2"
   },
-  "packageManager": "pnpm@10.33.4",
+  "packageManager": "npm@10.9.0",
   "dependencies": {
     "@aws-sdk/client-sesv2": "^3.1041.0",
     "@govtech-bb/design": "^1.0.0-alpha.15",
@@ -63,6 +66,6 @@
     "luxon": "^3.7.2"
   },
   "lint-staged": {
-    "*.{json,ts}": "pnpm exec prettier --write"
+    "*.{json,ts}": "npx prettier --write"
   }
 }

@@ -1,0 +1,368 @@
+import {
+  ClientServiceContract,
+  ClientPrimitive,
+  FieldValidation,
+  FormValidation,
+  FieldValidationProperties,
+  ValidationResults,
+  ValidationArgs,
+} from "@forms/types";
+import z from "zod";
+import {
+  isDateComplete,
+  dateValueToDate,
+  checkDatePast,
+  checkDatePastOrToday,
+  checkDateFuture,
+  checkDateFutureOrToday,
+  checkDateAfter,
+  checkDateBefore,
+  checkDateOnOrAfter,
+  checkDateOnOrBefore,
+  checkMinYear,
+  checkMaxYear,
+  checkSelectionLength,
+  checkRequired,
+  checkLength,
+  checkPattern,
+  checkEmail,
+  checkMinMax,
+  checkComparisons,
+  checkContains,
+  checkFileTypes,
+  checkFileMaxSize,
+  checkMaxFiles,
+  checkMinFiles,
+} from "./validation-methods";
+import { AnyFieldApi } from "@tanstack/react-form";
+import { ValidationRule } from "@govtech-bb/form-types";
+import { validate } from "@govtech-bb/form-validation";
+import type {
+  DateValue,
+  DateValueInput,
+  FieldValue,
+  Primitive,
+} from "@govtech-bb/form-types";
+
+export const buildValidation = (
+  contract: ClientServiceContract,
+): FormValidation => {
+  const shape: Record<string, z.ZodType<unknown>> = {};
+  const fieldValidationProperties: Record<string, FieldValidationProperties> =
+    {};
+  const defaults: Record<string, FieldValue> = {};
+
+  for (const step of contract.steps) {
+    for (const field of step.fields) {
+      const { fieldSchema, properties } = buildFieldValidation(field);
+      shape[field.id] = fieldSchema;
+      fieldValidationProperties[field.id] = properties;
+      if (field.defaultValue) {
+        defaults[field.id] = field.defaultValue;
+      }
+    }
+  }
+
+  return {
+    schema: z.object(shape),
+    properties: fieldValidationProperties,
+    defaults,
+  };
+};
+
+export const buildFieldValidation = (
+  field: ClientPrimitive,
+): FieldValidation => {
+  // The show-hide toggle stores a boolean (open/closed state) and
+  // never has its own validation rules.  Return a pass-through schema and
+  // empty handlers so the validation pipeline ignores it entirely.
+  if (field.htmlType === "show-hide") {
+    return {
+      fieldSchema: z.boolean().optional(),
+      properties: {
+        onBlur() {},
+        onChange() {},
+      },
+    };
+  }
+
+  const primitive = clientPrimitiveToPrimitive(field);
+
+  const fieldSchema = z.any().superRefine((value, ctx) => {
+    const result = validate({
+      primitives: [primitive],
+      stepValues: { [field.name]: value },
+    });
+
+    for (const msg of result.errors[field.name] ?? []) {
+      ctx.addIssue({ code: "custom", message: msg });
+    }
+  });
+
+  const properties = buildFieldValidationProperties(field);
+
+  return {
+    fieldSchema,
+    properties,
+  };
+};
+
+const clientPrimitiveToPrimitive = (field: ClientPrimitive): Primitive => {
+  return {
+    fieldId: field.name,
+    label: field.label,
+    htmlType: field.htmlType,
+    validations: field.validations,
+    ...(field.options && { options: field.options }),
+  } as Primitive;
+};
+
+// This allows us to recalculate the methods after restoring from cache.
+export const buildFieldValidationProperties = (
+  field: ClientPrimitive,
+): FieldValidationProperties => {
+  if (!field.validations) {
+    return {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      onBlur(_input) {},
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      onChange(_input) {},
+    };
+  }
+  const validations = field.validations;
+  const behaviours = field.behaviours;
+
+  const listenTo =
+    behaviours?.flatMap((b) =>
+      "targetFieldId" in b ? [b.targetFieldId] : [],
+    ) ?? [];
+
+  return {
+    onBlur({ value, fieldApi }) {
+      if (field.htmlType === "date") {
+        const dateValueInput = value as DateValueInput | undefined;
+        if (!dateValueInput) return;
+        if (!isDateComplete(dateValueInput)) return;
+
+        const dateValue: DateValue = value as DateValue;
+        const date: Date | null = dateValueToDate(dateValue);
+        if (!date) return;
+
+        const year = date.getFullYear();
+        const month = date.getMonth() + 1;
+        const day = date.getDate();
+
+        // Used if the user enters a date like 10/13/2008,
+        // which when converted to a date object, will be 10/1/2009
+        // Aim is to have the field reflect that change.
+        if (
+          year != dateValue.year ||
+          month != dateValue.month ||
+          day != dateValue.day
+        )
+          fieldApi.handleChange({ day, month, year });
+        return undefined;
+      }
+    },
+    onChange({ value, fieldApi }) {
+      const results: ValidationResults = {
+        hasError: false,
+        errors: [],
+      };
+
+      const requiredState = checkRequired({
+        fieldId: field.id,
+        fieldName: field.name,
+        value,
+        results,
+        validations,
+      });
+
+      if (requiredState === "unknownState") return undefined; // Or something
+
+      // If the field is required, but has no value, then skip subsequent error checks and show error.
+      if (requiredState === "requiredAndEmpty" || results.hasError)
+        return results.errors;
+
+      // If field is not required, and is empty, then skip subsequent error checks and show no error
+      if (requiredState === "notRequiredAndEmpty") return undefined;
+
+      // If requiredState === notEmpty, then we can continue validation
+
+      if (field.htmlType === "date") {
+        // If it passes the required check, then it has all 3 parts
+        runDateValidations(
+          field.id,
+          field.name,
+          value as DateValue,
+          validations,
+          results,
+        );
+        return results.hasError ? results.errors : undefined;
+      }
+
+      if (field.htmlType === "checkbox") {
+        if (typeof value !== "boolean" && !Array.isArray(value))
+          return undefined;
+        runCheckboxValidations(
+          field.id,
+          field.name,
+          value as boolean | string[],
+          validations,
+          results,
+        );
+        return results.hasError ? results.errors : undefined;
+      }
+
+      if (typeof value === "string") {
+        runStringValidations(
+          field.id,
+          field.name,
+          value as string,
+          validations,
+          results,
+          fieldApi,
+        );
+      }
+
+      // Handling field arrays
+      if (Array.isArray(value)) {
+        const elements = value;
+
+        for (const element of elements) {
+          if (typeof element === "string") {
+            if (element.length === 0) continue;
+            runStringValidations(
+              field.id,
+              field.name,
+              element,
+              validations,
+              results,
+              fieldApi,
+            );
+          }
+        }
+      }
+
+      // Handling files
+      if (field.htmlType === "file") {
+        runFileValidations(
+          field.id,
+          field.name,
+          value as FileList,
+          validations,
+          results,
+        );
+      }
+
+      return results.hasError ? results.errors : undefined;
+    },
+    onChangeListenTo: listenTo,
+  };
+};
+
+const runDateValidations = (
+  fieldId: string,
+  fieldName: string,
+  value: DateValue,
+  validations: ValidationRule,
+  results: ValidationResults,
+) => {
+  const dateValue: DateValue = value as DateValue;
+  const date: Date | null = dateValueToDate(dateValue);
+  if (!date) {
+    results.hasError = true;
+    results.errors.push(`${fieldId} is an invalid date`);
+    return;
+  }
+
+  const argsDate: ValidationArgs<Date> = {
+    value: date,
+    fieldId,
+    fieldName,
+    validations,
+    results,
+  };
+
+  checkDatePast(argsDate);
+  checkDatePastOrToday(argsDate);
+  checkDateFuture(argsDate);
+  checkDateFutureOrToday(argsDate);
+  checkDateAfter(argsDate);
+  checkDateBefore(argsDate);
+  checkDateOnOrAfter(argsDate);
+  checkDateOnOrBefore(argsDate);
+
+  const argsDateValue: ValidationArgs<DateValue> = {
+    value: dateValue,
+    fieldId,
+    fieldName,
+    validations,
+    results,
+  };
+
+  checkMinYear(argsDateValue);
+  checkMaxYear(argsDateValue);
+};
+
+const runCheckboxValidations = (
+  fieldId: string,
+  fieldName: string,
+  value: string[] | boolean,
+  validations: ValidationRule,
+  results: ValidationResults,
+) => {
+  if (Array.isArray(value)) {
+    checkSelectionLength({
+      fieldId,
+      value,
+      validations,
+      results,
+      fieldName,
+    });
+  }
+};
+
+const runStringValidations = (
+  fieldId: string,
+  fieldName: string,
+  value: string,
+  validations: ValidationRule,
+  results: ValidationResults,
+  fieldApi: AnyFieldApi,
+) => {
+  const args: ValidationArgs<string> = {
+    fieldId,
+    fieldName,
+    value,
+    validations,
+    results,
+  };
+
+  checkLength(args);
+  checkPattern(args);
+  checkEmail(args);
+  checkMinMax(args);
+  checkComparisons(args, fieldApi);
+  checkContains(args);
+};
+
+const runFileValidations = (
+  fieldId: string,
+  fieldName: string,
+  value: FileList,
+  validations: ValidationRule,
+  results: ValidationResults,
+) => {
+  const args: ValidationArgs<FileList> = {
+    fieldId,
+    fieldName,
+    value,
+    validations,
+    results,
+  };
+  checkFileTypes(args);
+  checkFileMaxSize(args);
+  checkMaxFiles(args);
+  checkMinFiles(args);
+};
