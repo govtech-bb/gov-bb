@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { getRecipe } from "../../server/forms";
+import { getRecipe } from "../../../server/forms";
 import { deserializeRecipe } from "@govtech-bb/form-builder";
 import type { RecipeDraft, RegistryCatalog } from "@govtech-bb/form-builder";
 import type { ServiceContractRecipe } from "@govtech-bb/form-types";
-import type { FormDefinitionSummary } from "../../types/index";
-import styles from "../../styles/builder.module.css";
+import type { FormDefinitionSummary } from "../../../types/index";
+import styles from "../../../styles/builder.module.css";
 
 interface FormPickerProps {
   forms: FormDefinitionSummary[];

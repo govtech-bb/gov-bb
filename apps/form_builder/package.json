@@ -10,6 +10,8 @@
     "test": "jest --no-coverage"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@aws-sdk/client-bedrock-runtime": "^3.0.0",
     "@govtech-bb/database": "*",
     "@govtech-bb/form-builder": "*",
     "@govtech-bb/form-types": "*",
