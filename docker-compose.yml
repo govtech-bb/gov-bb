@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Local-dev stack for the gov-bb monorepo. One command brings up postgres,
 # api, landing, and web; the api waits for postgres to be healthy before
 # starting, runs migrations on boot, and optionally seeds an example
@@ -30,10 +31,35 @@ services:
           "CMD-SHELL",
           "pg_isready -U ${DB_USERNAME:-postgres} -d ${DB_NAME:-modular_forms}",
         ]
+=======
+name: gov-bb-chat
+
+# Minimal local infra for the chat RAG POC.
+#   docker compose up postgres -d
+#
+# Postgres uses the pgvector/pgvector image so the `vector` extension is
+# available. Init SQL creates the `chat` DB and enables the extension.
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-govbb}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-govbb}
+      POSTGRES_DB: postgres
+    ports: ["5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./scripts/postgres-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-govbb}"]
+>>>>>>> 945f80f (feat(chat): RAG pipeline v2 — drizzle, two-table schema, Bedrock Titan v2)
       interval: 5s
       timeout: 5s
       retries: 10
 
+<<<<<<< HEAD
   api:
     build:
       context: .
@@ -118,3 +144,7 @@ services:
 
 volumes:
   postgres-data:
+=======
+volumes:
+  pgdata:
+>>>>>>> 945f80f (feat(chat): RAG pipeline v2 — drizzle, two-table schema, Bedrock Titan v2)

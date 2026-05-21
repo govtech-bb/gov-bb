@@ -3,7 +3,7 @@ kind: ministry
 slug: ministry-of-industry-innovation-science-and-technology
 name: 'Ministry of Industry, Innovation, Science and Technology'
 keywords:
-  - MIIST
+  - MIST
   - Industry
   - Innovation
   - Science
