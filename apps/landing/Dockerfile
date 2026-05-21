@@ -1,55 +1,39 @@
 # syntax=docker/dockerfile:1.7
-# TanStack Start landing site. The upstream `start` script
-# (`node --import dist/server/server.js`) doesn't bind a port — the SSR bundle
-# is a fetch-handler, not a Node HTTP server. Production hosting is Amplify,
-# not this image, so the container runs the Vite dev server.
-#
-# The build step is preserved so `docker compose build` validates that the app
-# still builds cleanly with the current dependency tree.
+# TanStack Start landing site. Runs the Vite dev server inside the container
+# for local-stack parity. Production hosting is Amplify, not this image — so
+# there's no production-build validation here (that lives in CI).
 
-FROM node:20-alpine AS builder
+FROM node:20-alpine
 
-WORKDIR /app
+# Corepack must run as root — it writes to /usr/local/bin.
+RUN corepack enable && corepack prepare pnpm@10.33.4 --activate
 
-RUN npm install -g pnpm@10.33.4
-
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc nx.json tsconfig.base.json ./
-COPY apps/api/package.json apps/api/
-COPY apps/landing/package.json apps/landing/
-COPY apps/forms/package.json apps/forms/
-COPY packages/expressions/package.json packages/expressions/
-COPY packages/form-conditions/package.json packages/form-conditions/
-COPY packages/form-types/package.json packages/form-types/
-COPY packages/form-validation/package.json packages/form-validation/
-
-RUN pnpm install --frozen-lockfile --ignore-scripts
-
-COPY apps/landing/ apps/landing/
-
-RUN pnpm exec nx build landing
-
-# ---- runner -------------------------------------------------------------
-FROM node:20-alpine AS runner
+# Create the app user up front so every COPY can use --chown=app:app.
+# Explicit UID/GID so we can match them in the cache-mount uid=/gid= options
+# below — without that match, the app user can't write to the cache mount.
+# Closes #15 (CIS Docker Benchmark — no container should run as root).
+RUN addgroup -S -g 1001 app && adduser -S -u 1001 -G app app
 
 WORKDIR /app
-
-RUN npm install -g pnpm@10.33.4
-
-# Bring across the installed deps + the entire landing app so `vite dev`
-# has everything it needs. docker-compose.yml bind-mounts the host's src/
-# and public/ on top of these paths for hot reload.
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./
-COPY --from=builder /app/pnpm-workspace.yaml ./
-COPY --from=builder /app/.npmrc ./
-COPY --from=builder /app/nx.json ./
-COPY --from=builder /app/tsconfig.base.json ./
-COPY --from=builder /app/apps/landing/ ./apps/landing/
-COPY --from=builder /app/apps/landing/dist ./apps/landing/dist
-
-# Drop root. Closes #15 (CIS Docker Benchmark — no container should run as root).
-RUN addgroup -S app && adduser -S app -G app && chown -R app:app /app
+RUN chown app:app /app
 USER app
+
+COPY --chown=app:app package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc nx.json tsconfig.base.json ./
+COPY --chown=app:app apps/api/package.json apps/api/
+COPY --chown=app:app apps/landing/package.json apps/landing/
+COPY --chown=app:app apps/forms/package.json apps/forms/
+COPY --chown=app:app packages/expressions/package.json packages/expressions/
+COPY --chown=app:app packages/form-conditions/package.json packages/form-conditions/
+COPY --chown=app:app packages/form-types/package.json packages/form-types/
+COPY --chown=app:app packages/form-validation/package.json packages/form-validation/
+
+# BuildKit cache mount keeps the pnpm content-addressable store across builds.
+# Shared `id` across all four app Dockerfiles so they hit the same store.
+# uid/gid match the app user so it can write to the mount.
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,uid=1001,gid=1001 \
+    pnpm install --store-dir=/pnpm/store --frozen-lockfile --ignore-scripts
+
+COPY --chown=app:app apps/landing/ apps/landing/
 
 ENV NODE_ENV=development
 EXPOSE 3000
