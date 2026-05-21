@@ -36,7 +36,11 @@ async function main(): Promise<void> {
       process.env.NODE_ENV === "production"
         ? { rejectUnauthorized: false }
         : false,
-  });
+    // createDataSource takes Omit<DataSourceOptions, ...>, which collapses the
+    // per-driver discriminated union. Mirrors the workaround in
+    // apps/form_builder/app/server/db.ts.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as any);
 
   await ds.initialize();
   try {
@@ -48,7 +52,15 @@ async function main(): Promise<void> {
     await fs.mkdir(outDir, { recursive: true });
 
     let written = 0;
+    let skipped = 0;
     for (const row of rows) {
+      if (!row.formId || !row.version) {
+        console.warn(
+          `Skipping row id=${row.id} — empty formId/version (formId="${row.formId}", version="${row.version}")`,
+        );
+        skipped++;
+        continue;
+      }
       const formDir = path.join(outDir, row.formId);
       await fs.mkdir(formDir, { recursive: true });
       const file = path.join(formDir, `${row.version}.json`);
@@ -57,8 +69,11 @@ async function main(): Promise<void> {
       written++;
     }
 
+    const distinct = new Set(
+      rows.filter((r) => r.formId && r.version).map((r) => r.formId),
+    ).size;
     console.log(
-      `Wrote ${written} recipe file(s) under ${outDir} (${new Set(rows.map((r) => r.formId)).size} distinct formIds)`,
+      `Wrote ${written} recipe file(s) under ${outDir} (${distinct} distinct formIds${skipped ? `, ${skipped} skipped` : ""})`,
     );
   } finally {
     await ds.destroy();
