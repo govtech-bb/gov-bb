@@ -60,6 +60,36 @@ describe("fileTypesRunner", () => {
       ),
     ).toBe("Allowed file types: .pdf, .jpg");
   });
+
+  it("fails for a file with no extension and no matching mime type", () => {
+    expect(
+      fileTypesRunner([file("README", 100)], cfg([".pdf", ".jpg"]), {}),
+    ).toBe("Allowed file types: .pdf, .jpg");
+  });
+
+  it("fails for a file with no extension even when mime type is undefined", () => {
+    expect(
+      fileTypesRunner(
+        [file("Makefile", 50, undefined)],
+        cfg([".txt", ".md"]),
+        {},
+      ),
+    ).toBe("Allowed file types: .txt, .md");
+  });
+
+  it("passes for a file with no extension when mime type matches allowed list", () => {
+    expect(
+      fileTypesRunner(
+        [file("README", 100, ".pdf")],
+        cfg([".pdf"]),
+        {},
+      ),
+    ).toBeNull();
+  });
+
+  it("handles non-array value gracefully (returns null for empty file list)", () => {
+    expect(fileTypesRunner("not-an-array", cfg([".pdf"]), {})).toBeNull();
+  });
 });
 
 describe("itemMaxSizeRunner", () => {
