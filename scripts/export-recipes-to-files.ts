@@ -6,15 +6,20 @@
  * be run multiple times during the migration window without churn.
  *
  * Run from the repo root:
- *   pnpm exec ts-node scripts/export-recipes-to-files.ts
+ *   pnpm run export:recipes
  *
  * Connection comes from the standard DB_* env vars (matches the API and
- * form_builder). Output directory is RECIPES_DIR or <repoRoot>/recipes.
+ * form_builder), loaded from the repo-root .env. Output directory is
+ * RECIPES_DIR or <repoRoot>/recipes.
  */
 
 import "reflect-metadata";
+import * as dotenv from "dotenv";
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
+
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
+
 import { FormDefinitionEntity, createDataSource } from "@govtech-bb/database";
 import { canonicalizeRecipe } from "@govtech-bb/form-types";
 
