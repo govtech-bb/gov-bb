@@ -3,6 +3,7 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { FormBuilderController } from "./form-builder.controller";
 import { FormBuilderService } from "./form-builder.service";
 import { AiService } from "./ai.service";
+import { AdminTokenGuard } from "./admin-token.guard";
 import { RegistryModule } from "../registry/registry.module";
 import { CustomComponent } from "../registry/entities/custom-component.entity";
 import { FormDefinitionEntity } from "../database/entities/form-definition.entity";
@@ -13,6 +14,6 @@ import { FormDefinitionEntity } from "../database/entities/form-definition.entit
     RegistryModule,
   ],
   controllers: [FormBuilderController],
-  providers: [FormBuilderService, AiService],
+  providers: [FormBuilderService, AiService, AdminTokenGuard],
 })
 export class FormBuilderModule {}

@@ -8,10 +8,11 @@ import {
   HttpStatus,
   UseInterceptors,
   UploadedFile,
+  UseGuards,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiTags } from "@nestjs/swagger";
-import { SkipThrottle } from "@nestjs/throttler";
+import { Throttle } from "@nestjs/throttler";
 import { FormBuilderService } from "./form-builder.service";
 import {
   CreateSessionDto,
@@ -22,9 +23,10 @@ import {
 } from "./dto/chat-message.dto";
 import { AiService } from "./ai.service";
 import { isPdfBuffer, pdfFileFilter } from "./pdf-validation";
+import { AdminTokenGuard } from "./admin-token.guard";
 
 @ApiTags("Form Builder")
-@SkipThrottle()
+@UseGuards(AdminTokenGuard)
 @Controller("form-builder")
 export class FormBuilderController {
   constructor(
@@ -57,6 +59,10 @@ export class FormBuilderController {
    * Send a message to an existing session (text + optional PDF upload via multipart).
    */
   @Post("sessions/:sessionId/messages")
+  @Throttle({
+    medium: { ttl: 60_000, limit: 10 },
+    long: { ttl: 3_600_000, limit: 100 },
+  })
   @UseInterceptors(
     FileInterceptor("pdf", {
       limits: { fileSize: 50 * 1024 * 1024 },
