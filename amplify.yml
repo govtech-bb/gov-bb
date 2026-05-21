@@ -12,7 +12,7 @@ applications:
           commands:
             - pnpm exec nx run landing:build
       artifacts:
-        baseDirectory: apps/landing/dist
+        baseDirectory: apps/landing/.amplify-hosting
         files:
           - "**/*"
       cache:

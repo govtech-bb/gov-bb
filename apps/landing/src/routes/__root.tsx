@@ -1,10 +1,15 @@
-import { createRootRouteWithContext, Outlet } from '@tanstack/react-router'
+import {
+  HeadContent,
+  Outlet,
+  Scripts,
+  createRootRouteWithContext,
+} from '@tanstack/react-router'
 import { Footer, textVariants } from '@govtech-bb/react'
 import Header from '../components/Header'
 import { ErrorPage } from '../components/ErrorPage'
 import { trackEvent } from '../lib/analytics'
 
-import '../styles.css'
+import appCss from '../styles.css?url'
 
 import type { QueryClient } from '@tanstack/react-query'
 
@@ -27,10 +32,33 @@ interface MyRouterContext {
 }
 
 export const Route = createRootRouteWithContext<MyRouterContext>()({
+  head: () => ({
+    meta: [
+      { charSet: 'utf-8' },
+      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+      { title: 'Government Services | Government of Barbados' },
+    ],
+    links: [{ rel: 'stylesheet', href: appCss }],
+  }),
   notFoundComponent: NotFoundPage,
   errorComponent: ServerErrorPage,
   component: RootLayout,
+  shellComponent: RootDocument,
 })
+
+function RootDocument({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        {children}
+        <Scripts />
+      </body>
+    </html>
+  )
+}
 
 function NotFoundPage() {
   return (

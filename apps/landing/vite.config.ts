@@ -1,21 +1,22 @@
 import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import { tanstackRouter } from '@tanstack/router-plugin/vite'
+import { devtools } from '@tanstack/devtools-vite'
+import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+import viteReact from '@vitejs/plugin-react'
+import { nitro } from 'nitro/vite'
 import tailwindcss from '@tailwindcss/vite'
-import { nodePolyfills } from 'vite-plugin-node-polyfills'
 
 export default defineConfig({
   resolve: { tsconfigPaths: true },
   plugins: [
     tailwindcss(),
-    nodePolyfills({
-      include: ['buffer'],
-      globals: { Buffer: true },
+    devtools(),
+    nitro({
+      config: {
+        preset: 'aws_amplify',
+        awsAmplify: { runtime: 'nodejs24.x' },
+      },
     }),
-    tanstackRouter({
-      target: 'react',
-      autoCodeSplitting: true,
-    }),
-    react(),
+    tanstackStart(),
+    viteReact(),
   ],
 })
