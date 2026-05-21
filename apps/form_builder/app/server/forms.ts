@@ -1,8 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { FormDefinitionEntity } from "@govtech-bb/database";
+import { validateFormContract } from "@govtech-bb/form-builder";
 import type { ServiceContractRecipe } from "@govtech-bb/form-types";
 import { getDataSource } from "./db";
+import { requirePublisher, requireSession } from "./auth-middleware.server";
+import { openPublishPr } from "./github-publish.server";
 import { bumpMinor } from "../lib/version";
 import type { FormDefinitionSummary } from "../types/index";
 
@@ -15,6 +18,7 @@ type FormDefinitionRow = {
 
 export const listForms = createServerFn({ method: "GET" }).handler(
   async (): Promise<FormDefinitionSummary[]> => {
+    await requireSession();
     const ds = await getDataSource();
     const rows = await ds.query<
       {
@@ -42,6 +46,7 @@ export const listForms = createServerFn({ method: "GET" }).handler(
 export const getRecipe = createServerFn({ method: "GET", strict: false })
   .inputValidator(z.object({ formId: z.string() }))
   .handler(async ({ data }): Promise<ServiceContractRecipe> => {
+    await requireSession();
     const ds = await getDataSource();
     const rows = await ds.query<FormDefinitionRow[]>(
       `SELECT id, version, schema, published_at
@@ -64,6 +69,7 @@ export const submitRecipe = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }): Promise<void> => {
+    await requireSession();
     const recipe = data.recipe as ServiceContractRecipe;
     const ds = await getDataSource();
     const repo = ds.getRepository(FormDefinitionEntity);
@@ -94,6 +100,7 @@ export const updateRecipe = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }): Promise<void> => {
+    await requireSession();
     const recipe = data.recipe as ServiceContractRecipe;
     const ds = await getDataSource();
 
@@ -109,9 +116,6 @@ export const updateRecipe = createServerFn({ method: "POST" })
       throw new Error(`No recipe found for formId: ${data.formId}`);
     }
     const row = rows[0];
-    if (row.published_at !== null) {
-      throw new Error("Cannot update a published recipe");
-    }
     if (recipe.version !== row.version) {
       throw new Error(
         `Version mismatch: stored version is ${row.version}, recipe version is ${recipe.version}`,
@@ -124,12 +128,50 @@ export const updateRecipe = createServerFn({ method: "POST" })
     ]);
   });
 
+export const publishRecipe = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      recipe: z.unknown(),
+      prDescription: z.string().optional(),
+    }),
+  )
+  .handler(
+    async ({
+      data,
+    }): Promise<{ prUrl: string; prNumber: number; branchName: string }> => {
+      const session = await requirePublisher();
+      const recipe = data.recipe as ServiceContractRecipe;
+
+      const validation = validateFormContract(recipe);
+      if (!validation.valid) {
+        throw new Error(
+          `Recipe failed validation: ${validation.issues
+            .map((i) => i.message)
+            .join("; ")}`,
+        );
+      }
+
+      const description =
+        data.prDescription?.trim() ||
+        `Publishes ${recipe.formId} v${recipe.version} via Form Builder`;
+
+      return openPublishPr({
+        formId: recipe.formId,
+        version: recipe.version,
+        recipe,
+        prDescription: description,
+        userToken: session.accessToken,
+      });
+    },
+  );
+
 export const nextVersion = createServerFn({ method: "GET" })
   .inputValidator(z.object({ formId: z.string() }))
   .handler(
     async ({
       data,
     }): Promise<{ currentVersion: string | null; nextVersion: string }> => {
+      await requireSession();
       const ds = await getDataSource();
 
       const rows = await ds.query<FormDefinitionRow[]>(
