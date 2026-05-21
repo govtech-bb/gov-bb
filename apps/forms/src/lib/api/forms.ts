@@ -19,7 +19,7 @@ import {
 } from "@forms/types";
 import { valueIsEmpty } from "../form-builder/validation-methods";
 
-const API_URL = process.env.VITE_API_URL ?? "http://localhost:3001";
+const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
 
 /**
  * Thrown when a contract fetch fails. Carries the HTTP status code so callers

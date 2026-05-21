@@ -226,11 +226,7 @@ export default function FormRenderer({
         });
       });
       scrollToTop();
-      if (
-        !process.env.SKIP_CONTINUE_VALIDATION ||
-        process.env.SKIP_CONTINUE_VALIDATION === "false"
-      )
-        return;
+      if (!import.meta.env.DEV) return;
     }
 
     // Handle navigation to repeatable step.
