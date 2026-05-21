@@ -36,6 +36,7 @@ export const envValidationSchema = Joi.object({
   DB_NAME: Joi.string().required(),
   DB_SYNCHRONIZE: Joi.boolean().default(false),
   DB_LOGGING: Joi.boolean().default(false),
+  DB_SSL_CA: Joi.string().optional(),
 
   // OpenTelemetry (optional — telemetry is disabled if either is unset)
   OTEL_SERVICE_NAME: Joi.string().optional(),
