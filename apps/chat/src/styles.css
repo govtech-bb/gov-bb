@@ -4,6 +4,9 @@
 @import "@fontsource/figtree/700.css";
 @import "tailwindcss";
 @import "@govtech-bb/design";
+
+/* Scan the design system's compiled output for Tailwind class names */
+@source "../../../node_modules/@govtech-bb/react/dist/**/*.{js,cjs}";
 @plugin "@tailwindcss/typography";
 
 @theme {
@@ -49,4 +52,21 @@ body {
   background: var(--color-white-00);
   color: var(--color-black-00);
   font-family: var(--font-sans);
+}
+
+.container {
+  width: min(1080px, calc(100% - 2rem));
+  margin-inline: auto;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
