@@ -110,7 +110,11 @@ export const markdownComponents: Components = {
     const isExternal = !(safeHref.startsWith('/') || safeHref.startsWith('#'))
 
     if (isStartLink) {
-      return <StartLinkFromContext rest={rest}>{children}</StartLinkFromContext>
+      return (
+        <StartLinkFromContext href={href} rest={rest}>
+          {children}
+        </StartLinkFromContext>
+      )
     }
 
     return (
@@ -217,14 +221,15 @@ export const markdownComponents: Components = {
  * authoring typos surface during review. See docs/decisions/0005.
  */
 function StartLinkFromContext({
+  href,
   rest,
   children,
 }: {
+  href: string | undefined
   rest: Record<string, unknown>
   children: ReactNode
 }) {
   const formId = useContext(PageFormIdContext)
-  const href = typeof rest.href === 'string' ? rest.href : undefined
 
   if (formId) {
     if (!AVAILABLE_FORMS.has(formId)) {

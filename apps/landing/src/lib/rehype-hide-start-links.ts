@@ -50,9 +50,7 @@ function rehypeHideStartLinks(options: RehypeHideStartLinksOptions = {}) {
           if (node.type === 'element' && node.children) {
             return {
               ...node,
-              children: filterChildren(
-                node.children,
-              ) as Element['children'],
+              children: filterChildren(node.children) as Element['children'],
             }
           }
           return node
@@ -61,11 +59,7 @@ function rehypeHideStartLinks(options: RehypeHideStartLinksOptions = {}) {
     tree.children = filterChildren(tree.children)
 
     if (removedLinksCount > 0) {
-      updateDescriptionText(
-        tree.children,
-        hasResearchAccess,
-        removedLinksCount,
-      )
+      updateDescriptionText(tree.children, hasResearchAccess, removedLinksCount)
     }
   }
 }
@@ -88,6 +82,10 @@ function shouldHideStartLink(
   hasResearchAccess: boolean,
 ): boolean {
   if (element.tagName !== 'a') return false
+  // `data-start-link` is an explicit author marker for CTAs that MarkdownContent
+  // resolves via PageFormIdContext (or as a LinkButton fallback). Never strip
+  // these — even if the href happens to end in /start.
+  if (element.properties?.dataStartLink !== undefined) return false
   const href = element.properties?.href
   const isExternalForm = element.properties?.dataExternalForm !== undefined
   if (typeof href !== 'string') return false
