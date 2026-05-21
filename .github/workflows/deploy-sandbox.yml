@@ -123,7 +123,7 @@ jobs:
       # tofu tracks gets deregistered, making tofu think the resource is gone).
       # AWS allows thousands of revisions per family, so this is safe to skip.
 
-      - name: Monitor Amplify build
+      - name: Monitor Amplify build (forms)
         id: amplify
         env:
           AMPLIFY_APP_ID: d1yjf5g5ckxcxg
@@ -137,7 +137,7 @@ jobs:
             --query jobSummary.jobId \
             --output text)
           echo "job_id=$JOB_ID" >> "$GITHUB_OUTPUT"
-          echo "Amplify job started: $JOB_ID"
+          echo "Amplify forms job started: $JOB_ID"
 
           for i in $(seq 1 30); do
             STATUS=$(aws amplify get-job \
@@ -147,18 +147,51 @@ jobs:
               --region "$AWS_REGION" \
               --query job.summary.status \
               --output text)
-            echo "[$i/30] Amplify status: $STATUS"
+            echo "[$i/30] Amplify forms status: $STATUS"
             if [ "$STATUS" = "SUCCEED" ]; then
-              echo "✅ Amplify build succeeded"
-              exit 0
+              echo "✅ Amplify forms build succeeded"
+              break
             elif [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "CANCELLED" ]; then
-              echo "❌ Amplify build $STATUS"
+              echo "❌ Amplify forms build $STATUS"
               exit 1
             fi
             sleep 30
           done
-          echo "❌ Amplify build timed out after 15 minutes"
-          exit 1
+
+      - name: Monitor Amplify build (landing)
+        id: amplify-landing
+        env:
+          AMPLIFY_APP_ID: d11raxlkr37ywp
+          AMPLIFY_BRANCH: sandbox
+        run: |
+          JOB_ID=$(aws amplify start-job \
+            --app-id "$AMPLIFY_APP_ID" \
+            --branch-name "$AMPLIFY_BRANCH" \
+            --job-type RELEASE \
+            --region "$AWS_REGION" \
+            --query jobSummary.jobId \
+            --output text)
+          echo "job_id=$JOB_ID" >> "$GITHUB_OUTPUT"
+          echo "Amplify landing job started: $JOB_ID"
+
+          for i in $(seq 1 30); do
+            STATUS=$(aws amplify get-job \
+              --app-id "$AMPLIFY_APP_ID" \
+              --branch-name "$AMPLIFY_BRANCH" \
+              --job-id "$JOB_ID" \
+              --region "$AWS_REGION" \
+              --query job.summary.status \
+              --output text)
+            echo "[$i/30] Amplify landing status: $STATUS"
+            if [ "$STATUS" = "SUCCEED" ]; then
+              echo "✅ Amplify landing build succeeded"
+              break
+            elif [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "CANCELLED" ]; then
+              echo "❌ Amplify landing build $STATUS"
+              exit 1
+            fi
+            sleep 30
+          done
 
       - name: Summary
         if: always()
@@ -166,38 +199,7 @@ jobs:
           echo "## Sandbox Deployment Summary" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "**API Image:** ${{ steps.build.outputs.image }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "**Landing Image:** ${{ steps.landing-build.outputs.image }}" >> "$GITHUB_STEP_SUMMARY"
           echo "**Commit:** ${{ github.sha }}" >> "$GITHUB_STEP_SUMMARY"
           echo "**API URL:** https://forms.api.sandbox.alpha.gov.bb" >> "$GITHUB_STEP_SUMMARY"
           echo "**Landing URL:** https://sandbox.alpha.gov.bb" >> "$GITHUB_STEP_SUMMARY"
           echo "**Forms URL:** https://forms.sandbox.alpha.gov.bb" >> "$GITHUB_STEP_SUMMARY"
-
-      # =====================================================================
-      # Landing App (apps/landing) — ECS container deployment
-      # =====================================================================
-
-      - name: Build and push landing image
-        id: landing-build
-        env:
-          REGISTRY: ${{ steps.ecr-login.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
-        run: |
-          LANDING_URI="$REGISTRY/gov-bb-landing:$IMAGE_TAG"
-          LANDING_LATEST="$REGISTRY/gov-bb-landing:latest"
-
-          docker build --platform linux/amd64 -f apps/landing/Dockerfile -t "$LANDING_URI" -t "$LANDING_LATEST" .
-          docker push "$LANDING_URI"
-          docker push "$LANDING_LATEST"
-
-          echo "image=$LANDING_URI" >> "$GITHUB_OUTPUT"
-          echo "✅ Pushed landing image: $LANDING_URI"
-
-      - name: Deploy landing to ECS
-        run: |
-          # Update the service to force a new deployment with the latest image
-          aws ecs update-service \
-            --cluster $ECS_CLUSTER \
-            --service gov-bb-landing-sandbox \
-            --force-new-deployment \
-            --region $AWS_REGION
-          echo "✅ Landing ECS service updated"
