@@ -16,22 +16,24 @@ const NAV_ITEMS = [
 export default function Header() {
   return (
     <div>
-      <OfficialBanner />
-      <div className="bg-blue-10">
+      <div className="hidden md:block">
+        <OfficialBanner />
+      </div>
+      <div className="hidden bg-blue-10 md:block">
         <div className="container">
           <StageBanner stage="alpha" />
         </div>
       </div>
       <header className="relative bg-yellow-100">
         <div className="container">
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-3 py-4 lg:py-6">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-3 py-2.5 md:py-4 lg:py-6">
             <a
               href={`${LANDING_ORIGIN}/`}
               aria-label="Go to the alpha.gov.bb homepage"
             >
-              <Logo aria-hidden="true" className="h-7 w-auto lg:h-9" />
+              <Logo aria-hidden="true" className="h-6 w-auto md:h-7 lg:h-9" />
             </a>
-            <nav aria-label="Primary" className="ml-auto">
+            <nav aria-label="Primary" className="ml-auto hidden md:block">
               <ul className="flex flex-wrap items-center gap-x-5 gap-y-2 lg:gap-x-7">
                 {NAV_ITEMS.map((item) => (
                   <li key={item.href}>
