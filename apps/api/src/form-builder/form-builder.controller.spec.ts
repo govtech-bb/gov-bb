@@ -64,16 +64,17 @@ describe("FormBuilderController.sendMessage", () => {
   it("throws 503 when AI service is not configured (regression)", async () => {
     ai.isAvailable.mockReturnValueOnce(false);
     const ctl = makeController();
-    await expect(
-      ctl.sendMessage("s1", "hello", undefined),
-    ).rejects.toBeInstanceOf(HttpException);
+
     try {
       await ctl.sendMessage("s1", "hello", undefined);
+      fail("Expected sendMessage to throw HttpException");
     } catch (err) {
+      expect(err).toBeInstanceOf(HttpException);
       expect((err as HttpException).getStatus()).toBe(
         HttpStatus.SERVICE_UNAVAILABLE,
       );
     }
+
     expect(service.sendMessage).not.toHaveBeenCalled();
   });
 });
