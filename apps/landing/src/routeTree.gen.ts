@@ -15,11 +15,14 @@ import { Route as ServiceUnavailableRouteImport } from './routes/service-unavail
 import { Route as SearchResultsRouteImport } from './routes/search-results'
 import { Route as JavascriptRequiredRouteImport } from './routes/javascript-required'
 import { Route as FeedbackRouteImport } from './routes/feedback'
+import { Route as BankHolidayCalendarRouteImport } from './routes/bank-holiday-calendar'
 import { Route as SplatRouteImport } from './routes/$'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as GovernmentOrganisationsRouteImport } from './routes/government.organisations'
 import { Route as GovernmentOrganisationsIndexRouteImport } from './routes/government.organisations.index'
+import { Route as PensionsAndGratuitiesCalculateYourPensionFormRouteImport } from './routes/pensions-and-gratuities.calculate-your-pension.form'
 import { Route as GovernmentOrganisationsSlugRouteImport } from './routes/government.organisations.$slug'
+import { Route as BusinessTradeCropOverPermitsFormRouteImport } from './routes/business-trade.crop-over-permits.form'
 
 const TellUsRoute = TellUsRouteImport.update({
   id: '/tell-us',
@@ -51,6 +54,11 @@ const FeedbackRoute = FeedbackRouteImport.update({
   path: '/feedback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BankHolidayCalendarRoute = BankHolidayCalendarRouteImport.update({
+  id: '/bank-holiday-calendar',
+  path: '/bank-holiday-calendar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SplatRoute = SplatRouteImport.update({
   id: '/$',
   path: '/$',
@@ -72,16 +80,29 @@ const GovernmentOrganisationsIndexRoute =
     path: '/',
     getParentRoute: () => GovernmentOrganisationsRoute,
   } as any)
+const PensionsAndGratuitiesCalculateYourPensionFormRoute =
+  PensionsAndGratuitiesCalculateYourPensionFormRouteImport.update({
+    id: '/pensions-and-gratuities/calculate-your-pension/form',
+    path: '/pensions-and-gratuities/calculate-your-pension/form',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const GovernmentOrganisationsSlugRoute =
   GovernmentOrganisationsSlugRouteImport.update({
     id: '/$slug',
     path: '/$slug',
     getParentRoute: () => GovernmentOrganisationsRoute,
   } as any)
+const BusinessTradeCropOverPermitsFormRoute =
+  BusinessTradeCropOverPermitsFormRouteImport.update({
+    id: '/business-trade/crop-over-permits/form',
+    path: '/business-trade/crop-over-permits/form',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/bank-holiday-calendar': typeof BankHolidayCalendarRoute
   '/feedback': typeof FeedbackRoute
   '/javascript-required': typeof JavascriptRequiredRoute
   '/search-results': typeof SearchResultsRoute
@@ -89,25 +110,31 @@ export interface FileRoutesByFullPath {
   '/services': typeof ServicesRoute
   '/tell-us': typeof TellUsRoute
   '/government/organisations': typeof GovernmentOrganisationsRouteWithChildren
+  '/business-trade/crop-over-permits/form': typeof BusinessTradeCropOverPermitsFormRoute
   '/government/organisations/$slug': typeof GovernmentOrganisationsSlugRoute
+  '/pensions-and-gratuities/calculate-your-pension/form': typeof PensionsAndGratuitiesCalculateYourPensionFormRoute
   '/government/organisations/': typeof GovernmentOrganisationsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/bank-holiday-calendar': typeof BankHolidayCalendarRoute
   '/feedback': typeof FeedbackRoute
   '/javascript-required': typeof JavascriptRequiredRoute
   '/search-results': typeof SearchResultsRoute
   '/service-unavailable': typeof ServiceUnavailableRoute
   '/services': typeof ServicesRoute
   '/tell-us': typeof TellUsRoute
+  '/business-trade/crop-over-permits/form': typeof BusinessTradeCropOverPermitsFormRoute
   '/government/organisations/$slug': typeof GovernmentOrganisationsSlugRoute
+  '/pensions-and-gratuities/calculate-your-pension/form': typeof PensionsAndGratuitiesCalculateYourPensionFormRoute
   '/government/organisations': typeof GovernmentOrganisationsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/bank-holiday-calendar': typeof BankHolidayCalendarRoute
   '/feedback': typeof FeedbackRoute
   '/javascript-required': typeof JavascriptRequiredRoute
   '/search-results': typeof SearchResultsRoute
@@ -115,7 +142,9 @@ export interface FileRoutesById {
   '/services': typeof ServicesRoute
   '/tell-us': typeof TellUsRoute
   '/government/organisations': typeof GovernmentOrganisationsRouteWithChildren
+  '/business-trade/crop-over-permits/form': typeof BusinessTradeCropOverPermitsFormRoute
   '/government/organisations/$slug': typeof GovernmentOrganisationsSlugRoute
+  '/pensions-and-gratuities/calculate-your-pension/form': typeof PensionsAndGratuitiesCalculateYourPensionFormRoute
   '/government/organisations/': typeof GovernmentOrganisationsIndexRoute
 }
 export interface FileRouteTypes {
@@ -123,6 +152,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/$'
+    | '/bank-holiday-calendar'
     | '/feedback'
     | '/javascript-required'
     | '/search-results'
@@ -130,24 +160,30 @@ export interface FileRouteTypes {
     | '/services'
     | '/tell-us'
     | '/government/organisations'
+    | '/business-trade/crop-over-permits/form'
     | '/government/organisations/$slug'
+    | '/pensions-and-gratuities/calculate-your-pension/form'
     | '/government/organisations/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/$'
+    | '/bank-holiday-calendar'
     | '/feedback'
     | '/javascript-required'
     | '/search-results'
     | '/service-unavailable'
     | '/services'
     | '/tell-us'
+    | '/business-trade/crop-over-permits/form'
     | '/government/organisations/$slug'
+    | '/pensions-and-gratuities/calculate-your-pension/form'
     | '/government/organisations'
   id:
     | '__root__'
     | '/'
     | '/$'
+    | '/bank-holiday-calendar'
     | '/feedback'
     | '/javascript-required'
     | '/search-results'
@@ -155,13 +191,16 @@ export interface FileRouteTypes {
     | '/services'
     | '/tell-us'
     | '/government/organisations'
+    | '/business-trade/crop-over-permits/form'
     | '/government/organisations/$slug'
+    | '/pensions-and-gratuities/calculate-your-pension/form'
     | '/government/organisations/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SplatRoute: typeof SplatRoute
+  BankHolidayCalendarRoute: typeof BankHolidayCalendarRoute
   FeedbackRoute: typeof FeedbackRoute
   JavascriptRequiredRoute: typeof JavascriptRequiredRoute
   SearchResultsRoute: typeof SearchResultsRoute
@@ -169,6 +208,8 @@ export interface RootRouteChildren {
   ServicesRoute: typeof ServicesRoute
   TellUsRoute: typeof TellUsRoute
   GovernmentOrganisationsRoute: typeof GovernmentOrganisationsRouteWithChildren
+  BusinessTradeCropOverPermitsFormRoute: typeof BusinessTradeCropOverPermitsFormRoute
+  PensionsAndGratuitiesCalculateYourPensionFormRoute: typeof PensionsAndGratuitiesCalculateYourPensionFormRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -215,6 +256,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FeedbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/bank-holiday-calendar': {
+      id: '/bank-holiday-calendar'
+      path: '/bank-holiday-calendar'
+      fullPath: '/bank-holiday-calendar'
+      preLoaderRoute: typeof BankHolidayCalendarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/$': {
       id: '/$'
       path: '/$'
@@ -243,12 +291,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GovernmentOrganisationsIndexRouteImport
       parentRoute: typeof GovernmentOrganisationsRoute
     }
+    '/pensions-and-gratuities/calculate-your-pension/form': {
+      id: '/pensions-and-gratuities/calculate-your-pension/form'
+      path: '/pensions-and-gratuities/calculate-your-pension/form'
+      fullPath: '/pensions-and-gratuities/calculate-your-pension/form'
+      preLoaderRoute: typeof PensionsAndGratuitiesCalculateYourPensionFormRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/government/organisations/$slug': {
       id: '/government/organisations/$slug'
       path: '/$slug'
       fullPath: '/government/organisations/$slug'
       preLoaderRoute: typeof GovernmentOrganisationsSlugRouteImport
       parentRoute: typeof GovernmentOrganisationsRoute
+    }
+    '/business-trade/crop-over-permits/form': {
+      id: '/business-trade/crop-over-permits/form'
+      path: '/business-trade/crop-over-permits/form'
+      fullPath: '/business-trade/crop-over-permits/form'
+      preLoaderRoute: typeof BusinessTradeCropOverPermitsFormRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -272,6 +334,7 @@ const GovernmentOrganisationsRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SplatRoute: SplatRoute,
+  BankHolidayCalendarRoute: BankHolidayCalendarRoute,
   FeedbackRoute: FeedbackRoute,
   JavascriptRequiredRoute: JavascriptRequiredRoute,
   SearchResultsRoute: SearchResultsRoute,
@@ -279,6 +342,9 @@ const rootRouteChildren: RootRouteChildren = {
   ServicesRoute: ServicesRoute,
   TellUsRoute: TellUsRoute,
   GovernmentOrganisationsRoute: GovernmentOrganisationsRouteWithChildren,
+  BusinessTradeCropOverPermitsFormRoute: BusinessTradeCropOverPermitsFormRoute,
+  PensionsAndGratuitiesCalculateYourPensionFormRoute:
+    PensionsAndGratuitiesCalculateYourPensionFormRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

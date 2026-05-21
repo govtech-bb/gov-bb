@@ -62,8 +62,9 @@ describe("FormBuilderController.sendMessage", () => {
   });
 
   it("throws 503 when AI service is not configured (regression)", async () => {
-    ai.isAvailable.mockReturnValue(false);
+    ai.isAvailable.mockReturnValueOnce(false);
     const ctl = makeController();
+
     try {
       await ctl.sendMessage("s1", "hello", undefined);
       fail("Expected sendMessage to throw HttpException");
@@ -73,6 +74,7 @@ describe("FormBuilderController.sendMessage", () => {
         HttpStatus.SERVICE_UNAVAILABLE,
       );
     }
+
     expect(service.sendMessage).not.toHaveBeenCalled();
   });
 });

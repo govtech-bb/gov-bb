@@ -102,28 +102,39 @@ services:
       # convention in the repo README.
       - "4200:3000"
 
-  # ----------------------------------------------------------------------
-  # Placeholder for the chat app — to be wired in by the chat dev once the
-  # apps/chat Dockerfile lands. Fill in the build context, port, and env
-  # vars at that point.
-  #
-  # chat:
-  #   build:
-  #     context: .
-  #     dockerfile: apps/chat/Dockerfile
-  #   restart: unless-stopped
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #   environment:
-  #     # TODO: confirm env-var contract with the chat dev
-  #     DATABASE_URL: postgres://${DB_USERNAME:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/chat
-  #     BEDROCK_MODEL_ID: ${BEDROCK_MODEL_ID:-}
-  #     AWS_REGION: ${AWS_REGION:-us-east-1}
-  #     FORMS_API_URL: http://api:3001
-  #   ports:
-  #     - "3002:3000"
-  # ----------------------------------------------------------------------
+  chat:
+    build:
+      context: .
+      dockerfile: apps/chat/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Postgres `chat` database is created by scripts/postgres-init.sql with
+      # the pgvector extension already enabled.
+      DATABASE_URL: postgres://${DB_USERNAME:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/chat
+      # The chat server calls its own /api/retrieve over HTTP — keep that loop
+      # inside the container.
+      RAG_URL: http://localhost:3000/api
+      # Anthropic (required for the LLM turn).
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-claude-haiku-4-5}
+      # AWS Bedrock (required for Titan embeddings, used by retrieve + ingest).
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
+      AWS_REGION: ${AWS_REGION:-ca-central-1}
+      BEDROCK_REGION: ${BEDROCK_REGION:-}
+      BEDROCK_EMBED_MODEL: ${BEDROCK_EMBED_MODEL:-amazon.titan-embed-text-v2:0}
+    ports:
+      - "${CHAT_PORT:-3002}:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 40s
 
 volumes:
   postgres-data:
