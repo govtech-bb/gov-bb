@@ -45,6 +45,7 @@ export type FileUploadProps = {
   value?: File[] | null;
   errorMessage?: string;
   validationRules?: any;
+  formId?: string;
 };
 
 export interface SubmissionState {

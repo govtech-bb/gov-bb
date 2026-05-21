@@ -18,6 +18,7 @@ async function bootstrap() {
   const metricsService = app.get(MetricsService);
   const port = config.get<number>("app.port") ?? 3001;
 
+  app.use(require("express").json({ limit: "1mb" }));
   const corsOrigin =
     config.get<string>("app.corsOrigin") ?? "http://localhost:3000";
   const corsOrigins = corsOrigin.includes(",")

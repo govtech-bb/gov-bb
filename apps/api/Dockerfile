@@ -65,6 +65,10 @@ COPY --from=builder /app/apps/api/src/database/ ./apps/api/src/database/
 # Email templates (.hbs files not copied by tsc build)
 COPY --from=builder /app/apps/api/src/email/templates/ ./dist/src/email/templates/
 
+# Drop root. Closes #15 (CIS Docker Benchmark — no container should run as root).
+RUN addgroup -S app && adduser -S app -G app && chown -R app:app /app
+USER app
+
 ENV NODE_ENV=production
 EXPOSE 3001
 
