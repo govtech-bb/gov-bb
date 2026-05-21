@@ -33,9 +33,18 @@ const MOCK_FORMS = [
   { formId: "form-2", title: "Driver's Licence" },
 ];
 
+// Use a module-level variable so useLoaderData can be redirected per test
+// without mutating the module export directly each time.
+let mockForms: typeof MOCK_FORMS | [] = MOCK_FORMS;
+
 beforeEach(() => {
+  mockForms = MOCK_FORMS;
   // Inject stub data that the component reads via Route.useLoaderData()
-  Route.useLoaderData = jest.fn().mockReturnValue(MOCK_FORMS);
+  Route.useLoaderData = jest.fn(() => mockForms);
+});
+
+afterEach(() => {
+  jest.restoreAllMocks();
 });
 
 describe("Index route", () => {
@@ -58,7 +67,7 @@ describe("Index route", () => {
   });
 
   it("renders an empty list when no forms are returned", () => {
-    Route.useLoaderData = jest.fn().mockReturnValue([]);
+    mockForms = [];
     render(<Route.component />);
     expect(screen.queryByRole("listitem")).not.toBeInTheDocument();
   });

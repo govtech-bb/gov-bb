@@ -47,7 +47,15 @@ function renderComponent(overrides: Partial<FileUploadProps> = {}) {
     ...overrides,
   };
   const result = render(<FileUpload {...props} />);
-  return { ...result, onFileChange };
+  return {
+    ...result,
+    onFileChange,
+    get fileInput() {
+      return document.querySelector(
+        "[data-file-upload-input]",
+      ) as HTMLInputElement;
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -61,15 +69,14 @@ describe("FileUpload", () => {
   // 1. Renders a file input with the correct `accept` attribute
   // -------------------------------------------------------------------------
   it("renders a file input with the accept attribute from sharedProps", () => {
-    renderComponent({
+    const { fileInput } = renderComponent({
       sharedProps: { ...baseSharedProps, accept: "image/png,image/jpeg" },
     });
-    const input = screen.getByRole("button", { name: /choose file/i });
+    expect(
+      screen.getByRole("button", { name: /choose file/i }),
+    ).toBeInTheDocument();
     // The hidden file input carries the accept attribute
-    const fileInput = document.querySelector(
-      "[data-file-upload-input]",
-    ) as HTMLInputElement;
-    expect(fileInput).toBeTruthy();
+    expect(fileInput).not.toBeNull();
     expect(fileInput.accept).toBe("image/png,image/jpeg");
   });
 
@@ -78,11 +85,7 @@ describe("FileUpload", () => {
   // -------------------------------------------------------------------------
   it("calls onFileChange with the selected file", async () => {
     const user = userEvent.setup();
-    const { onFileChange } = renderComponent();
-
-    const fileInput = document.querySelector(
-      "[data-file-upload-input]",
-    ) as HTMLInputElement;
+    const { onFileChange, fileInput } = renderComponent();
 
     const file = makeFile("report.pdf", "application/pdf", 512);
     await user.upload(fileInput, file);
@@ -96,11 +99,9 @@ describe("FileUpload", () => {
   it("appends a newly selected file to existing files in the list", async () => {
     const user = userEvent.setup();
     const existingFile = makeFile("existing.png", "image/png", 100);
-    const { onFileChange } = renderComponent({ value: [existingFile] });
-
-    const fileInput = document.querySelector(
-      "[data-file-upload-input]",
-    ) as HTMLInputElement;
+    const { onFileChange, fileInput } = renderComponent({
+      value: [existingFile],
+    });
 
     const newFile = makeFile("new.jpg", "image/jpeg", 200);
     await user.upload(fileInput, newFile);
@@ -185,7 +186,7 @@ describe("FileUpload", () => {
     const files = Array.from({ length: maxItems }, (_, i) =>
       makeFile(`file-${i}.pdf`, "application/pdf", 100),
     );
-    renderComponent({
+    const { fileInput } = renderComponent({
       value: files,
       field: {
         ...baseField,
@@ -197,10 +198,7 @@ describe("FileUpload", () => {
     files.forEach((f) => expect(screen.getByText(f.name)).toBeInTheDocument());
 
     // The hidden file input is still present (caller is responsible for disabling)
-    const fileInput = document.querySelector(
-      "[data-file-upload-input]",
-    ) as HTMLInputElement;
-    expect(fileInput).toBeTruthy();
+    expect(fileInput).not.toBeNull();
   });
 
   // -------------------------------------------------------------------------
