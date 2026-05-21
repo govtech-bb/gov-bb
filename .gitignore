@@ -154,3 +154,6 @@ amplify/#current-cloud-backend
 # Working/presentation files
 PRESENTATION-*.yml
 cicd-policy*.json
+
+# Local git worktrees (managed by tooling, not source-controlled)
+.worktrees/
