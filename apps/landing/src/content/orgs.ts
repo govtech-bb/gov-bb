@@ -1,57 +1,79 @@
+import type { Frontmatter } from '../lib/frontmatter'
 import type { MdaEntry } from '../lib/mda-types'
 import type { MinistryPageProps } from '../components/MinistryPage'
-import { MINISTRIES  } from './ministries'
-import type {Ministry} from './ministries';
-import { DEPARTMENTS } from './departments'
-import { findPage  } from './registry'
-import type {ContentPage} from './registry';
-import { STATE_BODIES } from './state-bodies'
+import { BODY_BY_SLUG, DEPARTMENTS, MINISTRIES, STATE_BODIES } from './mda'
+import type { Ministry, OrgKind } from './mda'
+import type { ContentPage } from './registry'
 
-export type OrgKind = 'ministry' | 'department' | 'state-body'
+export type { OrgKind }
 
-const MINISTRY_BY_SLUG = new Map(MINISTRIES.map((m) => [m.slug, m]))
-const DEPARTMENT_BY_SLUG = new Map(DEPARTMENTS.map((d) => [d.slug, d]))
-const STATE_BODY_BY_SLUG = new Map(STATE_BODIES.map((s) => [s.slug, s]))
+interface KindConfig {
+  entries: ReadonlyArray<Ministry | MdaEntry>
+  bySlug: ReadonlyMap<string, Ministry | MdaEntry>
+  leadershipLabel: string
+}
 
-export const ORG_PREFIXES: ReadonlyArray<readonly [string, OrgKind]> = [
-  ['ministries/', 'ministry'],
-  ['departments/', 'department'],
-  ['state-bodies/', 'state-body'],
-]
+const KIND_CONFIG: Record<OrgKind, KindConfig> = {
+  ministry: {
+    entries: MINISTRIES,
+    bySlug: new Map(MINISTRIES.map((m) => [m.slug, m])),
+    leadershipLabel: 'Our Minister',
+  },
+  department: {
+    entries: DEPARTMENTS,
+    bySlug: new Map(DEPARTMENTS.map((d) => [d.slug, d])),
+    leadershipLabel: 'Head of Department',
+  },
+  'state-body': {
+    entries: STATE_BODIES,
+    bySlug: new Map(STATE_BODIES.map((s) => [s.slug, s])),
+    leadershipLabel: 'Head',
+  },
+}
 
-export const orgHref = (slug: string): string =>
-  `/government/organisations/${slug}`
+const ORG_KINDS = Object.keys(KIND_CONFIG) as OrgKind[]
 
-/**
- * Precomputed leaf-slug → org lookup. Built once at module load by iterating
- * ORG_PREFIXES in order — ministry wins on the (currently empty) collision
- * case. `page` is undefined when the structured entry has no matching
- * markdown file; the detail route still renders the structured data.
- */
+export const ORG_PATH_PREFIX = '/government/organisations/'
+
+export const orgHref = (slug: string): string => `${ORG_PATH_PREFIX}${slug}`
+
+function syntheticPage(
+  slug: string,
+  entry: Ministry | MdaEntry,
+): ContentPage | undefined {
+  const body = BODY_BY_SLUG.get(slug)
+  if (!body) return undefined
+  const frontmatter: Frontmatter = {
+    title: entry.name,
+    description: entry.shortDescription,
+    source_url: entry.originalSource,
+    categories: [],
+  }
+  return {
+    slug: `government/organisations/${slug}`,
+    url: orgHref(slug),
+    frontmatter,
+    body,
+  }
+}
+
 export const ORG_PAGE_BY_SLUG: ReadonlyMap<
   string,
   { kind: OrgKind; page?: ContentPage }
 > = (() => {
   const map = new Map<string, { kind: OrgKind; page?: ContentPage }>()
-  for (const [prefix, kind] of ORG_PREFIXES) {
-    const list =
-      kind === 'ministry'
-        ? MINISTRIES
-        : kind === 'department'
-          ? DEPARTMENTS
-          : STATE_BODIES
-    for (const entry of list) {
+  for (const kind of ORG_KINDS) {
+    for (const entry of KIND_CONFIG[kind].entries) {
       if (map.has(entry.slug)) continue
-      const page = findPage(`${prefix}${entry.slug}`)
+      const page = syntheticPage(entry.slug, entry)
       map.set(entry.slug, { kind, page })
     }
   }
   return map
 })()
 
-// Build-time validation: every `slug` inside MINISTRIES.associatedDepartments
-// must reference a real org page. Fails fast at import to catch typos before
-// they ship as 404 links.
+// Every `slug` inside MINISTRIES.associatedDepartments must reference a real
+// org page — fail fast on typos rather than ship dead links.
 for (const ministry of MINISTRIES) {
   for (const group of ministry.associatedDepartments ?? []) {
     for (const item of group.items) {
@@ -64,28 +86,15 @@ for (const ministry of MINISTRIES) {
   }
 }
 
-/** Strips a leading slash so callers can pass either a slug or a pathname. */
-export function resolveOrgPath(
-  pathOrSlug: string,
-): { kind: OrgKind; orgSlug: string } | null {
-  const normalised = pathOrSlug.replace(/^\/+|\/+$/g, '')
-  for (const [prefix, kind] of ORG_PREFIXES) {
-    if (normalised.startsWith(prefix)) {
-      return { kind, orgSlug: normalised.slice(prefix.length) }
-    }
-  }
-  return null
+function getEntry(
+  kind: OrgKind,
+  slug: string,
+): Ministry | MdaEntry | undefined {
+  return KIND_CONFIG[kind].bySlug.get(slug)
 }
 
-function getEntry(kind: OrgKind, slug: string): Ministry | MdaEntry | undefined {
-  if (kind === 'ministry') return MINISTRY_BY_SLUG.get(slug)
-  if (kind === 'department') return DEPARTMENT_BY_SLUG.get(slug)
-  return STATE_BODY_BY_SLUG.get(slug)
-}
-
-/** Cheap check that avoids allocating a full MinistryPageProps. */
-export function hasMigratedSource(kind: OrgKind, slug: string): boolean {
-  return Boolean(getEntry(kind, slug)?.originalSource)
+export function hasMigratedSource(slug: string): boolean {
+  return Boolean(ORG_PAGE_BY_SLUG.get(slug)?.page?.frontmatter?.source_url)
 }
 
 function ministryToProps(m: Ministry): MinistryPageProps {
@@ -95,7 +104,7 @@ function ministryToProps(m: Ministry): MinistryPageProps {
     services: m.services,
     onlineServices: m.onlineServices,
     minister: m.minister,
-    leadershipLabel: 'Our Minister',
+    leadershipLabel: KIND_CONFIG.ministry.leadershipLabel,
     contact: m.contact,
     associatedDepartments: m.associatedDepartments,
     originalSource: m.originalSource,
@@ -115,11 +124,6 @@ function mdaToProps(
   }
 }
 
-/**
- * Returns fully-resolved MinistryPageProps. When the slug has no structured
- * entry, the fallback supplies title + originalSource so the page still renders
- * the hero shell around the page's markdown body.
- */
 export function resolveOrgProps(
   kind: OrgKind,
   slug: string,
@@ -128,8 +132,5 @@ export function resolveOrgProps(
   const entry = getEntry(kind, slug)
   if (!entry) return fallback
   if (kind === 'ministry') return ministryToProps(entry as Ministry)
-  return mdaToProps(
-    entry as MdaEntry,
-    kind === 'department' ? 'Head of Department' : 'Head',
-  )
+  return mdaToProps(entry as MdaEntry, KIND_CONFIG[kind].leadershipLabel)
 }

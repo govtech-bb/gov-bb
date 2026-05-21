@@ -50,6 +50,16 @@ describe("fileTypesRunner", () => {
       fileTypesRunner([file("bad.exe", 100)], cfg([".pdf"], "Bad type"), {}),
     ).toBe("Bad type");
   });
+
+  it("returns an error when first file passes but second file fails", () => {
+    expect(
+      fileTypesRunner(
+        [file("ok.pdf", 100), file("bad.exe", 200)],
+        cfg([".pdf", ".jpg"]),
+        {},
+      ),
+    ).toBe("Allowed file types: .pdf, .jpg");
+  });
 });
 
 describe("itemMaxSizeRunner", () => {

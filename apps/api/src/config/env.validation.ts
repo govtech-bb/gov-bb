@@ -1,8 +1,32 @@
 import * as Joi from "joi";
 
+const productionCorsOrigin = Joi.string()
+  .required()
+  .custom((value: string, helpers) => {
+    const origins = value.split(",").map((o: string) => o.trim());
+    for (const origin of origins) {
+      if (origin === "*" || /localhost|127\.0\.0\.1/i.test(origin)) {
+        return helpers.error("cors.unsafe", { value: origin });
+      }
+    }
+    return value;
+  })
+  .messages({
+    "cors.unsafe":
+      '"CORS_ORIGIN" must not contain {{#value}} when NODE_ENV=production',
+  });
+
 export const envValidationSchema = Joi.object({
   // App
+  NODE_ENV: Joi.string()
+    .valid("development", "production", "test")
+    .default("development"),
   API_PORT: Joi.number().default(3001),
+  CORS_ORIGIN: Joi.alternatives().conditional("NODE_ENV", {
+    is: "production",
+    then: productionCorsOrigin,
+    otherwise: Joi.string().default("http://localhost:3000"),
+  }),
 
   // Database
   DB_HOST: Joi.string().required(),
@@ -39,6 +63,11 @@ export const envValidationSchema = Joi.object({
       then: Joi.required(),
       otherwise: Joi.optional().allow(""),
     }),
+
+  // AI / Form Builder (optional — required only for form-builder feature)
+  AI_PROVIDER: Joi.string().valid("anthropic", "bedrock").default("anthropic"),
+  AI_MODEL: Joi.string().default("claude-sonnet-4-20250514"),
+  ANTHROPIC_API_KEY: Joi.string().optional().allow(""),
 
   // EzPay (required only when forms use the payment processor)
   EZPAY_BASE_URL: Joi.string().uri().required(),

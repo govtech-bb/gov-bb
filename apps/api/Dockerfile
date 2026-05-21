@@ -62,6 +62,10 @@ COPY --from=builder /app/apps/api/package.json ./apps/api/
 COPY --from=builder /app/apps/api/tsconfig.json ./apps/api/
 COPY --from=builder /app/apps/api/typeorm.config.ts ./apps/api/
 COPY --from=builder /app/apps/api/src/database/ ./apps/api/src/database/
+# Form Builder AI system prompt
+COPY --from=builder /app/apps/api/src/form-builder/prompts/ ./apps/api/src/form-builder/prompts/
+# Email templates (.hbs files not copied by tsc build)
+COPY --from=builder /app/apps/api/src/email/templates/ ./dist/src/email/templates/
 
 ENV NODE_ENV=production
 EXPOSE 3001

@@ -1,9 +1,8 @@
-import { createFileRoute, notFound, redirect } from '@tanstack/react-router'
+import { createFileRoute, notFound } from '@tanstack/react-router'
 import { Heading, Text, linkVariants } from '@govtech-bb/react'
 import { Breadcrumbs } from '../components/Breadcrumbs'
 import { HelpfulBox } from '../components/HelpfulBox'
 import { MarkdownContent } from '../components/MarkdownContent'
-import { resolveOrgPath } from '../content/orgs'
 import { findPage, PAGES  } from '../content/registry'
 import type {ContentPage} from '../content/registry';
 import { CATEGORY_BY_SLUG, getSubcategory } from '../content/categories'
@@ -34,14 +33,6 @@ export const Route = createFileRoute('/$')({
   loader: ({ params }): LoaderData => {
     const splat = (params._splat ?? '').replace(/^\/+|\/+$/g, '')
     const segments = splat.split('/').filter(Boolean)
-
-    const org = resolveOrgPath(splat)
-    if (org) {
-      throw redirect({
-        to: '/government/organisations/$slug',
-        params: { slug: org.orgSlug },
-      })
-    }
 
     if (segments.length === 1) {
       const cat = CATEGORY_BY_SLUG[segments[0]]

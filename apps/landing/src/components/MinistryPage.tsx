@@ -119,7 +119,7 @@ export function MinistryPage({
       <div className="container py-m">
         <div className="grid grid-cols-1 gap-l lg:grid-cols-[2fr_1fr] lg:gap-xl">
           <div className="flex flex-col gap-l">
-            {body ? <div className="prose-content">{body}</div> : null}
+            {body ? <div className="space-y-l">{body}</div> : null}
 
             {featured && featured.length > 0 ? (
               <section>

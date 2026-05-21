@@ -1,1 +1,0 @@
-The Ministry is responsible for co-coordinating Barbados' relations with foreign governments, as well as regional and international organisations. It seeks to create opportunities for Barbados in the field of foreign trade through the negotiation and monitoring of the relevant agreements and treaties.
