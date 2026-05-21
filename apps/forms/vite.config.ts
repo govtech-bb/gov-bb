@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 
 // https://vitejs.dev/config/
@@ -18,6 +19,7 @@ export default ({ mode }) => {
       tsconfigPaths: true,
     },
     plugins: [
+      tailwindcss(),
       tanstackRouter({
         target: "react",
         autoCodeSplitting: true,
