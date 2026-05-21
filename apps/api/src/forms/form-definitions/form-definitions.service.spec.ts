@@ -2,6 +2,7 @@ import { NotFoundException } from "@nestjs/common";
 import type { FormDefinitionEntity } from "../../database/entities/form-definition.entity";
 import { FormDefinitionRepository } from "./form-definition.repository";
 import { RegistryService } from "../../registry/registry.service";
+import { RecipeFileLoader } from "../recipe-file-loader/recipe-file-loader.service";
 import { FormDefinitionsService } from "./form-definitions.service";
 
 const MOCK_RECIPE = {
@@ -46,31 +47,91 @@ function makeMocks() {
     hydrateForm: jest.fn().mockResolvedValue(MOCK_HYDRATED),
   } as unknown as jest.Mocked<RegistryService>;
 
-  const service = new FormDefinitionsService(repo, registry);
-  return { repo, registry, service };
+  const loader = {
+    findLatest: jest.fn().mockReturnValue(null),
+    findVersion: jest.fn().mockReturnValue(null),
+  } as unknown as jest.Mocked<RecipeFileLoader>;
+
+  const service = new FormDefinitionsService(repo, registry, loader);
+  return { repo, registry, loader, service };
 }
 
 describe("FormDefinitionsService", () => {
-  describe("findByFormId", () => {
-    it("returns the latest hydrated form when no version is given", async () => {
-      const { repo, registry, service } = makeMocks();
-      (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
+  describe("findByFormId — file-loader path", () => {
+    it("returns the latest hydrated form from the file loader without hitting the DB", async () => {
+      const { repo, registry, loader, service } = makeMocks();
+      (loader.findLatest as jest.Mock).mockReturnValue(MOCK_RECIPE);
 
       const result = await service.findByFormId({ formId: "passport-renewal" });
 
-      expect(repo.findOne).toHaveBeenCalledWith({
-        where: { formId: "passport-renewal" },
-        order: { createdAt: "DESC" },
-      });
+      expect(loader.findLatest).toHaveBeenCalledWith("passport-renewal");
+      expect(repo.findOne).not.toHaveBeenCalled();
       expect(registry.hydrateForm).toHaveBeenCalledWith(MOCK_RECIPE);
       expect(result).toEqual(MOCK_HYDRATED_STRIPPED);
     });
 
-    it("returns a specific version when version is given", async () => {
-      const { repo, registry, service } = makeMocks();
-      (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
+    it("returns a specific version from the file loader when version is given", async () => {
+      const { repo, registry, loader, service } = makeMocks();
+      (loader.findVersion as jest.Mock).mockReturnValue(MOCK_RECIPE);
 
       const result = await service.findByFormId({
+        formId: "passport-renewal",
+        version: "1.0.0",
+      });
+
+      expect(loader.findVersion).toHaveBeenCalledWith(
+        "passport-renewal",
+        "1.0.0",
+      );
+      expect(loader.findLatest).not.toHaveBeenCalled();
+      expect(repo.findOne).not.toHaveBeenCalled();
+      expect(registry.hydrateForm).toHaveBeenCalledWith(MOCK_RECIPE);
+      expect(result).toEqual(MOCK_HYDRATED_STRIPPED);
+    });
+  });
+
+  describe("findByFormId — DB fallback", () => {
+    let warnSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      warnSpy = jest
+        .spyOn(
+          // Nest's Logger writes through the static logger service; spy on console.warn
+          // via the logger's underlying transport. Spy on the prototype instead so we
+          // verify the WARN is emitted regardless of console transport.
+          require("@nestjs/common").Logger.prototype,
+          "warn",
+        )
+        .mockImplementation(() => undefined);
+    });
+
+    afterEach(() => {
+      warnSpy.mockRestore();
+    });
+
+    it("falls back to DB when the loader has no entry and logs a warning", async () => {
+      const { repo, registry, loader, service } = makeMocks();
+      (loader.findLatest as jest.Mock).mockReturnValue(null);
+      (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
+
+      const result = await service.findByFormId({ formId: "passport-renewal" });
+
+      expect(loader.findLatest).toHaveBeenCalledWith("passport-renewal");
+      expect(repo.findOne).toHaveBeenCalledWith({
+        where: { formId: "passport-renewal" },
+        order: { createdAt: "DESC" },
+      });
+      expect(warnSpy).toHaveBeenCalled();
+      expect(registry.hydrateForm).toHaveBeenCalledWith(MOCK_RECIPE);
+      expect(result).toEqual(MOCK_HYDRATED_STRIPPED);
+    });
+
+    it("falls back to DB for a specific version when the loader has no entry", async () => {
+      const { repo, loader, service } = makeMocks();
+      (loader.findVersion as jest.Mock).mockReturnValue(null);
+      (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
+
+      await service.findByFormId({
         formId: "passport-renewal",
         version: "1.0.0",
       });
@@ -79,12 +140,12 @@ describe("FormDefinitionsService", () => {
         where: { formId: "passport-renewal", version: "1.0.0" },
         order: { createdAt: "DESC" },
       });
-      expect(registry.hydrateForm).toHaveBeenCalled();
-      expect(result).toEqual(MOCK_HYDRATED_STRIPPED);
+      expect(warnSpy).toHaveBeenCalled();
     });
 
-    it("throws NotFoundException when formId is not found", async () => {
-      const { repo, service } = makeMocks();
+    it("throws NotFoundException when neither loader nor DB has the form", async () => {
+      const { repo, loader, service } = makeMocks();
+      (loader.findLatest as jest.Mock).mockReturnValue(null);
       (repo.findOne as jest.Mock).mockResolvedValue(null);
 
       await expect(service.findByFormId({ formId: "ghost" })).rejects.toThrow(
@@ -92,8 +153,9 @@ describe("FormDefinitionsService", () => {
       );
     });
 
-    it("throws NotFoundException when formId + version is not found", async () => {
-      const { repo, service } = makeMocks();
+    it("throws NotFoundException for an unknown formId+version pair", async () => {
+      const { repo, loader, service } = makeMocks();
+      (loader.findVersion as jest.Mock).mockReturnValue(null);
       (repo.findOne as jest.Mock).mockResolvedValue(null);
 
       await expect(
@@ -109,8 +171,8 @@ describe("FormDefinitionsService", () => {
     };
 
     it("strips processors by default (includeProcessors omitted)", async () => {
-      const { repo, registry, service } = makeMocks();
-      (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
+      const { registry, loader, service } = makeMocks();
+      (loader.findLatest as jest.Mock).mockReturnValue(MOCK_RECIPE);
       (registry.hydrateForm as jest.Mock).mockResolvedValue(
         HYDRATED_WITH_PROCESSORS,
       );
@@ -121,8 +183,8 @@ describe("FormDefinitionsService", () => {
     });
 
     it("strips processors when includeProcessors:false", async () => {
-      const { repo, registry, service } = makeMocks();
-      (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
+      const { registry, loader, service } = makeMocks();
+      (loader.findLatest as jest.Mock).mockReturnValue(MOCK_RECIPE);
       (registry.hydrateForm as jest.Mock).mockResolvedValue(
         HYDRATED_WITH_PROCESSORS,
       );
@@ -136,8 +198,8 @@ describe("FormDefinitionsService", () => {
     });
 
     it("keeps processors when includeProcessors:true", async () => {
-      const { repo, registry, service } = makeMocks();
-      (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
+      const { registry, loader, service } = makeMocks();
+      (loader.findLatest as jest.Mock).mockReturnValue(MOCK_RECIPE);
       (registry.hydrateForm as jest.Mock).mockResolvedValue(
         HYDRATED_WITH_PROCESSORS,
       );
