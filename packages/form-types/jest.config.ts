@@ -14,7 +14,7 @@ const config: Config = {
   coverageThreshold: {
     global: {
       branches: 98,
-      // functions: now at 100% after comprehensive testing of index.ts exports
+      // functions: 100% — re-exporting schemas from index.ts evaluates all factory functions at module load
       functions: 98,
       lines: 98,
       statements: 98,
