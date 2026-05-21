@@ -1,4 +1,3 @@
-import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 
 const FeedbackSchema = z
@@ -18,23 +17,25 @@ export type FeedbackState = {
   success?: boolean
 }
 
-export const sendFeedback = createServerFn({ method: 'POST' })
-  .inputValidator((raw: unknown) => raw as Record<string, unknown>)
-  .handler(async ({ data }): Promise<FeedbackState> => {
-    const parsed = FeedbackSchema.safeParse(data)
-    if (!parsed.success) {
-      const fieldErrors: Record<string, string> = {}
-      for (const issue of parsed.error.issues) {
-        const key = issue.path[0]
-        if (typeof key === 'string' && !(key in fieldErrors)) {
-          fieldErrors[key] = issue.message
-        }
+export async function sendFeedback({
+  data,
+}: {
+  data: Record<string, unknown>
+}): Promise<FeedbackState> {
+  const parsed = FeedbackSchema.safeParse(data)
+  if (!parsed.success) {
+    const fieldErrors: Record<string, string> = {}
+    for (const issue of parsed.error.issues) {
+      const key = issue.path[0]
+      if (typeof key === 'string' && !(key in fieldErrors)) {
+        fieldErrors[key] = issue.message
       }
-      return { error: null, fieldErrors }
     }
+    return { error: null, fieldErrors }
+  }
 
-    // SES integration deferred — log the submission for now.
-    console.log('[feedback]', parsed.data)
+  // TODO: POST to API endpoint when feedback service is ready
+  console.log('[feedback]', parsed.data)
 
-    return { error: null, success: true }
-  })
+  return { error: null, success: true }
+}

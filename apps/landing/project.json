@@ -6,7 +6,7 @@
   "targets": {
     "build": {
       "executor": "nx:run-commands",
-      "outputs": ["{projectRoot}/dist", "{projectRoot}/.output"],
+      "outputs": ["{projectRoot}/dist"],
       "options": {
         "command": "npm run build",
         "cwd": "apps/landing"
@@ -18,14 +18,6 @@
         "command": "npm run dev",
         "cwd": "apps/landing"
       }
-    },
-    "start": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "npm run start",
-        "cwd": "apps/landing"
-      },
-      "dependsOn": ["build"]
     },
     "lint": {
       "executor": "nx:run-commands",
