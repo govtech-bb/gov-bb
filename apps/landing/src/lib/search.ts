@@ -1,6 +1,15 @@
 import MiniSearch from 'minisearch'
 import { PAGES } from '../content/registry'
 import { CATEGORY_BY_SLUG } from '../content/categories'
+import {
+  BODY_BY_SLUG,
+  DEPARTMENTS,
+  MINISTRIES,
+  ORG_CATEGORY_LABEL,
+  STATE_BODIES,
+} from '../content/mda'
+import type { Department, Ministry, StateBody } from '../content/mda'
+import { orgHref } from '../content/orgs'
 
 export type SearchKind = 'service' | 'ministry' | 'department' | 'state-body'
 
@@ -19,30 +28,107 @@ interface IndexDoc extends SearchHit {
 }
 
 const STOPWORDS = new Set([
-  'a', 'an', 'the', 'of', 'for', 'to', 'in', 'on', 'at', 'and', 'or',
-  'is', 'are', 'be', 'as', 'by', 'with', 'from', 'i', 'you', 'my',
-  'your', 'how', 'do', 'can',
+  'a',
+  'an',
+  'the',
+  'of',
+  'for',
+  'to',
+  'in',
+  'on',
+  'at',
+  'and',
+  'or',
+  'is',
+  'are',
+  'be',
+  'as',
+  'by',
+  'with',
+  'from',
+  'i',
+  'you',
+  'my',
+  'your',
+  'how',
+  'do',
+  'can',
 ])
 
-const SYNONYM_GROUPS: Array<{ triggers: Array<string>; extras: Array<string> }> =
-  [
-    { triggers: ['tax', 'taxes', 'revenue', 'vat'], extras: ['tax', 'taxes', 'revenue', 'VAT', 'BRA'] },
-    { triggers: ['licence', 'license', 'driving', 'driver'], extras: ['licence', 'license', 'driving', 'driver', 'permit'] },
-    { triggers: ['health', 'medical', 'hospital', 'clinic'], extras: ['health', 'medical', 'hospital', 'clinic', 'doctor'] },
-    { triggers: ['school', 'education', 'student', 'teacher'], extras: ['school', 'education', 'student', 'teacher', 'learning'] },
-    { triggers: ['passport', 'immigration', 'visa'], extras: ['passport', 'immigration', 'visa', 'travel document'] },
-    { triggers: ['identification', 'national id'], extras: ['ID', 'identification', 'national ID'] },
-    { triggers: ['police', 'constabulary', 'crime'], extras: ['police', 'constabulary', 'crime', 'RBPF'] },
-    { triggers: ['pension', 'retirement', 'nis'], extras: ['pension', 'retirement', 'NIS', 'national insurance'] },
-    { triggers: ['business', 'company', 'incorporation', 'registry'], extras: ['business', 'company', 'incorporation', 'registry'] },
-    { triggers: ['birth', 'death', 'marriage', 'certificate'], extras: ['birth', 'death', 'marriage', 'certificate', 'civil registration'] },
-    { triggers: ['job', 'employment', 'labour', 'labor'], extras: ['job', 'employment', 'work', 'labour', 'vacancy'] },
-    { triggers: ['water', 'wastewater', 'sewerage'], extras: ['water', 'wastewater', 'sewerage', 'BWA'] },
-    { triggers: ['electricity', 'power', 'energy'], extras: ['electricity', 'power', 'energy', 'BL&P'] },
-    { triggers: ['transport', 'bus', 'transit'], extras: ['transport', 'bus', 'transit', 'BTB'] },
-  ]
+const SYNONYM_GROUPS: Array<{
+  triggers: Array<string>
+  extras: Array<string>
+}> = [
+  {
+    triggers: ['tax', 'taxes', 'revenue', 'vat'],
+    extras: ['tax', 'taxes', 'revenue', 'VAT', 'BRA'],
+  },
+  {
+    triggers: ['licence', 'license', 'driving', 'driver'],
+    extras: ['licence', 'license', 'driving', 'driver', 'permit'],
+  },
+  {
+    triggers: ['health', 'medical', 'hospital', 'clinic'],
+    extras: ['health', 'medical', 'hospital', 'clinic', 'doctor'],
+  },
+  {
+    triggers: ['school', 'education', 'student', 'teacher'],
+    extras: ['school', 'education', 'student', 'teacher', 'learning'],
+  },
+  {
+    triggers: ['passport', 'immigration', 'visa'],
+    extras: ['passport', 'immigration', 'visa', 'travel document'],
+  },
+  {
+    triggers: ['identification', 'national id'],
+    extras: ['ID', 'identification', 'national ID'],
+  },
+  {
+    triggers: ['police', 'constabulary', 'crime'],
+    extras: ['police', 'constabulary', 'crime', 'RBPF'],
+  },
+  {
+    triggers: ['pension', 'retirement', 'nis'],
+    extras: ['pension', 'retirement', 'NIS', 'national insurance'],
+  },
+  {
+    triggers: ['business', 'company', 'incorporation', 'registry'],
+    extras: ['business', 'company', 'incorporation', 'registry'],
+  },
+  {
+    triggers: ['birth', 'death', 'marriage', 'certificate'],
+    extras: ['birth', 'death', 'marriage', 'certificate', 'civil registration'],
+  },
+  {
+    triggers: ['job', 'employment', 'labour', 'labor'],
+    extras: ['job', 'employment', 'work', 'labour', 'vacancy'],
+  },
+  {
+    triggers: ['water', 'wastewater', 'sewerage'],
+    extras: ['water', 'wastewater', 'sewerage', 'BWA'],
+  },
+  {
+    triggers: ['electricity', 'power', 'energy'],
+    extras: ['electricity', 'power', 'energy', 'BL&P'],
+  },
+  {
+    triggers: ['transport', 'bus', 'transit'],
+    extras: ['transport', 'bus', 'transit', 'BTB'],
+  },
+]
 
-const ACRONYM_STOPWORDS = new Set(['of', 'and', 'the', 'for', 'to', 'in', 'on', '&', 'a', 'an'])
+const ACRONYM_STOPWORDS = new Set([
+  'of',
+  'and',
+  'the',
+  'for',
+  'to',
+  'in',
+  'on',
+  '&',
+  'a',
+  'an',
+])
 
 function synonymsFor(text: string): Array<string> {
   const lower = text.toLowerCase()
@@ -88,11 +174,34 @@ function stripMarkdown(md: string): string {
     .trim()
 }
 
-function classify(slug: string): { kind: SearchKind; categoryLabel: string } {
-  if (slug.startsWith('ministries/')) return { kind: 'ministry', categoryLabel: 'Ministry' }
-  if (slug.startsWith('departments/')) return { kind: 'department', categoryLabel: 'Department' }
-  if (slug.startsWith('state-bodies/')) return { kind: 'state-body', categoryLabel: 'State body' }
-  return { kind: 'service', categoryLabel: 'Service' }
+function buildKeywords(
+  title: string,
+  description: string,
+  extra: ReadonlyArray<string> = [],
+): string {
+  return [
+    ...extra,
+    ...acronymsFor(title),
+    ...synonymsFor(`${title} ${description}`),
+  ].join(' ')
+}
+
+function mdaDoc(entry: Ministry | Department | StateBody): IndexDoc {
+  const { kind, slug, name, keywords = [] } = entry
+  const description =
+    typeof entry.intro === 'string'
+      ? (entry.shortDescription ?? entry.intro)
+      : (entry.shortDescription ?? '')
+  return {
+    id: `${kind}:${slug}`,
+    title: name,
+    description,
+    body: stripMarkdown(BODY_BY_SLUG.get(slug) ?? ''),
+    keywords: buildKeywords(name, description, keywords),
+    href: orgHref(slug),
+    category: ORG_CATEGORY_LABEL[kind],
+    kind,
+  }
 }
 
 function buildIndex(): {
@@ -102,30 +211,26 @@ function buildIndex(): {
   const docs = new Map<string, IndexDoc>()
 
   for (const page of PAGES) {
-    const { kind, categoryLabel } = classify(page.slug)
     const firstCat = page.frontmatter.categories[0]
     const category =
-      kind === 'service'
-        ? (firstCat && CATEGORY_BY_SLUG[firstCat]?.title) || categoryLabel
-        : categoryLabel
+      (firstCat && CATEGORY_BY_SLUG[firstCat]?.title) || 'Service'
     const title = page.frontmatter.title
     const description = page.frontmatter.description ?? ''
-    const body = stripMarkdown(page.body)
-    const keywords = [
-      ...acronymsFor(title),
-      ...synonymsFor(`${title} ${description}`),
-    ].join(' ')
-
     const doc: IndexDoc = {
-      id: `${kind}:${page.url}`,
+      id: `service:${page.url}`,
       title,
       description,
-      body,
-      keywords,
+      body: stripMarkdown(page.body),
+      keywords: buildKeywords(title, description),
       href: `/${page.url}`,
       category,
-      kind,
+      kind: 'service',
     }
+    docs.set(doc.id, doc)
+  }
+
+  for (const entry of [...MINISTRIES, ...DEPARTMENTS, ...STATE_BODIES]) {
+    const doc = mdaDoc(entry)
     docs.set(doc.id, doc)
   }
 

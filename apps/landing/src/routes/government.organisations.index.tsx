@@ -2,10 +2,8 @@ import { createFileRoute } from '@tanstack/react-router'
 import { Heading, Link, Search, Text } from '@govtech-bb/react'
 import { z } from 'zod'
 import { HelpfulBox } from '../components/HelpfulBox'
-import { DEPARTMENTS } from '../content/departments'
-import { MINISTRIES } from '../content/ministries'
+import { DEPARTMENTS, MINISTRIES, STATE_BODIES } from '../content/mda'
 import { orgHref } from '../content/orgs'
-import { STATE_BODIES } from '../content/state-bodies'
 import { trackEvent } from '../lib/analytics'
 
 interface Org {
