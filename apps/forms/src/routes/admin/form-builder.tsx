@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useRef, useEffect } from "react";
+import { adminFormBuilderBeforeLoad } from "./form-builder.gate";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
 
@@ -17,6 +18,7 @@ interface SessionState {
 }
 
 export const Route = createFileRoute("/admin/form-builder")({
+  beforeLoad: adminFormBuilderBeforeLoad,
   component: FormBuilderPage,
 });
 
