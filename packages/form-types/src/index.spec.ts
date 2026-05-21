@@ -391,6 +391,12 @@ describe("validationRuleSchema", () => {
         .success,
     ).toBe(true);
   });
+
+  it("rejects a rule with a non-enum key", () => {
+    expect(validationRuleSchema.safeParse({ unknownRule: {} }).success).toBe(
+      false,
+    );
+  });
 });
 
 describe("fieldValueSchema", () => {
@@ -404,6 +410,10 @@ describe("fieldValueSchema", () => {
 
   it("accepts a boolean value", () => {
     expect(fieldValueSchema.safeParse(true).success).toBe(true);
+  });
+
+  it("accepts an array value", () => {
+    expect(fieldValueSchema.safeParse(["a", 1]).success).toBe(true);
   });
 
   it("rejects null", () => {
@@ -703,8 +713,8 @@ describe("dynamic", () => {
 
   it("rejects values that match neither branch", () => {
     const schema = dynamic(z.string().min(1));
-    // Empty string fails the z.string().min(1) branch, and a primitive is not
-    // a record so it fails the jsonLogicRuleSchema branch too.
+    // 42 fails both z.string().min(1) and z.record(z.string(), z.unknown()), so
+    // the union rejects it.
     expect(schema.safeParse(42).success).toBe(false);
   });
 });
