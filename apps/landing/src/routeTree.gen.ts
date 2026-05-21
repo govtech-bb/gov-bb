@@ -15,6 +15,7 @@ import { Route as ServiceUnavailableRouteImport } from './routes/service-unavail
 import { Route as SearchResultsRouteImport } from './routes/search-results'
 import { Route as JavascriptRequiredRouteImport } from './routes/javascript-required'
 import { Route as FeedbackRouteImport } from './routes/feedback'
+import { Route as BankHolidayCalendarRouteImport } from './routes/bank-holiday-calendar'
 import { Route as SplatRouteImport } from './routes/$'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as GovernmentOrganisationsRouteImport } from './routes/government.organisations'
@@ -51,6 +52,11 @@ const FeedbackRoute = FeedbackRouteImport.update({
   path: '/feedback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BankHolidayCalendarRoute = BankHolidayCalendarRouteImport.update({
+  id: '/bank-holiday-calendar',
+  path: '/bank-holiday-calendar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SplatRoute = SplatRouteImport.update({
   id: '/$',
   path: '/$',
@@ -82,6 +88,7 @@ const GovernmentOrganisationsSlugRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/bank-holiday-calendar': typeof BankHolidayCalendarRoute
   '/feedback': typeof FeedbackRoute
   '/javascript-required': typeof JavascriptRequiredRoute
   '/search-results': typeof SearchResultsRoute
@@ -95,6 +102,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/bank-holiday-calendar': typeof BankHolidayCalendarRoute
   '/feedback': typeof FeedbackRoute
   '/javascript-required': typeof JavascriptRequiredRoute
   '/search-results': typeof SearchResultsRoute
@@ -108,6 +116,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/bank-holiday-calendar': typeof BankHolidayCalendarRoute
   '/feedback': typeof FeedbackRoute
   '/javascript-required': typeof JavascriptRequiredRoute
   '/search-results': typeof SearchResultsRoute
@@ -123,6 +132,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/$'
+    | '/bank-holiday-calendar'
     | '/feedback'
     | '/javascript-required'
     | '/search-results'
@@ -136,6 +146,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/$'
+    | '/bank-holiday-calendar'
     | '/feedback'
     | '/javascript-required'
     | '/search-results'
@@ -148,6 +159,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/$'
+    | '/bank-holiday-calendar'
     | '/feedback'
     | '/javascript-required'
     | '/search-results'
@@ -162,6 +174,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SplatRoute: typeof SplatRoute
+  BankHolidayCalendarRoute: typeof BankHolidayCalendarRoute
   FeedbackRoute: typeof FeedbackRoute
   JavascriptRequiredRoute: typeof JavascriptRequiredRoute
   SearchResultsRoute: typeof SearchResultsRoute
@@ -213,6 +226,13 @@ declare module '@tanstack/react-router' {
       path: '/feedback'
       fullPath: '/feedback'
       preLoaderRoute: typeof FeedbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/bank-holiday-calendar': {
+      id: '/bank-holiday-calendar'
+      path: '/bank-holiday-calendar'
+      fullPath: '/bank-holiday-calendar'
+      preLoaderRoute: typeof BankHolidayCalendarRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/$': {
@@ -272,6 +292,7 @@ const GovernmentOrganisationsRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SplatRoute: SplatRoute,
+  BankHolidayCalendarRoute: BankHolidayCalendarRoute,
   FeedbackRoute: FeedbackRoute,
   JavascriptRequiredRoute: JavascriptRequiredRoute,
   SearchResultsRoute: SearchResultsRoute,
