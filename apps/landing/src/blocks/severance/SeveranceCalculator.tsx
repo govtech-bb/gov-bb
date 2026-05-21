@@ -1,355 +1,915 @@
-import { useState  } from "react";
-import type {ReactNode} from "react";
 import {
+  Button,
+  DateInput,
+  ErrorSummary,
+  Heading,
+  Input,
+  Radio,
+  RadioGroup,
+  ShowHide,
+  Text,
+} from '@govtech-bb/react'
+import type { DateInputValue } from '@govtech-bb/react'
+import { useNavigate } from '@tanstack/react-router'
+import { useState } from 'react'
+import type { ReactNode } from 'react'
+import {
+  avgWeeklyFromSimple,
+  ceilingFor,
+  completeYears,
   Employment,
   PayPeriod,
   Reason,
   ReasonLabel,
-  calculateSeverance
-  
-  
-} from "./compute.ts";
-import type {SeveranceInputs, SeveranceResult} from "./compute.ts";
+  tieredWeeks,
+} from './compute'
 
-type Step =
-  | { name: "q-employment" }
-  | { name: "q-reason"; employment: Employment }
-  | { name: "q-dates"; employment: Employment; reason: Reason }
-  | {
-      name: "q-pay";
-      employment: Employment;
-      reason: Reason;
-      startIso: string;
-      endIso: string;
-    }
-  | { name: "result"; inputs: SeveranceInputs; result: SeveranceResult };
+type Step = 'q-employment' | 'q-reason' | 'q-years' | 'q-pay' | 'result'
 
-const initial: Step = { name: "q-employment" };
+const START_PATH_SPLAT =
+  'money-financial-support/calculate-severance-pay/start'
+const SERVICE_TITLE = 'Find out how much severance payment you are owed'
 
-const moneyFmt = new Intl.NumberFormat("en-BB", {
-  style: "currency",
-  currency: "BBD",
+const EMPLOYMENT_LABELS: Record<Employment, string> = {
+  yes: 'Yes',
+  no: 'No',
+}
+
+type IneligibleKey = 'self-employed' | 'reason-not-covered' | 'under-two-years'
+
+interface IneligibleVariant {
+  title: string
+  body: ReactNode
+}
+
+const INELIGIBLE_VARIANTS: Record<IneligibleKey, IneligibleVariant> = {
+  'self-employed': {
+    title: 'You do not qualify for severance payment',
+    body: 'Severance payment is only available to employees who were sent home from a job. If your situation is different, contact the NIS Severance Payment Department to check what support you may be owed.',
+  },
+  'reason-not-covered': {
+    title: 'We cannot give you an estimate',
+    body: 'This tool covers redundancy, natural disasters, lay-off or short time, and death of employer. If your situation is different, contact the NIS Severance Payment Department to check what you may be owed.',
+  },
+  'under-two-years': {
+    title: 'You may not qualify yet',
+    body: (
+      <>
+        To qualify for severance payment, you generally need to have worked for
+        the same employer for at least{' '}
+        <strong>2 complete years (104 weeks)</strong> without a significant
+        break in service. If you are close to 2 years, contact the NIS Severance
+        Payment Department.
+      </>
+    ),
+  },
+}
+
+const PERIOD_LABELS: Record<
+  PayPeriod,
+  { adverb: string; choice: string; avg: string; payLabel: string }
+> = {
+  weekly: {
+    adverb: 'weekly',
+    choice: 'Weekly',
+    avg: 'Average weekly pay',
+    payLabel: 'Average weekly pay in the last two years (BDS$)',
+  },
+  monthly: {
+    adverb: 'monthly',
+    choice: 'Monthly',
+    avg: 'Average monthly pay',
+    payLabel: 'Average monthly pay in the last two years (BDS$)',
+  },
+}
+
+const emptyDate: DateInputValue = { day: '', month: '', year: '' }
+
+type ParseDateResult =
+  | { ok: true; date: Date; iso: string }
+  | { ok: false; reason: 'incomplete' | 'invalid' }
+
+function parseDate(parts: DateInputValue): ParseDateResult {
+  if (!(parts.day && parts.month && parts.year))
+    return { ok: false, reason: 'incomplete' }
+  const d = Number.parseInt(parts.day, 10)
+  const m = Number.parseInt(parts.month, 10)
+  const y = Number.parseInt(parts.year, 10)
+  if (
+    !(Number.isFinite(d) && Number.isFinite(m) && Number.isFinite(y)) ||
+    d < 1 ||
+    d > 31 ||
+    m < 1 ||
+    m > 12 ||
+    y < 1900 ||
+    y > 2100
+  )
+    return { ok: false, reason: 'invalid' }
+  const dt = new Date(y, m - 1, d)
+  if (dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d)
+    return { ok: false, reason: 'invalid' }
+  const iso = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+  return { ok: true, date: dt, iso }
+}
+
+const moneyFmt = new Intl.NumberFormat('en-BB', {
+  style: 'currency',
+  currency: 'BBD',
+  minimumFractionDigits: 2,
   maximumFractionDigits: 2,
-});
+})
 
-function assertNever(x: never): never {
-  throw new Error(`Unhandled step: ${JSON.stringify(x)}`);
-}
+const money = (n: number) => moneyFmt.format(n || 0)
 
-function Card({ children }: { children: ReactNode }) {
+function ServiceTitle() {
   return (
-    <div className="my-8 rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
-      {children}
+    <div className="border-blue-40 border-l-4 py-xs pl-s">
+      <Text as="p" className="text-mid-grey-00">
+        {SERVICE_TITLE}
+      </Text>
     </div>
-  );
+  )
 }
 
-function StepHeading({ children }: { children: ReactNode }) {
-  return <h3 className="mb-4 text-lg font-semibold">{children}</h3>;
-}
-
-function PrimaryButton({
-  onClick,
-  disabled,
-  children,
-}: {
-  onClick: () => void;
-  disabled?: boolean;
-  children: ReactNode;
-}) {
+function IneligibleResult({ variant }: { variant: IneligibleVariant }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="rounded-md bg-[var(--lagoon-deep,#0a5e6b)] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
-    >
-      {children}
-    </button>
-  );
-}
-
-function SecondaryButton({
-  onClick,
-  children,
-}: {
-  onClick: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="rounded-md border border-stone-300 bg-white px-4 py-2 text-sm font-medium"
-    >
-      {children}
-    </button>
-  );
-}
-
-function RadioRow<V extends string>({
-  value,
-  options,
-  onChange,
-  name,
-}: {
-  value: V | null;
-  options: ReadonlyArray<{ value: V; label: string }>;
-  onChange: (v: V) => void;
-  name: string;
-}) {
-  return (
-    <div className="flex flex-col gap-2">
-      {options.map((opt) => (
-        <label
-          key={opt.value}
-          className={`flex cursor-pointer items-center gap-3 rounded-md border px-3 py-2 ${
-            value === opt.value
-              ? "border-[var(--lagoon-deep,#0a5e6b)] bg-[rgba(79,184,178,0.08)]"
-              : "border-stone-200"
-          }`}
-        >
-          <input
-            type="radio"
-            name={name}
-            value={opt.value}
-            checked={value === opt.value}
-            onChange={() => onChange(opt.value)}
-          />
-          <span>{opt.label}</span>
-        </label>
-      ))}
+    <div className="mb-6">
+      <div className="rounded-sm bg-blue-10 px-6 py-4">
+        <Heading as="h2" className="text-black-00">
+          {variant.title}
+        </Heading>
+      </div>
+      <Text as="p" className="mt-3 text-mid-grey-00" size="caption">
+        Based on the information you gave us
+      </Text>
+      <Text as="p" className="mt-2" size="body">
+        {variant.body}
+      </Text>
     </div>
-  );
-}
-
-function IneligiblePanel({ result }: { result: Extract<SeveranceResult, { kind: "ineligible" }> }) {
-  const message: Record<typeof result.reason, string> = {
-    "self-employed":
-      "Self-employed people aren't entitled to severance under the Severance Payments Act.",
-    "reason-not-covered":
-      "The reason given isn't one of the categories the Act covers. Check with the NIS office for guidance.",
-    "under-one-year":
-      "You need at least one complete year of service to qualify for severance.",
-  };
-  return (
-    <div className="rounded-md border-l-4 border-amber-400 bg-amber-50 p-4">
-      <p className="m-0 font-semibold">You may not be eligible</p>
-      <p className="m-0 mt-1 text-sm">{message[result.reason]}</p>
-    </div>
-  );
-}
-
-function EligiblePanel({ result }: { result: Extract<SeveranceResult, { kind: "eligible" }> }) {
-  return (
-    <div className="rounded-md border-l-4 border-green-500 bg-green-50 p-4">
-      <p className="m-0 text-sm font-medium text-green-900">Estimated severance</p>
-      <p className="m-0 mt-1 text-3xl font-bold text-green-900">
-        {moneyFmt.format(result.severance)}
-      </p>
-      <dl className="m-0 mt-4 grid grid-cols-2 gap-y-1 text-sm">
-        <dt className="text-stone-600">Complete years of service</dt>
-        <dd className="text-right font-medium">{result.years}</dd>
-        <dt className="text-stone-600">Average weekly pay</dt>
-        <dd className="text-right font-medium">{moneyFmt.format(result.avgWeekly)}</dd>
-        <dt className="text-stone-600">Entitled weeks</dt>
-        <dd className="text-right font-medium">{result.entitledWeeks}</dd>
-      </dl>
-      {result.ceilingApplied ? (
-        <p className="m-0 mt-3 text-xs text-stone-600">
-          Capped at the insurable earnings ceiling of {moneyFmt.format(result.ceilingApplied.weekly)}/week.
-        </p>
-      ) : null}
-      <p className="m-0 mt-3 text-xs text-stone-600">
-        This is an estimate. The final amount is determined by the National Insurance Office.
-      </p>
-    </div>
-  );
+  )
 }
 
 export function SeveranceCalculator() {
-  const [step, setStep] = useState<Step>(initial);
-  const reset = () => setStep(initial);
+  const navigate = useNavigate()
+  const [step, setStep] = useState<Step>('q-employment')
+  const [employment, setEmployment] = useState<Employment | ''>('')
+  const [reason, setReason] = useState<Reason | ''>('')
+  const [start, setStart] = useState<DateInputValue>(emptyDate)
+  const [end, setEnd] = useState<DateInputValue>(emptyDate)
+  const [period, setPeriod] = useState<PayPeriod>(PayPeriod.Weekly)
+  const [simpleAvg, setSimpleAvg] = useState('')
 
-  switch (step.name) {
-    case "q-employment":
-      return (
-        <Card>
-          <StepHeading>Were you self-employed?</StepHeading>
-          <RadioRow
-            name="employment"
-            value={null}
-            options={[
-              { value: Employment.No, label: "No, I was employed by someone" },
-              { value: Employment.Yes, label: "Yes, I was self-employed" },
-            ]}
-            onChange={(employment) => setStep({ name: "q-reason", employment })}
-          />
-        </Card>
-      );
+  const parsedAvg = Number.parseFloat(simpleAvg.replace(/,/g, '').trim())
+  const simpleAvgNum = Number.isFinite(parsedAvg) ? parsedAvg : 0
+  const periodLabels = PERIOD_LABELS[period]
 
-    case "q-reason":
-      return (
-        <Card>
-          <StepHeading>Why were you sent home?</StepHeading>
-          <RadioRow
-            name="reason"
-            value={null}
-            options={Object.values(Reason).map((r) => ({
-              value: r,
-              label: ReasonLabel[r],
-            }))}
-            onChange={(reason) =>
-              setStep({ name: "q-dates", employment: step.employment, reason })
-            }
-          />
-          <div className="mt-4">
-            <SecondaryButton onClick={() => setStep(initial)}>Back</SecondaryButton>
-          </div>
-        </Card>
-      );
+  const [employmentError, setEmploymentError] = useState('')
+  const [reasonError, setReasonError] = useState('')
+  const [startError, setStartError] = useState('')
+  const [endError, setEndError] = useState('')
+  const [payError, setPayError] = useState('')
 
-    case "q-dates":
-      return <DatesStep step={step} setStep={setStep} reset={reset} />;
-
-    case "q-pay":
-      return <PayStep step={step} setStep={setStep} reset={reset} />;
-
-    case "result":
-      return (
-        <Card>
-          {step.result.kind === "eligible" ? (
-            <EligiblePanel result={step.result} />
-          ) : (
-            <IneligiblePanel result={step.result} />
-          )}
-          <div className="mt-6">
-            <SecondaryButton onClick={reset}>Start over</SecondaryButton>
-          </div>
-        </Card>
-      );
-
-    default:
-      return assertNever(step);
+  const go = (next: Step) => {
+    setStep(next)
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0 })
   }
-}
 
-function DatesStep({
-  step,
-  setStep,
-  reset,
-}: {
-  step: Extract<Step, { name: "q-dates" }>;
-  setStep: (s: Step) => void;
-  reset: () => void;
-}) {
-  const [startIso, setStartIso] = useState("");
-  const [endIso, setEndIso] = useState("");
-  const ready =
-    startIso !== "" && endIso !== "" && new Date(endIso) > new Date(startIso);
+  const startResult = parseDate(start)
+  const endResult = parseDate(end)
+  const startIso = startResult.ok ? startResult.iso : ''
+  const endIso = endResult.ok ? endResult.iso : ''
+  const endYear = endResult.ok ? endResult.date.getFullYear() : null
+  const years = startIso && endIso ? completeYears(startIso, endIso) : 0
+  const { weekly: avgWeekly } = avgWeeklyFromSimple(
+    simpleAvgNum,
+    period,
+    endYear,
+  )
+  const entitledWeeks = tieredWeeks(years)
+  const severance = entitledWeeks * avgWeekly
+
+  let ineligibleKey: IneligibleKey | null = null
+  if (employment === Employment.Yes) ineligibleKey = 'self-employed'
+  else if (reason === Reason.Other) ineligibleKey = 'reason-not-covered'
+  else if (reason && years < 2) ineligibleKey = 'under-two-years'
+
+  const isEligible =
+    employment !== Employment.Yes &&
+    reason !== '' &&
+    reason !== Reason.Other &&
+    years >= 2
+
+  function submitEmployment() {
+    setEmploymentError('')
+    if (!employment) {
+      setEmploymentError('Select yes or no')
+      return
+    }
+    if (employment === Employment.Yes) {
+      go('result')
+      return
+    }
+    go('q-reason')
+  }
+
+  function submitReason() {
+    setReasonError('')
+    if (!reason) {
+      setReasonError('Select why you were sent home')
+      return
+    }
+    if (reason === Reason.Other) {
+      go('result')
+      return
+    }
+    go('q-years')
+  }
+
+  function submitYears() {
+    setStartError('')
+    setEndError('')
+    const today = new Date()
+    today.setHours(23, 59, 59, 999)
+    let sErr = ''
+    let eErr = ''
+    if (!startResult.ok) {
+      sErr =
+        startResult.reason === 'incomplete'
+          ? 'Enter your start date including day, month and year'
+          : 'Enter a real start date'
+    } else if (startResult.date > today) {
+      sErr = 'Start date cannot be in the future'
+    }
+    if (!endResult.ok) {
+      eErr =
+        endResult.reason === 'incomplete'
+          ? 'Enter your last day at work including day, month and year'
+          : 'Enter a real end date'
+    } else if (startResult.ok && endResult.date <= startResult.date) {
+      eErr = 'End date must be after start date'
+    }
+    setStartError(sErr)
+    setEndError(eErr)
+    if (sErr || eErr) return
+    if (years < 2) {
+      go('result')
+      return
+    }
+    go('q-pay')
+  }
+
+  function submitPay() {
+    setPayError('')
+    if (simpleAvgNum <= 0) {
+      setPayError(`Enter your average ${periodLabels.adverb} pay`)
+      return
+    }
+    go('result')
+  }
+
+  function restart() {
+    setStep('q-employment')
+    setEmployment('')
+    setReason('')
+    setStart(emptyDate)
+    setEnd(emptyDate)
+    setPeriod(PayPeriod.Weekly)
+    setSimpleAvg('')
+    setEmploymentError('')
+    setReasonError('')
+    setStartError('')
+    setEndError('')
+    setPayError('')
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0 })
+  }
 
   return (
-    <Card>
-      <StepHeading>When did you start and stop working?</StepHeading>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium">Start date</span>
-          <input
-            type="date"
-            value={startIso}
-            onChange={(e) => setStartIso(e.target.value)}
-            className="rounded-md border border-stone-300 px-3 py-2"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium">End date</span>
-          <input
-            type="date"
-            value={endIso}
-            onChange={(e) => setEndIso(e.target.value)}
-            className="rounded-md border border-stone-300 px-3 py-2"
-          />
-        </label>
-      </div>
-      <div className="mt-6 flex gap-3">
-        <SecondaryButton onClick={reset}>Start over</SecondaryButton>
-        <PrimaryButton
-          disabled={!ready}
-          onClick={() =>
-            setStep({
-              name: "q-pay",
-              employment: step.employment,
-              reason: step.reason,
-              startIso,
-              endIso,
-            })
-          }
+    <div className="container pt-4 pb-8 lg:py-8">
+      {step === 'q-employment' && (
+        <form
+          className="flex flex-col gap-6"
+          noValidate
+          onSubmit={(e) => {
+            e.preventDefault()
+            submitEmployment()
+          }}
         >
-          Continue
-        </PrimaryButton>
-      </div>
-    </Card>
-  );
+          {employmentError && (
+            <ErrorSummary
+              errors={[{ text: employmentError, target: 'employment-yes' }]}
+              title="There is a problem"
+            />
+          )}
+          <ServiceTitle />
+          <Heading as="h1">Are you self-employed?</Heading>
+          <RadioGroup
+            error={employmentError || undefined}
+            label="Choose one"
+            onValueChange={(v) => setEmployment(v as Employment)}
+            value={employment || undefined}
+          >
+            {(Object.entries(EMPLOYMENT_LABELS) as Array<[Employment, string]>).map(
+              ([value, label]) => (
+                <Radio
+                  id={`employment-${value}`}
+                  key={value}
+                  label={label}
+                  value={value}
+                />
+              ),
+            )}
+          </RadioGroup>
+          <div className="flex gap-3">
+            <Button
+              onClick={() =>
+                navigate({
+                  to: '/$',
+                  params: { _splat: START_PATH_SPLAT },
+                })
+              }
+              type="button"
+              variant="secondary"
+            >
+              Previous
+            </Button>
+            <Button type="submit">Continue</Button>
+          </div>
+        </form>
+      )}
+
+      {step === 'q-reason' && (
+        <form
+          className="flex flex-col gap-6"
+          noValidate
+          onSubmit={(e) => {
+            e.preventDefault()
+            submitReason()
+          }}
+        >
+          {reasonError && (
+            <ErrorSummary
+              errors={[{ text: reasonError, target: 'reason-redundancy' }]}
+              title="There is a problem"
+            />
+          )}
+          <ServiceTitle />
+          <Heading as="h1">Why were you sent home?</Heading>
+          <RadioGroup
+            error={reasonError || undefined}
+            label="Choose one"
+            onValueChange={(v) => setReason(v as Reason)}
+            value={reason || undefined}
+          >
+            {(Object.entries(ReasonLabel) as Array<[Reason, string]>).map(
+              ([value, label]) => (
+                <Radio
+                  id={`reason-${value}`}
+                  key={value}
+                  label={label}
+                  value={value}
+                />
+              ),
+            )}
+          </RadioGroup>
+          <div className="flex gap-3">
+            <Button
+              onClick={() => go('q-employment')}
+              type="button"
+              variant="secondary"
+            >
+              Previous
+            </Button>
+            <Button type="submit">Continue</Button>
+          </div>
+        </form>
+      )}
+
+      {step === 'q-years' && (
+        <form
+          className="flex flex-col gap-6"
+          noValidate
+          onSubmit={(e) => {
+            e.preventDefault()
+            submitYears()
+          }}
+        >
+          {(startError || endError) && (
+            <ErrorSummary
+              errors={[
+                ...(startError
+                  ? [{ text: startError, target: 'start-date-day' }]
+                  : []),
+                ...(endError
+                  ? [{ text: endError, target: 'end-date-day' }]
+                  : []),
+              ]}
+              title="There is a problem"
+            />
+          )}
+          <ServiceTitle />
+          <Heading as="h1">When did you work for this employer?</Heading>
+          <ul className="list-disc space-y-2 pl-7">
+            <li>Enter the date you started and your last day at work.</li>
+            <li>
+              You need at least <strong>2 years</strong> of continuous service
+              to qualify for severance payment.
+            </li>
+            <li>
+              The law counts a maximum of <strong>33 years</strong>.
+            </li>
+          </ul>
+
+          <DateInput
+            description="The first day you worked for this employer. For example, 27 3 1990"
+            error={startError || undefined}
+            label="Start date"
+            name="start-date"
+            onChange={setStart}
+            required
+            value={start}
+          />
+
+          <DateInput
+            description="Your last day at work. For example, 27 3 1990"
+            error={endError || undefined}
+            label="End date"
+            name="end-date"
+            onChange={setEnd}
+            required
+            value={end}
+          />
+
+          <div className="flex gap-3">
+            <Button
+              onClick={() => go('q-reason')}
+              type="button"
+              variant="secondary"
+            >
+              Previous
+            </Button>
+            <Button type="submit">Continue</Button>
+          </div>
+        </form>
+      )}
+
+      {step === 'q-pay' && (
+        <form
+          className="flex flex-col gap-6"
+          noValidate
+          onSubmit={(e) => {
+            e.preventDefault()
+            submitPay()
+          }}
+        >
+          {payError && (
+            <ErrorSummary
+              errors={[{ text: payError, target: 'simple-avg' }]}
+              title="There is a problem"
+            />
+          )}
+          <ServiceTitle />
+          <Heading as="h1">Your insurable earnings</Heading>
+          <Text as="p" size="body">
+            Enter your usual gross pay. We'll use it as the average over the
+            last 104 weeks (2 years).
+          </Text>
+
+          <RadioGroup
+            description="Choose one"
+            label="How are you paid?"
+            onValueChange={(v) => setPeriod(v as PayPeriod)}
+            value={period}
+          >
+            <Radio id="period-weekly" label="Weekly" value="weekly" />
+            <Radio id="period-monthly" label="Monthly" value="monthly" />
+          </RadioGroup>
+
+          <div className="max-w-[16rem]">
+            <Input
+              description="Your usual gross pay. Include overtime or bonuses."
+              error={payError || undefined}
+              id="simple-avg"
+              inputMode="decimal"
+              label={periodLabels.payLabel}
+              onInput={(e) => setSimpleAvg(e.currentTarget.value)}
+              required
+              value={simpleAvg}
+            />
+          </div>
+
+          <div className="flex gap-3">
+            <Button
+              onClick={() => go('q-years')}
+              type="button"
+              variant="secondary"
+            >
+              Previous
+            </Button>
+            <Button type="submit">Continue</Button>
+          </div>
+        </form>
+      )}
+
+      {step === 'result' && (
+        <div className="flex flex-col gap-6">
+          <ServiceTitle />
+          {ineligibleKey && (
+            <IneligibleResult variant={INELIGIBLE_VARIANTS[ineligibleKey]} />
+          )}
+
+          {isEligible && (
+            <EligibleResult
+              avgWeekly={avgWeekly}
+              endYear={endYear}
+              entitledWeeks={entitledWeeks}
+              period={period}
+              severance={severance}
+              simpleAvgNum={simpleAvgNum}
+              years={years}
+            />
+          )}
+
+          <Heading as="h2">Need help or advice?</Heading>
+          <Text as="p" size="body">
+            Contact the <strong>NIS Severance Payment Department</strong>.
+            They can give you free advice and help you claim if your employer
+            does not pay.
+          </Text>
+          <Text as="p" size="body">
+            NIS Severance Payment Department
+            <br />
+            Frank Walcott Building
+            <br />
+            Culloden Road
+            <br />
+            St. Michael
+          </Text>
+          <Text as="p" size="body">
+            Phone: <a href="tel:+12464317400">+1 246-431-7400</a>, extensions
+            1502 to 1509
+          </Text>
+          <div>
+            <Button onClick={restart} type="button" variant="secondary">
+              Start again
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
 
-function PayStep({
-  step,
-  setStep,
-  reset,
+function EligibleResult({
+  avgWeekly,
+  endYear,
+  entitledWeeks,
+  period,
+  severance,
+  simpleAvgNum,
+  years,
 }: {
-  step: Extract<Step, { name: "q-pay" }>;
-  setStep: (s: Step) => void;
-  reset: () => void;
+  avgWeekly: number
+  endYear: number | null
+  entitledWeeks: number
+  period: PayPeriod
+  severance: number
+  simpleAvgNum: number
+  years: number
 }) {
-  const [period, setPeriod] = useState<PayPeriod>(PayPeriod.Weekly);
-  const [raw, setRaw] = useState("");
-  const amount = Number.parseFloat(raw.replace(/,/g, ""));
-  const ready = Number.isFinite(amount) && amount > 0;
-
-  const submit = () => {
-    const inputs: SeveranceInputs = {
-      employment: step.employment,
-      reason: step.reason,
-      startIso: step.startIso,
-      endIso: step.endIso,
-      period,
-      simpleAvg: amount,
-    };
-    setStep({ name: "result", inputs, result: calculateSeverance(inputs) });
-  };
+  const countedYears = Math.min(years, 33)
+  const tier1Years = Math.min(countedYears, 10)
+  const tier2Years = Math.max(Math.min(countedYears - 10, 10), 0)
+  const tier3Years = Math.max(Math.min(countedYears - 20, 13), 0)
+  const tier1Pay = tier1Years * 2.5 * avgWeekly
+  const tier2Pay = tier2Years * 3 * avgWeekly
+  const tier3Pay = tier3Years * 3.5 * avgWeekly
+  const ceiling = endYear ? ceilingFor(endYear) : null
+  const rawWeekly =
+    period === PayPeriod.Monthly ? (simpleAvgNum * 12) / 52 : simpleAvgNum
+  const ceilingApplied = Boolean(ceiling) && rawWeekly > (ceiling?.weekly ?? 0)
 
   return (
-    <Card>
-      <StepHeading>What were you paid?</StepHeading>
-      <fieldset className="mb-4">
-        <legend className="mb-2 text-sm font-medium">Pay period</legend>
-        <RadioRow
-          name="period"
-          value={period}
-          options={[
-            { value: PayPeriod.Weekly, label: "Weekly" },
-            { value: PayPeriod.Monthly, label: "Monthly" },
-          ]}
-          onChange={setPeriod}
-        />
-      </fieldset>
-      <label className="flex flex-col gap-1 text-sm">
-        <span className="font-medium">Average insurable earnings</span>
-        <input
-          type="text"
-          inputMode="decimal"
-          placeholder={period === PayPeriod.Weekly ? "e.g. 950" : "e.g. 4100"}
-          value={raw}
-          onChange={(e) => setRaw(e.target.value)}
-          className="rounded-md border border-stone-300 px-3 py-2"
-        />
-      </label>
-      <div className="mt-6 flex gap-3">
-        <SecondaryButton onClick={reset}>Start over</SecondaryButton>
-        <PrimaryButton disabled={!ready} onClick={submit}>
-          Calculate
-        </PrimaryButton>
+    <>
+      <div className="rounded-sm bg-green-00 p-m text-white-00">
+        <Heading as="h2" className="text-white-00">
+          Your severance payment estimate
+        </Heading>
+        <p className="wrap-break-word mt-1 font-bold text-3xl">
+          {money(severance)}
+        </p>
       </div>
-    </Card>
-  );
+
+      <div className="border-red-00 border-l-4 bg-red-10 p-4">
+        <Text as="p" size="body">
+          <strong>
+            This is the estimated amount you may be entitled to.
+          </strong>{' '}
+          It is calculated under the Severance Payments Act (Cap. 355A). Your
+          contract of employment may entitle you to more.
+        </Text>
+        <Text as="p" className="mt-2" size="body">
+          This is not legal advice. Contact the{' '}
+          <strong>NIS Severance Payment Department</strong> if you are unsure
+          about your entitlement.
+        </Text>
+      </div>
+
+      <Text as="p" size="body">
+        The same calculation applies whether you were made redundant, your
+        workplace was damaged by a disaster, you were laid off or put on short
+        time for a long period, your employer died, or the business closed or
+        was reconstructed.
+      </Text>
+
+      <ShowHide summary="How your severance is worked out">
+        <div className="space-y-4">
+          <Text as="p" size="body">
+            The Severance Payments Act gives you a number of weeks of pay for
+            every complete year you worked with the same employer:
+          </Text>
+          <ul className="list-disc space-y-2 pl-7">
+            <li>
+              <strong>2.5 weeks</strong> of gross pay for each year up to 10
+              years
+            </li>
+            <li>
+              <strong>3 weeks</strong> of gross pay for each year between 11
+              and 20 years
+            </li>
+            <li>
+              <strong>3.5 weeks</strong> of gross pay for each year between 21
+              and 33 years
+            </li>
+          </ul>
+          <Text as="p" size="body">
+            Only the most recent <strong>33 years</strong> of your employment
+            count. Anything earlier is not included.
+          </Text>
+
+          <Heading as="h3">Your average weekly pay</Heading>
+          <Text as="p" size="body">
+            NIS works out your average weekly pay using your{' '}
+            <strong>insurable earnings</strong> over the last 104 weeks (the
+            last 2 years), divided by 104.
+          </Text>
+          <Text as="p" size="body">
+            Insurable earnings are the wages NIS records contributions on.
+            They include your regular pay plus overtime, commissions, service
+            charges, production bonuses, and holiday pay.
+          </Text>
+          {period === PayPeriod.Monthly && (
+            <Text as="p" size="body">
+              You told us you earn, on average,{' '}
+              <strong>{money(simpleAvgNum)}</strong> a month. We turned that
+              into a weekly amount by multiplying by 12 (months in a year) and
+              dividing by 52 (weeks in a year):{' '}
+              <strong>{money(rawWeekly)}</strong> a week.
+            </Text>
+          )}
+          {ceilingApplied && ceiling && (
+            <Text as="p" size="body">
+              By law, NIS caps the weekly pay used in this calculation at the{' '}
+              <strong>maximum insurable earnings ceiling</strong>. In {endYear}{' '}
+              that ceiling is <strong>{money(ceiling.weekly)} a week</strong>,
+              so we used that instead of your full average.
+            </Text>
+          )}
+          <Text as="p" size="body">
+            We used <strong>{money(avgWeekly)} a week</strong> for your
+            calculation.
+          </Text>
+
+          <GapWeeksExample
+            entitledWeeks={entitledWeeks}
+            rawWeekly={rawWeekly}
+            severance={severance}
+          />
+
+          <Heading as="h3">Your calculation</Heading>
+          <Text as="p" size="body">
+            You worked for <strong>{countedYears} complete years</strong>
+            {years > 33 && (
+              <>
+                {' '}
+                (we counted the most recent 33 of the {years} years you told
+                us)
+              </>
+            )}
+            . Here is how that adds up:
+          </Text>
+          <div className="overflow-x-auto rounded-sm bg-grey-10 p-4 text-center font-mono text-base">
+            <div className="inline-grid grid-cols-[auto_auto_auto_auto_auto_auto_auto_auto_auto] items-center gap-x-2 gap-y-2 text-left">
+              {tier1Years > 0 && (
+                <TierRow
+                  multiplier={2.5}
+                  pay={tier1Pay}
+                  weekly={avgWeekly}
+                  years={tier1Years}
+                />
+              )}
+              {tier2Years > 0 && (
+                <TierRow
+                  multiplier={3}
+                  pay={tier2Pay}
+                  weekly={avgWeekly}
+                  years={tier2Years}
+                />
+              )}
+              {tier3Years > 0 && (
+                <TierRow
+                  multiplier={3.5}
+                  pay={tier3Pay}
+                  weekly={avgWeekly}
+                  years={tier3Years}
+                />
+              )}
+              <span className="col-span-9 mt-1 border-black-00 border-t pt-2 text-right">
+                <span className="mr-2 text-mid-grey-00">Total =</span>
+                <strong>{money(severance)}</strong>
+              </span>
+            </div>
+          </div>
+        </div>
+      </ShowHide>
+
+      {years > 33 && (
+        <Text as="p" className="text-mid-grey-00" size="caption">
+          Under the Severance Payments Act, only the most recent 33 years of
+          service are counted.
+        </Text>
+      )}
+
+      <Heading as="h2">What happens after you file</Heading>
+      <ol className="list-decimal space-y-2 pl-7">
+        <li>NIS writes to your employer on your behalf.</li>
+        <li>
+          Once your claim is approved, NIS sends you a letter by a{' '}
+          <strong>registered post</strong>.
+        </li>
+        <li>
+          You pay a <strong>BDS$4.65</strong> postage fee for the registered
+          letter.
+        </li>
+        <li>
+          You have <strong>30 days</strong> to respond to the letter.
+        </li>
+        <li>
+          Return the <strong>registered pink slip</strong> from the post
+          office, together with a copy of the letter, before the 30 days are
+          up.
+        </li>
+      </ol>
+
+      <div className="border-yellow-00 border-l-4 bg-yellow-10 p-4">
+        <Text as="p" size="body">
+          <strong>Keep your pink slip safe</strong>
+        </Text>
+        <Text as="p" className="mt-2" size="body">
+          If the pink slip is lost, damaged, stolen, or misplaced, you will
+          have to restart the entire severance process from the beginning.
+        </Text>
+      </div>
+    </>
+  )
+}
+
+function GapWeeksExample({
+  entitledWeeks,
+  rawWeekly,
+  severance,
+}: {
+  entitledWeeks: number
+  rawWeekly: number
+  severance: number
+}) {
+  const gapWeeks = 8
+  const workedWeeks = 104 - gapWeeks
+  const exampleAvg = (rawWeekly * workedWeeks) / 104
+  const exampleSeverance = entitledWeeks * exampleAvg
+
+  return (
+    <div className="border-yellow-00 border-l-4 bg-yellow-10 p-4">
+      <Text as="p" size="body">
+        <strong>Why this is only an estimate</strong>
+      </Text>
+      <Text as="p" className="mt-2" size="body">
+        NIS divides by 104 weeks no matter what. If you had weeks in the last
+        2 years where you did not work, or were on lay-off, short-time, sick
+        leave, or unpaid leave, those weeks still count as part of the 104.
+        They will pull your real average down.
+      </Text>
+      <Text as="p" className="mt-2" size="body">
+        This calculator assumes you earned your stated pay every week for the
+        full 2 years. Your actual payout may be lower if there were gaps.
+      </Text>
+
+      {rawWeekly > 0 && (
+        <div className="mt-4">
+          <Text as="p" size="body">
+            <strong>For example</strong>, if {gapWeeks} of your last 104 weeks
+            had no pay (say you took unpaid sick leave after an injury):
+          </Text>
+          <Text as="p" className="mt-3 text-mid-grey-00" size="caption">
+            Each square is one week.
+          </Text>
+          <div className="mt-2 space-y-3">
+            {[0, 1].map((yearIdx) => (
+              <div key={yearIdx}>
+                <Text
+                  as="p"
+                  className="mb-1 text-mid-grey-00"
+                  size="caption"
+                >
+                  {yearIdx === 0 ? '2 years ago' : 'Last year'}
+                </Text>
+                <div className="flex flex-wrap gap-1">
+                  {Array.from({ length: 52 }).map((_, w) => {
+                    const weekIndex = yearIdx * 52 + w
+                    const isGap = weekIndex < gapWeeks
+                    return (
+                      <span
+                        aria-hidden="true"
+                        className={
+                          isGap
+                            ? 'h-3 w-3 rounded-xs bg-red-00'
+                            : 'h-3 w-3 rounded-xs bg-green-00'
+                        }
+                        key={weekIndex}
+                      />
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+          <dl className="mt-4 flex flex-wrap gap-x-6 gap-y-2">
+            <div className="flex items-center gap-2">
+              <span
+                aria-hidden="true"
+                className="h-4 w-4 shrink-0 rounded-xs bg-green-00"
+              />
+              <dt className="sr-only">Worked</dt>
+              <dd>
+                <strong>{workedWeeks} weeks</strong>{' '}
+                <span className="text-mid-grey-00">worked</span>
+              </dd>
+            </div>
+            <div className="flex items-center gap-2">
+              <span
+                aria-hidden="true"
+                className="h-4 w-4 shrink-0 rounded-xs bg-red-00"
+              />
+              <dt className="sr-only">No pay</dt>
+              <dd>
+                <strong>{gapWeeks} weeks</strong>{' '}
+                <span className="text-mid-grey-00">no pay</span>
+              </dd>
+            </div>
+          </dl>
+          <div className="mt-3 rounded-sm bg-white-00 p-3 text-center font-mono text-sm">
+            <div>
+              ({workedWeeks} × {money(rawWeekly)}) + ({gapWeeks} × {money(0)})
+            </div>
+            <div className="mt-1">
+              = {money(rawWeekly * workedWeeks)} ÷ 104
+            </div>
+            <div className="mt-1">
+              = <strong>{money(exampleAvg)} a week</strong> (instead of{' '}
+              {money(rawWeekly)})
+            </div>
+            <div className="mt-2 border-grey-00 border-t pt-2">
+              Severance would be <strong>{money(exampleSeverance)}</strong>,
+              not {money(severance)}.
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function TierRow({
+  multiplier,
+  pay,
+  weekly,
+  years,
+}: {
+  multiplier: number
+  pay: number
+  weekly: number
+  years: number
+}) {
+  return (
+    <>
+      <span className="text-right">{money(weekly)}</span>
+      <span className="text-mid-grey-00">×</span>
+      <span className="text-right">{multiplier}</span>
+      <span className="text-mid-grey-00">weeks</span>
+      <span className="text-mid-grey-00">×</span>
+      <span className="text-right">{years}</span>
+      <span className="text-mid-grey-00">{years === 1 ? 'year' : 'years'}</span>
+      <span className="text-mid-grey-00">=</span>
+      <span className="text-right font-bold">{money(pay)}</span>
+    </>
+  )
 }
