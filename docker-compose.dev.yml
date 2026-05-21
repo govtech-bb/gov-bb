@@ -33,3 +33,10 @@ services:
       - ./apps/forms/contracts:/app/apps/forms/contracts
       - ./packages:/app/packages
       - /app/apps/forms/node_modules
+
+  chat:
+    volumes:
+      - ./apps/chat/src:/app/apps/chat/src
+      - ./apps/chat/public:/app/apps/chat/public
+      - ./packages/content:/app/packages/content
+      - /app/apps/chat/node_modules
