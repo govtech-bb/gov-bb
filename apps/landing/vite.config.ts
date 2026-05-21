@@ -7,7 +7,7 @@ import { nitro } from 'nitro/vite'
 
 const config = defineConfig({
   resolve: { tsconfigPaths: true },
-  plugins: [tailwindcss(), devtools(), tanstackStart(), nitro(), viteReact()],
+  plugins: [tailwindcss(), devtools(), tanstackStart(), nitro({ preset: 'aws-amplify' }), viteReact()],
 })
 
 export default config
