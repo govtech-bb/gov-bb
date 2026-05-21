@@ -21,6 +21,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as GovernmentOrganisationsRouteImport } from './routes/government.organisations'
 import { Route as GovernmentOrganisationsIndexRouteImport } from './routes/government.organisations.index'
 import { Route as GovernmentOrganisationsSlugRouteImport } from './routes/government.organisations.$slug'
+import { Route as BusinessTradeCropOverPermitsFormRouteImport } from './routes/business-trade.crop-over-permits.form'
 
 const TellUsRoute = TellUsRouteImport.update({
   id: '/tell-us',
@@ -84,6 +85,12 @@ const GovernmentOrganisationsSlugRoute =
     path: '/$slug',
     getParentRoute: () => GovernmentOrganisationsRoute,
   } as any)
+const BusinessTradeCropOverPermitsFormRoute =
+  BusinessTradeCropOverPermitsFormRouteImport.update({
+    id: '/business-trade/crop-over-permits/form',
+    path: '/business-trade/crop-over-permits/form',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -96,6 +103,7 @@ export interface FileRoutesByFullPath {
   '/services': typeof ServicesRoute
   '/tell-us': typeof TellUsRoute
   '/government/organisations': typeof GovernmentOrganisationsRouteWithChildren
+  '/business-trade/crop-over-permits/form': typeof BusinessTradeCropOverPermitsFormRoute
   '/government/organisations/$slug': typeof GovernmentOrganisationsSlugRoute
   '/government/organisations/': typeof GovernmentOrganisationsIndexRoute
 }
@@ -109,6 +117,7 @@ export interface FileRoutesByTo {
   '/service-unavailable': typeof ServiceUnavailableRoute
   '/services': typeof ServicesRoute
   '/tell-us': typeof TellUsRoute
+  '/business-trade/crop-over-permits/form': typeof BusinessTradeCropOverPermitsFormRoute
   '/government/organisations/$slug': typeof GovernmentOrganisationsSlugRoute
   '/government/organisations': typeof GovernmentOrganisationsIndexRoute
 }
@@ -124,6 +133,7 @@ export interface FileRoutesById {
   '/services': typeof ServicesRoute
   '/tell-us': typeof TellUsRoute
   '/government/organisations': typeof GovernmentOrganisationsRouteWithChildren
+  '/business-trade/crop-over-permits/form': typeof BusinessTradeCropOverPermitsFormRoute
   '/government/organisations/$slug': typeof GovernmentOrganisationsSlugRoute
   '/government/organisations/': typeof GovernmentOrganisationsIndexRoute
 }
@@ -140,6 +150,7 @@ export interface FileRouteTypes {
     | '/services'
     | '/tell-us'
     | '/government/organisations'
+    | '/business-trade/crop-over-permits/form'
     | '/government/organisations/$slug'
     | '/government/organisations/'
   fileRoutesByTo: FileRoutesByTo
@@ -153,6 +164,7 @@ export interface FileRouteTypes {
     | '/service-unavailable'
     | '/services'
     | '/tell-us'
+    | '/business-trade/crop-over-permits/form'
     | '/government/organisations/$slug'
     | '/government/organisations'
   id:
@@ -167,6 +179,7 @@ export interface FileRouteTypes {
     | '/services'
     | '/tell-us'
     | '/government/organisations'
+    | '/business-trade/crop-over-permits/form'
     | '/government/organisations/$slug'
     | '/government/organisations/'
   fileRoutesById: FileRoutesById
@@ -182,6 +195,7 @@ export interface RootRouteChildren {
   ServicesRoute: typeof ServicesRoute
   TellUsRoute: typeof TellUsRoute
   GovernmentOrganisationsRoute: typeof GovernmentOrganisationsRouteWithChildren
+  BusinessTradeCropOverPermitsFormRoute: typeof BusinessTradeCropOverPermitsFormRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -270,6 +284,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GovernmentOrganisationsSlugRouteImport
       parentRoute: typeof GovernmentOrganisationsRoute
     }
+    '/business-trade/crop-over-permits/form': {
+      id: '/business-trade/crop-over-permits/form'
+      path: '/business-trade/crop-over-permits/form'
+      fullPath: '/business-trade/crop-over-permits/form'
+      preLoaderRoute: typeof BusinessTradeCropOverPermitsFormRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -300,6 +321,7 @@ const rootRouteChildren: RootRouteChildren = {
   ServicesRoute: ServicesRoute,
   TellUsRoute: TellUsRoute,
   GovernmentOrganisationsRoute: GovernmentOrganisationsRouteWithChildren,
+  BusinessTradeCropOverPermitsFormRoute: BusinessTradeCropOverPermitsFormRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
