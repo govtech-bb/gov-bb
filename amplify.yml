@@ -6,12 +6,13 @@ applications:
       phases:
         preBuild:
           commands:
-            - npm install --ignore-scripts
+            - npm install -g pnpm@10.30.0
+            - pnpm install --frozen-lockfile
         build:
           commands:
-            - npx nx run form-types:build
-            - npx nx run form-conditions:build
-            - npx nx run forms:build
+            - pnpm exec nx run form-types:build
+            - pnpm exec nx run form-conditions:build
+            - pnpm exec nx run forms:build
       artifacts:
         baseDirectory: apps/forms/dist
         files:

@@ -15,7 +15,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc nx.json tsconfig.bas
 # Per-workspace manifests are required for pnpm to resolve the workspace graph.
 COPY apps/api/package.json apps/api/
 COPY apps/landing/package.json apps/landing/
-COPY apps/web/package.json apps/web/
+COPY apps/forms/package.json apps/forms/
 COPY packages/expressions/package.json packages/expressions/
 COPY packages/form-conditions/package.json packages/form-conditions/
 COPY packages/form-types/package.json packages/form-types/
