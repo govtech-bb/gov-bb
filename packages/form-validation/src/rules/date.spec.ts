@@ -191,6 +191,12 @@ describe("onOrAfterRunner", () => {
       "Date must be on or after 2020-01-01",
     );
   });
+
+  it("skips when reference field is missing", () => {
+    expect(
+      onOrAfterRunner("2020-01-01", cfg(undefined, undefined, "startDate"), {}),
+    ).toBeNull();
+  });
 });
 
 describe("onOrBeforeRunner", () => {
@@ -205,6 +211,48 @@ describe("onOrBeforeRunner", () => {
   it("fails when date is after reference", () => {
     expect(onOrBeforeRunner("2020-06-01", cfg("2020-01-01"), {})).toBe(
       "Date must be on or before 2020-01-01",
+    );
+  });
+
+  it("skips when reference field is missing", () => {
+    expect(
+      onOrBeforeRunner("2020-06-01", cfg(undefined, undefined, "endDate"), {}),
+    ).toBeNull();
+  });
+});
+
+describe("parseDate — DateValue object format", () => {
+  it("accepts a DateValue object in the past", () => {
+    expect(pastRunner({ day: 1, month: 1, year: 2000 }, cfg(), {})).toBeNull();
+  });
+
+  it("rejects a DateValue object in the future", () => {
+    expect(pastRunner({ day: 31, month: 12, year: 2099 }, cfg(), {})).toBe(
+      "Date must be in the past",
+    );
+  });
+
+  it("treats a DateValue with day=0 as invalid", () => {
+    expect(pastRunner({ day: 0, month: 1, year: 2000 }, cfg(), {})).toBe(
+      "Date must be in the past",
+    );
+  });
+
+  it("treats a DateValue with month=0 as invalid", () => {
+    expect(pastRunner({ day: 1, month: 0, year: 2000 }, cfg(), {})).toBe(
+      "Date must be in the past",
+    );
+  });
+
+  it("treats a DateValue with year=0 as invalid", () => {
+    expect(pastRunner({ day: 1, month: 1, year: 0 }, cfg(), {})).toBe(
+      "Date must be in the past",
+    );
+  });
+
+  it("rejects an object missing day/month/year keys", () => {
+    expect(pastRunner({ foo: "bar" }, cfg(), {})).toBe(
+      "Date must be in the past",
     );
   });
 });
