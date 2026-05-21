@@ -85,3 +85,9 @@ export const DEPARTMENTS: Department[] = loaded.departments
 export const STATE_BODIES: StateBody[] = loaded.stateBodies
 
 export const BODY_BY_SLUG: ReadonlyMap<string, string> = loaded.bodies
+
+export const ORG_CATEGORY_LABEL: Record<OrgKind, string> = {
+  ministry: 'Ministry',
+  department: 'Department',
+  'state-body': 'State body',
+}
