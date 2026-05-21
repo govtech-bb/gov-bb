@@ -16,6 +16,8 @@
     "start:api": "nx start api",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "lint:recipes": "TS_NODE_PROJECT=apps/api/tsconfig.json ts-node -r tsconfig-paths/register scripts/lint-recipes.ts",
+    "export:recipes": "TS_NODE_PROJECT=apps/api/tsconfig.json ts-node -r tsconfig-paths/register scripts/export-recipes-to-files.ts",
     "migration:create": "TS_NODE_PROJECT=apps/api/tsconfig.json typeorm-ts-node-commonjs migration:create",
     "migration:create:help": "node -e \"console.log('Usage: npm run migration:create -- <path/to/migrations>/<migration-name>'); console.log('Example: npm run migration:create -- apps/api/src/database/migrations/AddFormSubmissionIndexes'); console.log('This creates an empty migration file; use migration:generate for diff-based migrations.');\"",
     "migration:generate": "TS_NODE_PROJECT=apps/api/tsconfig.json typeorm-ts-node-commonjs migration:generate -d apps/api/typeorm.config.ts",

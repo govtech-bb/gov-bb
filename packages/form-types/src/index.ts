@@ -125,3 +125,5 @@ export type {
   DateTimeFormat,
   ContactDetails,
 } from "./service-contract.type";
+
+export { canonicalizeRecipe } from "./canonical-recipe";
