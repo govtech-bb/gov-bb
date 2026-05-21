@@ -21,6 +21,7 @@ import {
   PublishResponse,
 } from "./dto/chat-message.dto";
 import { AiService } from "./ai.service";
+import { isPdfBuffer, pdfFileFilter } from "./pdf-validation";
 
 @ApiTags("Form Builder")
 @SkipThrottle()
@@ -57,12 +58,15 @@ export class FormBuilderController {
    */
   @Post("sessions/:sessionId/messages")
   @UseInterceptors(
-    FileInterceptor("pdf", { limits: { fileSize: 50 * 1024 * 1024 } }),
+    FileInterceptor("pdf", {
+      limits: { fileSize: 50 * 1024 * 1024 },
+      fileFilter: pdfFileFilter,
+    }),
   )
   async sendMessage(
     @Param("sessionId") sessionId: string,
     @Body("message") message: string,
-    @UploadedFile() file?: any,
+    @UploadedFile() file?: Express.Multer.File,
   ): Promise<SessionResponse> {
     if (!this.aiService.isAvailable()) {
       throw new HttpException(
@@ -75,13 +79,18 @@ export class FormBuilderController {
       throw new HttpException("Message is required", HttpStatus.BAD_REQUEST);
     }
 
-    try {
-      // Convert uploaded PDF to base64 for the AI
-      let pdfPages: string[] | undefined;
-      if (file) {
-        pdfPages = [file.buffer.toString("base64")];
+    let pdfPages: string[] | undefined;
+    if (file) {
+      if (!isPdfBuffer(file.buffer)) {
+        throw new HttpException(
+          "Uploaded file is not a valid PDF (magic bytes missing)",
+          HttpStatus.BAD_REQUEST,
+        );
       }
+      pdfPages = [file.buffer.toString("base64")];
+    }
 
+    try {
       return await this.formBuilderService.sendMessage(
         sessionId,
         message,

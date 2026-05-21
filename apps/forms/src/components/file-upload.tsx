@@ -1,6 +1,7 @@
 import React from "react";
 import { FileUploadProps } from "@forms/types";
 import ErrorMessage from "./error-message";
+import { trackEvent } from "../lib/analytics";
 
 export default function FileUpload({
   field,
@@ -9,12 +10,22 @@ export default function FileUpload({
   value,
   errorMessage,
   validationRules,
+  formId,
 }: FileUploadProps) {
   const files = value ?? [];
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const currentFiles = e.target.files;
     const picked = currentFiles ? Array.from(currentFiles) : [];
+    picked.forEach((file) => {
+      trackEvent("form-file-select", {
+        form_id: formId,
+        step_id: field.stepId,
+        field_id: field.fieldId,
+        mime: file.type,
+        size_kb: Math.round(file.size / 1024),
+      });
+    });
     const updatedFiles = [...files, ...picked];
     onFileChange(updatedFiles.length ? updatedFiles : null);
     e.target.value = "";
