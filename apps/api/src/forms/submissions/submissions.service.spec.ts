@@ -249,6 +249,65 @@ describe("SubmissionsService", () => {
       const result = await service.submit(BASE_DTO);
       expect(result.outcome).toBe("duplicate");
     });
+
+    it("uses dto.formVersion when draft is null (no draftId path)", async () => {
+      // Branch: `draft?.formVersion ?? dto.formVersion` — draft is null
+      const { txRepo, pipeline, service } = makeMocks();
+      pipeline.run = jest.fn().mockResolvedValue({
+        draft: null,
+        contract: { processors: [] },
+        auditTrail: AUDIT_TRAIL,
+        normalizedValues: {},
+      });
+
+      const dto = { ...BASE_DTO, draftId: undefined };
+      const result = await service.submit(dto);
+
+      expect(result.outcome).toBe("created");
+      expect(txRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ formVersion: BASE_DTO.formVersion }),
+      );
+    });
+
+    it("uses empty processors array when contract.processors is undefined", async () => {
+      // Branch: `contract.processors ?? []`
+      const { processorFactory, pipeline, service } = makeMocks();
+      pipeline.run = jest.fn().mockResolvedValue({
+        draft: { formVersion: "1.0.0", lastActivePage: 0 },
+        contract: { processors: undefined },
+        auditTrail: AUDIT_TRAIL,
+        normalizedValues: {},
+      });
+
+      await service.submit(BASE_DTO);
+
+      // resolveSplit called with [] (the ?? fallback)
+      expect(processorFactory.resolveSplit as jest.Mock).toHaveBeenCalledWith(
+        [],
+      );
+    });
+
+    it("returns the existing submission when double-check pessimistic write finds a race duplicate", async () => {
+      // Branch: `if (doubleCheck)` inside the tx callback
+      const doubleCheckEntity = makeEntity({ id: "race-entity" });
+      const { service, submissionRepo } = makeMocks();
+
+      // First findOne returns null (idempotency key not yet present)
+      (submissionRepo.findOne as jest.Mock).mockResolvedValue(null);
+
+      // Inside the tx, the pessimistic read finds a duplicate
+      const txRepo = {
+        findOne: jest.fn().mockResolvedValue(doubleCheckEntity),
+        create: jest.fn(),
+        save: jest.fn(),
+      };
+      (submissionRepo.tx as jest.Mock).mockImplementation((cb) => cb(txRepo));
+
+      const result = await service.submit(BASE_DTO);
+
+      expect(txRepo.create).not.toHaveBeenCalled();
+      expect(result.data).toBe(doubleCheckEntity);
+    });
   });
 
   describe("with gating processor present", () => {
