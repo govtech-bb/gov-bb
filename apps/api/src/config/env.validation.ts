@@ -70,6 +70,15 @@ export const envValidationSchema = Joi.object({
   AI_MODEL: Joi.string().default("claude-sonnet-4-20250514"),
   ANTHROPIC_API_KEY: Joi.string().optional().allow(""),
 
+  // Form-builder admin token (stopgap until #11 lands real auth).
+  // Required in production; optional in dev (but the guard always runs —
+  // an unset token returns 503, never silently allows the request).
+  ADMIN_API_TOKEN: Joi.alternatives().conditional("NODE_ENV", {
+    is: "production",
+    then: Joi.string().min(32).required(),
+    otherwise: Joi.string().min(32).optional().allow(""),
+  }),
+
   // EzPay (required only when forms use the payment processor)
   EZPAY_BASE_URL: Joi.string().uri().required(),
   EZPAY_DEPARTMENT_API_KEYS: Joi.string().required(),

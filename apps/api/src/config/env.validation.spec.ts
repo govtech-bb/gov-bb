@@ -63,6 +63,7 @@ describe("envValidationSchema", () => {
           ...baseEnv,
           NODE_ENV: "production",
           CORS_ORIGIN: "https://forms.gov.bb,https://staging.forms.gov.bb",
+          ADMIN_API_TOKEN: "a".repeat(32),
         },
         { allowUnknown: true, abortEarly: false },
       );
@@ -114,6 +115,59 @@ describe("envValidationSchema", () => {
         { allowUnknown: true, abortEarly: false },
       );
       expect(error?.message).toMatch(/NODE_ENV/);
+    });
+  });
+
+  describe("ADMIN_API_TOKEN — form-builder stopgap auth", () => {
+    it("requires ADMIN_API_TOKEN when NODE_ENV=production", () => {
+      const { error } = envValidationSchema.validate(
+        { ...baseEnv, NODE_ENV: "production", CORS_ORIGIN: "https://gov.bb" },
+        { allowUnknown: true, abortEarly: false },
+      );
+      expect(error?.message).toMatch(/ADMIN_API_TOKEN/);
+    });
+
+    it("accepts a 32+ char ADMIN_API_TOKEN in production", () => {
+      const { error } = envValidationSchema.validate(
+        {
+          ...baseEnv,
+          NODE_ENV: "production",
+          CORS_ORIGIN: "https://gov.bb",
+          ADMIN_API_TOKEN: "a".repeat(32),
+        },
+        { allowUnknown: true, abortEarly: false },
+      );
+      expect(error).toBeUndefined();
+    });
+
+    it("rejects a too-short ADMIN_API_TOKEN in production", () => {
+      const { error } = envValidationSchema.validate(
+        {
+          ...baseEnv,
+          NODE_ENV: "production",
+          CORS_ORIGIN: "https://gov.bb",
+          ADMIN_API_TOKEN: "a".repeat(10),
+        },
+        { allowUnknown: true, abortEarly: false },
+      );
+      expect(error?.message).toMatch(/ADMIN_API_TOKEN/);
+      expect(error?.message).toMatch(/length must be at least 32/);
+    });
+
+    it("allows ADMIN_API_TOKEN to be unset in dev", () => {
+      const { error } = envValidationSchema.validate(
+        { ...baseEnv, NODE_ENV: "development" },
+        { allowUnknown: true, abortEarly: false },
+      );
+      expect(error).toBeUndefined();
+    });
+
+    it("allows ADMIN_API_TOKEN to be empty string in dev", () => {
+      const { error } = envValidationSchema.validate(
+        { ...baseEnv, NODE_ENV: "development", ADMIN_API_TOKEN: "" },
+        { allowUnknown: true, abortEarly: false },
+      );
+      expect(error).toBeUndefined();
     });
   });
 });
