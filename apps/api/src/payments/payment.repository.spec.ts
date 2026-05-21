@@ -1,4 +1,4 @@
-import { Test } from "@nestjs/testing";
+import { Test, TestingModule } from "@nestjs/testing";
 import { DataSource } from "typeorm";
 import { PaymentRepository } from "./payment.repository";
 import {
@@ -9,6 +9,7 @@ import {
 
 describe("PaymentRepository.findOrCreate", () => {
   let repo: PaymentRepository;
+  let module: TestingModule;
   const findOne = jest.fn();
   const save = jest.fn();
   const dataSource = {
@@ -18,13 +19,17 @@ describe("PaymentRepository.findOrCreate", () => {
   beforeEach(async () => {
     findOne.mockReset();
     save.mockReset();
-    const module = await Test.createTestingModule({
+    module = await Test.createTestingModule({
       providers: [
         PaymentRepository,
         { provide: DataSource, useValue: dataSource },
       ],
     }).compile();
     repo = module.get(PaymentRepository);
+  });
+
+  afterEach(async () => {
+    if (module) await module.close();
   });
 
   it("returns existing Payment when submissionId is already in DB", async () => {

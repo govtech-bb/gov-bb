@@ -5,7 +5,7 @@
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
   "dependencies": {
-    "@govtech-bb/form-types": "*",
+    "@govtech-bb/form-types": "workspace:*",
     "typeorm": "^0.3.28"
   },
   "devDependencies": {

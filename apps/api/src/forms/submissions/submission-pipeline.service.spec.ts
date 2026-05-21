@@ -1,4 +1,4 @@
-import { Test } from "@nestjs/testing";
+import { Test, TestingModule } from "@nestjs/testing";
 import { UnprocessableEntityException } from "@nestjs/common";
 import { SubmissionPipelineService } from "./submission-pipeline.service";
 import { FormDefinitionsService } from "../form-definitions/form-definitions.service";
@@ -59,9 +59,10 @@ describe("SubmissionPipelineService", () => {
   let service: SubmissionPipelineService;
   let draftsService: jest.Mocked<FormDraftsService>;
   let definitionsService: jest.Mocked<FormDefinitionsService>;
+  let module: TestingModule;
 
   beforeEach(async () => {
-    const module = await Test.createTestingModule({
+    module = await Test.createTestingModule({
       providers: [
         SubmissionPipelineService,
         {
@@ -82,6 +83,10 @@ describe("SubmissionPipelineService", () => {
     definitionsService = module.get(
       FormDefinitionsService,
     ) as jest.Mocked<FormDefinitionsService>;
+  });
+
+  afterEach(async () => {
+    if (module) await module.close();
   });
 
   describe("pinVersion", () => {

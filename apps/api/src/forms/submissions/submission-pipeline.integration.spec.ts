@@ -21,7 +21,7 @@
  *     - upload-document  file  required, fileTypes: [".pdf",".jpg"], itemMaxSize: 5MB
  */
 
-import { Test } from "@nestjs/testing";
+import { Test, TestingModule } from "@nestjs/testing";
 import { UnprocessableEntityException } from "@nestjs/common";
 import { SubmissionPipelineService } from "./submission-pipeline.service";
 import { FormDefinitionsService } from "../form-definitions/form-definitions.service";
@@ -193,9 +193,10 @@ const PDF_FILE = [{ name: "id.pdf", size: 1_200_000, type: "application/pdf" }];
 
 describe("SubmissionPipelineService — integration (real conditions + validation)", () => {
   let service: SubmissionPipelineService;
+  let module: TestingModule;
 
   beforeEach(async () => {
-    const module = await Test.createTestingModule({
+    module = await Test.createTestingModule({
       providers: [
         SubmissionPipelineService,
         {
@@ -210,6 +211,10 @@ describe("SubmissionPipelineService — integration (real conditions + validatio
     }).compile();
 
     service = module.get(SubmissionPipelineService);
+  });
+
+  afterEach(async () => {
+    if (module) await module.close();
   });
 
   // ─── Happy path ────────────────────────────────────────────────────────────
@@ -633,6 +638,7 @@ const REPEAT_CONTRACT: ServiceContract = {
 
 function buildModuleWith(contract: ServiceContract): Promise<{
   service: SubmissionPipelineService;
+  module: TestingModule;
 }> {
   return Test.createTestingModule({
     providers: [
@@ -648,7 +654,7 @@ function buildModuleWith(contract: ServiceContract): Promise<{
     ],
   })
     .compile()
-    .then((m) => ({ service: m.get(SubmissionPipelineService) }));
+    .then((m) => ({ service: m.get(SubmissionPipelineService), module: m }));
 }
 
 function repeatDto(values: Record<string, unknown>): SubmitDto {
@@ -662,9 +668,14 @@ function repeatDto(values: Record<string, unknown>): SubmitDto {
 
 describe("repeatable step handling (E2E pipeline)", () => {
   let service: SubmissionPipelineService;
+  let module: TestingModule;
 
   beforeEach(async () => {
-    ({ service } = await buildModuleWith(REPEAT_CONTRACT));
+    ({ service, module } = await buildModuleWith(REPEAT_CONTRACT));
+  });
+
+  afterEach(async () => {
+    if (module) await module.close();
   });
 
   it("validates each instance independently — instance 0 valid, instance 1 missing required", async () => {
@@ -765,7 +776,10 @@ describe("repeatable step handling (E2E pipeline)", () => {
             },
       ),
     };
-    ({ service } = await buildModuleWith(gatedContract));
+    const built = await buildModuleWith(gatedContract);
+    service = built.service;
+    if (module) await module.close();
+    module = built.module;
 
     const dto = repeatDto({
       personal: { "first-name": "Marcus" }, // != "show-jobs" → step hidden
