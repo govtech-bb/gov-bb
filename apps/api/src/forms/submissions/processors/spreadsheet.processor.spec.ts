@@ -2,6 +2,7 @@ import { Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import * as ExcelJS from "exceljs";
 import * as fs from "node:fs";
+import { join } from "node:path";
 import { SpreadsheetProcessor } from "./spreadsheet.processor";
 import type { SubmissionCreatedEvent } from "../submissions.types";
 
@@ -188,6 +189,7 @@ describe("SpreadsheetProcessor", () => {
       // The processor was constructed without throwing — verify it uses cwd fallback
       // by checking the exportDir is not the test-specific "/tmp/test-exports"
       expect(proc).toBeInstanceOf(SpreadsheetProcessor);
+      expect((proc as any).exportDir).toBe(join(process.cwd(), "exports"));
     });
 
     it("uses empty object as config when no spreadsheet processor entry is present", async () => {

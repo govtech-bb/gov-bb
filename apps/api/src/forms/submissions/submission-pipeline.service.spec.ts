@@ -315,6 +315,10 @@ describe("SubmissionPipelineService", () => {
       const { auditTrail } = await service.run(dto);
       // The step is hidden — hiddenStepIds should contain it
       expect(auditTrail.hiddenStepIds).toContain("conditional-step");
+      // The branch `if (flat) hiddenFieldIds[stepId]` should have populated hiddenFieldIds
+      expect(auditTrail.hiddenFieldIds["conditional-step"]).toContain(
+        "hidden-field",
+      );
     });
   });
 
