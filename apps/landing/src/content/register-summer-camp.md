@@ -5,6 +5,7 @@ stage: "alpha"
 featured: true
 publish_date: 2025-11-12
 category: work-employment
+form_id: national-summer-camp-2025-registration
 ---
 
 Children between the ages of 4 and 15 years old are eligible to go to a summer camp. Around 45 summer camps are held across Barbados each year which are free to attend. Some cater for special interests such as cultural arts, sports and entrepreneurship. There is also a summer camp for children who have special needs.
@@ -20,6 +21,8 @@ The deadline to register for a place is approximately 2 weeks before the start o
 Parents and guardians can register for a summer camp on behalf of a child/ward online.
 
 If you do not have access to the internet or a smart device, colleagues at any community centre can help you register.
+
+<a data-start-link>Start now</a>
 
 You will be asked to choose a first, second and third choice camp in case your first choice is full, or, in case of unforeseen circumstances at a location.
 

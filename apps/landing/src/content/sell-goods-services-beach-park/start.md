@@ -2,6 +2,7 @@
 title: "Apply for a licence to sell goods or services at a beach or park"
 stage: "alpha"
 publish_date: 2026-01-29
+form_id: sell-goods-services-beach-park
 ---
 
 You should complete your application in one go. At the moment, it is not possible to save your answers and come back to them later.
@@ -23,4 +24,4 @@ You will also be asked to upload:
 - a [Police Certificate of Character](https://forms.gov.bb/CertificateOfCharacter)
 - 2 passport-sized photos of yourself
 
-<a data-start-link href="/business-trade/sell-goods-services-beach-park/form">Start now</a>
+<a data-start-link>Start now</a>
