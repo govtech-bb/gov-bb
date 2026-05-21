@@ -49,6 +49,6 @@
     "vite": "^8.0.0"
   },
   "lint-staged": {
-    "*.{json,ts,tsx}": "pnpm exec prettier --write"
+    "*.{json,ts,tsx}": "npx prettier --write"
   }
 }
