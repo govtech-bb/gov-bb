@@ -15,13 +15,13 @@ import { Route as BuilderUiIndexRouteImport } from './routes/builder/ui/index'
 import { Route as BuilderAiIndexRouteImport } from './routes/builder/ai/index'
 
 const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+  id: "/",
+  path: "/",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const BuilderIndexRoute = BuilderIndexRouteImport.update({
-  id: '/builder/',
-  path: '/builder/',
+  id: "/builder/",
+  path: "/builder/",
   getParentRoute: () => rootRouteImport,
 } as any)
 const BuilderUiIndexRoute = BuilderUiIndexRouteImport.update({
@@ -69,7 +69,7 @@ export interface RootRouteChildren {
   BuilderUiIndexRoute: typeof BuilderUiIndexRoute
 }
 
-declare module '@tanstack/react-router' {
+declare module "@tanstack/react-router" {
   interface FileRoutesByPath {
     '/': {
       id: '/'
@@ -110,13 +110,13 @@ const rootRouteChildren: RootRouteChildren = {
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>()
+  ._addFileTypes<FileRouteTypes>();
 
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
+import type { getRouter } from "./router.tsx";
+import type { createStart } from "@tanstack/react-start";
+declare module "@tanstack/react-start" {
   interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
+    ssr: true;
+    router: Awaited<ReturnType<typeof getRouter>>;
   }
 }

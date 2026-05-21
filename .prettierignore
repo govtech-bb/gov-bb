@@ -1,4 +1,4 @@
 dist
 .next
 node_modules
-**/routeTree.gen.ts
+**/*.gen.ts
