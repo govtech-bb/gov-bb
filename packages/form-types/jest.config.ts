@@ -18,8 +18,8 @@ const config: Config = {
       // functions. 6.52% is the structural floor. Do not raise without adding
       // runtime utility functions to the package intentionally.
       functions: 5,
-      lines: 59,
-      statements: 58,
+      lines: 65,
+      statements: 63,
     },
   },
 };

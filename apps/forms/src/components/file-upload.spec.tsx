@@ -5,15 +5,8 @@ import { axe } from "jest-axe";
 import FileUpload from "./file-upload";
 import type { FileUploadProps } from "@forms/types";
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 function makeFile(name: string, type: string, sizeBytes: number): File {
-  const file = new File(["x".repeat(sizeBytes)], name, { type });
-  // Ensure the size property reflects our intent (jsdom File honours content length)
-  Object.defineProperty(file, "size", { value: sizeBytes, configurable: true });
-  return file;
+  return new File(["x".repeat(sizeBytes)], name, { type });
 }
 
 const baseField: FileUploadProps["field"] = {
@@ -51,23 +44,16 @@ function renderComponent(overrides: Partial<FileUploadProps> = {}) {
     ...result,
     onFileChange,
     get fileInput() {
-      return document.querySelector(
+      return result.container.querySelector(
         "[data-file-upload-input]",
       ) as HTMLInputElement;
     },
   };
 }
 
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
-
 describe("FileUpload", () => {
   beforeEach(() => jest.clearAllMocks());
 
-  // -------------------------------------------------------------------------
-  // 1. Renders a file input with the correct `accept` attribute
-  // -------------------------------------------------------------------------
   it("renders a file input with the accept attribute from sharedProps", () => {
     const { fileInput } = renderComponent({
       sharedProps: { ...baseSharedProps, accept: "image/png,image/jpeg" },
@@ -80,9 +66,6 @@ describe("FileUpload", () => {
     expect(fileInput.accept).toBe("image/png,image/jpeg");
   });
 
-  // -------------------------------------------------------------------------
-  // 2. Selecting a valid file adds it to the displayed file list
-  // -------------------------------------------------------------------------
   it("calls onFileChange with the selected file", async () => {
     const user = userEvent.setup();
     const { onFileChange, fileInput } = renderComponent();
@@ -112,12 +95,7 @@ describe("FileUpload", () => {
     expect(calledWith.map((f) => f.name)).toEqual(["existing.png", "new.jpg"]);
   });
 
-  // -------------------------------------------------------------------------
-  // 3. Selecting a file whose MIME type is not in fileTypes shows an error
-  //    NOTE: The component itself does NOT perform MIME-type validation —
-  //    validation is done externally and the error is passed via `errorMessage`.
-  //    This test confirms the component renders that error message correctly.
-  // -------------------------------------------------------------------------
+  // MIME-type and size validation is external; component only renders the errorMessage prop.
   it("displays a MIME-type error message when errorMessage prop is provided", () => {
     renderComponent({
       errorMessage: "File type not allowed. Please upload a pdf or png file.",
@@ -129,10 +107,6 @@ describe("FileUpload", () => {
     ).toBeInTheDocument();
   });
 
-  // -------------------------------------------------------------------------
-  // 4. Selecting a file exceeding itemMaxSize shows the correct error message
-  //    Same pattern: error is supplied via the `errorMessage` prop.
-  // -------------------------------------------------------------------------
   it("displays a file-size error message when errorMessage prop is provided", () => {
     renderComponent({
       errorMessage: "File exceeds the maximum allowed size of 5 MB.",
@@ -142,20 +116,15 @@ describe("FileUpload", () => {
     ).toBeInTheDocument();
   });
 
-  // -------------------------------------------------------------------------
-  // 5. Remove button removes the file from the displayed list
-  // -------------------------------------------------------------------------
   it("calls onFileChange without the removed file when Remove is clicked", async () => {
     const user = userEvent.setup();
     const fileA = makeFile("alpha.pdf", "application/pdf", 100);
     const fileB = makeFile("beta.pdf", "application/pdf", 200);
     const { onFileChange } = renderComponent({ value: [fileA, fileB] });
 
-    // Both filenames should be visible
     expect(screen.getByText("alpha.pdf")).toBeInTheDocument();
     expect(screen.getByText("beta.pdf")).toBeInTheDocument();
 
-    // Click Remove on the first file (index 0)
     const removeButtons = screen.getAllByRole("button", { name: /remove/i });
     await user.click(removeButtons[0]);
 
@@ -176,11 +145,6 @@ describe("FileUpload", () => {
     expect(onFileChange).toHaveBeenCalledWith(null);
   });
 
-  // -------------------------------------------------------------------------
-  // 6. When the number of files equals maxItems the component still renders
-  //    the file input (the component defers maxItems enforcement to the caller).
-  //    We test that the component renders correctly with a full set of files.
-  // -------------------------------------------------------------------------
   it("still renders the file input when files equal maxItems (enforcement is external)", () => {
     const maxItems = 3;
     const files = Array.from({ length: maxItems }, (_, i) =>
@@ -194,18 +158,10 @@ describe("FileUpload", () => {
       },
     });
 
-    // All files should be listed
     files.forEach((f) => expect(screen.getByText(f.name)).toBeInTheDocument());
-
-    // The hidden file input is still present (caller is responsible for disabling)
     expect(fileInput).not.toBeNull();
   });
 
-  // -------------------------------------------------------------------------
-  // 7. When fewer files than minItems are selected and the field is validated,
-  //    the error message is shown. Again, validation is external; we test that
-  //    the component surfaces the errorMessage passed by the caller.
-  // -------------------------------------------------------------------------
   it("shows a minItems error when fewer files than required are selected", () => {
     const file = makeFile("single.pdf", "application/pdf", 100);
     renderComponent({
@@ -254,7 +210,7 @@ describe("FileUpload", () => {
 
   it("renders '--' for max size when validationRules has no maxSize", () => {
     renderComponent({ validationRules: {} });
-    expect(screen.getByText(/--/)).toBeInTheDocument();
+    expect(screen.getByText(/Max Size:.*--/i)).toBeInTheDocument();
   });
 
   // -------------------------------------------------------------------------

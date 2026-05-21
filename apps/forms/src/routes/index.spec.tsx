@@ -6,7 +6,10 @@ import { axe } from "jest-axe";
 // and renders <Link>, both of which require a router context in production
 // but can be stubbed out in unit tests.
 jest.mock("@tanstack/react-router", () => ({
-  createFileRoute: () => (routeConfig) => routeConfig,
+  createFileRoute: () => (routeConfig) => ({
+    ...routeConfig,
+    useLoaderData: jest.fn(),
+  }),
   Link: ({
     children,
     to,
@@ -33,14 +36,8 @@ const MOCK_FORMS = [
   { formId: "form-2", title: "Driver's Licence" },
 ];
 
-// Use a module-level variable so useLoaderData can be redirected per test
-// without mutating the module export directly each time.
-let mockForms: typeof MOCK_FORMS | [] = MOCK_FORMS;
-
 beforeEach(() => {
-  mockForms = MOCK_FORMS;
-  // Inject stub data that the component reads via Route.useLoaderData()
-  Route.useLoaderData = jest.fn(() => mockForms);
+  jest.spyOn(Route, "useLoaderData").mockReturnValue(MOCK_FORMS);
 });
 
 afterEach(() => {
@@ -64,10 +61,14 @@ describe("Index route", () => {
     render(<Route.component />);
     expect(screen.getByText("Passport Renewal")).toBeInTheDocument();
     expect(screen.getByText("Driver's Licence")).toBeInTheDocument();
+    expect(screen.getByText("Passport Renewal").closest("a")).toHaveAttribute(
+      "href",
+      "/forms/$formId",
+    );
   });
 
   it("renders an empty list when no forms are returned", () => {
-    mockForms = [];
+    jest.spyOn(Route, "useLoaderData").mockReturnValue([]);
     render(<Route.component />);
     expect(screen.queryByRole("listitem")).not.toBeInTheDocument();
   });
