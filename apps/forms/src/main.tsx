@@ -4,6 +4,7 @@ import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/query-client";
 import { trackPageview } from "./lib/analytics";
+import "./styles/govtech.css";
 
 // Import the generated route tree
 import { routeTree } from "./routeTree.gen";
