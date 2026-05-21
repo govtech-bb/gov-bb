@@ -48,8 +48,16 @@ applications:
         build:
           commands:
             - pnpm exec nx run landing:build
+        postBuild:
+          commands:
+            # Restructure Tanstack Start output for Amplify WEB_COMPUTE
+            - mkdir -p .amplify-hosting/compute/default
+            - mkdir -p .amplify-hosting/static
+            - cp -r dist/server/* .amplify-hosting/compute/default/
+            - cp -r dist/client/* .amplify-hosting/static/ 2>/dev/null || true
+            - cp apps/landing/deploy-manifest.json .amplify-hosting/deploy-manifest.json
       artifacts:
-        baseDirectory: apps/landing/dist
+        baseDirectory: .amplify-hosting
         files:
           - "**/*"
       cache:
