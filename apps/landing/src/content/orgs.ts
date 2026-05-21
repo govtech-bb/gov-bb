@@ -7,8 +7,6 @@ import type { ContentPage } from './registry'
 export type { OrgKind }
 
 interface KindConfig {
-  /** Legacy URL prefix for `resolveOrgPath` to detect old `/ministries/foo` style links. */
-  legacyPrefix: string
   entries: ReadonlyArray<Ministry | MdaEntry>
   bySlug: ReadonlyMap<string, Ministry | MdaEntry>
   leadershipLabel: string
@@ -16,19 +14,16 @@ interface KindConfig {
 
 const KIND_CONFIG: Record<OrgKind, KindConfig> = {
   ministry: {
-    legacyPrefix: 'ministries/',
     entries: MINISTRIES,
     bySlug: new Map(MINISTRIES.map((m) => [m.slug, m])),
     leadershipLabel: 'Our Minister',
   },
   department: {
-    legacyPrefix: 'departments/',
     entries: DEPARTMENTS,
     bySlug: new Map(DEPARTMENTS.map((d) => [d.slug, d])),
     leadershipLabel: 'Head of Department',
   },
   'state-body': {
-    legacyPrefix: 'state-bodies/',
     entries: STATE_BODIES,
     bySlug: new Map(STATE_BODIES.map((s) => [s.slug, s])),
     leadershipLabel: 'Head',
@@ -37,12 +32,9 @@ const KIND_CONFIG: Record<OrgKind, KindConfig> = {
 
 const ORG_KINDS = Object.keys(KIND_CONFIG) as OrgKind[]
 
-export const ORG_PREFIXES: ReadonlyArray<readonly [string, OrgKind]> = (
-  Object.entries(KIND_CONFIG) as Array<[OrgKind, KindConfig]>
-).map(([kind, cfg]) => [cfg.legacyPrefix, kind] as const)
+export const ORG_PATH_PREFIX = '/government/organisations/'
 
-export const orgHref = (slug: string): string =>
-  `/government/organisations/${slug}`
+export const orgHref = (slug: string): string => `${ORG_PATH_PREFIX}${slug}`
 
 interface SyntheticFrontmatter {
   title: string
@@ -100,18 +92,6 @@ for (const ministry of MINISTRIES) {
   }
 }
 
-export function resolveOrgPath(
-  pathOrSlug: string,
-): { kind: OrgKind; orgSlug: string } | null {
-  const normalised = pathOrSlug.replace(/^\/+|\/+$/g, '')
-  for (const [prefix, kind] of ORG_PREFIXES) {
-    if (normalised.startsWith(prefix)) {
-      return { kind, orgSlug: normalised.slice(prefix.length) }
-    }
-  }
-  return null
-}
-
 function getEntry(
   kind: OrgKind,
   slug: string,
@@ -119,8 +99,8 @@ function getEntry(
   return KIND_CONFIG[kind].bySlug.get(slug)
 }
 
-export function hasMigratedSource(kind: OrgKind, slug: string): boolean {
-  return Boolean(getEntry(kind, slug)?.originalSource)
+export function hasMigratedSource(slug: string): boolean {
+  return Boolean(ORG_PAGE_BY_SLUG.get(slug)?.page?.frontmatter?.source_url)
 }
 
 function ministryToProps(m: Ministry): MinistryPageProps {

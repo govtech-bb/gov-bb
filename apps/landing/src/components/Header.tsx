@@ -2,12 +2,18 @@ import { Link, useRouterState } from '@tanstack/react-router'
 import { Logo } from '@govtech-bb/react'
 import { OfficialBanner } from './OfficialBanner'
 import { StageBanner } from './StageBanner'
-import { hasMigratedSource, resolveOrgPath } from '../content/orgs'
+import { hasMigratedSource, ORG_PATH_PREFIX } from '../content/orgs'
+
+function orgSlugFromPath(pathname: string): string | null {
+  if (!pathname.startsWith(ORG_PATH_PREFIX)) return null
+  const slug = pathname.slice(ORG_PATH_PREFIX.length).replace(/^\/+|\/+$/g, '')
+  return slug.includes('/') || slug.length === 0 ? null : slug
+}
 
 export default function Header() {
   const { location } = useRouterState()
-  const org = resolveOrgPath(location.pathname)
-  const hideAlpha = org ? hasMigratedSource(org.kind, org.orgSlug) : false
+  const slug = orgSlugFromPath(location.pathname)
+  const hideAlpha = slug ? hasMigratedSource(slug) : false
 
   return (
     <div>
