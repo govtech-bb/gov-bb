@@ -55,6 +55,7 @@ applications:
             - mkdir -p .amplify-hosting/static
             - cp -r apps/landing/dist/server/* .amplify-hosting/compute/default/
             - cp -r apps/landing/dist/client/* .amplify-hosting/static/ 2>/dev/null || true
+            - cp -r node_modules .amplify-hosting/compute/default/node_modules
             - cp apps/landing/deploy-manifest.json .amplify-hosting/deploy-manifest.json
       artifacts:
         baseDirectory: .amplify-hosting
