@@ -16,7 +16,7 @@ RUN npm install -g pnpm@10.33.4
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc nx.json tsconfig.base.json ./
 COPY apps/api/package.json apps/api/
 COPY apps/landing/package.json apps/landing/
-COPY apps/web/package.json apps/web/
+COPY apps/forms/package.json apps/forms/
 COPY packages/expressions/package.json packages/expressions/
 COPY packages/form-conditions/package.json packages/form-conditions/
 COPY packages/form-types/package.json packages/form-types/
@@ -46,6 +46,10 @@ COPY --from=builder /app/nx.json ./
 COPY --from=builder /app/tsconfig.base.json ./
 COPY --from=builder /app/apps/landing/ ./apps/landing/
 COPY --from=builder /app/apps/landing/dist ./apps/landing/dist
+
+# Drop root. Closes #15 (CIS Docker Benchmark — no container should run as root).
+RUN addgroup -S app && adduser -S app -G app && chown -R app:app /app
+USER app
 
 ENV NODE_ENV=development
 EXPOSE 3000
