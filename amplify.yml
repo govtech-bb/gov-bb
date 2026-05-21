@@ -50,17 +50,10 @@ applications:
             - pnpm exec nx run landing:build
         postBuild:
           commands:
-            # Restructure Nitro output for Amplify WEB_COMPUTE
-            - mkdir -p .amplify-hosting/compute/default
-            - mkdir -p .amplify-hosting/static
-            # Nitro bundles everything into .output/server/ (self-contained, no node_modules needed)
-            - cp -r apps/landing/.output/server/* .amplify-hosting/compute/default/ 2>/dev/null || cp -r apps/landing/dist/server/* .amplify-hosting/compute/default/
-            # Client assets for static CDN serving
-            - cp -r apps/landing/.output/public/* .amplify-hosting/static/ 2>/dev/null || cp -r apps/landing/dist/client/* .amplify-hosting/static/ 2>/dev/null || true
-            # Deploy manifest
-            - cp apps/landing/deploy-manifest.json .amplify-hosting/deploy-manifest.json
-            # Debug: show compute bundle size
-            - du -sh .amplify-hosting/compute/default/ || true
+            # Nitro outputs directly to .amplify-hosting/ when it detects the deploy-manifest
+            # Just ensure the manifest is in place
+            - cp apps/landing/deploy-manifest.json .amplify-hosting/deploy-manifest.json 2>/dev/null || true
+            - ls -la .amplify-hosting/ || true
       artifacts:
         baseDirectory: .amplify-hosting
         files:
