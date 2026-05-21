@@ -5,6 +5,7 @@ stage: "alpha"
 featured: false
 publish_date: 2026-02-06
 category: work-employment
+form_id: jobstart-plus-programme
 ---
 
 [Job Start Plus](https://labour.gov.bb/jobstartplus/) is a training programme for young people aimed at preparing them for the workplace. It offers career guidance and tailored training to develop relevant skills and build confidence. There’s also the opportunity to be placed in a place of work.
