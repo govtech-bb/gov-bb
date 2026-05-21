@@ -50,12 +50,11 @@ applications:
             - pnpm exec nx run landing:build
         postBuild:
           commands:
-            # Nitro outputs directly to .amplify-hosting/ when it detects the deploy-manifest
-            # Just ensure the manifest is in place
-            - cp apps/landing/deploy-manifest.json .amplify-hosting/deploy-manifest.json 2>/dev/null || true
-            - ls -la .amplify-hosting/ || true
+            # Nitro generates .amplify-hosting/ with its own deploy-manifest
+            # No manual copy needed - Nitro handles everything
+            - echo "Build complete"
       artifacts:
-        baseDirectory: .amplify-hosting
+        baseDirectory: apps/landing/.amplify-hosting
         files:
           - "**/*"
       cache:
