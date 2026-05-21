@@ -33,3 +33,10 @@ services:
       - ./apps/web/contracts:/app/apps/web/contracts
       - ./packages:/app/packages
       - /app/apps/web/node_modules
+
+  # The api service is not overlaid for hot-reload (see header), but when it
+  # runs in compose, bind-mount the host's recipes/ tree so the RecipeFileLoader
+  # picks up edits without a rebuild. Harmless when api is not running.
+  api:
+    volumes:
+      - ./recipes:/app/recipes

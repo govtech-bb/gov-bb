@@ -27,6 +27,9 @@ RUN pnpm install --frozen-lockfile --ignore-scripts
 COPY apps/api/ apps/api/
 COPY packages/ packages/
 
+# Production form recipes. Loaded by RecipeFileLoader at boot.
+COPY recipes/ recipes/
+
 RUN pnpm exec nx build api
 
 # ---- runner -------------------------------------------------------------
@@ -62,6 +65,8 @@ COPY --from=builder /app/apps/api/package.json ./apps/api/
 COPY --from=builder /app/apps/api/tsconfig.json ./apps/api/
 COPY --from=builder /app/apps/api/typeorm.config.ts ./apps/api/
 COPY --from=builder /app/apps/api/src/database/ ./apps/api/src/database/
+# Production form recipes — read at boot by RecipeFileLoader (cwd=/app).
+COPY --from=builder /app/recipes/ ./recipes/
 # Form Builder AI system prompt
 COPY --from=builder /app/apps/api/src/form-builder/prompts/ ./apps/api/src/form-builder/prompts/
 # Email templates (.hbs files not copied by tsc build)
