@@ -1,16 +1,21 @@
-import { Test } from "@nestjs/testing";
+import { Test, TestingModule } from "@nestjs/testing";
 import type { Processor } from "@govtech-bb/form-types";
 import { ExpressionsModule } from "./expressions.module";
 import { ExpressionsService } from "./expressions.service";
 
 describe("ExpressionsService", () => {
   let service: ExpressionsService;
+  let module: TestingModule;
 
   beforeEach(async () => {
-    const module = await Test.createTestingModule({
+    module = await Test.createTestingModule({
       imports: [ExpressionsModule],
     }).compile();
     service = module.get(ExpressionsService);
+  });
+
+  afterEach(async () => {
+    if (module) await module.close();
   });
 
   it("resolves a processor config with embedded rules", () => {

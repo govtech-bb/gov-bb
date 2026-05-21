@@ -1,4 +1,4 @@
-import { Test } from "@nestjs/testing";
+import { Test, TestingModule } from "@nestjs/testing";
 import { DataSource } from "typeorm";
 import {
   PaymentReconciliationService,
@@ -12,6 +12,7 @@ import { PaymentStatus } from "../database/entities/payment.entity";
 
 describe("PaymentReconciliationService.runOnce", () => {
   let service: PaymentReconciliationService;
+  let module: TestingModule;
   const query = jest.fn();
   const release = jest.fn().mockResolvedValue(undefined);
   const connect = jest.fn().mockResolvedValue(undefined);
@@ -27,7 +28,7 @@ describe("PaymentReconciliationService.runOnce", () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
-    const module = await Test.createTestingModule({
+    module = await Test.createTestingModule({
       providers: [
         PaymentReconciliationService,
         { provide: DataSource, useValue: dataSource },
@@ -38,6 +39,10 @@ describe("PaymentReconciliationService.runOnce", () => {
       ],
     }).compile();
     service = module.get(PaymentReconciliationService);
+  });
+
+  afterEach(async () => {
+    if (module) await module.close();
   });
 
   it("aborts when advisory lock is held by another instance", async () => {

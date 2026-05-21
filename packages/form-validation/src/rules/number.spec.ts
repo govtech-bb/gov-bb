@@ -101,6 +101,30 @@ describe("ltRunner", () => {
   it("skips when reference is missing", () => {
     expect(ltRunner(100, cfg(undefined, undefined, "maxAge"), {})).toBeNull();
   });
+
+  it("fails when value >= config.value with no referenceFieldId (MISSING path)", () => {
+    expect(ltRunner(10, cfg(5), {})).toBe("Must be less than 5");
+  });
+
+  it("passes when value < config.value with no referenceFieldId (MISSING path)", () => {
+    expect(ltRunner(3, cfg(5), {})).toBeNull();
+  });
+
+  it("uses referenced field via flat fallback", () => {
+    expect(
+      ltRunner(3, cfg(undefined, undefined, "maxAge"), {
+        "step-1": { maxAge: 5 },
+      }),
+    ).toBeNull();
+  });
+
+  it("fails when value >= resolved reference field", () => {
+    expect(
+      ltRunner(10, cfg(undefined, undefined, "maxAge"), {
+        "step-1": { maxAge: 5 },
+      }),
+    ).toBe("Must be less than maxAge");
+  });
 });
 
 describe("equalRunner", () => {
