@@ -3,7 +3,13 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useReducer, useState, useRef, useEffect } from "react";
 import { getAuthContext } from "../../server/auth";
 import { getCatalogFn } from "../../server/registry";
-import { listForms, nextVersion, submitRecipe, updateRecipe } from "../../server/forms";
+import {
+  listForms,
+  nextVersion,
+  publishRecipe,
+  submitRecipe,
+  updateRecipe,
+} from "../../server/forms";
 import { validateRecipe, previewRecipe } from "../../server/registry";
 import { serializeRecipeDraft } from "@govtech-bb/form-builder";
 import { bumpMinor } from "../../lib/version";
@@ -17,6 +23,7 @@ import { StepEditor } from "./-step-editor";
 import { ValidationPanel } from "./-validation-panel";
 import { PreviewModal } from "./-preview-modal";
 import { SubmitModal } from "./-submit-modal";
+import { PublishModal } from "./-publish-modal";
 import { FormPicker } from "./-form-picker";
 
 import styles from "../../styles/builder.module.css";
@@ -41,6 +48,7 @@ export const Route = createFileRoute("/builder/")({
 
 function BuilderPage() {
   const { catalog, forms } = Route.useLoaderData();
+  const { auth } = Route.useRouteContext();
   const [draft, dispatch] = useReducer(recipeReducer, EMPTY_DRAFT);
 
   // UI state
@@ -59,7 +67,18 @@ function BuilderPage() {
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [isSubmitOpen, setIsSubmitOpen] = useState(false);
+  const [isPublishOpen, setIsPublishOpen] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [publishResult, setPublishResult] = useState<{
+    prUrl: string;
+    prNumber: number;
+  } | null>(null);
+  const [publishError, setPublishError] = useState<string | null>(null);
   const [lastSaveStatus, setLastSaveStatus] = useState<"idle" | "success" | "error" | "submitted">("idle");
+
+  // auth.authed is guaranteed true here by beforeLoad.
+  const githubLogin = auth.authed ? auth.githubLogin : "";
+  const isPublisher = auth.authed ? auth.isPublisher : false;
 
   // Derived
   const selectedStep = draft.steps.find((s) => s.stepId === selectedStepId) ?? null;
@@ -174,6 +193,22 @@ function BuilderPage() {
     }
   };
 
+  const handlePublish = async (prDescription: string) => {
+    setIsPublishing(true);
+    setPublishError(null);
+    try {
+      const recipe = serializeRecipeDraft(draft, { version });
+      const result = (await publishRecipe({
+        data: { recipe, prDescription },
+      })) as { prUrl: string; prNumber: number; branchName: string };
+      setPublishResult({ prUrl: result.prUrl, prNumber: result.prNumber });
+    } catch (e) {
+      setPublishError(e instanceof Error ? e.message : "Publish failed");
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
   const handleSubmit = async (submitVersion: string) => {
     setIsSubmitting(true);
     setSubmitError(null);
@@ -282,7 +317,10 @@ function BuilderPage() {
         isPreviewing={isPreviewing}
         isSubmitting={isSubmitting}
         canSubmit={canSubmit}
+        canPublish={canSubmit && isPublisher}
         lastSaveStatus={lastSaveStatus}
+        githubLogin={githubLogin}
+        isPublisher={isPublisher}
         onFormIdChange={handleFormIdChange}
         onTitleChange={handleTitleChange}
         onNew={handleNew}
@@ -290,6 +328,11 @@ function BuilderPage() {
         onValidate={handleValidate}
         onPreview={handlePreview}
         onSubmit={() => { setSubmitSuccess(false); setSubmitError(null); setIsSubmitOpen(true); }}
+        onPublish={() => {
+          setPublishResult(null);
+          setPublishError(null);
+          setIsPublishOpen(true);
+        }}
       />
 
       <div className={styles.builderBody}>
@@ -348,6 +391,20 @@ function BuilderPage() {
           submitError={submitError}
           onSubmit={handleSubmit}
           onClose={() => setIsSubmitOpen(false)}
+        />
+      )}
+
+      {isPublishOpen && (
+        <PublishModal
+          draft={draft}
+          version={version}
+          validateResult={validateResult}
+          isPublishing={isPublishing}
+          publishResult={publishResult}
+          publishError={publishError}
+          canPublish={isPublisher}
+          onPublish={handlePublish}
+          onClose={() => setIsPublishOpen(false)}
         />
       )}
     </div>

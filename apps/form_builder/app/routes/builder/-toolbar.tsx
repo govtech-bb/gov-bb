@@ -14,7 +14,10 @@ interface ToolbarProps {
   isPreviewing: boolean;
   isSubmitting: boolean;
   canSubmit: boolean;
+  canPublish: boolean;
   lastSaveStatus: "idle" | "success" | "error" | "submitted";
+  githubLogin: string;
+  isPublisher: boolean;
   onFormIdChange: (id: string) => void;
   onTitleChange: (title: string) => void;
   onNew: () => void;
@@ -22,6 +25,7 @@ interface ToolbarProps {
   onValidate: () => void;
   onPreview: () => void;
   onSubmit: () => void;
+  onPublish: () => void;
 }
 
 export function Toolbar({
@@ -33,7 +37,10 @@ export function Toolbar({
   isPreviewing,
   isSubmitting,
   canSubmit,
+  canPublish,
   lastSaveStatus,
+  githubLogin,
+  isPublisher,
   onFormIdChange,
   onTitleChange,
   onNew,
@@ -41,6 +48,7 @@ export function Toolbar({
   onValidate,
   onPreview,
   onSubmit,
+  onPublish,
 }: ToolbarProps) {
   const [formIdError, setFormIdError] = useState<string>("");
 
@@ -110,11 +118,23 @@ export function Toolbar({
       </button>
       <button
         type="button"
-        className={styles.btnPrimary}
         onClick={onSubmit}
         disabled={!canSubmit || isSubmitting}
       >
-        {isSubmitting ? "Submitting…" : "Submit"}
+        {isSubmitting ? "Saving…" : "Save Draft"}
+      </button>
+      <button
+        type="button"
+        className={styles.btnPrimary}
+        onClick={onPublish}
+        disabled={!canSubmit || !canPublish}
+        title={
+          !isPublisher
+            ? "You are not a member of the publish team"
+            : undefined
+        }
+      >
+        Publish
       </button>
       {lastSaveStatus !== "idle" && (
         <span
@@ -124,9 +144,17 @@ export function Toolbar({
         >
           {lastSaveStatus === "success" && "✓ Valid"}
           {lastSaveStatus === "error" && "✗ Invalid"}
-          {lastSaveStatus === "submitted" && "✓ Submitted"}
+          {lastSaveStatus === "submitted" && "✓ Saved"}
         </span>
       )}
+      <span style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
+        <span style={{ fontSize: "0.875rem" }}>
+          Signed in as <strong>{githubLogin}</strong>
+        </span>
+        <a href="/auth/logout" style={{ fontSize: "0.875rem" }}>
+          Sign out
+        </a>
+      </span>
     </div>
   );
 }

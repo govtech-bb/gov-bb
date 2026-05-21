@@ -116,9 +116,6 @@ export const updateRecipe = createServerFn({ method: "POST" })
       throw new Error(`No recipe found for formId: ${data.formId}`);
     }
     const row = rows[0];
-    if (row.published_at !== null) {
-      throw new Error("Cannot update a published recipe");
-    }
     if (recipe.version !== row.version) {
       throw new Error(
         `Version mismatch: stored version is ${row.version}, recipe version is ${recipe.version}`,
