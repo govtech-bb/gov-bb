@@ -83,7 +83,7 @@ jobs:
             --task-definition "$TASK_DEF_ARN" \
             --launch-type FARGATE \
             --network-configuration "awsvpcConfiguration={subnets=[subnet-0dc6c8333012885b5,subnet-016eb706debe10250],securityGroups=[sg-05bfeab97a70e1081],assignPublicIp=DISABLED}" \
-            --overrides '{"containerOverrides":[{"name":"api","command":["npm","run","migration:run"]}]}' \
+            --overrides '{"containerOverrides":[{"name":"api","command":["pnpm","migration:run"]}]}' \
             --region $AWS_REGION \
             --query tasks[0].taskArn \
             --output text)
