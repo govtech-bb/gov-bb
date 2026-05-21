@@ -211,6 +211,47 @@ describe("Review", () => {
     expect(screen.queryByText("Conditional field")).not.toBeInTheDocument();
   });
 
+  it("renders an empty section with title and Change link when all fields in a step are hidden", () => {
+    const steps: ClientFormStep[] = [
+      makeStep({
+        stepId: "step-1",
+        title: "Hidden Fields Step",
+        fields: [
+          makeField({
+            id: "step-1.field-1",
+            fieldId: "field-1",
+            label: "Hidden field 1",
+            hidden: true,
+          }),
+          makeField({
+            id: "step-1.field-2",
+            fieldId: "field-2",
+            label: "Hidden field 2",
+            hidden: true,
+          }),
+        ],
+      }),
+    ];
+
+    render(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={makeMockForm() as never}
+        visibleSteps={steps}
+      />,
+    );
+
+    // Section title and Change link should still render
+    expect(
+      screen.getByRole("heading", { name: "Hidden Fields Step" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Change" })).toBeInTheDocument();
+
+    // But the hidden fields should not render
+    expect(screen.queryByText("Hidden field 1")).not.toBeInTheDocument();
+    expect(screen.queryByText("Hidden field 2")).not.toBeInTheDocument();
+  });
+
   // -------------------------------------------------------------------------
   // Excluded system steps
   // -------------------------------------------------------------------------
