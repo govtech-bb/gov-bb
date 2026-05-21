@@ -41,14 +41,15 @@ describe("FormBuilderController.sendMessage", () => {
   it("throws 400 when uploaded buffer lacks %PDF- magic bytes", async () => {
     const file = makePdfFile("PK\x03\x04"); // ZIP header, MIME-spoofed
     const ctl = makeController();
-    await expect(ctl.sendMessage("s1", "hello", file)).rejects.toBeInstanceOf(
-      HttpException,
-    );
+
     try {
       await ctl.sendMessage("s1", "hello", file);
+      fail("Expected sendMessage to throw HttpException");
     } catch (err) {
+      expect(err).toBeInstanceOf(HttpException);
       expect((err as HttpException).getStatus()).toBe(HttpStatus.BAD_REQUEST);
     }
+
     expect(service.sendMessage).not.toHaveBeenCalled();
   });
 
