@@ -1,4 +1,4 @@
-Welcome to your new TanStack Start app! 
+Welcome to your new TanStack Start app!
 
 # Getting Started
 
@@ -40,7 +40,6 @@ If you prefer not to use Tailwind CSS:
 
 ## Linting & Formatting
 
-
 This project uses [eslint](https://eslint.org/) and [prettier](https://prettier.io/) for linting and formatting. Eslint is configured using [tanstack/eslint-config](https://tanstack.com/config/latest/docs/eslint). The following scripts are available:
 
 ```bash
@@ -48,8 +47,6 @@ npm run lint
 npm run format
 npm run check
 ```
-
-
 
 ## Routing
 
@@ -68,7 +65,7 @@ Now that you have two routes you can use a `Link` component to navigate between 
 To use SPA (Single Page Application) navigation you will need to import the `Link` component from `@tanstack/react-router`.
 
 ```tsx
-import { Link } from "@tanstack/react-router";
+import { Link } from '@tanstack/react-router'
 ```
 
 Then anywhere in your JSX you can use it like so:
@@ -136,11 +133,11 @@ const getServerTime = createServerFn({
 // Use in a component
 function MyComponent() {
   const [time, setTime] = useState('')
-  
+
   useEffect(() => {
     getServerTime().then(setTime)
   }, [])
-  
+
   return <div>Server time: {time}</div>
 }
 ```
@@ -210,14 +207,100 @@ Set `VITE_UMAMI_WEBSITE_ID` (and optionally `VITE_UMAMI_SRC`) in the deploy envi
 
 ### Event-naming conventions
 
-| Pattern | Example | Used for |
-|---|---|---|
-| `<surface>-<action>` | `header-home`, `footer-careers`, `feedback-submit` | Fixed UI elements |
-| `service-<slug>` | `service-renew-passport` | Per-service clicks on `/services` list |
-| `org-<slug>` | `org-ministry-of-finance` | Per-organisation clicks on `/government/organisations` |
-| `<slug>-start` | `renew-passport-start`, `travel-renew-passport-start` | Slug-prefixed start CTA clicks from a service root page into its `/start` flow (derived automatically by `deriveStartEventName()` from the link href) |
+| Pattern              | Example                                                        | Used for                                                                                                                                                         |
+| -------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `<surface>-<action>` | `header-home`, `footer-careers`, `feedback-submit`             | Fixed UI elements                                                                                                                                                |
+| `service-<slug>`     | `service-renew-passport`                                       | Per-service clicks on `/services` list                                                                                                                           |
+| `org-<slug>`         | `org-ministry-of-finance`                                      | Per-organisation clicks on `/government/organisations`                                                                                                           |
+| `<slug>-start`       | `renew-passport-start`, `travel-renew-passport-start`          | Slug-prefixed start CTA clicks from a service root page into its `/start` flow (derived automatically by `deriveStartEventName()` from the link href)            |
+| `<form_id>-start`    | `get-birth-certificate-start`, `jobstart-plus-programme-start` | Click on a Start now button rendered from a page's `form_id` frontmatter. Keyed on the form actually started, not the page slug — see _Start now buttons_ below. |
 
 The per-service and per-org named events let each item show up as its own metric in Umami's dashboard. The `<slug>-start` events measure the conversion from root page to start page and are grouped separately so they're easy to find.
+
+## Start now buttons (cross-app links to the forms app)
+
+Service pages that have a corresponding form in the forms API can render a
+**Start now** button that links the user into the forms app at
+`/forms/<form_id>`. The wiring is driven by the forms API itself — there
+is no hand-maintained mapping file in this repo.
+
+The full architectural rationale is in
+[ADR-0005](../../docs/decisions/0005-build-time-manifest-for-cross-app-link-availability.md).
+
+### Authoring
+
+In the markdown for a start page (e.g. `src/content/get-birth-certificate/start.md`):
+
+1. Declare `form_id` in frontmatter. The value must match a `formId` in
+   the forms API.
+   ```yaml
+   ---
+   title: 'Get a copy of a birth certificate'
+   form_id: get-birth-certificate
+   ---
+   ```
+2. Place a marker anchor anywhere in the body where the button should
+   render. No `href`, no scheme — the renderer fills it in.
+   ```html
+   <a data-start-link>Start now</a>
+   ```
+
+You can have zero, one, or several markers per page.
+
+### How it resolves
+
+```
+build:   apps/landing/scripts/fetch-form-manifest.mjs
+         → fetch ${VITE_FORMS_API_URL}/form-definitions
+         → write src/content/available-forms.gen.ts (gitignored)
+              export const AVAILABLE_FORMS: ReadonlySet<string>
+
+render:  MarkdownContent reads `form_id` from frontmatter
+         → renders <a data-start-link>  only if form_id ∈ AVAILABLE_FORMS
+         → button href = ${VITE_FORMS_URL}/forms/${form_id}
+         → Umami event = "<form_id>-start"
+```
+
+- **Build-time fetch** runs as the `predev` and `prebuild` lifecycle
+  script. Every dev start and CI build pulls a fresh manifest. If the
+  forms API is unreachable, the build fails — better than silently
+  shipping a landing site with no Start now buttons.
+- **Frontmatter without API match** — the button is suppressed
+  silently in production. In dev, a `console.warn` flags it so authors
+  catch typos during review.
+- **Marker without `form_id`** in frontmatter — same: silent in prod,
+  warn in dev.
+
+### Environment variables
+
+Both are documented in `.env.example`:
+
+| Variable             | When used   | Purpose                                                                                                   |
+| -------------------- | ----------- | --------------------------------------------------------------------------------------------------------- |
+| `VITE_FORMS_API_URL` | build time  | Where the prebuild script fetches `/form-definitions`. Default: `https://forms.api.sandbox.alpha.gov.bb`. |
+| `VITE_FORMS_URL`     | render time | Base URL used in resolved button hrefs. Default: `https://forms.sandbox.alpha.gov.bb`.                    |
+
+Set these per environment in the deploy console (Amplify) to point
+sandbox at the sandbox API and prod at the prod API.
+
+### Adding a new Start now button
+
+1. Find the form ID via
+   `curl ${VITE_FORMS_API_URL}/form-definitions` — copy the `formId`
+   value verbatim.
+2. Add `form_id: <that-id>` to the page's frontmatter.
+3. Drop `<a data-start-link>Start now</a>` (or `Apply online`, etc.)
+   wherever it should appear in the body.
+4. Restart `npm run dev` (or rely on `predev` to regenerate the
+   manifest); the button should render.
+
+### Removing or renaming a form on the API side
+
+No landing-app change required. The next build's `predev` fetch will
+either drop the form from the manifest (in which case the Start now
+button silently disappears) or pick up the new ID (in which case any
+content still pointing at the old ID also silently disappears, with a
+dev warning).
 
 # Demo files
 

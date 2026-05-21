@@ -1,171 +1,253 @@
-# Start now → forms-app links
+# Start now → forms-app links (revision 2)
 
-**Status:** Delivered for in-scope services. Follow-ups tracked at the
-bottom.
+**Status:** Planned. Supersedes the initial registry-based delivery
+described in the prior version of this plan.
 
 ## Goal
 
-Every "Start now" call-to-action on the landing app routes the user to the
-real form in the forms app, for the services whose form is available in the
-forms API. Form IDs live in one file so cutover work — sandbox to prod, or
-to the upcoming "definitions in repo" model — is a single edit.
+Every "Start now" call-to-action on the landing app routes the user to
+the real form in the forms app **only if** the form actually exists in
+the forms API. Content authors declare a page's form ID in frontmatter;
+the build pipeline validates against the live API; the runtime check is
+a fast in-memory lookup. No hand-maintained ID registry.
 
-## Approach (delivered)
+## Why the change
 
-A small registry maps a stable **start-page slug** to a **formId**, and the
-Markdown anchor handler resolves a custom `form:<slug>` href scheme.
+The earlier delivery shipped a `FORM_IDS` map in
+`apps/landing/src/content/form-ids.ts` and gated rendering on it. Two
+problems surfaced once the lead reviewed it:
 
-- Registry: [`apps/landing/src/content/form-ids.ts`](../../apps/landing/src/content/form-ids.ts)
+1. **It's a parallel database.** Every time the forms team adds, renames,
+   or removes a form, someone has to remember to edit this file.
+   Forgetting silently breaks Start now buttons.
+2. **It's already wrong.** Shannon renamed the API formIds (dropped the
+   `*-test` suffixes, removed YouthADVANCE Corps Recruitment). The
+   committed `FORM_IDS` still references the old values.
 
-  ```ts
-  const FORMS_BASE_URL =
-    import.meta.env.VITE_FORMS_URL ?? "http://localhost:3000";
+Shannon's directive: drive availability and the formId values off the
+forms API itself, not off a checked-in file.
 
-  export const FORM_IDS: Record<string, string> = {
-    "get-birth-certificate": "get-birth-certificate-test",
-    // …one entry per wired service
-  };
+## Approach
 
-  export function resolveFormHref(slug: string): string {
-    const formId = FORM_IDS[slug];
-    if (!formId) throw new Error(`Unknown form slug "${slug}"…`);
-    return `${FORMS_BASE_URL}/forms/${formId}`;
-  }
-  ```
+A **build-time fetch** of `${VITE_FORMS_API_URL}/form-definitions`
+produces a generated manifest of available formIds. The landing app
+ships that manifest in its bundle. Per-page **frontmatter `form_id`**
+declares which formId each start page maps to. At render time the
+anchor handler consults the manifest; if the form exists, the Start now
+button renders pointing at `${VITE_FORMS_URL}/forms/${form_id}`; if it
+doesn't, the button is silently suppressed (with a dev-mode console
+warning).
 
-- Content authoring pattern (every wired `start.md` and the two single-file
-  pages):
-  ```markdown
-  <a data-start-link href="form:get-birth-certificate">Start now</a>
-  ```
-- Resolution: the anchor handler in
-  [`MarkdownContent.tsx`](../../apps/landing/src/components/MarkdownContent.tsx)
-  rewrites `form:<slug>` hrefs to the resolved URL. Unknown slugs throw at
-  render — caught immediately in dev and in any CI build/render path.
-- ReactMarkdown's default URL sanitiser strips non-standard schemes, so a
-  `urlTransform` was added that lets `form:` URLs through. Without it the
-  href arrives at the component as `undefined` and the rendered link
-  silently falls back to the page URL.
+```
+build:                      vite prebuild
+  fetch ${VITE_FORMS_API_URL}/form-definitions
+  → write src/content/available-forms.gen.ts
+      export const AVAILABLE_FORMS = new Set([
+        "get-birth-certificate", "jobstart-plus-programme", …
+      ])
 
-**Alternatives considered**
+render (page with frontmatter form_id: jobstart-plus-programme):
+  Markdown body contains: <a data-start-link>Start now</a>
+  Anchor handler reads form_id from frontmatter context
+  → form_id in AVAILABLE_FORMS?
+      yes → <LinkButton href="${VITE_FORMS_URL}/forms/jobstart-plus-programme">
+      no  → render nothing (dev warn)
+```
 
-- _Inline `/forms/<formId>` strings in every `start.md`._ Simpler, no
-  resolver, but every cutover means editing 13+ Markdown files. Rejected.
-- _Env-keyed registry with both sandbox and prod IDs side by side, gated
-  by an env var._ Avoids any code edit at cutover. Deferred because
-  Isaiah's upcoming "definitions in repo" work will likely make the
-  cutover trivial anyway (see _Open questions_).
+### Key shape decisions
 
-## Scope delivered
+- **Frontmatter is the declarative source.** Each `start.md` (or
+  single-file page) that should have a Start now button gets a
+  `form_id: <api-formId>` field in its frontmatter. Content authors
+  always know which form a page points at by looking at the top of the
+  file. Slug-matching is **not** assumed — the formIds and the landing
+  slugs only happen to align for some services.
+- **Authors keep button placement control.** The Markdown body keeps
+  the explicit `<a data-start-link>Start now</a>` marker. The anchor
+  renderer reads `form_id` from a React context populated by
+  `MarkdownContent` from the page's frontmatter. This lets a page have
+  zero, one, or multiple Start now buttons positioned wherever the
+  author writes them.
+- **`href` attribute is dropped on `data-start-link` anchors.** Authors
+  no longer write `href="form:<slug>"` — the formId comes from
+  frontmatter, not from the href. The `urlTransform` and `form:` scheme
+  added in revision 1 go away.
+- **Manifest is generated, gitignored, and treated as a build
+  artifact.** Lives at `apps/landing/src/content/available-forms.gen.ts`.
+  Pre-build script writes it; `nx dev` runs the script as `predev` so
+  local dev has a fresh manifest at startup.
+- **Build fails when the API is unreachable.** Better a loud deploy
+  failure than silently shipping a landing with zero Start now buttons.
+- **Two env vars, two purposes.** `VITE_FORMS_API_URL` is the
+  build-time API URL (server-to-server fetch). `VITE_FORMS_URL` is the
+  user-facing forms app URL embedded in the resolved button href.
 
-- Added [`apps/landing/src/content/form-ids.ts`](../../apps/landing/src/content/form-ids.ts)
-  with 13 mappings.
-- Updated [`MarkdownContent.tsx`](../../apps/landing/src/components/MarkdownContent.tsx):
-  anchor handler resolves `form:<slug>`; `StartLink` accepts an explicit
-  `eventName` so per-service Umami analytics names (`<slug>-start`)
-  survive the URL rewrite; added a `urlTransform` so the `form:` scheme
-  isn't sanitised away.
-- Documented the new env var in
-  [`apps/landing/.env.example`](../../apps/landing/.env.example) —
-  `VITE_FORMS_URL=https://forms.alpha.gov.bb`.
-- Updated 11 `start.md` files and 2 single-file pages to use the
-  `form:<slug>` href.
-- Side-quest: fixed `GET /form-definitions/example-name-change` returning 500. The seed in [`apps/api/src/database/seed.ts`](../../apps/api/src/database/seed.ts)
-  stored inline primitive fields but the endpoint hydrates through the
-  registry, which expects `{ref, overrides?}` recipe shape. Rewrote the
-  seed using `components/first-name` and `components/last-name` refs,
-  bumped seed version to `1.0.1` so docker-compose re-seeds on next boot.
+### Alternatives considered
 
-## In-scope mapping
+- **Per-page HTTP fetch at render time** (Shannon's other suggestion).
+  Discoverability without redeploy, but every content page makes an API
+  call, and the button "pops in" after the fetch. Overkill for a
+  once-a-deploy data source.
+- **Form ID in the href (`href="form:jobstart-plus-programme">`)**.
+  Author writes the formId directly; renderer validates against the
+  manifest. Simpler than frontmatter + context, but the formId is then
+  buried inside the markdown body instead of being a discoverable
+  metadata field at the top of the file. Rejected on
+  discoverability grounds.
+- **Mass-rename the 5 mismatched landing slugs.** Changes user-facing
+  URLs and would need redirect handling. Frontmatter `form_id` avoids
+  the rename entirely.
 
-| Start-page slug                                    | Form ID (sandbox)                         |
-| -------------------------------------------------- | ----------------------------------------- |
-| `apply-for-conductor-licence`                      | `apply-for-conductor-licence-test`        |
-| `apply-to-be-a-project-protege-mentor`             | `project-protege-mentor-test`             |
-| `apply-to-jobstart-plus-programme`                 | `jobstart-plus-programme-test`            |
-| `apply-to-the-barbados-youthadvance-corps`         | `youthadvance-corps-recruitment`          |
-| `get-birth-certificate`                            | `get-birth-certificate-test`              |
-| `get-death-certificate`                            | `get-death-certificate-test`              |
-| `get-marriage-certificate`                         | `get-marriage-certificate-test`           |
-| `post-office-redirection-business`                 | `post-office-redirection-business-test`   |
-| `post-office-redirection-deceased`                 | `post-office-redirection-deceased-test`   |
-| `post-office-redirection-individual`               | `post-office-redirection-individual-test` |
-| `register-for-community-sports-training-programme` | `community-sports-training-test`          |
-| `register-summer-camp`                             | `national-summer-camp-2025-registration`  |
-| `sell-goods-services-beach-park`                   | `sell-goods-services-beach-park-test`     |
+## Scope
+
+- Write a pre-build script `scripts/fetch-form-manifest.ts` that hits
+  `${VITE_FORMS_API_URL}/form-definitions`, validates the response, and
+  emits `apps/landing/src/content/available-forms.gen.ts` exporting an
+  `AVAILABLE_FORMS: ReadonlySet<string>`.
+- Wire `predev` and `prebuild` scripts in
+  `apps/landing/package.json` so the manifest is fresh in both dev and
+  CI.
+- Add `form_id: <api-formId>` to the frontmatter of every `start.md`
+  and single-file page that should have a Start now button. **Drop**
+  YouthADVANCE Corps for now (no API form). Drop any others whose
+  formIds don't exist in the live API.
+- Extend `lib/frontmatter.ts` `FrontmatterSchema` with optional
+  `form_id` field.
+- Rework `MarkdownContent.tsx`:
+  - Provide a `FormIdContext` populated from the page's frontmatter.
+  - Anchor handler: when `data-start-link` is present, read `form_id`
+    from context; if present and in `AVAILABLE_FORMS`, render
+    `<StartLink href={`${VITE_FORMS_URL}/forms/${form_id}`}>`; else
+    render `null` (with `console.warn` in dev when a `form_id` exists
+    but isn't in the manifest).
+  - Remove the `form:` href scheme, the `urlTransform`, and the
+    `resolveFormHref` import.
+- Delete `apps/landing/src/content/form-ids.ts`.
+- Update `apps/landing/.env.example` to document both
+  `VITE_FORMS_API_URL` and `VITE_FORMS_URL`.
+- Update the 13 `start.md` / single-file pages: remove
+  `href="form:<slug>"` from their `<a data-start-link>` tags, leaving
+  `<a data-start-link>Start now</a>`.
+- Per-slug analytics: `StartLink` continues to emit a `<form_id>-start`
+  Umami event derived from the resolved form_id (preserves the
+  funnel-metric convention from `0002-umami-tracking`).
+
+## Mapping (landing slug → API formId, declared via frontmatter)
+
+| Landing page (slug)                                | `form_id` in frontmatter                 |
+| -------------------------------------------------- | ---------------------------------------- |
+| `apply-for-conductor-licence`                      | `apply-for-conductor-licence`            |
+| `apply-to-be-a-project-protege-mentor`             | `project-protege-mentor`                 |
+| `apply-to-jobstart-plus-programme`                 | `jobstart-plus-programme`                |
+| `apply-to-the-barbados-youthadvance-corps`         | _(omit — not in API)_                    |
+| `get-birth-certificate`                            | `get-birth-certificate`                  |
+| `get-death-certificate`                            | `get-death-certificate`                  |
+| `get-marriage-certificate`                         | `get-marriage-certificate`               |
+| `post-office-redirection-business`                 | `post-office-redirection-business`       |
+| `post-office-redirection-deceased`                 | `post-office-redirection-deceased`       |
+| `post-office-redirection-individual`               | `post-office-redirection-individual`     |
+| `register-for-community-sports-training-programme` | `community-sports-training`              |
+| `register-summer-camp`                             | `national-summer-camp-2025-registration` |
+| `sell-goods-services-beach-park`                   | `sell-goods-services-beach-park`         |
 
 ## Files
 
 **Added**
 
-- `apps/landing/src/content/form-ids.ts`
+- `apps/landing/scripts/fetch-form-manifest.ts` (or
+  `scripts/fetch-form-manifest.ts` at repo root — TBD per convention)
+- `apps/landing/src/content/available-forms.gen.ts` _(gitignored,
+  generated)_
 
 **Modified**
 
-- `apps/landing/src/components/MarkdownContent.tsx`
-- `apps/landing/.env.example`
-- `apps/landing/src/content/<slug>/start.md` × 11
+- `apps/landing/package.json` — add `predev` and `prebuild` script
+  entries.
+- `apps/landing/.env.example` — document `VITE_FORMS_API_URL` and
+  `VITE_FORMS_URL`.
+- `apps/landing/.gitignore` (or root `.gitignore`) — ignore the
+  generated manifest.
+- `apps/landing/src/lib/frontmatter.ts` — extend schema with
+  `form_id?: string`.
+- `apps/landing/src/components/MarkdownContent.tsx` — replace registry
+  resolver with manifest + frontmatter context, drop `urlTransform`
+  and `form:` scheme.
+- 11× `apps/landing/src/content/<slug>/start.md` — add `form_id`
+  frontmatter; drop `href="form:..."` from the `<a data-start-link>`.
 - `apps/landing/src/content/apply-to-the-barbados-youthadvance-corps.md`
-- `apps/landing/src/content/register-summer-camp.md`
-- `apps/api/src/database/seed.ts`
+  — remove the Start now anchor entirely (no API form).
+- `apps/landing/src/content/register-summer-camp.md` — add `form_id`
+  frontmatter; drop `href`.
+
+**Deleted**
+
+- `apps/landing/src/content/form-ids.ts`
 
 ## Verify
 
-- `pnpm run dev:forms` (port 3000) and `pnpm run dev:api` (port 3001).
-- `pnpm exec nx dev landing` (port 4200 by default), then visit each
-  updated start page and click Start now. Confirm the forms app loads the
-  right form.
-- Hover a Start now button: the status-bar URL should be the resolved
-  `${VITE_FORMS_URL}/forms/<formId>`, not the current page URL.
-- `pnpm exec nx lint landing` clean. (`nx typecheck landing` has one
-  pre-existing error in `content/registry.ts:58` unrelated to this work.)
-- `curl http://localhost:3001/form-definitions/example-name-change` —
-  should return `"status":"success"`, not 500.
+- `pnpm exec nx lint landing` clean.
+- `pnpm exec nx test landing` 36/36 still passing (add tests for the
+  manifest-fetch script and the anchor renderer if existing patterns
+  warrant it; the project's bar is utility-level tests only, so likely
+  one test for the script).
+- `pnpm exec nx dev landing` — confirm `predev` writes the manifest;
+  visit each updated start page, confirm Start now renders and points
+  at `${VITE_FORMS_URL}/forms/<form_id>`.
+- Visit `/work-employment/apply-to-the-barbados-youthadvance-corps` —
+  confirm **no** Start now button (form removed from API).
+- Set `VITE_FORMS_API_URL` to a bogus URL and run prebuild — confirm
+  the script errors with a clear message and the build does not
+  proceed.
+- Hover any Start now button: status bar shows the resolved forms-app
+  URL on the configured `VITE_FORMS_URL` host.
+- Umami events fire as `<form_id>-start`.
 
 ## Out of scope (deferred)
 
-- **Pages with no matching API form.** `calculate-severance-pay/start.md`
-  and `get-a-primary-school-textbook-grant/start.md` still point to the
-  old `/<category>/<slug>/form` path. Left alone until formIds exist —
-  per Zainab's call.
-- **Renewal forms.** `driver-licence-renewal` and `passport-renewal` exist
-  in the API but the matching landing pages are about _applying_, not
-  renewing. No CTA added until dedicated renewal pages exist.
-- **Forms with no landing content yet.** `request-fire-inspection-test`,
-  `reserve-society-name-test`, `school-registration-fee`,
+- **Pages with no matching API form.** `calculate-severance-pay/start.md`,
+  `get-a-primary-school-textbook-grant/start.md`, and any currently-pointing
+  CTAs on `crop-over-permits/index.md`,
+  `request-a-presidential-visit-for-a-centenarian/index.md`,
+  `calculate-your-pension/index.md` — no API form. Leave existing
+  buttons alone; once a form exists, add `form_id` frontmatter.
+- **Renewal forms.** `driver-licence-renewal` and `passport-renewal`
+  exist in the API but the matching landing pages are about
+  _applying_, not renewing. No `form_id` added until dedicated renewal
+  pages exist.
+- **Missing landing pages for available forms.** `request-fire-inspection`,
+  `reserve-society-name`, `school-registration-fee`,
   `national-id-application`, `digital-media-training-programme-application`,
   `youth-cultural-training-registration-2025`,
   `ydp-performing-arts-registration-2025-2026`,
   `youth-leadership-workshop-registration-2026`,
   `pathways-employability-programme-application-2026`,
-  `project-dawn-application`. Per Harry, this is content authoring work
-  that should ideally be done by non-devs through the form builder UI.
+  `project-dawn-application`. Content-authoring work; tracked
+  separately.
 
-## Open questions / follow-ups (from lead review)
+## Decision record
 
-- **`forms.alpha.gov.bb` domain (Shannon).** Set
-  `VITE_FORMS_URL=https://forms.alpha.gov.bb` in the Amplify console for
-  the landing app once the domain is live. Code already supports it.
-- **"Definitions in repo" change (Isaiah).** Form definitions are moving
-  out of the database and into the repo as committed files. After that
-  lands:
-  - formIds become stable across environments → the sandbox `*-test`
-    values in `FORM_IDS` will be replaced with the permanent IDs.
-  - The api's `GET /form-definitions/*` endpoint may no longer be the
-    runtime path for the forms app. Worth confirming whether the seed-bug
-    fix above stays relevant or the endpoint gets removed entirely.
-  - The "swap sandbox for prod IDs at cutover" reason behind the registry
-    largely goes away, but the _slug → formId_ indirection is still
-    useful as a content-authoring affordance.
-- **Form builder needs its own deployment (Harry).** `apps/form_builder`
-  must come out of the main deploy onto an internal-only subdomain,
-  auth-gated, before non-devs use it to author the missing landing
-  pages.
-- **Renewal vs application pages.** Decide whether to add separate
-  `renew-a-passport` / `renew-a-drivers-licence` landing pages keyed to
-  the existing API forms, or fold them into the existing apply-for-\*
-  pages with both options.
-- **Pre-existing TS error** in
-  [`apps/landing/src/content/registry.ts:58`](../../apps/landing/src/content/registry.ts:58)
-  — unrelated to this work but blocks `nx typecheck landing`. Worth
-  fixing or annotating in a separate PR.
+- **ADR 0004** (registry in one file) gets marked **Superseded by 0005**.
+  Its reasoning is correct for the moment in time it was written; the
+  context changed when the forms API stabilised.
+- **ADR 0005** (new) captures the principle this revision establishes:
+  _Cross-app link availability is driven by a build-time fetch from the
+  destination app's API. Content declares its target via frontmatter;
+  authors do not maintain a parallel registry._
+
+## Open questions / follow-ups
+
+- **Production API URL.** Sandbox is
+  `https://forms.api.sandbox.alpha.gov.bb`. Prod presumably
+  `https://forms.api.alpha.gov.bb` — confirm once the domain is wired.
+  Set `VITE_FORMS_API_URL` per environment in Amplify.
+- **Prod forms-app URL.** `https://forms.sandbox.alpha.gov.bb` for
+  sandbox builds; prod presumably `https://forms.alpha.gov.bb`. Set
+  `VITE_FORMS_URL` per environment.
+- **Build-time caching in CI.** If Amplify caches `node_modules` but
+  not the source tree's generated files, every build runs the
+  pre-build fetch. Verify this is the case and not a stale-cache
+  source. Caching `available-forms.gen.ts` would be the bug.
+- **What if the API returns a form we don't have a landing page for?**
+  Currently nothing happens (orphaned formId in manifest). Worth
+  surfacing on a maintainer dashboard or a content-team mailing list,
+  but out of scope for this PR.

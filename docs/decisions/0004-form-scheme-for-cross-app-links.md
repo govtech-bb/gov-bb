@@ -1,7 +1,13 @@
 # 0004 — Cross-app links from Markdown use a `form:` scheme, not absolute URLs
 
 **Date:** 2026-05-21
-**Status:** Accepted
+**Status:** Superseded by [0005](./0005-build-time-manifest-for-cross-app-link-availability.md)
+
+> This decision was superseded later the same day. The principle "content
+> doesn't contain absolute URLs to other apps" stands; the mechanism
+> (a hand-maintained registry + custom href scheme) was replaced with a
+> build-time fetch from the destination app's API + frontmatter
+> declaration. See ADR-0005 for the new shape and the reasoning.
 
 ## Context
 
