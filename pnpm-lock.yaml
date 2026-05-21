@@ -262,6 +262,9 @@ importers:
       '@govtech-bb/design':
         specifier: ^1.0.0-alpha.16
         version: 1.0.0-alpha.16
+      '@govtech-bb/form-types':
+        specifier: workspace:*
+        version: link:../../packages/form-types
       '@standard-schema/spec':
         specifier: ^1.1.0
         version: 1.1.0

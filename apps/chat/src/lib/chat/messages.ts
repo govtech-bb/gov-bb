@@ -20,6 +20,16 @@ export function lastUserText(messages: UIMessage[]): string {
   return "";
 }
 
+// Concatenated text of the last `limit` user messages. Used by intent-style
+// matchers that need conversational context but not the whole history.
+export function recentUserText(messages: UIMessage[], limit = 5): string {
+  const parts: string[] = [];
+  for (let i = messages.length - 1; i >= 0 && parts.length < limit; i--) {
+    if (messages[i].role === "user") parts.unshift(extractText(messages[i]));
+  }
+  return parts.join(" ");
+}
+
 export function lastAssistantText(messages: UIMessage[]): string {
   for (let i = messages.length - 1; i >= 0; i--) {
     if (messages[i].role === "assistant") return extractText(messages[i]);
