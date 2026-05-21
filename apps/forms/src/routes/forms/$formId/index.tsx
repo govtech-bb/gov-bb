@@ -105,7 +105,6 @@ function RouteComponent() {
         repeatableStepSettingsRef.current,
         hiddenFields,
       );
-      console.log({ formattedData });
       const response = await postFormSubmission(formMeta, formattedData);
       const responseData: FormSubmissionResponseBody = response.data;
 
