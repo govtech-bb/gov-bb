@@ -1,9 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { FormDefinitionEntity } from "@govtech-bb/database";
+import { validateFormContract } from "@govtech-bb/form-builder";
 import type { ServiceContractRecipe } from "@govtech-bb/form-types";
 import { getDataSource } from "./db";
-import { requireSession } from "./auth-middleware.server";
+import { requirePublisher, requireSession } from "./auth-middleware.server";
+import { openPublishPr } from "./github-publish.server";
 import { bumpMinor } from "../lib/version";
 import type { FormDefinitionSummary } from "../types/index";
 
@@ -128,6 +130,43 @@ export const updateRecipe = createServerFn({ method: "POST" })
       row.id,
     ]);
   });
+
+export const publishRecipe = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      recipe: z.unknown(),
+      prDescription: z.string().optional(),
+    }),
+  )
+  .handler(
+    async ({
+      data,
+    }): Promise<{ prUrl: string; prNumber: number; branchName: string }> => {
+      const session = await requirePublisher();
+      const recipe = data.recipe as ServiceContractRecipe;
+
+      const validation = validateFormContract(recipe);
+      if (!validation.valid) {
+        throw new Error(
+          `Recipe failed validation: ${validation.issues
+            .map((i) => i.message)
+            .join("; ")}`,
+        );
+      }
+
+      const description =
+        data.prDescription?.trim() ||
+        `Publishes ${recipe.formId} v${recipe.version} via Form Builder`;
+
+      return openPublishPr({
+        formId: recipe.formId,
+        version: recipe.version,
+        recipe,
+        prDescription: description,
+        userToken: session.accessToken,
+      });
+    },
+  );
 
 export const nextVersion = createServerFn({ method: "GET" })
   .inputValidator(z.object({ formId: z.string() }))
