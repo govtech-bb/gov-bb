@@ -1,10 +1,10 @@
-# Overlay for hot-reload local dev (landing + web).
+# Overlay for hot-reload local dev (landing + forms).
 #
 # Use:
 #   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 #
 # What this adds:
-#   - Source bind-mounts on apps/landing and apps/web so editing files on
+#   - Source bind-mounts on apps/landing and apps/forms so editing files on
 #     the host triggers a Vite rebuild inside the container.
 #   - Anonymous volumes on each app's node_modules so the host's local
 #     node_modules (which may be absent or mismatched-arch) can't shadow
@@ -26,10 +26,10 @@ services:
       - ./apps/landing/public:/app/apps/landing/public
       - /app/apps/landing/node_modules
 
-  web:
+  forms:
     volumes:
-      - ./apps/web/src:/app/apps/web/src
-      - ./apps/web/public:/app/apps/web/public
-      - ./apps/web/contracts:/app/apps/web/contracts
+      - ./apps/forms/src:/app/apps/forms/src
+      - ./apps/forms/public:/app/apps/forms/public
+      - ./apps/forms/contracts:/app/apps/forms/contracts
       - ./packages:/app/packages
-      - /app/apps/web/node_modules
+      - /app/apps/forms/node_modules
