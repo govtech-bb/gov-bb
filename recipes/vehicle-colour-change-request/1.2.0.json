@@ -1,0 +1,295 @@
+{
+  "formId": "vehicle-colour-change-request",
+  "title": "Vehicle Colour Change Request",
+  "description": "Submit a request to change the registered colour of your vehicle.",
+  "version": "1.2.0",
+  "steps": [
+    {
+      "stepId": "personal-information",
+      "title": "Personal Information",
+      "elements": [
+        {
+          "ref": "blocks/personal-information",
+          "overrides": {
+            "middle-name": {
+              "isHidden": true
+            },
+            "nationality": {
+              "isHidden": true
+            },
+            "national-id-number": {
+              "validations": {
+                "required": {
+                  "error": "Please enter your National ID number",
+                  "value": true
+                }
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "contact-information",
+      "title": "Contact Information",
+      "elements": [
+        {
+          "ref": "blocks/contact-information",
+          "overrides": {
+            "email": {
+              "validations": {
+                "email": {
+                  "error": "Please enter a valid email address",
+                  "value": true
+                },
+                "required": {
+                  "error": "Please enter your email address",
+                  "value": true
+                }
+              }
+            },
+            "telephone": {
+              "validations": {
+                "required": {
+                  "error": "Please enter your telephone number",
+                  "value": true
+                }
+              }
+            },
+            "home-telephone": {
+              "isHidden": true
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "vehicle-details",
+      "title": "Vehicle Details",
+      "elements": [
+        {
+          "ref": "components/name",
+          "overrides": {
+            "ui": {
+              "width": "short"
+            },
+            "hint": "Enter the registration number as it appears on your licence plate",
+            "label": "Vehicle Registration Number",
+            "fieldId": "vehicle-registration-number",
+            "validations": {
+              "required": {
+                "error": "Please enter your vehicle registration number",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/name",
+          "overrides": {
+            "hint": "e.g. Toyota, Honda, Ford",
+            "label": "Vehicle Make",
+            "fieldId": "vehicle-make",
+            "validations": {
+              "required": {
+                "error": "Please enter the vehicle make",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/name",
+          "overrides": {
+            "hint": "e.g. Corolla, Civic, Ranger",
+            "label": "Vehicle Model",
+            "fieldId": "vehicle-model",
+            "validations": {
+              "required": {
+                "error": "Please enter the vehicle model",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic/number",
+          "overrides": {
+            "ui": {
+              "width": "short"
+            },
+            "hint": "Enter the four-digit year e.g. 2018",
+            "label": "Year of Manufacture",
+            "fieldId": "vehicle-year",
+            "validations": {
+              "required": {
+                "error": "Please enter the year of manufacture",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/name",
+          "overrides": {
+            "hint": "17-character VIN found on your vehicle documents",
+            "label": "Vehicle Identification Number (VIN)",
+            "fieldId": "vehicle-vin",
+            "validations": {
+              "required": {
+                "error": "Please enter the Vehicle Identification Number",
+                "value": true
+              },
+              "maxLength": {
+                "error": "VIN must be 17 characters",
+                "value": 17
+              },
+              "minLength": {
+                "error": "VIN must be 17 characters",
+                "value": 17
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "colour-change-details",
+      "title": "Colour Change Details",
+      "elements": [
+        {
+          "ref": "components/name",
+          "overrides": {
+            "hint": "Enter the colour currently registered for your vehicle",
+            "label": "Current Vehicle Colour",
+            "fieldId": "current-colour",
+            "validations": {
+              "required": {
+                "error": "Please enter the current vehicle colour",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/name",
+          "overrides": {
+            "hint": "Enter the colour you wish to change your vehicle to",
+            "label": "New Vehicle Colour",
+            "fieldId": "new-colour",
+            "validations": {
+              "required": {
+                "error": "Please enter the new vehicle colour",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "ui": {
+              "width": "long"
+            },
+            "hint": "Please provide a brief reason for requesting this colour change",
+            "label": "Reason for Colour Change",
+            "fieldId": "reason-for-change",
+            "validations": {
+              "required": {
+                "error": "Please provide a reason for the colour change",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "supporting-documents",
+      "title": "Supporting Documents",
+      "elements": [
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "hint": "Upload a copy of your current vehicle registration certificate",
+            "label": "Vehicle Registration Certificate",
+            "fieldId": "vehicle-registration-document",
+            "validations": {
+              "required": {
+                "error": "Please upload your vehicle registration certificate",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "hint": "Upload a copy of your proof of ownership (e.g. bill of sale or title)",
+            "label": "Proof of Ownership",
+            "fieldId": "proof-of-ownership",
+            "validations": {
+              "required": {
+                "error": "Please upload proof of ownership",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "hint": "Upload a clear, recent photo of your vehicle showing its current colour",
+            "label": "Current Photo of Vehicle",
+            "fieldId": "photo-of-vehicle",
+            "validations": {
+              "required": {
+                "error": "Please upload a current photo of your vehicle",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": "Declaration",
+            "fieldId": "declaration-confirmed",
+            "options": [
+              {
+                "label": "I declare that the information provided in this form is true, accurate and complete to the best of my knowledge. I understand that providing false information may result in the rejection of this application or legal consequences.",
+                "value": "confirmed"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "You must confirm the declaration to submit your request",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Application Submitted",
+      "elements": [],
+      "behaviours": []
+    }
+  ],
+  "createdAt": "2026-05-22T21:22:42.859Z",
+  "updatedAt": "2026-05-22T21:22:42.859Z"
+}
