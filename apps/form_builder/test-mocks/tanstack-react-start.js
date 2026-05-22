@@ -17,4 +17,10 @@ function createServerFn(_opts) {
   return api;
 }
 
-module.exports = { createServerFn };
+function createMiddleware(_opts) {
+  return {
+    server: (_fn) => undefined,
+  };
+}
+
+module.exports = { createServerFn, createMiddleware };

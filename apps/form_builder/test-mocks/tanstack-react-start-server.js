@@ -10,4 +10,8 @@ function setResponseHeader() {
   // no-op
 }
 
-module.exports = { getRequestHeaders, setResponseHeader };
+function getRequest() {
+  return new Request("http://localhost/");
+}
+
+module.exports = { getRequestHeaders, setResponseHeader, getRequest };

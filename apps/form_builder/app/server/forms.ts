@@ -11,6 +11,7 @@ import { getSession } from "./session";
 import { listPublishedForms, getPublishedRecipe } from "./github-recipes";
 import { bumpMinor } from "../lib/version";
 import type { FormDefinitionSummary } from "../types/index";
+import { requireAdminToken } from "./auth/admin-token-middleware";
 
 type FormDefinitionRow = {
   id: string;
@@ -32,8 +33,9 @@ function requireToken(): string {
   return session.accessToken;
 }
 
-export const listForms = createServerFn({ method: "GET" }).handler(
-  async (): Promise<FormDefinitionSummary[]> => {
+export const listForms = createServerFn({ method: "GET" })
+  .middleware([requireAdminToken])
+  .handler(async (): Promise<FormDefinitionSummary[]> => {
     const token = requireToken();
     const forms = await listPublishedForms(token);
     return forms.map((f) => ({
@@ -45,10 +47,10 @@ export const listForms = createServerFn({ method: "GET" }).handler(
       version: f.version,
       isPublished: true,
     }));
-  },
-);
+  });
 
 export const getRecipe = createServerFn({ method: "GET", strict: false })
+  .middleware([requireAdminToken])
   .inputValidator(z.object({ formId: z.string() }))
   .handler(async ({ data }): Promise<ServiceContractRecipe> => {
     const token = requireToken();
@@ -57,6 +59,7 @@ export const getRecipe = createServerFn({ method: "GET", strict: false })
   });
 
 export const submitRecipe = createServerFn({ method: "POST" })
+  .middleware([requireAdminToken])
   .inputValidator(
     z.object({
       recipe: z.unknown(),
@@ -86,6 +89,7 @@ export const submitRecipe = createServerFn({ method: "POST" })
   });
 
 export const updateRecipe = createServerFn({ method: "POST" })
+  .middleware([requireAdminToken])
   .inputValidator(
     z.object({
       formId: z.string(),
@@ -124,6 +128,7 @@ export const updateRecipe = createServerFn({ method: "POST" })
   });
 
 export const nextVersion = createServerFn({ method: "GET" })
+  .middleware([requireAdminToken])
   .inputValidator(z.object({ formId: z.string() }))
   .handler(
     async ({

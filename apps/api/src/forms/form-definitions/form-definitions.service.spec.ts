@@ -6,6 +6,41 @@ import { RegistryService } from "../../registry/registry.service";
 import { RecipeFileLoaderService } from "./recipe-file-loader.service";
 import { FormDefinitionsService } from "./form-definitions.service";
 
+// ---------------------------------------------------------------------------
+// Helpers shared across describe blocks
+// ---------------------------------------------------------------------------
+
+function makeEntityWithTitle(
+  formId: string,
+  title: string,
+  overrides: Partial<FormDefinitionEntity> = {},
+): FormDefinitionEntity {
+  return {
+    id: `uuid-${formId}`,
+    formId,
+    version: "1.0.0",
+    schema: { title } as unknown as Record<string, unknown>,
+    publishedAt: null,
+    createdAt: new Date("2026-01-01"),
+    updatedAt: new Date("2026-01-01"),
+    ...overrides,
+  } as FormDefinitionEntity;
+}
+
+function makeFindAllMocks(entities: FormDefinitionEntity[]) {
+  const repo = {
+    find: jest.fn().mockResolvedValue(entities),
+    findOne: jest.fn(),
+  } as unknown as jest.Mocked<FormDefinitionRepository>;
+
+  const registry = {
+    hydrateForm: jest.fn().mockResolvedValue({}),
+  } as unknown as jest.Mocked<RegistryService>;
+
+  const service = new FormDefinitionsService(repo, registry);
+  return { repo, registry, service };
+}
+
 const MOCK_RECIPE = {
   formId: "passport-renewal",
   title: "Passport Renewal",
@@ -229,5 +264,93 @@ describe("FormDefinitionsService", () => {
         { formId: "passport-renewal", title: "Passport Renewal" },
       ]);
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// findAll — completely separate describe (no coverage at all before this)
+// ---------------------------------------------------------------------------
+
+describe("FormDefinitionsService.findAll", () => {
+  it("returns an empty array when no form definitions exist", async () => {
+    const { service } = makeFindAllMocks([]);
+    const result = await service.findAll();
+    expect(result).toEqual([]);
+  });
+
+  it("calls repo.find ordered by createdAt DESC", async () => {
+    const { repo, service } = makeFindAllMocks([]);
+    await service.findAll();
+    expect(repo.find).toHaveBeenCalledWith({ order: { createdAt: "DESC" } });
+  });
+
+  it("returns one entry per unique formId with title from schema", async () => {
+    const entities = [
+      makeEntityWithTitle("passport-renewal", "Passport Renewal"),
+      makeEntityWithTitle("birth-cert", "Birth Certificate"),
+    ];
+    const { service } = makeFindAllMocks(entities);
+
+    const result = await service.findAll();
+
+    expect(result).toEqual([
+      { formId: "passport-renewal", title: "Passport Renewal" },
+      { formId: "birth-cert", title: "Birth Certificate" },
+    ]);
+  });
+
+  it("de-duplicates formIds — keeps only the first (latest by createdAt DESC) version", async () => {
+    // repo returns multiple rows for the same formId (different versions)
+    const entities = [
+      makeEntityWithTitle("passport-renewal", "Passport Renewal v2", {
+        version: "2.0.0",
+        createdAt: new Date("2026-06-01"),
+      }),
+      makeEntityWithTitle("passport-renewal", "Passport Renewal v1", {
+        version: "1.0.0",
+        createdAt: new Date("2026-01-01"),
+      }),
+    ];
+    const { service } = makeFindAllMocks(entities);
+
+    const result = await service.findAll();
+
+    // Only the first encountered entry is kept
+    expect(result).toHaveLength(1);
+    expect(result[0]).toEqual({
+      formId: "passport-renewal",
+      title: "Passport Renewal v2",
+    });
+  });
+
+  it("preserves insertion order of unique formIds", async () => {
+    const entities = [
+      makeEntityWithTitle("form-a", "Form A"),
+      makeEntityWithTitle("form-b", "Form B"),
+      makeEntityWithTitle("form-c", "Form C"),
+    ];
+    const { service } = makeFindAllMocks(entities);
+
+    const result = await service.findAll();
+
+    expect(result.map((r) => r.formId)).toEqual(["form-a", "form-b", "form-c"]);
+  });
+
+  it("handles a mix of duplicates and unique formIds correctly", async () => {
+    const entities = [
+      makeEntityWithTitle("form-a", "Form A v2"),
+      makeEntityWithTitle("form-b", "Form B"),
+      makeEntityWithTitle("form-a", "Form A v1"),
+      makeEntityWithTitle("form-c", "Form C"),
+    ];
+    const { service } = makeFindAllMocks(entities);
+
+    const result = await service.findAll();
+
+    expect(result).toEqual([
+      { formId: "form-a", title: "Form A v2" },
+      { formId: "form-b", title: "Form B" },
+      { formId: "form-c", title: "Form C" },
+    ]);
   });
 });

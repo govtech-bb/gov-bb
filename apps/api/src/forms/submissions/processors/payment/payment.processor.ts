@@ -30,6 +30,18 @@ export class PaymentProcessor implements ISubmissionProcessor {
   ) {}
 
   async process(payload: SubmissionCreatedEvent): Promise<ProcessorOutput> {
+    const paymentCount = payload.processors.filter(
+      (p) => p.type === "payment",
+    ).length;
+    if (paymentCount > 1) {
+      // Payment processing has side effects (creates a Payment row, initiates
+      // an EzPay session) that don't compose across multiple configs. Keep
+      // first-wins semantics and surface the misconfiguration to operators.
+      this.logger.warn(
+        `PaymentProcessor: ${paymentCount} payment configs present on submission ${payload.submissionId} (form ${payload.formId}) — only the first will be used`,
+      );
+    }
+
     const cfg = this.extractConfig(payload.processors);
 
     if (

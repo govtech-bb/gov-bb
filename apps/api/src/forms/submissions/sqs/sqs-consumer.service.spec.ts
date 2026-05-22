@@ -205,6 +205,68 @@ describe("SqsConsumerService", () => {
       expect(deleteCallArgs).toBeDefined();
     });
 
+    it("deletes a message whose `values` is null (null guard branch)", async () => {
+      // Branch: `payload.values === null`
+      factory.resolveByType.mockReturnValue(makeProcessor());
+      sendMock.mockResolvedValue({});
+
+      const malformed: Message = {
+        MessageId: "null-values",
+        ReceiptHandle: "null-values-receipt",
+        Body: JSON.stringify({
+          processorType: "email",
+          submissionId: "s",
+          formId: "f",
+          formVersion: "1",
+          idempotencyKey: "i",
+          values: null,
+          meta: {},
+          processors: [],
+        }),
+        Attributes: { ApproximateReceiveCount: "1" },
+      };
+
+      await service.processMessage(QUEUE_URL, malformed);
+
+      expect(factory.resolveByType).not.toHaveBeenCalled();
+      const deleteCallArgs = MockedDeleteMessageCommand.mock.calls.find(
+        ([args]: [{ ReceiptHandle?: string }]) =>
+          args.ReceiptHandle === "null-values-receipt",
+      );
+      expect(deleteCallArgs).toBeDefined();
+    });
+
+    it("deletes a message whose `values` is an array (array guard branch)", async () => {
+      // Branch: `Array.isArray(payload.values)`
+      factory.resolveByType.mockReturnValue(makeProcessor());
+      sendMock.mockResolvedValue({});
+
+      const malformed: Message = {
+        MessageId: "array-values",
+        ReceiptHandle: "array-values-receipt",
+        Body: JSON.stringify({
+          processorType: "email",
+          submissionId: "s",
+          formId: "f",
+          formVersion: "1",
+          idempotencyKey: "i",
+          values: [{ field: "val" }],
+          meta: {},
+          processors: [],
+        }),
+        Attributes: { ApproximateReceiveCount: "1" },
+      };
+
+      await service.processMessage(QUEUE_URL, malformed);
+
+      expect(factory.resolveByType).not.toHaveBeenCalled();
+      const deleteCallArgs = MockedDeleteMessageCommand.mock.calls.find(
+        ([args]: [{ ReceiptHandle?: string }]) =>
+          args.ReceiptHandle === "array-values-receipt",
+      );
+      expect(deleteCallArgs).toBeDefined();
+    });
+
     it("deletes the message when no handler is registered for the processor type", async () => {
       factory.resolveByType.mockReturnValue(undefined);
       sendMock.mockResolvedValue({});
@@ -218,6 +280,25 @@ describe("SqsConsumerService", () => {
         ([cmd]) => cmd instanceof DeleteMessageCommand,
       );
       expect(deleteCalls).toHaveLength(1);
+    });
+
+    it("defaults receiveCount to 1 when Attributes are absent", async () => {
+      // Branch: `message.Attributes?.[...] ?? "1"` — the ?? "1" fallback
+      const processor = makeProcessor();
+      factory.resolveByType.mockReturnValue(processor);
+      sendMock.mockResolvedValue({});
+
+      const msgWithoutAttrs: Message = {
+        MessageId: "no-attrs",
+        ReceiptHandle: "no-attrs-receipt",
+        Body: JSON.stringify(BASE_MSG),
+        // No Attributes field at all
+      };
+
+      await service.processMessage(QUEUE_URL, msgWithoutAttrs);
+
+      // Should have processed normally (receiveCount defaulted to 1, no warning)
+      expect(processor.process).toHaveBeenCalledTimes(1);
     });
 
     it("logs a warning on retry attempts (receiveCount > 1)", async () => {

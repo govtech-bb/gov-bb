@@ -80,4 +80,12 @@ describe("AbandonedPaymentCleanupService.runOnce", () => {
     expect(cutoffMs).toBeGreaterThanOrEqual(before - 12 * 60 * 60 * 1000);
     expect(cutoffMs).toBeLessThanOrEqual(after - 12 * 60 * 60 * 1000);
   });
+
+  it("scheduled() swallows errors from runOnce and does not rethrow", async () => {
+    // Branch: the catch block inside scheduled()
+    paymentsRepo.find.mockRejectedValue(new Error("DB unavailable"));
+
+    // scheduled() catches and logs — should not propagate
+    await expect(service.scheduled()).resolves.toBeUndefined();
+  });
 });
