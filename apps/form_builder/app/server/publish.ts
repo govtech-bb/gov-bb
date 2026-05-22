@@ -1,7 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { z } from "zod";
-import { getSession, type SessionPayload } from "./session";
+import { type SessionPayload } from "./session";
+import { getSession } from "./session-cipher.server";
 import type { ServiceContractRecipe } from "@govtech-bb/form-types";
 
 const REPO_OWNER = "govtech-bb";

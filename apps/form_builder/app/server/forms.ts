@@ -7,7 +7,7 @@ import {
   type ServiceContractRecipe,
 } from "@govtech-bb/form-types";
 import { getDataSource } from "./db";
-import { getSession } from "./session";
+import { getSession } from "./session-cipher.server";
 import { listPublishedForms, getPublishedRecipe } from "./github-recipes";
 import { bumpMinor } from "../lib/version";
 import type { FormDefinitionSummary } from "../types/index";

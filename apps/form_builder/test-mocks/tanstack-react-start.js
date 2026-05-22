@@ -23,4 +23,18 @@ function createMiddleware(_opts) {
   };
 }
 
-module.exports = { createServerFn, createMiddleware };
+// Mirror @tanstack/start-fn-stubs' runtime semantics: client-side, the .server
+// impl wins once set; otherwise fall back to .client. Tests run in Node, so the
+// .server branch is what we want to exercise.
+function createIsomorphicFn() {
+  function build(fn, serverImpl) {
+    const wrapper = (...args) => fn(...args);
+    wrapper.server = (nextServerImpl) => build(nextServerImpl, nextServerImpl);
+    wrapper.client = (clientImpl) =>
+      build(serverImpl != null ? serverImpl : clientImpl, serverImpl);
+    return wrapper;
+  }
+  return build(() => undefined);
+}
+
+module.exports = { createServerFn, createMiddleware, createIsomorphicFn };
