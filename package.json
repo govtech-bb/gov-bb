@@ -50,6 +50,7 @@
     "prettier": "^3.0.0",
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.0.0",
+    "@govtech-bb/form-types": "workspace:*",
     "ts-node": "^10.9.2",
     "tsx": "^4.22.3",
     "typeorm": "^0.3.26",
@@ -60,7 +61,6 @@
   "dependencies": {
     "@aws-sdk/client-sesv2": "^3.1041.0",
     "@govtech-bb/design": "^1.0.0-alpha.15",
-    "@govtech-bb/form-types": "workspace:*",
     "@nestjs/event-emitter": "^3.0.1",
     "@nestjs/swagger": "^11.3.2",
     "@nestjs/throttler": "^6.5.0",
