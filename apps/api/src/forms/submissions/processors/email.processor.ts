@@ -32,15 +32,26 @@ export class EmailProcessor implements ISubmissionProcessor {
   }
 
   async process(payload: SubmissionCreatedEvent): Promise<ProcessorOutput> {
-    const cfg = (payload.processors.find((p) => p.type === "email")?.config ??
-      {}) as Record<string, unknown>;
+    const entries = payload.processors.filter((p) => p.type === "email");
 
+    for (const entry of entries) {
+      const cfg = (entry.config ?? {}) as Record<string, unknown>;
+      await this.processEntry(payload, cfg);
+    }
+
+    return { kind: "completed" };
+  }
+
+  private async processEntry(
+    payload: SubmissionCreatedEvent,
+    cfg: Record<string, unknown>,
+  ): Promise<void> {
     const recipientField = cfg["recipientField"] as string | undefined;
     if (!recipientField) {
       this.logger.warn(
         `[email] No recipientField configured for submission ${payload.submissionId} — skipping`,
       );
-      return { kind: "completed" };
+      return;
     }
 
     // recipientField format: "stepId.fieldId". Targeting fields inside a
@@ -57,7 +68,7 @@ export class EmailProcessor implements ISubmissionProcessor {
       this.logger.warn(
         `[email] Could not resolve recipient at "${recipientField}" for submission ${payload.submissionId} — skipping`,
       );
-      return { kind: "completed" };
+      return;
     }
 
     const subject =
@@ -96,8 +107,6 @@ export class EmailProcessor implements ISubmissionProcessor {
     this.logger.log(
       `[email] Confirmation sent to ${to} for submission ${payload.submissionId}`,
     );
-
-    return { kind: "completed" };
   }
 
   /**
