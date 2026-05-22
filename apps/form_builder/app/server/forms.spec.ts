@@ -2,6 +2,11 @@ import { listForms, getRecipe } from "./forms";
 import * as githubRecipes from "./github-recipes";
 import * as session from "./session";
 
+// Stub out @govtech-bb/database so Jest never resolves the real typeorm chain
+// (typeorm → sha.js → typed-array-buffer → get-proto → dunder-proto).
+jest.mock("@govtech-bb/database", () => ({
+  FormDefinitionEntity: class FormDefinitionEntity {},
+}));
 jest.mock("./github-recipes");
 jest.mock("./session");
 // Avoid pulling in the real DB module — the only paths these tests touch are
