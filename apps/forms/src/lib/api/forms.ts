@@ -197,7 +197,7 @@ export const patchFormDraft = async (
 };
 
 export const deleteFormDraft = async (draftId: string): Promise<number> => {
-  const endpoint = `/form-drafs/${draftId}`;
+  const endpoint = `/form-drafts/${draftId}`;
   const errorMessage = {};
   const fetchArgs = { method: "DELETE" } as const;
 
