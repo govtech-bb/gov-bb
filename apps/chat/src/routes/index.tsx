@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import type { UIMessage } from "@tanstack/ai";
 import { fetchServerSentEvents, useChat } from "@tanstack/ai-react";
 import { BackButton, Button, Input, Logo, Text } from "@govtech-bb/react";
@@ -6,10 +6,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Bubble } from "#/components/chat/bubble";
 import { TridentAvatar } from "#/components/trident-avatar";
 import { extractText, hasAnyToolCall } from "#/lib/chat/messages";
-import { prefillFormSession } from "#/lib/chat/prefill-form";
+import { submitFormSession } from "#/lib/chat/submit-form";
 import type { Source } from "#/lib/chat/types";
-import { validateFormFields } from "#/lib/chat/validate-fields";
-import { openFormReviewDef, presentChoicesDef } from "#/lib/chat-tools";
+import { presentChoicesDef, submitFormDef } from "#/lib/chat-tools";
 
 export const Route = createFileRoute("/")({ component: ChatPage });
 
@@ -23,40 +22,35 @@ function ChatPage() {
   >([]);
   const pendingSourcesQueueRef = useRef<Source[][]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const pendingNavRef = useRef<string | null>(null);
   const lastFieldsByService = useRef<Map<string, Record<string, string>>>(
     new Map(),
   );
-
-  const router = useRouter();
 
   const presentChoices = useMemo(
     () => presentChoicesDef.client(async () => ({ shown: true })),
     [],
   );
-  const openFormReview = useMemo(
+  const submitForm = useMemo(
     () =>
-      openFormReviewDef.client(async ({ service, fields }) => {
+      submitFormDef.client(async ({ service, fields }) => {
         const prior = lastFieldsByService.current.get(service) ?? {};
         const merged = { ...prior, ...fields };
         lastFieldsByService.current.set(service, merged);
-        const result = await validateFormFields(service, merged);
-        if (!result.ok) return { ok: false, errors: result.errors };
         try {
-          const url = await prefillFormSession(service, merged);
-          pendingNavRef.current = url;
-          return { ok: true, redirectedTo: url };
+          const result = await submitFormSession(service, merged);
+          if (!result.ok) return { ok: false, errors: result.errors };
+          return { ok: true, referenceNumber: result.referenceNumber };
         } catch (err) {
           const message =
-            err instanceof Error ? err.message : "Unable to open review page";
+            err instanceof Error ? err.message : "Unable to submit form";
           return { ok: false, errors: [{ field: "service", message }] };
         }
       }),
     [],
   );
   const tools = useMemo(
-    () => [presentChoices, openFormReview],
-    [presentChoices, openFormReview],
+    () => [presentChoices, submitForm],
+    [presentChoices, submitForm],
   );
 
   // useChat re-creates its ChatClient on every connection identity change;
@@ -129,20 +123,18 @@ function ChatPage() {
   );
 
   const handleStop = useCallback(() => {
-    pendingNavRef.current = null;
     stop();
   }, [stop]);
 
   function submit(text: string) {
     const trimmed = text.trim();
     if (!trimmed || isStreaming) return;
-    pendingNavRef.current = null;
     sendMessage(trimmed);
     setInput("");
   }
 
   const formFlowStartIdx = useMemo(() => {
-    const formToolNames = [presentChoicesDef.name, openFormReviewDef.name];
+    const formToolNames = [presentChoicesDef.name, submitFormDef.name];
     return messages.findIndex((m) => hasAnyToolCall([m], formToolNames));
   }, [messages]);
 

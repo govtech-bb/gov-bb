@@ -22,17 +22,28 @@ export class ProcessorFactory {
     return this.registry.get(type);
   }
 
+  /** Resolve the set of distinct handlers for these configs.
+   *
+   * Returns at most one handler per registered type, preserving first-seen
+   * order. Same-type configs (e.g. two `email` entries) collapse to a single
+   * handler instance — each handler iterates over its own matching entries
+   * internally, and the dispatcher enqueues one message per type. */
   resolve(processorConfigs: Processor[]): ISubmissionProcessor[] {
-    return processorConfigs.flatMap((cfg) => {
+    const seen = new Set<string>();
+    const handlers: ISubmissionProcessor[] = [];
+    for (const cfg of processorConfigs) {
+      if (seen.has(cfg.type)) continue;
       const handler = this.registry.get(cfg.type);
       if (!handler) {
         this.logger.warn(
           `No processor registered for type "${cfg.type}" — skipping`,
         );
-        return [];
+        continue;
       }
-      return [handler];
-    });
+      seen.add(cfg.type);
+      handlers.push(handler);
+    }
+    return handlers;
   }
 
   resolveSplit(processorConfigs: Processor[]): {

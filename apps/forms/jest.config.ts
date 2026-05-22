@@ -29,6 +29,24 @@ const config: Config = {
         useESM: false,
         tsconfig: "<rootDir>/../tsconfig.jest.json",
         diagnostics: false,
+        astTransformers: {
+          before: [
+            {
+              path: "ts-jest-mock-import-meta",
+              options: {
+                metaObjectReplacement: {
+                  env: {
+                    DEV: true,
+                    PROD: false,
+                    MODE: "test",
+                    VITE_API_URL: "http://localhost:3001",
+                    VITE_DESIGN_SYSTEM: "basic",
+                  },
+                },
+              },
+            },
+          ],
+        },
       },
     ],
   },

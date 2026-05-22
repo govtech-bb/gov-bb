@@ -178,5 +178,112 @@ describe("SpreadsheetProcessor", () => {
       expect(headerRow[0]).toContain("personal.firstName");
       expect(headerRow[0]).toContain("personal.surname");
     });
+
+    it("writes once per spreadsheet entry when multiple are configured", async () => {
+      const sheetA = {
+        rowCount: 0,
+        getRow: () => ({ getCell: () => ({ value: null }) }),
+        addRow: jest.fn(),
+      };
+      const sheetB = {
+        rowCount: 0,
+        getRow: () => ({ getCell: () => ({ value: null }) }),
+        addRow: jest.fn(),
+      };
+      const workbooks = [
+        {
+          getWorksheet: jest.fn().mockReturnValue(undefined),
+          addWorksheet: jest.fn().mockReturnValue(sheetA),
+          xlsx: {
+            readFile: jest.fn().mockRejectedValue(new Error("ENOENT")),
+            writeFile: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          getWorksheet: jest.fn().mockReturnValue(undefined),
+          addWorksheet: jest.fn().mockReturnValue(sheetB),
+          xlsx: {
+            readFile: jest.fn().mockRejectedValue(new Error("ENOENT")),
+            writeFile: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+      ];
+      let call = 0;
+      (ExcelJS.Workbook as jest.Mock).mockImplementation(
+        () => workbooks[call++],
+      );
+
+      const payload = makePayload();
+      payload.processors = [
+        { type: "spreadsheet", config: { filename: "registry-a" } },
+        { type: "spreadsheet", config: { filename: "registry-b" } },
+      ];
+
+      await processor.process(payload);
+
+      expect(workbooks[0].xlsx.writeFile).toHaveBeenCalledWith(
+        expect.stringContaining("registry-a.xlsx"),
+      );
+      expect(workbooks[1].xlsx.writeFile).toHaveBeenCalledWith(
+        expect.stringContaining("registry-b.xlsx"),
+      );
+    });
+
+    it("processes remaining spreadsheet entries even when one already has the submissionId recorded", async () => {
+      const warn = jest.spyOn(Logger.prototype, "warn").mockImplementation();
+      // First workbook already has the submission recorded — should skip.
+      const dedupedSheet = {
+        rowCount: 2,
+        getRow: (r: number) =>
+          r === 2
+            ? { getCell: () => ({ value: "sub-003" }) }
+            : { getCell: () => ({ value: null }) },
+        addRow: jest.fn(),
+      };
+      const freshSheet = {
+        rowCount: 0,
+        getRow: () => ({ getCell: () => ({ value: null }) }),
+        addRow: jest.fn(),
+      };
+      const workbooks = [
+        {
+          getWorksheet: jest.fn().mockReturnValue(dedupedSheet),
+          addWorksheet: jest.fn().mockReturnValue(dedupedSheet),
+          xlsx: {
+            readFile: jest.fn().mockResolvedValue(undefined),
+            writeFile: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          getWorksheet: jest.fn().mockReturnValue(undefined),
+          addWorksheet: jest.fn().mockReturnValue(freshSheet),
+          xlsx: {
+            readFile: jest.fn().mockRejectedValue(new Error("ENOENT")),
+            writeFile: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+      ];
+      let call = 0;
+      (ExcelJS.Workbook as jest.Mock).mockImplementation(
+        () => workbooks[call++],
+      );
+
+      const payload = makePayload("sub-003");
+      payload.processors = [
+        { type: "spreadsheet", config: { filename: "registry-a" } },
+        { type: "spreadsheet", config: { filename: "registry-b" } },
+      ];
+
+      await processor.process(payload);
+
+      expect(workbooks[0].xlsx.writeFile).not.toHaveBeenCalled();
+      expect(workbooks[1].xlsx.writeFile).toHaveBeenCalledWith(
+        expect.stringContaining("registry-b.xlsx"),
+      );
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("already recorded"),
+      );
+      warn.mockRestore();
+    });
   });
 });

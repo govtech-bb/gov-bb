@@ -28,13 +28,25 @@ export class SpreadsheetProcessor implements ISubmissionProcessor {
   }
 
   async process(payload: SubmissionCreatedEvent): Promise<ProcessorOutput> {
-    const cfg =
-      payload.processors.find((p) => p.type === "spreadsheet")?.config ?? {};
+    const entries = payload.processors.filter((p) => p.type === "spreadsheet");
 
-    const filename = (cfg["filename"] as string | undefined) ?? payload.formId;
-    const filePath = join(this.exportDir, `${filename}.xlsx`);
+    if (entries.length === 0) return { kind: "completed" };
 
     mkdirSync(this.exportDir, { recursive: true });
+
+    for (const entry of entries) {
+      await this.processEntry(payload, entry.config ?? {});
+    }
+
+    return { kind: "completed" };
+  }
+
+  private async processEntry(
+    payload: SubmissionCreatedEvent,
+    cfg: Record<string, unknown>,
+  ): Promise<void> {
+    const filename = (cfg["filename"] as string | undefined) ?? payload.formId;
+    const filePath = join(this.exportDir, `${filename}.xlsx`);
 
     const workbook = new ExcelJS.Workbook();
     const sheetName = "Submissions";
@@ -62,7 +74,7 @@ export class SpreadsheetProcessor implements ISubmissionProcessor {
         this.logger.warn(
           `[spreadsheet] Submission ${payload.submissionId} already recorded in ${filePath} — skipping`,
         );
-        return { kind: "completed" };
+        return;
       }
     }
 
@@ -92,8 +104,6 @@ export class SpreadsheetProcessor implements ISubmissionProcessor {
     this.logger.log(
       `[spreadsheet] Recorded submission ${payload.submissionId} → ${filePath}`,
     );
-
-    return { kind: "completed" };
   }
 }
 

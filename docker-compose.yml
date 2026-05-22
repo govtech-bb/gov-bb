@@ -1,14 +1,25 @@
 # Local-dev stack for the gov-bb monorepo. One command brings up postgres,
-# api, landing, and forms; the api waits for postgres to be healthy before
-# starting, runs migrations on boot, and optionally seeds an example
-# FormDefinition (controlled by SEED_ON_BOOT in .env.docker).
+# api, landing, forms, and chat; the api waits for postgres to be healthy
+# before starting, runs migrations on boot, and optionally seeds an example
+# FormDefinition (controlled by SEED_ON_BOOT in .env).
 #
 # Bring it up:    docker compose up
 # Tear it down:   docker compose down
 # Reset the DB:   docker compose down -v
-# Hot reload:     docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 #
-# Configure env in .env.docker (copy from .env.docker.example).
+# Configure env in .env (copy from .env.example). Compose auto-loads .env
+# from the project root for ${VAR} interpolation in this file.
+#
+# Hot reload: landing, forms, and chat bind-mount their source from the host,
+# so saving a file on the host triggers a Vite rebuild inside the container.
+# Each service uses an anonymous volume at its node_modules path so the host's
+# (possibly absent or mismatched-arch) node_modules can't shadow the image's.
+#
+# The api is intentionally NOT bind-mounted. NestJS dev needs @nestjs/cli
+# (the `nest` binary), which isn't a declared dep here. For api iteration:
+#     docker compose up postgres -d   # postgres in a container
+#     pnpm dev:api                    # nest start --watch on host
+# The compose'd api still runs as a known-good baseline.
 #
 # Postgres uses the pgvector/pgvector:pg16 image (a drop-in superset of
 # postgres:16) so the `vector` extension is available for the chat app's
@@ -84,6 +95,10 @@ services:
     restart: unless-stopped
     ports:
       - "3000:3000"
+    volumes:
+      - ./apps/landing/src:/app/apps/landing/src
+      - ./apps/landing/public:/app/apps/landing/public
+      - /app/apps/landing/node_modules
     # Landing has no runtime dependency on api or postgres — it serves
     # static-ish content. Start in parallel.
 
@@ -101,6 +116,12 @@ services:
       # Container listens on 3000; host gets 4200 to match the historical
       # convention in the repo README.
       - "4200:3000"
+    volumes:
+      - ./apps/forms/src:/app/apps/forms/src
+      - ./apps/forms/public:/app/apps/forms/public
+      - ./apps/forms/contracts:/app/apps/forms/contracts
+      - ./packages:/app/packages
+      - /app/apps/forms/node_modules
 
   chat:
     build:
@@ -129,6 +150,11 @@ services:
       BEDROCK_EMBED_MODEL: ${BEDROCK_EMBED_MODEL:-amazon.titan-embed-text-v2:0}
     ports:
       - "${CHAT_PORT:-3002}:3000"
+    volumes:
+      - ./apps/chat/src:/app/apps/chat/src
+      - ./apps/chat/public:/app/apps/chat/public
+      - ./packages/content:/app/packages/content
+      - /app/apps/chat/node_modules
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/health"]
       interval: 10s
