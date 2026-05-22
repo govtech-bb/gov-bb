@@ -11,7 +11,7 @@
   "scripts": {
     "dev": "vite dev --port 3000",
     "build": "vite build",
-    "preview": "vite preview",
+    "preview": "nitro preview",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx --env-file-if-exists=.env.local --env-file-if-exists=.env src/lib/db/migrate.ts",
     "db:studio": "drizzle-kit studio",
@@ -54,6 +54,7 @@
     "@vitejs/plugin-react": "^6.0.1",
     "dotenv": "17.4.2",
     "drizzle-kit": "^0.28.0",
+    "nitro": "3.0.260429-beta",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",
     "vite": "^8.0.0"

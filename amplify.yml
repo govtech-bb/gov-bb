@@ -34,6 +34,40 @@ applications:
               value: "camera=(), microphone=(), geolocation=(), payment=()"
             - key: "Content-Security-Policy"
               value: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests"
+  - appRoot: apps/chat
+    frontend:
+      buildPath: /
+      phases:
+        preBuild:
+          commands:
+            - npm install -g pnpm@10.30.0
+            - pnpm install --frozen-lockfile
+        build:
+          commands:
+            - pnpm exec nx run chat:build
+      artifacts:
+        baseDirectory: apps/chat/.amplify-hosting
+        files:
+          - "**/*"
+      cache:
+        paths:
+          - node_modules/**/*
+          - .nx/cache/**/*
+      customHeaders:
+        - pattern: "**/*"
+          headers:
+            - key: "Strict-Transport-Security"
+              value: "max-age=63072000; includeSubDomains; preload"
+            - key: "X-Content-Type-Options"
+              value: "nosniff"
+            - key: "Referrer-Policy"
+              value: "strict-origin-when-cross-origin"
+            - key: "X-Frame-Options"
+              value: "DENY"
+            - key: "Permissions-Policy"
+              value: "camera=(), microphone=(), geolocation=(), payment=()"
+            - key: "Content-Security-Policy"
+              value: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests"
   - appRoot: apps/forms
     frontend:
       buildPath: /
