@@ -363,6 +363,73 @@ describe("SqsConsumerService", () => {
     });
   });
 
+  describe("pollQueue (internal loop, line 60-83)", () => {
+    it("exits immediately when running is false", async () => {
+      (service as any).running = false;
+      await (service as any).pollQueue(QUEUE_URL);
+      expect(sendMock).not.toHaveBeenCalled();
+    });
+
+    it("continues polling loop on empty response (no messages branch)", async () => {
+      let iterations = 0;
+      sendMock.mockImplementation(async () => {
+        iterations++;
+        (service as any).running = false;
+        return { Messages: [] };
+      });
+
+      (service as any).running = true;
+      await (service as any).pollQueue(QUEUE_URL);
+
+      expect(iterations).toBe(1);
+    });
+
+    it("processes messages when they arrive in the poll response", async () => {
+      factory.resolveByType.mockReturnValue(makeProcessor());
+      let callCount = 0;
+
+      sendMock.mockImplementation(async (cmd: any) => {
+        // First ReceiveMessageCommand call returns a message, then stop
+        if (
+          cmd.constructor?.name === "ReceiveMessageCommand" ||
+          callCount === 0
+        ) {
+          callCount++;
+          if (callCount === 1) {
+            (service as any).running = false;
+            return { Messages: [sqsMessage()] };
+          }
+        }
+        return {}; // DeleteMessageCommand response
+      });
+
+      (service as any).running = true;
+      await (service as any).pollQueue(QUEUE_URL);
+
+      expect(factory.resolveByType).toHaveBeenCalled();
+    });
+
+    it("backs off with sleep on poll error (catch branch + sleep)", async () => {
+      const sleepSpy = jest
+        .spyOn(service as any, "sleep")
+        .mockResolvedValue(undefined);
+
+      let callCount = 0;
+      sendMock.mockImplementation(async () => {
+        callCount++;
+        if (callCount === 1) throw new Error("SQS connection refused");
+        // Second call: stop the loop
+        (service as any).running = false;
+        return { Messages: [] };
+      });
+
+      (service as any).running = true;
+      await (service as any).pollQueue(QUEUE_URL);
+
+      expect(sleepSpy).toHaveBeenCalledWith(5_000);
+    });
+  });
+
   describe("onApplicationShutdown", () => {
     it("sets running to false to stop polling loops", () => {
       // Mock pollQueue so onApplicationBootstrap does not start a real loop

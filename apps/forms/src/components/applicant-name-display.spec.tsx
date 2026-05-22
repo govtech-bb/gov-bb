@@ -60,24 +60,39 @@ describe("ApplicantNameDisplay", () => {
     expect(screen.getByText(/Alice Smith/)).toBeInTheDocument();
   });
 
-  it("displays firstName only when lastName is absent", () => {
+  it("displays firstName only (and no trailing lastName) when lastName is absent", () => {
     mockUseStore.mockReturnValue({
       "applicant-details_applicant-first-name": "Alice",
     });
-    render(<ApplicantNameDisplay form={mockForm} />);
-    expect(screen.getByText(/Alice/)).toBeInTheDocument();
+    const { container } = render(<ApplicantNameDisplay form={mockForm} />);
+    // Inspect the actual rendered text directly rather than a /Alice/ regex
+    // that would also match "Alice Smith". The Applicant paragraph must end
+    // with the first name and contain no second word that could leak from
+    // a stale lastName.
+    const applicantP = container.querySelector(
+      "[data-applicant-name] p:first-of-type",
+    );
+    expect(applicantP?.textContent).toMatch(/Applicant:\s+Alice\s*$/);
   });
 
   it("displays the current date using toLocaleDateString", () => {
-    mockUseStore.mockReturnValue({
-      "applicant-details_applicant-first-name": "Alice",
-    });
-    render(<ApplicantNameDisplay form={mockForm} />);
-    const expectedDate = new Date().toLocaleDateString();
-    expect(
-      screen.getByText(
-        new RegExp(expectedDate.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
-      ),
-    ).toBeInTheDocument();
+    // Pin the clock so the date computed inside the component matches the
+    // one computed in the test — otherwise the test is flaky at midnight.
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date("2026-05-22T12:00:00Z"));
+    try {
+      mockUseStore.mockReturnValue({
+        "applicant-details_applicant-first-name": "Alice",
+      });
+      render(<ApplicantNameDisplay form={mockForm} />);
+      const expectedDate = new Date().toLocaleDateString();
+      expect(
+        screen.getByText(
+          new RegExp(expectedDate.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+        ),
+      ).toBeInTheDocument();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });

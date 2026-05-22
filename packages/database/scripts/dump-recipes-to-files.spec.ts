@@ -2,6 +2,7 @@ import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 import {
+  buildConnectionString,
   writePublishedRecipes,
   type PublishedRow,
 } from "./dump-recipes-to-files";
@@ -212,6 +213,38 @@ describe("writePublishedRecipes", () => {
     });
     const entries = await fs.readdir(root);
     expect(entries).toEqual([]);
+  });
+
+  it("builds a connection string from DB_* env vars", () => {
+    const url = buildConnectionString({
+      DB_HOST: "localhost",
+      DB_PORT: "5432",
+      DB_USERNAME: "postgres",
+      DB_PASSWORD: "postgres",
+      DB_NAME: "modular_forms",
+    });
+    expect(url).toBe(
+      "postgres://postgres:postgres@localhost:5432/modular_forms",
+    );
+  });
+
+  it("url-encodes credentials containing special characters", () => {
+    const url = buildConnectionString({
+      DB_HOST: "rds.example.com",
+      DB_PORT: "5432",
+      DB_USERNAME: "user@org",
+      DB_PASSWORD: "p@ss:word/!",
+      DB_NAME: "modular_forms",
+    });
+    expect(url).toBe(
+      "postgres://user%40org:p%40ss%3Aword%2F!@rds.example.com:5432/modular_forms",
+    );
+  });
+
+  it("throws listing every missing DB_* env var", () => {
+    expect(() =>
+      buildConnectionString({ DB_HOST: "localhost", DB_PORT: "5432" }),
+    ).toThrow(/DB_USERNAME.*DB_PASSWORD.*DB_NAME/);
   });
 
   it("logs a summary at the end of a run", async () => {

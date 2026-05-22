@@ -376,9 +376,16 @@ describe("buildFieldValidationProperties", () => {
       });
       const { onChange } = buildFieldValidationProperties(field);
       const fieldApi = makeFieldApi();
-      // Use a future date: June 15, 2027 is in the future
+      // Compute a future date dynamically so the test does not become a
+      // time bomb (e.g. a hardcoded year that ages out into the past).
+      const future = new Date();
+      future.setFullYear(future.getFullYear() + 1);
       const result = onChange!({
-        value: { day: 15, month: 6, year: 2027 },
+        value: {
+          day: future.getDate(),
+          month: future.getMonth() + 1,
+          year: future.getFullYear(),
+        },
         fieldApi,
       });
       // Should return an error array when date validation fails

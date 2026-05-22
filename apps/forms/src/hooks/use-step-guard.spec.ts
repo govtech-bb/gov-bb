@@ -140,21 +140,36 @@ describe("useStepGuard", () => {
       expect(mockNavigate).toHaveBeenCalled();
     });
 
-    it("uses stepsOverride when provided", () => {
-      markComplete(FORM_ID, "step-1");
+    it("uses stepsOverride to evaluate the target's accessibility (navigates to override-target when accessible there)", () => {
+      // All three real steps are complete; the override appends a new
+      // 'step-extra'. With the override honoured, isStepAccessible can see
+      // every prerequisite is satisfied and the navigate lands on
+      // 'step-extra'. Without it, step-extra isn't in activeSteps, the
+      // accessibility check fails, and the fallback would land elsewhere —
+      // so asserting the destination distinguishes override-used from
+      // override-ignored.
+      markComplete(FORM_ID, "step-1", "step-2", "step-3");
       const extraStep = step("step-extra");
       const { result } = renderHook(() =>
         useStepGuard({
           formId: FORM_ID,
           activeSteps: steps,
-          currentStepId: "step-2",
+          currentStepId: "step-3",
         }),
       );
       mockNavigate.mockClear();
       act(() =>
         result.current.navigateToStep("step-extra", [...steps, extraStep]),
       );
-      expect(mockNavigate).toHaveBeenCalled();
+      expect(mockNavigate).toHaveBeenCalledTimes(1);
+      const searchFn = (
+        mockNavigate.mock.calls[0][0] as {
+          search: (p: Record<string, unknown>) => Record<string, unknown>;
+        }
+      ).search;
+      expect(searchFn({})).toEqual(
+        expect.objectContaining({ step: "step-extra" }),
+      );
     });
   });
 
@@ -191,7 +206,11 @@ describe("useStepGuard", () => {
       expect(mockNavigate).not.toHaveBeenCalled();
     });
 
-    it("uses stepsOverride when provided", () => {
+    it("uses stepsOverride to determine the next step (navigates to override[next] not activeSteps[next])", () => {
+      // activeSteps next after step-2 would be step-3; the override puts
+      // step-new in that slot. Asserting the destination distinguishes
+      // override-used from override-ignored — toHaveBeenCalled would
+      // pass in either case.
       markComplete(FORM_ID, "step-1");
       const extraSteps = [step("step-1"), step("step-2"), step("step-new")];
       const { result } = renderHook(() =>
@@ -203,7 +222,15 @@ describe("useStepGuard", () => {
       );
       mockNavigate.mockClear();
       act(() => result.current.completeAndContinue("step-2", extraSteps));
-      expect(mockNavigate).toHaveBeenCalled();
+      expect(mockNavigate).toHaveBeenCalledTimes(1);
+      const searchFn = (
+        mockNavigate.mock.calls[0][0] as {
+          search: (p: Record<string, unknown>) => Record<string, unknown>;
+        }
+      ).search;
+      expect(searchFn({})).toEqual(
+        expect.objectContaining({ step: "step-new" }),
+      );
     });
   });
 

@@ -72,6 +72,24 @@ describe("EzpayClient", () => {
     ).rejects.toThrow(/E-059/);
   });
 
+  it("createPayment throws when response has no token (line 62 branch)", async () => {
+    // Successful response body but no token field
+    http.post.mockReturnValue(of({ data: {} }));
+    await expect(
+      client.createPayment(
+        {
+          paymentCode: "EDU",
+          amount: 10,
+          description: "d",
+          reference: "r",
+          customerEmail: "a@b.c",
+          customerName: "A B",
+        },
+        "key",
+      ),
+    ).rejects.toThrow(/no token/);
+  });
+
   it("verifyPayment posts to /check_api with transaction_number", async () => {
     http.post.mockReturnValue(
       of({

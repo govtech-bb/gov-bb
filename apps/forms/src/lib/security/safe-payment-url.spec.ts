@@ -73,6 +73,16 @@ describe("isSafePaymentUrl", () => {
     );
   });
 
+  // NOTE: production env-var gap.
+  // safe-payment-url.ts reads `process.env.VITE_PAYMENT_ALLOWED_ORIGINS` via
+  // `typeof process !== "undefined" ? process.env?.VITE_PAYMENT_ALLOWED_ORIGINS : undefined`.
+  // Vite only inlines `import.meta.env.VITE_*` for browser bundles; `process` is
+  // undefined at runtime in the browser, so the guard always short-circuits to
+  // undefined and the allowlist override is silently ignored in production.
+  // These tests pass under Jest (Node) only because Node provides `process`.
+  // Source fix tracked separately — once the source reads `import.meta.env`,
+  // the `via env (Vite)` describe below should be un-skipped and updated to
+  // poke the equivalent build-time replacement.
   describe("custom allowlist via env", () => {
     it("accepts hosts from a comma-separated allowlist", () => {
       setAllowed("pay.example.com, alt.example.com");
@@ -93,6 +103,18 @@ describe("isSafePaymentUrl", () => {
     it("matches case-insensitively on host", () => {
       setAllowed("pay.example.com");
       expect(isSafePaymentUrl("https://PAY.EXAMPLE.COM/")).toBe(true);
+    });
+  });
+
+  // eslint-disable-next-line jest/no-disabled-tests
+  describe.skip("via env (Vite) — un-skip when source reads import.meta.env", () => {
+    it("honours the configured allowlist in a browser-like environment without `process`", () => {
+      // Skipped: Jest provides `process`, so we cannot reliably reproduce the
+      // production behaviour where `process` is undefined and the override is
+      // dropped at build time. Once safe-payment-url.ts reads
+      // `import.meta.env.VITE_PAYMENT_ALLOWED_ORIGINS`, replace this with a
+      // test that stubs `import.meta.env` directly.
+      expect(true).toBe(true);
     });
   });
 });

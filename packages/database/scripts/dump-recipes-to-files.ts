@@ -116,7 +116,40 @@ export async function writePublishedRecipes({
 }
 
 /**
- * Connect to Postgres using DATABASE_URL (or DB_HOST/DB_PORT/... fallbacks),
+ * Build a Postgres connection string from DB_HOST/DB_PORT/DB_USERNAME/DB_PASSWORD/DB_NAME,
+ * matching the convention used by apps/api/.env.example so operators can reuse one env file.
+ * Credentials are URL-encoded to handle special characters.
+ */
+export function buildConnectionString(env: NodeJS.ProcessEnv): string {
+  const host = env.DB_HOST;
+  const port = env.DB_PORT;
+  const username = env.DB_USERNAME;
+  const password = env.DB_PASSWORD;
+  const name = env.DB_NAME;
+
+  const missing = [
+    ["DB_HOST", host],
+    ["DB_PORT", port],
+    ["DB_USERNAME", username],
+    ["DB_PASSWORD", password],
+    ["DB_NAME", name],
+  ]
+    .filter(([, v]) => !v)
+    .map(([k]) => k);
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Missing required DB env var(s): ${missing.join(", ")}. ` +
+        `Set DB_HOST, DB_PORT, DB_USERNAME, DB_PASSWORD, DB_NAME (see apps/api/.env.example). ` +
+        `Use staging first, then prod.`,
+    );
+  }
+
+  return `postgres://${encodeURIComponent(username!)}:${encodeURIComponent(password!)}@${host}:${port}/${name}`;
+}
+
+/**
+ * Connect to Postgres using DB_HOST/DB_PORT/DB_USERNAME/DB_PASSWORD/DB_NAME,
  * query published recipes, hand off to writePublishedRecipes.
  */
 async function runDump({
@@ -126,13 +159,7 @@ async function runDump({
   recipesRoot: string;
   logger: Logger;
 }): Promise<DumpSummary> {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
-    throw new Error(
-      "DATABASE_URL is required. Set it to the target Postgres connection string " +
-        "(e.g. postgres://user:pass@host:5432/dbname). Use staging first, then prod.",
-    );
-  }
+  const connectionString = buildConnectionString(process.env);
 
   const ssl =
     process.env.DATABASE_SSL === "true"

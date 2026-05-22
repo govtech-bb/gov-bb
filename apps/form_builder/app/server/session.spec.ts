@@ -1,14 +1,16 @@
 import {
-  encrypt,
-  decrypt,
   serializeSessionCookie,
   parseSessionCookie,
-  getSession,
-  safeEqual,
   SESSION_COOKIE_NAME,
   SESSION_TTL_SECONDS,
   type SessionPayload,
 } from "./session";
+import {
+  encrypt,
+  decrypt,
+  getSession,
+  safeEqual,
+} from "./session-cipher.server";
 import { randomBytes } from "node:crypto";
 
 const TEST_SECRET = randomBytes(32).toString("base64");

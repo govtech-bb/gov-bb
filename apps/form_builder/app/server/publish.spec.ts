@@ -3,15 +3,15 @@
  */
 import type { ServiceContractRecipe } from "@govtech-bb/form-types";
 
-// Mock the session module before importing the SUT.
-jest.mock("./session", () => ({
+// Mock the session-cipher module before importing the SUT.
+jest.mock("./session-cipher.server", () => ({
   getSession: jest.fn(),
 }));
 jest.mock("@tanstack/react-start/server", () => ({
   getRequestHeaders: () => new Headers({ cookie: "fb_session=opaque" }),
 }));
 
-import { getSession } from "./session";
+import { getSession } from "./session-cipher.server";
 import { publishRecipe } from "./publish";
 
 const SESSION = {

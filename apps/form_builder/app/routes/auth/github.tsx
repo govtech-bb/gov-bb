@@ -4,6 +4,14 @@ import { setResponseHeader } from "@tanstack/react-start/server";
 import { randomBytes } from "node:crypto";
 import { serializeOAuthStateCookie } from "../../server/session";
 
+// `randomBytes` comes from `node:crypto`, which Vite externalizes in the
+// client bundle (any property access on the stub throws). Wrapping the call
+// in `createIsomorphicFn` lets the import-protection plugin strip the
+// top-level import — same pattern as `setResponseHeader` below.
+const generateStateHex = createIsomorphicFn()
+  .server((bytes: number): string => randomBytes(bytes).toString("hex"))
+  .client((_bytes: number): string => "");
+
 /**
  * Step 1 of the OAuth dance: generate a CSRF `state`, set the short-lived
  * `fb_oauth_state` cookie on THIS response, and redirect to GitHub's authorize
@@ -34,7 +42,7 @@ export const Route = createFileRoute("/auth/github")({
     if (!clientId) throw new Error("GITHUB_OAUTH_CLIENT_ID is not set");
     if (!base) throw new Error("OAUTH_REDIRECT_BASE is not set");
 
-    const state = randomBytes(16).toString("hex");
+    const state = generateStateHex(16);
     const secure = base.startsWith("https://");
     setOAuthStateCookie(serializeOAuthStateCookie(state, { secure }));
 
