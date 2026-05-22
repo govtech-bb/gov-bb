@@ -8,7 +8,9 @@ const DESIGN_SYSTEMS = {
 
 type DesignSystemKey = keyof typeof DESIGN_SYSTEMS;
 
-const requestedKey = process.env.DESIGN_SYSTEM as DesignSystemKey | undefined;
+const requestedKey = import.meta.env.VITE_DESIGN_SYSTEM as
+  | DesignSystemKey
+  | undefined;
 
 let designSystem = DESIGN_SYSTEMS.basic;
 
