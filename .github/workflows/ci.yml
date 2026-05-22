@@ -490,3 +490,18 @@ jobs:
           echo "pnpm exec nx run-many -t build" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           exit 1
+
+  validate-recipes:
+    name: Validate Recipes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+
+      - name: Validate recipe files
+        run: pnpm validate-recipes
