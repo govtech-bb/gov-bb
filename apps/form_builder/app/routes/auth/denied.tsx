@@ -33,7 +33,16 @@ function DeniedPage() {
           permission, then sign in again.
         </p>
         <p>
-          <Link to="/auth/github">Try a different account</Link>
+          {/*
+            Route through /auth/logout to clear any existing session cookie
+            before bouncing to /auth/github. Without this, a user who landed
+            here from a successful login that failed the permission check
+            would still have a valid session cookie, and the /builder guard
+            would never trigger the OAuth restart.
+          */}
+          <Link to="/auth/logout" search={{ next: "/auth/github" }}>
+            Try a different account
+          </Link>
         </p>
       </div>
     </div>
