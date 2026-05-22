@@ -21,6 +21,7 @@
 
 import React from "react";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { useStore } from "@tanstack/react-form";
 import { useStepGuard } from "../hooks/use-step-guard";
 
@@ -528,5 +529,69 @@ describe("FormRenderer", () => {
     const fieldIds = renderers.map((el) => el.getAttribute("data-field-id"));
     expect(fieldIds).toContain("step1_choice");
     expect(fieldIds).not.toContain("step1_extra");
+  });
+
+  it("clicking Previous calls navigateToStep with the previous step's id", async () => {
+    const user = userEvent.setup();
+    mockUseStepGuard.mockReturnValue({
+      navigateToStep: mockNavigateToStep,
+      completeAndContinue: mockCompleteAndContinue,
+      currentIndex: 1,
+    });
+    const step1 = makeStep("step-1");
+    const step2 = makeStep("step-2");
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="step-2"
+        visibleSteps={[step1, step2]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /previous/i }));
+    expect(mockNavigateToStep).toHaveBeenCalledWith("step-1");
+  });
+
+  it("clicking Continue calls form.validateField for each field and then completeAndContinue", async () => {
+    const user = userEvent.setup();
+    const field = makePlainField("step-1_name", "name", "step-1");
+    const step = makeStep("step-1", [field]);
+    mockForm.validateField.mockResolvedValue([]);
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="step-1"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /continue/i }));
+    expect(mockForm.validateField).toHaveBeenCalledWith(
+      "step-1_name",
+      "change",
+    );
+    expect(mockCompleteAndContinue).toHaveBeenCalledWith("step-1");
+  });
+
+  it("clicking Submit calls form.handleSubmit and completeAndContinue", async () => {
+    const user = userEvent.setup();
+    const step = makeStep("declaration");
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="declaration"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /submit/i }));
+    expect(mockForm.handleSubmit).toHaveBeenCalled();
+    expect(mockCompleteAndContinue).toHaveBeenCalledWith("declaration");
   });
 });
