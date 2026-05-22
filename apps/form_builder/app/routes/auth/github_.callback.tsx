@@ -12,11 +12,11 @@ import {
 } from "../../server/github-oauth";
 import {
   parseOAuthStateCookie,
-  safeEqual,
   serializeOAuthStateCookie,
-  setSession,
   SESSION_TTL_SECONDS,
+  type SessionPayload,
 } from "../../server/session";
+import { safeEqual, setSession } from "../../server/session-cipher.server";
 
 const QuerySchema = z.object({
   code: z.string().min(1),
@@ -37,6 +37,30 @@ const setResponseCookies = createIsomorphicFn()
     setResponseHeader("Set-Cookie", cookies);
   })
   .client((_cookies: string | string[]) => {});
+
+// safeEqual and setSession come from `session-cipher.server.ts` (server-only).
+// Same import-protection rationale as `getRequestHeaders` / `setResponseHeader`
+// above: wrap usage in `createIsomorphicFn` so the imports are stripped from
+// the client bundle even though they sit at the top of this route file.
+const verifyStateMatches = createIsomorphicFn()
+  .server((stored: string, given: string): boolean => safeEqual(stored, given))
+  .client((_stored: string, _given: string): boolean => false);
+
+const issueSessionCookie = createIsomorphicFn()
+  .server(
+    (
+      payload: SessionPayload,
+      secret: string,
+      opts: { secure: boolean },
+    ): string => setSession(payload, secret, opts),
+  )
+  .client(
+    (
+      _payload: SessionPayload,
+      _secret: string,
+      _opts: { secure: boolean },
+    ): string => "",
+  );
 
 /**
  * OAuth callback. Validates the CSRF state cookie, exchanges the code for a
@@ -61,7 +85,7 @@ export const Route = createFileRoute("/auth/github_/callback")({
     // CSRF state check (read-only on the cookie).
     const cookie = readCookieHeader();
     const storedState = parseOAuthStateCookie(cookie);
-    if (!storedState || !safeEqual(storedState, search.state)) {
+    if (!storedState || !verifyStateMatches(storedState, search.state)) {
       throw new Error("OAuth state mismatch — possible CSRF attempt");
     }
 
@@ -84,7 +108,7 @@ export const Route = createFileRoute("/auth/github_/callback")({
 
     // Issue the session cookie and clear the CSRF cookie, both on this same
     // response so they ride along with the 302 to /builder.
-    const sessionCookie = setSession(
+    const sessionCookie = issueSessionCookie(
       {
         login,
         accessToken,

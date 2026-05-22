@@ -1,9 +1,20 @@
-import { createMiddleware } from "@tanstack/react-start";
+import { createIsomorphicFn, createMiddleware } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { timingSafeEqual } from "node:crypto";
 import { env } from "../env";
 
 export const ADMIN_TOKEN_HEADER = "x-admin-token";
+
+// `timingSafeEqual` is server-only. Wrapping it in `createIsomorphicFn` lets
+// the TanStack Start bundler strip the `node:crypto` import from the client
+// build — server modules in this file end up in client chunks via the
+// `createServerFn(...).middleware([requireAdminToken])` chain on routes that
+// import server functions (e.g. `/builder/ui`'s loader pulls in `forms.ts`,
+// which references this middleware), so any top-level `node:crypto` use
+// otherwise crashes the route chunk on load.
+const constantTimeEqual = createIsomorphicFn()
+  .server((a: Buffer, b: Buffer): boolean => timingSafeEqual(a, b))
+  .client((_a: Buffer, _b: Buffer): boolean => false);
 
 /**
  * Pure auth check, separated from the TanStack Start middleware shell
@@ -38,7 +49,7 @@ export function checkAdminToken(
 
   const a = Buffer.from(presented);
   const b = Buffer.from(expected);
-  if (a.length !== b.length || !timingSafeEqual(a, b)) {
+  if (a.length !== b.length || !constantTimeEqual(a, b)) {
     throw new Error("Invalid admin token");
   }
 }
