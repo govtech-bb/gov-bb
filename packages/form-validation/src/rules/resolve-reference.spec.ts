@@ -110,11 +110,7 @@ describe("resolveReference — scope rules (matches form-conditions §3)", () =>
       referenceFieldId: "x",
       targetStepId: "missing",
     } as never;
-    const result = resolveReference(
-      config,
-      {},
-      { x: "fromStepValues" },
-    );
+    const result = resolveReference(config, {}, { x: "fromStepValues" });
     expect(result).toBe("fromStepValues");
   });
 });

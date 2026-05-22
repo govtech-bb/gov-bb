@@ -50,9 +50,7 @@ function rehypeHideStartLinks(options: RehypeHideStartLinksOptions = {}) {
           if (node.type === 'element' && node.children) {
             return {
               ...node,
-              children: filterChildren(
-                node.children,
-              ) as Element['children'],
+              children: filterChildren(node.children) as Element['children'],
             }
           }
           return node
@@ -61,11 +59,7 @@ function rehypeHideStartLinks(options: RehypeHideStartLinksOptions = {}) {
     tree.children = filterChildren(tree.children)
 
     if (removedLinksCount > 0) {
-      updateDescriptionText(
-        tree.children,
-        hasResearchAccess,
-        removedLinksCount,
-      )
+      updateDescriptionText(tree.children, hasResearchAccess, removedLinksCount)
     }
   }
 }

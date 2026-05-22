@@ -49,13 +49,15 @@ export async function submitForm({
   } catch {
     return {
       success: false,
-      error: "Unable to reach the server. Please check your connection and try again.",
+      error:
+        "Unable to reach the server. Please check your connection and try again.",
     };
   }
 
   if (!response.ok) {
     const body = await response.json().catch(() => null);
-    const message = body?.message ?? `Submission failed (HTTP ${response.status})`;
+    const message =
+      body?.message ?? `Submission failed (HTTP ${response.status})`;
     return { success: false, error: message };
   }
 

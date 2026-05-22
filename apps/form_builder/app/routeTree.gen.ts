@@ -8,9 +8,11 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from "./routes/__root";
-import { Route as IndexRouteImport } from "./routes/index";
-import { Route as BuilderIndexRouteImport } from "./routes/builder/index";
+import { Route as rootRouteImport } from './routes/__root'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as BuilderIndexRouteImport } from './routes/builder/index'
+import { Route as BuilderUiIndexRouteImport } from './routes/builder/ui/index'
+import { Route as BuilderAiIndexRouteImport } from './routes/builder/ai/index'
 
 const IndexRoute = IndexRouteImport.update({
   id: "/",
@@ -21,57 +23,91 @@ const BuilderIndexRoute = BuilderIndexRouteImport.update({
   id: "/builder/",
   path: "/builder/",
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
+const BuilderUiIndexRoute = BuilderUiIndexRouteImport.update({
+  id: '/builder/ui/',
+  path: '/builder/ui/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BuilderAiIndexRoute = BuilderAiIndexRouteImport.update({
+  id: '/builder/ai/',
+  path: '/builder/ai/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
-  "/": typeof IndexRoute;
-  "/builder/": typeof BuilderIndexRoute;
+  '/': typeof IndexRoute
+  '/builder/': typeof BuilderIndexRoute
+  '/builder/ai/': typeof BuilderAiIndexRoute
+  '/builder/ui/': typeof BuilderUiIndexRoute
 }
 export interface FileRoutesByTo {
-  "/": typeof IndexRoute;
-  "/builder": typeof BuilderIndexRoute;
+  '/': typeof IndexRoute
+  '/builder': typeof BuilderIndexRoute
+  '/builder/ai': typeof BuilderAiIndexRoute
+  '/builder/ui': typeof BuilderUiIndexRoute
 }
 export interface FileRoutesById {
-  __root__: typeof rootRouteImport;
-  "/": typeof IndexRoute;
-  "/builder/": typeof BuilderIndexRoute;
+  __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
+  '/builder/': typeof BuilderIndexRoute
+  '/builder/ai/': typeof BuilderAiIndexRoute
+  '/builder/ui/': typeof BuilderUiIndexRoute
 }
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath;
-  fullPaths: "/" | "/builder/";
-  fileRoutesByTo: FileRoutesByTo;
-  to: "/" | "/builder";
-  id: "__root__" | "/" | "/builder/";
-  fileRoutesById: FileRoutesById;
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths: '/' | '/builder/' | '/builder/ai/' | '/builder/ui/'
+  fileRoutesByTo: FileRoutesByTo
+  to: '/' | '/builder' | '/builder/ai' | '/builder/ui'
+  id: '__root__' | '/' | '/builder/' | '/builder/ai/' | '/builder/ui/'
+  fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute;
-  BuilderIndexRoute: typeof BuilderIndexRoute;
+  IndexRoute: typeof IndexRoute
+  BuilderIndexRoute: typeof BuilderIndexRoute
+  BuilderAiIndexRoute: typeof BuilderAiIndexRoute
+  BuilderUiIndexRoute: typeof BuilderUiIndexRoute
 }
 
 declare module "@tanstack/react-router" {
   interface FileRoutesByPath {
-    "/": {
-      id: "/";
-      path: "/";
-      fullPath: "/";
-      preLoaderRoute: typeof IndexRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/builder/": {
-      id: "/builder/";
-      path: "/builder";
-      fullPath: "/builder/";
-      preLoaderRoute: typeof BuilderIndexRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/builder/': {
+      id: '/builder/'
+      path: '/builder'
+      fullPath: '/builder/'
+      preLoaderRoute: typeof BuilderIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/builder/ui/': {
+      id: '/builder/ui/'
+      path: '/builder/ui'
+      fullPath: '/builder/ui/'
+      preLoaderRoute: typeof BuilderUiIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/builder/ai/': {
+      id: '/builder/ai/'
+      path: '/builder/ai'
+      fullPath: '/builder/ai/'
+      preLoaderRoute: typeof BuilderAiIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BuilderIndexRoute: BuilderIndexRoute,
-};
+  BuilderAiIndexRoute: BuilderAiIndexRoute,
+  BuilderUiIndexRoute: BuilderUiIndexRoute,
+}
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>();

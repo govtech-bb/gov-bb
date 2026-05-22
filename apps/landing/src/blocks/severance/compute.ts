@@ -1,52 +1,52 @@
 export const Reason = {
-  Redundancy: "redundancy",
-  Disaster: "disaster",
-  Layoff: "layoff",
-  Death: "death",
-  Closure: "closure",
-  Other: "other",
-} as const;
-export type Reason = (typeof Reason)[keyof typeof Reason];
+  Redundancy: 'redundancy',
+  Disaster: 'disaster',
+  Layoff: 'layoff',
+  Death: 'death',
+  Closure: 'closure',
+  Other: 'other',
+} as const
+export type Reason = (typeof Reason)[keyof typeof Reason]
 
 export const ReasonLabel: Record<Reason, string> = {
-  [Reason.Redundancy]: "Redundancy",
-  [Reason.Disaster]: "Natural disaster",
-  [Reason.Layoff]: "Lay-off lasting more than 13 weeks",
-  [Reason.Death]: "Death of the employer",
-  [Reason.Closure]: "Business closure",
+  [Reason.Redundancy]: 'Redundancy',
+  [Reason.Disaster]: 'Natural disaster',
+  [Reason.Layoff]: 'Lay-off lasting more than 13 weeks',
+  [Reason.Death]: 'Death of the employer',
+  [Reason.Closure]: 'Business closure',
   [Reason.Other]: "Other / I'm not sure",
-};
+}
 
-export const PayPeriod = { Weekly: "weekly", Monthly: "monthly" } as const;
-export type PayPeriod = (typeof PayPeriod)[keyof typeof PayPeriod];
+export const PayPeriod = { Weekly: 'weekly', Monthly: 'monthly' } as const
+export type PayPeriod = (typeof PayPeriod)[keyof typeof PayPeriod]
 
-export const Employment = { Yes: "yes", No: "no" } as const;
-export type Employment = (typeof Employment)[keyof typeof Employment];
+export const Employment = { Yes: 'yes', No: 'no' } as const
+export type Employment = (typeof Employment)[keyof typeof Employment]
 
 export interface SeveranceInputs {
-  employment: Employment;
-  reason: Reason;
-  startIso: string;
-  endIso: string;
-  period: PayPeriod;
-  simpleAvg: number;
+  employment: Employment
+  reason: Reason
+  startIso: string
+  endIso: string
+  period: PayPeriod
+  simpleAvg: number
 }
 
 export type IneligibleReason =
-  | "self-employed"
-  | "reason-not-covered"
-  | "under-one-year";
+  | 'self-employed'
+  | 'reason-not-covered'
+  | 'under-one-year'
 
 export type SeveranceResult =
-  | { kind: "ineligible"; reason: IneligibleReason }
+  | { kind: 'ineligible'; reason: IneligibleReason }
   | {
-      kind: "eligible";
-      years: number;
-      avgWeekly: number;
-      entitledWeeks: number;
-      severance: number;
-      ceilingApplied: { weekly: number; monthly: number } | null;
-    };
+      kind: 'eligible'
+      years: number
+      avgWeekly: number
+      entitledWeeks: number
+      severance: number
+      ceilingApplied: { weekly: number; monthly: number } | null
+    }
 
 const INSURABLE_CEILINGS = {
   2026: { weekly: 1238, monthly: 5360 },
@@ -61,35 +61,35 @@ const INSURABLE_CEILINGS = {
   2017: { weekly: 1073, monthly: 4650 },
   2016: { weekly: 1060, monthly: 4360 },
   2015: { weekly: 1060, monthly: 4360 },
-} as const satisfies Record<number, { weekly: number; monthly: number }>;
+} as const satisfies Record<number, { weekly: number; monthly: number }>
 
-type CeilingYear = keyof typeof INSURABLE_CEILINGS;
+type CeilingYear = keyof typeof INSURABLE_CEILINGS
 
-const MAX_YEARS_COUNTED = 33;
-const TIER_BOUNDARIES = { tier1: 10, tier2: 20, tier3: 33 } as const;
-const WEEKS_PER_YEAR = { tier1: 2.5, tier2: 3.0, tier3: 3.5 } as const;
+const MAX_YEARS_COUNTED = 33
+const TIER_BOUNDARIES = { tier1: 10, tier2: 20, tier3: 33 } as const
+const WEEKS_PER_YEAR = { tier1: 2.5, tier2: 3.0, tier3: 3.5 } as const
 
 function isCeilingYear(year: number): year is CeilingYear {
-  return year in INSURABLE_CEILINGS;
+  return year in INSURABLE_CEILINGS
 }
 
 export function ceilingFor(
   year: number,
 ): { weekly: number; monthly: number } | null {
-  if (!isCeilingYear(year)) return null;
-  return INSURABLE_CEILINGS[year];
+  if (!isCeilingYear(year)) return null
+  return INSURABLE_CEILINGS[year]
 }
 
 export function completeYears(startIso: string, endIso: string): number {
-  const s = new Date(startIso);
-  const e = new Date(endIso);
+  const s = new Date(startIso)
+  const e = new Date(endIso)
   if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime()) || e <= s) {
-    return 0;
+    return 0
   }
-  let years = e.getFullYear() - s.getFullYear();
-  const anniversary = new Date(e.getFullYear(), s.getMonth(), s.getDate());
-  if (e < anniversary) years--;
-  return Math.max(years, 0);
+  let years = e.getFullYear() - s.getFullYear()
+  const anniversary = new Date(e.getFullYear(), s.getMonth(), s.getDate())
+  if (e < anniversary) years--
+  return Math.max(years, 0)
 }
 
 export function avgWeeklyFromSimple(
@@ -98,59 +98,59 @@ export function avgWeeklyFromSimple(
   endYear: number | null,
 ): { weekly: number; ceilingApplied: boolean } {
   if (!Number.isFinite(amount) || amount <= 0) {
-    return { weekly: 0, ceilingApplied: false };
+    return { weekly: 0, ceilingApplied: false }
   }
-  const weekly = period === PayPeriod.Monthly ? (amount * 12) / 52 : amount;
-  const ceiling = endYear !== null ? ceilingFor(endYear) : null;
+  const weekly = period === PayPeriod.Monthly ? (amount * 12) / 52 : amount
+  const ceiling = endYear !== null ? ceilingFor(endYear) : null
   if (ceiling && weekly > ceiling.weekly) {
-    return { weekly: ceiling.weekly, ceilingApplied: true };
+    return { weekly: ceiling.weekly, ceilingApplied: true }
   }
-  return { weekly, ceilingApplied: false };
+  return { weekly, ceilingApplied: false }
 }
 
 export function tieredWeeks(yearsOfService: number): number {
-  const counted = Math.min(Math.max(yearsOfService, 0), MAX_YEARS_COUNTED);
-  let weeks = 0;
+  const counted = Math.min(Math.max(yearsOfService, 0), MAX_YEARS_COUNTED)
+  let weeks = 0
   for (let i = 1; i <= counted; i++) {
     weeks +=
       i <= TIER_BOUNDARIES.tier1
         ? WEEKS_PER_YEAR.tier1
         : i <= TIER_BOUNDARIES.tier2
           ? WEEKS_PER_YEAR.tier2
-          : WEEKS_PER_YEAR.tier3;
+          : WEEKS_PER_YEAR.tier3
   }
-  return weeks;
+  return weeks
 }
 
 export function calculateSeverance(input: SeveranceInputs): SeveranceResult {
   if (input.employment === Employment.Yes) {
-    return { kind: "ineligible", reason: "self-employed" };
+    return { kind: 'ineligible', reason: 'self-employed' }
   }
   if (input.reason === Reason.Other) {
-    return { kind: "ineligible", reason: "reason-not-covered" };
+    return { kind: 'ineligible', reason: 'reason-not-covered' }
   }
 
-  const years = completeYears(input.startIso, input.endIso);
+  const years = completeYears(input.startIso, input.endIso)
   if (years < 1) {
-    return { kind: "ineligible", reason: "under-one-year" };
+    return { kind: 'ineligible', reason: 'under-one-year' }
   }
 
-  const endYear = Number.parseInt(input.endIso.slice(0, 4), 10);
+  const endYear = Number.parseInt(input.endIso.slice(0, 4), 10)
   const { weekly: avgWeekly, ceilingApplied } = avgWeeklyFromSimple(
     input.simpleAvg,
     input.period,
     Number.isFinite(endYear) ? endYear : null,
-  );
-  const entitledWeeks = tieredWeeks(years);
-  const severance = avgWeekly * entitledWeeks;
-  const ceiling = ceilingApplied ? ceilingFor(endYear) : null;
+  )
+  const entitledWeeks = tieredWeeks(years)
+  const severance = avgWeekly * entitledWeeks
+  const ceiling = ceilingApplied ? ceilingFor(endYear) : null
 
   return {
-    kind: "eligible",
+    kind: 'eligible',
     years,
     avgWeekly,
     entitledWeeks,
     severance,
     ceilingApplied: ceiling,
-  };
+  }
 }

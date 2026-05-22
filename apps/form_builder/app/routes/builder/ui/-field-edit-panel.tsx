@@ -13,7 +13,7 @@ import { getFieldRefs, getStepRefs } from "./-recipe-refs";
 import type { RecipeAction } from "./-recipe-reducer";
 import { ValidationRulesEditor } from "./-validation-rules-editor";
 import { BehavioursEditor } from "./-behaviours-editor";
-import styles from "../../styles/builder.module.css";
+import styles from "../../../styles/builder.module.css";
 
 interface FieldEditPanelProps {
   field: RecipeFieldDraft;

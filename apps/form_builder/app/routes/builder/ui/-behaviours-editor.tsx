@@ -2,7 +2,7 @@ import { BEHAVIOUR_TYPE_DESCRIPTORS } from "@govtech-bb/form-builder";
 import type { Behaviour } from "@govtech-bb/form-types";
 import type { FieldRef, StepRef } from "./-recipe-refs";
 import { FieldRefPicker } from "./-field-ref-picker";
-import styles from "../../styles/builder.module.css";
+import styles from "../../../styles/builder.module.css";
 
 interface BehavioursEditorProps {
   scope: "field" | "step";

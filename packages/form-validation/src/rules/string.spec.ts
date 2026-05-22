@@ -189,8 +189,6 @@ describe("strictEqualityRunner", () => {
   });
 
   it("fails when resolved is MISSING, no referenceFieldId, and value does not match config.value (non-string coercion)", () => {
-    expect(strictEqualityRunner(123, cfg(456), {})).toBe(
-      "Values do not match",
-    );
+    expect(strictEqualityRunner(123, cfg(456), {})).toBe("Values do not match");
   });
 });
