@@ -69,11 +69,12 @@ describe("OpencrvsProcessor", () => {
       });
     });
 
-    it("sets X-Idempotency-Key header to submissionId for retry safety", async () => {
+    it("sets X-Idempotency-Key header derived from submissionId for retry safety", async () => {
       await processor.process(makePayload());
 
       const headers = mockFetch.mock.calls[0][1].headers;
-      expect(headers["X-Idempotency-Key"]).toBe("sub-002");
+      // Format is "<submissionId>:<index>" so multi-entry retries don't collide.
+      expect(headers["X-Idempotency-Key"]).toBe("sub-002:0");
     });
 
     it("includes Authorization header when token is configured", async () => {
@@ -108,6 +109,75 @@ describe("OpencrvsProcessor", () => {
       await expect(processor.process(makePayload())).rejects.toThrow(
         "HTTP 503",
       );
+    });
+
+    it("POSTs once per opencrvs entry when multiple are configured", async () => {
+      const payload = makePayload();
+      payload.processors = [
+        {
+          type: "opencrvs",
+          config: { endpoint: "https://primary.example/api/submit" },
+        },
+        {
+          type: "opencrvs",
+          config: { endpoint: "https://secondary.example/api/submit" },
+        },
+      ];
+
+      await processor.process(payload);
+
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+      const endpoints = mockFetch.mock.calls.map((call) => call[0]);
+      expect(endpoints).toEqual([
+        "https://primary.example/api/submit",
+        "https://secondary.example/api/submit",
+      ]);
+    });
+
+    it("uses a distinct X-Idempotency-Key per entry so retries don't collide", async () => {
+      const payload = makePayload();
+      payload.processors = [
+        {
+          type: "opencrvs",
+          config: { endpoint: "https://primary.example/api/submit" },
+        },
+        {
+          type: "opencrvs",
+          config: { endpoint: "https://secondary.example/api/submit" },
+        },
+      ];
+
+      await processor.process(payload);
+
+      const keys = mockFetch.mock.calls.map(
+        (call) => call[1].headers["X-Idempotency-Key"],
+      );
+      // Both keys derive from submissionId but must be distinct
+      expect(keys[0]).toContain("sub-002");
+      expect(keys[1]).toContain("sub-002");
+      expect(keys[0]).not.toBe(keys[1]);
+    });
+
+    it("continues processing remaining entries when one entry has no endpoint", async () => {
+      const warn = jest.spyOn(Logger.prototype, "warn").mockImplementation();
+      const payload = makePayload();
+      payload.processors = [
+        {
+          type: "opencrvs",
+          config: { endpoint: "https://primary.example/api/submit" },
+        },
+        { type: "opencrvs", config: {} }, // missing endpoint
+        {
+          type: "opencrvs",
+          config: { endpoint: "https://tertiary.example/api/submit" },
+        },
+      ];
+
+      await processor.process(payload);
+
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining("No endpoint"));
+      warn.mockRestore();
     });
   });
 });
