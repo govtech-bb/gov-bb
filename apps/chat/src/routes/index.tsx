@@ -1,14 +1,13 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import type { UIMessage } from "@tanstack/ai";
 import { fetchServerSentEvents, useChat } from "@tanstack/ai-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Bubble } from "#/components/chat/bubble";
 import { TridentAvatar } from "#/components/trident-avatar";
 import { extractText, hasAnyToolCall } from "#/lib/chat/messages";
-import { prefillFormSession } from "#/lib/chat/prefill-form";
+import { submitFormSession } from "#/lib/chat/submit-form";
 import type { Source } from "#/lib/chat/types";
-import { validateFormFields } from "#/lib/chat/validate-fields";
-import { openFormReviewDef, presentChoicesDef } from "#/lib/chat-tools";
+import { presentChoicesDef, submitFormDef } from "#/lib/chat-tools";
 
 const SUGGESTIONS = [
   "How do I get a passport?",
@@ -29,40 +28,35 @@ function ChatPage() {
   >([]);
   const pendingSourcesQueueRef = useRef<Source[][]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const pendingNavRef = useRef<string | null>(null);
   const lastFieldsByService = useRef<Map<string, Record<string, string>>>(
     new Map(),
   );
-
-  const router = useRouter();
 
   const presentChoices = useMemo(
     () => presentChoicesDef.client(async () => ({ shown: true })),
     [],
   );
-  const openFormReview = useMemo(
+  const submitForm = useMemo(
     () =>
-      openFormReviewDef.client(async ({ service, fields }) => {
+      submitFormDef.client(async ({ service, fields }) => {
         const prior = lastFieldsByService.current.get(service) ?? {};
         const merged = { ...prior, ...fields };
         lastFieldsByService.current.set(service, merged);
-        const result = await validateFormFields(service, merged);
-        if (!result.ok) return { ok: false, errors: result.errors };
         try {
-          const url = await prefillFormSession(service, merged);
-          pendingNavRef.current = url;
-          return { ok: true, redirectedTo: url };
+          const result = await submitFormSession(service, merged);
+          if (!result.ok) return { ok: false, errors: result.errors };
+          return { ok: true, referenceNumber: result.referenceNumber };
         } catch (err) {
           const message =
-            err instanceof Error ? err.message : "Unable to open review page";
+            err instanceof Error ? err.message : "Unable to submit form";
           return { ok: false, errors: [{ field: "service", message }] };
         }
       }),
     [],
   );
   const tools = useMemo(
-    () => [presentChoices, openFormReview],
-    [presentChoices, openFormReview],
+    () => [presentChoices, submitForm],
+    [presentChoices, submitForm],
   );
 
   // useChat re-creates its ChatClient on every connection identity change;
@@ -80,14 +74,6 @@ function ChatPage() {
   });
 
   const isStreaming = status === "submitted" || status === "streaming";
-
-  useEffect(() => {
-    if (isStreaming) return;
-    const url = pendingNavRef.current;
-    if (!url) return;
-    pendingNavRef.current = null;
-    router.navigate({ href: url });
-  }, [isStreaming, router]);
 
   const empty = messages.length === 0;
   const last = messages.at(-1);
@@ -136,20 +122,18 @@ function ChatPage() {
   );
 
   const handleStop = useCallback(() => {
-    pendingNavRef.current = null;
     stop();
   }, [stop]);
 
   function submit(text: string) {
     const trimmed = text.trim();
     if (!trimmed || isStreaming) return;
-    pendingNavRef.current = null;
     sendMessage(trimmed);
     setInput("");
   }
 
   const formFlowStartIdx = useMemo(() => {
-    const formToolNames = [presentChoicesDef.name, openFormReviewDef.name];
+    const formToolNames = [presentChoicesDef.name, submitFormDef.name];
     return messages.findIndex((m) => hasAnyToolCall([m], formToolNames));
   }, [messages]);
 
@@ -165,7 +149,21 @@ function ChatPage() {
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-dvh flex-col bg-white">
+      <header className="flex items-center justify-between border-grey-00 border-b px-4 py-3">
+        <Link
+          aria-label="Back to alpha.gov.bb"
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-10 text-blue-100 transition-colors hover:bg-blue-40/30"
+          to="/"
+        >
+          ←
+        </Link>
+        <span className="font-semibold text-black-00 text-sm">
+          Ask alpha.gov.bb
+        </span>
+        <TridentAvatar size="sm" />
+      </header>
+
       {empty ? (
         <EmptyState onPick={submit} />
       ) : (
@@ -234,16 +232,16 @@ function EmptyState({ onPick }: { onPick: (text: string) => void }) {
   return (
     <main className="flex flex-1 flex-col items-center justify-center px-4 text-center">
       <TridentAvatar size="lg" />
-      <h1 className="mt-6 font-bold text-4xl tracking-tight text-black-00 sm:text-5xl">
+      <h1 className="mt-6 font-bold text-4xl text-black-00 sm:text-5xl">
         Hello.
       </h1>
       <p className="mt-2 text-base text-mid-grey-00 sm:text-lg">
         What can we help you with today?
       </p>
-      <div className="mt-8 flex w-full max-w-md flex-col gap-2 text-left">
+      <div className="mt-8 flex w-full max-w-md flex-col gap-2.5 text-left">
         {SUGGESTIONS.map((s) => (
           <button
-            className="group flex w-full items-center justify-between gap-3 rounded-xl border border-grey-00 bg-white-00 px-4 py-3.5 font-medium text-black-00 text-sm transition-colors hover:border-mid-grey-00 hover:bg-blue-10/40"
+            className="group flex w-full items-center justify-between gap-3 rounded-xl border border-grey-00 bg-white px-4 py-3.5 text-black-00 text-sm transition-all hover:-translate-y-0.5 hover:border-teal-40 hover:shadow-[0_4px_16px_-8px_var(--color-teal-40)]"
             key={s}
             onClick={() => onPick(s)}
             type="button"
@@ -251,7 +249,7 @@ function EmptyState({ onPick }: { onPick: (text: string) => void }) {
             <span className="text-left">{s}</span>
             <span
               aria-hidden="true"
-              className="text-mid-grey-00 transition-colors group-hover:text-teal-00"
+              className="text-mid-grey-00 transition-colors group-hover:text-teal-40"
             >
               →
             </span>
@@ -283,9 +281,9 @@ function Composer({
   const hasInput = input.trim().length > 0;
 
   return (
-    <footer className="px-4 pt-3 pb-4 md:pt-4">
+    <footer className="px-4 pb-4">
       <form
-        className="relative mx-auto flex max-w-2xl flex-col rounded-3xl border border-grey-00 bg-white-00 p-4 pr-16 shadow-[0_1px_8px_-2px_rgb(0_22_74/0.06)] transition-colors focus-within:border-blue-100"
+        className="relative mx-auto flex max-w-2xl flex-col rounded-3xl border border-grey-00 bg-white p-4 pr-16 shadow-[0_2px_16px_-4px_rgb(0_22_74/0.08)] transition-colors focus-within:border-blue-100"
         onSubmit={(e) => {
           e.preventDefault();
           onSubmit();
@@ -293,7 +291,7 @@ function Composer({
       >
         <textarea
           aria-label="Ask anything"
-          className="max-h-48 min-h-11 w-full resize-none border-none bg-transparent text-black-00 text-sm placeholder:text-mid-grey-00 focus:outline-none"
+          className="max-h-48 min-h-12 w-full resize-none border-none bg-transparent text-black-00 text-sm placeholder:text-mid-grey-00 focus:outline-none"
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
@@ -303,7 +301,7 @@ function Composer({
           }}
           placeholder="Ask anything"
           ref={textareaRef}
-          rows={1}
+          rows={2}
           value={input}
         />
         {streaming ? (
