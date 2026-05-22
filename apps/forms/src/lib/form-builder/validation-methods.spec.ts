@@ -57,8 +57,10 @@ import {
   checkFileMaxSize,
   checkMaxFiles,
   checkMinFiles,
+  checkComparisons,
 } from "./validation-methods";
 import { ValidationResults } from "@forms/types";
+import type { AnyFieldApi } from "@tanstack/react-form";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -1544,6 +1546,127 @@ describe("checkMinFiles", () => {
     const results = makeResults();
     const files = makeFileList();
     checkMinFiles({ ...base, value: files, validations: {}, results });
+    expect(results.hasError).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// checkComparisons
+// ---------------------------------------------------------------------------
+
+const makeFieldApi = (
+  fieldValues: Record<string, unknown>,
+  currentFieldName: string,
+) =>
+  ({
+    name: currentFieldName,
+    form: { getFieldValue: (id: string) => fieldValues[id] },
+  }) as unknown as AnyFieldApi;
+
+describe("checkComparisons", () => {
+  const base = { fieldId: "step1_amount", fieldName: "Amount" };
+
+  it("is a no-op when no equal/notEqual/gt/lt validations are provided", () => {
+    const results = makeResults();
+    const fieldApi = makeFieldApi({}, "step1_amount");
+    checkComparisons(
+      { ...base, value: "10", validations: {}, results },
+      fieldApi,
+    );
+    expect(results.hasError).toBe(false);
+  });
+
+  it("does not error when equal validation passes (value matches referenced field)", () => {
+    const results = makeResults();
+    const fieldApi = makeFieldApi({ step1_target: "10" }, "step1_amount");
+    checkComparisons(
+      {
+        ...base,
+        value: "10",
+        validations: {
+          equal: {
+            value: true,
+            referenceStepId: "step1",
+            referenceFieldId: "target",
+          },
+        },
+        results,
+      },
+      fieldApi,
+    );
+    expect(results.hasError).toBe(false);
+  });
+
+  it("adds error when equal validation fails (value does not match referenced field)", () => {
+    const results = makeResults();
+    const fieldApi = makeFieldApi({ step1_target: "20" }, "step1_amount");
+    checkComparisons(
+      {
+        ...base,
+        value: "10",
+        validations: {
+          equal: {
+            value: true,
+            referenceStepId: "step1",
+            referenceFieldId: "target",
+            error: "Values must match.",
+          },
+        },
+        results,
+      },
+      fieldApi,
+    );
+    expect(results.hasError).toBe(true);
+    expect(results.errors.some((e) => e.includes("Values must match."))).toBe(
+      true,
+    );
+  });
+
+  it("adds error when gt validation fails (value is not greater than referenced field)", () => {
+    const results = makeResults();
+    const fieldApi = makeFieldApi({ step1_minVal: 50 }, "step1_amount");
+    checkComparisons(
+      {
+        ...base,
+        value: 30,
+        validations: {
+          gt: {
+            value: true,
+            referenceStepId: "step1",
+            referenceFieldId: "minVal",
+            error: "Must be greater.",
+          },
+        },
+        results,
+      },
+      fieldApi,
+    );
+    expect(results.hasError).toBe(true);
+  });
+
+  it("derives currentStepId from fieldApi.name when referenceStepId is absent", () => {
+    // fieldApi.name is "step1_fieldA" → getStepIdFromFieldName → "step1"
+    // referenceStepId absent → falls back to currentStepId ("step1")
+    // referenceFieldId = "fieldB" → fullReferenceId = "step1_fieldB"
+    const results = makeResults();
+    const fieldApi = makeFieldApi({ step1_fieldB: "hello" }, "step1_fieldA");
+    checkComparisons(
+      {
+        fieldId: "step1_fieldA",
+        fieldName: "FieldA",
+        value: "hello",
+        validations: {
+          equal: {
+            value: true,
+            referenceFieldId: "fieldB",
+            error: "Must equal fieldB.",
+          },
+        },
+        results,
+      },
+      fieldApi,
+    );
+    // "hello" == "hello" → passes → no error
     expect(results.hasError).toBe(false);
   });
 });

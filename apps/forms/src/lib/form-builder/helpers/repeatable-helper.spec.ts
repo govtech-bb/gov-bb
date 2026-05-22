@@ -278,6 +278,21 @@ describe("setupRepeatSteps", () => {
     expect(result).toHaveLength(1);
     expect(Object.keys(repeatSettings)).toHaveLength(0);
   });
+
+  it("does NOT append addAnother to the last repeated step when min === max", () => {
+    const repeatBehaviour = makeRepeatableBehaviour(2, 2);
+    const step = makeStep("personalInfo", ["firstName"], [repeatBehaviour]);
+    const repeatSettings: RepeatableStepSettings = {};
+
+    const result = setupRepeatSteps([step], repeatSettings);
+
+    // Should have original step + 2 repeat steps (min=2)
+    expect(result).toHaveLength(3);
+    // The last step (personalInfo~2) is at min AND max → addAnother must NOT be appended
+    const lastStep = result[result.length - 1];
+    expect(lastStep.stepId).toBe("personalInfo~2");
+    expect(lastStep.fields.some((f) => f.fieldId === "addAnother")).toBe(false);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -432,6 +447,38 @@ describe("addRepeatableStep", () => {
     });
 
     expect(result).toBe(visibleSteps);
+  });
+
+  it("appends addAnother to the new step when repeatableStepCount < max - 1", () => {
+    // max=4, orderedStepIds has 2 entries (count=2) → 2 < 4-1=3 → true → addAnother appended
+    const repeatBehaviour = makeRepeatableBehaviour(1, 4);
+    const step = makeStep("personalInfo", ["firstName"], [repeatBehaviour]);
+    const step1 = makeStep("personalInfo~1", ["firstName"], [repeatBehaviour]);
+    const repeatSettings: RepeatableStepSettings = {
+      personalInfo: {
+        minRepeats: 1,
+        maxRepeats: 4,
+        orderedStepIds: ["personalInfo", "personalInfo~1"],
+        stepData: {},
+      },
+    };
+    const formMeta = makeFormMeta([step, step1]);
+    const visibleSteps = [step, step1];
+
+    const result = addRepeatableStep({
+      currentStep: step1,
+      repeatableStepSettings: repeatSettings,
+      repeatableBehaviour: repeatBehaviour,
+      visibleSteps,
+      formMeta,
+    });
+
+    // New step personalInfo~2 should be added
+    expect(result).toHaveLength(3);
+    const newStep = result[2];
+    expect(newStep.stepId).toBe("personalInfo~2");
+    // addAnother should be present because repeatableStepCount(2) < max(4) - 1 = 3
+    expect(newStep.fields.some((f) => f.fieldId === "addAnother")).toBe(true);
   });
 });
 
