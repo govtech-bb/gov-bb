@@ -1,4 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createIsomorphicFn } from "@tanstack/react-start";
 import {
   getRequestHeaders,
   setResponseHeader,
@@ -22,6 +23,21 @@ const QuerySchema = z.object({
   state: z.string().min(1),
 });
 
+// The OAuth callback is only ever reached via a redirect from GitHub (a
+// full-page navigation), so the server-only request/response helpers are
+// safe to call from beforeLoad. Wrap them in `createIsomorphicFn` so the
+// `@tanstack/react-start/server` import is stripped from the client bundle
+// (the import-protection plugin rejects it otherwise).
+const readCookieHeader = createIsomorphicFn()
+  .server((): string | null => getRequestHeaders().get("cookie") ?? null)
+  .client((): string | null => null);
+
+const setResponseCookies = createIsomorphicFn()
+  .server((cookies: string | string[]) => {
+    setResponseHeader("Set-Cookie", cookies);
+  })
+  .client((_cookies: string | string[]) => {});
+
 /**
  * OAuth callback. Validates the CSRF state cookie, exchanges the code for a
  * token, checks the user's repo permission, and issues the session cookie —
@@ -43,8 +59,7 @@ export const Route = createFileRoute("/auth/github/callback")({
     if (!base) throw new Error("OAUTH_REDIRECT_BASE is not set");
 
     // CSRF state check (read-only on the cookie).
-    const headers = getRequestHeaders();
-    const cookie = headers.get("cookie") ?? null;
+    const cookie = readCookieHeader();
     const storedState = parseOAuthStateCookie(cookie);
     if (!storedState || !safeEqual(storedState, search.state)) {
       throw new Error("OAuth state mismatch — possible CSRF attempt");
@@ -63,10 +78,7 @@ export const Route = createFileRoute("/auth/github/callback")({
 
     if (!allowed) {
       // Clear the CSRF state cookie even on denial, so a retry starts clean.
-      setResponseHeader(
-        "Set-Cookie",
-        serializeOAuthStateCookie("", { secure, clear: true }),
-      );
+      setResponseCookies(serializeOAuthStateCookie("", { secure, clear: true }));
       throw redirect({ to: "/auth/denied" });
     }
 
@@ -85,7 +97,7 @@ export const Route = createFileRoute("/auth/github/callback")({
       secure,
       clear: true,
     });
-    setResponseHeader("Set-Cookie", [sessionCookie, clearedStateCookie]);
+    setResponseCookies([sessionCookie, clearedStateCookie]);
 
     throw redirect({ to: "/builder" });
   },

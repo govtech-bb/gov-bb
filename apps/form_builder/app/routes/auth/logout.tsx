@@ -1,4 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createIsomorphicFn } from "@tanstack/react-start";
 import { setResponseHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { clearSession } from "../../server/session";
@@ -20,16 +21,24 @@ function sanitizeNext(next: string | undefined): string {
   return next;
 }
 
+// Clear the session cookie on the route's own response so the Set-Cookie rides
+// the same 302 the browser follows. The session cookie is HttpOnly and can
+// only be cleared server-side; the client branch is intentionally a no-op
+// (callers must reach /auth/logout via full-page navigation for it to work).
+// `createIsomorphicFn` is the documented hook to keep the server-only import
+// out of the client bundle (see import-protection plugin in @tanstack/start).
+const clearSessionCookie = createIsomorphicFn()
+  .server((secure: boolean) => {
+    setResponseHeader("Set-Cookie", clearSession({ secure }));
+  })
+  .client((_secure: boolean) => {});
+
 export const Route = createFileRoute("/auth/logout")({
   validateSearch: (search) => SearchSchema.parse(search),
   beforeLoad: ({ search }) => {
     const base = process.env.OAUTH_REDIRECT_BASE ?? "";
     const secure = base.startsWith("https://");
-    // Clear the session cookie on THIS response, so the browser drops it
-    // before following the redirect. (Doing this inside a server-function
-    // handler would attach Set-Cookie to the RPC response, which the
-    // redirect does not carry.)
-    setResponseHeader("Set-Cookie", clearSession({ secure }));
+    clearSessionCookie(secure);
     throw redirect({ href: sanitizeNext(search.next) });
   },
 });
