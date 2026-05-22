@@ -31,5 +31,5 @@ export const AppDataSource = new DataSource({
   logging: process.env.DB_LOGGING === "true",
   ssl: buildSslConfig(),
   entities: [__dirname + "/../**/*.entity{.ts,.js}"],
-  migrations: [__dirname + "/migrations/*{.ts,.js}"],
+  migrations: [__dirname + "/migrations/!(*.spec){.ts,.js}"],
 });
