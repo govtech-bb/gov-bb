@@ -38,6 +38,7 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,uid=1001,gid=1001 \
 # Source — copy only what's needed to build `api`.
 COPY --chown=app:app apps/api/ apps/api/
 COPY --chown=app:app packages/ packages/
+COPY --chown=app:app recipes/ recipes/
 
 RUN pnpm exec nx build api
 
