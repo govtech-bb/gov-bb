@@ -58,29 +58,29 @@ With the preview cookie set, all three columns become "yes" regardless of flag.
 
 **MarkdownContent / rehype plugin**
 
-- Delete `src/lib/rehype-hide-start-links.ts` and its tests; remove the import and the `hasResearchAccess` prop chain from `MarkdownContent.tsx`. Once route-level gating is in place, no in-body link hiding is needed — a protected page's form never resolves anyway, and a draft page never renders for the public.
+- Keep `src/lib/rehype-hide-start-links.ts` — it does the list-item drop and "There are N ways" rewrite that authors want preserved on `protected: true` pages. Refactor: rename option from `hasResearchAccess` to `hideStartLinks: boolean`; drop the dead `isExternalForm` branch; change the strip rule from `href.endsWith('/start')` to `element.properties?.dataStartLink !== undefined` (consistent with PR #80's authoring contract).
+- `MarkdownContent.tsx`: drop the `hasResearchAccess` prop chain; accept `previewMode?: boolean`; compute `hideStartLinks = (frontmatter.protected || frontmatter.draft) === true && !previewMode` and pass to the plugin.
 
 ## Files
 
 **Add:**
 
-- `apps/landing/src/lib/preview-mode.ts` — server-only cookie helpers & query handler
+- `apps/landing/src/lib/preview-mode.ts` — pure helpers (client-safe)
+- `apps/landing/src/lib/preview-mode.server.ts` — server-only cookie I/O
 - `apps/landing/src/lib/preview-mode.test.ts`
+- `apps/landing/src/lib/rehype-hide-start-links.test.ts` — new coverage for the refactored plugin
 - `docs/decisions/0006-content-visibility-flags.md` — record the two-flag model and why
 
 **Modify:**
 
 - `apps/landing/src/lib/frontmatter.ts` — add `draft`, `protected`
 - `apps/landing/src/lib/search.ts` — accept `previewMode` filter
-- `apps/landing/src/routes/__root.tsx` — wire `?preview=…` handler
-- `apps/landing/src/routes/$.tsx` — gate page render + listings
+- `apps/landing/src/lib/rehype-hide-start-links.ts` — rename option, gate on `data-start-link`
+- `apps/landing/src/routes/__root.tsx` — wire `?preview=…` handler, expose `previewMode` on context
+- `apps/landing/src/routes/$.tsx` — gate page render + listings, thread `previewMode` to `MarkdownContent`
 - `apps/landing/src/routes/search-results.tsx` — pass preview flag
 - `apps/landing/src/routes/*.form.tsx` (×3 known) — add gating
-- `apps/landing/src/components/MarkdownContent.tsx` — remove `hasResearchAccess`
-
-**Delete:**
-
-- `apps/landing/src/lib/rehype-hide-start-links.ts` + its tests
+- `apps/landing/src/components/MarkdownContent.tsx` — swap `hasResearchAccess` for `previewMode`, compute `hideStartLinks` from frontmatter
 
 ## Verify
 
@@ -90,8 +90,19 @@ With the preview cookie set, all three columns become "yes" regardless of flag.
 - Route-level smoke: a markdown page with `draft: true` → 404 without cookie, renders with cookie. Same for one `.form.tsx` route with `protected: true` on its parent.
 - Manual run (`pnpm --filter @govtech-bb/landing dev`) and click through: hit `?preview=<token>` and confirm cookie is set, hit `?preview=exit` and confirm cleared, confirm draft page doesn't appear in category listing pre-preview and does post-preview.
 
+## Coordination with PR #80
+
+[#80 `content-fixes`](https://github.com/govtech-bb/gov-bb/pull/80) is in flight and lands a narrow fix for the same Start-now-buttons-hidden bug this plan was originally framed to solve. It modifies two of the same files this plan modifies — `rehype-hide-start-links.ts` and `MarkdownContent.tsx` — and adds `form_id` to 11 `index.md` files. We let #80 merge first; then rebase `feat/landing-draft-and-protected-content` onto updated `dev`.
+
+What #80 establishes that this plan adopts:
+
+- **`data-start-link` is the canonical authoring marker for CTAs.** The rehype plugin now treats it as "never strip this." We change our `hideStartLinks` gating from `href.endsWith('/start')` (URL-pattern matching, which was the original plugin's signal) to `element.properties?.dataStartLink !== undefined` (authoring marker). This is a cleaner contract and aligns with #80 — same observable behaviour for `protected: true` pages.
+- **`StartLinkFromContext` has a `LinkButton` fallback** when no `form_id` is in frontmatter. Our `previewMode` / `hideStartLinks` plumbing doesn't touch that fallback path; it only governs whether the rehype plugin strips the element before the React handler sees it.
+
+Rebase strategy: take #80's versions of `rehype-hide-start-links.ts` and `MarkdownContent.tsx` as the base, then layer this plan's changes on top — i.e. (a) rename the plugin option from `hasResearchAccess` to `hideStartLinks` and drop the `isExternalForm` branch; (b) gate the strip rule on `data-start-link` instead of `/start` URL; (c) replace `hasResearchAccess` prop with `previewMode` and compute `hideStartLinks` from frontmatter in `MarkdownContent`.
+
 ## Open questions
 
-1. **`/start` resolution** — does any route currently serve `/<page>/start`, or are start links only ever rewritten to the forms app by the `StartLink` component? Implementation will confirm by grepping; if there's a real route, it gets the same loader guard.
+1. ~~**`/start` resolution**~~ — resolved during implementation: `/start` is not a route, it's a markdown marker; the rehype plugin handles inline hiding, no route guard needed.
 2. **Preview-mode UI affordance** — should previewed pages show a visible banner ("Preview mode active — exit") so reviewers don't forget the cookie is set? Not required by the spec; flagging because it's a low-cost addition that prevents confusion.
 3. **Token rotation** — do we need to support multiple valid tokens at once (e.g. `LANDING_PREVIEW_TOKENS=a,b,c`) so the team can rotate without a forced exit? Defaulting to single-token for now; easy to expand later.
