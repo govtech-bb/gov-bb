@@ -26,6 +26,11 @@ import { UnprocessableEntityException } from "@nestjs/common";
 import { SubmissionPipelineService } from "./submission-pipeline.service";
 import { FormDefinitionsService } from "../form-definitions/form-definitions.service";
 import { FormDraftsService } from "../form-drafts/form-drafts.service";
+import { FilesService } from "../../files/files.service";
+
+const filesStub = {
+  verifySubmissionFiles: jest.fn().mockResolvedValue({}),
+};
 import type { ServiceContract } from "@govtech-bb/form-types";
 import type { FormDraftEntity } from "../../database/entities/form-draft.entity";
 import type { SubmitDto } from "./submissions.types";
@@ -207,6 +212,7 @@ describe("SubmissionPipelineService — integration (real conditions + validatio
           provide: FormDefinitionsService,
           useValue: { findByFormId: jest.fn().mockResolvedValue(CONTRACT) },
         },
+        { provide: FilesService, useValue: filesStub },
       ],
     }).compile();
 
@@ -651,6 +657,7 @@ function buildModuleWith(contract: ServiceContract): Promise<{
         provide: FormDefinitionsService,
         useValue: { findByFormId: jest.fn().mockResolvedValue(contract) },
       },
+      { provide: FilesService, useValue: filesStub },
     ],
   })
     .compile()
