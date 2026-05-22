@@ -186,6 +186,7 @@ describe("SubmissionsService", () => {
       const submissionRepo = {
         findOne: jest.fn().mockResolvedValue(null),
         tx: jest.fn().mockImplementation((cb) => cb(txRepo)),
+        count: jest.fn().mockResolvedValue(0),
       } as unknown as FormSubmissionRepository;
 
       const eventEmitter = { emit: jest.fn() } as unknown as EventEmitter2;
