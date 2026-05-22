@@ -267,6 +267,70 @@ describe("PaymentWebhookService", () => {
     expect(events.emit).not.toHaveBeenCalled();
   });
 
+  it("submission not found inside transaction: warns and returns without emitting", async () => {
+    // Branch: `if (!submission)` inside fireDownstream
+    const payment = makePayment();
+    paymentRepo.findByReference.mockResolvedValue(payment);
+    ezpay.verifyPayment.mockResolvedValue(makeVerified());
+    txRepo.findOne.mockResolvedValue(null);
+    txRepo.save.mockImplementation(async (e) => e);
+    paymentRepo.save.mockImplementation(async (e) => e);
+    submissionRepo.findOne.mockResolvedValue(null); // no matching submission
+
+    const result = await service.handleEzpayCallback(callbackBody);
+
+    expect(result).toEqual({ acknowledged: true });
+    expect(submissionRepo.save).not.toHaveBeenCalled();
+    expect(formDefs.findByFormId).not.toHaveBeenCalled();
+    expect(events.emit).not.toHaveBeenCalled();
+  });
+
+  it("filters out payment processors from downstream event (processors ?? [] branch)", async () => {
+    // Branch: `contract.processors ?? []` when processors is undefined
+    const payment = makePayment();
+    const submission = makeSubmission();
+    paymentRepo.findByReference.mockResolvedValue(payment);
+    ezpay.verifyPayment.mockResolvedValue(makeVerified());
+    txRepo.findOne.mockResolvedValue(null);
+    txRepo.save.mockImplementation(async (e) => e);
+    paymentRepo.save.mockImplementation(async (e) => e);
+    submissionRepo.findOne.mockResolvedValue(submission);
+    submissionRepo.save.mockImplementation(async (e) => e);
+    // No processors key — tests the `?? []` fallback
+    formDefs.findByFormId.mockResolvedValue({});
+
+    const result = await service.handleEzpayCallback(callbackBody);
+
+    expect(result).toEqual({ acknowledged: true });
+    expect(events.emit).toHaveBeenCalledTimes(1);
+    const [, payload] = events.emit.mock.calls[0];
+    expect(payload.processors).toEqual([]);
+  });
+
+  it("on EzPay Initiated: does not mark payment FAILED, does not emit (non-Success, non-Failed)", async () => {
+    // Branch: `verified.status !== "Success"` && `verified.status !== "Failed"` (Initiated case)
+    // mapTxStatus returns PaymentTransactionStatus.INITIATED
+    const payment = makePayment();
+    paymentRepo.findByReference.mockResolvedValue(payment);
+    ezpay.verifyPayment.mockResolvedValue(
+      makeVerified({ status: "Initiated", amount: 50.0 }),
+    );
+    txRepo.findOne.mockResolvedValue(null);
+    txRepo.save.mockImplementation(async (e) => e);
+    paymentRepo.save.mockImplementation(async (e) => e);
+
+    const result = await service.handleEzpayCallback(callbackBody);
+
+    expect(result).toEqual({ acknowledged: true });
+    // payment status should NOT be changed (only Failed changes it in non-success path)
+    expect(paymentRepo.save).not.toHaveBeenCalled();
+    expect(events.emit).not.toHaveBeenCalled();
+
+    // transaction was still upserted
+    const txArg = txRepo.save.mock.calls[0][0];
+    expect(txArg.status).toBe(PaymentTransactionStatus.INITIATED);
+  });
+
   it("merges into existing transaction row when transactionNumber already exists", async () => {
     const existingTx = {
       id: "tx-row-1",

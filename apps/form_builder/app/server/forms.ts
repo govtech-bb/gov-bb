@@ -5,6 +5,7 @@ import type { ServiceContractRecipe } from "@govtech-bb/form-types";
 import { getDataSource } from "./db";
 import { bumpMinor } from "../lib/version";
 import type { FormDefinitionSummary } from "../types/index";
+import { requireAdminToken } from "./auth/admin-token-middleware";
 
 type FormDefinitionRow = {
   id: string;
@@ -13,8 +14,9 @@ type FormDefinitionRow = {
   published_at: Date | null;
 };
 
-export const listForms = createServerFn({ method: "GET" }).handler(
-  async (): Promise<FormDefinitionSummary[]> => {
+export const listForms = createServerFn({ method: "GET" })
+  .middleware([requireAdminToken])
+  .handler(async (): Promise<FormDefinitionSummary[]> => {
     const ds = await getDataSource();
     const rows = await ds.query<
       {
@@ -36,10 +38,10 @@ export const listForms = createServerFn({ method: "GET" }).handler(
       version: r.version,
       isPublished: r.published_at !== null,
     }));
-  },
-);
+  });
 
 export const getRecipe = createServerFn({ method: "GET", strict: false })
+  .middleware([requireAdminToken])
   .inputValidator(z.object({ formId: z.string() }))
   .handler(async ({ data }): Promise<ServiceContractRecipe> => {
     const ds = await getDataSource();
@@ -58,6 +60,7 @@ export const getRecipe = createServerFn({ method: "GET", strict: false })
   });
 
 export const submitRecipe = createServerFn({ method: "POST" })
+  .middleware([requireAdminToken])
   .inputValidator(
     z.object({
       recipe: z.unknown(),
@@ -87,6 +90,7 @@ export const submitRecipe = createServerFn({ method: "POST" })
   });
 
 export const updateRecipe = createServerFn({ method: "POST" })
+  .middleware([requireAdminToken])
   .inputValidator(
     z.object({
       formId: z.string(),
@@ -125,6 +129,7 @@ export const updateRecipe = createServerFn({ method: "POST" })
   });
 
 export const nextVersion = createServerFn({ method: "GET" })
+  .middleware([requireAdminToken])
   .inputValidator(z.object({ formId: z.string() }))
   .handler(
     async ({

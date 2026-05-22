@@ -4,5 +4,4 @@ description: "Check statutory bank holiday dates for Barbados for any year, set 
 stage: "alpha"
 featured: false
 publish_date: 2026-05-13
-category: work-employment
 ---
