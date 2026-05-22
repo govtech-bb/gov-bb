@@ -19,34 +19,38 @@ import type {
 import type { ValidationResult } from "@govtech-bb/form-builder";
 import { CustomComponent } from "@govtech-bb/database";
 import { getDataSource } from "./db";
+import { requireAdminToken } from "./auth/admin-token-middleware";
 
 let _catalogCache: { data: RegistryCatalog; expiresAt: number } | null = null;
 
 export const getCatalogFn = createServerFn({
   method: "GET",
   strict: false,
-}).handler(async (): Promise<RegistryCatalog> => {
-  const now = Date.now();
-  if (_catalogCache && _catalogCache.expiresAt > now) {
-    return _catalogCache.data;
-  }
-  const builtinCatalog = getCatalog();
-  const ds = await getDataSource();
-  const repo = ds.getRepository(CustomComponent);
-  const dbComponents = await repo.find();
-  const customEntries: CustomComponentEntry[] = dbComponents.map((c) => ({
-    ref: `components/${c.namespace}-${c.type}`,
-    displayName: `${c.namespace}/${c.type}`,
-    namespace: c.namespace,
-    type: c.type,
-    definition: c.definition,
-  }));
-  const catalog = { ...builtinCatalog, custom: customEntries };
-  _catalogCache = { data: catalog, expiresAt: now + 60_000 };
-  return catalog;
-});
+})
+  .middleware([requireAdminToken])
+  .handler(async (): Promise<RegistryCatalog> => {
+    const now = Date.now();
+    if (_catalogCache && _catalogCache.expiresAt > now) {
+      return _catalogCache.data;
+    }
+    const builtinCatalog = getCatalog();
+    const ds = await getDataSource();
+    const repo = ds.getRepository(CustomComponent);
+    const dbComponents = await repo.find();
+    const customEntries: CustomComponentEntry[] = dbComponents.map((c) => ({
+      ref: `components/${c.namespace}-${c.type}`,
+      displayName: `${c.namespace}/${c.type}`,
+      namespace: c.namespace,
+      type: c.type,
+      definition: c.definition,
+    }));
+    const catalog = { ...builtinCatalog, custom: customEntries };
+    _catalogCache = { data: catalog, expiresAt: now + 60_000 };
+    return catalog;
+  });
 
 export const getRegistryItemFn = createServerFn({ method: "GET" })
+  .middleware([requireAdminToken])
   .inputValidator(z.object({ ref: z.string() }))
   .handler(async ({ data }) => {
     const catalog = await getCatalogFn();
@@ -57,22 +61,24 @@ export const getRegistryItemFn = createServerFn({ method: "GET" })
     return item;
   });
 
-export const getBuilderMetadata = createServerFn({ method: "GET" }).handler(
-  async () => {
+export const getBuilderMetadata = createServerFn({ method: "GET" })
+  .middleware([requireAdminToken])
+  .handler(async () => {
     return {
       behaviourDescriptors: BEHAVIOUR_TYPE_DESCRIPTORS,
       validationDescriptors: VALIDATION_RULE_DESCRIPTORS,
     };
-  },
-);
+  });
 
 export const validateRecipe = createServerFn({ method: "POST", strict: false })
+  .middleware([requireAdminToken])
   .inputValidator(z.object({ recipe: z.unknown() }))
   .handler(async ({ data }): Promise<ValidationResult> => {
     return validateFormContract(data.recipe);
   });
 
 export const previewRecipe = createServerFn({ method: "POST", strict: false })
+  .middleware([requireAdminToken])
   .inputValidator(z.object({ recipe: z.unknown() }))
   .handler(async ({ data }): Promise<ServiceContract> => {
     const recipe = data.recipe as ServiceContractRecipe;
