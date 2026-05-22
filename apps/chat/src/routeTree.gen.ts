@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiRetrieveRouteImport } from './routes/api.retrieve'
 import { Route as ApiHealthRouteImport } from './routes/api.health'
+import { Route as ApiFormsSubmitRouteImport } from './routes/api.forms-submit'
 import { Route as ApiDocumentsRouteImport } from './routes/api.documents'
 import { Route as ApiChatRouteImport } from './routes/api.chat'
 
@@ -30,6 +31,11 @@ const ApiHealthRoute = ApiHealthRouteImport.update({
   path: '/api/health',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiFormsSubmitRoute = ApiFormsSubmitRouteImport.update({
+  id: '/api/forms-submit',
+  path: '/api/forms-submit',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiDocumentsRoute = ApiDocumentsRouteImport.update({
   id: '/api/documents',
   path: '/api/documents',
@@ -45,6 +51,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/api/chat': typeof ApiChatRoute
   '/api/documents': typeof ApiDocumentsRoute
+  '/api/forms-submit': typeof ApiFormsSubmitRoute
   '/api/health': typeof ApiHealthRoute
   '/api/retrieve': typeof ApiRetrieveRoute
 }
@@ -52,6 +59,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/api/chat': typeof ApiChatRoute
   '/api/documents': typeof ApiDocumentsRoute
+  '/api/forms-submit': typeof ApiFormsSubmitRoute
   '/api/health': typeof ApiHealthRoute
   '/api/retrieve': typeof ApiRetrieveRoute
 }
@@ -60,6 +68,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/api/chat': typeof ApiChatRoute
   '/api/documents': typeof ApiDocumentsRoute
+  '/api/forms-submit': typeof ApiFormsSubmitRoute
   '/api/health': typeof ApiHealthRoute
   '/api/retrieve': typeof ApiRetrieveRoute
 }
@@ -69,15 +78,23 @@ export interface FileRouteTypes {
     | '/'
     | '/api/chat'
     | '/api/documents'
+    | '/api/forms-submit'
     | '/api/health'
     | '/api/retrieve'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/chat' | '/api/documents' | '/api/health' | '/api/retrieve'
+  to:
+    | '/'
+    | '/api/chat'
+    | '/api/documents'
+    | '/api/forms-submit'
+    | '/api/health'
+    | '/api/retrieve'
   id:
     | '__root__'
     | '/'
     | '/api/chat'
     | '/api/documents'
+    | '/api/forms-submit'
     | '/api/health'
     | '/api/retrieve'
   fileRoutesById: FileRoutesById
@@ -86,6 +103,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApiChatRoute: typeof ApiChatRoute
   ApiDocumentsRoute: typeof ApiDocumentsRoute
+  ApiFormsSubmitRoute: typeof ApiFormsSubmitRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiRetrieveRoute: typeof ApiRetrieveRoute
 }
@@ -113,6 +131,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/forms-submit': {
+      id: '/api/forms-submit'
+      path: '/api/forms-submit'
+      fullPath: '/api/forms-submit'
+      preLoaderRoute: typeof ApiFormsSubmitRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/documents': {
       id: '/api/documents'
       path: '/api/documents'
@@ -134,6 +159,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApiChatRoute: ApiChatRoute,
   ApiDocumentsRoute: ApiDocumentsRoute,
+  ApiFormsSubmitRoute: ApiFormsSubmitRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiRetrieveRoute: ApiRetrieveRoute,
 }
