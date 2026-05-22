@@ -2,7 +2,10 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { FormDefinitionEntity } from "@govtech-bb/database";
-import type { ServiceContractRecipe } from "@govtech-bb/form-types";
+import {
+  serviceContractRecipeSchema,
+  type ServiceContractRecipe,
+} from "@govtech-bb/form-types";
 import { getDataSource } from "./db";
 import { getSession } from "./session";
 import { listPublishedForms, getPublishedRecipe } from "./github-recipes";
@@ -50,7 +53,7 @@ export const getRecipe = createServerFn({ method: "GET", strict: false })
   .handler(async ({ data }): Promise<ServiceContractRecipe> => {
     const token = requireToken();
     const recipe = await getPublishedRecipe(token, { formId: data.formId });
-    return recipe as unknown as ServiceContractRecipe;
+    return serviceContractRecipeSchema.parse(recipe);
   });
 
 export const submitRecipe = createServerFn({ method: "POST" })

@@ -56,12 +56,29 @@ describe("forms server functions — GitHub-backed reads", () => {
     });
   });
 
+  describe("requireToken — SESSION_SECRET missing", () => {
+    beforeEach(() => {
+      delete process.env.SESSION_SECRET;
+      (session.getSession as jest.Mock).mockReturnValue({
+        login: "alice",
+        accessToken: "ghu_test",
+        expiresAt: Date.now() + 60_000,
+      });
+    });
+
+    it("throws when SESSION_SECRET is not set", async () => {
+      await expect(listForms()).rejects.toThrow(/SESSION_SECRET/i);
+    });
+  });
+
   describe("getRecipe", () => {
     it("delegates to getPublishedRecipe", async () => {
       const recipe = {
         formId: "passport-renewal",
         title: "X",
         version: "1.1.0",
+        createdAt: "2026-01-01T00:00:00Z",
+        updatedAt: "2026-01-01T00:00:00Z",
         steps: [],
       };
       (githubRecipes.getPublishedRecipe as jest.Mock).mockResolvedValue(recipe);
@@ -74,7 +91,7 @@ describe("forms server functions — GitHub-backed reads", () => {
           formId: "passport-renewal",
         },
       );
-      expect(result).toBe(recipe);
+      expect(result).toEqual(recipe);
     });
 
     it("throws when there is no session", async () => {
