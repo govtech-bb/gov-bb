@@ -41,6 +41,20 @@ COPY --chown=app:app packages/ packages/
 
 RUN pnpm exec nx build api
 
+# ---- dev ----------------------------------------------------------------
+# Hot-reload image used by docker-compose for local iteration. Reuses the
+# builder stage (deps already installed, source already copied, prod build
+# already primed) and swaps the CMD to `nx dev api` — the same watcher
+# (@nx/js:node → tsc --watch + node restart) the host uses via
+# `pnpm dev:api`. Compose bind-mounts apps/api/src and ./packages on top
+# of the copied source, so host edits trigger a rebuild + restart inside
+# the container. Kept BEFORE `runner` so `runner` stays the default
+# last stage — prod builds (ECS, CI) don't need to pass --target.
+FROM builder AS dev
+ENV NODE_ENV=development
+EXPOSE 3001
+CMD ["pnpm", "exec", "nx", "dev", "api"]
+
 # ---- runner -------------------------------------------------------------
 # Slim runtime image. Includes pnpm so the ECS sandbox migrate-task
 # (deploy-sandbox.yml) can shell into the container and run `pnpm migration:run`.
