@@ -20,7 +20,7 @@ export type RequiredState =
   | "unknownState";
 
 export const valueIsEmpty = (value: FieldValue): boolean | undefined => {
-  if (!value) return true;
+  if (value === null || value === undefined) return true;
   if (typeof value === "string")
     return value.length === 0; // If required and no content, flag it.
   else if (Array.isArray(value)) {
