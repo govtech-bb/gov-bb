@@ -61,4 +61,28 @@ describe("PaymentRepository.findOrCreate", () => {
     const r = new PaymentRepository(ds);
     expect(r.create({ submissionId: "s-1" })).toEqual({ submissionId: "s-1" });
   });
+
+  it("findByReference() delegates to repo.findOne with referenceNumber", async () => {
+    const entity = { id: "p-ref", referenceNumber: "REF-001" } as PaymentEntity;
+    findOne.mockResolvedValue(entity);
+    const result = await repo.findByReference("REF-001");
+    expect(findOne).toHaveBeenCalledWith({
+      where: { referenceNumber: "REF-001" },
+    });
+    expect(result).toBe(entity);
+  });
+
+  it("findByReference() returns null when not found", async () => {
+    findOne.mockResolvedValue(null);
+    const result = await repo.findByReference("UNKNOWN");
+    expect(result).toBeNull();
+  });
+
+  it("save() delegates to repo.save and returns the saved entity", async () => {
+    const entity = { id: "p-save", submissionId: "sub-save" } as PaymentEntity;
+    save.mockResolvedValue(entity);
+    const result = await repo.save(entity);
+    expect(save).toHaveBeenCalledWith(entity);
+    expect(result).toBe(entity);
+  });
 });

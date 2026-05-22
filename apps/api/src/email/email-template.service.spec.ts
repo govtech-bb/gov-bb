@@ -49,6 +49,47 @@ describe("EmailTemplateService", () => {
     });
   });
 
+  describe("template loading — edge cases", () => {
+    it("warns and returns without loading when the templates directory does not exist", () => {
+      const warnSpy = jest
+        .spyOn((service as any).logger, "warn")
+        .mockImplementation();
+      (service as any).loadTemplates("/nonexistent-path-xyz");
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("not found"),
+      );
+      warnSpy.mockRestore();
+    });
+
+    it("logs an error and skips the template when readFileSync throws", () => {
+      const errorSpy = jest
+        .spyOn((service as any).logger, "error")
+        .mockImplementation();
+      const existsSpy = jest
+        .spyOn(require("fs"), "existsSync")
+        .mockReturnValueOnce(true);
+      const readdirSpy = jest
+        .spyOn(require("fs"), "readdirSync")
+        .mockReturnValueOnce(["bad-template.hbs"]);
+      const readFileSpy = jest
+        .spyOn(require("fs"), "readFileSync")
+        .mockImplementationOnce(() => {
+          throw new Error("EACCES: permission denied");
+        });
+
+      (service as any).loadTemplates("/fake-dir");
+
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining("bad-template"),
+        expect.any(Error),
+      );
+      errorSpy.mockRestore();
+      existsSpy.mockRestore();
+      readdirSpy.mockRestore();
+      readFileSpy.mockRestore();
+    });
+  });
+
   describe("render", () => {
     it("returns null for an unknown template id", () => {
       expect(service.render("no-such-form", {})).toBeNull();
