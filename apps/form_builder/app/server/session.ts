@@ -58,6 +58,9 @@ export function decrypt(blob: string, secretBase64: string): SessionPayload {
   if (iv.length !== 12) {
     throw new Error("Malformed session blob (bad IV)");
   }
+  if (authTag.length !== 16) {
+    throw new Error("Malformed session blob (bad auth tag)");
+  }
   const decipher = createDecipheriv("aes-256-gcm", key, iv);
   decipher.setAuthTag(authTag);
   const plaintext = Buffer.concat([

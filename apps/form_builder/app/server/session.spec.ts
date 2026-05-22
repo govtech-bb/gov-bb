@@ -3,6 +3,8 @@ import {
   decrypt,
   serializeSessionCookie,
   parseSessionCookie,
+  getSession,
+  safeEqual,
   SESSION_COOKIE_NAME,
   SESSION_TTL_SECONDS,
   type SessionPayload,
@@ -56,6 +58,23 @@ describe("session encryption", () => {
     const tooShort = Buffer.alloc(16).toString("base64");
     expect(() => encrypt(SAMPLE_PAYLOAD, tooShort)).toThrow(/32 bytes/);
   });
+
+  it("rejects a tampered auth tag", () => {
+    const blob = encrypt(SAMPLE_PAYLOAD, TEST_SECRET);
+    const parts = blob.split(".");
+    const tampered = Buffer.from(parts[1], "base64");
+    tampered[0] ^= 0xff;
+    parts[1] = tampered.toString("base64");
+    expect(() => decrypt(parts.join("."), TEST_SECRET)).toThrow();
+  });
+
+  it("rejects a truncated auth tag", () => {
+    const blob = encrypt(SAMPLE_PAYLOAD, TEST_SECRET);
+    const parts = blob.split(".");
+    // Replace the auth tag with a short (4-byte) tag.
+    parts[1] = Buffer.alloc(4).toString("base64");
+    expect(() => decrypt(parts.join("."), TEST_SECRET)).toThrow(/auth tag/i);
+  });
 });
 
 describe("serializeSessionCookie", () => {
@@ -102,5 +121,59 @@ describe("parseSessionCookie", () => {
     // anyway, but parse should be tolerant.
     const header = "fb_session=abc%2Bdef%2Fghi";
     expect(parseSessionCookie(header)).toBe("abc+def/ghi");
+  });
+});
+
+describe("getSession", () => {
+  it("returns the payload for a live session", () => {
+    const blob = encrypt(SAMPLE_PAYLOAD, TEST_SECRET);
+    expect(getSession(`fb_session=${blob}`, TEST_SECRET)).toEqual(
+      SAMPLE_PAYLOAD,
+    );
+  });
+
+  it("returns null for an expired session", () => {
+    const expired: SessionPayload = {
+      ...SAMPLE_PAYLOAD,
+      expiresAt: Date.now() - 1,
+    };
+    const blob = encrypt(expired, TEST_SECRET);
+    expect(getSession(`fb_session=${blob}`, TEST_SECRET)).toBeNull();
+  });
+
+  it("returns null when the cookie header is missing", () => {
+    expect(getSession(null, TEST_SECRET)).toBeNull();
+    expect(getSession("", TEST_SECRET)).toBeNull();
+  });
+
+  it("returns null when the blob is unparseable", () => {
+    expect(getSession("fb_session=not-a-blob", TEST_SECRET)).toBeNull();
+  });
+
+  it("returns null when the blob is tampered", () => {
+    const blob = encrypt(SAMPLE_PAYLOAD, TEST_SECRET);
+    const parts = blob.split(".");
+    const tampered = Buffer.from(parts[2], "base64");
+    tampered[0] ^= 0xff;
+    parts[2] = tampered.toString("base64");
+    expect(getSession(`fb_session=${parts.join(".")}`, TEST_SECRET)).toBeNull();
+  });
+});
+
+describe("safeEqual", () => {
+  it("returns true for identical strings", () => {
+    expect(safeEqual("abc123", "abc123")).toBe(true);
+  });
+
+  it("returns false for different strings of the same length", () => {
+    expect(safeEqual("abc123", "xyz789")).toBe(false);
+  });
+
+  it("returns false for strings of different lengths", () => {
+    expect(safeEqual("short", "longer-string")).toBe(false);
+  });
+
+  it("returns true for two empty strings", () => {
+    expect(safeEqual("", "")).toBe(true);
   });
 });
