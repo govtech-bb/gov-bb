@@ -274,6 +274,42 @@ describe("FormDraftsService", () => {
         BadRequestException,
       );
     });
+
+    it("preserves original values unchanged when values is undefined", async () => {
+      // Branch: `values !== undefined && { values: {...} }` — the false arm
+      // When `values` is undefined, no merge occurs; the original draft.values is preserved
+      const draftRepo = makeDraftRepo();
+      const original = makeDraft({ values: { existing: "data" } });
+      draftRepo.findOne.mockResolvedValue(original);
+      draftRepo.save.mockImplementation(async (d) => d as FormDraftEntity);
+      const service = new FormDraftsService(draftRepo, makeFormDefRepo());
+
+      await service.update("my-draft", { lastActivePage: 3 });
+
+      // The saved object should retain the original values (no merge)
+      expect(draftRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          values: { existing: "data" },
+          lastActivePage: 3,
+        }),
+      );
+    });
+
+    it("does not spread lastActivePage when lastActivePage is undefined", async () => {
+      // Branch: `lastActivePage !== undefined && { lastActivePage }` — the false arm
+      const draftRepo = makeDraftRepo();
+      const original = makeDraft({ lastActivePage: 5 });
+      draftRepo.findOne.mockResolvedValue(original);
+      draftRepo.save.mockImplementation(async (d) => d as FormDraftEntity);
+      const service = new FormDraftsService(draftRepo, makeFormDefRepo());
+
+      await service.update("my-draft", { values: { a: 1 } });
+
+      // The saved object comes from spread — lastActivePage will be from original
+      expect(draftRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ lastActivePage: 5 }),
+      );
+    });
   });
 
   describe("abandon", () => {
@@ -355,6 +391,18 @@ describe("FormDraftsService", () => {
 
       await service.cleanupExpired();
 
+      expect(draftRepo.delete).toHaveBeenCalledTimes(2);
+    });
+
+    it("treats null affected count as 0 (nullish-coalescing branch)", async () => {
+      // Branch: `(abandoned.affected ?? 0) + (inactive.affected ?? 0)`
+      // when affected is null the ?? 0 fallback should prevent NaN in the total
+      const draftRepo = makeDraftRepo();
+      draftRepo.delete.mockResolvedValue({ affected: null, raw: [] });
+      const service = new FormDraftsService(draftRepo, makeFormDefRepo());
+
+      // Should not throw — total = 0 + 0 = 0
+      await expect(service.cleanupExpired()).resolves.toBeUndefined();
       expect(draftRepo.delete).toHaveBeenCalledTimes(2);
     });
   });

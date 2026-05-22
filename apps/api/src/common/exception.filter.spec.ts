@@ -143,5 +143,71 @@ describe("GlobalExceptionFilter", () => {
         filter.catch(new Error("boom"), makeHost(makeRes(), mockReq)),
       ).not.toThrow();
     });
+
+    it("active span → recordException wraps non-Error exception in a new Error", () => {
+      (trace.getActiveSpan as jest.Mock).mockReturnValue(mockSpan);
+
+      // A plain string is not an Error instance — should be wrapped
+      filter.catch("plain string exception", makeHost(makeRes(), mockReq));
+
+      expect(mockSpan.recordException).toHaveBeenCalledWith(expect.any(Error));
+    });
+  });
+
+  describe("parseException branches", () => {
+    it("HttpException with object body containing errors → Validation failed + errors", () => {
+      const res = makeRes();
+      const fieldErrors = { name: ["required"] };
+      const exception = new HttpException(
+        { message: "Bad Request", errors: fieldErrors },
+        400,
+      );
+
+      filter.catch(exception, makeHost(res, mockReq));
+
+      expect(res.body).toMatchObject({
+        message: "Validation failed",
+        meta: { errors: fieldErrors },
+      });
+    });
+
+    it("HttpException with array message → Validation failed + errors array", () => {
+      const res = makeRes();
+      const messages = ["name must not be empty", "email must be a string"];
+      const exception = new HttpException(
+        { message: messages, statusCode: 400 },
+        400,
+      );
+
+      filter.catch(exception, makeHost(res, mockReq));
+
+      expect(res.body).toMatchObject({
+        message: "Validation failed",
+        meta: { errors: messages },
+      });
+    });
+
+    it("HttpException with object body containing string message → uses that message", () => {
+      const res = makeRes();
+      const exception = new HttpException(
+        { message: "Custom object message", statusCode: 422 },
+        422,
+      );
+
+      filter.catch(exception, makeHost(res, mockReq));
+
+      expect(res.body).toMatchObject({ message: "Custom object message" });
+    });
+
+    it("HttpException with object body missing message → falls back to exception.message", () => {
+      const res = makeRes();
+      // getResponse() returns an object without a "message" key
+      const exception = new HttpException({ code: "E001" }, 409);
+
+      filter.catch(exception, makeHost(res, mockReq));
+
+      // Falls through to `return { statusCode, message: exception.message }`
+      expect(res.body).toMatchObject({ statusCode: 409 });
+    });
   });
 });

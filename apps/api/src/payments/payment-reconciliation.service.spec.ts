@@ -179,4 +179,15 @@ describe("PaymentReconciliationService.runOnce", () => {
     expect(webhook.handleEzpayCallback).not.toHaveBeenCalled();
     expect(result.processed).toBe(0);
   });
+
+  it("scheduled() swallows errors from runOnce and does not rethrow", async () => {
+    // Branch: the catch block inside scheduled()
+    query.mockResolvedValueOnce([{ pg_try_advisory_lock: true }]);
+    ezpay.queryTransactions.mockRejectedValue(new Error("EzPay unavailable"));
+    // The unlock query will also be called in the finally block
+    query.mockResolvedValueOnce([{ pg_advisory_unlock: true }]);
+
+    // scheduled() should catch and swallow — not propagate
+    await expect(service.scheduled()).resolves.toBeUndefined();
+  });
 });
