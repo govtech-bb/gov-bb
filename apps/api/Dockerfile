@@ -84,6 +84,8 @@ COPY --from=builder --chown=app:app /app/apps/api/package.json ./apps/api/
 COPY --from=builder --chown=app:app /app/apps/api/tsconfig.json ./apps/api/
 COPY --from=builder --chown=app:app /app/apps/api/typeorm.config.ts ./apps/api/
 COPY --from=builder --chown=app:app /app/apps/api/src/database/ ./apps/api/src/database/
+# Recipe files — read by RecipeFileLoaderService when RECIPE_SOURCE=files.
+COPY --from=builder --chown=app:app /app/recipes/ ./recipes/
 # Email templates (.hbs files not copied by tsc build)
 COPY --from=builder --chown=app:app /app/apps/api/src/email/templates/ ./dist/src/email/templates/
 

@@ -1,0 +1,9 @@
+{
+  "formId": "passport-renewal",
+  "title": "Passport Renewal",
+  "description": "Renew your passport",
+  "version": "1.0.0",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "steps": []
+}
