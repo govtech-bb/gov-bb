@@ -77,6 +77,7 @@ function makeMocks(options: MakeMocksOptions = {}) {
   const submissionRepo = {
     findOne: jest.fn().mockResolvedValue(existingEntity),
     tx: jest.fn().mockImplementation((cb) => cb(txRepo)),
+    count: jest.fn().mockResolvedValue(0),
   } as unknown as FormSubmissionRepository;
 
   const pipeline = {
