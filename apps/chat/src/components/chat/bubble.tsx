@@ -101,7 +101,7 @@ function BubbleImpl({
   if (message.role === "user") {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[75%] rounded-[16px_16px_4px_16px] bg-blue-100 px-4 py-2.5 text-sm text-white-00 leading-relaxed">
+        <div className="text-bubble max-w-[75%] rounded-[16px_16px_4px_16px] bg-blue-100 px-4 py-2.5 text-white-00">
           {text}
         </div>
       </div>
@@ -127,11 +127,11 @@ function BubbleImpl({
 
   return (
     <div className="flex max-w-[92%] items-start gap-2.5">
-      <TridentAvatar size="sm" />
+      <TridentAvatar size="sm" tone="filled" />
       <div className="flex min-w-0 flex-1 rounded-[16px_16px_16px_4px] bg-blue-10 px-4 py-3 sm:px-5 sm:py-3.5">
         <div className="flex min-w-0 flex-1 flex-col gap-3">
           {showText && (
-            <div className="text-black-00 text-sm leading-relaxed">
+            <div className="text-bubble text-black-00">
               <ReactMarkdown
                 components={MARKDOWN_COMPONENTS}
                 remarkPlugins={[remarkGfm]}
@@ -144,7 +144,7 @@ function BubbleImpl({
           {choicesPart && choicesReady && (
             <div className="flex flex-col gap-2.5">
               {choicesArgs?.question && (
-                <p className="font-medium text-black-00 text-sm leading-relaxed">
+                <p className="text-bubble font-medium text-black-00">
                   {choicesArgs.question}
                 </p>
               )}
