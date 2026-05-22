@@ -52,6 +52,11 @@ RUN corepack enable && corepack prepare pnpm@10.33.4 --activate
 RUN addgroup -S -g 1001 app && adduser -S -u 1001 -G app app
 
 WORKDIR /app
+
+# Download AWS RDS CA bundle for TLS connections to RDS (must run before USER app)
+RUN wget -O /app/rds-ca-bundle.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem && \
+    chown app:app /app/rds-ca-bundle.pem
+
 RUN chown app:app /app
 USER app
 
@@ -83,6 +88,7 @@ COPY --from=builder --chown=app:app /app/apps/api/src/database/ ./apps/api/src/d
 COPY --from=builder --chown=app:app /app/apps/api/src/email/templates/ ./dist/src/email/templates/
 
 ENV NODE_ENV=production
+ENV NODE_EXTRA_CA_CERTS=/app/rds-ca-bundle.pem
 EXPOSE 3001
 
 CMD ["node", "dist/src/main.js"]
