@@ -6,6 +6,7 @@ import { ExpressionsService } from "../../expressions/expressions.service";
 import { FormSubmissionRepository } from "./form-submission.repository";
 import { SubmissionPipelineService } from "./submission-pipeline.service";
 import { ProcessorFactory } from "./processors/processor-factory.service";
+import { generateReferenceCode } from "./reference-code";
 import type {
   SubmitDto,
   SubmitResult,
@@ -53,18 +54,17 @@ export class SubmissionsService {
     const split = this.processorFactory.resolveSplit(rawProcessors);
     const hasGating = split.gating.length > 0;
 
+    const referenceCode = await this.generateUniqueReferenceCode(dto.formId);
+
     const saved = await this.submissionRepo.tx(async (repo) => {
       const doubleCheck = await repo.findOne({
         where: { idempotencyKey },
         lock: { mode: "pessimistic_write" },
       });
-
-      if (doubleCheck) {
-        return doubleCheck;
-      }
-
+      if (doubleCheck) return doubleCheck;
       const entity = repo.create({
         idempotencyKey,
+        referenceCode,
         formId: dto.formId,
         formVersion: pinnedVersion,
         values: normalizedValues,
@@ -74,7 +74,6 @@ export class SubmissionsService {
           : FormSubmissionStatus.SUBMITTED,
         ...(hasGating ? {} : { submittedAt: new Date() }),
       });
-
       return repo.save(entity);
     });
 
@@ -133,5 +132,19 @@ export class SubmissionsService {
       message: "Submission created",
       statusCode: HttpStatus.CREATED,
     };
+  }
+
+  private async generateUniqueReferenceCode(formId: string): Promise<string> {
+    const MAX_ATTEMPTS = 5;
+    for (let i = 0; i < MAX_ATTEMPTS; i++) {
+      const code = generateReferenceCode(formId);
+      const taken = await this.submissionRepo.count({
+        where: { referenceCode: code },
+      });
+      if (taken === 0) return code;
+    }
+    throw new Error(
+      `Could not generate unique reference code after ${MAX_ATTEMPTS} attempts`,
+    );
   }
 }

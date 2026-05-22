@@ -1,0 +1,372 @@
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import {
+  GetObjectCommand,
+  HeadObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { v4 as uuid } from "uuid";
+import type { Primitive, ServiceContract } from "@govtech-bb/form-types";
+import { FormDefinitionsService } from "../forms/form-definitions/form-definitions.service";
+import type {
+  SubmissionValues,
+  ValidationErrorBundle,
+} from "../forms/submissions/submissions.types";
+import type {
+  ConfirmUploadDto,
+  FileAttachmentDto,
+  PresignUploadDto,
+  PresignUploadResponseDto,
+} from "./dto";
+
+@Injectable()
+export class FilesService {
+  private readonly s3: S3Client;
+  private readonly bucket: string;
+  private readonly globalMaxSize: number;
+  private readonly presignTtl: number;
+  private readonly readTtl: number;
+
+  constructor(
+    private readonly config: ConfigService,
+    private readonly formDefs: FormDefinitionsService,
+  ) {
+    const region = this.config.get<string>("upload.region")!;
+    const endpoint = this.config.get<string | undefined>("upload.endpoint");
+    const forcePathStyle = this.config.get<boolean>("upload.forcePathStyle");
+    // Static creds only when talking to a custom endpoint (LocalStack/dev).
+    // Production leaves credentials unset so the SDK uses the IAM role.
+    const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
+    const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
+    const useStaticCreds = !!endpoint && !!accessKeyId && !!secretAccessKey;
+    this.s3 = new S3Client({
+      region,
+      ...(endpoint ? { endpoint, forcePathStyle: !!forcePathStyle } : {}),
+      ...(useStaticCreds
+        ? {
+            credentials: {
+              accessKeyId: accessKeyId!,
+              secretAccessKey: secretAccessKey!,
+            },
+          }
+        : {}),
+    });
+    this.bucket = this.config.get<string>("upload.bucket") ?? "";
+    this.globalMaxSize = this.config.get<number>("upload.maxSizeBytes")!;
+    this.presignTtl = this.config.get<number>("upload.presignTtlSeconds")!;
+    this.readTtl = this.config.get<number>("upload.readUrlTtlSeconds")!;
+  }
+
+  async presignUpload(
+    dto: PresignUploadDto,
+  ): Promise<PresignUploadResponseDto> {
+    this.assertConfigured();
+    const field = await this.resolveFileField(
+      dto.formId,
+      dto.formVersion,
+      dto.stepId,
+      dto.fieldId,
+    );
+
+    this.assertContentTypeAllowed(field, dto.contentType, dto.fileName);
+    const maxSize = this.resolveMaxSize(field);
+    if (dto.size > maxSize) {
+      throw new BadRequestException(`File exceeds max size (${maxSize} bytes)`);
+    }
+
+    const key = this.buildKey(dto.formId, dto.fileName);
+    const command = new PutObjectCommand({
+      Bucket: this.bucket,
+      Key: key,
+      ContentType: dto.contentType,
+      ContentLength: dto.size,
+    });
+    const uploadUrl = await getSignedUrl(this.s3, command, {
+      expiresIn: this.presignTtl,
+    });
+
+    return { uploadUrl, key, expiresIn: this.presignTtl, maxSize };
+  }
+
+  async confirmUpload(dto: ConfirmUploadDto): Promise<FileAttachmentDto> {
+    this.assertConfigured();
+    // TODO(security): the (formId, stepId, fieldId) the client supplies here
+    // is NOT cryptographically bound to the S3 key — a caller could presign
+    // for one field and confirm under another, escaping the stricter policy.
+    // Fix once these endpoints get auth: embed the tuple in the key prefix
+    // (or sign a token at presign and require it here).
+    const field = await this.resolveFileField(
+      dto.formId,
+      dto.formVersion,
+      dto.stepId,
+      dto.fieldId,
+    );
+
+    let head;
+    try {
+      head = await this.s3.send(
+        new HeadObjectCommand({ Bucket: this.bucket, Key: dto.key }),
+      );
+    } catch {
+      throw new NotFoundException("Upload not found");
+    }
+
+    const name = this.extractOriginalName(dto.key);
+    const size = head.ContentLength ?? 0;
+    const type = head.ContentType ?? "application/octet-stream";
+
+    // S3 echoes the PUT's Content-Type/Length headers without enforcing or
+    // sniffing — re-check against the field's policy here.
+    const maxSize = this.resolveMaxSize(field);
+    if (size > maxSize) {
+      throw new BadRequestException(
+        `Uploaded file exceeds max size (${maxSize} bytes)`,
+      );
+    }
+    this.assertContentTypeAllowed(field, type, name);
+
+    const url = await this.getSignedReadUrl(dto.key);
+    return { key: dto.key, url, name, size, type };
+  }
+
+  async verifyKeysExist(keys: string[]): Promise<Set<string>> {
+    this.assertConfigured();
+    const missing = new Set<string>();
+    // Cap concurrency to avoid saturating S3 and turning throttling into
+    // false "missing" errors. Throttle errors are re-raised, not swallowed.
+    const CONCURRENCY = 10;
+    for (let i = 0; i < keys.length; i += CONCURRENCY) {
+      const batch = keys.slice(i, i + CONCURRENCY);
+      await Promise.all(
+        batch.map(async (key) => {
+          try {
+            await this.s3.send(
+              new HeadObjectCommand({ Bucket: this.bucket, Key: key }),
+            );
+          } catch (err: unknown) {
+            const name = (err as { name?: string } | null)?.name;
+            if (name && /Throttl|SlowDown|Limit/i.test(name)) throw err;
+            missing.add(key);
+          }
+        }),
+      );
+    }
+    return missing;
+  }
+
+  /**
+   * Walks every form contract once to find the file-typed field ids per step.
+   * The pipeline passes this map to both `verifySubmissionFiles` (S3 existence
+   * check) and `normalizeForStorage` (URL stripping) — one walk, one source
+   * of truth.
+   */
+  static collectFileFieldsByStep(
+    contract: ServiceContract,
+  ): Map<string, Set<string>> {
+    const out = new Map<string, Set<string>>();
+    for (const step of contract.steps) {
+      const ids = step.elements
+        .filter((e) => "htmlType" in e && e.htmlType === "file")
+        .map((e) => (e as { fieldId: string }).fieldId);
+      if (ids.length > 0) out.set(step.stepId, new Set(ids));
+    }
+    return out;
+  }
+
+  async verifySubmissionFiles(
+    fileFieldsByStep: Map<string, Set<string>>,
+    values: SubmissionValues,
+  ): Promise<ValidationErrorBundle> {
+    if (fileFieldsByStep.size === 0) return {};
+
+    type FileVal = { key?: string };
+    const toFileArray = (v: unknown): FileVal[] =>
+      Array.isArray(v) ? (v as FileVal[]) : [];
+
+    interface Location {
+      stepId: string;
+      instanceIndex: number;
+      fieldId: string;
+      isRepeatable: boolean;
+    }
+    const locations: Array<{ key: string; loc: Location }> = [];
+    const keyless: Location[] = [];
+
+    for (const [stepId, fieldIds] of fileFieldsByStep) {
+      const stepVal = values[stepId];
+      if (stepVal === undefined) continue;
+      const isRepeatable = Array.isArray(stepVal);
+      const instances = isRepeatable ? stepVal : [stepVal];
+      instances.forEach((inst, idx) => {
+        for (const fid of fieldIds) {
+          const arr = toFileArray((inst as Record<string, unknown>)[fid]);
+          for (const item of arr) {
+            const loc = {
+              stepId,
+              instanceIndex: idx,
+              fieldId: fid,
+              isRepeatable,
+            };
+            if (typeof item.key === "string" && item.key.length > 0) {
+              locations.push({ key: item.key, loc });
+            } else {
+              keyless.push(loc);
+            }
+          }
+        }
+      });
+    }
+
+    if (locations.length === 0 && keyless.length === 0) return {};
+
+    const missingKeys =
+      locations.length > 0
+        ? await this.verifyKeysExist(locations.map((l) => l.key))
+        : new Set<string>();
+    if (missingKeys.size === 0 && keyless.length === 0) return {};
+
+    const errorLocs: Location[] = [
+      ...locations.filter((l) => missingKeys.has(l.key)).map((l) => l.loc),
+      ...keyless,
+    ];
+
+    // Pad `{}` for clean instances based on the max index seen across all
+    // locations, matching foldErrors' bundle shape for repeatable steps.
+    const maxIndexByStep = new Map<string, number>();
+    const allLocs: Location[] = [...locations.map((l) => l.loc), ...keyless];
+    for (const loc of allLocs) {
+      if (!loc.isRepeatable) continue;
+      const prev = maxIndexByStep.get(loc.stepId) ?? -1;
+      if (loc.instanceIndex > prev)
+        maxIndexByStep.set(loc.stepId, loc.instanceIndex);
+    }
+
+    const bundle: ValidationErrorBundle = {};
+    const pushErr = (loc: Location) => {
+      if (loc.isRepeatable) {
+        const slot = (bundle[loc.stepId] ??= { instances: [] }) as {
+          instances: Array<Record<string, string[]>>;
+        };
+        const targetLen = (maxIndexByStep.get(loc.stepId) ?? 0) + 1;
+        while (slot.instances.length < targetLen) slot.instances.push({});
+        const inst = slot.instances[loc.instanceIndex]!;
+        (inst[loc.fieldId] ??= []).push("Uploaded file not found");
+      } else {
+        const slot = (bundle[loc.stepId] ??= {}) as Record<string, string[]>;
+        (slot[loc.fieldId] ??= []).push("Uploaded file not found");
+      }
+    };
+    for (const loc of errorLocs) pushErr(loc);
+    return bundle;
+  }
+
+  async getSignedReadUrl(key: string, ttlSeconds?: number): Promise<string> {
+    const command = new GetObjectCommand({ Bucket: this.bucket, Key: key });
+    return getSignedUrl(this.s3, command, {
+      expiresIn: ttlSeconds ?? this.readTtl,
+    });
+  }
+
+  private assertConfigured(): void {
+    if (!this.bucket) {
+      throw new BadRequestException("Uploads not configured");
+    }
+  }
+
+  private async resolveFileField(
+    formId: string,
+    formVersion: string,
+    stepId: string,
+    fieldId: string,
+  ): Promise<Primitive> {
+    let contract;
+    try {
+      contract = await this.formDefs.findByFormId({
+        formId,
+        version: formVersion,
+      });
+    } catch {
+      throw new BadRequestException(`Form not found: ${formId}@${formVersion}`);
+    }
+    const step = contract.steps.find((s) => s.stepId === stepId);
+    if (!step) {
+      throw new BadRequestException(`Unknown step: ${stepId}`);
+    }
+    const field = step.elements.find(
+      (e): e is Primitive => "fieldId" in e && e.fieldId === fieldId,
+    );
+    if (!field) {
+      throw new BadRequestException(`Unknown file field: ${stepId}.${fieldId}`);
+    }
+    if (field.htmlType !== "file") {
+      throw new BadRequestException(
+        `Field is not a file field: ${stepId}.${fieldId}`,
+      );
+    }
+    return field;
+  }
+
+  private assertContentTypeAllowed(
+    field: Primitive,
+    contentType: string,
+    fileName: string,
+  ): void {
+    const allowed = field.validations?.fileTypes?.value as string[] | undefined;
+    if (!allowed || allowed.length === 0) return;
+
+    // Allowlist entries starting with "." are extension patterns; everything
+    // else is a MIME type. A file is accepted if EITHER matches — users
+    // typically configure `[".pdf", "application/pdf"]` meaning "PDFs OK".
+    // Note: contentType is client-supplied (S3 does not sniff bytes), so this
+    // is policy enforcement, not malware defense.
+    const lc = allowed.map((s) => s.toLowerCase());
+    const parts = fileName.split(".");
+    const ext =
+      parts.length > 1 ? `.${parts[parts.length - 1]!.toLowerCase()}` : "";
+
+    if (lc.includes(contentType.toLowerCase()) || lc.includes(ext)) return;
+
+    throw new BadRequestException(
+      `Content type ${contentType} not allowed for this field`,
+    );
+  }
+
+  private resolveMaxSize(field: Primitive): number {
+    const fromValidation = field.validations?.itemMaxSize?.value as
+      | number
+      | undefined;
+    return typeof fromValidation === "number" && fromValidation > 0
+      ? fromValidation
+      : this.globalMaxSize;
+  }
+
+  private buildKey(formId: string, fileName: string): string {
+    const now = new Date();
+    const yyyy = now.getUTCFullYear();
+    const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
+    return `uploads/${formId}/${yyyy}/${mm}/${uuid()}-${this.sanitizeFileName(
+      fileName,
+    )}`;
+  }
+
+  private sanitizeFileName(name: string): string {
+    return name
+      .toLowerCase()
+      .replace(/\s+/g, "_")
+      .replace(/[^a-z0-9._-]/g, "");
+  }
+
+  private extractOriginalName(key: string): string {
+    const last = key.split("/").pop() ?? key;
+    return last.replace(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-/,
+      "",
+    );
+  }
+}
