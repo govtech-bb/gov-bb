@@ -24,8 +24,9 @@ function labelFor(hit: SearchHit): string {
 
 function SearchResultsPage() {
   const { q } = Route.useSearch()
+  const { previewMode } = Route.useRouteContext()
   const query = q.trim()
-  const hits = query ? search(query) : []
+  const hits = query ? search(query, previewMode) : []
   const hasResults = query && hits.length > 0
   const hasNoResults = query && hits.length === 0
 

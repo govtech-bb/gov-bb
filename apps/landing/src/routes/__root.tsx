@@ -2,13 +2,16 @@ import {
   HeadContent,
   Scripts,
   createRootRouteWithContext,
+  redirect,
 } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/react-start'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import { Footer, textVariants } from '@govtech-bb/react'
 import Header from '../components/Header'
 import { ErrorPage } from '../components/ErrorPage'
 import { trackEvent } from '../lib/analytics'
+import { handlePreviewQuery, isPreviewMode } from '../lib/preview-mode.server'
 
 import TanStackQueryDevtools from '../integrations/tanstack-query/devtools'
 
@@ -41,7 +44,17 @@ interface MyRouterContext {
   queryClient: QueryClient
 }
 
+const resolvePreviewMode = createServerFn({ method: 'GET' }).handler(() => {
+  const redirectTo = handlePreviewQuery()
+  return { previewMode: isPreviewMode(), redirectTo: redirectTo ?? null }
+})
+
 export const Route = createRootRouteWithContext<MyRouterContext>()({
+  beforeLoad: async () => {
+    const { previewMode, redirectTo } = await resolvePreviewMode()
+    if (redirectTo) throw redirect({ href: redirectTo })
+    return { previewMode }
+  },
   head: () => ({
     meta: [
       { charSet: 'utf-8' },

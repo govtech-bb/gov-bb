@@ -204,13 +204,14 @@ function mdaDoc(entry: Ministry | Department | StateBody): IndexDoc {
   }
 }
 
-function buildIndex(): {
+function buildIndex(includeDrafts: boolean): {
   ms: MiniSearch<IndexDoc>
   docs: Map<string, IndexDoc>
 } {
   const docs = new Map<string, IndexDoc>()
 
   for (const page of PAGES) {
+    if (page.frontmatter.draft && !includeDrafts) continue
     const firstCat = page.frontmatter.categories[0]
     const category =
       (firstCat && CATEGORY_BY_SLUG[firstCat]?.title) || 'Service'
@@ -254,19 +255,21 @@ function buildIndex(): {
   return { ms, docs }
 }
 
-const indexPromise: { current: ReturnType<typeof buildIndex> | null } = {
-  current: null,
+const cachedIndex: {
+  public: ReturnType<typeof buildIndex> | null
+  preview: ReturnType<typeof buildIndex> | null
+} = { public: null, preview: null }
+
+function getIndex(includeDrafts: boolean) {
+  const key = includeDrafts ? 'preview' : 'public'
+  if (!cachedIndex[key]) cachedIndex[key] = buildIndex(includeDrafts)
+  return cachedIndex[key]
 }
 
-function getIndex() {
-  if (!indexPromise.current) indexPromise.current = buildIndex()
-  return indexPromise.current
-}
-
-export function search(query: string): Array<SearchHit> {
+export function search(query: string, previewMode = false): Array<SearchHit> {
   const trimmed = query.trim()
   if (!trimmed) return []
-  const { ms, docs } = getIndex()
+  const { ms, docs } = getIndex(previewMode)
   return ms.search(trimmed).map((r): SearchHit => {
     const stored = docs.get(String(r.id))
     return {

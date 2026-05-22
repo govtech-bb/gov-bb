@@ -1,7 +1,7 @@
 import type { Element, ElementContent, Root } from 'hast'
 
 export type RehypeHideStartLinksOptions = {
-  hasResearchAccess?: boolean
+  hideStartLinks?: boolean
 }
 
 const WAYS_TO_APPLY_REGEX = /are (\d+) ways|are ([a-zA-Z]+) ways/i
@@ -19,10 +19,13 @@ const WORD_TO_NUMBER: Record<string, number> = {
 }
 
 function rehypeHideStartLinks(options: RehypeHideStartLinksOptions = {}) {
-  const { hasResearchAccess = false } = options
-  let removedLinksCount = 0
+  const { hideStartLinks = false } = options
 
   return (tree: Root) => {
+    if (!hideStartLinks) return
+
+    let removedLinksCount = 0
+
     const filterChildren = (children: Root['children']): Root['children'] =>
       children
         .filter((node) => {
@@ -30,17 +33,14 @@ function rehypeHideStartLinks(options: RehypeHideStartLinksOptions = {}) {
           const element = node
 
           if (element.tagName === 'li') {
-            const containsStartLinkResult = containsStartLink(
-              element,
-              hasResearchAccess,
-            )
-            if (containsStartLinkResult) {
+            if (containsStartLink(element)) {
               removedLinksCount++
+              return false
             }
-            return !containsStartLinkResult
+            return true
           }
 
-          if (shouldHideStartLink(element, hasResearchAccess)) {
+          if (isStartLink(element)) {
             removedLinksCount++
             return false
           }
@@ -50,9 +50,7 @@ function rehypeHideStartLinks(options: RehypeHideStartLinksOptions = {}) {
           if (node.type === 'element' && node.children) {
             return {
               ...node,
-              children: filterChildren(
-                node.children,
-              ) as Element['children'],
+              children: filterChildren(node.children) as Element['children'],
             }
           }
           return node
@@ -61,66 +59,42 @@ function rehypeHideStartLinks(options: RehypeHideStartLinksOptions = {}) {
     tree.children = filterChildren(tree.children)
 
     if (removedLinksCount > 0) {
-      updateDescriptionText(
-        tree.children,
-        hasResearchAccess,
-        removedLinksCount,
-      )
+      updateDescriptionText(tree.children, removedLinksCount)
     }
   }
 }
 
-function containsStartLink(
-  node: ElementContent,
-  hasResearchAccess: boolean,
-): boolean {
-  if (node.type === 'element') {
-    if (shouldHideStartLink(node, hasResearchAccess)) return true
-    return node.children.some((child) =>
-      containsStartLink(child, hasResearchAccess),
-    )
-  }
-  return false
+function containsStartLink(node: ElementContent): boolean {
+  if (node.type !== 'element') return false
+  if (isStartLink(node)) return true
+  return node.children.some((child) => containsStartLink(child))
 }
 
-function shouldHideStartLink(
-  element: Element,
-  hasResearchAccess: boolean,
-): boolean {
+function isStartLink(element: Element): boolean {
   if (element.tagName !== 'a') return false
   const href = element.properties?.href
-  const isExternalForm = element.properties?.dataExternalForm !== undefined
   if (typeof href !== 'string') return false
-  const isStartLink = href.endsWith('/start')
-  if (hasResearchAccess && isExternalForm) return true
-  if (!hasResearchAccess && isStartLink) return true
-  return false
+  return href.endsWith('/start')
 }
 
-function shouldReplaceDescriptionText(
-  element: Element,
-  hasResearchAccess: boolean,
-): boolean {
+function shouldReplaceDescriptionText(element: Element): boolean {
   if (element.tagName !== 'p') return false
-
   const textContent = element.children
     .filter((child) => child.type === 'text')
     .map((child) => child.value)
     .join('')
-
-  return WAYS_TO_APPLY_REGEX.test(textContent) && !hasResearchAccess
+  return WAYS_TO_APPLY_REGEX.test(textContent)
 }
 
 function updateDescriptionText(
   children: Root['children'],
-  hasResearchAccess: boolean,
   linksRemovedCount: number,
 ): void {
   for (const node of children) {
     if (node.type !== 'element') continue
     const element = node
 
-    if (shouldReplaceDescriptionText(element, hasResearchAccess)) {
+    if (shouldReplaceDescriptionText(element)) {
       const textContent = element.children
         .filter((child) => child.type === 'text')
         .map((child) => child.value)
@@ -146,11 +120,7 @@ function updateDescriptionText(
     }
 
     if (element.children) {
-      updateDescriptionText(
-        element.children,
-        hasResearchAccess,
-        linksRemovedCount,
-      )
+      updateDescriptionText(element.children, linksRemovedCount)
     }
   }
 }

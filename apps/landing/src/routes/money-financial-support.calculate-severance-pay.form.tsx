@@ -1,9 +1,15 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { SeveranceCalculator } from '../blocks/severance/SeveranceCalculator'
+import { requireFormAccess } from '../lib/preview-mode'
 
 export const Route = createFileRoute(
   '/money-financial-support/calculate-severance-pay/form',
 )({
+  loader: ({ context }) =>
+    requireFormAccess(
+      'money-financial-support/calculate-severance-pay',
+      context.previewMode,
+    ),
   head: () => ({
     meta: [
       {

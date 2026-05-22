@@ -23,6 +23,19 @@ export const FrontmatterSchema = z.object({
    * See docs/decisions/0005 for the convention.
    */
   form_id: z.string().optional(),
+  /**
+   * When true, the page and its form sub-routes are hidden from the public.
+   * They 404 for visitors without the preview cookie and are excluded from
+   * search results and category/subcategory listings.
+   * See docs/decisions/0006 for the visibility model.
+   */
+  draft: z.boolean().optional(),
+  /**
+   * When true, the page itself remains publicly visible but its form sub-routes
+   * and inline "start" links are hidden for visitors without the preview cookie.
+   * See docs/decisions/0006 for the visibility model.
+   */
+  protected: z.boolean().optional(),
 })
 
 export type RawFrontmatter = z.infer<typeof FrontmatterSchema>

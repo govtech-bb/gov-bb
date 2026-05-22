@@ -251,11 +251,11 @@ function StartLinkFromContext({
 export function MarkdownBody({
   body,
   formId,
-  hasResearchAccess = false,
+  hideStartLinks = false,
 }: {
   body: string
   formId?: string
-  hasResearchAccess?: boolean
+  hideStartLinks?: boolean
 }) {
   return (
     <PageFormIdContext.Provider value={formId}>
@@ -263,7 +263,7 @@ export function MarkdownBody({
         components={markdownComponents}
         rehypePlugins={[
           rehypeRaw,
-          [rehypeHideStartLinks, { hasResearchAccess }],
+          [rehypeHideStartLinks, { hideStartLinks }],
           rehypeSectionise,
         ]}
         remarkPlugins={[remarkGfm]}
@@ -277,14 +277,17 @@ export function MarkdownBody({
 export type MarkdownContentProps = {
   frontmatter: Frontmatter
   body: string
-  hasResearchAccess?: boolean
+  previewMode?: boolean
 }
 
 export function MarkdownContent({
   frontmatter,
   body,
-  hasResearchAccess = false,
+  previewMode = false,
 }: MarkdownContentProps) {
+  const hideStartLinks =
+    (frontmatter.protected || frontmatter.draft) === true && !previewMode
+
   return (
     <div className="mb-xm lg:grid lg:grid-cols-3 lg:gap-16">
       <div className="space-y-6 lg:col-span-2 lg:space-y-8">
@@ -308,7 +311,7 @@ export function MarkdownContent({
         <MarkdownBody
           body={body}
           formId={frontmatter.form_id}
-          hasResearchAccess={hasResearchAccess}
+          hideStartLinks={hideStartLinks}
         />
       </div>
     </div>

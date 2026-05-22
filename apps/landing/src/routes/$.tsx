@@ -30,9 +30,12 @@ type LoaderData =
     }
 
 export const Route = createFileRoute('/$')({
-  loader: ({ params }): LoaderData => {
+  loader: ({ params, context }): LoaderData => {
+    const previewMode = context.previewMode
     const splat = (params._splat ?? '').replace(/^\/+|\/+$/g, '')
     const segments = splat.split('/').filter(Boolean)
+    const isVisible = (p: ContentPage) =>
+      previewMode || !p.frontmatter.draft
 
     if (segments.length === 1) {
       const cat = CATEGORY_BY_SLUG[segments[0]]
@@ -44,8 +47,8 @@ export const Route = createFileRoute('/$')({
             subcategories: cat.subcategories,
           }
         }
-        const items = PAGES.filter((p) =>
-          p.frontmatter.categories.includes(cat.slug),
+        const items = PAGES.filter(
+          (p) => p.frontmatter.categories.includes(cat.slug) && isVisible(p),
         ).map((p) => ({
           title: p.frontmatter.title,
           description: p.frontmatter.description,
@@ -56,7 +59,7 @@ export const Route = createFileRoute('/$')({
     }
 
     const page = findPage(splat)
-    if (page) return { kind: 'page', page }
+    if (page && isVisible(page)) return { kind: 'page', page }
 
     if (segments.length === 2) {
       const cat = CATEGORY_BY_SLUG[segments[0]]
@@ -65,7 +68,8 @@ export const Route = createFileRoute('/$')({
         const items = PAGES.filter(
           (p) =>
             p.frontmatter.categories.includes(cat.slug) &&
-            p.frontmatter.subcategory === sub.slug,
+            p.frontmatter.subcategory === sub.slug &&
+            isVisible(p),
         ).map((p) => ({
           title: p.frontmatter.title,
           description: p.frontmatter.description,
@@ -110,7 +114,9 @@ export const Route = createFileRoute('/$')({
 
 function ContentRoute() {
   const data = Route.useLoaderData()
-  if (data.kind === 'page') return <PageView page={data.page} />
+  const { previewMode } = Route.useRouteContext()
+  if (data.kind === 'page')
+    return <PageView page={data.page} previewMode={previewMode} />
   if (data.kind === 'subcategory-index')
     return (
       <SubcategoryIndexView
@@ -125,10 +131,20 @@ function ContentRoute() {
   return <CategoryView category={data.category} items={data.items} />
 }
 
-function PageView({ page }: { page: ContentPage }) {
+function PageView({
+  page,
+  previewMode,
+}: {
+  page: ContentPage
+  previewMode: boolean
+}) {
   return (
     <Shell>
-      <MarkdownContent body={page.body} frontmatter={page.frontmatter} />
+      <MarkdownContent
+        body={page.body}
+        frontmatter={page.frontmatter}
+        previewMode={previewMode}
+      />
     </Shell>
   )
 }

@@ -1,9 +1,15 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { CropOverPermitsForm } from '../blocks/crop-over-permits/CropOverPermitsForm'
+import { requireFormAccess } from '../lib/preview-mode'
 
 export const Route = createFileRoute(
   '/business-trade/crop-over-permits/form',
 )({
+  loader: ({ context }) =>
+    requireFormAccess(
+      'business-trade/crop-over-permits',
+      context.previewMode,
+    ),
   head: () => ({
     meta: [
       {
