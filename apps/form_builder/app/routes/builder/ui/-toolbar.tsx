@@ -13,6 +13,7 @@ interface ToolbarProps {
   isValidating: boolean;
   isPreviewing: boolean;
   isSubmitting: boolean;
+  isPublishing: boolean;
   canSubmit: boolean;
   lastSaveStatus: "idle" | "success" | "error" | "submitted";
   onFormIdChange: (id: string) => void;
@@ -22,6 +23,7 @@ interface ToolbarProps {
   onValidate: () => void;
   onPreview: () => void;
   onSubmit: () => void;
+  onPublish: () => void;
 }
 
 export function Toolbar({
@@ -32,6 +34,7 @@ export function Toolbar({
   isValidating,
   isPreviewing,
   isSubmitting,
+  isPublishing,
   canSubmit,
   lastSaveStatus,
   onFormIdChange,
@@ -41,6 +44,7 @@ export function Toolbar({
   onValidate,
   onPreview,
   onSubmit,
+  onPublish,
 }: ToolbarProps) {
   const [formIdError, setFormIdError] = useState<string>("");
 
@@ -114,7 +118,15 @@ export function Toolbar({
         onClick={onSubmit}
         disabled={!canSubmit || isSubmitting}
       >
-        {isSubmitting ? "Submitting…" : "Submit"}
+        {isSubmitting ? "Submitting…" : "Save draft"}
+      </button>
+      <button
+        type="button"
+        className={styles.btnPrimary}
+        onClick={onPublish}
+        disabled={!canSubmit || isPublishing}
+      >
+        {isPublishing ? "Opening PR…" : "Deploy via GitHub"}
       </button>
       {lastSaveStatus !== "idle" && (
         <span
