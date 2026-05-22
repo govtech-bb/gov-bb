@@ -161,7 +161,7 @@ jobs:
       - name: Monitor Amplify build (landing)
         id: amplify-landing
         env:
-          AMPLIFY_APP_ID: d11raxlkr37ywp
+          AMPLIFY_APP_ID: d3kbl8o0ovutw4
           AMPLIFY_BRANCH: sandbox
         run: |
           JOB_ID=$(aws amplify start-job \
