@@ -3,6 +3,7 @@ title: "Redirect my business mail"
 description: ""
 publish_date: 2026-01-30
 section: "Travel, ID and citizenship"
+form_id: post-office-redirection-business
 ---
 
 You should complete the redirection mail in one go. At the moment, it is not possible to save your answers and come back to them later.
@@ -24,4 +25,4 @@ You will need to share:
 - start date of redirection
 - end date of the redirection
 
-<a data-start-link href="/travel-id-citizenship/post-office-redirection-business/form">Start</a>
+<a data-start-link>Start</a>

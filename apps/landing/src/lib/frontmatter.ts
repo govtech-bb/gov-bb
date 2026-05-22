@@ -15,6 +15,14 @@ export const FrontmatterSchema = z.object({
   featured: z.boolean().optional(),
   section: z.string().optional(),
   service_type: z.enum(['digital', 'information']).optional(),
+  /**
+   * Form ID in the forms API. When set, a `<a data-start-link>` element
+   * inside the page's body is rendered as a Start now button linking to
+   * the forms app — but only if the form ID is present in the
+   * build-time manifest at src/content/available-forms.gen.ts.
+   * See docs/decisions/0005 for the convention.
+   */
+  form_id: z.string().optional(),
 })
 
 export type RawFrontmatter = z.infer<typeof FrontmatterSchema>

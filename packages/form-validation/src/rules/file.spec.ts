@@ -79,11 +79,7 @@ describe("fileTypesRunner", () => {
 
   it("passes for a file with no extension when mime type matches allowed list", () => {
     expect(
-      fileTypesRunner(
-        [file("README", 100, ".pdf")],
-        cfg([".pdf"]),
-        {},
-      ),
+      fileTypesRunner([file("README", 100, ".pdf")], cfg([".pdf"]), {}),
     ).toBeNull();
   });
 

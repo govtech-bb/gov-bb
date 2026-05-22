@@ -1,5 +1,6 @@
 import React from "react";
 import designSystem from "../styles/govtechbb.module.css";
+import { isSafePaymentUrl } from "../lib/security/safe-payment-url";
 import { SubmissionConfirmationProps } from "../types/props.type";
 
 export default function SubmissionConfirmation({
@@ -71,7 +72,7 @@ export default function SubmissionConfirmation({
                   </div>
                 </div>
               </div>
-            ) : (
+            ) : isSafePaymentUrl(paymentUrl) ? (
               <div>
                 <div>
                   <p className={designSystem.formTitle}>{serviceTitle}</p>
@@ -103,6 +104,28 @@ export default function SubmissionConfirmation({
                     payment.
                   </p>
                 </div>
+              </div>
+            ) : (
+              <div>
+                <div className={designSystem.errorHeader}>
+                  <p className={designSystem.errorServiceTitle}>
+                    {serviceTitle}
+                  </p>
+                  <h1 className={designSystem.errorStepTitle}>
+                    Payment could not be initiated
+                  </h1>
+                  <p className={designSystem.errorSubheading}>
+                    Your submission was saved, but we were unable to start the
+                    payment securely. Please contact support and quote your
+                    reference number.
+                  </p>
+                </div>
+                {referenceNumber && (
+                  <div className={designSystem.paymentSummaryTable}>
+                    <p>Reference Number</p>
+                    <p>{referenceNumber}</p>
+                  </div>
+                )}
               </div>
             )
           ) : (

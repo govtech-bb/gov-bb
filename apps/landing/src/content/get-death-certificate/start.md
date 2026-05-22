@@ -2,6 +2,7 @@
 title: "Get a copy of a death certificate"
 stage: "alpha"
 publish_date: 2026-01-30
+form_id: get-death-certificate
 ---
 
 <!-- # Get a copy of a death certificate -->
@@ -28,4 +29,4 @@ The form asks for:
 - the deceased’s full name, date of death, place of death and National ID number
 - the cause of death
 
-<a data-start-link href="/family-birth-relationships/get-death-certificate/form">Start</a>
+<a data-start-link>Start</a>

@@ -1,21 +1,21 @@
 import { createRouter as createTanStackRouter } from '@tanstack/react-router'
+import { QueryClient } from '@tanstack/react-query'
 import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query'
 import { routeTree } from './routeTree.gen'
-import { getContext } from './integrations/tanstack-query/root-provider'
 import { trackPageview } from './lib/analytics'
 
 export function getRouter() {
-  const context = getContext()
+  const queryClient = new QueryClient()
 
   const router = createTanStackRouter({
     routeTree,
-    context,
+    context: { queryClient },
     scrollRestoration: true,
     defaultPreload: 'intent',
     defaultPreloadStaleTime: 0,
   })
 
-  setupRouterSsrQueryIntegration({ router, queryClient: context.queryClient })
+  setupRouterSsrQueryIntegration({ router, queryClient })
 
   router.subscribe('onResolved', trackPageview)
 

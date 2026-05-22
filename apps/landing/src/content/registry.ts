@@ -1,5 +1,5 @@
-import matter from 'gray-matter'
 import { FrontmatterSchema, titleFromSlug } from '../lib/frontmatter'
+import { parseFrontmatter } from '../lib/parse-frontmatter'
 import type { Frontmatter } from '../lib/frontmatter'
 import { CATEGORIES, CATEGORY_BY_SLUG, getSubcategory } from './categories'
 
@@ -55,7 +55,7 @@ const modules = import.meta.glob(
 export const PAGES: Array<ContentPage> = Object.entries(modules).map(
   ([path, source]) => {
     const slug = slugFromPath(path)
-    const { data, content } = matter(source)
+    const { data, content } = parseFrontmatter(source as string)
     const parsed = FrontmatterSchema.safeParse(data)
     if (!parsed.success) {
       throw new Error(

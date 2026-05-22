@@ -4,8 +4,8 @@
 // frontmatter (`kind: ministry | department | state-body`). The loader groups
 // them by kind, exposes typed entry arrays + body lookup maps.
 
-import matter from 'gray-matter'
 import type { ReactNode } from 'react'
+import { parseFrontmatter } from '../lib/parse-frontmatter'
 
 import type {
   AssociatedDepartmentGroup,
@@ -61,12 +61,17 @@ function loadAll(): Loaded {
   const bodies = new Map<string, string>()
 
   for (const raw of Object.values(modules)) {
-    const { data, content } = matter(raw)
-    if (!data?.slug || !data?.name || !data?.kind) continue
-    bodies.set(data.slug, content.trim())
-    if (data.kind === 'ministry') ministries.push(data as Ministry)
-    else if (data.kind === 'department') departments.push(data as Department)
-    else if (data.kind === 'state-body') stateBodies.push(data as StateBody)
+    const { data, content } = parseFrontmatter(raw)
+    const slug = typeof data.slug === 'string' ? data.slug : undefined
+    const name = typeof data.name === 'string' ? data.name : undefined
+    const kind = typeof data.kind === 'string' ? data.kind : undefined
+    if (!slug || !name || !kind) continue
+    bodies.set(slug, content.trim())
+    if (kind === 'ministry') ministries.push(data as unknown as Ministry)
+    else if (kind === 'department')
+      departments.push(data as unknown as Department)
+    else if (kind === 'state-body')
+      stateBodies.push(data as unknown as StateBody)
   }
 
   const byName = (a: { name: string }, b: { name: string }) =>

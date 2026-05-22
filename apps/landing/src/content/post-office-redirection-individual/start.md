@@ -3,6 +3,7 @@ title: "Redirect my personal mail"
 description: ""
 publish_date: 2026-01-29
 section: "Travel, ID and citizenship"
+form_id: post-office-redirection-individual
 ---
 
 You should complete the redirection notice in one go. At the moment, it is not possible to save your answers and come back to them later
@@ -19,4 +20,4 @@ It shouldn’t take longer than 10 minutes.
 * start date of redirection
 * end date of the redirection
 
-<a data-start-link href="/travel-id-citizenship/post-office-redirection-individual/form">Start now</a>
+<a data-start-link>Start now</a>
