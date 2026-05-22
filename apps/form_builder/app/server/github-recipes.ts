@@ -17,7 +17,7 @@ interface ContentsListEntry {
 interface ContentsFile {
   name: string;
   encoding: string;
-  content: string;
+  content: string | null;
 }
 
 function ghHeaders(token: string): Record<string, string> {
@@ -77,6 +77,11 @@ export async function listPublishedForms(
       `GitHub Contents API returned ${top.status} for recipes/: ${JSON.stringify(top.body)}`,
     );
   }
+  if (!Array.isArray(top.body)) {
+    throw new Error(
+      `Expected recipes/ to be a directory listing, got a non-array response`,
+    );
+  }
   const entries = top.body as ContentsListEntry[];
   const formDirs = entries.filter((e) => e.type === "dir").map((e) => e.name);
 
@@ -117,13 +122,18 @@ export async function getPublishedRecipe(
 
 async function listVersions(token: string, formId: string): Promise<string[]> {
   const res = await ghGet(
-    `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/recipes/${formId}`,
+    `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/recipes/${encodeURIComponent(formId)}`,
     token,
   );
   if (res.status === 404) return [];
   if (res.status < 200 || res.status >= 300) {
     throw new Error(
       `GitHub Contents API returned ${res.status} for recipes/${formId}: ${JSON.stringify(res.body)}`,
+    );
+  }
+  if (!Array.isArray(res.body)) {
+    throw new Error(
+      `Expected recipes/${formId} to be a directory listing, got a non-array response`,
     );
   }
   const entries = res.body as ContentsListEntry[];
@@ -138,7 +148,7 @@ async function fetchRecipeFile(
   version: string,
 ): Promise<Record<string, unknown>> {
   const res = await ghGet(
-    `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/recipes/${formId}/${version}.json`,
+    `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/recipes/${encodeURIComponent(formId)}/${encodeURIComponent(version)}.json`,
     token,
   );
   if (res.status === 404) {
@@ -153,6 +163,11 @@ async function fetchRecipeFile(
   if (file.encoding !== "base64") {
     throw new Error(
       `Unexpected encoding "${file.encoding}" for ${formId}/${version}.json — expected "base64"`,
+    );
+  }
+  if (!file.content) {
+    throw new Error(
+      `Recipe ${formId}/${version}.json has no inline content — file may exceed 1MB`,
     );
   }
   const decoded = Buffer.from(file.content, "base64").toString("utf8");

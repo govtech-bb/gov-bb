@@ -147,6 +147,21 @@ describe("github-recipes", () => {
 
       expect(result).toEqual([]);
     });
+
+    it("throws when recipes/ resolves to a single file (not a directory)", async () => {
+      fetchMock.mockResolvedValueOnce(
+        makeJsonResponse(200, {
+          name: "recipes",
+          type: "file",
+          content: "",
+          encoding: "base64",
+        }),
+      );
+
+      await expect(listPublishedForms(TOKEN)).rejects.toThrow(
+        /directory listing/i,
+      );
+    });
   });
 
   describe("getPublishedRecipe", () => {
@@ -239,6 +254,29 @@ describe("github-recipes", () => {
           version: "1.0.0",
         }),
       ).rejects.toThrow(/encoding/i);
+    });
+
+    it("throws when version is omitted and no versions exist", async () => {
+      // listVersions returns [] (empty directory)
+      fetchMock.mockResolvedValueOnce(makeJsonResponse(200, []));
+
+      await expect(
+        getPublishedRecipe(TOKEN, { formId: "passport-renewal" }),
+      ).rejects.toThrow(/No recipe found/);
+    });
+
+    it("throws when the file content is null (file too large)", async () => {
+      fetchMock.mockResolvedValueOnce(
+        makeJsonResponse(200, {
+          name: "1.0.0.json",
+          encoding: "base64",
+          content: null,
+        }),
+      );
+
+      await expect(
+        getPublishedRecipe(TOKEN, { formId: "big-form", version: "1.0.0" }),
+      ).rejects.toThrow(/no inline content/i);
     });
   });
 });
