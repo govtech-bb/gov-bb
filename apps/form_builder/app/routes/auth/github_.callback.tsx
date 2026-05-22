@@ -46,7 +46,7 @@ const setResponseCookies = createIsomorphicFn()
  *
  * See `auth.ts` for the rationale on why this is NOT a `createServerFn`.
  */
-export const Route = createFileRoute("/auth/github/callback")({
+export const Route = createFileRoute("/auth/github_/callback")({
   validateSearch: (search) => QuerySchema.parse(search),
   beforeLoad: async ({ search }) => {
     const clientId = process.env.GITHUB_OAUTH_CLIENT_ID;
