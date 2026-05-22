@@ -38,6 +38,19 @@ function serialize(schema: Record<string, unknown>): string {
   return JSON.stringify(schema, null, 2) + "\n";
 }
 
+// Render the connection target as "<host>/<dbname>" for an operator-facing log
+// line. Safe to call on any string; we never include credentials in the output.
+function describeTarget(connectionString: string): string {
+  try {
+    const url = new URL(connectionString);
+    const host = url.hostname || "(unknown host)";
+    const db = url.pathname.replace(/^\//, "") || "(no dbname)";
+    return `${host}/${db}`;
+  } catch {
+    return "(unparseable connection string)";
+  }
+}
+
 /**
  * Writes the rows to `recipesRoot/{formId}/{version}.json`. Idempotent:
  *   - File missing → write, count as "written".
@@ -129,7 +142,7 @@ async function runDump({
 
   const client = new Client({ connectionString, ssl });
   await client.connect();
-  logger.info(`connected to database`);
+  logger.info(`connected to database ${describeTarget(connectionString)}`);
 
   try {
     const result = await client.query<PublishedRow>(
