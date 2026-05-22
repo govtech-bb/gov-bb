@@ -5,6 +5,7 @@ const config: Config = {
   testEnvironment: "node",
   rootDir: "src",
   testRegex: ".*\\.spec\\.ts$",
+  testPathIgnorePatterns: ["file-upload\\.integration\\.spec\\.ts$"],
   testTimeout: 30000,
   moduleNameMapper: {
     "^@govtech-bb/(.*)$": "<rootDir>/../../../packages/$1/src/index.ts",

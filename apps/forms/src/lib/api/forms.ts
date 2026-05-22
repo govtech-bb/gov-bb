@@ -69,6 +69,7 @@ const makeFetch = async <T extends ApiResponse>(
     switch (response.status) {
       case 404:
         message = errorMessage.not_found ?? "Requested item was not found";
+        break;
       default:
         message = `Failed to load form (HTTP ${response.status}).`;
     }
@@ -197,7 +198,7 @@ export const patchFormDraft = async (
 };
 
 export const deleteFormDraft = async (draftId: string): Promise<number> => {
-  const endpoint = `/form-drafs/${draftId}`;
+  const endpoint = `/form-drafts/${draftId}`;
   const errorMessage = {};
   const fetchArgs = { method: "DELETE" } as const;
 
