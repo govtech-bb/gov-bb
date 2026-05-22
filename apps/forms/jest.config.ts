@@ -39,10 +39,13 @@ const config: Config = {
     "!**/*.spec.ts",
     "!**/*.spec.tsx",
     "!**/*.d.ts",
+    "!**/main.tsx",
+    "!**/routeTree.gen.ts",
+    "!**/routes/admin/**",
   ],
   coverageReporters: ["text-summary", "lcov", "html"],
   coverageThreshold: {
-    global: { branches: 13, functions: 14, lines: 23, statements: 24 },
+    global: { branches: 89, functions: 90, lines: 95, statements: 94 },
   },
 };
 

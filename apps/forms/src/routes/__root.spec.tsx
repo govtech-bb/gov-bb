@@ -24,6 +24,18 @@ jest.mock("@forms/components", () => ({
   NotFound: () => <div data-testid="not-found" />,
 }));
 
+jest.mock("../components/site-header", () => ({
+  SiteHeader: () => null,
+}));
+
+jest.mock("../components/official-banner", () => ({
+  OfficialBanner: () => null,
+}));
+
+jest.mock("@govtech-bb/react", () => ({
+  Footer: () => null,
+}));
+
 import { Route } from "./__root";
 
 describe("__root Route", () => {
