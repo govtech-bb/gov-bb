@@ -10,6 +10,7 @@ import {
   OpencrvsProcessor,
   ProcessorFactory,
   SpreadsheetProcessor,
+  WebhookProcessor,
   SUBMISSION_PROCESSORS,
 } from "./processors";
 import { PaymentProcessor } from "./processors/payment/payment.processor";
@@ -43,6 +44,7 @@ import { EmailBodyBuilder } from "../../email/email-body.builder";
     OpencrvsProcessor,
     SpreadsheetProcessor,
     PaymentProcessor,
+    WebhookProcessor,
     {
       provide: SUBMISSION_PROCESSORS,
       useFactory: (
@@ -50,12 +52,14 @@ import { EmailBodyBuilder } from "../../email/email-body.builder";
         opencrvs: OpencrvsProcessor,
         spreadsheet: SpreadsheetProcessor,
         payment: PaymentProcessor,
-      ) => [email, opencrvs, spreadsheet, payment],
+        webhook: WebhookProcessor,
+      ) => [email, opencrvs, spreadsheet, payment, webhook],
       inject: [
         EmailProcessor,
         OpencrvsProcessor,
         SpreadsheetProcessor,
         PaymentProcessor,
+        WebhookProcessor,
       ],
     },
     ProcessorFactory,
