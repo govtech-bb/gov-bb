@@ -54,7 +54,7 @@ Nineteen TanStack Start server functions in `apps/form_builder/app/server/` are 
 
 ```ts
 import { createMiddleware } from "@tanstack/react-start";
-import { getWebRequest } from "@tanstack/react-start/server";
+import { getRequest } from "@tanstack/react-start/server";
 import { timingSafeEqual } from "node:crypto";
 
 export const ADMIN_TOKEN_HEADER = "x-admin-token";
@@ -68,7 +68,7 @@ export const requireAdminToken = createMiddleware({ type: "function" }).server(
       return next();
     }
 
-    const request = getWebRequest();
+    const request = getRequest();
     const presented = request.headers.get(ADMIN_TOKEN_HEADER);
     if (!presented) {
       throw new Error("Missing X-Admin-Token header");
@@ -152,7 +152,7 @@ Same shape — import the middleware, chain `.middleware([requireAdminToken])` i
 | Rejects wrong length | env set to 32 chars; 31-char header | Throws |
 | Rejects wrong content | env set; same-length but different content | Throws |
 
-`getWebRequest()` is mocked via Jest's module mocking. The test does NOT exercise actual server function chaining — that's mechanical wiring covered by the smoke test.
+`getRequest()` is mocked via Jest's module mocking. The test does NOT exercise actual server function chaining — that's mechanical wiring covered by the smoke test.
 
 ## Local verification (before push)
 
@@ -210,7 +210,7 @@ Single PR against `dev`. No migration. No feature flag.
 
 **Network-layer assumption:** the production deployment uses a reverse proxy or access gateway that adds the `X-Admin-Token` header on authorized requests. Without that (or some other client-side header injection), the UI is unusable in production — which is the intended state until issue #11 lands real auth or a deployment-topology PR adds a network-layer solution.
 
-Worst-case rollback: a single revert commit. The middleware is purely additive; reverting restores anonymous access. If something breaks (e.g., `getWebRequest()` behaves differently than expected and the middleware throws in dev when env is unset), the symptom is "UI is broken in dev too" — caught immediately by local verification step 1 and fixed by reverting.
+Worst-case rollback: a single revert commit. The middleware is purely additive; reverting restores anonymous access. If something breaks (e.g., `getRequest()` behaves differently than expected and the middleware throws in dev when env is unset), the symptom is "UI is broken in dev too" — caught immediately by local verification step 1 and fixed by reverting.
 
 ## Open question (for follow-up, not this PR)
 
