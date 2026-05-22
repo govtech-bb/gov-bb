@@ -598,6 +598,75 @@ describe("Review", () => {
   });
 
   // -------------------------------------------------------------------------
+  // handleChangeClick — navigate call with search param (line 41)
+  // -------------------------------------------------------------------------
+
+  it("clicking a Change link calls navigate with a search callback that sets the step param", async () => {
+    const steps: ClientFormStep[] = [
+      makeStep({
+        stepId: "step-personal",
+        title: "Personal Details",
+        fields: [],
+      }),
+    ];
+
+    render(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={makeMockForm() as never}
+        visibleSteps={steps}
+      />,
+    );
+
+    const changeLink = screen.getByRole("link", { name: "Change" });
+    await userEvent.click(changeLink);
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        search: expect.any(Function),
+      }),
+    );
+
+    // Invoke the search callback and verify it sets the correct step
+    const callArgs = mockNavigate.mock.calls[0][0] as {
+      search: (prev: Record<string, unknown>) => Record<string, unknown>;
+    };
+    const result = callArgs.search({ existing: "value" });
+    expect(result).toEqual({ existing: "value", step: "step-personal" });
+  });
+
+  // -------------------------------------------------------------------------
+  // getUploadedFileName — File instance branch (line 52)
+  // -------------------------------------------------------------------------
+
+  it("file field with real File instances — displays comma-joined file names", () => {
+    const fileField = makeField({
+      id: "step-1.attachment",
+      fieldId: "attachment",
+      label: "Attachment",
+      htmlType: "file",
+    });
+    const steps: ClientFormStep[] = [
+      makeStep({ stepId: "step-1", title: "Step One", fields: [fileField] }),
+    ];
+    const realFiles = [
+      new File(["content"], "document.pdf", { type: "application/pdf" }),
+      new File(["content"], "photo.jpg", { type: "image/jpeg" }),
+    ];
+    const form = makeMockForm({ "step-1.attachment": realFiles });
+
+    render(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={form as never}
+        visibleSteps={steps}
+      />,
+    );
+
+    expect(screen.getByText("document.pdf, photo.jpg")).toBeInTheDocument();
+  });
+
+  // -------------------------------------------------------------------------
   // Accessibility
   // -------------------------------------------------------------------------
 

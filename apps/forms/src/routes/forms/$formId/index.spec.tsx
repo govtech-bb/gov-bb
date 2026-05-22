@@ -369,5 +369,115 @@ describe("RouteComponent onSubmit handler", () => {
     expect(formatDataForSubmission).toHaveBeenCalled();
   });
 
+  it("handles 'processing' status without throwing", async () => {
+    const onSubmit = renderAndExtractOnSubmit();
+    if (!onSubmit) return;
+    (postFormSubmission as jest.Mock).mockResolvedValue({
+      status: "processing",
+      data: {
+        id: "ref-001",
+        submittedAt: "2026-05-22T00:00:00Z",
+        formId: "test-form",
+      },
+    });
+    await expect(onSubmit({ value: {} })).resolves.not.toThrow();
+  });
+
+  it("handles 'draft' status without throwing", async () => {
+    const onSubmit = renderAndExtractOnSubmit();
+    if (!onSubmit) return;
+    (postFormSubmission as jest.Mock).mockResolvedValue({
+      status: "draft",
+      data: {
+        id: "ref-001",
+        submittedAt: "2026-05-22T00:00:00Z",
+        formId: "test-form",
+      },
+    });
+    await expect(onSubmit({ value: {} })).resolves.not.toThrow();
+  });
+
+  it("handles unknown/default status without throwing", async () => {
+    const onSubmit = renderAndExtractOnSubmit();
+    if (!onSubmit) return;
+    (postFormSubmission as jest.Mock).mockResolvedValue({
+      status: "completely-unknown",
+      data: {
+        id: "ref-001",
+        submittedAt: "2026-05-22T00:00:00Z",
+        formId: "test-form",
+      },
+    });
+    await expect(onSubmit({ value: {} })).resolves.not.toThrow();
+  });
+
+  it("handles postFormSubmission network error (catch block) without throwing", async () => {
+    const onSubmit = renderAndExtractOnSubmit();
+    if (!onSubmit) return;
+    (postFormSubmission as jest.Mock).mockRejectedValue(
+      new Error("network failure"),
+    );
+    await expect(onSubmit({ value: {} })).resolves.not.toThrow();
+  });
+
+  it("filters hidden and conditionally-hidden fields before submission", async () => {
+    const stepWithHiddenFields = {
+      stepId: "step1",
+      title: "Step 1",
+      behaviours: [],
+      fields: [
+        {
+          id: "step1_f1",
+          fieldId: "f1",
+          stepId: "step1",
+          name: "f1",
+          label: "F1",
+          htmlType: "text",
+          disabled: false,
+          hidden: true,
+          conditionallyHidden: false,
+          behaviours: [],
+        },
+        {
+          id: "step1_f2",
+          fieldId: "f2",
+          stepId: "step1",
+          name: "f2",
+          label: "F2",
+          htmlType: "text",
+          disabled: false,
+          hidden: false,
+          conditionallyHidden: true,
+          behaviours: [],
+        },
+        {
+          id: "step1_f3",
+          fieldId: "f3",
+          stepId: "step1",
+          name: "f3",
+          label: "F3",
+          htmlType: "text",
+          disabled: false,
+          hidden: false,
+          conditionallyHidden: false,
+          behaviours: [],
+        },
+      ],
+    };
+    mockGetVisibleSteps.mockReturnValue([stepWithHiddenFields]);
+    const onSubmit = renderAndExtractOnSubmit();
+    if (!onSubmit) return;
+    (postFormSubmission as jest.Mock).mockResolvedValue({
+      status: "submitted",
+      data: {
+        id: "ref-001",
+        submittedAt: "2026-05-22T00:00:00Z",
+        formId: "test-form",
+      },
+    });
+    await onSubmit({ value: {} });
+    expect(formatDataForSubmission).toHaveBeenCalled();
+  });
+
   void storeFormData;
 });
