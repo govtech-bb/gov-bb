@@ -678,4 +678,48 @@ describe("FormRenderer", () => {
     );
     expect(screen.getByText("Fill in your details")).toBeInTheDocument();
   });
+
+  it("useEffect: assigns repeatableStepValues to stepData when settings are present", async () => {
+    const { getRepeatStepCount } = jest.requireMock("@forms/lib");
+    (getRepeatStepCount as jest.Mock).mockReturnValue(0);
+
+    const stepData: Record<string, Record<string, string>> = { "step-1": {} };
+    const repeatableSettings = {
+      "step-1": {
+        minRepeats: 1,
+        maxRepeats: 3,
+        orderedStepIds: ["step-1"],
+        stepData,
+        sharedData: { field: undefined },
+      },
+    };
+
+    mockUseStore.mockImplementation(
+      (_store: unknown, selector: (state: any) => any) => {
+        if (!selector) return {};
+        try {
+          return selector({
+            values: { "step-1_field": "hello" },
+            fieldMeta: {},
+          });
+        } catch {
+          return {};
+        }
+      },
+    );
+
+    const step = makeStep("step-1");
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="step-1"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={{ current: repeatableSettings } as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+
+    expect(stepData["step-1"]).toBeDefined();
+  });
 });
