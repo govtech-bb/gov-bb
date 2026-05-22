@@ -10,22 +10,18 @@
  * the module for each env-var scenario.
  */
 
-const originalDesignSystem = process.env.DESIGN_SYSTEM;
-
 afterEach(() => {
-  if (originalDesignSystem === undefined) {
-    delete process.env.DESIGN_SYSTEM;
-  } else {
-    process.env.DESIGN_SYSTEM = originalDesignSystem;
-  }
   jest.resetModules();
 });
 
 describe("design-system/index", () => {
-  it("warns and defaults to basic when DESIGN_SYSTEM is not set", () => {
-    delete process.env.DESIGN_SYSTEM;
+  it("warns and defaults to basic when VITE_DESIGN_SYSTEM is not set", () => {
     const warn = jest.spyOn(console, "warn").mockImplementation();
     jest.isolateModules(() => {
+      (import.meta as any).env = {
+        ...import.meta.env,
+        VITE_DESIGN_SYSTEM: undefined,
+      };
       require("./index");
     });
     expect(warn).toHaveBeenCalledWith(
@@ -34,20 +30,26 @@ describe("design-system/index", () => {
     warn.mockRestore();
   });
 
-  it("warns and defaults to basic when DESIGN_SYSTEM is an unrecognised key", () => {
-    process.env.DESIGN_SYSTEM = "nonexistent-system";
+  it("warns and defaults to basic when VITE_DESIGN_SYSTEM is an unrecognised key", () => {
     const warn = jest.spyOn(console, "warn").mockImplementation();
     jest.isolateModules(() => {
+      (import.meta as any).env = {
+        ...import.meta.env,
+        VITE_DESIGN_SYSTEM: "nonexistent-system",
+      };
       require("./index");
     });
     expect(warn).toHaveBeenCalledWith(expect.stringContaining("not found"));
     warn.mockRestore();
   });
 
-  it("uses the specified design system and does not warn when DESIGN_SYSTEM='govtechbb'", () => {
-    process.env.DESIGN_SYSTEM = "govtechbb";
+  it("uses the specified design system and does not warn when VITE_DESIGN_SYSTEM='govtechbb'", () => {
     const warn = jest.spyOn(console, "warn").mockImplementation();
     jest.isolateModules(() => {
+      (import.meta as any).env = {
+        ...import.meta.env,
+        VITE_DESIGN_SYSTEM: "govtechbb",
+      };
       require("./index");
     });
     expect(warn).not.toHaveBeenCalled();
@@ -55,7 +57,6 @@ describe("design-system/index", () => {
   });
 
   it("exports a design-system object", () => {
-    delete process.env.DESIGN_SYSTEM;
     const warn = jest.spyOn(console, "warn").mockImplementation();
     let ds: unknown;
     jest.isolateModules(() => {
