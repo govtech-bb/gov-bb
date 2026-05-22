@@ -26,7 +26,10 @@ export type DumpSummary = {
   conflicts: number;
 };
 
-const DEFAULT_RECIPES_ROOT = path.resolve(process.cwd(), "recipes");
+const DEFAULT_RECIPES_ROOT = path.resolve(
+  process.cwd(),
+  "apps/api/src/forms/form-definitions/recipes",
+);
 
 /**
  * Serialize a recipe to the on-disk canonical form: 2-space indented JSON
