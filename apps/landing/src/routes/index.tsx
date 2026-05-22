@@ -1,11 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
-import {
-  Heading,
-  LinkButton,
-  Search,
-  Text,
-  linkVariants,
-} from '@govtech-bb/react'
+import { Heading, Search, Text, linkVariants } from '@govtech-bb/react'
+import { ChatAssistant } from '../components/ChatAssistant'
 import { HelpfulBox } from '../components/HelpfulBox'
 import { CATEGORIES } from '../content/categories'
 import { trackEvent } from '../lib/analytics'
@@ -36,36 +31,27 @@ function Home() {
 
   return (
     <>
-      <section className="border-b-4 border-yellow-00 bg-yellow-100">
+      <section className="border-b-4 border-yellow-00 bg-blue-00 text-white-00">
         <div className="container">
-          <div className="space-y-4 py-8">
-            <Heading as="h1">
-              How you find and use government services is changing
-            </Heading>
-            <Text as="p">
-              It will be clearer, simpler and faster for citizens to get things
-              done.
-            </Text>
-            <LinkButton
-              href="/tell-us"
-              variant="primary"
-              data-umami-event="tell-us-cta"
-              data-umami-event-source="home"
-            >
-              Tell us what's important
-            </LinkButton>
+          <div className="space-y-m py-m lg:py-l">
+            <div className="max-w-210 space-y-s">
+              <Heading as="h1" className="text-balance">
+                Find and use Barbados government services
+              </Heading>
+              <Text as="p" className="text-pretty">
+                Ask anything — applications, certificates, licences, benefits,
+                and more. Get instant guidance.
+              </Text>
+            </div>
+            <ChatAssistant />
           </div>
         </div>
       </section>
 
-      <section className="border-b-4 border-teal-40 bg-teal-10">
+      <section className="border-b-4 border-teal-100 bg-green-10">
         <div className="container">
-          <div className="space-y-4 py-8">
-            <Heading as="h2">Alpha services</Heading>
-            <Text as="p">
-              These services are new. We're working on them and they are likely
-              to change as we learn more.
-            </Text>
+          <div className="space-y-m py-m">
+            <Heading as="h3">Or search all government services directly</Heading>
             <Search
               action="/search-results"
               name="q"
@@ -73,31 +59,28 @@ function Home() {
               buttonLabel="Search"
               onSearch={handleSearch}
             />
-            <a href="/services" className={linkVariants()}>
-              View all services
-            </a>
           </div>
         </div>
       </section>
 
       <section>
         <div className="container">
-          <div className="space-y-4 py-8">
-            <Heading as="h2">Government services</Heading>
+          <div className="space-y-m py-m lg:py-l">
+            <Heading as="h1" className="text-balance">All government services</Heading>
             <ul className="m-0 flex list-none flex-col p-0">
               {CATEGORIES.map((cat) => (
                 <li
                   key={cat.slug}
-                  className="border-t-2 border-grey-00 py-4 first:border-0 lg:py-8"
+                  className="border-b-2 border-grey-00 py-s lg:py-xm"
                 >
                   <a
                     href={`/${cat.slug}`}
-                    className={`${linkVariants()} text-[20px] leading-normal lg:text-3xl`}
+                    className={`${linkVariants()} text-[20px] leading-normal font-bold lg:text-3xl`}
                   >
                     {cat.title}
                   </a>
                   {cat.description ? (
-                    <Text as="p" className="mt-1">
+                    <Text as="p" className="mt-xxs text-pretty">
                       {cat.description}
                     </Text>
                   ) : null}
@@ -109,7 +92,7 @@ function Home() {
       </section>
 
       <div className="container">
-        <HelpfulBox className="mb-4 lg:mb-16" />
+        <HelpfulBox className="mb-s lg:mb-l" />
       </div>
     </>
   )
