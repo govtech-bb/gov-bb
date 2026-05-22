@@ -1,26 +1,29 @@
 import { toolDefinition } from "@tanstack/ai";
 import { z } from "zod";
 
-export const openFormReviewDef = toolDefinition({
-  name: "open_form_review",
+export const submitFormDef = toolDefinition({
+  name: "submit_form",
   description:
-    "Pre-fill the official service form with the user's answers and take them to its Check-your-answers (review) page. The user reviews the answers there and submits the form themselves — this tool does NOT submit anything. Call it ONLY after every required field is collected and the user has confirmed the summary in chat. Do NOT promise a reference number; that comes from the form after the user clicks Submit on the review page.",
+    "Submit the official service form on the user's behalf using the answers collected in chat. Call it ONLY after EVERY required field is collected AND the user has explicitly confirmed the summary (e.g. 'yes, submit', 'looks good'). On success the tool returns a reference number — quote it back to the user verbatim. On failure the tool returns validation errors; apologise, ask the user to correct, and retry. Do NOT claim the form was submitted unless this tool returns ok:true with a referenceNumber.",
   inputSchema: z.object({
     service: z.string().meta({
       description:
-        "The service slug, e.g. 'get-birth-certificate', 'apply-for-a-passport'. Use the slug from the source pages, not a free-form name.",
+        "The form slug. MUST be one of the slugs listed in the system prompt as available this turn.",
     }),
     serviceTitle: z.string().meta({
       description: "Human-readable service name to show in the handoff UI.",
     }),
     fields: z.record(z.string(), z.string()).meta({
       description:
-        "All collected field values keyed by the exact field names the form expects (e.g. firstName, baby_dob). The chat retriever surfaces these names from the source pages; use them verbatim.",
+        "All collected field values keyed by the exact fieldId from the FORM SCHEMA system message. Dates should be ISO YYYY-MM-DD; option values must match the schema's [option|option] enum exactly.",
     }),
   }),
   outputSchema: z.object({
     ok: z.boolean(),
-    redirectedTo: z.string().optional(),
+    referenceNumber: z.string().optional().meta({
+      description:
+        "The submission reference returned by the forms API on success. Quote it back to the user.",
+    }),
     errors: z
       .array(
         z.object({
@@ -31,7 +34,7 @@ export const openFormReviewDef = toolDefinition({
       .optional()
       .meta({
         description:
-          "Validation errors returned when one or more fields don't satisfy the form's schema. Each entry names the field and the user-facing error. Apologize, ask the user to correct, and retry open_form_review.",
+          "Validation errors keyed by fieldId. Apologise, ask the user to correct each, and retry submit_form.",
       }),
   }),
 });
