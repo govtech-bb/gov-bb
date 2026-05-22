@@ -96,8 +96,9 @@ describe("valueIsEmpty", () => {
     expect(valueIsEmpty("hello")).toBe(false);
   });
 
-  it("returns true for an empty string value (typeof string path)", () => {
-    // The falsy guard catches "" before the typeof branch, but a single space is non-empty
+  it("returns false for a non-empty whitespace string (typeof string path)", () => {
+    // The falsy guard catches "" before the typeof branch; this test exercises
+    // the typeof === "string" path with a non-empty value where length > 0.
     expect(valueIsEmpty(" ")).toBe(false);
   });
 
@@ -1246,6 +1247,19 @@ describe("evaluateCondition", () => {
 
     it("returns false when either value is non-numeric", () => {
       expect(evaluateCondition("abc", 5, "gt")).toBe(false);
+      expect(evaluateCondition(5, "abc", "gt")).toBe(false);
+    });
+
+    // Currently RED: validation-methods.ts:484 uses
+    // `if (conditionValue && targetFieldValue)`, a truthy-only guard that
+    // skips the comparison whenever either side is 0. Numeric 0 is a valid
+    // operand for >/< and must not short-circuit. Source fix tracked separately.
+    it("returns true when conditionValue > 0 and target is 0", () => {
+      expect(evaluateCondition(5, 0, "gt")).toBe(true);
+    });
+
+    it("returns false when conditionValue is 0 and target is positive", () => {
+      expect(evaluateCondition(0, 5, "gt")).toBe(false);
     });
   });
 
@@ -1264,6 +1278,16 @@ describe("evaluateCondition", () => {
 
     it("returns false when either value is non-numeric", () => {
       expect(evaluateCondition("abc", 5, "lt")).toBe(false);
+      expect(evaluateCondition(5, "abc", "lt")).toBe(false);
+    });
+
+    // Currently RED: see note on gt above; same truthy-guard at line 491.
+    it("returns true when conditionValue is 0 and target is positive", () => {
+      expect(evaluateCondition(0, 5, "lt")).toBe(true);
+    });
+
+    it("returns false when conditionValue > 0 and target is 0", () => {
+      expect(evaluateCondition(5, 0, "lt")).toBe(false);
     });
   });
 

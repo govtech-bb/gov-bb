@@ -69,10 +69,33 @@ describe("lib/form-builder barrel (index.ts)", () => {
     expect(result).toContain("firstName");
   });
 
-  it("getVisibleSteps returns all steps when there are no conditional behaviours", () => {
-    const steps = [{ stepId: "s1", title: "S1", fields: [] }];
-    const result = getVisibleSteps(steps, {} as any);
-    expect(result).toEqual(steps);
+  it("getVisibleSteps filters a step out when its stepConditionalOn behaviour evaluates to notRequired", () => {
+    // Step s1 has no behaviours → always visible.
+    // Step s2 is conditional on s1.toggle === 'yes'. A form-API stub that
+    // returns 'no' must hide s2; this exercises the real isStepVisible →
+    // checkConditionalOn pipeline through the barrel rather than the
+    // trivial no-behaviours short-circuit.
+    const s1 = { stepId: "s1", title: "S1", fields: [] };
+    const s2 = {
+      stepId: "s2",
+      title: "S2",
+      fields: [],
+      behaviours: [
+        {
+          type: "stepConditionalOn" as const,
+          targetStepId: "s1",
+          targetFieldId: "toggle",
+          operator: "equal" as const,
+          value: "yes",
+        },
+      ],
+    };
+    const formApi = {
+      getFieldValue: (id: string) => (id === "s1_toggle" ? "no" : undefined),
+    } as unknown as Parameters<typeof getVisibleSteps>[1];
+
+    const result = getVisibleSteps([s1, s2], formApi);
+    expect(result.map((s) => s.stepId)).toEqual(["s1"]);
   });
 
   it("getStepConditonalTargets returns an empty object for steps with no behaviours", () => {

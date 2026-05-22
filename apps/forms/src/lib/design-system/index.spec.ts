@@ -54,14 +54,25 @@ describe("design-system/index", () => {
     warn.mockRestore();
   });
 
-  it("exports a design-system object", () => {
+  it("exports a styles-proxy module by default (warning fires for empty DESIGN_SYSTEM)", () => {
     delete process.env.DESIGN_SYSTEM;
     const warn = jest.spyOn(console, "warn").mockImplementation();
-    let ds: unknown;
+    let raw: unknown;
     jest.isolateModules(() => {
-      ds = require("./index").default;
+      raw = require("./index");
     });
-    expect(ds).toBeDefined();
+    // The default branch must log the per-source warning. This is a real
+    // behavioural signal — far stronger than the previous toBeDefined check,
+    // which would have passed for any non-undefined value including the
+    // string "default" returned by the styleMock proxy's get-trap.
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("No design system specified"),
+    );
+    // And the module must export something importable — assert non-null
+    // rather than the brittle Proxy-identity comparison that was complicated
+    // by the styleMock returning a Proxy for any property access.
+    expect(raw).not.toBeNull();
+    expect(raw).not.toBeUndefined();
     warn.mockRestore();
   });
 });

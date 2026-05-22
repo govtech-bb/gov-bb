@@ -33,10 +33,29 @@ jest.mock("../hooks/use-step-guard", () => ({
   useStepGuard: jest.fn(),
 }));
 
+// The mock surfaces enough of the props passed to FieldRenderer that wiring
+// tests can verify the toggle/insetFieldsByOption arguments — without this
+// extra metadata the spec could only assert which field IDs were rendered,
+// not whether the right props were threaded through.
 jest.mock("./field-renderer", () => ({
   __esModule: true,
-  default: ({ field }: { field: { id: string } }) => (
-    <div data-testid="field-renderer" data-field-id={field.id} />
+  default: (props: {
+    field: { id: string };
+    insetFieldsByOption?: Map<string, Array<{ field: { id: string } }>>;
+  }) => (
+    <div
+      data-testid="field-renderer"
+      data-field-id={props.field.id}
+      data-inset-options={
+        props.insetFieldsByOption
+          ? JSON.stringify(
+              Array.from(props.insetFieldsByOption.entries()).map(
+                ([value, entries]) => [value, entries.map((e) => e.field.id)],
+              ),
+            )
+          : ""
+      }
+    />
   ),
 }));
 
@@ -139,7 +158,12 @@ const mockSubmissionState = {
 };
 
 beforeEach(() => {
-  jest.clearAllMocks();
+  // resetAllMocks clears both call history AND mock implementations / return
+  // values set via mockReturnValue/mockResolvedValue. Without this, e.g.
+  // `mockForm.getFieldValue.mockReturnValue("yes")` set in one test would
+  // silently leak into subsequent tests under `clearAllMocks`.
+  jest.resetAllMocks();
+  mockForm.validateField.mockResolvedValue([]);
   mockUseStepGuard.mockReturnValue({
     navigateToStep: mockNavigateToStep,
     completeAndContinue: mockCompleteAndContinue,
@@ -529,6 +553,19 @@ describe("FormRenderer", () => {
     const fieldIds = renderers.map((el) => el.getAttribute("data-field-id"));
     expect(fieldIds).toContain("step1_choice");
     expect(fieldIds).not.toContain("step1_extra");
+
+    // Verify the radio's `insetFieldsByOption` actually carries the
+    // conditional child keyed by the option value the source wired it to.
+    // Without this assertion the test only proves which field IDs render
+    // outermost — it would not catch a regression that drops the
+    // insetFieldsByOption prop or keys the entry under the wrong option.
+    const radioEl = renderers.find(
+      (el) => el.getAttribute("data-field-id") === "step1_choice",
+    )!;
+    const insetOptions = JSON.parse(
+      radioEl.getAttribute("data-inset-options") || "[]",
+    ) as Array<[string, string[]]>;
+    expect(insetOptions).toEqual([["yes", ["step1_extra"]]]);
   });
 
   it("clicking Previous calls navigateToStep with the previous step's id", async () => {
@@ -683,7 +720,11 @@ describe("FormRenderer", () => {
     const { getRepeatStepCount } = jest.requireMock("@forms/lib");
     (getRepeatStepCount as jest.Mock).mockReturnValue(0);
 
-    const stepData: Record<string, Record<string, string>> = { "step-1": {} };
+    // Start stepData EMPTY so the assertion can only pass if the useEffect
+    // actually populates it. A pre-populated `{ "step-1": {} }` would make
+    // the toBeDefined assertion tautologically true regardless of whether
+    // the effect ran.
+    const stepData: Record<string, Record<string, string>> = {};
     const repeatableSettings = {
       "step-1": {
         minRepeats: 1,
@@ -720,6 +761,6 @@ describe("FormRenderer", () => {
       />,
     );
 
-    expect(stepData["step-1"]).toBeDefined();
+    expect(stepData["step-1"]).toEqual({ "step-1_field": "hello" });
   });
 });

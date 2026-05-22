@@ -591,8 +591,9 @@ describe("Review", () => {
       />,
     );
 
+    const user = userEvent.setup();
     const changeLink = screen.getByRole("link", { name: "Change" });
-    await userEvent.click(changeLink);
+    await user.click(changeLink);
 
     expect(mockNavigate).toHaveBeenCalled();
   });
@@ -618,8 +619,9 @@ describe("Review", () => {
       />,
     );
 
+    const user = userEvent.setup();
     const changeLink = screen.getByRole("link", { name: "Change" });
-    await userEvent.click(changeLink);
+    await user.click(changeLink);
 
     expect(mockNavigate).toHaveBeenCalledWith(
       expect.objectContaining({
