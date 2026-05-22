@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import type { UIMessage } from "@tanstack/ai";
 import { fetchServerSentEvents, useChat } from "@tanstack/ai-react";
 import { BackButton, Button, Input, Logo, Text } from "@govtech-bb/react";
@@ -13,6 +13,7 @@ import { presentChoicesDef, submitFormDef } from "#/lib/chat-tools";
 export const Route = createFileRoute("/")({ component: ChatPage });
 
 function ChatPage() {
+  const router = useRouter();
   const [input, setInput] = useState("");
   // Map of "this is the Nth assistant message → these sources." Index-based,
   // not id-based, because @tanstack/ai sometimes re-keys streaming messages
@@ -21,6 +22,7 @@ function ChatPage() {
     Source[][]
   >([]);
   const pendingSourcesQueueRef = useRef<Source[][]>([]);
+  const pendingNavRef = useRef<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastFieldsByService = useRef<Map<string, Record<string, string>>>(
     new Map(),
@@ -189,7 +191,7 @@ function SiteHeader() {
   return (
     <div>
       <div className="bg-blue-100 text-white-00">
-        <div className="flex items-center gap-xs px-s py-xs md:px-xl">
+        <div className="container flex items-center gap-xs py-xs">
           <img
             alt=""
             aria-hidden="true"
@@ -204,7 +206,7 @@ function SiteHeader() {
         </div>
       </div>
       <header className="bg-yellow-100">
-        <div className="px-s py-s md:px-xl md:py-m">
+        <div className="container py-s md:py-m">
           <Link to="/" aria-label="Go to the alpha.gov.bb homepage">
             <Logo
               aria-hidden="true"
@@ -221,7 +223,7 @@ function SiteHeader() {
 function ChatHeader() {
   return (
     <header className="bg-white-00">
-      <div className="flex items-center justify-between gap-s px-s py-xm md:px-xl">
+      <div className="container flex items-center justify-between gap-s py-xm">
         <BackButton href="/">Back</BackButton>
         <TridentAvatar size="sm" tone="filled" />
       </div>

@@ -71,9 +71,15 @@ body {
   line-height: var(--line-height-body);
 }
 
-.container {
-  width: min(1080px, calc(100% - 2rem));
+@utility container {
   margin-inline: auto;
+  width: 100%;
+  padding-inline: 1rem;
+
+  @media (min-width: 1024px) {
+    max-width: 1200px;
+    padding-inline: 8rem;
+  }
 }
 
 .sr-only {
