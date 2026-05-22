@@ -1,4 +1,4 @@
-import { Test } from "@nestjs/testing";
+import { Test, TestingModule } from "@nestjs/testing";
 import { HttpService } from "@nestjs/axios";
 import { of } from "rxjs";
 import { EzpayClient } from "./ezpay.client";
@@ -7,17 +7,22 @@ import { EZPAY_CONFIG } from "./ezpay.config";
 describe("EzpayClient", () => {
   let client: EzpayClient;
   let http: { post: jest.Mock };
+  let module: TestingModule;
 
   beforeEach(async () => {
     http = { post: jest.fn() };
-    const moduleRef = await Test.createTestingModule({
+    module = await Test.createTestingModule({
       providers: [
         EzpayClient,
         { provide: HttpService, useValue: http },
         { provide: EZPAY_CONFIG, useValue: { baseUrl: "https://ezpay.test" } },
       ],
     }).compile();
-    client = moduleRef.get(EzpayClient);
+    client = module.get(EzpayClient);
+  });
+
+  afterEach(async () => {
+    if (module) await module.close();
   });
 
   it("createPayment posts to /ezpay_receivecart and returns token + url", async () => {

@@ -14,16 +14,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v5
         with:
           node-version: "20"
-          cache: "npm"
-      - run: npm install
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
 
       - name: Run type check (tsc --build)
         id: typecheck
         run: |
-          npx tsc -b 2>&1 | tee typecheck-output.txt
+          pnpm exec tsc -b 2>&1 | tee typecheck-output.txt
           exit ${PIPESTATUS[0]}
         continue-on-error: true
 
@@ -43,7 +44,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Fix locally:**" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "npx tsc -b" >> $GITHUB_STEP_SUMMARY
+          echo "pnpm exec tsc -b" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           exit 1
 
@@ -420,16 +421,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v5
         with:
           node-version: "20"
-          cache: "npm"
-      - run: npm install
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
 
       - name: Run tests
         id: test
         run: |
-          npx nx run-many -t test --nxBail=false 2>&1 | tee test-output.txt
+          pnpm exec nx run-many -t test --nxBail=false 2>&1 | tee test-output.txt
           exit ${PIPESTATUS[0]}
         continue-on-error: true
 
@@ -447,7 +449,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Fix it locally:**" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "npx nx run-many -t test" >> $GITHUB_STEP_SUMMARY
+          echo "pnpm exec nx run-many -t test" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           exit 1
 
@@ -457,16 +459,17 @@ jobs:
     needs: [typecheck, test, secrets-scan, security]
     steps:
       - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v5
         with:
           node-version: "20"
-          cache: "npm"
-      - run: npm install
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
 
       - name: Build all packages
         id: build
         run: |
-          npx nx run-many -t build --nxBail=false 2>&1 | tee build-output.txt
+          pnpm exec nx run-many -t build --nxBail=false 2>&1 | tee build-output.txt
           exit ${PIPESTATUS[0]}
         continue-on-error: true
 
@@ -484,6 +487,6 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Fix it locally:**" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "npx nx run-many -t build" >> $GITHUB_STEP_SUMMARY
+          echo "pnpm exec nx run-many -t build" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           exit 1

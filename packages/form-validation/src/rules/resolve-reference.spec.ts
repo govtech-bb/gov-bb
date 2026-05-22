@@ -67,4 +67,50 @@ describe("resolveReference — scope rules (matches form-conditions §3)", () =>
     const result = resolveReference(config, {}, {});
     expect(result).toBe(MISSING);
   });
+
+  it("returns MISSING when referenceFieldId is undefined", () => {
+    const config = {} as never;
+    const result = resolveReference(config, { a: { x: "val" } }, { x: "sv" });
+    expect(result).toBe(MISSING);
+  });
+
+  it("returns MISSING when targetStepId array is empty", () => {
+    const config = {
+      referenceFieldId: "x",
+      targetStepId: "jobs",
+    } as never;
+    const result = resolveReference(config, { jobs: [] }, {});
+    expect(result).toBe(MISSING);
+  });
+
+  it("falls back to stepValues when targetStepId exists but field not in target", () => {
+    const config = {
+      referenceFieldId: "x",
+      targetStepId: "other",
+    } as never;
+    const result = resolveReference(
+      config,
+      { other: { y: "noX" } },
+      { x: "fromStepValues" },
+    );
+    expect(result).toBe("fromStepValues");
+  });
+
+  it("returns MISSING when targetStepId target missing and field not in stepValues", () => {
+    const config = {
+      referenceFieldId: "x",
+      targetStepId: "missing",
+    } as never;
+    const result = resolveReference(config, {}, {});
+    expect(result).toBe(MISSING);
+  });
+
+  it("falls back to stepValues when targetStepId step is undefined", () => {
+    const config = {
+      referenceFieldId: "x",
+      targetStepId: "missing",
+    } as never;
+    const result = resolveReference(config, {}, { x: "fromStepValues" });
+    expect(result).toBe("fromStepValues");
+  });
 });

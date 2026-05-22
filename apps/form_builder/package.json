@@ -10,12 +10,10 @@
     "test": "jest --no-coverage"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.39.0",
-    "@aws-sdk/client-bedrock-runtime": "^3.0.0",
-    "@govtech-bb/database": "*",
-    "@govtech-bb/form-builder": "*",
-    "@govtech-bb/form-types": "*",
-    "@govtech-bb/registry": "*",
+    "@govtech-bb/database": "workspace:*",
+    "@govtech-bb/form-builder": "workspace:*",
+    "@govtech-bb/form-types": "workspace:*",
+    "@govtech-bb/registry": "workspace:*",
     "@tanstack/react-router": "^1.170.4",
     "@tanstack/react-start": "^1.168.6",
     "pg": "^8.20.0",

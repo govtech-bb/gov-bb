@@ -1,0 +1,42 @@
+# Overlay for hot-reload local dev (landing + forms).
+#
+# Use:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# What this adds:
+#   - Source bind-mounts on apps/landing and apps/forms so editing files on
+#     the host triggers a Vite rebuild inside the container.
+#   - Anonymous volumes on each app's node_modules so the host's local
+#     node_modules (which may be absent or mismatched-arch) can't shadow
+#     the deps installed in the image.
+#
+# What this intentionally doesn't do:
+#   - The api is NOT overlaid. NestJS dev requires @nestjs/cli (the `nest`
+#     binary), which isn't a declared dependency in this monorepo — devs
+#     either have it globally or run via the built artifact. If you're
+#     iterating on the api, the lowest-friction loop is:
+#         docker compose up postgres -d         # just postgres in a container
+#         pnpm dev:api                          # nest start --watch on host
+#     The compose'd api is still useful as a known-good baseline.
+
+services:
+  landing:
+    volumes:
+      - ./apps/landing/src:/app/apps/landing/src
+      - ./apps/landing/public:/app/apps/landing/public
+      - /app/apps/landing/node_modules
+
+  forms:
+    volumes:
+      - ./apps/forms/src:/app/apps/forms/src
+      - ./apps/forms/public:/app/apps/forms/public
+      - ./apps/forms/contracts:/app/apps/forms/contracts
+      - ./packages:/app/packages
+      - /app/apps/forms/node_modules
+
+  chat:
+    volumes:
+      - ./apps/chat/src:/app/apps/chat/src
+      - ./apps/chat/public:/app/apps/chat/public
+      - ./packages/content:/app/packages/content
+      - /app/apps/chat/node_modules

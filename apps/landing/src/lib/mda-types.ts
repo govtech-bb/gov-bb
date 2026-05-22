@@ -1,0 +1,50 @@
+import type { ReactNode } from 'react'
+
+export interface FeaturedItem {
+  title: string
+  href: string
+  description: string
+  image: string
+  imageAlt?: string
+}
+
+export interface MinistryService {
+  title: string
+  href: string
+  description: ReactNode
+}
+
+export type ContactItem =
+  | { label: string; type: 'phone'; value: string }
+  | { label: string; type: 'email'; value: string }
+  | { label: string; type: 'website'; value: string; display?: string }
+  | { label: string; type?: 'text'; value: ReactNode }
+
+export interface Minister {
+  name: string
+  role: string
+  photo?: string
+}
+
+export interface AssociatedDepartmentItem {
+  name: string
+  /** Slug of a Ministry / DEPARTMENT / STATE_BODY entry. When set, the name renders as a link to /government/organisations/{slug}. */
+  slug?: string
+}
+
+export interface AssociatedDepartmentGroup {
+  category?: string
+  items: AssociatedDepartmentItem[]
+}
+
+export interface MdaEntry {
+  slug: string
+  name: string
+  shortDescription?: string
+  intro?: string
+  head?: Minister
+  contact?: ContactItem[]
+  originalSource?: string
+  /** Search-only tags. Useful for abbreviations and common alternate names. */
+  keywords?: string[]
+}

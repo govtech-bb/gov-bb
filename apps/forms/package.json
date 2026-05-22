@@ -4,8 +4,12 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@govtech-bb/form-conditions": "*",
-    "@govtech-bb/form-types": "*",
+    "@fontsource/figtree": "^5.0.0",
+    "@govtech-bb/design": "^1.0.0-alpha.14",
+    "@govtech-bb/form-conditions": "workspace:*",
+    "@govtech-bb/form-types": "workspace:*",
+    "@govtech-bb/react": "^1.0.0-alpha.14",
+    "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-form": "^1.29.0",
     "@tanstack/react-query": "^5.100.11",
     "@tanstack/react-router": "^1.168.22",
@@ -14,6 +18,7 @@
     "@types/react-dom": "^19.2.3",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
+    "tailwindcss": "^4.1.18",
     "uuid": "^11.1.1",
     "zod": "^4.3.6"
   },
@@ -49,6 +54,6 @@
     "vite": "^8.0.0"
   },
   "lint-staged": {
-    "*.{json,ts,tsx}": "npx prettier --write"
+    "*.{json,ts,tsx}": "pnpm exec prettier --write"
   }
 }

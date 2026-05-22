@@ -21,6 +21,7 @@ import {
   repeatStepConcactenator,
   getRepeatStepCount,
 } from "@forms/lib";
+import { trackEvent } from "../lib/analytics";
 
 // ---------------------------------------------------------------------------
 // Field grouping (show-hide + radio conditional reveal)
@@ -135,13 +136,31 @@ export default function FormRenderer({
   const hidePrevious = currentIndex <= 0;
 
   const currentStep = visibleSteps[stepIndex] ?? visibleSteps[0];
+
+  React.useEffect(() => {
+    if (!currentStep) return;
+    trackEvent("form-step-view", {
+      form_id: formMeta.formId,
+      step_id: currentStep.stepId,
+      step_index: stepIndex,
+      step_count: visibleSteps.length,
+    });
+  }, [currentStep?.stepId, formMeta.formId, stepIndex, visibleSteps.length]);
+
   if (!currentStep) return null;
 
   const currentFields = [...currentStep.fields];
 
   const handlePrevious = () => {
     const prevStep = visibleSteps[stepIndex - 1];
-    if (prevStep) navigateToStep(prevStep.stepId);
+    if (prevStep) {
+      trackEvent("form-step-back", {
+        form_id: formMeta.formId,
+        from_step: currentStep.stepId,
+        to_step: prevStep.stepId,
+      });
+      navigateToStep(prevStep.stepId);
+    }
   };
 
   const repeatableStepValues = useStore(
@@ -197,6 +216,15 @@ export default function FormRenderer({
 
     const hasError = results.some((r) => r.length > 0);
     if (hasError) {
+      results.forEach((fieldErrors, i) => {
+        if (fieldErrors.length === 0) return;
+        trackEvent("form-field-error", {
+          form_id: formMeta.formId,
+          step_id: currentStep.stepId,
+          field_id: currentFields[i].fieldId,
+          reason: "validation",
+        });
+      });
       scrollToTop();
       if (
         !process.env.SKIP_CONTINUE_VALIDATION ||
@@ -217,6 +245,8 @@ export default function FormRenderer({
       const anotherFieldId = getFullFieldId(currentStep.stepId, "addAnother");
 
       const anotherFieldValue = form.getFieldValue(anotherFieldId);
+      // form-step-advance is not fired for repeatable add/remove transitions —
+      // out of v1 analytics scope. The next form-step-view still fires.
       if (anotherFieldValue === "yes") {
         const updatedSteps = addRepeatableStep({
           currentStep,
@@ -239,10 +269,19 @@ export default function FormRenderer({
         return;
       }
     }
+    const nextStep = visibleSteps[stepIndex + 1];
+    if (nextStep) {
+      trackEvent("form-step-advance", {
+        form_id: formMeta.formId,
+        from_step: currentStep.stepId,
+        to_step: nextStep.stepId,
+      });
+    }
     completeAndContinue(currentStep.stepId);
   };
 
   const handleSubmit = () => {
+    trackEvent("form-submit", { form_id: formMeta.formId });
     form.handleSubmit();
     completeAndContinue(currentStep.stepId);
   };
@@ -330,6 +369,7 @@ export default function FormRenderer({
                   validationProperties={
                     formMeta.validationProperties[group.toggle.id]
                   }
+                  formId={formMeta.formId}
                 />
                 {isOpen && (
                   <div data-show-hide-content>
@@ -342,6 +382,7 @@ export default function FormRenderer({
                         validationProperties={
                           formMeta.validationProperties[field.id]
                         }
+                        formId={formMeta.formId}
                       />
                     ))}
                   </div>
@@ -374,6 +415,7 @@ export default function FormRenderer({
                   formMeta.validationProperties[group.radio.id]
                 }
                 insetFieldsByOption={insetFieldsByOption}
+                formId={formMeta.formId}
               />
             );
           }
@@ -386,6 +428,7 @@ export default function FormRenderer({
               validationProperties={
                 formMeta.validationProperties[group.field.id]
               }
+              formId={formMeta.formId}
             />
           );
         })}
