@@ -21,6 +21,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as GovernmentOrganisationsRouteImport } from './routes/government.organisations'
 import { Route as GovernmentOrganisationsIndexRouteImport } from './routes/government.organisations.index'
 import { Route as PensionsAndGratuitiesCalculateYourPensionFormRouteImport } from './routes/pensions-and-gratuities.calculate-your-pension.form'
+import { Route as MoneyFinancialSupportCalculateSeverancePayFormRouteImport } from './routes/money-financial-support.calculate-severance-pay.form'
 import { Route as GovernmentOrganisationsSlugRouteImport } from './routes/government.organisations.$slug'
 import { Route as BusinessTradeCropOverPermitsFormRouteImport } from './routes/business-trade.crop-over-permits.form'
 
@@ -86,6 +87,12 @@ const PensionsAndGratuitiesCalculateYourPensionFormRoute =
     path: '/pensions-and-gratuities/calculate-your-pension/form',
     getParentRoute: () => rootRouteImport,
   } as any)
+const MoneyFinancialSupportCalculateSeverancePayFormRoute =
+  MoneyFinancialSupportCalculateSeverancePayFormRouteImport.update({
+    id: '/money-financial-support/calculate-severance-pay/form',
+    path: '/money-financial-support/calculate-severance-pay/form',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const GovernmentOrganisationsSlugRoute =
   GovernmentOrganisationsSlugRouteImport.update({
     id: '/$slug',
@@ -112,6 +119,7 @@ export interface FileRoutesByFullPath {
   '/government/organisations': typeof GovernmentOrganisationsRouteWithChildren
   '/business-trade/crop-over-permits/form': typeof BusinessTradeCropOverPermitsFormRoute
   '/government/organisations/$slug': typeof GovernmentOrganisationsSlugRoute
+  '/money-financial-support/calculate-severance-pay/form': typeof MoneyFinancialSupportCalculateSeverancePayFormRoute
   '/pensions-and-gratuities/calculate-your-pension/form': typeof PensionsAndGratuitiesCalculateYourPensionFormRoute
   '/government/organisations/': typeof GovernmentOrganisationsIndexRoute
 }
@@ -127,6 +135,7 @@ export interface FileRoutesByTo {
   '/tell-us': typeof TellUsRoute
   '/business-trade/crop-over-permits/form': typeof BusinessTradeCropOverPermitsFormRoute
   '/government/organisations/$slug': typeof GovernmentOrganisationsSlugRoute
+  '/money-financial-support/calculate-severance-pay/form': typeof MoneyFinancialSupportCalculateSeverancePayFormRoute
   '/pensions-and-gratuities/calculate-your-pension/form': typeof PensionsAndGratuitiesCalculateYourPensionFormRoute
   '/government/organisations': typeof GovernmentOrganisationsIndexRoute
 }
@@ -144,6 +153,7 @@ export interface FileRoutesById {
   '/government/organisations': typeof GovernmentOrganisationsRouteWithChildren
   '/business-trade/crop-over-permits/form': typeof BusinessTradeCropOverPermitsFormRoute
   '/government/organisations/$slug': typeof GovernmentOrganisationsSlugRoute
+  '/money-financial-support/calculate-severance-pay/form': typeof MoneyFinancialSupportCalculateSeverancePayFormRoute
   '/pensions-and-gratuities/calculate-your-pension/form': typeof PensionsAndGratuitiesCalculateYourPensionFormRoute
   '/government/organisations/': typeof GovernmentOrganisationsIndexRoute
 }
@@ -162,6 +172,7 @@ export interface FileRouteTypes {
     | '/government/organisations'
     | '/business-trade/crop-over-permits/form'
     | '/government/organisations/$slug'
+    | '/money-financial-support/calculate-severance-pay/form'
     | '/pensions-and-gratuities/calculate-your-pension/form'
     | '/government/organisations/'
   fileRoutesByTo: FileRoutesByTo
@@ -177,6 +188,7 @@ export interface FileRouteTypes {
     | '/tell-us'
     | '/business-trade/crop-over-permits/form'
     | '/government/organisations/$slug'
+    | '/money-financial-support/calculate-severance-pay/form'
     | '/pensions-and-gratuities/calculate-your-pension/form'
     | '/government/organisations'
   id:
@@ -193,6 +205,7 @@ export interface FileRouteTypes {
     | '/government/organisations'
     | '/business-trade/crop-over-permits/form'
     | '/government/organisations/$slug'
+    | '/money-financial-support/calculate-severance-pay/form'
     | '/pensions-and-gratuities/calculate-your-pension/form'
     | '/government/organisations/'
   fileRoutesById: FileRoutesById
@@ -209,6 +222,7 @@ export interface RootRouteChildren {
   TellUsRoute: typeof TellUsRoute
   GovernmentOrganisationsRoute: typeof GovernmentOrganisationsRouteWithChildren
   BusinessTradeCropOverPermitsFormRoute: typeof BusinessTradeCropOverPermitsFormRoute
+  MoneyFinancialSupportCalculateSeverancePayFormRoute: typeof MoneyFinancialSupportCalculateSeverancePayFormRoute
   PensionsAndGratuitiesCalculateYourPensionFormRoute: typeof PensionsAndGratuitiesCalculateYourPensionFormRoute
 }
 
@@ -298,6 +312,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PensionsAndGratuitiesCalculateYourPensionFormRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/money-financial-support/calculate-severance-pay/form': {
+      id: '/money-financial-support/calculate-severance-pay/form'
+      path: '/money-financial-support/calculate-severance-pay/form'
+      fullPath: '/money-financial-support/calculate-severance-pay/form'
+      preLoaderRoute: typeof MoneyFinancialSupportCalculateSeverancePayFormRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/government/organisations/$slug': {
       id: '/government/organisations/$slug'
       path: '/$slug'
@@ -343,6 +364,8 @@ const rootRouteChildren: RootRouteChildren = {
   TellUsRoute: TellUsRoute,
   GovernmentOrganisationsRoute: GovernmentOrganisationsRouteWithChildren,
   BusinessTradeCropOverPermitsFormRoute: BusinessTradeCropOverPermitsFormRoute,
+  MoneyFinancialSupportCalculateSeverancePayFormRoute:
+    MoneyFinancialSupportCalculateSeverancePayFormRoute,
   PensionsAndGratuitiesCalculateYourPensionFormRoute:
     PensionsAndGratuitiesCalculateYourPensionFormRoute,
 }

@@ -1,29 +1,40 @@
 import { Heading, Link, LinkButton, Text } from '@govtech-bb/react'
 import { useLocation } from '@tanstack/react-router'
 import { format } from 'date-fns'
+import { createContext, useContext } from 'react'
 import type { ReactNode } from 'react'
 import ReactMarkdown from 'react-markdown'
-import type {Components} from 'react-markdown';
+import type { Components } from 'react-markdown'
 import rehypeRaw from 'rehype-raw'
 import remarkGfm from 'remark-gfm'
 import rehypeHideStartLinks from '../lib/rehype-hide-start-links'
 import rehypeSectionise from '../lib/rehype-sectionise'
 import type { Frontmatter } from '../lib/frontmatter'
 import { MigrationBanner } from './MigrationBanner'
-import { deriveStartEventName } from '../lib/analytics'
+import { AVAILABLE_FORMS } from '../content/available-forms.gen'
+
+const FORMS_BASE_URL =
+  import.meta.env.VITE_FORMS_URL ?? 'https://forms.sandbox.alpha.gov.bb'
+
+/**
+ * Form ID for the currently-rendering page, read from frontmatter and
+ * provided so the Markdown anchor handler can decide whether to render
+ * a Start now button when it sees `<a data-start-link>`.
+ */
+const PageFormIdContext = createContext<string | undefined>(undefined)
 
 type StartLinkProps = {
-  href: string
+  formId: string
   children: ReactNode
 } & Record<string, unknown>
 
-function StartLink({ href, children, ...rest }: StartLinkProps) {
+function StartLink({ formId, children, ...rest }: StartLinkProps) {
   const { pathname } = useLocation()
   return (
     <LinkButton
-      href={href}
+      href={`${FORMS_BASE_URL}/forms/${formId}`}
       {...rest}
-      data-umami-event={deriveStartEventName(href)}
+      data-umami-event={`${formId}-start`}
       data-umami-event-from={pathname}
     >
       {children}
@@ -99,11 +110,7 @@ export const markdownComponents: Components = {
     const isExternal = !(safeHref.startsWith('/') || safeHref.startsWith('#'))
 
     if (isStartLink) {
-      return (
-        <StartLink href={safeHref} {...rest}>
-          {children}
-        </StartLink>
-      )
+      return <StartLinkFromContext rest={rest}>{children}</StartLinkFromContext>
     }
 
     return (
@@ -195,25 +202,75 @@ export const markdownComponents: Components = {
   },
 }
 
+/**
+ * Inner component for `<a data-start-link>` anchors in Markdown. Reads
+ * the current page's `form_id` from `PageFormIdContext` (populated by
+ * `MarkdownBody` from frontmatter). Renders a Start now button only
+ * when that form ID exists in the build-time manifest. Silent miss in
+ * production; warns in dev so authoring typos surface during review.
+ *
+ * See docs/decisions/0005 for the convention.
+ */
+function StartLinkFromContext({
+  rest,
+  children,
+}: {
+  rest: Record<string, unknown>
+  children: ReactNode
+}) {
+  const formId = useContext(PageFormIdContext)
+
+  if (!formId) {
+    if (import.meta.env.DEV) {
+      console.warn(
+        '[MarkdownContent] <a data-start-link> rendered on a page without ' +
+          '`form_id` in frontmatter — Start now button suppressed.',
+      )
+    }
+    return null
+  }
+
+  if (!AVAILABLE_FORMS.has(formId)) {
+    if (import.meta.env.DEV) {
+      console.warn(
+        `[MarkdownContent] form_id "${formId}" is not in the build-time ` +
+          'manifest (see src/content/available-forms.gen.ts) — Start now ' +
+          'button suppressed.',
+      )
+    }
+    return null
+  }
+
+  return (
+    <StartLink formId={formId} {...rest}>
+      {children}
+    </StartLink>
+  )
+}
+
 export function MarkdownBody({
   body,
+  formId,
   hasResearchAccess = false,
 }: {
   body: string
+  formId?: string
   hasResearchAccess?: boolean
 }) {
   return (
-    <ReactMarkdown
-      components={markdownComponents}
-      rehypePlugins={[
-        rehypeRaw,
-        [rehypeHideStartLinks, { hasResearchAccess }],
-        rehypeSectionise,
-      ]}
-      remarkPlugins={[remarkGfm]}
-    >
-      {body}
-    </ReactMarkdown>
+    <PageFormIdContext.Provider value={formId}>
+      <ReactMarkdown
+        components={markdownComponents}
+        rehypePlugins={[
+          rehypeRaw,
+          [rehypeHideStartLinks, { hasResearchAccess }],
+          rehypeSectionise,
+        ]}
+        remarkPlugins={[remarkGfm]}
+      >
+        {body}
+      </ReactMarkdown>
+    </PageFormIdContext.Provider>
   )
 }
 
@@ -248,7 +305,11 @@ export function MarkdownContent({
             </div>
           ) : null}
         </div>
-        <MarkdownBody body={body} hasResearchAccess={hasResearchAccess} />
+        <MarkdownBody
+          body={body}
+          formId={frontmatter.form_id}
+          hasResearchAccess={hasResearchAccess}
+        />
       </div>
     </div>
   )

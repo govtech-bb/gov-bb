@@ -9,12 +9,13 @@ export const Reason = {
 export type Reason = (typeof Reason)[keyof typeof Reason]
 
 export const ReasonLabel: Record<Reason, string> = {
-  [Reason.Redundancy]: 'Redundancy',
-  [Reason.Disaster]: 'Natural disaster',
-  [Reason.Layoff]: 'Lay-off lasting more than 13 weeks',
-  [Reason.Death]: 'Death of the employer',
-  [Reason.Closure]: 'Business closure',
-  [Reason.Other]: "Other / I'm not sure",
+  [Reason.Redundancy]: 'My job was cut or made redundant',
+  [Reason.Disaster]:
+    'A fire, flood, hurricane, or other disaster damaged the workplace',
+  [Reason.Layoff]: 'I was laid off (period of 6 months)',
+  [Reason.Death]: 'Death of employer',
+  [Reason.Closure]: 'Business closure or reconstruction',
+  [Reason.Other]: 'None of these',
 }
 
 export const PayPeriod = { Weekly: 'weekly', Monthly: 'monthly' } as const
@@ -35,7 +36,7 @@ export interface SeveranceInputs {
 export type IneligibleReason =
   | 'self-employed'
   | 'reason-not-covered'
-  | 'under-one-year'
+  | 'under-two-years'
 
 export type SeveranceResult =
   | { kind: 'ineligible'; reason: IneligibleReason }
@@ -131,8 +132,8 @@ export function calculateSeverance(input: SeveranceInputs): SeveranceResult {
   }
 
   const years = completeYears(input.startIso, input.endIso)
-  if (years < 1) {
-    return { kind: 'ineligible', reason: 'under-one-year' }
+  if (years < 2) {
+    return { kind: 'ineligible', reason: 'under-two-years' }
   }
 
   const endYear = Number.parseInt(input.endIso.slice(0, 4), 10)

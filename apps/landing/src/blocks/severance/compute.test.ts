@@ -98,13 +98,33 @@ describe('calculateSeverance', () => {
     expect(r).toEqual({ kind: 'ineligible', reason: 'reason-not-covered' })
   })
 
-  it('ineligible: under one year', () => {
+  it('ineligible: under two years (less than full first year)', () => {
     const r = calculateSeverance({
       ...base,
       startIso: '2019-06-01',
       endIso: '2020-01-01',
     })
-    expect(r).toEqual({ kind: 'ineligible', reason: 'under-one-year' })
+    expect(r).toEqual({ kind: 'ineligible', reason: 'under-two-years' })
+  })
+
+  it('ineligible: under two years (one complete year but not two)', () => {
+    const r = calculateSeverance({
+      ...base,
+      startIso: '2018-06-01',
+      endIso: '2020-01-01',
+    })
+    expect(r).toEqual({ kind: 'ineligible', reason: 'under-two-years' })
+  })
+
+  it('eligible at the 2-year boundary', () => {
+    const r = calculateSeverance({
+      ...base,
+      startIso: '2018-01-01',
+      endIso: '2020-01-01',
+    })
+    expect(r.kind).toBe('eligible')
+    if (r.kind !== 'eligible') return
+    expect(r.years).toBe(2)
   })
 
   it('ceiling applied for high earners ending 2025', () => {
