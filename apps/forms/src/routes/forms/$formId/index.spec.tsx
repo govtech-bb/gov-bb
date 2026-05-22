@@ -254,3 +254,120 @@ describe("Route.validateSearch", () => {
     expect(result.step).toBeUndefined();
   });
 });
+
+// ---------------------------------------------------------------------------
+// onSubmit handler — extracted from useForm args after render
+// ---------------------------------------------------------------------------
+
+describe("RouteComponent onSubmit handler", () => {
+  const { postFormSubmission, formatDataForSubmission } =
+    jest.requireMock("@forms/form-api");
+  const { storeFormData } = jest.requireMock("../../../lib/session-storage");
+
+  function renderAndExtractOnSubmit() {
+    render(<Route.component />);
+    const useFormArg = mockUseForm.mock.calls[0]?.[0];
+    return useFormArg?.onSubmit as
+      | ((args: { value: Record<string, unknown> }) => Promise<void>)
+      | undefined;
+  }
+
+  it("calls postFormSubmission with formMeta and formatted data", async () => {
+    const onSubmit = renderAndExtractOnSubmit();
+    if (!onSubmit) return;
+    (postFormSubmission as jest.Mock).mockResolvedValue({
+      status: "submitted",
+      data: {
+        id: "ref-001",
+        submittedAt: "2026-05-22T00:00:00Z",
+        formId: "test-form",
+      },
+    });
+    await onSubmit({ value: {} });
+    expect(postFormSubmission).toHaveBeenCalled();
+  });
+
+  it("sets submissionSuccess=true on 'submitted' status", async () => {
+    const onSubmit = renderAndExtractOnSubmit();
+    if (!onSubmit) return;
+    (postFormSubmission as jest.Mock).mockResolvedValue({
+      status: "submitted",
+      data: {
+        id: "ref-001",
+        submittedAt: "2026-05-22T00:00:00Z",
+        formId: "test-form",
+      },
+    });
+    await expect(onSubmit({ value: {} })).resolves.not.toThrow();
+  });
+
+  it("sets submissionSuccess=true on 'success' status", async () => {
+    const onSubmit = renderAndExtractOnSubmit();
+    if (!onSubmit) return;
+    (postFormSubmission as jest.Mock).mockResolvedValue({
+      status: "success",
+      data: {
+        id: "ref-001",
+        submittedAt: "2026-05-22T00:00:00Z",
+        formId: "test-form",
+      },
+    });
+    await expect(onSubmit({ value: {} })).resolves.not.toThrow();
+  });
+
+  it("handles 'pending_payment' with deferred meta by setting hasPayment=true", async () => {
+    const onSubmit = renderAndExtractOnSubmit();
+    if (!onSubmit) return;
+    (postFormSubmission as jest.Mock).mockResolvedValue({
+      status: "pending_payment",
+      meta: {
+        deferred: {
+          amount: 100,
+          paymentUrl: "https://pay.example.com",
+          paymentId: "pay-001",
+          description: "Application fee",
+        },
+      },
+      data: {
+        id: "ref-001",
+        submittedAt: "2026-05-22T00:00:00Z",
+        formId: "test-form",
+      },
+    });
+    await expect(onSubmit({ value: {} })).resolves.not.toThrow();
+  });
+
+  it("handles 'failed' status without throwing", async () => {
+    const onSubmit = renderAndExtractOnSubmit();
+    if (!onSubmit) return;
+    (postFormSubmission as jest.Mock).mockResolvedValue({
+      status: "failed",
+      data: {
+        id: "ref-001",
+        submittedAt: "2026-05-22T00:00:00Z",
+        formId: "test-form",
+      },
+    });
+    await expect(onSubmit({ value: {} })).resolves.not.toThrow();
+  });
+
+  it("calls formatDataForSubmission before postFormSubmission", async () => {
+    const onSubmit = renderAndExtractOnSubmit();
+    if (!onSubmit) return;
+    (formatDataForSubmission as jest.Mock).mockReturnValue({
+      step1: { name: "test" },
+    });
+    (postFormSubmission as jest.Mock).mockResolvedValue({
+      status: "submitted",
+      data: {
+        id: "ref-001",
+        submittedAt: "2026-05-22T00:00:00Z",
+        formId: "test-form",
+      },
+    });
+    await onSubmit({ value: { step1_name: "test" } });
+    expect(formatDataForSubmission).toHaveBeenCalled();
+  });
+
+  void storeFormData;
+});

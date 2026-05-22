@@ -594,4 +594,88 @@ describe("FormRenderer", () => {
     expect(mockForm.handleSubmit).toHaveBeenCalled();
     expect(mockCompleteAndContinue).toHaveBeenCalledWith("declaration");
   });
+
+  it("clicking Continue with validation errors does NOT call completeAndContinue", async () => {
+    const user = userEvent.setup();
+    Object.defineProperty(window, "scrollTo", {
+      value: jest.fn(),
+      writable: true,
+    });
+    const field = makePlainField("step-1_name", "name", "step-1");
+    const step = makeStep("step-1", [field]);
+    mockForm.validateField.mockResolvedValue(["This field is required"]);
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="step-1"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /continue/i }));
+    expect(mockCompleteAndContinue).not.toHaveBeenCalled();
+  });
+
+  it("clicking Continue on a repeatable step with addAnother=yes calls addRepeatableStep", async () => {
+    const user = userEvent.setup();
+    const { addRepeatableStep } = jest.requireMock("@forms/lib");
+    (addRepeatableStep as jest.Mock).mockReturnValue([]);
+    const repeatableBehaviour = { type: "repeatable", min: 1, max: 3 };
+    const step = makeStep("step-1", [], [repeatableBehaviour]);
+    mockForm.validateField.mockResolvedValue([]);
+    mockForm.getFieldValue.mockReturnValue("yes");
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="step-1"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /continue/i }));
+    expect(addRepeatableStep).toHaveBeenCalled();
+    expect(mockCompleteAndContinue).toHaveBeenCalledWith("step-1", []);
+  });
+
+  it("clicking Continue on a repeatable step with addAnother=no calls removeRepeatableStep", async () => {
+    const user = userEvent.setup();
+    const { removeRepeatableStep } = jest.requireMock("@forms/lib");
+    (removeRepeatableStep as jest.Mock).mockReturnValue([]);
+    const repeatableBehaviour = { type: "repeatable", min: 1, max: 3 };
+    const step = makeStep("step-1", [], [repeatableBehaviour]);
+    mockForm.validateField.mockResolvedValue([]);
+    mockForm.getFieldValue.mockReturnValue("no");
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="step-1"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /continue/i }));
+    expect(removeRepeatableStep).toHaveBeenCalled();
+    expect(mockCompleteAndContinue).toHaveBeenCalledWith("step-1", []);
+  });
+
+  it("renders step description when present", () => {
+    const step = { ...makeStep("step-1"), description: "Fill in your details" };
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="step-1"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    expect(screen.getByText("Fill in your details")).toBeInTheDocument();
+  });
 });
