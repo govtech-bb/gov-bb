@@ -202,10 +202,9 @@ describe("EmailProcessor", () => {
     it("skips when recipientField resolves to a repeatable (array) step — unsupported", async () => {
       // Branch: `stepValues && !Array.isArray(stepValues)` — the Array.isArray arm
       const warn = jest.spyOn(Logger.prototype, "warn").mockImplementation();
-      const payload = makePayload(
-        { recipientField: "jobs.email" },
-        { jobs: [{ email: "jane@example.com" }] },
-      );
+      const payload = makePayload({ recipientField: "jobs.email" }, {
+        jobs: [{ email: "jane@example.com" }],
+      } as unknown as Record<string, Record<string, unknown>>);
 
       await processor.process(payload);
 

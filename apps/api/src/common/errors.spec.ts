@@ -14,13 +14,15 @@ describe("AppError", () => {
     it("returns NotFoundException with generic message when no identifier given", () => {
       const err = AppError.notFound("Widget");
       expect(err).toBeInstanceOf(NotFoundException);
-      expect(err.getResponse()).toContain("Widget not found");
+      const msg = (err.getResponse() as { message: string }).message;
+      expect(msg).toContain("Widget not found");
     });
 
     it("returns NotFoundException with string identifier", () => {
       const err = AppError.notFound("Draft", "draft-abc");
       expect(err).toBeInstanceOf(NotFoundException);
-      expect(err.getResponse()).toContain("draft-abc");
+      const msg = (err.getResponse() as { message: string }).message;
+      expect(msg).toContain("draft-abc");
     });
 
     it("returns NotFoundException with record identifier (all values defined)", () => {
@@ -29,9 +31,9 @@ describe("AppError", () => {
         version: "1.0.0",
       });
       expect(err).toBeInstanceOf(NotFoundException);
-      const response = err.getResponse() as string;
-      expect(response).toContain("formId=passport-renewal");
-      expect(response).toContain("version=1.0.0");
+      const msg = (err.getResponse() as { message: string }).message;
+      expect(msg).toContain("formId=passport-renewal");
+      expect(msg).toContain("version=1.0.0");
     });
 
     it("filters out undefined values in record identifier", () => {
@@ -40,9 +42,9 @@ describe("AppError", () => {
         version: undefined,
       });
       expect(err).toBeInstanceOf(NotFoundException);
-      const response = err.getResponse() as string;
-      expect(response).toContain("formId=passport-renewal");
-      expect(response).not.toContain("version");
+      const msg = (err.getResponse() as { message: string }).message;
+      expect(msg).toContain("formId=passport-renewal");
+      expect(msg).not.toContain("version");
     });
   });
 
@@ -50,7 +52,8 @@ describe("AppError", () => {
     it("returns BadRequestException with string detail", () => {
       const err = AppError.badRequest("Invalid input");
       expect(err).toBeInstanceOf(BadRequestException);
-      expect(err.getResponse()).toContain("Invalid input");
+      const msg = (err.getResponse() as { message: string }).message;
+      expect(msg).toContain("Invalid input");
     });
 
     it("returns BadRequestException with record detail", () => {
@@ -63,13 +66,15 @@ describe("AppError", () => {
     it("returns ConflictException with generic message when no identifier given", () => {
       const err = AppError.conflict("FormDefinition");
       expect(err).toBeInstanceOf(ConflictException);
-      expect(err.getResponse()).toContain("FormDefinition already exists");
+      const msg = (err.getResponse() as { message: string }).message;
+      expect(msg).toContain("FormDefinition already exists");
     });
 
     it("returns ConflictException with identifier", () => {
       const err = AppError.conflict("FormDefinition", "passport-renewal");
       expect(err).toBeInstanceOf(ConflictException);
-      expect(err.getResponse()).toContain("passport-renewal");
+      const msg = (err.getResponse() as { message: string }).message;
+      expect(msg).toContain("passport-renewal");
     });
   });
 
@@ -77,7 +82,8 @@ describe("AppError", () => {
     it("returns UnauthorizedException", () => {
       const err = AppError.unauthorized();
       expect(err).toBeInstanceOf(UnauthorizedException);
-      expect(err.getResponse()).toContain("Unauthorized");
+      const msg = (err.getResponse() as { message: string }).message;
+      expect(msg).toContain("Unauthorized");
     });
   });
 
@@ -85,7 +91,8 @@ describe("AppError", () => {
     it("returns ForbiddenException", () => {
       const err = AppError.forbidden();
       expect(err).toBeInstanceOf(ForbiddenException);
-      expect(err.getResponse()).toContain("Forbidden");
+      const msg = (err.getResponse() as { message: string }).message;
+      expect(msg).toContain("Forbidden");
     });
   });
 
@@ -100,13 +107,15 @@ describe("AppError", () => {
     it("returns InternalServerErrorException with default message when no detail given", () => {
       const err = AppError.internal();
       expect(err).toBeInstanceOf(InternalServerErrorException);
-      expect(err.getResponse()).toContain("unexpected error");
+      const msg = (err.getResponse() as { message: string }).message;
+      expect(msg).toContain("unexpected error");
     });
 
     it("returns InternalServerErrorException with custom detail", () => {
       const err = AppError.internal("Database connection failed");
       expect(err).toBeInstanceOf(InternalServerErrorException);
-      expect(err.getResponse()).toContain("Database connection failed");
+      const msg = (err.getResponse() as { message: string }).message;
+      expect(msg).toContain("Database connection failed");
     });
   });
 });
