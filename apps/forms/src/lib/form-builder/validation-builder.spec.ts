@@ -351,6 +351,40 @@ describe("buildFieldValidationProperties", () => {
       const result = onChange!({ value: "", fieldApi });
       expect(Array.isArray(result)).toBe(true);
     });
+
+    it("returns undefined when onChange is called with a complete DateValue and no constraints", () => {
+      const field = makeField("dob", "step1", {
+        htmlType: "date",
+        validations: { required: { value: true, error: "Required." } },
+      });
+      const { onChange } = buildFieldValidationProperties(field);
+      const fieldApi = makeFieldApi();
+      const result = onChange!({
+        value: { day: 15, month: 6, year: 2024 },
+        fieldApi,
+      });
+      expect(result).toBeUndefined();
+    });
+
+    it("returns errors when date is in the future and field has past constraint", () => {
+      const field = makeField("eventDate", "step1", {
+        htmlType: "date",
+        validations: {
+          required: { value: true, error: "Required." },
+          past: { value: true, error: "Date must be in the past." },
+        },
+      });
+      const { onChange } = buildFieldValidationProperties(field);
+      const fieldApi = makeFieldApi();
+      // Use a future date: June 15, 2027 is in the future
+      const result = onChange!({
+        value: { day: 15, month: 6, year: 2027 },
+        fieldApi,
+      });
+      // Should return an error array when date validation fails
+      expect(result).toBeDefined();
+      expect(Array.isArray(result)).toBe(true);
+    });
   });
 
   // --- checkbox field onChange ---
