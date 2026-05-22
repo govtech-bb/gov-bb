@@ -146,6 +146,27 @@ describe("PaymentProcessor.process", () => {
     await expect(processor.process(e)).rejects.toThrow();
   });
 
+  it("throws when amount is not a number (string)", async () => {
+    // Branch: `typeof cfg.amount !== "number"`
+    const e = event();
+    (e.processors[0].config as Record<string, unknown>).amount = "fifty";
+    await expect(processor.process(e)).rejects.toThrow(/amount must be/);
+  });
+
+  it("throws when amount is Infinity (non-finite)", async () => {
+    // Branch: `!Number.isFinite(cfg.amount)`
+    const e = event();
+    (e.processors[0].config as Record<string, unknown>).amount = Infinity;
+    await expect(processor.process(e)).rejects.toThrow(/amount must be/);
+  });
+
+  it("throws when amount is negative", async () => {
+    // Branch: `cfg.amount < 0`
+    const e = event();
+    (e.processors[0].config as Record<string, unknown>).amount = -1;
+    await expect(processor.process(e)).rejects.toThrow(/amount must be/);
+  });
+
   it("returns cached URL even when status is PENDING (prior partial attempt)", async () => {
     paymentRepo.findOrCreate.mockResolvedValue({
       id: "pay-1",

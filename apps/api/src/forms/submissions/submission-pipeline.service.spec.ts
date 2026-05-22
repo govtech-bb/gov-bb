@@ -390,5 +390,81 @@ describe("SubmissionPipelineService", () => {
       // Should resolve without stepLevel errors since the step key is absent
       await expect(service.run(dto)).resolves.toBeDefined();
     });
+
+    it("stepLevelErrors uses singular 'entry' message when min === 1", async () => {
+      // Branch: `repeatable.min === 1 ? "y" : "ies"` — the "y" arm
+      const contract = mockContract({
+        steps: [
+          {
+            stepId: "singular-step",
+            elements: [primitiveText("field-b")],
+            behaviours: [{ type: "repeatable", min: 1, max: 3 }],
+          },
+        ],
+      } as unknown as Partial<ServiceContract>);
+      definitionsService.findByFormId.mockResolvedValue(contract);
+      draftsService.findById.mockResolvedValue(mockDraft());
+
+      // Provide an empty array (count=0 < min=1)
+      const dto = {
+        ...baseDto(),
+        values: {
+          "singular-step": [],
+        },
+      };
+
+      await expect(service.run(dto)).rejects.toMatchObject({
+        response: expect.objectContaining({
+          errors: expect.objectContaining({
+            "singular-step": expect.objectContaining({
+              _step: expect.arrayContaining([expect.stringContaining("entry")]),
+            }),
+          }),
+        }),
+      });
+    });
+  });
+
+  describe("buildAuditTrail — multi-instance branches", () => {
+    it("encodes activeFieldIds as string[][] for repeatable steps (multiple instances)", async () => {
+      // Branch: `instArr.length !== 1` for activeFieldsByInstance
+      // A repeatable step with multiple instances will have instArr.length > 1
+      const contract = mockContract({
+        steps: [
+          {
+            stepId: "repeatable-step",
+            elements: [primitiveText("field-a"), primitiveText("field-b")],
+            behaviours: [{ type: "repeatable", min: 1, max: 5 }],
+          },
+        ],
+      } as unknown as Partial<ServiceContract>);
+      definitionsService.findByFormId.mockResolvedValue(contract);
+      draftsService.findById.mockResolvedValue(mockDraft());
+
+      // Submit two instances
+      const dto = {
+        ...baseDto(),
+        values: {
+          "repeatable-step": [
+            { "field-a": "a1", "field-b": "b1" },
+            { "field-a": "a2", "field-b": "b2" },
+          ],
+        },
+      };
+
+      const { auditTrail } = await service.run(dto);
+
+      // Should be an array of arrays (one inner array per instance)
+      expect(Array.isArray(auditTrail.activeFieldIds["repeatable-step"])).toBe(
+        true,
+      );
+      const perInstance = auditTrail.activeFieldIds[
+        "repeatable-step"
+      ] as string[][];
+      expect(perInstance).toHaveLength(2);
+      expect(perInstance[0]).toEqual(
+        expect.arrayContaining(["field-a", "field-b"]),
+      );
+    });
   });
 });

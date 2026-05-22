@@ -198,6 +198,36 @@ describe("EmailProcessor", () => {
       );
       warn.mockRestore();
     });
+
+    it("skips when recipientField resolves to a repeatable (array) step — unsupported", async () => {
+      // Branch: `stepValues && !Array.isArray(stepValues)` — the Array.isArray arm
+      const warn = jest.spyOn(Logger.prototype, "warn").mockImplementation();
+      const payload = makePayload(
+        { recipientField: "jobs.email" },
+        { jobs: [{ email: "jane@example.com" }] },
+      );
+
+      await processor.process(payload);
+
+      expect(mockSend).not.toHaveBeenCalled();
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("Could not resolve recipient"),
+      );
+      warn.mockRestore();
+    });
+
+    it("falls back to noreply@gov.bb when email.from is not configured", async () => {
+      // Branch: `config.get<string>("email.from") ?? "noreply@gov.bb"`
+      processor = new EmailProcessor(
+        makeConfig({ "email.from": undefined }),
+        makeTemplateService(),
+        makeBodyBuilder(),
+      );
+
+      await processor.process(makePayload());
+
+      expect(getSentInput().FromEmailAddress).toBe("noreply@gov.bb");
+    });
   });
 });
 
