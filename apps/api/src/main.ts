@@ -27,7 +27,7 @@ async function bootstrap() {
 
   // contentSecurityPolicy is disabled because the only HTML this API serves is
   // Swagger UI at /api-docs, which needs inline scripts/styles. CSP for the
-  // web app lives in apps/web (see Amplify customHeaders).
+  // forms app lives in apps/forms (see Amplify customHeaders).
   app.use(helmet({ contentSecurityPolicy: false }));
 
   app.enableCors({
