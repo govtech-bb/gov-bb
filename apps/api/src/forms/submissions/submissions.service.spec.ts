@@ -76,7 +76,6 @@ function makeMocks(options: MakeMocksOptions = {}) {
 
   const submissionRepo = {
     findOne: jest.fn().mockResolvedValue(existingEntity),
-    count: jest.fn().mockResolvedValue(0),
     tx: jest.fn().mockImplementation((cb) => cb(txRepo)),
   } as unknown as FormSubmissionRepository;
 
@@ -185,7 +184,6 @@ describe("SubmissionsService", () => {
       };
       const submissionRepo = {
         findOne: jest.fn().mockResolvedValue(null),
-        count: jest.fn().mockResolvedValue(0),
         tx: jest.fn().mockImplementation((cb) => cb(txRepo)),
       } as unknown as FormSubmissionRepository;
 
@@ -252,38 +250,63 @@ describe("SubmissionsService", () => {
       expect(result.outcome).toBe("duplicate");
     });
 
-    it("includes a generated referenceCode on the persisted row", async () => {
-      const { txRepo, service } = makeMocks();
-      await service.submit(BASE_DTO);
+    it("uses dto.formVersion when draft is null (no draftId path)", async () => {
+      // Branch: `draft?.formVersion ?? dto.formVersion` — draft is null
+      const { txRepo, pipeline, service } = makeMocks();
+      pipeline.run = jest.fn().mockResolvedValue({
+        draft: null,
+        contract: { processors: [] },
+        auditTrail: AUDIT_TRAIL,
+        normalizedValues: {},
+      });
+
+      const dto = { ...BASE_DTO, draftId: undefined };
+      const result = await service.submit(dto);
+
+      expect(result.outcome).toBe("created");
       expect(txRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          referenceCode: expect.stringMatching(
-            /^[A-Z]+-\d{8}-\d{6}-[A-HJ-NP-Z2-9]{6}$/,
-          ),
-        }),
+        expect.objectContaining({ formVersion: BASE_DTO.formVersion }),
       );
     });
 
-    it("rolls a new reference code when the first one is already taken", async () => {
-      const { submissionRepo, txRepo, service } = makeMocks();
-      const countMock = submissionRepo.count as jest.Mock;
-      // 1st probe: code is taken; 2nd probe: free.
-      countMock.mockResolvedValueOnce(1).mockResolvedValueOnce(0);
+    it("uses empty processors array when contract.processors is undefined", async () => {
+      // Branch: `contract.processors ?? []`
+      const { processorFactory, pipeline, service } = makeMocks();
+      pipeline.run = jest.fn().mockResolvedValue({
+        draft: { formVersion: "1.0.0", lastActivePage: 0 },
+        contract: { processors: undefined },
+        auditTrail: AUDIT_TRAIL,
+        normalizedValues: {},
+      });
 
       await service.submit(BASE_DTO);
 
-      expect(countMock).toHaveBeenCalledTimes(2);
-      const seen = (txRepo.create as jest.Mock).mock.calls[0]![0]
-        .referenceCode as string;
-      expect(seen).toMatch(/^[A-Z]+-\d{8}-\d{6}-[A-HJ-NP-Z2-9]{6}$/);
+      // resolveSplit called with [] (the ?? fallback)
+      expect(processorFactory.resolveSplit as jest.Mock).toHaveBeenCalledWith(
+        [],
+      );
     });
 
-    it("gives up after 5 attempts if every rolled code is taken", async () => {
-      const { submissionRepo, service } = makeMocks();
-      (submissionRepo.count as jest.Mock).mockResolvedValue(1);
-      await expect(service.submit(BASE_DTO)).rejects.toThrow(
-        /Could not generate unique reference code/,
-      );
+    it("returns the existing submission when double-check pessimistic write finds a race duplicate", async () => {
+      // Branch: `if (doubleCheck)` inside the tx callback
+      const doubleCheckEntity = makeEntity({ id: "race-entity" });
+      const { service, submissionRepo } = makeMocks();
+
+      // First findOne returns null (idempotency key not yet present)
+      (submissionRepo.findOne as jest.Mock).mockResolvedValue(null);
+
+      // Inside the tx, the pessimistic read finds a duplicate
+      const txRepo = {
+        findOne: jest.fn().mockResolvedValue(doubleCheckEntity),
+        create: jest.fn(),
+        save: jest.fn(),
+      };
+      (submissionRepo.tx as jest.Mock).mockImplementation((cb) => cb(txRepo));
+
+      const result = await service.submit(BASE_DTO);
+
+      expect(txRepo.create).not.toHaveBeenCalled();
+      expect(result.data).toBe(doubleCheckEntity);
     });
   });
 

@@ -159,3 +159,198 @@ describe("SubmissionConfirmation", () => {
     expect(results).toHaveNoViolations();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Additional branch coverage
+// ---------------------------------------------------------------------------
+
+describe("SubmissionConfirmation — no-payment success branch", () => {
+  it("renders success header when hasPayment is false and submissionSuccess is true", () => {
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Driving Licence"
+        stepTitle="Application Submitted"
+        submissionState={{
+          hasPayment: false,
+          serviceName: "Driving Licence",
+          submissionSuccess: true,
+          paymentSuccess: false,
+          referenceNumber: "DL-REF-001",
+          date: "19/05/2026",
+        }}
+      />,
+    );
+    expect(
+      screen.getByText("Your submission has been saved"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("DL-REF-001")).toBeInTheDocument();
+  });
+});
+
+describe("SubmissionConfirmation — payment success branch", () => {
+  const paymentSuccessState: SubmissionState = {
+    hasPayment: true,
+    serviceName: "Vehicle Registration",
+    amount: "$50.00",
+    submissionSuccess: true,
+    paymentSuccess: true,
+    referenceNumber: "PAY-REF-999",
+    date: "19/05/2026",
+  };
+
+  it("renders payment success summary with amount, reference number, date", () => {
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Vehicles"
+        stepTitle="Payment Complete"
+        submissionState={paymentSuccessState}
+      />,
+    );
+    expect(screen.getByText("Your payment was successful")).toBeInTheDocument();
+    expect(screen.getByText("Vehicle Registration")).toBeInTheDocument();
+    expect(screen.getByText("$50.00")).toBeInTheDocument();
+    expect(screen.getByText("PAY-REF-999")).toBeInTheDocument();
+    expect(screen.getByText("19/05/2026")).toBeInTheDocument();
+  });
+});
+
+describe("SubmissionConfirmation — nextSteps rendering", () => {
+  const successState: SubmissionState = {
+    hasPayment: false,
+    serviceName: "Test Service",
+    submissionSuccess: true,
+    paymentSuccess: false,
+    referenceNumber: "NS-REF-001",
+    date: "19/05/2026",
+  };
+
+  it("renders nextSteps section title and items", () => {
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Test"
+        stepTitle="Done"
+        submissionState={successState}
+        nextSteps={[
+          { title: "What happens next", items: ["Step 1", "Step 2"] },
+        ]}
+      />,
+    );
+    expect(screen.getByText("What happens next")).toBeInTheDocument();
+    expect(screen.getByText("Step 1")).toBeInTheDocument();
+    expect(screen.getByText("Step 2")).toBeInTheDocument();
+  });
+
+  it("renders nextSteps section content paragraph when content is provided", () => {
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Test"
+        stepTitle="Done"
+        submissionState={successState}
+        nextSteps={[
+          {
+            title: "Important information",
+            content: "Please allow 5 business days for processing.",
+            items: ["Check your email"],
+          },
+        ]}
+      />,
+    );
+    expect(
+      screen.getByText("Please allow 5 business days for processing."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Check your email")).toBeInTheDocument();
+  });
+
+  it("renders multiple nextSteps sections", () => {
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Test"
+        stepTitle="Done"
+        submissionState={successState}
+        nextSteps={[
+          { title: "Section A", items: ["Item A1"] },
+          { title: "Section B", content: "Some content", items: ["Item B1"] },
+        ]}
+      />,
+    );
+    expect(screen.getByText("Section A")).toBeInTheDocument();
+    expect(screen.getByText("Item A1")).toBeInTheDocument();
+    expect(screen.getByText("Section B")).toBeInTheDocument();
+    expect(screen.getByText("Some content")).toBeInTheDocument();
+    expect(screen.getByText("Item B1")).toBeInTheDocument();
+  });
+});
+
+describe("SubmissionConfirmation — contactDetails address branches", () => {
+  const successState: SubmissionState = {
+    hasPayment: false,
+    serviceName: "Test Service",
+    submissionSuccess: true,
+    paymentSuccess: false,
+    referenceNumber: "CD-REF-001",
+    date: "19/05/2026",
+  };
+
+  it("renders address with all fields including optional line2 and country", () => {
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Test"
+        stepTitle="Done"
+        submissionState={successState}
+        contactDetails={{
+          title: "Ministry of Transport",
+          telephoneNumber: "+1 246 000 0000",
+          email: "transport@gov.bb",
+          address: {
+            line1: "1 Bay Street",
+            line2: "Bridgetown",
+            city: "St. Michael",
+            country: "Barbados",
+          },
+        }}
+      />,
+    );
+    expect(screen.getByText("1 Bay Street")).toBeInTheDocument();
+    expect(screen.getByText("Bridgetown")).toBeInTheDocument();
+    expect(screen.getByText("St. Michael")).toBeInTheDocument();
+    expect(screen.getByText("Barbados")).toBeInTheDocument();
+  });
+
+  it("renders address without optional line2 and country", () => {
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Test"
+        stepTitle="Done"
+        submissionState={successState}
+        contactDetails={{
+          title: "Ministry of Transport",
+          telephoneNumber: "+1 246 000 0000",
+          email: "transport@gov.bb",
+          address: {
+            line1: "2 Harbour Road",
+            city: "Bridgetown",
+          },
+        }}
+      />,
+    );
+    expect(screen.getByText("2 Harbour Road")).toBeInTheDocument();
+    expect(screen.getByText("Bridgetown")).toBeInTheDocument();
+    expect(screen.queryByText("Barbados")).not.toBeInTheDocument();
+  });
+});
+
+describe("SubmissionConfirmation — undefined submissionState fallback", () => {
+  it("renders using default fallback values when submissionState is not provided", () => {
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Example"
+        stepTitle="Confirmation"
+      />,
+    );
+    // The fallback sets hasPayment: true, paymentSuccess: true — payment success summary renders
+    expect(screen.getByText("Your payment was successful")).toBeInTheDocument();
+    expect(screen.getByText("Example Service")).toBeInTheDocument();
+    expect(screen.getByText("$100.00")).toBeInTheDocument();
+    expect(screen.getByText("ABC123456789")).toBeInTheDocument();
+  });
+});

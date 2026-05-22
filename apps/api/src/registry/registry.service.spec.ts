@@ -207,6 +207,31 @@ describe("RegistryService", () => {
       const result = await service.resolve("components/barbados/next-of-kin");
       expect((result as any).fieldId).toBe("next-of-kin");
     });
+
+    it("uses the in-memory cache and skips the database on the second call", async () => {
+      // Branch: `if (this.cache.has(CACHE_LOADED_KEY)) return` — cache already warm
+      const mockRepo = {
+        find: jest.fn().mockResolvedValue([
+          {
+            namespace: "barbados",
+            type: "passport-type",
+            definition: {
+              fieldId: "passport-type",
+              label: "Type",
+              htmlType: "text",
+            },
+          },
+        ]),
+      } as unknown as Repository<CustomComponent>;
+      const service = new RegistryService(mockRepo);
+
+      // First call — warms the cache (calls repo.find once)
+      await service.resolve("components/barbados/passport-type");
+      // Second call — cache is warm, should NOT call repo.find again
+      await service.resolve("components/barbados/passport-type");
+
+      expect(mockRepo.find).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe("hydrateForm", () => {

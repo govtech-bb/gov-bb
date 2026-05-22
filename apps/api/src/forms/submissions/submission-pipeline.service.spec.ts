@@ -272,5 +272,204 @@ describe("SubmissionPipelineService", () => {
         auditTrail.submittedAt,
       );
     });
+
+    it("visitedPages is empty when draft is null (no-draft path)", async () => {
+      // Branch: `draft ? [...] : []` — the else arm
+      definitionsService.findByFormId.mockResolvedValue(mockContract());
+
+      const dto = { ...baseDto(), draftId: undefined };
+      const { auditTrail } = await service.run(dto);
+      expect(auditTrail.visitedPages).toEqual([]);
+    });
+
+    it("hiddenFieldIds is populated for a hidden step that has hiddenFieldIds entry", async () => {
+      // Branch: `if (flat) hiddenFieldIds[stepId]` — the if-taken arm via a hidden step
+      // We need a step that is conditionally hidden so hiddenFieldIds.get(stepId) returns a Set.
+      // The correct step-level behaviour type is "stepConditionalOn".
+      const contract = mockContract({
+        steps: [
+          {
+            stepId: "trigger-step",
+            elements: [primitiveText("show-toggle")],
+            behaviours: [],
+          },
+          {
+            stepId: "conditional-step",
+            elements: [primitiveText("hidden-field")],
+            behaviours: [
+              {
+                type: "stepConditionalOn",
+                targetFieldId: "show-toggle",
+                operator: "equal",
+                value: "yes",
+              } as any,
+            ],
+          },
+        ],
+      } as unknown as Partial<ServiceContract>);
+
+      definitionsService.findByFormId.mockResolvedValue(contract);
+
+      // The step is hidden because show-toggle !== "yes"
+      const dto = {
+        ...baseDto(),
+        draftId: undefined,
+        values: { "trigger-step": { "show-toggle": "no" } },
+      };
+
+      const { auditTrail } = await service.run(dto);
+      // The step is hidden — hiddenStepIds should contain it
+      expect(auditTrail.hiddenStepIds).toContain("conditional-step");
+      // The branch `if (flat) hiddenFieldIds[stepId]` should have populated hiddenFieldIds
+      expect(auditTrail.hiddenFieldIds["conditional-step"]).toContain(
+        "hidden-field",
+      );
+    });
+  });
+
+  describe("validate — uncovered branch paths", () => {
+    it("stepLevelErrors includes plural 'ies' message when min > 1", async () => {
+      // Branch: `repeatable.min === 1 ? "y" : "ies"` — the "ies" arm
+      // For a repeatable step, foldErrors wraps errors as { _step: [...], instances: [...] }
+      const contract = mockContract({
+        steps: [
+          {
+            stepId: "repeatable-step",
+            elements: [primitiveText("field-a")],
+            behaviours: [{ type: "repeatable", min: 2, max: 5 }],
+          },
+        ],
+      } as unknown as Partial<ServiceContract>);
+      definitionsService.findByFormId.mockResolvedValue(contract);
+      draftsService.findById.mockResolvedValue(mockDraft());
+
+      // Provide exactly one entry (below min of 2) so stepLevelErrors fires
+      const dto = {
+        ...baseDto(),
+        values: {
+          "repeatable-step": [{ "field-a": "entry-1" }],
+        },
+      };
+
+      await expect(service.run(dto)).rejects.toMatchObject({
+        response: expect.objectContaining({
+          errors: expect.objectContaining({
+            "repeatable-step": expect.objectContaining({
+              _step: expect.arrayContaining([expect.stringContaining("ies")]),
+            }),
+          }),
+        }),
+      });
+    });
+
+    it("skips repeatable min check when step is not in submitted payload (!hasKey path)", async () => {
+      // Branch: `if (!hasKey) continue` — step has repeatable but stepId absent from allValues
+      const contract = mockContract({
+        steps: [
+          {
+            stepId: "personal-info",
+            elements: [
+              primitiveText("first-name", true),
+              primitiveText("surname", true),
+            ],
+            behaviours: [],
+          },
+          {
+            stepId: "optional-repeatable",
+            elements: [primitiveText("extra-field")],
+            behaviours: [{ type: "repeatable", min: 1, max: 5 }],
+          },
+        ],
+      } as unknown as Partial<ServiceContract>);
+      definitionsService.findByFormId.mockResolvedValue(contract);
+      draftsService.findById.mockResolvedValue(mockDraft());
+
+      // Only provide the required step; omit optional-repeatable entirely
+      const dto = {
+        ...baseDto(),
+        values: {
+          "personal-info": { "first-name": "Marcus", surname: "Aurelius" },
+        },
+      };
+
+      // Should resolve without stepLevel errors since the step key is absent
+      await expect(service.run(dto)).resolves.toBeDefined();
+    });
+
+    it("stepLevelErrors uses singular 'entry' message when min === 1", async () => {
+      // Branch: `repeatable.min === 1 ? "y" : "ies"` — the "y" arm
+      const contract = mockContract({
+        steps: [
+          {
+            stepId: "singular-step",
+            elements: [primitiveText("field-b")],
+            behaviours: [{ type: "repeatable", min: 1, max: 3 }],
+          },
+        ],
+      } as unknown as Partial<ServiceContract>);
+      definitionsService.findByFormId.mockResolvedValue(contract);
+      draftsService.findById.mockResolvedValue(mockDraft());
+
+      // Provide an empty array (count=0 < min=1)
+      const dto = {
+        ...baseDto(),
+        values: {
+          "singular-step": [],
+        },
+      };
+
+      await expect(service.run(dto)).rejects.toMatchObject({
+        response: expect.objectContaining({
+          errors: expect.objectContaining({
+            "singular-step": expect.objectContaining({
+              _step: expect.arrayContaining([expect.stringContaining("entry")]),
+            }),
+          }),
+        }),
+      });
+    });
+  });
+
+  describe("buildAuditTrail — multi-instance branches", () => {
+    it("encodes activeFieldIds as string[][] for repeatable steps (multiple instances)", async () => {
+      // Branch: `instArr.length !== 1` for activeFieldsByInstance
+      // A repeatable step with multiple instances will have instArr.length > 1
+      const contract = mockContract({
+        steps: [
+          {
+            stepId: "repeatable-step",
+            elements: [primitiveText("field-a"), primitiveText("field-b")],
+            behaviours: [{ type: "repeatable", min: 1, max: 5 }],
+          },
+        ],
+      } as unknown as Partial<ServiceContract>);
+      definitionsService.findByFormId.mockResolvedValue(contract);
+      draftsService.findById.mockResolvedValue(mockDraft());
+
+      // Submit two instances
+      const dto = {
+        ...baseDto(),
+        values: {
+          "repeatable-step": [
+            { "field-a": "a1", "field-b": "b1" },
+            { "field-a": "a2", "field-b": "b2" },
+          ],
+        },
+      };
+
+      const { auditTrail } = await service.run(dto);
+
+      // Should be an array of arrays (one inner array per instance)
+      expect(Array.isArray(auditTrail.activeFieldIds["repeatable-step"])).toBe(
+        true,
+      );
+      const perInstance = auditTrail.activeFieldIds[
+        "repeatable-step"
+      ] as string[][];
+      expect(perInstance).toHaveLength(2);
+      expect(perInstance[0]).toEqual(
+        expect.arrayContaining(["field-a", "field-b"]),
+      );
+    });
   });
 });

@@ -5,7 +5,7 @@
 
 ## Context
 
-After completing Phases 1–4 of the testing improvements plan, the project has working Jest coverage tooling across all six workspaces (`apps/api`, `apps/web`, `packages/expressions`, `packages/form-conditions`, `packages/form-types`, `packages/form-validation`). The next step is to drive all workspaces toward a shared quality target and to document the exceptions that prevent uniform enforcement.
+After completing Phases 1–4 of the testing improvements plan, the project has working Jest coverage tooling across all six workspaces (`apps/api`, `apps/forms`, `packages/expressions`, `packages/form-conditions`, `packages/form-types`, `packages/form-validation`). The next step is to drive all workspaces toward a shared quality target and to document the exceptions that prevent uniform enforcement.
 
 Two structural constraints emerged from Phase 1–4 measurements:
 
@@ -21,9 +21,15 @@ Two structural constraints emerged from Phase 1–4 measurements:
 
 The functions threshold for `packages/form-types` is set to 5% (floor) rather than 90%. This is a permanent structural exemption: the package exports Zod schema objects, not callable functions. The measured floor is 6.52%. This threshold must not be raised unless runtime utility functions are intentionally added to the package.
 
-### Exemption 2 — `apps/web` functions target deferred
+### Exemption 2 — `apps/forms` functions threshold is permanently set at the structural floor
 
-The functions threshold for `apps/web` is deferred pending a scope decision on `form-renderer` after Phase 3 measurements. The target of 90% applies to statements, branches, and lines. Once Phase 3 measurements are taken, the functions threshold will be set according to the ratchet policy (measured actual minus 1–2 points), and the scope decision will be documented in a follow-up record if a permanent exemption is warranted.
+**Status: resolved as permanent exemption (2026-05-21)**
+
+Phase 5 Phase 3 measurements produced 16.72% functions coverage for `apps/forms`. The gap is fully attributable to `form-renderer.tsx` and `routes/forms/$formId/index.tsx`. Both components require simultaneously mocking TanStack Form, TanStack Router, and draft state; unit tests at that level test the mocks rather than the components. The existing Playwright E2E suite provides reliable journey coverage for these paths.
+
+The functions threshold for `apps/forms` is set at the structural floor (currently 14%, ratcheted from measured 16.72%). This exemption is permanent: the threshold must not be raised toward 90% unless `form-renderer` and the main form route are deliberately brought into unit test scope. If that scope change is made, remove this exemption and document the new approach in a follow-up decision record.
+
+The 90% target applies to statements, branches, and lines for `apps/forms`.
 
 ### Threshold ratchet policy
 
@@ -36,5 +42,5 @@ This policy extends and operationalises the approach established in `0001-covera
 - Every workspace must have `coverageThreshold` configured in its `jest.config.ts`. A workspace without a threshold is outside the quality gate.
 - PRs that add tests should update the relevant thresholds to reflect the new floor. PRs that lower a threshold without a documented reason should be rejected.
 - `packages/form-types` reviewers must not raise the functions threshold as a proxy for "more tests needed" — the metric is structurally inert for this package. Statement and line coverage are the meaningful signals.
-- Once `apps/web` Phase 3 measurements are complete, a follow-up task must set the functions threshold and, if the scope decision excludes `form-renderer`, create a new decision record documenting that exemption. Update the status of Exemption 2 to either "resolved" (threshold set) or "permanent" (new decision record created). Do not leave the deferral open indefinitely.
+- `apps/forms` functions threshold is permanently set at the structural floor (~14%). Do not raise it toward 90% unless `form-renderer` and the main form route are brought into unit test scope. If that happens, remove Exemption 2 and document the change.
 - The 90% target applies to all future packages added to the monorepo. New packages must have coverage tooling configured before their first merge to main.

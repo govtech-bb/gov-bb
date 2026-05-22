@@ -12,11 +12,13 @@ import { extractRecipe } from "./recipe-extractor";
 import { buildSql } from "./sql-builder";
 import { create, get, getOrThrow } from "./session-store";
 import type { PublishResponse, SessionResponse } from "./types";
+import { requireAdminToken } from "../auth/admin-token-middleware";
 
 const sessionIdSchema = z.object({ sessionId: z.string() });
 
-export const getAiStatus = createServerFn({ method: "GET" }).handler(
-  async () => {
+export const getAiStatus = createServerFn({ method: "GET" })
+  .middleware([requireAdminToken])
+  .handler(async () => {
     const available = await isAvailable();
     return {
       available,
@@ -24,10 +26,10 @@ export const getAiStatus = createServerFn({ method: "GET" }).handler(
         ? "AI service is ready"
         : "AI service not configured. Set ANTHROPIC_API_KEY in environment.",
     };
-  },
-);
+  });
 
 export const createSession = createServerFn({ method: "POST" })
+  .middleware([requireAdminToken])
   .inputValidator(z.object({ name: z.string().optional() }))
   .handler(async ({ data }): Promise<SessionResponse> => {
     const session = create(data?.name);
@@ -44,6 +46,7 @@ export const createSession = createServerFn({ method: "POST" })
   });
 
 export const sendMessage = createServerFn({ method: "POST" })
+  .middleware([requireAdminToken])
   .inputValidator(
     z.object({
       sessionId: z.string(),
@@ -86,6 +89,7 @@ export const sendMessage = createServerFn({ method: "POST" })
   });
 
 export const getSession = createServerFn({ method: "GET" })
+  .middleware([requireAdminToken])
   .inputValidator(sessionIdSchema)
   .handler(async ({ data }): Promise<SessionResponse> => {
     const session = get(data.sessionId);
@@ -98,6 +102,7 @@ export const getSession = createServerFn({ method: "GET" })
   });
 
 export const getRecipe = createServerFn({ method: "GET" })
+  .middleware([requireAdminToken])
   .inputValidator(sessionIdSchema)
   .handler(async ({ data }) => {
     const session = get(data.sessionId);
@@ -106,6 +111,7 @@ export const getRecipe = createServerFn({ method: "GET" })
   });
 
 export const extractRecipeFromSession = createServerFn({ method: "POST" })
+  .middleware([requireAdminToken])
   .inputValidator(sessionIdSchema)
   .handler(async ({ data }) => {
     const session = getOrThrow(data.sessionId);
@@ -124,6 +130,7 @@ export const extractRecipeFromSession = createServerFn({ method: "POST" })
   });
 
 export const getSql = createServerFn({ method: "GET" })
+  .middleware([requireAdminToken])
   .inputValidator(sessionIdSchema)
   .handler(async ({ data }) => {
     const session = get(data.sessionId);
@@ -134,6 +141,7 @@ export const getSql = createServerFn({ method: "GET" })
   });
 
 export const publishSession = createServerFn({ method: "POST" })
+  .middleware([requireAdminToken])
   .inputValidator(
     z.object({ sessionId: z.string(), formId: z.string().optional() }),
   )
@@ -207,6 +215,7 @@ export const publishSession = createServerFn({ method: "POST" })
   });
 
 export const deletePublished = createServerFn({ method: "POST" })
+  .middleware([requireAdminToken])
   .inputValidator(sessionIdSchema)
   .handler(async ({ data }) => {
     const session = getOrThrow(data.sessionId);

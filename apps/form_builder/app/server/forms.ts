@@ -1,10 +1,17 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getRequestHeaders } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { FormDefinitionEntity } from "@govtech-bb/database";
-import type { ServiceContractRecipe } from "@govtech-bb/form-types";
+import {
+  serviceContractRecipeSchema,
+  type ServiceContractRecipe,
+} from "@govtech-bb/form-types";
 import { getDataSource } from "./db";
+import { getSession } from "./session";
+import { listPublishedForms, getPublishedRecipe } from "./github-recipes";
 import { bumpMinor } from "../lib/version";
 import type { FormDefinitionSummary } from "../types/index";
+import { requireAdminToken } from "./auth/admin-token-middleware";
 
 type FormDefinitionRow = {
   id: string;
@@ -13,51 +20,46 @@ type FormDefinitionRow = {
   published_at: Date | null;
 };
 
-export const listForms = createServerFn({ method: "GET" }).handler(
-  async (): Promise<FormDefinitionSummary[]> => {
-    const ds = await getDataSource();
-    const rows = await ds.query<
-      {
-        id: string;
-        form_id: string;
-        title: string;
-        version: string;
-        published_at: Date | null;
-      }[]
-    >(`
-      SELECT DISTINCT ON (form_id) id, form_id, schema->>'title' AS title, version, published_at
-      FROM form_definitions
-      ORDER BY form_id, string_to_array(version, '.')::int[] DESC
-    `);
-    return rows.map((r) => ({
-      id: r.id,
-      formId: r.form_id,
-      title: r.title,
-      version: r.version,
-      isPublished: r.published_at !== null,
+function requireToken(): string {
+  const headers = getRequestHeaders();
+  const cookie =
+    (headers as { get?: (k: string) => string | null }).get?.("cookie") ??
+    (headers as { cookie?: string }).cookie ??
+    null;
+  const secret = process.env.SESSION_SECRET;
+  if (!secret) throw new Error("SESSION_SECRET is not set");
+  const session = getSession(cookie, secret);
+  if (!session) throw new Error("Not authenticated");
+  return session.accessToken;
+}
+
+export const listForms = createServerFn({ method: "GET" })
+  .middleware([requireAdminToken])
+  .handler(async (): Promise<FormDefinitionSummary[]> => {
+    const token = requireToken();
+    const forms = await listPublishedForms(token);
+    return forms.map((f) => ({
+      // For GitHub-backed entries the formId is unique enough to serve as id.
+      // (FormPicker only uses it for React keys.)
+      id: f.formId,
+      formId: f.formId,
+      title: f.title,
+      version: f.version,
+      isPublished: true,
     }));
-  },
-);
+  });
 
 export const getRecipe = createServerFn({ method: "GET", strict: false })
+  .middleware([requireAdminToken])
   .inputValidator(z.object({ formId: z.string() }))
   .handler(async ({ data }): Promise<ServiceContractRecipe> => {
-    const ds = await getDataSource();
-    const rows = await ds.query<FormDefinitionRow[]>(
-      `SELECT id, version, schema, published_at
-       FROM form_definitions
-       WHERE form_id = $1
-       ORDER BY string_to_array(version, '.')::int[] DESC
-       LIMIT 1`,
-      [data.formId],
-    );
-    if (!rows.length) {
-      throw new Error(`No recipe found for formId: ${data.formId}`);
-    }
-    return rows[0].schema;
+    const token = requireToken();
+    const recipe = await getPublishedRecipe(token, { formId: data.formId });
+    return serviceContractRecipeSchema.parse(recipe);
   });
 
 export const submitRecipe = createServerFn({ method: "POST" })
+  .middleware([requireAdminToken])
   .inputValidator(
     z.object({
       recipe: z.unknown(),
@@ -87,6 +89,7 @@ export const submitRecipe = createServerFn({ method: "POST" })
   });
 
 export const updateRecipe = createServerFn({ method: "POST" })
+  .middleware([requireAdminToken])
   .inputValidator(
     z.object({
       formId: z.string(),
@@ -125,6 +128,7 @@ export const updateRecipe = createServerFn({ method: "POST" })
   });
 
 export const nextVersion = createServerFn({ method: "GET" })
+  .middleware([requireAdminToken])
   .inputValidator(z.object({ formId: z.string() }))
   .handler(
     async ({

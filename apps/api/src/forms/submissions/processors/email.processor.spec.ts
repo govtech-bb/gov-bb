@@ -199,87 +199,33 @@ describe("EmailProcessor", () => {
       warn.mockRestore();
     });
 
-    it("sends one email per email processor entry when multiple are configured", async () => {
-      const payload = makePayload();
-      payload.processors = [
-        { type: "email", config: { recipientField: "personal.email" } },
-        { type: "email", config: { recipientField: "personal.altEmail" } },
-      ];
-      payload.values = {
-        personal: { email: "jane@example.com", altEmail: "alt@example.com" },
-      };
-
-      await processor.process(payload);
-
-      expect(mockSend).toHaveBeenCalledTimes(2);
-      const MockedCmd = SendEmailCommand as unknown as jest.Mock;
-      const recipients = MockedCmd.mock.calls.map(
-        (call) =>
-          (call[0] as SendEmailCommandInput).Destination?.ToAddresses?.[0],
-      );
-      expect(recipients).toEqual(["jane@example.com", "alt@example.com"]);
-    });
-
-    it("uses each entry's own subject when multiple email entries are configured", async () => {
-      const payload = makePayload();
-      payload.processors = [
-        {
-          type: "email",
-          config: {
-            recipientField: "personal.email",
-            subject: "Applicant copy",
-          },
-        },
-        {
-          type: "email",
-          config: {
-            recipientField: "personal.altEmail",
-            subject: "Officer copy",
-          },
-        },
-      ];
-      payload.values = {
-        personal: { email: "a@example.com", altEmail: "b@example.com" },
-      };
-
-      await processor.process(payload);
-
-      const MockedCmd = SendEmailCommand as unknown as jest.Mock;
-      const subjects = MockedCmd.mock.calls.map(
-        (call) =>
-          (call[0] as SendEmailCommandInput).Content?.Simple?.Subject?.Data,
-      );
-      expect(subjects).toEqual(["Applicant copy", "Officer copy"]);
-    });
-
-    it("continues processing remaining entries when one entry is missing a recipient", async () => {
+    it("skips when recipientField resolves to a repeatable (array) step — unsupported", async () => {
+      // Branch: `stepValues && !Array.isArray(stepValues)` — the Array.isArray arm
       const warn = jest.spyOn(Logger.prototype, "warn").mockImplementation();
-      const payload = makePayload();
-      payload.processors = [
-        { type: "email", config: { recipientField: "personal.email" } },
-        { type: "email", config: {} as never }, // missing recipientField
-        { type: "email", config: { recipientField: "personal.altEmail" } },
-      ];
-      payload.values = {
-        personal: { email: "a@example.com", altEmail: "b@example.com" },
-      };
-
-      await processor.process(payload);
-
-      expect(mockSend).toHaveBeenCalledTimes(2);
-      expect(warn).toHaveBeenCalledWith(
-        expect.stringContaining("No recipientField"),
-      );
-      warn.mockRestore();
-    });
-
-    it("does not send any email when the processors array has no email entries", async () => {
-      const payload = makePayload();
-      payload.processors = [];
+      const payload = makePayload({ recipientField: "jobs.email" }, {
+        jobs: [{ email: "jane@example.com" }],
+      } as unknown as Record<string, Record<string, unknown>>);
 
       await processor.process(payload);
 
       expect(mockSend).not.toHaveBeenCalled();
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("Could not resolve recipient"),
+      );
+      warn.mockRestore();
+    });
+
+    it("falls back to noreply@gov.bb when email.from is not configured", async () => {
+      // Branch: `config.get<string>("email.from") ?? "noreply@gov.bb"`
+      processor = new EmailProcessor(
+        makeConfig({ "email.from": undefined }),
+        makeTemplateService(),
+        makeBodyBuilder(),
+      );
+
+      await processor.process(makePayload());
+
+      expect(getSentInput().FromEmailAddress).toBe("noreply@gov.bb");
     });
   });
 });

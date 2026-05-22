@@ -2,7 +2,6 @@ import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import { Footer, textVariants } from '@govtech-bb/react'
-import Header from '#/components/Header'
 
 import appCss from '../styles.css?url'
 
@@ -38,7 +37,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <body
         className={`${textVariants({ size: 'body' })} grid min-h-dvh grid-rows-[auto_1fr_auto] font-sans antialiased text-black-00 bg-white-00`}
       >
-        <Header />
         <main id="main" className="min-h-0">{children}</main>
         <div className="hidden md:block">
           <Footer

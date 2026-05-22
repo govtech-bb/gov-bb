@@ -4,8 +4,6 @@
 @import "@fontsource/figtree/700.css";
 @import "tailwindcss";
 @import "@govtech-bb/design";
-
-/* Scan the design system's compiled output for Tailwind class names */
 @source "../../../node_modules/@govtech-bb/react/dist/**/*.{js,cjs}";
 @plugin "@tailwindcss/typography";
 
@@ -37,6 +35,23 @@
   50% { transform: translateY(-4px); }
 }
 
+@utility text-bubble {
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-caption);
+  @media (min-width: 768px) {
+    font-size: var(--font-size-body);
+    line-height: var(--line-height-body);
+  }
+}
+
+@utility text-disclaimer {
+  font-size: 0.875rem;
+  line-height: var(--line-height-caption);
+  @media (min-width: 768px) {
+    font-size: var(--font-size-caption);
+  }
+}
+
 * {
   box-sizing: border-box;
 }
@@ -52,11 +67,19 @@ body {
   background: var(--color-white-00);
   color: var(--color-black-00);
   font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
 }
 
-.container {
-  width: min(1080px, calc(100% - 2rem));
+@utility container {
   margin-inline: auto;
+  width: 100%;
+  padding-inline: 1rem;
+
+  @media (min-width: 1024px) {
+    max-width: 1200px;
+    padding-inline: 8rem;
+  }
 }
 
 .sr-only {

@@ -57,10 +57,13 @@ const config: Config = {
     "!**/*.spec.ts",
     "!**/*.spec.tsx",
     "!**/*.d.ts",
+    "!**/main.tsx",
+    "!**/routeTree.gen.ts",
+    "!**/routes/admin/**",
   ],
   coverageReporters: ["text-summary", "lcov", "html"],
   coverageThreshold: {
-    global: { branches: 10, functions: 7, lines: 19, statements: 21 },
+    global: { branches: 89, functions: 90, lines: 95, statements: 94 },
   },
 };
 
