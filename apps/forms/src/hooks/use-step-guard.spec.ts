@@ -139,5 +139,107 @@ describe("useStepGuard", () => {
       act(() => result.current.navigateToStep("step-2"));
       expect(mockNavigate).toHaveBeenCalled();
     });
+
+    it("uses stepsOverride when provided", () => {
+      markComplete(FORM_ID, "step-1");
+      const extraStep = step("step-extra");
+      const { result } = renderHook(() =>
+        useStepGuard({
+          formId: FORM_ID,
+          activeSteps: steps,
+          currentStepId: "step-2",
+        }),
+      );
+      mockNavigate.mockClear();
+      act(() =>
+        result.current.navigateToStep("step-extra", [...steps, extraStep]),
+      );
+      expect(mockNavigate).toHaveBeenCalled();
+    });
+  });
+
+  describe("completeAndContinue", () => {
+    it("marks the step completed and navigates to the next step", () => {
+      markComplete(FORM_ID, "step-1");
+      const { result } = renderHook(() =>
+        useStepGuard({
+          formId: FORM_ID,
+          activeSteps: steps,
+          currentStepId: "step-2",
+        }),
+      );
+      mockNavigate.mockClear();
+      act(() => result.current.completeAndContinue("step-2"));
+      expect(mockNavigate).toHaveBeenCalled();
+      const stored = JSON.parse(
+        sessionStorage.getItem(`completedSteps_${FORM_ID}`) ?? "[]",
+      );
+      expect(stored).toContain("step-2");
+    });
+
+    it("does not navigate when completing the last step (no next step)", () => {
+      markComplete(FORM_ID, "step-1", "step-2");
+      const { result } = renderHook(() =>
+        useStepGuard({
+          formId: FORM_ID,
+          activeSteps: steps,
+          currentStepId: "step-3",
+        }),
+      );
+      mockNavigate.mockClear();
+      act(() => result.current.completeAndContinue("step-3"));
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
+
+    it("uses stepsOverride when provided", () => {
+      markComplete(FORM_ID, "step-1");
+      const extraSteps = [step("step-1"), step("step-2"), step("step-new")];
+      const { result } = renderHook(() =>
+        useStepGuard({
+          formId: FORM_ID,
+          activeSteps: steps,
+          currentStepId: "step-2",
+        }),
+      );
+      mockNavigate.mockClear();
+      act(() => result.current.completeAndContinue("step-2", extraSteps));
+      expect(mockNavigate).toHaveBeenCalled();
+    });
+  });
+
+  describe("guard effect — rule 1 (no step in URL)", () => {
+    it("navigates to the first incomplete step when currentStepId is empty", () => {
+      renderHook(() =>
+        useStepGuard({
+          formId: FORM_ID,
+          activeSteps: steps,
+          currentStepId: "",
+        }),
+      );
+      expect(mockNavigate).toHaveBeenCalled();
+    });
+
+    it("navigates to last step when all steps are completed and no currentStepId", () => {
+      markComplete(FORM_ID, "step-1", "step-2", "step-3");
+      renderHook(() =>
+        useStepGuard({
+          formId: FORM_ID,
+          activeSteps: steps,
+          currentStepId: "",
+        }),
+      );
+      expect(mockNavigate).toHaveBeenCalled();
+    });
+
+    it("does nothing when activeSteps is empty", () => {
+      renderHook(() =>
+        useStepGuard({
+          formId: FORM_ID,
+          activeSteps: [],
+          currentStepId: "",
+        }),
+      );
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
   });
 });
