@@ -213,12 +213,15 @@ describe("FieldRenderer", () => {
       expect(screen.getByText(/Add Another/i)).toBeTruthy();
     });
 
-    it("clicking 'Add Another' calls handleChange", async () => {
+    it("clicking 'Add Another' calls handleChange with a new empty trailing entry", async () => {
       const user = userEvent.setup();
       mockState = { value: ["first"], meta: { isValid: true, errors: [] } };
       renderField(primitive("text", { behaviours: [fieldArrayBehaviour] }));
       await user.click(screen.getByText(/Add Another/i));
-      expect(mockFieldApi.handleChange).toHaveBeenCalled();
+      // Asserting the exact new array catches regressions where the handler
+      // is called with the wrong shape (e.g. undefined, a non-extended array,
+      // or a stale snapshot).
+      expect(mockFieldApi.handleChange).toHaveBeenCalledWith(["first", ""]);
     });
 
     it("with 2 values shows a 'Remove' button on the last entry", () => {
@@ -230,7 +233,7 @@ describe("FieldRenderer", () => {
       expect(screen.getByText(/Remove/i)).toBeTruthy();
     });
 
-    it("clicking 'Remove' calls handleChange", async () => {
+    it("clicking 'Remove' calls handleChange with the trailing entry dropped", async () => {
       const user = userEvent.setup();
       mockState = {
         value: ["first", "second"],
@@ -238,7 +241,9 @@ describe("FieldRenderer", () => {
       };
       renderField(primitive("text", { behaviours: [fieldArrayBehaviour] }));
       await user.click(screen.getByText(/Remove/i));
-      expect(mockFieldApi.handleChange).toHaveBeenCalled();
+      // Pin the exact post-remove value so a regression that drops the
+      // wrong entry, clears the array, or passes undefined is caught.
+      expect(mockFieldApi.handleChange).toHaveBeenCalledWith(["first"]);
     });
 
     it("at max count, 'Add Another' is not shown", () => {
@@ -261,7 +266,7 @@ describe("FieldRenderer", () => {
       expect(mockFieldApi.handleChange).toHaveBeenCalled();
     });
 
-    it("when value is undefined, renders min number of inputs using defaultValue", () => {
+    it("when value is undefined, renders exactly min inputs using defaultValue", () => {
       mockState = { value: undefined, meta: { isValid: true, errors: [] } };
       const { container } = renderField(
         primitive("text", {
@@ -270,7 +275,9 @@ describe("FieldRenderer", () => {
         }),
       );
       const inputs = container.querySelectorAll("input");
-      expect(inputs.length).toBeGreaterThanOrEqual(1);
+      // fieldArrayBehaviour has min: 1 — assert the exact count so a
+      // regression that rendered max or every defaultValue entry is caught.
+      expect(inputs.length).toBe(1);
     });
   });
 

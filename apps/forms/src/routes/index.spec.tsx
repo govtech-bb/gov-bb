@@ -5,6 +5,12 @@ import { axe } from "jest-axe";
 // Mock TanStack Router — the Index component calls Route.useLoaderData()
 // and renders <Link>, both of which require a router context in production
 // but can be stubbed out in unit tests.
+//
+// The Link mock preserves the `to` and `params` props on the rendered <a>
+// via data-* attributes so tests can verify the component passes both
+// (the real Link interpolates `params` into `to`). A simpler stub that
+// only honoured `to` would silently allow a regression that drops
+// `params={{ formId }}` to ship.
 jest.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (routeConfig) => ({
     ...routeConfig,
@@ -13,11 +19,20 @@ jest.mock("@tanstack/react-router", () => ({
   Link: ({
     children,
     to,
+    params,
   }: {
     children: React.ReactNode;
     to: string;
     params?: Record<string, string>;
-  }) => <a href={to}>{children}</a>,
+  }) => (
+    <a
+      href={to}
+      data-to={to}
+      data-params={params ? JSON.stringify(params) : ""}
+    >
+      {children}
+    </a>
+  ),
 }));
 
 // Stub the loader so we control the data returned by useLoaderData().
@@ -61,9 +76,20 @@ describe("Index route", () => {
     render(<Route.component />);
     expect(screen.getByText("Passport Renewal")).toBeInTheDocument();
     expect(screen.getByText("Driver's Licence")).toBeInTheDocument();
-    expect(screen.getByText("Passport Renewal").closest("a")).toHaveAttribute(
-      "href",
-      "/forms/$formId",
+    // Verify the Link is given BOTH the route pattern (`to`) and the
+    // per-form `params`. Without the params assertion, dropping
+    // `params={{ formId }}` from the source would not be caught — TanStack
+    // Link would emit a broken URL in production while the stub Link's
+    // href output still showed the literal pattern.
+    const passportLink = screen.getByText("Passport Renewal").closest("a")!;
+    expect(passportLink.getAttribute("data-to")).toBe("/forms/$formId");
+    expect(
+      JSON.parse(passportLink.getAttribute("data-params") || "{}"),
+    ).toEqual({ formId: "form-1" });
+
+    const driversLink = screen.getByText("Driver's Licence").closest("a")!;
+    expect(JSON.parse(driversLink.getAttribute("data-params") || "{}")).toEqual(
+      { formId: "form-2" },
     );
   });
 
