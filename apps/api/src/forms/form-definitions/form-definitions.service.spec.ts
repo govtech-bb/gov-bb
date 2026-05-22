@@ -37,7 +37,23 @@ function makeFindAllMocks(entities: FormDefinitionEntity[]) {
     hydrateForm: jest.fn().mockResolvedValue({}),
   } as unknown as jest.Mocked<RegistryService>;
 
-  const service = new FormDefinitionsService(repo, registry);
+  const fileLoader = {
+    findAll: jest.fn(),
+    findByFormId: jest.fn(),
+  } as unknown as jest.Mocked<RecipeFileLoaderService>;
+
+  const config = {
+    get: jest.fn((key: string, def?: string) =>
+      key === "RECIPE_SOURCE" ? "db" : def,
+    ),
+  } as unknown as jest.Mocked<ConfigService>;
+
+  const service = new FormDefinitionsService(
+    repo,
+    registry,
+    fileLoader,
+    config,
+  );
   return { repo, registry, service };
 }
 
