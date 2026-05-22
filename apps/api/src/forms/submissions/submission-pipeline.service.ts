@@ -1,7 +1,5 @@
 import { Injectable } from "@nestjs/common";
 import { evaluateFormConditions } from "@govtech-bb/form-conditions";
-// `validateFields` is re-exported as `validate` from form-validation
-// (see packages/form-validation/src/index.ts).
 import { validate as validateFields } from "@govtech-bb/form-validation";
 import type {
   ServiceContract,
@@ -10,6 +8,7 @@ import type {
 import type { FormDraftEntity } from "../../database/entities/form-draft.entity";
 import { FormDefinitionsService } from "../form-definitions/form-definitions.service";
 import { FormDraftsService } from "../form-drafts/form-drafts.service";
+import { FilesService } from "../../files/files.service";
 import { AppError } from "../../common/errors";
 import { expandSubmission, type StepInstance } from "./submission-expand";
 import {
@@ -36,6 +35,7 @@ export class SubmissionPipelineService {
   constructor(
     private readonly formDraftsService: FormDraftsService,
     private readonly formDefinitionsService: FormDefinitionsService,
+    private readonly filesService: FilesService,
   ) {}
 
   async run(dto: SubmitDto): Promise<PipelineResult> {
@@ -69,10 +69,21 @@ export class SubmissionPipelineService {
       throw AppError.unprocessable(bundle);
     }
 
+    const fileFieldsByStep = FilesService.collectFileFieldsByStep(contract);
+
+    const fileBundle = await this.filesService.verifySubmissionFiles(
+      fileFieldsByStep,
+      dto.values,
+    );
+    if (Object.keys(fileBundle).length > 0) {
+      throw AppError.unprocessable(fileBundle);
+    }
+
     const normalizedValues = normalizeForStorage({
       instances: expanded.instances,
       hiddenStepIds: cond.hiddenStepIds,
       activeFieldsByInstance: cond.activeFieldsByInstance,
+      fileFieldsByStep,
     });
 
     const auditTrail = this.buildAuditTrail(dto, draft, cond);

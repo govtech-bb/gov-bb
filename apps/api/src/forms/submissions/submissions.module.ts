@@ -17,6 +17,7 @@ import { PaymentProcessor } from "./processors/payment/payment.processor";
 import { FormDefinitionsModule } from "../form-definitions/form-definitions.module";
 import { FormDraftsModule } from "../form-drafts/form-drafts.module";
 import { PaymentsModule } from "../../payments/payments.module";
+import { FilesModule } from "../../files/files.module";
 import { SqsProducerService } from "./sqs/sqs-producer.service";
 import { SqsConsumerService } from "./sqs/sqs-consumer.service";
 import sqsConfig from "../../config/sqs.config";
@@ -29,6 +30,7 @@ import { EmailBodyBuilder } from "../../email/email-body.builder";
     FormDefinitionsModule,
     FormDraftsModule,
     PaymentsModule,
+    FilesModule,
     ConfigModule.forFeature(sqsConfig),
     ExpressionsModule,
   ],

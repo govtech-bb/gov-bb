@@ -76,6 +76,7 @@ function makeMocks(options: MakeMocksOptions = {}) {
 
   const submissionRepo = {
     findOne: jest.fn().mockResolvedValue(existingEntity),
+    count: jest.fn().mockResolvedValue(0),
     tx: jest.fn().mockImplementation((cb) => cb(txRepo)),
   } as unknown as FormSubmissionRepository;
 
@@ -184,6 +185,7 @@ describe("SubmissionsService", () => {
       };
       const submissionRepo = {
         findOne: jest.fn().mockResolvedValue(null),
+        count: jest.fn().mockResolvedValue(0),
         tx: jest.fn().mockImplementation((cb) => cb(txRepo)),
       } as unknown as FormSubmissionRepository;
 
@@ -248,6 +250,40 @@ describe("SubmissionsService", () => {
       });
       const result = await service.submit(BASE_DTO);
       expect(result.outcome).toBe("duplicate");
+    });
+
+    it("includes a generated referenceCode on the persisted row", async () => {
+      const { txRepo, service } = makeMocks();
+      await service.submit(BASE_DTO);
+      expect(txRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          referenceCode: expect.stringMatching(
+            /^[A-Z]+-\d{8}-\d{6}-[A-HJ-NP-Z2-9]{6}$/,
+          ),
+        }),
+      );
+    });
+
+    it("rolls a new reference code when the first one is already taken", async () => {
+      const { submissionRepo, txRepo, service } = makeMocks();
+      const countMock = submissionRepo.count as jest.Mock;
+      // 1st probe: code is taken; 2nd probe: free.
+      countMock.mockResolvedValueOnce(1).mockResolvedValueOnce(0);
+
+      await service.submit(BASE_DTO);
+
+      expect(countMock).toHaveBeenCalledTimes(2);
+      const seen = (txRepo.create as jest.Mock).mock.calls[0]![0]
+        .referenceCode as string;
+      expect(seen).toMatch(/^[A-Z]+-\d{8}-\d{6}-[A-HJ-NP-Z2-9]{6}$/);
+    });
+
+    it("gives up after 5 attempts if every rolled code is taken", async () => {
+      const { submissionRepo, service } = makeMocks();
+      (submissionRepo.count as jest.Mock).mockResolvedValue(1);
+      await expect(service.submit(BASE_DTO)).rejects.toThrow(
+        /Could not generate unique reference code/,
+      );
     });
   });
 

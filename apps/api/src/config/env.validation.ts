@@ -76,4 +76,13 @@ export const envValidationSchema = Joi.object({
     then: Joi.required(),
     otherwise: Joi.string().optional().allow(""),
   }),
+
+  // S3 file uploads (optional — required only when a form uses file fields)
+  S3_BUCKET: Joi.string().allow("").default(""),
+  S3_REGION: Joi.string().optional(),
+  S3_ENDPOINT: Joi.string().uri().optional(),
+  S3_FORCE_PATH_STYLE: Joi.boolean().default(false),
+  UPLOAD_MAX_SIZE_BYTES: Joi.number().integer().min(1).default(10485760),
+  UPLOAD_PRESIGN_TTL_SECONDS: Joi.number().integer().min(60).default(900),
+  UPLOAD_READ_URL_TTL_SECONDS: Joi.number().integer().min(60).default(604800),
 });
