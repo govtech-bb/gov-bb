@@ -9,7 +9,7 @@ import {
 import { getDataSource } from "./db";
 import { getSession } from "./session-cipher.server";
 import { listPublishedForms, getPublishedRecipe } from "./github-recipes";
-import { bumpMinor } from "../lib/version";
+import { bumpMinor, compare as compareSemver } from "../lib/version";
 import type { FormDefinitionSummary } from "../types/index";
 import { requireAdminToken } from "./auth/admin-token-middleware";
 
@@ -19,6 +19,25 @@ type FormDefinitionRow = {
   schema: ServiceContractRecipe;
   published_at: Date | null;
 };
+
+type LatestDraftRow = {
+  id: string;
+  form_id: string;
+  title: string | null;
+  version: string;
+  schema: ServiceContractRecipe;
+};
+
+// Latest version per formId from the drafts table. Mirrors the pre-GitHub query.
+async function listLatestDraftsByForm(): Promise<LatestDraftRow[]> {
+  const ds = await getDataSource();
+  return ds.query<LatestDraftRow[]>(`
+    SELECT DISTINCT ON (form_id)
+      id, form_id, schema->>'title' AS title, version, schema
+    FROM form_definitions
+    ORDER BY form_id, string_to_array(version, '.')::int[] DESC
+  `);
+}
 
 function requireToken(): string {
   const headers = getRequestHeaders();
@@ -37,16 +56,33 @@ export const listForms = createServerFn({ method: "GET" })
   .middleware([requireAdminToken])
   .handler(async (): Promise<FormDefinitionSummary[]> => {
     const token = requireToken();
-    const forms = await listPublishedForms(token);
-    return forms.map((f) => ({
-      // For GitHub-backed entries the formId is unique enough to serve as id.
-      // (FormPicker only uses it for React keys.)
-      id: f.formId,
-      formId: f.formId,
-      title: f.title,
-      version: f.version,
-      isPublished: true,
-    }));
+    const [drafts, published] = await Promise.all([
+      listLatestDraftsByForm(),
+      listPublishedForms(token),
+    ]);
+
+    const byFormId = new Map<string, FormDefinitionSummary>();
+    for (const d of drafts) {
+      byFormId.set(d.form_id, {
+        id: d.id,
+        formId: d.form_id,
+        title: d.title ?? d.form_id,
+        version: d.version,
+        isPublished: false,
+      });
+    }
+    for (const p of published) {
+      const existing = byFormId.get(p.formId);
+      if (existing && compareSemver(existing.version, p.version) > 0) continue;
+      byFormId.set(p.formId, {
+        id: p.formId,
+        formId: p.formId,
+        title: p.title,
+        version: p.version,
+        isPublished: true,
+      });
+    }
+    return Array.from(byFormId.values());
   });
 
 export const getRecipe = createServerFn({ method: "GET", strict: false })
@@ -54,8 +90,40 @@ export const getRecipe = createServerFn({ method: "GET", strict: false })
   .inputValidator(z.object({ formId: z.string() }))
   .handler(async ({ data }): Promise<ServiceContractRecipe> => {
     const token = requireToken();
-    const recipe = await getPublishedRecipe(token, { formId: data.formId });
-    return serviceContractRecipeSchema.parse(recipe);
+    const ds = await getDataSource();
+
+    const draftRows = await ds.query<FormDefinitionRow[]>(
+      `SELECT id, version, schema, published_at
+       FROM form_definitions
+       WHERE form_id = $1
+       ORDER BY string_to_array(version, '.')::int[] DESC
+       LIMIT 1`,
+      [data.formId],
+    );
+    const draft = draftRows[0];
+
+    let published: { version: string; recipe: unknown } | null = null;
+    try {
+      const recipe = await getPublishedRecipe(token, { formId: data.formId });
+      const version =
+        typeof (recipe as { version?: unknown }).version === "string"
+          ? (recipe as { version: string }).version
+          : null;
+      if (version) published = { version, recipe };
+    } catch {
+      // No published copy — fall back to draft (or fail below).
+    }
+
+    if (
+      draft &&
+      (!published || compareSemver(draft.version, published.version) >= 0)
+    ) {
+      return draft.schema;
+    }
+    if (published) {
+      return serviceContractRecipeSchema.parse(published.recipe);
+    }
+    throw new Error(`No recipe found for formId: ${data.formId}`);
   });
 
 export const submitRecipe = createServerFn({ method: "POST" })
