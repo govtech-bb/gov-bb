@@ -525,4 +525,60 @@ describe("EmailBodyBuilder", () => {
       );
     });
   });
+
+  describe("missing branch coverage", () => {
+    it("handles null rawVal for an active step (line 114 ?? {} branch)", async () => {
+      // Step is in activeStepIds but values[stepId] is undefined → rawVal ?? {} = {}
+      const payload = makePayload();
+      // Remove 'contact' from values so rawVal is undefined, but keep it active
+      delete (payload.values as Record<string, unknown>)["contact"];
+      const ctx = await builder.build(payload);
+      // contact section should be omitted (empty fields from empty {}), no crash
+      const titles = ctx.sections.map((s) => s.title);
+      expect(titles).not.toContain("Contact Details");
+    });
+
+    it("uses fallback string when select[multiple] option label is not found", async () => {
+      // Branch in resolveOptionLabels: ??.label ?? String(v) for a missing option
+      const payload = makePayload();
+      (payload.values["personal"] as Record<string, unknown>)["languages"] = [
+        "unknown-code",
+      ];
+      const ctx = await builder.build(payload);
+      const field = ctx.sections[0].fields.find((f) => f.label === "Languages");
+      expect(field?.value).toBe("unknown-code");
+    });
+
+    it("uses fallback string when checkbox option label is not found", async () => {
+      // Branch in resolveOptionLabels: missing option label → String(v)
+      const payload = makePayload();
+      (payload.values["personal"] as Record<string, unknown>)["interests"] = [
+        "unknown-interest",
+      ];
+      const ctx = await builder.build(payload);
+      const field = ctx.sections[0].fields.find((f) => f.label === "Interests");
+      expect(field?.value).toBe("unknown-interest");
+    });
+
+    it("formats checkbox with a scalar (non-array) value via [raw] coercion", async () => {
+      // Branch: `Array.isArray(raw) ? raw : [raw]` — the [raw] arm for checkbox
+      const payload = makePayload();
+      (payload.values["personal"] as Record<string, unknown>)["interests"] =
+        "sports" as unknown as string[];
+      const ctx = await builder.build(payload);
+      const field = ctx.sections[0].fields.find((f) => f.label === "Interests");
+      expect(field?.value).toBe("Sports");
+    });
+
+    it("handles select[multiple]=true with scalar value (falls through to single-select path)", async () => {
+      // Branch: `field.multiple && Array.isArray(raw)` is false when raw is scalar
+      const payload = makePayload();
+      (payload.values["personal"] as Record<string, unknown>)["languages"] =
+        "en" as unknown as string[];
+      const ctx = await builder.build(payload);
+      const field = ctx.sections[0].fields.find((f) => f.label === "Languages");
+      // Falls through to single-select: finds option label "English"
+      expect(field?.value).toBe("English");
+    });
+  });
 });
