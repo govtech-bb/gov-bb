@@ -123,7 +123,7 @@ jobs:
       # tofu tracks gets deregistered, making tofu think the resource is gone).
       # AWS allows thousands of revisions per family, so this is safe to skip.
 
-      - name: Monitor Amplify build
+      - name: Monitor Amplify build (forms)
         id: amplify
         env:
           AMPLIFY_APP_ID: d1yjf5g5ckxcxg
@@ -137,7 +137,7 @@ jobs:
             --query jobSummary.jobId \
             --output text)
           echo "job_id=$JOB_ID" >> "$GITHUB_OUTPUT"
-          echo "Amplify job started: $JOB_ID"
+          echo "Amplify forms job started: $JOB_ID"
 
           for i in $(seq 1 30); do
             STATUS=$(aws amplify get-job \
@@ -147,28 +147,59 @@ jobs:
               --region "$AWS_REGION" \
               --query job.summary.status \
               --output text)
-            echo "[$i/30] Amplify status: $STATUS"
+            echo "[$i/30] Amplify forms status: $STATUS"
             if [ "$STATUS" = "SUCCEED" ]; then
-              echo "✅ Amplify build succeeded"
-              exit 0
+              echo "✅ Amplify forms build succeeded"
+              break
             elif [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "CANCELLED" ]; then
-              echo "❌ Amplify build $STATUS"
+              echo "❌ Amplify forms build $STATUS"
               exit 1
             fi
             sleep 30
           done
-          echo "❌ Amplify build timed out after 15 minutes"
-          exit 1
+
+      - name: Monitor Amplify build (landing)
+        id: amplify-landing
+        env:
+          AMPLIFY_APP_ID: d11raxlkr37ywp
+          AMPLIFY_BRANCH: sandbox
+        run: |
+          JOB_ID=$(aws amplify start-job \
+            --app-id "$AMPLIFY_APP_ID" \
+            --branch-name "$AMPLIFY_BRANCH" \
+            --job-type RELEASE \
+            --region "$AWS_REGION" \
+            --query jobSummary.jobId \
+            --output text)
+          echo "job_id=$JOB_ID" >> "$GITHUB_OUTPUT"
+          echo "Amplify landing job started: $JOB_ID"
+
+          for i in $(seq 1 30); do
+            STATUS=$(aws amplify get-job \
+              --app-id "$AMPLIFY_APP_ID" \
+              --branch-name "$AMPLIFY_BRANCH" \
+              --job-id "$JOB_ID" \
+              --region "$AWS_REGION" \
+              --query job.summary.status \
+              --output text)
+            echo "[$i/30] Amplify landing status: $STATUS"
+            if [ "$STATUS" = "SUCCEED" ]; then
+              echo "✅ Amplify landing build succeeded"
+              break
+            elif [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "CANCELLED" ]; then
+              echo "❌ Amplify landing build $STATUS"
+              exit 1
+            fi
+            sleep 30
+          done
 
       - name: Summary
         if: always()
         run: |
           echo "## Sandbox Deployment Summary" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "**Image:** ${{ steps.build.outputs.image }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "**API Image:** ${{ steps.build.outputs.image }}" >> "$GITHUB_STEP_SUMMARY"
           echo "**Commit:** ${{ github.sha }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "**API URL:** https://app-sandbox.alpha.gov.bb" >> "$GITHUB_STEP_SUMMARY"
-          echo "**Amplify Job:** ${{ steps.amplify.outputs.job_id }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Check API logs: \`aws logs tail /ecs/modular-forms-api-sandbox --follow\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "Check migration logs: \`aws logs tail /ecs/modular-forms-api-sandbox --follow --filter-pattern migration\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "**API URL:** https://forms.api.sandbox.alpha.gov.bb" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Landing URL:** https://sandbox.alpha.gov.bb" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Forms URL:** https://forms.sandbox.alpha.gov.bb" >> "$GITHUB_STEP_SUMMARY"

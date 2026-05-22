@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { RegistryCatalog, RecipeFieldDraft } from "@govtech-bb/form-builder";
 import { REGISTRY_COMPONENTS } from "@govtech-bb/registry";
-import styles from "../../styles/builder.module.css";
+import styles from "../../../styles/builder.module.css";
 
 interface FieldPickerProps {
   catalog: RegistryCatalog;

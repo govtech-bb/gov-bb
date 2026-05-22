@@ -1,7 +1,13 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useRef, useEffect } from "react";
-
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
+import {
+  createSession,
+  sendMessage,
+  publishSession,
+  deletePublished,
+  extractRecipeFromSession,
+  getSql,
+} from "../../../server/ai-builder/sessions";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -16,11 +22,22 @@ interface SessionState {
   error: string | null;
 }
 
-export const Route = createFileRoute("/admin/form-builder")({
-  component: FormBuilderPage,
+export const Route = createFileRoute("/builder/ai/")({
+  component: AiFormBuilderPage,
 });
 
-function FormBuilderPage() {
+async function fileToBase64(file: File): Promise<string> {
+  const buf = await file.arrayBuffer();
+  let binary = "";
+  const bytes = new Uint8Array(buf);
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+function AiFormBuilderPage() {
+  const navigate = useNavigate();
   const [session, setSession] = useState<SessionState>({
     sessionId: null,
     messages: [],
@@ -40,35 +57,21 @@ function FormBuilderPage() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [session.messages]);
 
-  const startSession = async () => {
+  const startSession = async (): Promise<string | null> => {
     setSession((s) => ({ ...s, loading: true, error: null }));
     try {
-      const res = await fetch(`${API_URL}/form-builder/sessions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: pdfName ?? "New form" }),
-      });
-      const data = await res.json();
-      setSession((s) => ({
-        ...s,
-        sessionId: data.sessionId,
-        loading: false,
-      }));
+      const data = await createSession({ data: { name: pdfName ?? "New form" } });
+      setSession((s) => ({ ...s, sessionId: data.sessionId, loading: false }));
       return data.sessionId;
     } catch (err: any) {
-      setSession((s) => ({
-        ...s,
-        loading: false,
-        error: err.message,
-      }));
+      setSession((s) => ({ ...s, loading: false, error: err.message }));
       return null;
     }
   };
 
-  const sendMessage = async (overrideSessionId?: string) => {
+  const send = async (overrideSessionId?: string) => {
     const sessionId = overrideSessionId ?? session.sessionId;
     if (!sessionId || !input.trim()) return;
-
     const userMessage = input.trim();
     setInput("");
     setSession((s) => ({
@@ -77,34 +80,12 @@ function FormBuilderPage() {
       loading: true,
       error: null,
     }));
-
     try {
-      // Use FormData for multipart upload (supports PDF files)
-      const formData = new FormData();
-      formData.append("message", userMessage);
-      if (pdfFile) {
-        formData.append("pdf", pdfFile);
-      }
-
-      const res = await fetch(
-        `${API_URL}/form-builder/sessions/${sessionId}/messages`,
-        {
-          method: "POST",
-          body: formData,
-        },
-      );
-
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.message ?? `HTTP ${res.status}`);
-      }
-
-      const data = await res.json();
-      // Clear PDF after first send
-      if (pdfFile) {
-        setPdfFile(null);
-      }
-
+      const pdfBase64 = pdfFile ? await fileToBase64(pdfFile) : undefined;
+      const data = await sendMessage({
+        data: { sessionId, message: userMessage, pdfBase64 },
+      });
+      if (pdfFile) setPdfFile(null);
       setSession((s) => ({
         ...s,
         messages: data.messages,
@@ -112,29 +93,22 @@ function FormBuilderPage() {
         loading: false,
       }));
     } catch (err: any) {
-      setSession((s) => ({
-        ...s,
-        loading: false,
-        error: err.message,
-      }));
+      setSession((s) => ({ ...s, loading: false, error: err.message }));
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
-
     if (!session.sessionId) {
       const newSessionId = await startSession();
-      if (newSessionId) {
-        await sendMessage(newSessionId);
-      }
+      if (newSessionId) await send(newSessionId);
     } else {
-      await sendMessage();
+      await send();
     }
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setPdfName(file.name);
@@ -145,19 +119,11 @@ function FormBuilderPage() {
     if (!session.sessionId || !session.recipe) return;
     setPublishing(true);
     try {
-      const res = await fetch(
-        `${API_URL}/form-builder/sessions/${session.sessionId}/publish`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({}),
-        },
-      );
-      const data = await res.json();
+      const data = await publishSession({
+        data: { sessionId: session.sessionId },
+      });
       setPublishResult(data.message ?? "Published!");
-      if (data.previewUrl) {
-        setPreviewUrl(data.previewUrl);
-      }
+      if (data.previewUrl) setPreviewUrl(data.previewUrl);
     } catch (err: any) {
       setPublishResult(`Error: ${err.message}`);
     }
@@ -168,11 +134,9 @@ function FormBuilderPage() {
     if (!session.sessionId) return;
     if (!confirm("Are you sure you want to delete this form?")) return;
     try {
-      const res = await fetch(
-        `${API_URL}/form-builder/sessions/${session.sessionId}/delete`,
-        { method: "POST" },
-      );
-      const data = await res.json();
+      const data = await deletePublished({
+        data: { sessionId: session.sessionId },
+      });
       setPublishResult(data.message ?? "Deleted!");
       setPreviewUrl(null);
     } catch (err: any) {
@@ -183,10 +147,7 @@ function FormBuilderPage() {
   const handleExportSql = async () => {
     if (!session.sessionId) return;
     try {
-      const res = await fetch(
-        `${API_URL}/form-builder/sessions/${session.sessionId}/sql`,
-      );
-      const data = await res.json();
+      const data = await getSql({ data: { sessionId: session.sessionId } });
       if (data.sql) {
         const blob = new Blob([data.sql], { type: "text/sql" });
         const url = URL.createObjectURL(blob);
@@ -201,9 +162,30 @@ function FormBuilderPage() {
     }
   };
 
+  const handleExtract = async () => {
+    if (!session.sessionId) return;
+    try {
+      const data = await extractRecipeFromSession({
+        data: { sessionId: session.sessionId },
+      });
+      setSession((s) => ({ ...s, recipe: data.recipe }));
+    } catch (err: any) {
+      setPublishResult(err.message ?? "No recipe found in conversation");
+    }
+  };
+
+  const handleSwitchToUi = () => {
+    if (
+      session.sessionId !== null &&
+      !window.confirm("Unsaved changes will be lost. Continue?")
+    ) {
+      return;
+    }
+    navigate({ to: "/builder/ui" });
+  };
+
   return (
     <div style={{ display: "flex", height: "100vh", fontFamily: "system-ui" }}>
-      {/* Chat Panel */}
       <div
         style={{
           flex: 1,
@@ -212,25 +194,32 @@ function FormBuilderPage() {
           borderRight: "1px solid #e0e0e0",
         }}
       >
-        <div
-          style={{
-            padding: "16px",
-            borderBottom: "1px solid #e0e0e0",
-            background: "#f8f9fa",
-          }}
-        >
-          <h2 style={{ margin: 0 }}>Form Builder AI</h2>
+        <div style={{ padding: "16px", borderBottom: "1px solid #e0e0e0", background: "#f8f9fa" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <h2 style={{ margin: 0 }}>Form Builder AI</h2>
+            <button
+              type="button"
+              onClick={handleSwitchToUi}
+              style={{
+                padding: "6px 12px",
+                background: "#7c3aed",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+                fontSize: "12px",
+              }}
+            >
+              Switch to UI Builder
+            </button>
+          </div>
           <p style={{ margin: "4px 0 0", color: "#666", fontSize: "14px" }}>
             Upload a PDF form and I'll convert it to a digital form recipe.
           </p>
         </div>
-
-        {/* Messages */}
         <div style={{ flex: 1, overflow: "auto", padding: "16px" }}>
           {session.messages.length === 0 && (
-            <div
-              style={{ color: "#999", textAlign: "center", marginTop: "40px" }}
-            >
+            <div style={{ color: "#999", textAlign: "center", marginTop: "40px" }}>
               <p>Upload a PDF or describe a form to get started.</p>
             </div>
           )}
@@ -254,20 +243,12 @@ function FormBuilderPage() {
               <div style={{ marginTop: "4px" }}>{msg.content}</div>
             </div>
           ))}
-          {session.loading && (
-            <div style={{ color: "#666", fontStyle: "italic" }}>
-              Thinking...
-            </div>
-          )}
+          {session.loading && <div style={{ color: "#666", fontStyle: "italic" }}>Thinking...</div>}
           {session.error && (
-            <div style={{ color: "red", padding: "8px" }}>
-              Error: {session.error}
-            </div>
+            <div style={{ color: "red", padding: "8px" }}>Error: {session.error}</div>
           )}
           <div ref={chatEndRef} />
         </div>
-
-        {/* Input */}
         <form
           onSubmit={handleSubmit}
           style={{
@@ -327,16 +308,7 @@ function FormBuilderPage() {
           </button>
         </form>
       </div>
-
-      {/* Recipe / Preview Panel */}
-      <div
-        style={{
-          width: "450px",
-          display: "flex",
-          flexDirection: "column",
-          background: "#fafafa",
-        }}
-      >
+      <div style={{ width: "450px", display: "flex", flexDirection: "column", background: "#fafafa" }}>
         <div
           style={{
             padding: "16px",
@@ -349,36 +321,15 @@ function FormBuilderPage() {
           <h3 style={{ margin: 0 }}>Recipe Output</h3>
           <div style={{ display: "flex", gap: "8px" }}>
             <button
-              onClick={async () => {
-                if (!session.sessionId) return;
-                try {
-                  const res = await fetch(
-                    `${API_URL}/form-builder/sessions/${session.sessionId}/extract`,
-                    { method: "POST" },
-                  );
-                  if (res.ok) {
-                    const data = await res.json();
-                    setSession((s) => ({ ...s, recipe: data.recipe }));
-                  } else {
-                    const err = await res.json();
-                    setPublishResult(
-                      err.message ?? "No recipe found in conversation",
-                    );
-                  }
-                } catch {
-                  setPublishResult("Failed to extract recipe");
-                }
-              }}
+              onClick={handleExtract}
               disabled={!session.sessionId || !!session.recipe}
               style={{
                 padding: "6px 12px",
-                background:
-                  session.sessionId && !session.recipe ? "#2196f3" : "#e0e0e0",
+                background: session.sessionId && !session.recipe ? "#2196f3" : "#e0e0e0",
                 color: session.sessionId && !session.recipe ? "white" : "#999",
                 border: "none",
                 borderRadius: "4px",
-                cursor:
-                  session.sessionId && !session.recipe ? "pointer" : "default",
+                cursor: session.sessionId && !session.recipe ? "pointer" : "default",
                 fontSize: "12px",
               }}
             >
@@ -416,21 +367,17 @@ function FormBuilderPage() {
             </button>
           </div>
         </div>
-
         {publishResult && (
           <div
             style={{
               padding: "8px 16px",
-              background: publishResult.startsWith("Error")
-                ? "#ffebee"
-                : "#e8f5e9",
+              background: publishResult.startsWith("Error") ? "#ffebee" : "#e8f5e9",
               fontSize: "13px",
             }}
           >
             {publishResult}
           </div>
         )}
-
         {previewUrl && (
           <div
             style={{
@@ -442,12 +389,7 @@ function FormBuilderPage() {
               alignItems: "center",
             }}
           >
-            <a
-              href={previewUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ color: "#1976d2" }}
-            >
+            <a href={previewUrl} target="_blank" rel="noopener noreferrer" style={{ color: "#1976d2" }}>
               🔗 Preview form
             </a>
             <button
@@ -466,7 +408,6 @@ function FormBuilderPage() {
             </button>
           </div>
         )}
-
         <div style={{ flex: 1, overflow: "auto", padding: "16px" }}>
           {session.recipe ? (
             <pre
@@ -484,13 +425,7 @@ function FormBuilderPage() {
               {JSON.stringify(session.recipe, null, 2)}
             </pre>
           ) : (
-            <div
-              style={{
-                color: "#999",
-                textAlign: "center",
-                marginTop: "40px",
-              }}
-            >
+            <div style={{ color: "#999", textAlign: "center", marginTop: "40px" }}>
               <p>Recipe will appear here once the AI generates it.</p>
             </div>
           )}

@@ -1,7 +1,7 @@
 # Form Builder AI — Automatic Component Selection Guardrails
 
 **Status:** Implemented (embedded in system prompt)
-**Location:** `apps/api/src/form-builder/prompts/system-prompt.ts`
+**Location:** `apps/form_builder/app/server/ai-builder/prompts/system-prompt.ts`
 **Related Ticket:** trello-form-builder-ai-guardrails.md
 
 ---
@@ -142,7 +142,7 @@ When using `components/country` or `components/nationality`, auto-populate with 
 
 ## Implementation Notes
 
-- All guardrails are embedded in the system prompt at `apps/api/src/form-builder/prompts/system-prompt.ts`
+- All guardrails are embedded in the system prompt at `apps/form_builder/app/server/ai-builder/prompts/system-prompt.ts`
 - The AI generates the complete recipe in ONE response — no questions asked
 - If something is ambiguous, the AI makes the best decision based on guardrails and moves on
 - Users refine the output via the visual form editor (not by chatting with the AI)

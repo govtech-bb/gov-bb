@@ -13,7 +13,7 @@ import { getFieldRefs, getStepRefs } from "./-recipe-refs";
 import { BehavioursEditor } from "./-behaviours-editor";
 import { FieldPicker } from "./-field-picker";
 import { FieldEditPanel } from "./-field-edit-panel";
-import styles from "../../styles/builder.module.css";
+import styles from "../../../styles/builder.module.css";
 
 const STEP_ID_PATTERN = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
 const STEP_ID_ERROR =
