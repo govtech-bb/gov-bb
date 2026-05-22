@@ -49,11 +49,13 @@ async function main(): Promise<void> {
         errors.push(
           `${relative}: filename version "${filenameVersion}" does not match recipe.version "${recipe.version}"`,
         );
+        continue;
       }
       if (recipe.formId !== formId) {
         errors.push(
           `${relative}: directory name "${formId}" does not match recipe.formId "${recipe.formId}"`,
         );
+        continue;
       }
       recipeCount++;
     }
