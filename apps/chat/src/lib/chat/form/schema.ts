@@ -94,6 +94,7 @@ function summarizeActive(
 export interface ActiveFormSchema {
   slug: string;
   schema: string;
+  contract: ServiceContract;
   activeFieldIds: Set<string>;
 }
 
@@ -106,5 +107,5 @@ export async function loadActiveFormSchema(
   const active = getActiveFieldIds(contract, currentValues);
   const schema = summarizeActive(contract, active.byStep);
   if (!schema) return null;
-  return { slug, schema, activeFieldIds: active.flat };
+  return { slug, schema, contract, activeFieldIds: active.flat };
 }

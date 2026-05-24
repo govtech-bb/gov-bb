@@ -17,6 +17,7 @@ import {
   withThreadLock,
   type FormSession,
 } from "./form";
+import { getActiveFieldIds } from "./form/schema";
 import { lastUserText, recentUserText } from "./messages";
 import {
   NO_FORM_DISCLOSURE,
@@ -115,7 +116,13 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     ? [
         presentChoicesDef.server(async () => ({ shown: true })),
         setFieldDef.server(async ({ fieldId, value }) => {
-          if (!schema.activeFieldIds.has(fieldId)) {
+          // Recompute active set against current values — a previous set_field
+          // in this turn may have activated a conditional field.
+          const active = getActiveFieldIds(
+            schema.contract,
+            session.values,
+          ).flat;
+          if (!active.has(fieldId)) {
             return {
               ok: false,
               error: `unknown or inactive fieldId: ${fieldId}`,
