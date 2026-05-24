@@ -6,6 +6,7 @@ import { search } from "#/lib/rag/retrieve";
 const RequestSchema = z.object({
   query: z.string().min(1),
   topK: z.number().int().positive().max(50).default(8),
+  boostSlug: z.string().min(1).optional(),
 });
 
 function jsonError(message: string, status: number): Response {
@@ -37,7 +38,11 @@ async function handlePost({
   }
 
   try {
-    const result = await search(parsed.data.query, parsed.data.topK);
+    const result = await search(
+      parsed.data.query,
+      parsed.data.topK,
+      parsed.data.boostSlug,
+    );
     return new Response(JSON.stringify(result), {
       headers: { "content-type": "application/json" },
     });

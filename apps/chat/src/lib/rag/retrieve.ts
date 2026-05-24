@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import { SIMILARITY_THRESHOLD, weightForKind } from "#/lib/chat/rag-config";
 import type { RetrievedContext, Source } from "#/lib/chat/types";
 import { getDb } from "#/lib/db";
 import { embed } from "./embed";
@@ -8,14 +9,8 @@ export interface RetrieveResult {
   sources: Source[];
 }
 
-// Cosine threshold. Tune per embedding model. Filters in SQL so the LLM
-// never sees irrelevant chunks.
-const SIMILARITY_THRESHOLD = 0.3;
-
-// v2 schema (documents + chunks). Returns top chunk per document.
-// Per chat retrieve path, chunks include doc-level metadata so chat can
-// drive tool selection (e.g. form CTAs) without a second query.
 interface V2Row extends Record<string, unknown> {
+  chunk_id: string;
   document_id: string;
   doc_kind: string;
   title: string;
@@ -27,17 +22,27 @@ interface V2Row extends Record<string, unknown> {
   sim: number;
 }
 
+// When set, top-2 chunks from the matching service doc are pinned to the
+// front of the result so follow-up turns inside an active form ("what do I
+// need?", "how much?") always see the form's own content even if the
+// rewriter produced a query that scores low against those chunks.
+const PINNED_BOOST = 1.0;
+const PINNED_LIMIT = 2;
+
 export async function search(
   query: string,
   topK: number,
+  boostSlug?: string,
 ): Promise<RetrieveResult> {
   const vector = await embed(query);
   const db = await getDb();
 
   const literal = JSON.stringify(vector);
+  const fetchLimit = topK * 3;
   const result = await db.execute<V2Row>(sql`
     WITH ranked AS (
       SELECT
+        c.id          AS chunk_id,
         d.id          AS document_id,
         d.kind        AS doc_kind,
         d.title       AS title,
@@ -55,22 +60,61 @@ export async function search(
       JOIN documents d ON c.document_id = d.id
       WHERE d.metadata->>'status' IS DISTINCT FROM 'draft'
     )
-    SELECT document_id, doc_kind, title, url, source_url,
+    SELECT chunk_id, document_id, doc_kind, title, url, source_url,
            chunk_kind, chunk_text, payload, sim
     FROM ranked
     WHERE rank = 1 AND sim > ${SIMILARITY_THRESHOLD}
     ORDER BY sim DESC
-    LIMIT ${topK}
+    LIMIT ${fetchLimit}
   `);
 
-  const rows = result.rows;
-  const sourceMode: "alpha" | "legacy" = "alpha";
+  let pinned: V2Row[] = [];
+  if (boostSlug) {
+    const pinnedRes = await db.execute<V2Row>(sql`
+      SELECT
+        c.id          AS chunk_id,
+        d.id          AS document_id,
+        d.kind        AS doc_kind,
+        d.title       AS title,
+        d.url         AS url,
+        d.source_url  AS source_url,
+        c.kind        AS chunk_kind,
+        c.text        AS chunk_text,
+        c.payload     AS payload,
+        1 - (c.embedding <=> ${literal}::vector) AS sim
+      FROM chunks c
+      JOIN documents d ON c.document_id = d.id
+      WHERE d.slug = ${boostSlug}
+        AND d.metadata->>'status' IS DISTINCT FROM 'draft'
+      ORDER BY sim DESC
+      LIMIT ${PINNED_LIMIT}
+    `);
+    pinned = pinnedRes.rows.map((r) => ({
+      ...r,
+      sim: Number(r.sim) + PINNED_BOOST,
+    }));
+  }
+
+  const seen = new Set<string>();
+  const merged: V2Row[] = [];
+  for (const r of [...pinned, ...result.rows]) {
+    if (seen.has(r.chunk_id)) continue;
+    seen.add(r.chunk_id);
+    merged.push(r);
+  }
+
+  const rows = merged
+    .map((r) => ({
+      ...r,
+      sim: Number(r.sim) * weightForKind(r.doc_kind),
+    }))
+    .sort((a, b) => b.sim - a.sim)
+    .slice(0, topK);
 
   const contexts: RetrievedContext[] = rows.map((r) => ({
     title: r.title,
     section: friendlySection(r),
     text: r.chunk_text,
-    source: sourceMode,
   }));
 
   const sources: Source[] = rows.map((r) => ({
@@ -80,17 +124,11 @@ export async function search(
     section: friendlySection(r),
     score: Number(r.sim),
     excerpt: r.chunk_text.slice(0, 160),
-    source: sourceMode,
-    serviceSlug: undefined,
   }));
 
   return { contexts, sources };
 }
 
-// Turn the chunk-level kind/payload into a human-readable label for the UI
-// pill. Section chunks expose their heading; contact chunks expose the
-// channel label ("Telephone", "Email"); minister/head get their own labels;
-// others are unlabelled.
 function friendlySection(r: V2Row): string | undefined {
   const payload = r.payload as { heading?: string; label?: string } | null;
   switch (r.chunk_kind) {
