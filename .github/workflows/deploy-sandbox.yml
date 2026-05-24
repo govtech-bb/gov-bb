@@ -132,7 +132,7 @@ jobs:
           IMAGE_URI="$REGISTRY/gov-bb-form-builder:$IMAGE_TAG"
           LATEST_URI="$REGISTRY/gov-bb-form-builder:latest"
 
-          docker build --platform linux/amd64 -f apps/form_builder/Dockerfile.prod -t "$IMAGE_URI" -t "$LATEST_URI" .
+          docker build --platform linux/amd64 -f apps/form_builder_api/Dockerfile -t "$IMAGE_URI" -t "$LATEST_URI" .
           docker push "$IMAGE_URI"
           docker push "$LATEST_URI"
 
