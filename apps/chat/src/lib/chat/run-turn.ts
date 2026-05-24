@@ -6,6 +6,7 @@ import {
   setFieldDef,
   submitFormDef,
 } from "#/lib/chat-tools";
+import { childController } from "#/lib/abort";
 import { env } from "#/lib/env";
 import { loadActiveFormSchema } from "./form-fields";
 import {
@@ -70,18 +71,11 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
   }
 
   const session = getOrCreateSession(threadId);
-  // Re-detect slug on first turn, after successful submit (start a new form),
-  // or after a failed submit if the user expresses fresh intent elsewhere.
-  // For now, allow re-detection once status is terminal.
   if (!session.slug || session.status === "submitted") {
-    const previousStatus = session.status;
     const matched = await matchFormsFromText(recentUserText(messages));
     if (matched && matched.formId !== session.slug) {
-      // Topic switched (or new flow after submit) — wipe and restart.
       resetSessionForNewForm(session);
       session.slug = matched.formId;
-    } else if (!matched && previousStatus === "submitted") {
-      // Stay on submitted state — model handles "anything else?" closure.
     } else if (matched) {
       session.slug = matched.formId;
     }
@@ -179,7 +173,7 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
       ]
     : [];
 
-  const abortController = linkAbort(signal);
+  const abortController = childController(signal);
 
   const llmStream = chat({
     adapter: bedrockText(model, { region: env.BEDROCK_REGION }),
@@ -293,11 +287,4 @@ const JAILBREAK_PATTERNS: ReadonlyArray<RegExp> = [
 function looksLikeJailbreak(input: string): boolean {
   if (!input || input.length < 6) return false;
   return JAILBREAK_PATTERNS.some((re) => re.test(input));
-}
-
-function linkAbort(signal: AbortSignal): AbortController {
-  const ac = new AbortController();
-  if (signal.aborted) ac.abort();
-  else signal.addEventListener("abort", () => ac.abort(), { once: true });
-  return ac;
 }

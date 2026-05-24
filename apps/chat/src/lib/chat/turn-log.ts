@@ -1,4 +1,5 @@
 import type { StreamChunk } from "@tanstack/ai";
+import { isAbortError } from "#/lib/abort";
 
 export interface TurnRecord {
   ts: string;
@@ -14,6 +15,7 @@ export interface TurnRecord {
   durationMs?: number;
   finishReason?: string;
   retrieveDegraded?: boolean;
+  cancelled?: boolean;
   error?: string;
 }
 
@@ -32,6 +34,7 @@ export async function* withTurnLog(
   let totalTokens = 0;
   let sawUsage = false;
   let error: string | undefined;
+  let cancelled = false;
 
   try {
     for await (const chunk of inner) {
@@ -55,6 +58,10 @@ export async function* withTurnLog(
       yield chunk;
     }
   } catch (err) {
+    if (isAbortError(err)) {
+      cancelled = true;
+      return;
+    }
     error = err instanceof Error ? err.message : String(err);
     throw err;
   } finally {
@@ -65,6 +72,7 @@ export async function* withTurnLog(
       promptTokens: sawUsage ? promptTokens : undefined,
       completionTokens: sawUsage ? completionTokens : undefined,
       totalTokens: sawUsage ? totalTokens : undefined,
+      cancelled: cancelled || undefined,
       error,
     });
   }

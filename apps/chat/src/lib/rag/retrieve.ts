@@ -39,7 +39,7 @@ export async function search(
 
   const literal = JSON.stringify(vector);
   const fetchLimit = topK * 3;
-  const result = await db.execute<V2Row>(sql`
+  const rankedQuery = db.execute<V2Row>(sql`
     WITH ranked AS (
       SELECT
         c.id          AS chunk_id,
@@ -68,32 +68,33 @@ export async function search(
     LIMIT ${fetchLimit}
   `);
 
-  let pinned: V2Row[] = [];
-  if (boostSlug) {
-    const pinnedRes = await db.execute<V2Row>(sql`
-      SELECT
-        c.id          AS chunk_id,
-        d.id          AS document_id,
-        d.kind        AS doc_kind,
-        d.title       AS title,
-        d.url         AS url,
-        d.source_url  AS source_url,
-        c.kind        AS chunk_kind,
-        c.text        AS chunk_text,
-        c.payload     AS payload,
-        1 - (c.embedding <=> ${literal}::vector) AS sim
-      FROM chunks c
-      JOIN documents d ON c.document_id = d.id
-      WHERE d.slug = ${boostSlug}
-        AND d.metadata->>'status' IS DISTINCT FROM 'draft'
-      ORDER BY sim DESC
-      LIMIT ${PINNED_LIMIT}
-    `);
-    pinned = pinnedRes.rows.map((r) => ({
-      ...r,
-      sim: Number(r.sim) + PINNED_BOOST,
-    }));
-  }
+  const pinnedQuery = boostSlug
+    ? db.execute<V2Row>(sql`
+        SELECT
+          c.id          AS chunk_id,
+          d.id          AS document_id,
+          d.kind        AS doc_kind,
+          d.title       AS title,
+          d.url         AS url,
+          d.source_url  AS source_url,
+          c.kind        AS chunk_kind,
+          c.text        AS chunk_text,
+          c.payload     AS payload,
+          1 - (c.embedding <=> ${literal}::vector) AS sim
+        FROM chunks c
+        JOIN documents d ON c.document_id = d.id
+        WHERE d.slug = ${boostSlug}
+          AND d.metadata->>'status' IS DISTINCT FROM 'draft'
+        ORDER BY sim DESC
+        LIMIT ${PINNED_LIMIT}
+      `)
+    : Promise.resolve({ rows: [] as V2Row[] });
+
+  const [result, pinnedRes] = await Promise.all([rankedQuery, pinnedQuery]);
+  const pinned: V2Row[] = pinnedRes.rows.map((r) => ({
+    ...r,
+    sim: Number(r.sim) + PINNED_BOOST,
+  }));
 
   const seen = new Set<string>();
   const merged: V2Row[] = [];
@@ -129,9 +130,19 @@ export async function search(
   return { contexts, sources };
 }
 
+type ChunkKind =
+  | "section"
+  | "contact"
+  | "minister"
+  | "head"
+  | "body"
+  | "intent"
+  | "name";
+
 function friendlySection(r: V2Row): string | undefined {
   const payload = r.payload as { heading?: string; label?: string } | null;
-  switch (r.chunk_kind) {
+  const kind = r.chunk_kind as ChunkKind;
+  switch (kind) {
     case "section":
       return payload?.heading ?? undefined;
     case "contact":
@@ -145,7 +156,9 @@ function friendlySection(r: V2Row): string | undefined {
     case "intent":
     case "name":
       return undefined;
-    default:
-      return r.chunk_kind;
+    default: {
+      const _exhaustive: never = kind;
+      return _exhaustive;
+    }
   }
 }

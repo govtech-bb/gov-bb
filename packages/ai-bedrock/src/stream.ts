@@ -46,10 +46,18 @@ export function createTranslatorState(opts: {
   };
 }
 
+type BedrockStopReason =
+  | "tool_use"
+  | "max_tokens"
+  | "content_filtered"
+  | "guardrail_intervened"
+  | "end_turn"
+  | "stop_sequence";
+
 function mapStopReason(
   reason: string | undefined,
 ): StreamTranslatorState["pendingFinishReason"] {
-  switch (reason) {
+  switch (reason as BedrockStopReason | undefined) {
     case "tool_use":
       return "tool_calls";
     case "max_tokens":
@@ -59,7 +67,7 @@ function mapStopReason(
       return "content_filter";
     case "end_turn":
     case "stop_sequence":
-    default:
+    case undefined:
       return "stop";
   }
 }

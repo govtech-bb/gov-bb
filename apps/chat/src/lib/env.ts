@@ -8,4 +8,5 @@ export const env = {
   RAG_URL: required("RAG_URL"),
   BEDROCK_REGION: process.env.BEDROCK_REGION ?? process.env.AWS_REGION,
   LLM_MODEL: process.env.LLM_MODEL ?? "claude-haiku-4-5",
+  REWRITE_MODEL: process.env.REWRITE_MODEL ?? "claude-haiku-4-5",
 };

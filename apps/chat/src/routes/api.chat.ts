@@ -7,13 +7,7 @@ import {
 import { env } from "#/lib/env";
 import { runTurn } from "#/lib/chat/run-turn";
 import type { Citation } from "#/lib/chat/types";
-
-function jsonError(message: string, status: number): Response {
-  return new Response(JSON.stringify({ error: message }), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
+import { jsonError } from "#/lib/http";
 
 // Emit the citations event right after the assistant message id is known
 // (TEXT_MESSAGE_START), so the client can store citations keyed by messageId

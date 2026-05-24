@@ -2,10 +2,9 @@ import { chat } from "@tanstack/ai";
 import type { UIMessage } from "@tanstack/ai";
 import { bedrockText } from "@govtech-bb/ai-bedrock";
 import { z } from "zod";
+import { childController } from "#/lib/abort";
 import { env } from "#/lib/env";
 import { extractText, lastUserText } from "./messages";
-
-const MODEL = "claude-haiku-4-5";
 
 const PROMPT = `You rewrite the user's latest message into a single self-contained search query for a retrieval system over Barbados government services.
 
@@ -49,27 +48,16 @@ export async function rewriteRetrievalQuery(
   // Fall back to raw input if the rewrite call fails — never block a turn.
   try {
     const result = await chat({
-      adapter: bedrockText(MODEL, { region: env.BEDROCK_REGION }),
+      adapter: bedrockText(env.REWRITE_MODEL, { region: env.BEDROCK_REGION }),
       messages: [{ role: "user", content: prompt }],
       outputSchema: Schema,
       maxTokens: 100,
       temperature: 0,
-      abortController: controllerFor(signal, 3000),
+      abortController: childController(signal, 3000),
     });
     const out = result.rewrittenQuery.trim();
     return out.length > 2 ? out : latest;
   } catch {
     return latest;
   }
-}
-
-function controllerFor(
-  parent: AbortSignal,
-  timeoutMs: number,
-): AbortController {
-  const ac = new AbortController();
-  const combined = AbortSignal.any([parent, AbortSignal.timeout(timeoutMs)]);
-  if (combined.aborted) ac.abort();
-  else combined.addEventListener("abort", () => ac.abort(), { once: true });
-  return ac;
 }

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { hasDatabase } from "#/lib/db";
+import { jsonError } from "#/lib/http";
 import { search } from "#/lib/rag/retrieve";
 
 const RequestSchema = z.object({
@@ -8,13 +9,6 @@ const RequestSchema = z.object({
   topK: z.number().int().positive().max(50).default(8),
   boostSlug: z.string().min(1).optional(),
 });
-
-function jsonError(message: string, status: number): Response {
-  return new Response(JSON.stringify({ error: message }), {
-    status,
-    headers: { "content-type": "application/json" },
-  });
-}
 
 async function handlePost({
   request,

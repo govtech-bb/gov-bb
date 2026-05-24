@@ -5,8 +5,6 @@
 // safe. Service/MDA boosts dropped to 1.0 after section chunks made the
 // rerank prior unnecessary; news kept at 0.7 to deprioritise news pages.
 
-const MDA_KINDS = new Set(["ministry", "department", "state-body"]);
-
 // Minimum raw cosine similarity for the SQL probe in retrieve.ts.
 export const SIMILARITY_THRESHOLD = 0.25;
 
@@ -33,8 +31,5 @@ export const DOC_KIND_WEIGHTS: Record<string, number> = {
 };
 
 export function weightForKind(kind: string): number {
-  const w = DOC_KIND_WEIGHTS[kind];
-  if (w !== undefined) return w;
-  if (MDA_KINDS.has(kind)) return 1.0;
-  return 1.0;
+  return DOC_KIND_WEIGHTS[kind] ?? 1.0;
 }
