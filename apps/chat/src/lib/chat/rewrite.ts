@@ -50,7 +50,7 @@ export async function rewriteRetrievalQuery(
   try {
     const result = await chat({
       adapter: bedrockText(env.REWRITE_MODEL, {
-        region: env.BEDROCK_REGION ?? env.AWS_REGION,
+        region: env.BEDROCK_REGION,
       }),
       messages: [{ role: "user", content: prompt }],
       outputSchema: Schema,
