@@ -120,6 +120,16 @@ applications:
             - pnpm install --frozen-lockfile
         build:
           commands:
+            - echo "AI_PROVIDER=${AI_PROVIDER}" >> apps/form_builder/.env.production
+            - echo "AI_MODEL=${AI_MODEL}" >> apps/form_builder/.env.production
+            - echo "BEDROCK_REGION=${BEDROCK_REGION}" >> apps/form_builder/.env.production
+            - echo "SESSION_SECRET=${SESSION_SECRET}" >> apps/form_builder/.env.production
+            - echo "ADMIN_API_TOKEN=${ADMIN_API_TOKEN}" >> apps/form_builder/.env.production
+            - echo "DB_HOST=${DB_HOST}" >> apps/form_builder/.env.production
+            - echo "DB_PORT=${DB_PORT}" >> apps/form_builder/.env.production
+            - echo "DB_NAME=${DB_NAME}" >> apps/form_builder/.env.production
+            - echo "DB_USERNAME=${DB_USERNAME}" >> apps/form_builder/.env.production
+            - echo "DB_PASSWORD=${DB_PASSWORD}" >> apps/form_builder/.env.production
             - pnpm exec nx run form-builder-app:build
       artifacts:
         baseDirectory: apps/form_builder/.amplify-hosting
