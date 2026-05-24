@@ -1,8 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { evaluateFormConditions } from "@govtech-bb/form-conditions";
-import type { ServiceContract } from "@govtech-bb/form-types";
-import { getFormDefinition } from "./form-api";
-import { validateAndReshape } from "./form-values";
+import { getFormDefinition } from "./defs";
+import { getActiveFieldIds } from "./schema";
+import { validateAndReshape } from "./values";
 
 const FORM_API_URL = (process.env.FORM_API_URL ?? "").replace(/\/+$/, "");
 
@@ -61,9 +60,9 @@ export async function submitFormUpstream(
     };
   }
 
-  // Only validate fields that are active given current values. Conditional
-  // fields the user was never asked about must not trigger 'required' errors.
-  const activeFieldIds = computeActiveFieldIds(contract, fields);
+  // Conditional fields the user was never asked about must not trigger
+  // 'required' errors — only validate fields active given current values.
+  const { flat: activeFieldIds } = getActiveFieldIds(contract, fields);
   const validation = validateAndReshape(contract, fields, activeFieldIds);
   if (!validation.ok) {
     return { ok: false, errors: validation.errors };
@@ -136,23 +135,4 @@ export async function submitFormUpstream(
     };
   }
   return { ok: true, referenceNumber: ref };
-}
-
-function computeActiveFieldIds(
-  contract: ServiceContract,
-  flat: Record<string, string>,
-): Set<string> {
-  const scoped: Record<string, Record<string, unknown>> = {};
-  for (const step of contract.steps) {
-    for (const el of step.elements) {
-      if (flat[el.fieldId] === undefined) continue;
-      (scoped[step.stepId] ??= {})[el.fieldId] = flat[el.fieldId];
-    }
-  }
-  const { activeFieldIds } = evaluateFormConditions(contract, scoped);
-  const all = new Set<string>();
-  for (const ids of activeFieldIds.values()) {
-    for (const id of ids) all.add(id);
-  }
-  return all;
 }

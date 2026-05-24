@@ -3,6 +3,7 @@ import type {
   Primitive,
   ServiceContract,
 } from "@govtech-bb/form-types";
+import { buildFieldIndex } from "./schema";
 
 export type FieldError = { field: string; message: string };
 export type ValidationResult =
@@ -84,24 +85,12 @@ function isRequired(field: Primitive): boolean {
   return !!field.validations?.required;
 }
 
-function fieldIndex(
-  contract: ServiceContract,
-): Map<string, { stepId: string; field: Primitive }> {
-  const map = new Map<string, { stepId: string; field: Primitive }>();
-  for (const step of contract.steps) {
-    for (const el of step.elements) {
-      map.set(el.fieldId, { stepId: step.stepId, field: el });
-    }
-  }
-  return map;
-}
-
 export function validateAndReshape(
   contract: ServiceContract,
   fields: Record<string, string>,
   activeFieldIds?: Set<string>,
 ): ValidationResult {
-  const idx = fieldIndex(contract);
+  const idx = buildFieldIndex(contract);
   const errors: FieldError[] = [];
   const valuesByStep: Record<string, Record<string, unknown>> = {};
 

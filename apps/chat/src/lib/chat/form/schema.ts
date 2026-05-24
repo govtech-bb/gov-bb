@@ -4,10 +4,8 @@ import type {
   ServiceContract,
 } from "@govtech-bb/form-types";
 import { evaluateFormConditions } from "@govtech-bb/form-conditions";
-import { getFormDefinition } from "./form-api";
+import { getFormDefinition } from "./defs";
 
-// htmlTypes the chat LLM cannot collect via text. File uploads come in
-// Phase 3; show-hide is a presentational UI control with no value.
 const UNCOLLECTABLE: ReadonlySet<HtmlTypes> = new Set<HtmlTypes>([
   "file",
   "show-hide",
@@ -34,7 +32,7 @@ function describeField(field: Primitive): string {
   return `- ${field.fieldId}: ${field.htmlType} (${req})${opts}  // ${field.label}`;
 }
 
-function buildFieldIndex(
+export function buildFieldIndex(
   contract: ServiceContract,
 ): Map<string, { stepId: string; field: Primitive }> {
   const map = new Map<string, { stepId: string; field: Primitive }>();
@@ -60,19 +58,27 @@ function flatToStepScoped(
   return out;
 }
 
-function summarizeActive(
+export function getActiveFieldIds(
   contract: ServiceContract,
   flatValues: Record<string, unknown>,
-): string | null {
+): { byStep: Map<string, Set<string>>; flat: Set<string> } {
   const scoped = flatToStepScoped(contract, flatValues);
   const { activeFieldIds } = evaluateFormConditions(contract, scoped);
+  const flat = new Set<string>();
+  for (const ids of activeFieldIds.values()) for (const id of ids) flat.add(id);
+  return { byStep: activeFieldIds, flat };
+}
 
+function summarizeActive(
+  contract: ServiceContract,
+  active: Map<string, Set<string>>,
+): string | null {
   const lines: string[] = [];
   for (const step of contract.steps) {
-    const active = activeFieldIds.get(step.stepId);
-    if (!active) continue;
+    const ids = active.get(step.stepId);
+    if (!ids) continue;
     for (const el of step.elements) {
-      if (!active.has(el.fieldId)) continue;
+      if (!ids.has(el.fieldId)) continue;
       if (el.isHidden) continue;
       if (UNCOLLECTABLE.has(el.htmlType)) continue;
       if (hasRepeatableBehaviour(el)) continue;
@@ -97,11 +103,8 @@ export async function loadActiveFormSchema(
 ): Promise<ActiveFormSchema | null> {
   const contract = await getFormDefinition(slug);
   if (!contract) return null;
-  const schema = summarizeActive(contract, currentValues);
+  const active = getActiveFieldIds(contract, currentValues);
+  const schema = summarizeActive(contract, active.byStep);
   if (!schema) return null;
-  const scoped = flatToStepScoped(contract, currentValues);
-  const { activeFieldIds } = evaluateFormConditions(contract, scoped);
-  const flat = new Set<string>();
-  for (const ids of activeFieldIds.values()) for (const id of ids) flat.add(id);
-  return { slug, schema, activeFieldIds: flat };
+  return { slug, schema, activeFieldIds: active.flat };
 }

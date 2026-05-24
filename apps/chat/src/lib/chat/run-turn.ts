@@ -8,15 +8,15 @@ import {
 } from "#/lib/chat-tools";
 import { childController } from "#/lib/abort";
 import { env } from "#/lib/env";
-import { loadActiveFormSchema } from "./form-fields";
 import {
   getOrCreateSession,
+  loadActiveFormSchema,
+  matchFormsFromText,
   resetSessionForNewForm,
+  submitFormUpstream,
   withThreadLock,
   type FormSession,
-} from "./form-session-store";
-import { submitFormUpstream } from "./forms-api";
-import { matchFormsFromText } from "./known-forms";
+} from "./form";
 import { lastUserText, recentUserText } from "./messages";
 import {
   NO_FORM_DISCLOSURE,

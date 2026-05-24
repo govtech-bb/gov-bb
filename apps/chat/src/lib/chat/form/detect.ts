@@ -1,4 +1,4 @@
-import { getFormIndex, type FormIndexEntry } from "./form-api";
+import { getFormIndex, type FormIndexEntry } from "./defs";
 
 const STOP = new Set([
   "the",
