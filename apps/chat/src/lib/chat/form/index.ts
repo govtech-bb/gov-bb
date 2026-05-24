@@ -7,3 +7,4 @@ export {
   type FormSession,
 } from "./session";
 export { submitFormUpstream, type SubmitOutcome } from "./submit";
+export { buildFormTools } from "./tools";

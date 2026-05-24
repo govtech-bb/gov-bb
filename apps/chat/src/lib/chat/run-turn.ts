@@ -1,23 +1,17 @@
 import type { StreamChunk, SystemPrompt, UIMessage } from "@tanstack/ai";
 import { chat } from "@tanstack/ai";
 import { bedrockText } from "@govtech-bb/ai-bedrock";
-import {
-  presentChoicesDef,
-  setFieldDef,
-  submitFormDef,
-} from "#/lib/chat-tools";
 import { childController } from "#/lib/abort";
 import { env } from "#/lib/env";
 import {
+  buildFormTools,
   getOrCreateSession,
   loadActiveFormSchema,
   matchFormsFromText,
   resetSessionForNewForm,
-  submitFormUpstream,
   withThreadLock,
   type FormSession,
 } from "./form";
-import { getActiveFieldIds } from "./form/schema";
 import { lastUserText, recentUserText } from "./messages";
 import {
   NO_FORM_DISCLOSURE,
@@ -112,73 +106,7 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     session,
   );
 
-  const tools = schema
-    ? [
-        presentChoicesDef.server(async () => ({ shown: true })),
-        setFieldDef.server(async ({ fieldId, value }) => {
-          // Recompute active set against current values — a previous set_field
-          // in this turn may have activated a conditional field.
-          const active = getActiveFieldIds(
-            schema.contract,
-            session.values,
-          ).flat;
-          if (!active.has(fieldId)) {
-            return {
-              ok: false,
-              error: `unknown or inactive fieldId: ${fieldId}`,
-            };
-          }
-          session.values[fieldId] = value;
-          session.updatedAt = Date.now();
-          return { ok: true };
-        }),
-        submitFormDef.server(async () => {
-          if (!session.slug) {
-            return {
-              ok: false,
-              errors: [{ field: "service", message: "no active form" }],
-            };
-          }
-          // Idempotent guard: if we've already submitted successfully, return
-          // the existing reference instead of re-posting.
-          if (session.status === "submitted" && session.referenceNumber) {
-            return {
-              ok: true,
-              referenceNumber: session.referenceNumber,
-            };
-          }
-          if (session.status === "submitting") {
-            return {
-              ok: false,
-              errors: [
-                {
-                  field: "service",
-                  message: "a submission is already in flight",
-                },
-              ],
-            };
-          }
-          session.status = "submitting";
-          session.updatedAt = Date.now();
-          const result = await submitFormUpstream(
-            session.slug,
-            session.values,
-            session.submissionId,
-            signal,
-          );
-          if (result.ok) {
-            session.status = "submitted";
-            session.referenceNumber = result.referenceNumber;
-            session.updatedAt = Date.now();
-            return { ok: true, referenceNumber: result.referenceNumber };
-          }
-          session.status = "failed";
-          session.lastError = result.errors[0]?.message;
-          session.updatedAt = Date.now();
-          return { ok: false, errors: result.errors };
-        }),
-      ]
-    : [];
+  const tools = schema ? buildFormTools(session, schema, signal) : [];
 
   const abortController = childController(signal);
 
