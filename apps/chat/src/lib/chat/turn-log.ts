@@ -39,20 +39,12 @@ export async function* withTurnLog(
   try {
     for await (const chunk of inner) {
       if (chunk.type === "RUN_FINISHED") {
-        const c = chunk as unknown as {
-          finishReason?: string;
-          usage?: {
-            promptTokens?: number;
-            completionTokens?: number;
-            totalTokens?: number;
-          };
-        };
-        finishReason = c.finishReason ?? finishReason;
-        if (c.usage) {
+        finishReason = chunk.finishReason ?? finishReason;
+        if (chunk.usage) {
           sawUsage = true;
-          promptTokens += c.usage.promptTokens ?? 0;
-          completionTokens += c.usage.completionTokens ?? 0;
-          totalTokens += c.usage.totalTokens ?? 0;
+          promptTokens += chunk.usage.promptTokens ?? 0;
+          completionTokens += chunk.usage.completionTokens ?? 0;
+          totalTokens += chunk.usage.totalTokens ?? 0;
         }
       }
       yield chunk;

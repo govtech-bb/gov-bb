@@ -30,22 +30,22 @@ export function getTextFromContent(
     .join("");
 }
 
-function textBlock(text: string): ContentBlock {
-  return { text } as ContentBlock;
+function textBlock(text: string): ContentBlock.TextMember {
+  return { text };
 }
 
 function toolUseBlock(
   toolUseId: string,
   name: string,
   input: object,
-): ContentBlock {
+): ContentBlock.ToolUseMember {
   return {
     toolUse: {
       toolUseId,
       name,
       input: input as ToolUseBlock["input"],
     },
-  } as ContentBlock;
+  };
 }
 
 function parseToolArguments(raw: string | object | undefined): object {
@@ -109,10 +109,11 @@ export function modelMessagesToBedrock(
       }
       i--;
 
-      const toolResultBlocks: Array<ContentBlock> = prevToolUseIds
-        .map((id) => toolResultById.get(id))
-        .filter((b): b is ToolResultBlock => b != null)
-        .map((tr) => ({ toolResult: tr }) as ContentBlock);
+      const toolResultBlocks: Array<ContentBlock.ToolResultMember> =
+        prevToolUseIds
+          .map((id) => toolResultById.get(id))
+          .filter((b): b is ToolResultBlock => b != null)
+          .map((tr) => ({ toolResult: tr }));
 
       if (toolResultBlocks.length > 0) {
         out.push({ role: "user", content: toolResultBlocks });
@@ -157,17 +158,14 @@ export function systemPromptsToBedrock(
   return blocks.length ? blocks : undefined;
 }
 
-// Bedrock's `ToolInputSchema` is a smithy discriminated union (`{ json } |
-// { $unknown }`) where the `json` payload is `__DocumentType`. JSON Schema
-// objects fit that shape at runtime, but TS picks the wrong arm for plain
-// object literals — cast through `unknown` once here and the rest of the
-// file stays clean.
-function inputSchemaToJson(schema: Tool["inputSchema"]): ToolInputSchema {
+function inputSchemaToJson(
+  schema: Tool["inputSchema"],
+): ToolInputSchema.JsonMember {
   const json =
     schema && typeof schema === "object"
       ? schema
       : { type: "object", properties: {} };
-  return { json } as unknown as ToolInputSchema;
+  return { json } as ToolInputSchema.JsonMember;
 }
 
 export function toolsToBedrockToolConfig(
@@ -201,7 +199,7 @@ export function jsonSchemaToBedrockStructuredTool(
           toolSpec: {
             name,
             description,
-            inputSchema: { json: schema } as unknown as ToolInputSchema,
+            inputSchema: { json: schema } as ToolInputSchema.JsonMember,
           },
         },
       ],

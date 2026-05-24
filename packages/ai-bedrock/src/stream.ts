@@ -3,7 +3,19 @@ import type {
   ConverseStreamOutput,
   TokenUsage,
 } from "@aws-sdk/client-bedrock-runtime";
-import { EventType, type StreamChunk } from "@tanstack/ai";
+import {
+  EventType,
+  type RunErrorEvent,
+  type RunFinishedEvent,
+  type RunStartedEvent,
+  type StreamChunk,
+  type TextMessageContentEvent,
+  type TextMessageEndEvent,
+  type TextMessageStartEvent,
+  type ToolCallArgsEvent,
+  type ToolCallEndEvent,
+  type ToolCallStartEvent,
+} from "@tanstack/ai";
 
 export interface StreamTranslatorState {
   model: string;
@@ -72,7 +84,7 @@ function mapStopReason(
   }
 }
 
-function emitRunStarted(state: StreamTranslatorState): StreamChunk | null {
+function emitRunStarted(state: StreamTranslatorState): RunStartedEvent | null {
   if (state.hasEmittedRunStarted) return null;
   state.hasEmittedRunStarted = true;
   return {
@@ -82,12 +94,12 @@ function emitRunStarted(state: StreamTranslatorState): StreamChunk | null {
     parentRunId: state.parentRunId,
     model: state.model,
     timestamp: Date.now(),
-  } as StreamChunk;
+  };
 }
 
 function emitTextStartIfNeeded(
   state: StreamTranslatorState,
-): StreamChunk | null {
+): TextMessageStartEvent | null {
   if (state.hasEmittedTextStart) return null;
   state.hasEmittedTextStart = true;
   state.hasEmittedTextEnd = false;
@@ -97,10 +109,12 @@ function emitTextStartIfNeeded(
     role: "assistant",
     model: state.model,
     timestamp: Date.now(),
-  } as StreamChunk;
+  };
 }
 
-function emitTextEndIfOpen(state: StreamTranslatorState): StreamChunk | null {
+function emitTextEndIfOpen(
+  state: StreamTranslatorState,
+): TextMessageEndEvent | null {
   if (!state.hasEmittedTextStart || state.hasEmittedTextEnd) return null;
   state.hasEmittedTextEnd = true;
   state.hasEmittedTextStart = false;
@@ -109,7 +123,7 @@ function emitTextEndIfOpen(state: StreamTranslatorState): StreamChunk | null {
     messageId: state.messageId,
     model: state.model,
     timestamp: Date.now(),
-  } as StreamChunk;
+  };
 }
 
 // Translate a single Bedrock ConverseStream event into zero-or-more
@@ -148,7 +162,7 @@ export function* translateBedrockStreamEvent(
       model: state.model,
       timestamp: Date.now(),
       index: idx,
-    } as StreamChunk;
+    } satisfies ToolCallStartEvent;
     return;
   }
 
@@ -165,7 +179,7 @@ export function* translateBedrockStreamEvent(
         delta: delta.text,
         model: state.model,
         timestamp: Date.now(),
-      } as StreamChunk;
+      } satisfies TextMessageContentEvent;
       return;
     }
 
@@ -180,7 +194,7 @@ export function* translateBedrockStreamEvent(
           delta: partial,
           model: state.model,
           timestamp: Date.now(),
-        } as StreamChunk;
+        } satisfies ToolCallArgsEvent;
       }
       return;
     }
@@ -204,7 +218,7 @@ export function* translateBedrockStreamEvent(
         model: state.model,
         timestamp: Date.now(),
         input,
-      } as StreamChunk;
+      } satisfies ToolCallEndEvent;
       state.toolCalls.delete(idx);
     } else {
       const close = emitTextEndIfOpen(state);
@@ -232,7 +246,7 @@ export function* translateBedrockStreamEvent(
 function emitRunFinished(
   state: StreamTranslatorState,
   usage: TokenUsage | undefined,
-): StreamChunk {
+): RunFinishedEvent {
   state.hasEmittedRunFinished = true;
   const finishReason = state.pendingFinishReason ?? "stop";
   state.pendingFinishReason = null;
@@ -250,7 +264,7 @@ function emitRunFinished(
           totalTokens: (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0),
         }
       : undefined,
-  } as StreamChunk;
+  };
 }
 
 function errorChunkFor(
@@ -301,7 +315,7 @@ export function errorChunk(
   state: { runId: string; model: string },
   message: string,
   code?: string,
-): StreamChunk {
+): RunErrorEvent {
   return {
     type: EventType.RUN_ERROR,
     runId: state.runId,
@@ -310,7 +324,7 @@ export function errorChunk(
     message,
     code,
     error: { message, code },
-  } as StreamChunk;
+  };
 }
 
 // Close out the run when the stream ends without a `metadata` event (the
@@ -340,29 +354,24 @@ export function* translateConverseOutput(
   if (started) yield started;
 
   for (const block of content) {
-    if (typeof (block as { text?: string }).text === "string") {
-      const text = (block as { text: string }).text;
-      if (text) {
+    if ("text" in block && typeof block.text === "string") {
+      if (block.text) {
         const start = emitTextStartIfNeeded(state);
         if (start) yield start;
         yield {
           type: EventType.TEXT_MESSAGE_CONTENT,
           messageId: state.messageId,
-          delta: text,
+          delta: block.text,
           model: state.model,
           timestamp: Date.now(),
-        } as StreamChunk;
+        } satisfies TextMessageContentEvent;
       }
       continue;
     }
-    const tu = (
-      block as {
-        toolUse?: { toolUseId?: string; name?: string; input?: unknown };
-      }
-    ).toolUse;
-    if (tu) {
+    if ("toolUse" in block && block.toolUse) {
       const close = emitTextEndIfOpen(state);
       if (close) yield close;
+      const tu = block.toolUse;
       const toolCallId = tu.toolUseId ?? `${state.runId}-tool`;
       const toolName = tu.name ?? "";
       const inputObj = tu.input;
@@ -379,14 +388,14 @@ export function* translateConverseOutput(
         model: state.model,
         timestamp: Date.now(),
         index: 0,
-      } as StreamChunk;
+      } satisfies ToolCallStartEvent;
       yield {
         type: EventType.TOOL_CALL_ARGS,
         toolCallId,
         delta: inputStr,
         model: state.model,
         timestamp: Date.now(),
-      } as StreamChunk;
+      } satisfies ToolCallArgsEvent;
       yield {
         type: EventType.TOOL_CALL_END,
         toolCallId,
@@ -398,7 +407,7 @@ export function* translateConverseOutput(
           inputObj && typeof inputObj === "object"
             ? inputObj
             : { value: inputObj },
-      } as StreamChunk;
+      } satisfies ToolCallEndEvent;
     }
   }
 

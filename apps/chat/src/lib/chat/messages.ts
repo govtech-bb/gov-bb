@@ -4,15 +4,11 @@ type TextPart = Extract<UIMessage["parts"][number], { type: "text" }>;
 type ToolCallPart = Extract<UIMessage["parts"][number], { type: "tool-call" }>;
 
 export function extractText(message: UIMessage): string {
-  if (Array.isArray(message.parts)) {
-    return message.parts
-      .filter((p): p is TextPart => p.type === "text")
-      .map((p) => p.content ?? "")
-      .join("")
-      .trim();
-  }
-  const content = (message as unknown as { content?: unknown }).content;
-  return typeof content === "string" ? content.trim() : "";
+  return message.parts
+    .filter((p): p is TextPart => p.type === "text")
+    .map((p) => p.content ?? "")
+    .join("")
+    .trim();
 }
 
 export function lastUserText(messages: UIMessage[]): string {

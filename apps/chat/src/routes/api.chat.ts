@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import type { StreamChunk, UIMessage } from "@tanstack/ai";
+import type { CustomEvent, StreamChunk, UIMessage } from "@tanstack/ai";
 import {
+  EventType,
   chatParamsFromRequest,
   toServerSentEventsResponse,
 } from "@tanstack/ai";
@@ -22,17 +23,16 @@ async function* withCitations(
     if (
       !emitted &&
       citations.length > 0 &&
-      chunk.type === "TEXT_MESSAGE_START"
+      chunk.type === "TEXT_MESSAGE_START" &&
+      chunk.messageId
     ) {
-      const messageId = (chunk as unknown as { messageId?: string }).messageId;
-      if (messageId) {
-        yield {
-          type: "CUSTOM",
-          name: "citations",
-          value: { messageId, citations },
-        } as StreamChunk;
-        emitted = true;
-      }
+      yield {
+        type: EventType.CUSTOM,
+        name: "citations",
+        value: { messageId: chunk.messageId, citations },
+        timestamp: Date.now(),
+      } satisfies CustomEvent;
+      emitted = true;
     }
   }
 }
