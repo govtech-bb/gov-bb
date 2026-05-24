@@ -1,7 +1,8 @@
 import { chat } from "@tanstack/ai";
-import { anthropicText } from "@tanstack/ai-anthropic";
 import type { UIMessage } from "@tanstack/ai";
+import { bedrockText } from "@govtech-bb/ai-bedrock";
 import { z } from "zod";
+import { env } from "#/lib/env";
 import { extractText, lastUserText } from "./messages";
 
 const MODEL = "claude-haiku-4-5";
@@ -34,7 +35,6 @@ function buildHistory(messages: UIMessage[]): string {
 }
 
 export async function rewriteRetrievalQuery(
-  apiKey: string,
   messages: UIMessage[],
   signal: AbortSignal,
 ): Promise<string> {
@@ -49,7 +49,7 @@ export async function rewriteRetrievalQuery(
   // Fall back to raw input if the rewrite call fails — never block a turn.
   try {
     const result = await chat({
-      adapter: anthropicText(MODEL, { apiKey }),
+      adapter: bedrockText(MODEL, { region: env.BEDROCK_REGION }),
       messages: [{ role: "user", content: prompt }],
       outputSchema: Schema,
       maxTokens: 100,

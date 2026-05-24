@@ -67,7 +67,6 @@ async function handlePost({
     threadId,
     runId,
     signal: request.signal,
-    apiKey: env.ANTHROPIC_API_KEY,
     ragUrl: env.RAG_URL,
     model: env.LLM_MODEL,
   });

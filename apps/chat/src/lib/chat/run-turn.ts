@@ -1,14 +1,12 @@
 import type { StreamChunk, SystemPrompt, UIMessage } from "@tanstack/ai";
 import { chat } from "@tanstack/ai";
-import {
-  anthropicText,
-  type AnthropicSystemPromptMetadata,
-} from "@tanstack/ai-anthropic";
+import { bedrockText } from "@govtech-bb/ai-bedrock";
 import {
   presentChoicesDef,
   setFieldDef,
   submitFormDef,
 } from "#/lib/chat-tools";
+import { env } from "#/lib/env";
 import { loadActiveFormSchema } from "./form-fields";
 import {
   getOrCreateSession,
@@ -29,23 +27,16 @@ import { rewriteRetrievalQuery } from "./rewrite";
 import type { Citation, RetrievedContext, Source } from "./types";
 import { withTurnLog } from "./turn-log";
 
-type SystemEntry = SystemPrompt<AnthropicSystemPromptMetadata>;
-
-const CACHE_EPHEMERAL: AnthropicSystemPromptMetadata = {
-  cache_control: { type: "ephemeral" },
-};
+type SystemEntry = SystemPrompt<never>;
 
 export interface RunTurnInput {
   messages: UIMessage[];
   threadId: string;
   runId?: string;
   signal: AbortSignal;
-  apiKey: string;
   ragUrl: string;
   model: string;
 }
-
-type AnthropicModel = Parameters<typeof anthropicText>[0];
 
 export type RunTurnResult =
   | { kind: "blocked"; status: number; message: string }
@@ -64,7 +55,7 @@ export async function runTurn(input: RunTurnInput): Promise<RunTurnResult> {
 }
 
 async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
-  const { messages, threadId, runId, signal, apiKey, ragUrl, model } = input;
+  const { messages, threadId, runId, signal, ragUrl, model } = input;
   const startedAt = Date.now();
   const latest = lastUserText(messages);
 
@@ -99,7 +90,7 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
   const skipRetrieval = isGreetingOrTooShort(latest);
   const query = skipRetrieval
     ? latest
-    : await rewriteRetrievalQuery(apiKey, messages, signal);
+    : await rewriteRetrievalQuery(messages, signal);
 
   const { contexts, rawSources, degraded } = await fetchContext(
     ragUrl,
@@ -191,7 +182,7 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
   const abortController = linkAbort(signal);
 
   const llmStream = chat({
-    adapter: anthropicText(model as AnthropicModel, { apiKey }),
+    adapter: bedrockText(model, { region: env.BEDROCK_REGION }),
     messages,
     systemPrompts,
     tools,
@@ -255,7 +246,7 @@ function buildSystemPrompts(
   session: FormSession,
 ): SystemEntry[] {
   const prompts: SystemEntry[] = [
-    { content: SYSTEM_PROMPT, metadata: CACHE_EPHEMERAL },
+    SYSTEM_PROMPT,
     `Context for this turn:\n${contextBlock}`,
   ];
   if (slug && schemaText) {
@@ -282,7 +273,7 @@ function buildSystemPrompts(
       );
     }
   } else {
-    prompts.push({ content: NO_FORM_DISCLOSURE, metadata: CACHE_EPHEMERAL });
+    prompts.push(NO_FORM_DISCLOSURE);
   }
   return prompts;
 }
