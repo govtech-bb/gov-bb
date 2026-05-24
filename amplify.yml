@@ -44,6 +44,7 @@ applications:
             - pnpm install --frozen-lockfile
         build:
           commands:
+            - env | grep -e LLM_PROVIDER -e LLM_MODEL -e BEDROCK_REGION -e FORM_API_URL -e DATABASE_URL -e DB_SSL -e RAG_URL -e ANTHROPIC_API_KEY >> apps/chat/.env.production
             - pnpm exec nx run chat:build
       artifacts:
         baseDirectory: apps/chat/.amplify-hosting
