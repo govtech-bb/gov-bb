@@ -99,12 +99,14 @@ function fieldIndex(
 export function validateAndReshape(
   contract: ServiceContract,
   fields: Record<string, string>,
+  activeFieldIds?: Set<string>,
 ): ValidationResult {
   const idx = fieldIndex(contract);
   const errors: FieldError[] = [];
   const valuesByStep: Record<string, Record<string, unknown>> = {};
 
   for (const [fieldId, info] of idx) {
+    if (activeFieldIds && !activeFieldIds.has(fieldId)) continue;
     const present = fields[fieldId] !== undefined && fields[fieldId] !== "";
     if (isRequired(info.field) && !present) {
       errors.push({ field: fieldId, message: "required" });
@@ -117,6 +119,7 @@ export function validateAndReshape(
       errors.push({ field: fieldId, message: "unknown field" });
       continue;
     }
+    if (activeFieldIds && !activeFieldIds.has(fieldId)) continue;
     const trimmed = raw.trim();
     if (trimmed === "") continue;
     const coerced = COERCERS[info.field.htmlType](info.field, trimmed);

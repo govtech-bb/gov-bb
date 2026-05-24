@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import type { UIMessage } from "@tanstack/ai";
 import { fetchServerSentEvents, useChat } from "@tanstack/ai-react";
 import { BackButton, Button, Input, Logo, Text } from "@govtech-bb/react";
@@ -6,122 +6,59 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Bubble } from "#/components/chat/bubble";
 import { TridentAvatar } from "#/components/trident-avatar";
 import { extractText, hasAnyToolCall } from "#/lib/chat/messages";
-import { submitFormSession } from "#/lib/chat/submit-form";
-import type { Source } from "#/lib/chat/types";
+import type { Citation } from "#/lib/chat/types";
 import { presentChoicesDef, submitFormDef } from "#/lib/chat-tools";
 
 export const Route = createFileRoute("/")({ component: ChatPage });
 
 function ChatPage() {
-  const router = useRouter();
   const [input, setInput] = useState("");
-  // Map of "this is the Nth assistant message → these sources." Index-based,
-  // not id-based, because @tanstack/ai sometimes re-keys streaming messages
-  // mid-flight and the pill ends up stuck on the previous turn.
-  const [sourcesByAssistantIndex, setSourcesByAssistantIndex] = useState<
-    Source[][]
-  >([]);
-  const pendingSourcesQueueRef = useRef<Source[][]>([]);
-  const pendingNavRef = useRef<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const lastFieldsByService = useRef<Map<string, Record<string, string>>>(
-    new Map(),
-  );
+  // Citations keyed by assistant messageId. Populated from the `citations`
+  // custom event the server emits right after TEXT_MESSAGE_START.
+  const [citationsByMessageId, setCitationsByMessageId] = useState<
+    Record<string, Citation[]>
+  >({});
 
-  const presentChoices = useMemo(
-    () => presentChoicesDef.client(async () => ({ shown: true })),
-    [],
-  );
-  const submitForm = useMemo(
-    () =>
-      submitFormDef.client(async ({ service, fields }) => {
-        const prior = lastFieldsByService.current.get(service) ?? {};
-        const merged = { ...prior, ...fields };
-        lastFieldsByService.current.set(service, merged);
-        try {
-          const result = await submitFormSession(service, merged);
-          if (!result.ok) return { ok: false, errors: result.errors };
-          return { ok: true, referenceNumber: result.referenceNumber };
-        } catch (err) {
-          const message =
-            err instanceof Error ? err.message : "Unable to submit form";
-          return { ok: false, errors: [{ field: "service", message }] };
-        }
-      }),
-    [],
-  );
-  const tools = useMemo(
-    () => [presentChoices, submitForm],
-    [presentChoices, submitForm],
-  );
-
-  // useChat re-creates its ChatClient on every connection identity change;
-  // construct once.
   const connection = useMemo(() => fetchServerSentEvents("/api/chat"), []);
 
-  const { messages, sendMessage, status, error, stop } = useChat({
-    connection,
-    tools,
-    onCustomEvent: (eventType, data) => {
-      if (eventType === "sources") {
-        pendingSourcesQueueRef.current.push(data as Source[]);
-      }
-    },
-  });
+  const { messages, sendMessage, status, error, stop, addToolApprovalResponse } =
+    useChat({
+      connection,
+      onCustomEvent: (eventType, data) => {
+        if (eventType === "citations") {
+          const payload = data as
+            | { messageId?: string; citations?: Citation[] }
+            | undefined;
+          if (payload?.messageId && Array.isArray(payload.citations)) {
+            const id = payload.messageId;
+            const cs = payload.citations;
+            setCitationsByMessageId((prev) =>
+              prev[id] ? prev : { ...prev, [id]: cs },
+            );
+          }
+        }
+      },
+    });
 
   const isStreaming = status === "submitted" || status === "streaming";
 
   useEffect(() => {
-    if (isStreaming) return;
-    const url = pendingNavRef.current;
-    if (!url) return;
-    pendingNavRef.current = null;
-    router.navigate({ href: url });
-  }, [isStreaming, router]);
-
-  const last = messages.at(-1);
-
-  // Indices (within `messages`) of each assistant message, in order.
-  const assistantIndices = useMemo(
-    () =>
-      messages.reduce<number[]>((acc, m, i) => {
-        if (m.role === "assistant") acc.push(i);
-        return acc;
-      }, []),
-    [messages],
-  );
-
-  useEffect(() => {
-    if (pendingSourcesQueueRef.current.length === 0) return;
-    const count = assistantIndices.length;
-    if (count === 0) return;
-    // Assign queued sources to the Nth assistant message until caught up.
-    if (sourcesByAssistantIndex.length >= count) return;
-    const next = sourcesByAssistantIndex.slice();
-    while (
-      next.length < count &&
-      pendingSourcesQueueRef.current.length > 0
-    ) {
-      const sources = pendingSourcesQueueRef.current.shift();
-      if (!sources) break;
-      next.push(sources);
-    }
-    if (next.length !== sourcesByAssistantIndex.length) {
-      setSourcesByAssistantIndex(next);
-    }
-  }, [assistantIndices, sourcesByAssistantIndex]);
-
-  const lastText = last ? extractText(last) : "";
-  // biome-ignore lint/correctness/useExhaustiveDependencies: scroll-on-grow trigger
-  useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
-  }, [messages.length, lastText.length]);
+  }, [messages.length]);
 
   const pickChoice = useCallback(
     (choice: string) => {
       sendMessage(choice);
     },
     [sendMessage],
+  );
+
+  const onApproval = useCallback(
+    (id: string, approved: boolean) => {
+      void addToolApprovalResponse({ id, approved });
+    },
+    [addToolApprovalResponse],
   );
 
   const handleStop = useCallback(() => {
@@ -135,20 +72,15 @@ function ChatPage() {
     setInput("");
   }
 
-  const formFlowStartIdx = useMemo(() => {
-    const formToolNames = [presentChoicesDef.name, submitFormDef.name];
-    return messages.findIndex((m) => hasAnyToolCall([m], formToolNames));
-  }, [messages]);
-
-  function sourcesForMessage(
-    m: UIMessage,
-    index: number,
-  ): Source[] | undefined {
-    if (m.role !== "assistant") return;
-    if (formFlowStartIdx !== -1 && index >= formFlowStartIdx) return;
-    const assistantI = assistantIndices.indexOf(index);
-    if (assistantI < 0) return;
-    return sourcesByAssistantIndex[assistantI];
+  // Choice pills / approval buttons on a past assistant message become stale
+  // once the user has answered (or the assistant has spoken again). Lock them
+  // so the user can't fire a stale choice.
+  function isHistoricalChoice(index: number): boolean {
+    for (let i = index + 1; i < messages.length; i++) {
+      const r = messages[i].role;
+      if (r === "user" || r === "assistant") return true;
+    }
+    return false;
   }
 
   return (
@@ -164,10 +96,12 @@ function ChatPage() {
               key={m.id}
               message={m}
               onChoice={pickChoice}
-              sources={sourcesForMessage(m, i)}
+              onApproval={onApproval}
+              choicesDisabled={isHistoricalChoice(i)}
+              citations={citationsByMessageId[m.id]}
             />
           ))}
-          {isStreaming && shouldShowThinking(messages) && <ThinkingIndicator />}
+          {shouldShowThinking(messages) && <ThinkingIndicator />}
           {error && (
             <div className="rounded-md bg-red-10 px-3 py-2 text-red-00 text-sm">
               {error.message}
@@ -249,7 +183,15 @@ function shouldShowThinking(messages: UIMessage[]): boolean {
   const last = messages.at(-1);
   if (!last) return false;
   if (last.role === "user") return true;
-  return extractText(last).length === 0;
+  // Hide once something renderable lands: text deltas, a present_choices
+  // tool call, or a submit_form approval prompt. set_field is invisible.
+  if (extractText(last).length > 0) return false;
+  if (
+    hasAnyToolCall([last], [presentChoicesDef.name, submitFormDef.name])
+  ) {
+    return false;
+  }
+  return true;
 }
 
 function ThinkingIndicator() {
