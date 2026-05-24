@@ -1,9 +1,8 @@
 import { randomUUID } from "node:crypto";
+import { env } from "#/lib/env";
 import { getFormDefinition } from "./defs";
 import { getActiveFieldIds } from "./schema";
 import { validateAndReshape } from "./values";
-
-const FORM_API_URL = (process.env.FORM_API_URL ?? "").replace(/\/+$/, "");
 
 export type SubmitOutcome =
   | { ok: true; referenceNumber: string }
@@ -46,7 +45,7 @@ export async function submitFormUpstream(
   submissionId: string | undefined,
   signal: AbortSignal | undefined,
 ): Promise<SubmitOutcome> {
-  if (!FORM_API_URL) {
+  if (!env.FORM_API_URL) {
     return {
       ok: false,
       errors: [{ field: "service", message: "FORM_API_URL not set" }],
@@ -77,7 +76,7 @@ export async function submitFormUpstream(
 
   let upstream: Response;
   try {
-    upstream = await fetch(`${FORM_API_URL}/submissions`, {
+    upstream = await fetch(`${env.FORM_API_URL}/submissions`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
