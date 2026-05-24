@@ -44,7 +44,6 @@ applications:
             - pnpm install --frozen-lockfile
         build:
           commands:
-            - echo "LLM_PROVIDER=${LLM_PROVIDER}" >> apps/chat/.env.production
             - echo "LLM_MODEL=${LLM_MODEL}" >> apps/chat/.env.production
             - echo "BEDROCK_REGION=${BEDROCK_REGION}" >> apps/chat/.env.production
             - echo "FORM_API_URL=${FORM_API_URL}" >> apps/chat/.env.production
@@ -74,7 +73,7 @@ applications:
             - key: "Permissions-Policy"
               value: "camera=(), microphone=(), geolocation=(), payment=()"
             - key: "Content-Security-Policy"
-              value: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests"
+              value: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests"
   - appRoot: apps/forms
     frontend:
       buildPath: /

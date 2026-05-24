@@ -4,13 +4,15 @@ type TextPart = Extract<UIMessage["parts"][number], { type: "text" }>;
 type ToolCallPart = Extract<UIMessage["parts"][number], { type: "tool-call" }>;
 
 export function extractText(message: UIMessage): string {
-  // Concat text parts without inserting separators — the model emits its own
-  // whitespace and a space-join produces artefacts like ".You" → ". You".
-  return message.parts
-    .filter((p): p is TextPart => p.type === "text")
-    .map((p) => p.content ?? "")
-    .join("")
-    .trim();
+  if (Array.isArray(message.parts)) {
+    return message.parts
+      .filter((p): p is TextPart => p.type === "text")
+      .map((p) => p.content ?? "")
+      .join("")
+      .trim();
+  }
+  const content = (message as { content?: unknown }).content;
+  return typeof content === "string" ? content.trim() : "";
 }
 
 export function lastUserText(messages: UIMessage[]): string {
@@ -30,39 +32,13 @@ export function recentUserText(messages: UIMessage[], limit = 5): string {
   return parts.join(" ");
 }
 
-export function lastAssistantText(messages: UIMessage[]): string {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    if (messages[i].role === "assistant") return extractText(messages[i]);
-  }
-  return "";
-}
-
-export function firstUserText(messages: UIMessage[]): string {
-  const firstUser = messages.find((m) => m.role === "user");
-  return firstUser ? extractText(firstUser) : "";
-}
-
-/** Second-to-last user message. Used when the latest looks like a follow-up. */
-export function previousUserText(messages: UIMessage[]): string {
-  let found = 0;
-  for (let i = messages.length - 1; i >= 0; i--) {
-    if (messages[i].role === "user") {
-      found++;
-      if (found === 2) return extractText(messages[i]);
-    }
-  }
-  return "";
-}
-
-export function toolCallsOf(message: UIMessage): ToolCallPart[] {
-  return message.parts.filter((p): p is ToolCallPart => p.type === "tool-call");
-}
-
 export function findToolCall(
   message: UIMessage,
   name: string,
 ): ToolCallPart | undefined {
-  return toolCallsOf(message).find((p) => p.name === name);
+  return message.parts
+    .filter((p): p is ToolCallPart => p.type === "tool-call")
+    .find((p) => p.name === name);
 }
 
 export function hasAnyToolCall(
@@ -70,6 +46,6 @@ export function hasAnyToolCall(
   names: string[],
 ): boolean {
   return messages.some((m) =>
-    toolCallsOf(m).some((p) => names.includes(p.name)),
+    m.parts.some((p) => p.type === "tool-call" && names.includes(p.name)),
   );
 }

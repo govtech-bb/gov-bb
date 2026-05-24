@@ -16,18 +16,20 @@
     "db:migrate": "tsx --env-file-if-exists=.env.local --env-file-if-exists=.env src/lib/db/migrate.ts",
     "db:studio": "drizzle-kit studio",
     "db:reset": "tsx --env-file-if-exists=.env.local --env-file-if-exists=.env src/lib/db/reset.ts",
-    "ingest": "tsx --env-file-if-exists=.env.local --env-file-if-exists=.env src/ingest/cli.ts"
+    "ingest": "tsx --env-file-if-exists=.env.local --env-file-if-exists=.env src/ingest/cli.ts",
+    "eval:sweep": "tsx --env-file-if-exists=.env.local --env-file-if-exists=.env eval/sweep.ts"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.700.0",
     "@fontsource/figtree": "^5.0.0",
+    "@govtech-bb/ai-bedrock": "workspace:*",
     "@govtech-bb/content": "workspace:*",
     "@govtech-bb/design": "^1.0.0-alpha.16",
+    "@govtech-bb/form-conditions": "workspace:*",
     "@govtech-bb/react": "^1.0.0-alpha.14",
     "@standard-schema/spec": "^1.1.0",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/ai": "^0.20.1",
-    "@tanstack/ai-anthropic": "^0.10.1",
     "@tanstack/ai-react": "^0.11.3",
     "@tanstack/react-devtools": "^0.10.5",
     "@tanstack/react-router": "^1.170.5",

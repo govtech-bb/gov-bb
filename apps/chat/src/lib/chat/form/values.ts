@@ -3,6 +3,7 @@ import type {
   Primitive,
   ServiceContract,
 } from "@govtech-bb/form-types";
+import { buildFieldIndex } from "./schema";
 
 export type FieldError = { field: string; message: string };
 export type ValidationResult =
@@ -84,27 +85,17 @@ function isRequired(field: Primitive): boolean {
   return !!field.validations?.required;
 }
 
-function fieldIndex(
-  contract: ServiceContract,
-): Map<string, { stepId: string; field: Primitive }> {
-  const map = new Map<string, { stepId: string; field: Primitive }>();
-  for (const step of contract.steps) {
-    for (const el of step.elements) {
-      map.set(el.fieldId, { stepId: step.stepId, field: el });
-    }
-  }
-  return map;
-}
-
 export function validateAndReshape(
   contract: ServiceContract,
   fields: Record<string, string>,
+  activeFieldIds?: Set<string>,
 ): ValidationResult {
-  const idx = fieldIndex(contract);
+  const idx = buildFieldIndex(contract);
   const errors: FieldError[] = [];
   const valuesByStep: Record<string, Record<string, unknown>> = {};
 
   for (const [fieldId, info] of idx) {
+    if (activeFieldIds && !activeFieldIds.has(fieldId)) continue;
     const present = fields[fieldId] !== undefined && fields[fieldId] !== "";
     if (isRequired(info.field) && !present) {
       errors.push({ field: fieldId, message: "required" });
@@ -117,6 +108,7 @@ export function validateAndReshape(
       errors.push({ field: fieldId, message: "unknown field" });
       continue;
     }
+    if (activeFieldIds && !activeFieldIds.has(fieldId)) continue;
     const trimmed = raw.trim();
     if (trimmed === "") continue;
     const coerced = COERCERS[info.field.htmlType](info.field, trimmed);
