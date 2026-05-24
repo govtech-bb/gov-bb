@@ -44,6 +44,7 @@ applications:
             - pnpm install --frozen-lockfile
         build:
           commands:
+            - env | grep -E '^(RAG_URL|DATABASE_URL|FORM_API_URL|BEDROCK_REGION|LLM_MODEL|REWRITE_MODEL)=' >> apps/chat/.env.production
             - pnpm exec nx run chat:build
       artifacts:
         baseDirectory: apps/chat/.amplify-hosting
@@ -67,7 +68,7 @@ applications:
             - key: "Permissions-Policy"
               value: "camera=(), microphone=(), geolocation=(), payment=()"
             - key: "Content-Security-Policy"
-              value: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests"
+              value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests"
   - appRoot: apps/forms
     frontend:
       buildPath: /
