@@ -123,6 +123,50 @@ jobs:
       # tofu tracks gets deregistered, making tofu think the resource is gone).
       # AWS allows thousands of revisions per family, so this is safe to skip.
 
+      - name: Build and push form-builder image
+        id: build-form-builder
+        env:
+          REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          IMAGE_URI="$REGISTRY/gov-bb-form-builder:$IMAGE_TAG"
+          LATEST_URI="$REGISTRY/gov-bb-form-builder:latest"
+
+          docker build --platform linux/amd64 -f apps/form_builder/Dockerfile.prod -t "$IMAGE_URI" -t "$LATEST_URI" .
+          docker push "$IMAGE_URI"
+          docker push "$LATEST_URI"
+
+          echo "image=$IMAGE_URI" >> "$GITHUB_OUTPUT"
+          echo "✅ Pushed form-builder $IMAGE_URI"
+
+      - name: Deploy form-builder to ECS
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition form-builder-sandbox \
+            --region $AWS_REGION \
+            --query taskDefinition \
+            --output json > fb-task-def.json
+
+          # Update image in task def
+          NEW_IMAGE="${{ steps.build-form-builder.outputs.image }}"
+          jq --arg img "$NEW_IMAGE" '.containerDefinitions[0].image = $img | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)' fb-task-def.json > fb-task-def-new.json
+
+          TASK_DEF_ARN=$(aws ecs register-task-definition \
+            --cli-input-json file://fb-task-def-new.json \
+            --region $AWS_REGION \
+            --query taskDefinition.taskDefinitionArn \
+            --output text)
+          echo "Registered form-builder task def: $TASK_DEF_ARN"
+
+          aws ecs update-service \
+            --cluster $ECS_CLUSTER \
+            --service form-builder-sandbox \
+            --task-definition "$TASK_DEF_ARN" \
+            --region $AWS_REGION \
+            --query "service.deployments[0].rolloutState" \
+            --output text
+          echo "✅ Form-builder ECS deploy started"
+
       - name: Monitor Amplify build (forms)
         id: amplify
         env:
