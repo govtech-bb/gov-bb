@@ -57,6 +57,22 @@ on the inference-profile ARN for the model you select. The adapter falls back
 to non-streaming `Converse` if `InvokeModelWithResponseStream` is denied, so
 streaming permission is recommended but not strictly required.
 
+## Amplify Hosting env vars
+
+Set the following in Amplify Console → App settings → Environment variables.
+The Compute (SSR Lambda) runtime reads them via `process.env` at cold-start:
+
+- `DATABASE_URL` — Postgres connection string (pgvector RDS)
+- `FORM_API_URL` — Forms submission API base URL
+- `RAG_URL` — RAG retrieval endpoint (usually `<chat-url>/api`)
+- `BEDROCK_REGION` — defaults to `ca-central-1` if unset
+- `LLM_MODEL` — defaults to `claude-haiku-4-5` if unset
+
+`LLM_MODEL` and `BEDROCK_REGION` are also baked into the bundle with safe
+defaults via `vite.config.ts` — they can be overridden by Amplify env at runtime.
+Do NOT add secret values (`DATABASE_URL`, etc.) to the Vite `define` block;
+they would be inlined as string literals in the shipped JS.
+
 ## Re-ingest after chunker changes
 
 The chunker now appends `chunkIndex` to each chunk's slug to prevent collisions
