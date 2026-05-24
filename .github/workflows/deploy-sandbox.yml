@@ -193,6 +193,41 @@ jobs:
             sleep 30
           done
 
+      - name: Monitor Amplify build (chat)
+        id: amplify-chat
+        env:
+          AMPLIFY_APP_ID: d3snq1f0c10466
+          AMPLIFY_BRANCH: sandbox
+        run: |
+          JOB_ID=$(aws amplify start-job \
+            --app-id "$AMPLIFY_APP_ID" \
+            --branch-name "$AMPLIFY_BRANCH" \
+            --job-type RELEASE \
+            --region "$AWS_REGION" \
+            --query jobSummary.jobId \
+            --output text)
+          echo "job_id=$JOB_ID" >> "$GITHUB_OUTPUT"
+          echo "Amplify chat job started: $JOB_ID"
+
+          for i in $(seq 1 30); do
+            STATUS=$(aws amplify get-job \
+              --app-id "$AMPLIFY_APP_ID" \
+              --branch-name "$AMPLIFY_BRANCH" \
+              --job-id "$JOB_ID" \
+              --region "$AWS_REGION" \
+              --query job.summary.status \
+              --output text)
+            echo "[$i/30] Amplify chat status: $STATUS"
+            if [ "$STATUS" = "SUCCEED" ]; then
+              echo "✅ Amplify chat build succeeded"
+              break
+            elif [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "CANCELLED" ]; then
+              echo "❌ Amplify chat build $STATUS"
+              exit 1
+            fi
+            sleep 30
+          done
+
       - name: Summary
         if: always()
         run: |
@@ -201,5 +236,6 @@ jobs:
           echo "**API Image:** ${{ steps.build.outputs.image }}" >> "$GITHUB_STEP_SUMMARY"
           echo "**Commit:** ${{ github.sha }}" >> "$GITHUB_STEP_SUMMARY"
           echo "**API URL:** https://forms.api.sandbox.alpha.gov.bb" >> "$GITHUB_STEP_SUMMARY"
-          echo "**Landing URL:** https://sandbox.alpha.gov.bb" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Landing URL:** https://landing.sandbox.alpha.gov.bb" >> "$GITHUB_STEP_SUMMARY"
           echo "**Forms URL:** https://forms.sandbox.alpha.gov.bb" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Chat URL:** https://chat.sandbox.alpha.gov.bb" >> "$GITHUB_STEP_SUMMARY"

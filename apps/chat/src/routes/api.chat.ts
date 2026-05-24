@@ -10,6 +10,7 @@ import {
   anthropicText,
   type AnthropicSystemPromptMetadata,
 } from "@tanstack/ai-anthropic";
+import { bedrockText } from "#/lib/ai/bedrock-adapter";
 import { summarizeFormFields } from "#/lib/chat/form-fields";
 import { matchFormsFromText } from "#/lib/chat/known-forms";
 import { lastUserText, recentUserText } from "#/lib/chat/messages";
@@ -26,9 +27,18 @@ import { presentChoicesDef, submitFormDef } from "#/lib/chat-tools";
 
 const RAG_URL = process.env.RAG_URL ?? "";
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY ?? "";
-const LLM_MODEL = (process.env.LLM_MODEL ?? "claude-haiku-4-5") as Parameters<
-  typeof anthropicText
->[0];
+const LLM_PROVIDER = process.env.LLM_PROVIDER ?? "anthropic";
+const LLM_MODEL = process.env.LLM_MODEL ?? "claude-haiku-4-5";
+
+function getAdapter() {
+  if (LLM_PROVIDER === "bedrock") {
+    return bedrockText(LLM_MODEL);
+  }
+  return anthropicText(
+    LLM_MODEL as Parameters<typeof anthropicText>[0],
+    { apiKey: ANTHROPIC_API_KEY },
+  );
+}
 
 const SYSTEM_PROMPT = `You help people find Barbados government services on alpha.gov.bb.
 
@@ -154,8 +164,8 @@ async function handlePost({
 }: {
   request: Request;
 }): Promise<Response> {
-  if (!(RAG_URL && ANTHROPIC_API_KEY)) {
-    return jsonError("RAG_URL or ANTHROPIC_API_KEY missing", 500);
+  if (LLM_PROVIDER === "anthropic" && !ANTHROPIC_API_KEY) {
+    return jsonError("ANTHROPIC_API_KEY missing (LLM_PROVIDER=anthropic)", 500);
   }
 
   let messages: UIMessage[];
@@ -242,7 +252,7 @@ async function handlePost({
   }
 
   const llmStream = chat({
-    adapter: anthropicText(LLM_MODEL, { apiKey: ANTHROPIC_API_KEY }),
+    adapter: getAdapter(),
     messages,
     systemPrompts,
     tools,
