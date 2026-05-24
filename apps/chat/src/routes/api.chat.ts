@@ -25,13 +25,11 @@ import {
 import type { RetrievedContext, Source } from "#/lib/chat/types";
 import { presentChoicesDef, submitFormDef } from "#/lib/chat-tools";
 
-// Nitro inlines process.env at build time. Use indirect access to force
-// runtime evaluation — the bundler cannot statically resolve env[key].
-const env = () => process.env;
-const RAG_URL = () => env().RAG_URL ?? "";
-const ANTHROPIC_API_KEY = () => env().ANTHROPIC_API_KEY ?? "";
-const LLM_PROVIDER = () => env().LLM_PROVIDER ?? "anthropic";
-const LLM_MODEL_ID = () => env().LLM_MODEL ?? "claude-haiku-4-5";
+// Env vars are baked in at build time via vite.config.ts define{}.
+const RAG_URL = process.env.RAG_URL ?? "";
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY ?? "";
+const LLM_PROVIDER = process.env.LLM_PROVIDER ?? "anthropic";
+const LLM_MODEL_ID = process.env.LLM_MODEL ?? "claude-haiku-4-5";
 
 function getAdapter() {
   if (LLM_PROVIDER() === "bedrock") {
