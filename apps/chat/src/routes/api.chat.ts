@@ -25,18 +25,18 @@ import {
 import type { RetrievedContext, Source } from "#/lib/chat/types";
 import { presentChoicesDef, submitFormDef } from "#/lib/chat-tools";
 
-const RAG_URL = process.env.RAG_URL ?? "";
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY ?? "";
-const LLM_PROVIDER = process.env.LLM_PROVIDER ?? "anthropic";
-const LLM_MODEL = process.env.LLM_MODEL ?? "claude-haiku-4-5";
+const RAG_URL = () => process.env.RAG_URL ?? "";
+const ANTHROPIC_API_KEY = () => process.env.ANTHROPIC_API_KEY ?? "";
+const LLM_PROVIDER = () => process.env.LLM_PROVIDER ?? "anthropic";
+const LLM_MODEL_ID = () => process.env.LLM_MODEL ?? "claude-haiku-4-5";
 
 function getAdapter() {
-  if (LLM_PROVIDER === "bedrock") {
-    return bedrockText(LLM_MODEL);
+  if (LLM_PROVIDER() === "bedrock") {
+    return bedrockText(LLM_MODEL_ID());
   }
   return anthropicText(
-    LLM_MODEL as Parameters<typeof anthropicText>[0],
-    { apiKey: ANTHROPIC_API_KEY },
+    LLM_MODEL_ID() as Parameters<typeof anthropicText>[0],
+    { apiKey: ANTHROPIC_API_KEY() },
   );
 }
 
@@ -164,7 +164,7 @@ async function handlePost({
 }: {
   request: Request;
 }): Promise<Response> {
-  if (LLM_PROVIDER === "anthropic" && !ANTHROPIC_API_KEY) {
+  if (LLM_PROVIDER() === "anthropic" && !ANTHROPIC_API_KEY()) {
     return jsonError("ANTHROPIC_API_KEY missing (LLM_PROVIDER=anthropic)", 500);
   }
 
@@ -185,7 +185,7 @@ async function handlePost({
   let rawSources: Source[] = [];
 
   if (!skipRetrieval) {
-    const result = await retrieve(RAG_URL, query, request.signal);
+    const result = await retrieve(RAG_URL(), query, request.signal);
     if (!result.ok) {
       console.warn(`[chat] retrieve degraded: ${result.reason}`);
     } else {
