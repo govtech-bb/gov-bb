@@ -16,16 +16,16 @@ export default defineConfig({
         // @ts-ignore — Lambda supports nodejs24.x; nitro types lag.
         runtime: "nodejs24.x",
       },
-      // Runtime config: defaults baked in, NITRO_* env vars override at
-      // runtime. This is the only path that gets env vars into the
-      // Amplify SSR Lambda — plain process.env doesn't work there.
+      // Amplify Hosting Compute doesn't pass Console env vars to the SSR
+      // Lambda at runtime. Read process.env at *build* time so the values
+      // get baked into runtimeConfig defaults and ship with the bundle.
       runtimeConfig: {
-        ragUrl: "",
-        formApiUrl: "",
-        databaseUrl: "",
-        bedrockRegion: "ca-central-1",
-        llmModel: "claude-haiku-4-5",
-        rewriteModel: "claude-haiku-4-5",
+        ragUrl: process.env.NITRO_RAG_URL ?? "",
+        formApiUrl: process.env.NITRO_FORM_API_URL ?? "",
+        databaseUrl: process.env.NITRO_DATABASE_URL ?? "",
+        bedrockRegion: process.env.NITRO_BEDROCK_REGION ?? "ca-central-1",
+        llmModel: process.env.NITRO_LLM_MODEL ?? "claude-haiku-4-5",
+        rewriteModel: process.env.NITRO_REWRITE_MODEL ?? "claude-haiku-4-5",
       },
     }),
     tanstackStart(),
