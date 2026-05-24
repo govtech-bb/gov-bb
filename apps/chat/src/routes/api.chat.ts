@@ -5,7 +5,7 @@ import {
   chatParamsFromRequest,
   toServerSentEventsResponse,
 } from "@tanstack/ai";
-import { env } from "#/lib/env";
+import { getServerEnv } from "#/lib/env";
 import { runTurn } from "#/lib/chat/run-turn";
 import type { Citation } from "#/lib/chat/types";
 import { jsonError } from "#/lib/http";
@@ -68,6 +68,7 @@ async function handlePost({
     return jsonError(reason, 400);
   }
 
+  const env = getServerEnv();
   const result = await runTurn({
     messages,
     threadId,

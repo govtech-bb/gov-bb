@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { env } from "#/lib/env";
+import { getServerEnv } from "#/lib/env";
 import { getFormDefinition } from "./defs";
 import { getActiveFieldIds } from "./schema";
 import { validateAndReshape } from "./values";
@@ -39,12 +39,7 @@ export async function submitFormUpstream(
   submissionId: string | undefined,
   signal: AbortSignal | undefined,
 ): Promise<SubmitOutcome> {
-  if (!env.FORM_API_URL) {
-    return {
-      ok: false,
-      errors: [{ field: "service", message: "FORM_API_URL not set" }],
-    };
-  }
+  const env = getServerEnv();
   const contract = await getFormDefinition(service);
   if (!contract) {
     return {

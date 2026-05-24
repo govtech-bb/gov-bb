@@ -2,7 +2,7 @@ import {
   serviceContractSchema,
   type ServiceContract,
 } from "@govtech-bb/form-types";
-import { env } from "#/lib/env";
+import { getServerEnv } from "#/lib/env";
 
 const DEF_TTL_MS = 5 * 60_000;
 const MISS_TTL_MS = 30_000;
@@ -18,7 +18,7 @@ function fresh<T>(c: Cached<T> | null | undefined): c is Cached<T> {
 }
 
 async function fetchJson<T>(path: string, signal?: AbortSignal): Promise<T> {
-  if (!env.FORM_API_URL) throw new Error("FORM_API_URL not set");
+  const env = getServerEnv();
   const res = await fetch(`${env.FORM_API_URL}${path}`, { signal });
   if (!res.ok) {
     throw new Error(`Form API ${path} → ${res.status}`);
