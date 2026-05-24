@@ -2,7 +2,7 @@ import type { StreamChunk, SystemPrompt, UIMessage } from "@tanstack/ai";
 import { chat } from "@tanstack/ai";
 import { bedrockText } from "@govtech-bb/ai-bedrock";
 import { childController } from "#/lib/abort";
-import { getServerEnv } from "#/lib/env";
+import { getServerEnv } from "#/config/env";
 import {
   buildFormTools,
   getOrCreateSession,

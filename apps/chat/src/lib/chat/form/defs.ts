@@ -2,7 +2,7 @@ import {
   serviceContractSchema,
   type ServiceContract,
 } from "@govtech-bb/form-types";
-import { getServerEnv } from "#/lib/env";
+import { getServerEnv } from "#/config/env";
 
 const DEF_TTL_MS = 5 * 60_000;
 const MISS_TTL_MS = 30_000;

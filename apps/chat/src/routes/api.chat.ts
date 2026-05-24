@@ -5,7 +5,7 @@ import {
   chatParamsFromRequest,
   toServerSentEventsResponse,
 } from "@tanstack/ai";
-import { getServerEnv } from "#/lib/env";
+import { getServerEnv } from "#/config/env";
 import { runTurn } from "#/lib/chat/run-turn";
 import type { Citation } from "#/lib/chat/types";
 import { jsonError } from "#/lib/http";
