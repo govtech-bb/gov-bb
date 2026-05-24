@@ -22,10 +22,10 @@ interface V2Row extends Record<string, unknown> {
   sim: number;
 }
 
-// When set, top-2 chunks from the matching service doc are pinned to the
-// front of the result so follow-up turns inside an active form ("what do I
-// need?", "how much?") always see the form's own content even if the
-// rewriter produced a query that scores low against those chunks.
+// Additive boost on top of cosine similarity. Not a true pin — it dominates
+// only because every service-kind weight in DOC_KIND_WEIGHTS is 1.0. If you
+// raise a service kind above (1 + 1.0), pinned chunks lose primacy. Keep
+// PINNED_BOOST > max kind weight if you change weights.
 const PINNED_BOOST = 1.0;
 const PINNED_LIMIT = 2;
 

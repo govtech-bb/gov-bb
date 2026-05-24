@@ -8,16 +8,10 @@ export type SubmitOutcome =
   | { ok: true; referenceNumber: string }
   | { ok: false; errors: Array<{ field: string; message: string }> };
 
-type UpstreamSuccess = {
-  data?: { id?: string; reference?: string; referenceNumber?: string };
-  message?: string;
-  statusCode?: number;
-  meta?: unknown;
-};
-
 type UpstreamErrors = string[] | Record<string, Record<string, string[]>>;
 
-type UpstreamFailure = {
+type UpstreamPayload = {
+  data?: { id?: string; reference?: string; referenceNumber?: string };
   message?: string;
   statusCode?: number;
   meta?: { errors?: UpstreamErrors };
@@ -95,7 +89,7 @@ export async function submitFormUpstream(
     };
   }
 
-  let payload: UpstreamSuccess & UpstreamFailure = {};
+  let payload: UpstreamPayload = {};
   try {
     payload = await upstream.json();
   } catch {

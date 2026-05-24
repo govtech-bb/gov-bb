@@ -18,23 +18,35 @@ async function* withCitations(
   citations: Citation[],
 ): AsyncGenerator<StreamChunk> {
   let emitted = false;
+  if (citations.length === 0) {
+    yield* inner;
+    return;
+  }
   for await (const chunk of inner) {
     yield chunk;
-    if (
-      !emitted &&
-      citations.length > 0 &&
-      chunk.type === "TEXT_MESSAGE_START" &&
-      chunk.messageId
-    ) {
-      yield {
-        type: EventType.CUSTOM,
-        name: "citations",
-        value: { messageId: chunk.messageId, citations },
-        timestamp: Date.now(),
-      } satisfies CustomEvent;
+    if (emitted) continue;
+    if (chunk.type === "TEXT_MESSAGE_START" && chunk.messageId) {
+      yield citationsEvent(chunk.messageId, citations);
+      emitted = true;
+    } else if (chunk.type === "RUN_FINISHED") {
+      // Tool-only turn: no TEXT_MESSAGE_START arrived. Emit unkeyed so the
+      // client can attach citations to the run rather than a message.
+      yield citationsEvent(undefined, citations);
       emitted = true;
     }
   }
+}
+
+function citationsEvent(
+  messageId: string | undefined,
+  citations: Citation[],
+): CustomEvent {
+  return {
+    type: EventType.CUSTOM,
+    name: "citations",
+    value: { messageId, citations },
+    timestamp: Date.now(),
+  };
 }
 
 async function handlePost({

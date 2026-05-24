@@ -57,6 +57,13 @@ on the inference-profile ARN for the model you select. The adapter falls back
 to non-streaming `Converse` if `InvokeModelWithResponseStream` is denied, so
 streaming permission is recommended but not strictly required.
 
+## Re-ingest after chunker changes
+
+The chunker now appends `chunkIndex` to each chunk's slug to prevent collisions
+on duplicate headings. Existing rows ingested before this change have the old
+slug scheme. After pulling this branch, run `pnpm db:reset && pnpm ingest` to
+rebuild — old + new chunks will not dedupe against each other otherwise.
+
 ## ✨ Features
 
 ### AI Capabilities
