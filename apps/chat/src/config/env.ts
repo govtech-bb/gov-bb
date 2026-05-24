@@ -1,16 +1,26 @@
+import { useRuntimeConfig } from "nitro/runtime-config";
 import { z } from "zod";
 
-const envSchema = z.object({
-  RAG_URL: z.string().url(),
-  FORM_API_URL: z
+const schema = z.object({
+  ragUrl: z.string().url(),
+  formApiUrl: z
     .string()
     .url()
     .transform((s) => s.replace(/\/+$/, "")),
-  DATABASE_URL: z.string().url(),
-  BEDROCK_REGION: z.string().optional(),
-  AWS_REGION: z.string().optional(),
-  LLM_MODEL: z.string().default("claude-haiku-4-5"),
-  REWRITE_MODEL: z.string().default("claude-haiku-4-5"),
+  databaseUrl: z.string().url(),
+  bedrockRegion: z.string(),
+  llmModel: z.string(),
+  rewriteModel: z.string(),
 });
 
-export const getServerEnv = () => envSchema.parse(process.env);
+export function getServerEnv() {
+  const cfg = schema.parse(useRuntimeConfig());
+  return {
+    RAG_URL: cfg.ragUrl,
+    FORM_API_URL: cfg.formApiUrl,
+    DATABASE_URL: cfg.databaseUrl,
+    BEDROCK_REGION: cfg.bedrockRegion,
+    LLM_MODEL: cfg.llmModel,
+    REWRITE_MODEL: cfg.rewriteModel,
+  };
+}

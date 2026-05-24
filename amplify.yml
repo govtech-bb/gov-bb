@@ -45,18 +45,6 @@ applications:
         build:
           commands:
             - pnpm exec nx run chat:build
-            # Amplify Console env vars are build-time only. Write them into
-            # the Lambda artifact dir and prepend a loader to the entry so
-            # they reach process.env at runtime.
-            - env | grep -E '^(RAG_URL|DATABASE_URL|FORM_API_URL|BEDROCK_REGION|LLM_MODEL|REWRITE_MODEL)=' > apps/chat/.amplify-hosting/compute/default/.env.production
-            - |
-              cat > apps/chat/.amplify-hosting/compute/default/server.js <<'EOF'
-              import { fileURLToPath } from 'node:url';
-              import { dirname, join } from 'node:path';
-              const here = dirname(fileURLToPath(import.meta.url));
-              try { process.loadEnvFile(join(here, '.env.production')); } catch {}
-              import('./index.mjs');
-              EOF
       artifacts:
         baseDirectory: apps/chat/.amplify-hosting
         files:

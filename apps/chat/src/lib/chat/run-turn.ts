@@ -112,9 +112,7 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
 
   const env = getServerEnv();
   const llmStream = chat({
-    adapter: bedrockText(model, {
-      region: env.BEDROCK_REGION ?? env.AWS_REGION,
-    }),
+    adapter: bedrockText(model, { region: env.BEDROCK_REGION }),
     messages,
     systemPrompts,
     tools,
