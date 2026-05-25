@@ -50,13 +50,10 @@ USER app
 # Compiled API output
 COPY --from=builder --chown=app:app /app/apps/form_builder_api/dist/ ./dist/
 
-# Compiled workspace packages (built by nx via dependsOn)
-COPY --from=builder --chown=app:app /app/packages/form-types/src/ ./packages/form-types/src/
-COPY --from=builder --chown=app:app /app/packages/database/src/ ./packages/database/src/
-COPY --from=builder --chown=app:app /app/packages/form-builder/src/ ./packages/form-builder/src/
-COPY --from=builder --chown=app:app /app/packages/form-conditions/src/ ./packages/form-conditions/src/
-COPY --from=builder --chown=app:app /app/packages/form-validation/src/ ./packages/form-validation/src/
-COPY --from=builder --chown=app:app /app/packages/expressions/src/ ./packages/expressions/src/
+# Compiled workspace packages (built by nx via dependsOn — emitted to dist/packages/{name}/src/*.js).
+# Matches main API pattern: each workspace package's package.json declares main: "./src/index.js",
+# so dist/packages/{name}/src/index.js lands at packages/{name}/src/index.js to resolve correctly.
+COPY --from=builder --chown=app:app /app/dist/packages/ ./packages/
 
 # node_modules from builder (has all deps resolved)
 COPY --from=builder --chown=app:app /app/node_modules/ ./node_modules/
