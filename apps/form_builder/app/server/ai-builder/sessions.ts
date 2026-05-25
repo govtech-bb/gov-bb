@@ -2,18 +2,18 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { api } from "../api-client";
 import type { PublishResponse, SessionResponse } from "./types";
-import { requireAdminToken } from "../auth/admin-token-middleware";
+import { requireSession } from "../auth/require-session";
 
 const sessionIdSchema = z.object({ sessionId: z.string() });
 
 export const getAiStatus = createServerFn({ method: "GET" })
-  .middleware([requireAdminToken])
+  .middleware([requireSession])
   .handler(async (): Promise<{ available: boolean; message: string }> => {
     return api.get("/builder/ai/status");
   });
 
 export const createSession = createServerFn({ method: "POST" })
-  .middleware([requireAdminToken])
+  .middleware([requireSession])
   .inputValidator(z.object({ name: z.string().optional() }))
   .handler(async ({ data }): Promise<SessionResponse> => {
     return api.post<SessionResponse>("/builder/ai/sessions", {
@@ -22,7 +22,7 @@ export const createSession = createServerFn({ method: "POST" })
   });
 
 export const sendMessage = createServerFn({ method: "POST" })
-  .middleware([requireAdminToken])
+  .middleware([requireSession])
   .inputValidator(
     z.object({
       sessionId: z.string(),
@@ -38,7 +38,7 @@ export const sendMessage = createServerFn({ method: "POST" })
   });
 
 export const getSession = createServerFn({ method: "GET" })
-  .middleware([requireAdminToken])
+  .middleware([requireSession])
   .inputValidator(sessionIdSchema)
   .handler(async ({ data }): Promise<SessionResponse> => {
     return api.get<SessionResponse>(
@@ -47,7 +47,7 @@ export const getSession = createServerFn({ method: "GET" })
   });
 
 export const getRecipe = createServerFn({ method: "GET" })
-  .middleware([requireAdminToken])
+  .middleware([requireSession])
   .inputValidator(sessionIdSchema)
   .handler(async ({ data }): Promise<{ recipe: Record<string, unknown> }> => {
     return api.get(
@@ -56,7 +56,7 @@ export const getRecipe = createServerFn({ method: "GET" })
   });
 
 export const extractRecipeFromSession = createServerFn({ method: "POST" })
-  .middleware([requireAdminToken])
+  .middleware([requireSession])
   .inputValidator(sessionIdSchema)
   .handler(async ({ data }): Promise<{ recipe: Record<string, unknown> }> => {
     return api.post(
@@ -66,7 +66,7 @@ export const extractRecipeFromSession = createServerFn({ method: "POST" })
   });
 
 export const getSql = createServerFn({ method: "GET" })
-  .middleware([requireAdminToken])
+  .middleware([requireSession])
   .inputValidator(sessionIdSchema)
   .handler(async ({ data }): Promise<{ sql: string }> => {
     return api.get(
@@ -75,7 +75,7 @@ export const getSql = createServerFn({ method: "GET" })
   });
 
 export const publishSession = createServerFn({ method: "POST" })
-  .middleware([requireAdminToken])
+  .middleware([requireSession])
   .inputValidator(
     z.object({ sessionId: z.string(), formId: z.string().optional() }),
   )
@@ -87,7 +87,7 @@ export const publishSession = createServerFn({ method: "POST" })
   });
 
 export const deletePublished = createServerFn({ method: "POST" })
-  .middleware([requireAdminToken])
+  .middleware([requireSession])
   .inputValidator(sessionIdSchema)
   .handler(async ({ data }): Promise<{ message: string }> => {
     return api.post(

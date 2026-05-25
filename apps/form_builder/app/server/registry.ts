@@ -11,7 +11,7 @@ import type { ServiceContract } from "@govtech-bb/form-types";
 // BEHAVIOUR_TYPE_DESCRIPTORS has no exported type; consumers use the JSON shape.
 type BehaviourTypeDescriptor = Record<string, unknown>;
 import { api } from "./api-client";
-import { requireAdminToken } from "./auth/admin-token-middleware";
+import { requireSession } from "./auth/require-session";
 
 // 60s SSR-side cache. The API has its own cache too; this saves a network
 // round-trip on hot routes (e.g. catalog reads in the recipe-edit UI).
@@ -21,7 +21,7 @@ export const getCatalogFn = createServerFn({
   method: "GET",
   strict: false,
 })
-  .middleware([requireAdminToken])
+  .middleware([requireSession])
   .handler(async (): Promise<RegistryCatalog> => {
     const now = Date.now();
     if (_catalogCache && _catalogCache.expiresAt > now) {
@@ -33,7 +33,7 @@ export const getCatalogFn = createServerFn({
   });
 
 export const getRegistryItemFn = createServerFn({ method: "GET" })
-  .middleware([requireAdminToken])
+  .middleware([requireSession])
   .inputValidator(z.object({ ref: z.string() }))
   .handler(async ({ data }): Promise<CustomComponentEntry> => {
     return api.get<CustomComponentEntry>(
@@ -42,7 +42,7 @@ export const getRegistryItemFn = createServerFn({ method: "GET" })
   });
 
 export const getBuilderMetadata = createServerFn({ method: "GET" })
-  .middleware([requireAdminToken])
+  .middleware([requireSession])
   .handler(
     async (): Promise<{
       behaviourDescriptors: readonly BehaviourTypeDescriptor[];
@@ -53,7 +53,7 @@ export const getBuilderMetadata = createServerFn({ method: "GET" })
   );
 
 export const validateRecipe = createServerFn({ method: "POST", strict: false })
-  .middleware([requireAdminToken])
+  .middleware([requireSession])
   .inputValidator(z.object({ recipe: z.unknown() }))
   .handler(async ({ data }): Promise<ValidationResult> => {
     return api.post<ValidationResult>("/builder/registry/validate", {
@@ -62,7 +62,7 @@ export const validateRecipe = createServerFn({ method: "POST", strict: false })
   });
 
 export const previewRecipe = createServerFn({ method: "POST", strict: false })
-  .middleware([requireAdminToken])
+  .middleware([requireSession])
   .inputValidator(z.object({ recipe: z.unknown() }))
   .handler(async ({ data }): Promise<ServiceContract> => {
     return api.post<ServiceContract>("/builder/registry/preview", {

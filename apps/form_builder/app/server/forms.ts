@@ -1,34 +1,19 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestHeaders } from "@tanstack/react-start/server";
 import { z } from "zod";
 import {
   serviceContractRecipeSchema,
   type ServiceContractRecipe,
 } from "@govtech-bb/form-types";
 import { api, ApiError } from "./api-client";
-import { getSession } from "./session-cipher.server";
 import { listPublishedForms, getPublishedRecipe } from "./github-recipes";
 import { compare as compareSemver } from "../lib/version";
 import type { FormDefinitionSummary } from "../types/index";
-import { requireAdminToken } from "./auth/admin-token-middleware";
-
-function requireToken(): string {
-  const headers = getRequestHeaders();
-  const cookie =
-    (headers as { get?: (k: string) => string | null }).get?.("cookie") ??
-    (headers as { cookie?: string }).cookie ??
-    null;
-  const secret = process.env.SESSION_SECRET;
-  if (!secret) throw new Error("SESSION_SECRET is not set");
-  const session = getSession(cookie, secret);
-  if (!session) throw new Error("Not authenticated");
-  return session.accessToken;
-}
+import { requireSession } from "./auth/require-session";
 
 export const listForms = createServerFn({ method: "GET" })
-  .middleware([requireAdminToken])
-  .handler(async (): Promise<FormDefinitionSummary[]> => {
-    const token = requireToken();
+  .middleware([requireSession])
+  .handler(async ({ context }): Promise<FormDefinitionSummary[]> => {
+    const token = context.session.accessToken;
     const [drafts, published] = await Promise.all([
       api.get<FormDefinitionSummary[]>("/builder/forms"),
       listPublishedForms(token),
@@ -51,10 +36,10 @@ export const listForms = createServerFn({ method: "GET" })
   });
 
 export const getRecipe = createServerFn({ method: "GET", strict: false })
-  .middleware([requireAdminToken])
+  .middleware([requireSession])
   .inputValidator(z.object({ formId: z.string() }))
-  .handler(async ({ data }): Promise<ServiceContractRecipe> => {
-    const token = requireToken();
+  .handler(async ({ data, context }): Promise<ServiceContractRecipe> => {
+    const token = context.session.accessToken;
 
     let draft: ServiceContractRecipe | null = null;
     try {
@@ -90,14 +75,14 @@ export const getRecipe = createServerFn({ method: "GET", strict: false })
   });
 
 export const submitRecipe = createServerFn({ method: "POST" })
-  .middleware([requireAdminToken])
+  .middleware([requireSession])
   .inputValidator(z.object({ recipe: z.unknown() }))
   .handler(async ({ data }): Promise<void> => {
     await api.post("/builder/forms", { recipe: data.recipe });
   });
 
 export const updateRecipe = createServerFn({ method: "POST" })
-  .middleware([requireAdminToken])
+  .middleware([requireSession])
   .inputValidator(
     z.object({
       formId: z.string(),
@@ -111,7 +96,7 @@ export const updateRecipe = createServerFn({ method: "POST" })
   });
 
 export const nextVersion = createServerFn({ method: "GET" })
-  .middleware([requireAdminToken])
+  .middleware([requireSession])
   .inputValidator(z.object({ formId: z.string() }))
   .handler(
     async ({
