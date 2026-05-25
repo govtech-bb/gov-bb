@@ -8,7 +8,6 @@
     "start": "node dist/main.js"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.39.0",
     "@aws-sdk/client-bedrock-runtime": "^3.700.0",
     "@govtech-bb/database": "workspace:*",
     "@govtech-bb/form-builder": "workspace:*",
