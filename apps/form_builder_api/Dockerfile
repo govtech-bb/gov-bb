@@ -28,8 +28,8 @@ COPY --chown=app:app apps/form_builder_api/ apps/form_builder_api/
 COPY --chown=app:app apps/form_builder/app/server/ai-builder/prompts/ apps/form_builder/app/server/ai-builder/prompts/
 COPY --chown=app:app packages/ packages/
 
-WORKDIR /app/apps/form_builder_api
-RUN pnpm exec tsc && pnpm exec tsc-alias
+# Build the API and all workspace deps (Nx handles the dependency graph via dependsOn: ["^build"])
+RUN pnpm exec nx build form-builder-api
 
 # ---- runner ----------------------------------------------------------------
 FROM node:20-alpine AS runner
@@ -49,15 +49,8 @@ COPY --from=builder --chown=app:app /app/apps/form_builder_api/package.json ./
 COPY --from=builder --chown=app:app /app/node_modules/ ./node_modules/
 COPY --from=builder --chown=app:app /app/packages/ ./packages/
 COPY --from=builder --chown=app:app /app/apps/form_builder/app/server/ai-builder/prompts/ ./prompts/
-
-# Symlinks for workspace packages
-RUN mkdir -p node_modules/@govtech-bb && \
-    ln -sfn ../../packages/database node_modules/@govtech-bb/database && \
-    ln -sfn ../../packages/form-builder node_modules/@govtech-bb/form-builder && \
-    ln -sfn ../../packages/form-types node_modules/@govtech-bb/form-types && \
-    ln -sfn ../../packages/form-conditions node_modules/@govtech-bb/form-conditions && \
-    ln -sfn ../../packages/form-validation node_modules/@govtech-bb/form-validation && \
-    ln -sfn ../../packages/expressions node_modules/@govtech-bb/expressions
+COPY --from=builder --chown=app:app /app/package.json ./package.json
+COPY --from=builder --chown=app:app /app/tsconfig.base.json ./tsconfig.base.json
 
 ENV NODE_ENV=production
 ENV NODE_EXTRA_CA_CERTS=/app/rds-ca-bundle.pem
