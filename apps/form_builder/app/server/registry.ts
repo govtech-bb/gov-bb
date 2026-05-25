@@ -1,26 +1,20 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import {
-  getCatalog,
-  getRegistryItem,
-  hydrateForm,
-  validateFormContract,
-  BEHAVIOUR_TYPE_DESCRIPTORS,
-  VALIDATION_RULE_DESCRIPTORS,
-} from "@govtech-bb/form-builder";
 import type {
   RegistryCatalog,
   CustomComponentEntry,
+  ValidationResult,
+  ValidationRuleDescriptor,
 } from "@govtech-bb/form-builder";
-import type {
-  ServiceContractRecipe,
-  ServiceContract,
-} from "@govtech-bb/form-types";
-import type { ValidationResult } from "@govtech-bb/form-builder";
-import { CustomComponent } from "@govtech-bb/database";
-import { getDataSource } from "./db";
+import type { ServiceContract } from "@govtech-bb/form-types";
+
+// BEHAVIOUR_TYPE_DESCRIPTORS has no exported type; consumers use the JSON shape.
+type BehaviourTypeDescriptor = Record<string, unknown>;
+import { api } from "./api-client";
 import { requireAdminToken } from "./auth/admin-token-middleware";
 
+// 60s SSR-side cache. The API has its own cache too; this saves a network
+// round-trip on hot routes (e.g. catalog reads in the recipe-edit UI).
 let _catalogCache: { data: RegistryCatalog; expiresAt: number } | null = null;
 
 export const getCatalogFn = createServerFn({
@@ -33,18 +27,7 @@ export const getCatalogFn = createServerFn({
     if (_catalogCache && _catalogCache.expiresAt > now) {
       return _catalogCache.data;
     }
-    const builtinCatalog = getCatalog();
-    const ds = await getDataSource();
-    const repo = ds.getRepository(CustomComponent);
-    const dbComponents = await repo.find();
-    const customEntries: CustomComponentEntry[] = dbComponents.map((c) => ({
-      ref: `components/${c.namespace}-${c.type}`,
-      displayName: `${c.namespace}/${c.type}`,
-      namespace: c.namespace,
-      type: c.type,
-      definition: c.definition,
-    }));
-    const catalog = { ...builtinCatalog, custom: customEntries };
+    const catalog = await api.get<RegistryCatalog>("/builder/registry/catalog");
     _catalogCache = { data: catalog, expiresAt: now + 60_000 };
     return catalog;
   });
@@ -52,36 +35,37 @@ export const getCatalogFn = createServerFn({
 export const getRegistryItemFn = createServerFn({ method: "GET" })
   .middleware([requireAdminToken])
   .inputValidator(z.object({ ref: z.string() }))
-  .handler(async ({ data }) => {
-    const catalog = await getCatalogFn();
-    const item = getRegistryItem(data.ref, catalog);
-    if (!item) {
-      throw new Error(`Registry item not found for ref: ${data.ref}`);
-    }
-    return item;
+  .handler(async ({ data }): Promise<CustomComponentEntry> => {
+    return api.get<CustomComponentEntry>(
+      `/builder/registry/item?ref=${encodeURIComponent(data.ref)}`,
+    );
   });
 
 export const getBuilderMetadata = createServerFn({ method: "GET" })
   .middleware([requireAdminToken])
-  .handler(async () => {
-    return {
-      behaviourDescriptors: BEHAVIOUR_TYPE_DESCRIPTORS,
-      validationDescriptors: VALIDATION_RULE_DESCRIPTORS,
-    };
-  });
+  .handler(
+    async (): Promise<{
+      behaviourDescriptors: readonly BehaviourTypeDescriptor[];
+      validationDescriptors: readonly ValidationRuleDescriptor[];
+    }> => {
+      return api.get("/builder/registry/metadata");
+    },
+  );
 
 export const validateRecipe = createServerFn({ method: "POST", strict: false })
   .middleware([requireAdminToken])
   .inputValidator(z.object({ recipe: z.unknown() }))
   .handler(async ({ data }): Promise<ValidationResult> => {
-    return validateFormContract(data.recipe);
+    return api.post<ValidationResult>("/builder/registry/validate", {
+      recipe: data.recipe,
+    });
   });
 
 export const previewRecipe = createServerFn({ method: "POST", strict: false })
   .middleware([requireAdminToken])
   .inputValidator(z.object({ recipe: z.unknown() }))
   .handler(async ({ data }): Promise<ServiceContract> => {
-    const recipe = data.recipe as ServiceContractRecipe;
-    const catalog = await getCatalogFn();
-    return hydrateForm(recipe, catalog);
+    return api.post<ServiceContract>("/builder/registry/preview", {
+      recipe: data.recipe,
+    });
   });

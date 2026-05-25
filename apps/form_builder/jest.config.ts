@@ -12,8 +12,6 @@ const config: Config = {
       "<rootDir>/../../../packages/form-builder/src/index.ts",
     "^@govtech-bb/registry$":
       "<rootDir>/../../../packages/registry/src/index.ts",
-    "^@govtech-bb/database$":
-      "<rootDir>/../../../packages/database/src/index.ts",
     // TanStack Start is ESM-only and cannot be loaded by ts-jest (CJS mode).
     // Provide a minimal shim so server functions can be unit-tested.
     "^@tanstack/react-start$":
