@@ -52,6 +52,15 @@ COPY --from=builder --chown=app:app /app/apps/form_builder/app/server/ai-builder
 COPY --from=builder --chown=app:app /app/package.json ./package.json
 COPY --from=builder --chown=app:app /app/tsconfig.base.json ./tsconfig.base.json
 
+# Workspace package symlinks (same pattern as main API)
+RUN mkdir -p node_modules/@govtech-bb && \
+    ln -sfn ../../packages/database node_modules/@govtech-bb/database && \
+    ln -sfn ../../packages/form-builder node_modules/@govtech-bb/form-builder && \
+    ln -sfn ../../packages/form-types node_modules/@govtech-bb/form-types && \
+    ln -sfn ../../packages/form-conditions node_modules/@govtech-bb/form-conditions && \
+    ln -sfn ../../packages/form-validation node_modules/@govtech-bb/form-validation && \
+    ln -sfn ../../packages/expressions node_modules/@govtech-bb/expressions
+
 ENV NODE_ENV=production
 ENV NODE_EXTRA_CA_CERTS=/app/rds-ca-bundle.pem
 ENV PORT=3003

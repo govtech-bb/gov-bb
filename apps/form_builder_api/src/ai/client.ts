@@ -1,4 +1,4 @@
-import { getSystemPrompt } from "./system-prompt.js";
+import { getSystemPrompt } from "./system-prompt";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -122,3 +122,4 @@ async function chatBedrock(
   const textBlock = response.output?.message?.content?.find((b: any) => b.text);
   return textBlock?.text ?? "";
 }
+
