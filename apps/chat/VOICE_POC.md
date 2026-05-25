@@ -16,15 +16,16 @@ via a local Node WebSocket relay.
 
 ## Run
 
-In two terminals (from repo root):
+Requires a full dev install (`pnpm install` — not `--prod`). In two terminals
+from the repo root:
 
 ```sh
 pnpm --filter @govtech-bb/chat voice:ws   # starts ws://localhost:3001
 pnpm --filter @govtech-bb/chat dev        # starts http://localhost:3000
 ```
 
-Open the chat, click **Voice**, allow mic access, talk. Click **Stop voice**
-to end the session.
+Open the chat, click **Talk**, allow mic access, speak. Click **Stop** to end
+the session.
 
 ## Required environment
 

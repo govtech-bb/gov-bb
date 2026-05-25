@@ -235,10 +235,16 @@ function Composer({
 
   const [voiceUser, setVoiceUser] = useState("");
   const [voiceAssistant, setVoiceAssistant] = useState("");
+  // Per-turn boundary: a USER transcript means the citizen just spoke; reset
+  // the assistant line so its tokens don't accumulate across the whole session.
   const onVoiceTranscript = useCallback((role: string, text: string) => {
     if (!text) return;
-    if (role === "USER") setVoiceUser(text);
-    else setVoiceAssistant((prev) => prev + text);
+    if (role === "USER") {
+      setVoiceUser(text);
+      setVoiceAssistant("");
+    } else {
+      setVoiceAssistant((prev) => (prev ? `${prev} ${text}` : text));
+    }
   }, []);
 
   return (
