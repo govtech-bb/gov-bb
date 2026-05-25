@@ -1,11 +1,11 @@
 import "reflect-metadata";
 import express from "express";
 import cors from "cors";
-import { formsRouter } from "./routes/forms.js";
-import { registryRouter } from "./routes/registry.js";
-import { aiRouter } from "./routes/ai.js";
-import { publishRouter } from "./routes/publish.js";
-import { authMiddleware } from "./middleware/auth.js";
+import { formsRouter } from "./routes/forms";
+import { registryRouter } from "./routes/registry";
+import { aiRouter } from "./routes/ai";
+import { publishRouter } from "./routes/publish";
+import { authMiddleware } from "./middleware/auth";
 
 const app = express();
 const PORT = parseInt(process.env.PORT ?? "3003", 10);
@@ -30,3 +30,4 @@ app.use("/builder/publish", publishRouter);
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Form Builder API listening on port ${PORT}`);
 });
+
