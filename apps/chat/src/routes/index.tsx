@@ -4,6 +4,7 @@ import { fetchServerSentEvents, useChat } from "@tanstack/ai-react";
 import { BackButton, Button, Input, Logo, Text } from "@govtech-bb/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Bubble } from "#/components/chat/bubble";
+import { VoiceButton } from "#/components/chat/voice-button";
 import { TridentAvatar } from "#/components/trident-avatar";
 import { extractText, hasAnyToolCall } from "#/lib/chat/messages";
 import type { Citation } from "#/lib/chat/types";
@@ -232,6 +233,14 @@ function Composer({
 
   const hasInput = input.trim().length > 0;
 
+  const [voiceUser, setVoiceUser] = useState("");
+  const [voiceAssistant, setVoiceAssistant] = useState("");
+  const onVoiceTranscript = useCallback((role: string, text: string) => {
+    if (!text) return;
+    if (role === "USER") setVoiceUser(text);
+    else setVoiceAssistant((prev) => prev + text);
+  }, []);
+
   return (
     <footer className="px-s pb-s">
       <form
@@ -241,6 +250,12 @@ function Composer({
           onSubmit();
         }}
       >
+        {voiceUser || voiceAssistant ? (
+          <div className="w-full text-sm italic text-mid-grey-00 space-y-0.5">
+            {voiceUser ? <div>You said: {voiceUser}</div> : null}
+            {voiceAssistant ? <div>Assistant: {voiceAssistant}</div> : null}
+          </div>
+        ) : null}
         <div className="flex w-full items-center gap-xs">
           <Input
             aria-label="Ask the government assistant"
@@ -265,6 +280,7 @@ function Composer({
               Send
             </Button>
           )}
+          <VoiceButton onTranscript={onVoiceTranscript} />
         </div>
         <p className="text-disclaimer text-center text-mid-grey-00">
           Responses are based on official Government of Barbados information
