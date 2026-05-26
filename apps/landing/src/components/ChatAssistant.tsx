@@ -87,7 +87,7 @@ export function ChatAssistant({
 
   return (
     <div className="space-y-m">
-      <div className="max-w-250 overflow-hidden rounded-lg border border-white-00 bg-white-00 shadow-md">
+      <div className="max-w-200 overflow-hidden rounded-lg border border-white-00 bg-white-00 shadow-md">
         <div className="flex items-center gap-xm bg-teal-00 p-xm text-white-00">
           <div className="flex-1 space-y-xxs">
             <Heading as="h2" size="h3">
@@ -114,7 +114,7 @@ export function ChatAssistant({
             >
               A
             </div>
-            <div className="rounded-2xl rounded-bl-xs bg-blue-10 px-s py-3.5 text-black-00">
+            <div className="rounded-2xl rounded-bl-xs bg-blue-10 px-s py-3.5 text-black-00 max-w-130">
               <Text as="p" className="text-pretty">
                 Welcome to <strong>alpha.gov.bb.</strong> I can help you find
                 the right government service, understand what you need to
