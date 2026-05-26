@@ -13,6 +13,7 @@ import { getFieldRefs, getStepRefs } from "./-recipe-refs";
 import { BehavioursEditor } from "./-behaviours-editor";
 import { FieldPicker } from "./-field-picker";
 import { FieldEditPanel } from "./-field-edit-panel";
+import { resolveFieldLabel } from "./-field-label";
 import styles from "../../../styles/builder.module.css";
 
 const STEP_ID_PATTERN = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
@@ -185,16 +186,23 @@ export function StepEditor({
       <div className={styles.sectionTitle}>Fields ({step.fields.length})</div>
       {step.fields.map((field, idx) => {
         const item = getRegistryItem(field.ref, catalog);
+        const label = resolveFieldLabel(field, item);
         const displayName = item?.displayName ?? field.ref;
+        const showSecondary = displayName !== label;
         const hasOverrides =
           Object.keys(field.overrides ?? {}).length > 0 ||
           (field.kind === "block" && Object.keys(field.childOverrides ?? {}).length > 0);
         return (
           <div key={field.id} className={styles.fieldRow}>
-            <span style={{ flex: 1 }}>
-              {hasOverrides && <span className={styles.overrideDot} title="Has overrides" />}
-              {displayName}
-            </span>
+            <div style={{ flex: 1 }}>
+              <div>
+                {hasOverrides && <span className={styles.overrideDot} title="Has overrides" />}
+                {label}
+              </div>
+              {showSecondary && (
+                <div className={styles.fieldRowSecondary}>{displayName}</div>
+              )}
+            </div>
             <span className={styles.badge}>{field.kind}</span>
             <button
               type="button"

@@ -275,6 +275,11 @@
   border-color: var(--color-border-strong);
 }
 
+.fieldRowSecondary {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
 /* ── Section title ───────────────────────────────── */
 
 .sectionTitle {
