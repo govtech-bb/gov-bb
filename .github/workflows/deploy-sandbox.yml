@@ -23,6 +23,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Full history so we can diff github.event.before..github.sha to
+          # decide whether the migration task needs to run this deploy.
+          fetch-depth: 0
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v6
@@ -68,7 +72,37 @@ jobs:
           container-name: api
           image: ${{ steps.build.outputs.image }}
 
+      # The migration task is a cold-start Fargate run + wait (~1.5-3 min). Most
+      # deploys ship no new migrations, so only run it when files under the
+      # migrations dir actually changed. Fail safe: if we can't determine the
+      # diff (manual dispatch, first push, missing before-SHA), run it anyway —
+      # migration:run is idempotent, so a needless run is just wasted time,
+      # whereas a wrongly-skipped run ships a broken schema.
+      - name: Detect migration changes
+        id: migrations
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Manual dispatch — running migrations to be safe"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          BEFORE="${{ github.event.before }}"
+          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            echo "No usable before-SHA — running migrations to be safe"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if git diff --name-only "$BEFORE" "${{ github.sha }}" \
+              | grep -q '^apps/api/src/database/migrations/'; then
+            echo "Migration files changed — will run migrations"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No migration changes — skipping migration task"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Run database migrations
+        if: steps.migrations.outputs.changed == 'true'
         run: |
           TASK_DEF_ARN=$(aws ecs register-task-definition \
             --cli-input-json "$(cat ${{ steps.new-task-def.outputs.task-definition }} | \
