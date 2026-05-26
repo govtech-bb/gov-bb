@@ -7,6 +7,7 @@ import { findPage, PAGES  } from '../content/registry'
 import type {ContentPage} from '../content/registry';
 import { CATEGORY_BY_SLUG, getSubcategory } from '../content/categories'
 import type {Category, SubCategory} from '../content/categories';
+import { checkFeatureFlag } from '../lib/feature-flags'
 
 interface CategoryListItem {
   title: string
@@ -30,7 +31,7 @@ type LoaderData =
     }
 
 export const Route = createFileRoute('/$')({
-  loader: ({ params }): LoaderData => {
+  loader: async ({ params }): Promise<LoaderData> => {
     const splat = (params._splat ?? '').replace(/^\/+|\/+$/g, '')
     const segments = splat.split('/').filter(Boolean)
 
@@ -56,7 +57,10 @@ export const Route = createFileRoute('/$')({
     }
 
     const page = findPage(splat)
-    if (page) return { kind: 'page', page }
+    if (page) {
+      await checkFeatureFlag(page.url)
+      return { kind: 'page', page }
+    }
 
     if (segments.length === 2) {
       const cat = CATEGORY_BY_SLUG[segments[0]]

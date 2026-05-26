@@ -15,6 +15,7 @@ import {
   startOfDay,
 } from '../lib/bank-holidays'
 import type { Holiday } from '../lib/bank-holidays'
+import { checkFeatureFlag } from '../lib/feature-flags'
 
 const LAST_UPDATED = '5 May 2026'
 
@@ -23,6 +24,9 @@ const SearchParams = z.object({
 })
 
 export const Route = createFileRoute('/bank-holiday-calendar')({
+  beforeLoad: async () => {
+    await checkFeatureFlag('bank-holiday-calendar')
+  },
   validateSearch: SearchParams,
   head: () => ({
     meta: [
