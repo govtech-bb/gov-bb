@@ -171,7 +171,7 @@ export function FieldEditPanel({
     dispatch({
       type: "UPDATE_FIELD_OVERRIDES",
       stepId,
-      fieldRef: field.ref,
+      fieldId: field.id,
       overrides,
       childOverrides: field.kind === "block" ? childOverrides : undefined,
     });

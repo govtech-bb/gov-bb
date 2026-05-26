@@ -45,21 +45,21 @@ export function StepEditor({
 }: StepEditorProps) {
   const [localStepId, setLocalStepId] = useState(step.stepId);
   const [stepIdError, setStepIdError] = useState("");
-  const [editingFieldRef, setEditingFieldRef] = useState<string | null>(null);
+  const [editingFieldId, setEditingFieldId] = useState<string | null>(null);
 
   // Keep localStepId in sync when a different step is selected from the sidebar.
   useEffect(() => {
     setLocalStepId(step.stepId);
     setStepIdError("");
-    setEditingFieldRef(null);
+    setEditingFieldId(null);
   }, [step.stepId]);
 
   const fieldRefs = useMemo(() => getFieldRefs(draft, catalog), [draft, catalog]);
   const stepRefs = useMemo(() => getStepRefs(draft), [draft]);
 
   const editingField =
-    editingFieldRef !== null
-      ? (step.fields.find((f) => f.ref === editingFieldRef) ?? null)
+    editingFieldId !== null
+      ? (step.fields.find((f) => f.id === editingFieldId) ?? null)
       : null;
 
   function handleStepIdChange(newId: string) {
@@ -77,14 +77,14 @@ export function StepEditor({
     onStepIdChange(step.stepId, newId);
   }
 
-  function handleAddField(field: RecipeFieldDraft) {
+  function handleAddField(field: Omit<RecipeFieldDraft, "id">) {
     dispatch({ type: "ADD_FIELD", stepId: step.stepId, field });
   }
 
-  function handleRemoveField(fieldRef: string) {
+  function handleRemoveField(fieldId: string) {
     if (!window.confirm("Remove this field?")) return;
-    dispatch({ type: "REMOVE_FIELD", stepId: step.stepId, fieldRef });
-    if (editingFieldRef === fieldRef) setEditingFieldRef(null);
+    dispatch({ type: "REMOVE_FIELD", stepId: step.stepId, fieldId });
+    if (editingFieldId === fieldId) setEditingFieldId(null);
   }
 
   function handleMoveFieldUp(index: number) {
@@ -190,7 +190,7 @@ export function StepEditor({
           Object.keys(field.overrides ?? {}).length > 0 ||
           (field.kind === "block" && Object.keys(field.childOverrides ?? {}).length > 0);
         return (
-          <div key={field.ref} className={styles.fieldRow}>
+          <div key={field.id} className={styles.fieldRow}>
             <span style={{ flex: 1 }}>
               {hasOverrides && <span className={styles.overrideDot} title="Has overrides" />}
               {displayName}
@@ -212,10 +212,10 @@ export function StepEditor({
             >
               ▼
             </button>
-            <button type="button" onClick={() => setEditingFieldRef(field.ref)}>
+            <button type="button" onClick={() => setEditingFieldId(field.id)}>
               Edit
             </button>
-            <button type="button" onClick={() => handleRemoveField(field.ref)}>
+            <button type="button" onClick={() => handleRemoveField(field.id)}>
               ×
             </button>
           </div>
@@ -227,14 +227,14 @@ export function StepEditor({
       <FieldPicker catalog={catalog} onAddField={handleAddField} />
 
       {/* Inline field edit panel */}
-      {editingField !== null && editingFieldRef !== null && (
+      {editingField !== null && editingFieldId !== null && (
         <FieldEditPanel
           field={editingField}
           catalog={catalog}
           draft={draft}
           stepId={step.stepId}
           dispatch={dispatch}
-          onClose={() => setEditingFieldRef(null)}
+          onClose={() => setEditingFieldId(null)}
         />
       )}
 
