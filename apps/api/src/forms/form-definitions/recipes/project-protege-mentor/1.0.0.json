@@ -1,0 +1,714 @@
+{
+  "steps": [
+    {
+      "title": "Tell us about yourself",
+      "stepId": "applicant",
+      "elements": [
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "fieldId": "applicant-first-name",
+            "validations": {
+              "required": {
+                "error": "First name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "First name must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "fieldId": "applicant-last-name",
+            "validations": {
+              "required": {
+                "error": "Last name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Last name must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/date-of-birth",
+          "overrides": {
+            "hint": "For example, 27 03 2007",
+            "fieldId": "applicant-dob",
+            "validations": {
+              "required": {
+                "error": "Date of birth is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic/radio",
+          "overrides": {
+            "label": "What is your employment status?",
+            "fieldId": "employment-status",
+            "options": [
+              {
+                "label": "Studying",
+                "value": "studying"
+              },
+              {
+                "label": "Employed",
+                "value": "employed"
+              },
+              {
+                "label": "Unemployed",
+                "value": "unemployed"
+              },
+              {
+                "label": "Other",
+                "value": "other"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Employment status is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/name",
+          "overrides": {
+            "label": "Name of institution",
+            "fieldId": "institution-name",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "studying",
+                "operator": "equal",
+                "targetFieldId": "employment-status"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Institution name is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/name",
+          "overrides": {
+            "label": "Name of company or organisation",
+            "fieldId": "employer-name",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "employed",
+                "operator": "equal",
+                "targetFieldId": "employment-status"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Company or organisation name is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/name",
+          "overrides": {
+            "label": "Please give details",
+            "fieldId": "other-employment-details",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "other",
+                "operator": "equal",
+                "targetFieldId": "employment-status"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Employment details are required",
+                "value": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "Contact details",
+      "stepId": "contact",
+      "elements": [
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address line 1",
+            "fieldId": "contact-address-1",
+            "validations": {
+              "required": {
+                "error": "Address line 1 is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Address must be at least 5 characters",
+                "value": 5
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address line 2",
+            "fieldId": "contact-address-2"
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "contact-parish",
+            "options": [
+              {
+                "label": "Christ Church",
+                "value": "christ-church"
+              },
+              {
+                "label": "St. Andrew",
+                "value": "st-andrew"
+              },
+              {
+                "label": "St. George",
+                "value": "st-george"
+              },
+              {
+                "label": "St. James",
+                "value": "st-james"
+              },
+              {
+                "label": "St. John",
+                "value": "st-john"
+              },
+              {
+                "label": "St. Joseph",
+                "value": "st-joseph"
+              },
+              {
+                "label": "St. Lucy",
+                "value": "st-lucy"
+              },
+              {
+                "label": "St. Michael",
+                "value": "st-michael"
+              },
+              {
+                "label": "St. Peter",
+                "value": "st-peter"
+              },
+              {
+                "label": "St. Philip",
+                "value": "st-philip"
+              },
+              {
+                "label": "St. Thomas",
+                "value": "st-thomas"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Parish is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/postcode",
+          "overrides": {
+            "hint": "For example, BB17004 (optional)",
+            "fieldId": "contact-postcode"
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "fieldId": "contact-email",
+            "validations": {
+              "required": {
+                "error": "Email address is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "fieldId": "contact-telephone",
+            "validations": {
+              "required": {
+                "error": "Telephone number is required",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "description": "Your contact information"
+    },
+    {
+      "title": "Tell us why you would be a good mentor",
+      "stepId": "mentorship",
+      "elements": [
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "label": "Why do you want to be a mentor?",
+            "fieldId": "why-mentor",
+            "validations": {
+              "required": {
+                "error": "Tell us why you want to be a mentor",
+                "value": true
+              },
+              "minLength": {
+                "error": "Must be at least 5 characters",
+                "value": 5
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "hint": "What qualities, knowledge or skills do you have that would make you a good mentor?",
+            "label": "What are your strengths?",
+            "fieldId": "strengths",
+            "validations": {
+              "required": {
+                "error": "Tell us about your strengths",
+                "value": true
+              },
+              "minLength": {
+                "error": "Must be at least 5 characters",
+                "value": 5
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "hint": "You may use an experience you have had or a challenge you have overcome that shows an admirable quality",
+            "label": "What do you think a mentee could learn from you?",
+            "fieldId": "mentee-learn",
+            "validations": {
+              "required": {
+                "error": "Tell us what a mentee could learn from you",
+                "value": true
+              },
+              "minLength": {
+                "error": "Must be at least 5 characters",
+                "value": 5
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "Your preferences",
+      "stepId": "preferences",
+      "elements": [
+        {
+          "ref": "components/generic/radio",
+          "overrides": {
+            "hint": "We ask this so we can find the best mentee/mentor match and both can thrive",
+            "label": "Would you prefer a male or female mentee?",
+            "fieldId": "mentee-gender-preference",
+            "options": [
+              {
+                "label": "Male",
+                "value": "male"
+              },
+              {
+                "label": "Female",
+                "value": "female"
+              },
+              {
+                "label": "No preference",
+                "value": "no-preference"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select your preference",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic/radio",
+          "overrides": {
+            "label": "Would you agree to share your personal number with your mentee?",
+            "fieldId": "share-phone-number",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select whether you would share your phone number",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "label": "What is your phone number?",
+            "fieldId": "mentee-phone-number",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetFieldId": "share-phone-number"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter your phone number",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic/radio",
+          "overrides": {
+            "label": "Do you have someone in mind that you would like to mentor?",
+            "fieldId": "has-mentee-in-mind",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select whether you have someone in mind",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/name",
+          "overrides": {
+            "label": "What is their name?",
+            "fieldId": "mentee-in-mind-name",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetFieldId": "has-mentee-in-mind"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter the name of the person you have in mind",
+                "value": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "Your experience",
+      "stepId": "experience",
+      "elements": [
+        {
+          "ref": "components/generic/radio",
+          "overrides": {
+            "hint": "Previous experience is not mandatory",
+            "label": "Do you have experience as a mentor?",
+            "fieldId": "has-mentor-experience",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select whether you have experience as a mentor",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic/number",
+          "overrides": {
+            "label": "How many years of experience?",
+            "fieldId": "years-of-experience",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetFieldId": "has-mentor-experience"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter your years of experience",
+                "value": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "Tell us about your professional referee",
+      "stepId": "professional-referee",
+      "elements": [
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "fieldId": "prof-ref-first-name",
+            "validations": {
+              "required": {
+                "error": "First name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "First name must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "fieldId": "prof-ref-last-name",
+            "validations": {
+              "required": {
+                "error": "Last name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Last name must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/name",
+          "overrides": {
+            "label": "Relationship",
+            "fieldId": "prof-ref-relationship",
+            "validations": {
+              "required": {
+                "error": "Enter your relationship to the referee",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "fieldId": "prof-ref-email",
+            "validations": {
+              "required": {
+                "error": "Enter the referee email address",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "label": "Phone number",
+            "fieldId": "prof-ref-phone",
+            "validations": {
+              "required": {
+                "error": "Enter the referee phone number",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "description": "This can be someone in a supervisory role who you have worked with. Or, if you have not been part of a workforce yet, this can be a teacher or lecturer."
+    },
+    {
+      "title": "Tell us about your personal referee",
+      "stepId": "personal-referee",
+      "elements": [
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "fieldId": "pers-ref-first-name",
+            "validations": {
+              "required": {
+                "error": "First name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "First name must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "fieldId": "pers-ref-last-name",
+            "validations": {
+              "required": {
+                "error": "Last name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Last name must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/name",
+          "overrides": {
+            "label": "Relationship",
+            "fieldId": "pers-ref-relationship",
+            "validations": {
+              "required": {
+                "error": "Enter your relationship to the referee",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "fieldId": "pers-ref-email",
+            "validations": {
+              "required": {
+                "error": "Enter the referee email address",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "label": "Phone number",
+            "fieldId": "pers-ref-phone",
+            "validations": {
+              "required": {
+                "error": "Enter the referee phone number",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "description": "This can be someone who can speak about your character. For example, a community leader or mentor."
+    },
+    {
+      "title": "Declaration",
+      "stepId": "declaration",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": "Declaration",
+            "fieldId": "declaration-confirmed",
+            "options": [
+              {
+                "label": "I confirm that my information is correct and I am happy for it to be verified. I understand that false details may lead to my application being rejected, and that the Government of Barbados will keep my information confidential.",
+                "value": "confirmed"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "You must confirm the declaration to continue",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/date-of-birth",
+          "overrides": {
+            "label": "Date of declaration",
+            "fieldId": "declaration-date",
+            "isHidden": true
+          }
+        }
+      ]
+    },
+    {
+      "title": "Application submitted",
+      "stepId": "submission-confirmation",
+      "elements": [],
+      "nextSteps": [
+        {
+          "title": "What happens next",
+          "content": "We have received your submission. You will receive a confirmation email at the address you provided."
+        }
+      ]
+    }
+  ],
+  "title": "Apply to be a Project Protege Mentor",
+  "formId": "project-protege-mentor-test",
+  "version": "1.0.0",
+  "createdAt": "2026-05-07T00:00:00Z",
+  "updatedAt": "2026-05-07T00:00:00Z",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "subject": "Your Project Protege mentor application has been received",
+        "recipientField": "contact.contact-email"
+      }
+    }
+  ],
+  "description": "Apply to become a mentor in the Project Protege programme."
+}
