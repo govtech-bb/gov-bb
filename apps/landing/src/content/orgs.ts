@@ -4,6 +4,8 @@ import type { MinistryPageProps } from '../components/MinistryPage'
 import { BODY_BY_SLUG, DEPARTMENTS, MINISTRIES, STATE_BODIES } from './mda'
 import type { Ministry, OrgKind } from './mda'
 import type { ContentPage } from './registry'
+import { resolveServiceHref } from './registry'
+import type { FeaturedItem, MinistryService } from '../lib/mda-types'
 
 export type { OrgKind }
 
@@ -97,12 +99,16 @@ export function hasMigratedSource(slug: string): boolean {
   return Boolean(ORG_PAGE_BY_SLUG.get(slug)?.page?.frontmatter?.source_url)
 }
 
+const withResolvedHref = <T extends FeaturedItem | MinistryService>(
+  item: T,
+): T => ({ ...item, href: resolveServiceHref(item.href) })
+
 function ministryToProps(m: Ministry): MinistryPageProps {
   return {
     title: m.name,
-    featured: m.featured,
-    services: m.services,
-    onlineServices: m.onlineServices,
+    featured: m.featured?.map(withResolvedHref),
+    services: m.services?.map(withResolvedHref),
+    onlineServices: m.onlineServices?.map(withResolvedHref),
     minister: m.minister,
     leadershipLabel: KIND_CONFIG.ministry.leadershipLabel,
     contact: m.contact,

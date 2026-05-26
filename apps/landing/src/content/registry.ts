@@ -114,6 +114,46 @@ export function findPage(urlPath: string): ContentPage | undefined {
   return BY_URL.get(urlPath.replace(/^\/+|\/+$/g, ''))
 }
 
+/**
+ * Canonical URL keyed by a page's leaf slug (last path segment). Used to
+ * rewrite the bare-slug links authored in organisation content — e.g. a
+ * ministry listing `/apply-for-a-passport` — to the category-prefixed route
+ * that actually resolves (`/travel-id-citizenship/apply-for-a-passport`).
+ * Leaves shared by multiple pages (e.g. step pages named `start`) are
+ * ambiguous and dropped so they never resolve to the wrong page.
+ */
+const URL_BY_LEAF = (() => {
+  const byLeaf = new Map<string, string>()
+  const ambiguous = new Set<string>()
+  for (const p of PAGES) {
+    const leaf = p.url.split('/').pop()
+    if (!leaf) continue
+    if (byLeaf.has(leaf)) ambiguous.add(leaf)
+    else byLeaf.set(leaf, p.url)
+  }
+  for (const leaf of ambiguous) byLeaf.delete(leaf)
+  return byLeaf
+})()
+
+/**
+ * Resolve an authored service link to the canonical site path. Handles an
+ * already-correct path (unchanged) and a bare service slug (rewritten to its
+ * category-prefixed URL). Anything else — external/mailto/tel links, org
+ * paths, or an unknown slug — is returned unchanged so a link is never
+ * silently broken or mis-pointed.
+ */
+export function resolveServiceHref(href: string): string {
+  if (!href.startsWith('/')) return href
+  const key = href.replace(/^\/+|\/+$/g, '')
+  if (!key) return href
+  if (BY_URL.has(key)) return `/${key}`
+  if (!key.includes('/')) {
+    const url = URL_BY_LEAF.get(key)
+    if (url) return `/${url}`
+  }
+  return href
+}
+
 export { CATEGORIES, CATEGORY_BY_SLUG }
 
 export function getCategoryTitle(slug: string): string | undefined {
