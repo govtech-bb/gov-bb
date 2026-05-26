@@ -143,6 +143,27 @@ describe("RecipeFileLoaderService", () => {
     });
   });
 
+  describe("default recipesRoot", () => {
+    it("resolves the default recipes root relative to the compiled module (not process.cwd)", () => {
+      // No-arg construction → falls back to DEFAULT_RECIPES_ROOT, which the
+      // service resolves via `path.resolve(__dirname, "recipes")`. In the
+      // source tree that's apps/api/src/forms/form-definitions/recipes;
+      // in the Docker prod build it resolves to
+      // /app/dist/src/forms/form-definitions/recipes. Either way it must
+      // sit beside the service file, so we anchor the assertion on the
+      // service's own __dirname rather than on process.cwd().
+      const loader = new RecipeFileLoaderService();
+      const expected = path.resolve(__dirname, "recipes");
+
+      // `recipesRoot` is private — reach into it for the assertion.
+      const actual = (loader as unknown as { recipesRoot: string }).recipesRoot;
+
+      expect(actual).toBe(expected);
+      // Defensive: not derived from process.cwd() (the old behavior).
+      expect(actual).not.toBe(path.resolve(process.cwd(), "recipes"));
+    });
+  });
+
   describe("findByFormId", () => {
     it("returns the latest version when no version is given", async () => {
       const root = await newRoot({
