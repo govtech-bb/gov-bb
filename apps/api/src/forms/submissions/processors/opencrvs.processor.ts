@@ -11,23 +11,37 @@ export class OpencrvsProcessor implements ISubmissionProcessor {
   private readonly logger = new Logger(OpencrvsProcessor.name);
 
   async process(payload: SubmissionCreatedEvent): Promise<ProcessorOutput> {
-    const cfg =
-      payload.processors.find((p) => p.type === "opencrvs")?.config ?? {};
+    // Iterate over entries by position in payload.processors so the
+    // idempotency key index stays stable regardless of how same-type
+    // entries are ordered relative to other types.
+    for (let i = 0; i < payload.processors.length; i++) {
+      const entry = payload.processors[i];
+      if (entry.type !== "opencrvs") continue;
+      await this.processEntry(payload, entry.config ?? {}, i);
+    }
 
+    return { kind: "completed" };
+  }
+
+  private async processEntry(
+    payload: SubmissionCreatedEvent,
+    cfg: Record<string, unknown>,
+    index: number,
+  ): Promise<void> {
     const endpoint = cfg["endpoint"] as string | undefined;
     if (!endpoint) {
       this.logger.warn(
         `[opencrvs] No endpoint configured for submission ${payload.submissionId} — skipping`,
       );
-      return { kind: "completed" };
+      return;
     }
 
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
-      // X-Idempotency-Key lets the OpenCRVS server deduplicate retried POSTs:
-      // a second request with the same key returns the original result without
-      // re-processing the registration.
-      "X-Idempotency-Key": payload.submissionId,
+      // X-Idempotency-Key lets the OpenCRVS server deduplicate retried POSTs.
+      // The index suffix distinguishes multiple opencrvs entries on the same
+      // submission so each entry can retry without colliding with the others.
+      "X-Idempotency-Key": `${payload.submissionId}:${index}`,
     };
 
     const token = cfg["token"] as string | undefined;
@@ -56,7 +70,5 @@ export class OpencrvsProcessor implements ISubmissionProcessor {
     this.logger.log(
       `[opencrvs] Forwarded submission ${payload.submissionId} to ${endpoint}`,
     );
-
-    return { kind: "completed" };
   }
 }

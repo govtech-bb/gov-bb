@@ -10,12 +10,14 @@ import {
   OpencrvsProcessor,
   ProcessorFactory,
   SpreadsheetProcessor,
+  WebhookProcessor,
   SUBMISSION_PROCESSORS,
 } from "./processors";
 import { PaymentProcessor } from "./processors/payment/payment.processor";
 import { FormDefinitionsModule } from "../form-definitions/form-definitions.module";
 import { FormDraftsModule } from "../form-drafts/form-drafts.module";
 import { PaymentsModule } from "../../payments/payments.module";
+import { FilesModule } from "../../files/files.module";
 import { SqsProducerService } from "./sqs/sqs-producer.service";
 import { SqsConsumerService } from "./sqs/sqs-consumer.service";
 import sqsConfig from "../../config/sqs.config";
@@ -28,6 +30,7 @@ import { EmailBodyBuilder } from "../../email/email-body.builder";
     FormDefinitionsModule,
     FormDraftsModule,
     PaymentsModule,
+    FilesModule,
     ConfigModule.forFeature(sqsConfig),
     ExpressionsModule,
   ],
@@ -43,6 +46,7 @@ import { EmailBodyBuilder } from "../../email/email-body.builder";
     OpencrvsProcessor,
     SpreadsheetProcessor,
     PaymentProcessor,
+    WebhookProcessor,
     {
       provide: SUBMISSION_PROCESSORS,
       useFactory: (
@@ -50,12 +54,14 @@ import { EmailBodyBuilder } from "../../email/email-body.builder";
         opencrvs: OpencrvsProcessor,
         spreadsheet: SpreadsheetProcessor,
         payment: PaymentProcessor,
-      ) => [email, opencrvs, spreadsheet, payment],
+        webhook: WebhookProcessor,
+      ) => [email, opencrvs, spreadsheet, payment, webhook],
       inject: [
         EmailProcessor,
         OpencrvsProcessor,
         SpreadsheetProcessor,
         PaymentProcessor,
+        WebhookProcessor,
       ],
     },
     ProcessorFactory,

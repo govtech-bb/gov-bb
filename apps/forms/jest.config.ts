@@ -29,6 +29,24 @@ const config: Config = {
         useESM: false,
         tsconfig: "<rootDir>/../tsconfig.jest.json",
         diagnostics: false,
+        astTransformers: {
+          before: [
+            {
+              path: "ts-jest-mock-import-meta",
+              options: {
+                metaObjectReplacement: {
+                  env: {
+                    DEV: true,
+                    PROD: false,
+                    MODE: "test",
+                    VITE_API_URL: "http://localhost:3001",
+                    VITE_DESIGN_SYSTEM: "basic",
+                  },
+                },
+              },
+            },
+          ],
+        },
       },
     ],
   },
@@ -39,10 +57,13 @@ const config: Config = {
     "!**/*.spec.ts",
     "!**/*.spec.tsx",
     "!**/*.d.ts",
+    "!**/main.tsx",
+    "!**/routeTree.gen.ts",
+    "!**/routes/admin/**",
   ],
   coverageReporters: ["text-summary", "lcov", "html"],
   coverageThreshold: {
-    global: { branches: 10, functions: 7, lines: 19, statements: 21 },
+    global: { branches: 70, functions: 80, lines: 85, statements: 85 },
   },
 };
 

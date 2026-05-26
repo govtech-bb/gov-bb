@@ -73,6 +73,19 @@ describe("ProcessorFactory", () => {
 
       warn.mockRestore();
     });
+
+    it("returns a single handler per type when multiple same-type configs are present", () => {
+      // Internal iteration means each handler reads every matching entry
+      // itself — the factory must not enqueue duplicate dispatches.
+      const resolved = factory.resolve([
+        cfg("email"),
+        cfg("email"),
+        cfg("opencrvs"),
+      ]);
+
+      expect(resolved).toHaveLength(2);
+      expect(resolved).toEqual([emailProcessor, opencrvsProcessor]);
+    });
   });
 
   describe("resolve with partial registry", () => {

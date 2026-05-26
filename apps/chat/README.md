@@ -46,8 +46,42 @@ Am example chat application built with TanStack Start, TanStack Store, and Claud
 ## .env Updates
 
 ```env
-ANTHROPIC_API_KEY=your_anthropic_api_key
+# AWS Bedrock. Credentials come from the AWS SDK default chain
+# (AWS_PROFILE / env / instance role).
+BEDROCK_REGION=us-east-1
+LLM_MODEL=claude-haiku-4-5   # short alias resolved by @govtech-bb/ai-bedrock
 ```
+
+Bedrock requires `bedrock:InvokeModel` and `bedrock:InvokeModelWithResponseStream`
+on the inference-profile ARN for the model you select. The adapter falls back
+to non-streaming `Converse` if `InvokeModelWithResponseStream` is denied, so
+streaming permission is recommended but not strictly required.
+
+## Production env vars (Amplify Console)
+
+Env vars are read at request time from `process.env`. Set them in
+Amplify Console → your app → App settings → Environment variables.
+No build-time baking, no `.env.production` generation — Amplify injects
+them into the SSR Lambda's runtime environment.
+
+Required:
+
+- `RAG_URL` — usually `https://<your-chat-domain>/api`
+- `DATABASE_URL` — Postgres (pgvector RDS)
+- `FORM_API_URL` — forms submission API base URL
+
+Optional (have defaults):
+
+- `BEDROCK_REGION` — defaults to `AWS_REGION`, else `ca-central-1`
+- `LLM_MODEL` — defaults to `claude-haiku-4-5`
+- `REWRITE_MODEL` — defaults to `claude-haiku-4-5`
+
+## Re-ingest after chunker changes
+
+The chunker now appends `chunkIndex` to each chunk's slug to prevent collisions
+on duplicate headings. Existing rows ingested before this change have the old
+slug scheme. After pulling this branch, run `pnpm db:reset && pnpm ingest` to
+rebuild — old + new chunks will not dedupe against each other otherwise.
 
 ## ✨ Features
 

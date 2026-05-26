@@ -91,4 +91,32 @@ describe("normalizeForStorage", () => {
     });
     expect(once).toEqual({ personal: { name: "x" } });
   });
+
+  it("returns empty object for step when activeFieldsByInstance has no entry for the step", () => {
+    // Branch: activeFieldsByInstance.get(stepId) ?? [] → [],
+    // then activeArr[0] === undefined → filterToActive returns {}
+    const result = normalizeForStorage({
+      instances: [inst("personal", 0, false, { name: "Alice" })],
+      hiddenStepIds: new Set(),
+      activeFieldsByInstance: new Map(), // no entry for "personal"
+    });
+    expect(result).toEqual({ personal: {} });
+  });
+
+  it("returns empty object for a repeatable instance when its active set is absent", () => {
+    // activeArr has only one entry for index 0, but instance index 1 has no Set
+    const active = new Map<string, Array<Set<string>>>();
+    active.set("jobs", [new Set(["employer"])]); // only index 0 has a Set
+
+    const result = normalizeForStorage({
+      instances: [
+        inst("jobs", 0, true, { employer: "ACME" }),
+        inst("jobs", 1, true, { employer: "Initech" }),
+      ],
+      hiddenStepIds: new Set(),
+      activeFieldsByInstance: active,
+    });
+    // Instance 1 has no active set → filterToActive(values, undefined) → {}
+    expect(result).toEqual({ jobs: [{ employer: "ACME" }, {}] });
+  });
 });

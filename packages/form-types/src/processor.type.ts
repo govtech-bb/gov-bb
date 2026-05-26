@@ -31,6 +31,15 @@ const paymentConfigAuthorSchema = z.object({
   allowPayce: z.boolean().optional(),
 });
 
+const webhookConfigAuthorSchema = z.object({
+  url: dynamic(z.string().url()),
+  method: z.enum(["POST", "PUT", "PATCH"]).default("POST"),
+  headers: z.record(z.string(), dynamic(z.string())).optional(),
+  secret: z.string().min(16).optional(),
+  signatureHeader: z.string().min(1).default("X-Webhook-Signature"),
+  timeoutMs: z.number().int().positive().max(30_000).default(10_000),
+});
+
 const emailProcessorSchema = z.object({
   type: z.literal("email"),
   config: emailConfigAuthorSchema,
@@ -47,12 +56,17 @@ const paymentProcessorSchema = z.object({
   type: z.literal("payment"),
   config: paymentConfigAuthorSchema,
 });
+const webhookProcessorSchema = z.object({
+  type: z.literal("webhook"),
+  config: webhookConfigAuthorSchema,
+});
 
 export const processorSchema = z.discriminatedUnion("type", [
   emailProcessorSchema,
   opencrvsProcessorSchema,
   spreadsheetProcessorSchema,
   paymentProcessorSchema,
+  webhookProcessorSchema,
 ]);
 
 export type Processor = z.infer<typeof processorSchema>;
@@ -78,6 +92,15 @@ const paymentConfigResolvedSchema = z.object({
   allowPayce: z.boolean().optional(),
 });
 
+const webhookConfigResolvedSchema = z.object({
+  url: z.string().url(),
+  method: z.enum(["POST", "PUT", "PATCH"]).default("POST"),
+  headers: z.record(z.string(), z.string()).optional(),
+  secret: z.string().min(16).optional(),
+  signatureHeader: z.string().min(1).default("X-Webhook-Signature"),
+  timeoutMs: z.number().int().positive().max(30_000).default(10_000),
+});
+
 export const resolvedProcessorSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("email"), config: emailConfigResolvedSchema }),
   z.object({ type: z.literal("opencrvs"), config: opencrvsConfigAuthorSchema }),
@@ -86,9 +109,17 @@ export const resolvedProcessorSchema = z.discriminatedUnion("type", [
     config: spreadsheetConfigAuthorSchema,
   }),
   z.object({ type: z.literal("payment"), config: paymentConfigResolvedSchema }),
+  z.object({
+    type: z.literal("webhook"),
+    config: webhookConfigResolvedSchema,
+  }),
 ]);
 
 export type ResolvedProcessor = z.infer<typeof resolvedProcessorSchema>;
 export type ResolvedPaymentProcessorConfig = z.infer<
   typeof paymentConfigResolvedSchema
+>;
+export type WebhookProcessorConfig = z.infer<typeof webhookConfigAuthorSchema>;
+export type ResolvedWebhookProcessorConfig = z.infer<
+  typeof webhookConfigResolvedSchema
 >;

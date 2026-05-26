@@ -1,16 +1,11 @@
-// Deterministic chunker. Turns content entities into embed-ready chunks.
-// Each chunk has a stable id and a hash of its embed text.
-//
-// Embed-text templates are *question-phrased* on purpose: end users type
-// "who is the minister of X?" / "phone number for Y", not "Minister: X".
-// Matching the user phrasing in the embedding text moves retrieval scores
-// far more than any reranker or threshold tweak.
+// Embed text is phrased as a question ("who is the minister of X?") to match
+// how users type queries — this lifts retrieval scores more than reranking does.
 
 import { createHash } from "node:crypto";
 import type { Contact, MdaEntity, ServiceEntity } from "@govtech-bb/content";
 import type { ChunkKind, DocumentKind } from "#/lib/db/schema";
 
-const HEADING_RE = /^##\s+(.+)$/gm;
+const HEADING_RE = /^(#{2,6})\s+(.+)$/gm;
 const CHUNK_TARGET = 2000;
 const CHUNK_OVERLAP = 200;
 
@@ -83,10 +78,6 @@ function sectionSlug(heading: string): string {
     .replace(/^-|-$/g, "");
 }
 
-// ---------------------------------------------------------------------------
-// MDA chunker
-// ---------------------------------------------------------------------------
-
 const ORG_URL_PREFIX = "https://alpha.gov.bb/government/organisations";
 
 function mdaDocId(entity: MdaEntity): string {
@@ -115,11 +106,7 @@ function nameChunk(entity: MdaEntity, docId: string): PlannedChunk | null {
   };
 }
 
-// Pick the most useful "short alias" — typically an acronym like "BRA",
-// "MIST", "FTC". Heuristic: a keyword that looks like an acronym (mostly
-// uppercase, 2-8 chars, no spaces). Front-loading this in the embed text
-// helps queries phrased with the acronym ("BRA phone number") match the
-// right entity.
+// Front-load acronyms ("BRA", "MIST") in embed text so acronym queries match.
 function primaryAlias(entity: MdaEntity): string | null {
   for (const k of entity.keywords) {
     if (k.length < 2 || k.length > 8) continue;
@@ -252,10 +239,6 @@ export function chunkMda(entity: MdaEntity): PlannedEntity {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Service chunker
-// ---------------------------------------------------------------------------
-
 function deriveServiceUrl(entity: ServiceEntity): {
   url: string;
   sourceUrl?: string;
@@ -272,22 +255,43 @@ function deriveServiceUrl(entity: ServiceEntity): {
   return { url: `https://alpha.gov.bb/${entity.slug}` };
 }
 
-function splitSections(
-  body: string,
-): Array<{ heading?: string; text: string }> {
+interface Section {
+  heading?: string;
+  headingPath: string[];
+  text: string;
+}
+
+function splitSections(body: string): Section[] {
   const matches = Array.from(body.matchAll(HEADING_RE));
   if (matches.length === 0) {
-    return body.trim() ? [{ text: body.trim() }] : [];
+    return body.trim() ? [{ headingPath: [], text: body.trim() }] : [];
   }
-  const sections: Array<{ heading?: string; text: string }> = [];
+  const sections: Section[] = [];
   const preamble = body.slice(0, matches[0].index!).trim();
-  if (preamble) sections.push({ heading: "Summary", text: preamble });
+  if (preamble) {
+    sections.push({
+      heading: "Summary",
+      headingPath: ["Summary"],
+      text: preamble,
+    });
+  }
+  const stack: Array<{ level: number; text: string }> = [];
   for (let i = 0; i < matches.length; i++) {
     const m = matches[i];
+    const level = m[1].length;
+    const heading = m[2].trim();
+    while (stack.length && stack[stack.length - 1].level >= level) stack.pop();
+    stack.push({ level, text: heading });
     const start = m.index! + m[0].length;
     const end = i + 1 < matches.length ? matches[i + 1].index! : body.length;
     const text = body.slice(start, end).trim();
-    if (text) sections.push({ heading: m[1].trim(), text });
+    if (text) {
+      sections.push({
+        heading,
+        headingPath: stack.map((s) => s.text),
+        text,
+      });
+    }
   }
   return sections;
 }
@@ -312,17 +316,23 @@ function sectionChunks(entity: ServiceEntity, docId: string): PlannedChunk[] {
   const sections = splitSections(entity.body);
   if (sections.length === 0) return [];
   return sections.map((s, i) => {
-    const text = s.heading
-      ? `${entity.title} — ${s.heading}\n${s.text}`
-      : s.text;
-    const slug = s.heading ? sectionSlug(s.heading) : `default-${i}`;
+    const breadcrumb = [entity.title, ...s.headingPath].join(" > ");
+    const text = s.headingPath.length ? `${breadcrumb}\n${s.text}` : s.text;
+    const slugParts = s.headingPath.length
+      ? s.headingPath.map(sectionSlug).filter(Boolean)
+      : [`default-${i}`];
+    // chunkIndex disambiguates duplicate heading paths within the same doc
+    // (e.g. two sections both titled "Standard"). Without it the second
+    // section's chunk id collides with the first and upsert silently drops
+    // content.
+    const slug = `${slugParts.join("/")}#${i}`;
     return {
       id: `${docId}:section:${slug}`,
       documentId: docId,
       kind: "section" as const,
       chunkIndex: i,
       text,
-      payload: { heading: s.heading },
+      payload: { heading: s.heading, headingPath: s.headingPath },
       embedHash: hash(text),
     };
   });

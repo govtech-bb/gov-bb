@@ -4,6 +4,7 @@
 @import "@fontsource/figtree/700.css";
 @import "tailwindcss";
 @import "@govtech-bb/design";
+@source "../../../node_modules/@govtech-bb/react/dist/**/*.{js,cjs}";
 @plugin "@tailwindcss/typography";
 
 @theme {
@@ -34,6 +35,23 @@
   50% { transform: translateY(-4px); }
 }
 
+@utility text-bubble {
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-caption);
+  @media (min-width: 768px) {
+    font-size: var(--font-size-body);
+    line-height: var(--line-height-body);
+  }
+}
+
+@utility text-disclaimer {
+  font-size: 0.875rem;
+  line-height: var(--line-height-caption);
+  @media (min-width: 768px) {
+    font-size: var(--font-size-caption);
+  }
+}
+
 * {
   box-sizing: border-box;
 }
@@ -49,4 +67,29 @@ body {
   background: var(--color-white-00);
   color: var(--color-black-00);
   font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+
+@utility container {
+  margin-inline: auto;
+  width: 100%;
+  padding-inline: 1rem;
+
+  @media (min-width: 1024px) {
+    max-width: 1200px;
+    padding-inline: 8rem;
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

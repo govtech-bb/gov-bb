@@ -1,13 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { count, max } from "drizzle-orm";
 import { getDb, hasDatabase, schema } from "#/lib/db";
-
-function jsonError(message: string, status: number): Response {
-  return new Response(JSON.stringify({ error: message }), {
-    status,
-    headers: { "content-type": "application/json" },
-  });
-}
+import { jsonError } from "#/lib/http";
 
 function jsonOk(body: unknown): Response {
   return new Response(JSON.stringify(body), {

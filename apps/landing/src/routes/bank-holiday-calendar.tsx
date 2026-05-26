@@ -179,6 +179,8 @@ function YearSwitcher({ year }: { year: number }) {
         <Link
           aria-label={`Previous year, ${prevYear}`}
           className={YEAR_BUTTON_CLASS}
+          data-umami-event="bank-holiday-year-prev"
+          data-umami-event-year={String(prevYear)}
           replace
           search={{ year: prevYear }}
           to="/bank-holiday-calendar"
@@ -198,6 +200,8 @@ function YearSwitcher({ year }: { year: number }) {
         <Link
           aria-label={`Next year, ${nextYear}`}
           className={YEAR_BUTTON_CLASS}
+          data-umami-event="bank-holiday-year-next"
+          data-umami-event-year={String(nextYear)}
           replace
           search={{ year: nextYear }}
           to="/bank-holiday-calendar"

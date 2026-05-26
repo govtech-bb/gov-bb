@@ -1,92 +1,88 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { FormDefinitionEntity } from "@govtech-bb/database";
-import type { ServiceContractRecipe } from "@govtech-bb/form-types";
-import { getDataSource } from "./db";
-import { bumpMinor } from "../lib/version";
+import {
+  serviceContractRecipeSchema,
+  type ServiceContractRecipe,
+} from "@govtech-bb/form-types";
+import { api, ApiError } from "./api-client";
+import { listPublishedForms, getPublishedRecipe } from "./github-recipes";
+import { compare as compareSemver } from "../lib/version";
 import type { FormDefinitionSummary } from "../types/index";
+import { requireSession } from "./auth/require-session";
 
-type FormDefinitionRow = {
-  id: string;
-  version: string;
-  schema: ServiceContractRecipe;
-  published_at: Date | null;
-};
+export const listForms = createServerFn({ method: "GET" })
+  .middleware([requireSession])
+  .handler(async ({ context }): Promise<FormDefinitionSummary[]> => {
+    const token = context.session.accessToken;
+    const [drafts, published] = await Promise.all([
+      api.get<FormDefinitionSummary[]>("/builder/forms"),
+      listPublishedForms(token),
+    ]);
 
-export const listForms = createServerFn({ method: "GET" }).handler(
-  async (): Promise<FormDefinitionSummary[]> => {
-    const ds = await getDataSource();
-    const rows = await ds.query<
-      {
-        id: string;
-        form_id: string;
-        title: string;
-        version: string;
-        published_at: Date | null;
-      }[]
-    >(`
-      SELECT DISTINCT ON (form_id) id, form_id, schema->>'title' AS title, version, published_at
-      FROM form_definitions
-      ORDER BY form_id, string_to_array(version, '.')::int[] DESC
-    `);
-    return rows.map((r) => ({
-      id: r.id,
-      formId: r.form_id,
-      title: r.title,
-      version: r.version,
-      isPublished: r.published_at !== null,
-    }));
-  },
-);
+    const byFormId = new Map<string, FormDefinitionSummary>();
+    for (const d of drafts) byFormId.set(d.formId, d);
+    for (const p of published) {
+      const existing = byFormId.get(p.formId);
+      if (existing && compareSemver(existing.version, p.version) > 0) continue;
+      byFormId.set(p.formId, {
+        id: p.formId,
+        formId: p.formId,
+        title: p.title,
+        version: p.version,
+        isPublished: true,
+      });
+    }
+    return Array.from(byFormId.values());
+  });
 
 export const getRecipe = createServerFn({ method: "GET", strict: false })
+  .middleware([requireSession])
   .inputValidator(z.object({ formId: z.string() }))
-  .handler(async ({ data }): Promise<ServiceContractRecipe> => {
-    const ds = await getDataSource();
-    const rows = await ds.query<FormDefinitionRow[]>(
-      `SELECT id, version, schema, published_at
-       FROM form_definitions
-       WHERE form_id = $1
-       ORDER BY string_to_array(version, '.')::int[] DESC
-       LIMIT 1`,
-      [data.formId],
-    );
-    if (!rows.length) {
-      throw new Error(`No recipe found for formId: ${data.formId}`);
+  .handler(async ({ data, context }): Promise<ServiceContractRecipe> => {
+    const token = context.session.accessToken;
+
+    let draft: ServiceContractRecipe | null = null;
+    try {
+      draft = await api.get<ServiceContractRecipe>(
+        `/builder/forms/${encodeURIComponent(data.formId)}`,
+      );
+    } catch (err) {
+      if (!(err instanceof ApiError) || err.status !== 404) throw err;
     }
-    return rows[0].schema;
+
+    let published: { version: string; recipe: unknown } | null = null;
+    try {
+      const recipe = await getPublishedRecipe(token, { formId: data.formId });
+      const version =
+        typeof (recipe as { version?: unknown }).version === "string"
+          ? (recipe as { version: string }).version
+          : null;
+      if (version) published = { version, recipe };
+    } catch {
+      // No published copy — fall back to draft (or fail below).
+    }
+
+    if (
+      draft &&
+      (!published || compareSemver(draft.version, published.version) >= 0)
+    ) {
+      return draft;
+    }
+    if (published) {
+      return serviceContractRecipeSchema.parse(published.recipe);
+    }
+    throw new Error(`No recipe found for formId: ${data.formId}`);
   });
 
 export const submitRecipe = createServerFn({ method: "POST" })
-  .inputValidator(
-    z.object({
-      recipe: z.unknown(),
-    }),
-  )
+  .middleware([requireSession])
+  .inputValidator(z.object({ recipe: z.unknown() }))
   .handler(async ({ data }): Promise<void> => {
-    const recipe = data.recipe as ServiceContractRecipe;
-    const ds = await getDataSource();
-    const repo = ds.getRepository(FormDefinitionEntity);
-
-    const existing = await repo.findOne({
-      where: { formId: recipe.formId, version: recipe.version },
-    });
-    if (existing) {
-      throw new Error(
-        `Recipe with formId "${recipe.formId}" and version "${recipe.version}" already exists`,
-      );
-    }
-
-    const entity = repo.create({
-      formId: recipe.formId,
-      version: recipe.version,
-      schema: recipe,
-      publishedAt: null,
-    });
-    await repo.save(entity);
+    await api.post("/builder/forms", { recipe: data.recipe });
   });
 
 export const updateRecipe = createServerFn({ method: "POST" })
+  .middleware([requireSession])
   .inputValidator(
     z.object({
       formId: z.string(),
@@ -94,60 +90,20 @@ export const updateRecipe = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }): Promise<void> => {
-    const recipe = data.recipe as ServiceContractRecipe;
-    const ds = await getDataSource();
-
-    const rows = await ds.query<FormDefinitionRow[]>(
-      `SELECT id, version, schema, published_at
-       FROM form_definitions
-       WHERE form_id = $1
-       ORDER BY string_to_array(version, '.')::int[] DESC
-       LIMIT 1`,
-      [data.formId],
-    );
-    if (!rows.length) {
-      throw new Error(`No recipe found for formId: ${data.formId}`);
-    }
-    const row = rows[0];
-    if (row.published_at !== null) {
-      throw new Error("Cannot update a published recipe");
-    }
-    if (recipe.version !== row.version) {
-      throw new Error(
-        `Version mismatch: stored version is ${row.version}, recipe version is ${recipe.version}`,
-      );
-    }
-
-    await ds.query(`UPDATE form_definitions SET schema = $1 WHERE id = $2`, [
-      recipe,
-      row.id,
-    ]);
+    await api.put(`/builder/forms/${encodeURIComponent(data.formId)}`, {
+      recipe: data.recipe,
+    });
   });
 
 export const nextVersion = createServerFn({ method: "GET" })
+  .middleware([requireSession])
   .inputValidator(z.object({ formId: z.string() }))
   .handler(
     async ({
       data,
     }): Promise<{ currentVersion: string | null; nextVersion: string }> => {
-      const ds = await getDataSource();
-
-      const rows = await ds.query<FormDefinitionRow[]>(
-        `SELECT id, version, schema, published_at
-         FROM form_definitions
-         WHERE form_id = $1
-         ORDER BY string_to_array(version, '.')::int[] DESC
-         LIMIT 1`,
-        [data.formId],
+      return api.get<{ currentVersion: string | null; nextVersion: string }>(
+        `/builder/forms/${encodeURIComponent(data.formId)}/next-version`,
       );
-
-      if (!rows.length) {
-        return { currentVersion: null, nextVersion: "1.0.0" };
-      }
-
-      return {
-        currentVersion: rows[0].version,
-        nextVersion: bumpMinor(rows[0].version),
-      };
     },
   );

@@ -1,0 +1,53 @@
+# syntax=docker/dockerfile:1.7
+# Production build for form_builder — runs the full Tanstack Start app via Nitro
+# node-server preset. Deployed to ECS behind the ALB at /builder/*.
+
+# ---- builder ----------------------------------------------------------------
+FROM node:20-alpine AS builder
+
+RUN corepack enable && corepack prepare pnpm@10.33.4 --activate
+RUN addgroup -S -g 1001 app && adduser -S -u 1001 -G app app
+
+WORKDIR /app
+RUN chown app:app /app
+USER app
+
+COPY --chown=app:app package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc nx.json tsconfig.base.json ./
+COPY --chown=app:app apps/form_builder/package.json apps/form_builder/
+COPY --chown=app:app packages/content/package.json packages/content/
+COPY --chown=app:app packages/database/package.json packages/database/
+COPY --chown=app:app packages/expressions/package.json packages/expressions/
+COPY --chown=app:app packages/form-builder/package.json packages/form-builder/
+COPY --chown=app:app packages/form-conditions/package.json packages/form-conditions/
+COPY --chown=app:app packages/form-types/package.json packages/form-types/
+COPY --chown=app:app packages/form-validation/package.json packages/form-validation/
+COPY --chown=app:app packages/registry/package.json packages/registry/
+COPY --chown=app:app packages/ai-bedrock/package.json packages/ai-bedrock/
+
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,uid=1001,gid=1001 \
+    pnpm install --store-dir=/pnpm/store --frozen-lockfile --ignore-scripts
+
+COPY --chown=app:app apps/form_builder/ apps/form_builder/
+COPY --chown=app:app packages/ packages/
+
+# Build with node-server preset (overrides aws_amplify from vite.config.ts)
+ENV NITRO_PRESET=node-server
+RUN pnpm exec nx run form-builder-app:build
+
+# ---- runner -----------------------------------------------------------------
+FROM node:20-alpine AS runner
+
+RUN addgroup -S -g 1001 app && adduser -S -u 1001 -G app app
+
+WORKDIR /app
+RUN chown app:app /app
+USER app
+
+# Copy the built output — Nitro node-server outputs to .output/
+COPY --from=builder --chown=app:app /app/apps/form_builder/.output/ ./
+
+ENV NODE_ENV=production
+ENV PORT=3003
+EXPOSE 3003
+
+CMD ["node", "server/index.mjs"]

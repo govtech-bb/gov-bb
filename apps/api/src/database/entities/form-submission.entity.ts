@@ -26,6 +26,19 @@ export class FormSubmissionEntity extends TimestampedEntity {
   })
   idempotencyKey!: string;
 
+  @ApiProperty({
+    example: "PR-20260515-104530-A3B7K9",
+    maxLength: 64,
+    description: "Human-readable submission reference",
+  })
+  @Column({
+    name: "reference_code",
+    type: "varchar",
+    length: 64,
+    unique: true,
+  })
+  referenceCode!: string;
+
   @ApiProperty({ example: "passport-renewal", maxLength: 100 })
   @Column({ name: "form_id", type: "varchar", length: 100 })
   formId!: string;

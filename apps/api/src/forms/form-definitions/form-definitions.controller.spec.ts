@@ -5,12 +5,23 @@ const mockService = {
   findByFormId: jest.fn(),
 };
 
+const mockOverridesService = {
+  // Default: no override → short-circuit never fires.
+  find: jest.fn().mockResolvedValue(null),
+  disable: jest.fn(),
+  enable: jest.fn(),
+};
+
 describe("FormDefinitionsController", () => {
   let controller: FormDefinitionsController;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    controller = new FormDefinitionsController(mockService as never);
+    mockOverridesService.find.mockResolvedValue(null);
+    controller = new FormDefinitionsController(
+      mockService as never,
+      mockOverridesService as never,
+    );
   });
 
   describe("getAll (GET /form-definitions)", () => {

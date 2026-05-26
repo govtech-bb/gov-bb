@@ -20,7 +20,7 @@ export type RequiredState =
   | "unknownState";
 
 export const valueIsEmpty = (value: FieldValue): boolean | undefined => {
-  if (!value) return true;
+  if (value === null || value === undefined) return true;
   if (typeof value === "string")
     return value.length === 0; // If required and no content, flag it.
   else if (Array.isArray(value)) {
@@ -480,22 +480,34 @@ export const evaluateCondition = (
     case "exists":
       if (targetFieldValue && !valueIsEmpty(targetFieldValue)) return true;
       return false;
-    case "gt":
-      if (conditionValue && targetFieldValue) {
-        const cv = Number(conditionValue);
-        const tfv = Number(targetFieldValue);
-
-        if (!isNaN(cv) && !isNaN(tfv)) return cv > tfv;
-      }
+    case "gt": {
+      if (conditionValue == null || targetFieldValue == null) return false;
+      if (typeof conditionValue === "string" && conditionValue.trim() === "")
+        return false;
+      if (
+        typeof targetFieldValue === "string" &&
+        targetFieldValue.trim() === ""
+      )
+        return false;
+      const cv = Number(conditionValue);
+      const tfv = Number(targetFieldValue);
+      if (!Number.isNaN(cv) && !Number.isNaN(tfv)) return cv > tfv;
       return false;
-    case "lt":
-      if (conditionValue && targetFieldValue) {
-        const cv = Number(conditionValue);
-        const tfv = Number(targetFieldValue);
-
-        if (!isNaN(cv) && !isNaN(tfv)) return cv < tfv;
-      }
+    }
+    case "lt": {
+      if (conditionValue == null || targetFieldValue == null) return false;
+      if (typeof conditionValue === "string" && conditionValue.trim() === "")
+        return false;
+      if (
+        typeof targetFieldValue === "string" &&
+        targetFieldValue.trim() === ""
+      )
+        return false;
+      const cv = Number(conditionValue);
+      const tfv = Number(targetFieldValue);
+      if (!Number.isNaN(cv) && !Number.isNaN(tfv)) return cv < tfv;
       return false;
+    }
 
     default:
       return false;
