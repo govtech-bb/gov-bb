@@ -1,0 +1,24 @@
+{
+  "name": "registry",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/registry/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/registry",
+        "tsConfig": "packages/registry/tsconfig.json",
+        "main": "packages/registry/src/index.ts"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "lintFilePatterns": ["packages/registry/**/*.ts"]
+      }
+    }
+  },
+  "tags": []
+}
