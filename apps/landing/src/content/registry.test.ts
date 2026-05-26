@@ -84,4 +84,15 @@ describe('money-financial-support listing', () => {
       'money-financial-support/calculate-severance-pay',
     )
   })
+
+  it('lists severance under work-employment too, at the same canonical URL', () => {
+    const inWork = PAGES.filter(
+      (p) =>
+        p.frontmatter.categories.includes('work-employment') && !isSubPage(p),
+    ).filter((p) => p.slug === 'calculate-severance-pay')
+    expect(inWork).toHaveLength(1)
+    expect(inWork[0].url).toBe(
+      'money-financial-support/calculate-severance-pay',
+    )
+  })
 })
