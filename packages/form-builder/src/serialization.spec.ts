@@ -1,7 +1,7 @@
 import { serializeRecipeDraft, deserializeRecipe } from "./serialization";
 import { getCatalog } from "./catalog";
 import type { RegistryCatalog } from "./catalog";
-import type { RecipeDraft } from "./types";
+import type { RecipeDraft, RecipeFieldDraft } from "./types";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -12,6 +12,15 @@ function makeBaseDraft(overrides: Partial<RecipeDraft> = {}): RecipeDraft {
     steps: [],
     ...overrides,
   };
+}
+
+// Convenience: stamp a deterministic editor id on a field-draft fixture so
+// tests don't need to think about `id` for the in-memory cases. The
+// serializer drops the id; deserialize regenerates one. Tests that assert on
+// per-instance behaviour should generate distinct ids per fixture.
+let __idCounter = 0;
+function f<T extends Omit<RecipeFieldDraft, "id">>(draft: T): RecipeFieldDraft {
+  return { ...draft, id: `test-field-${++__idCounter}` };
 }
 
 // ─── serializeRecipeDraft / deserializeRecipe round-trip ───────────────────
@@ -74,11 +83,11 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
           stepId: "step-1",
           title: "Step 1",
           fields: [
-            {
+            f({
               kind: "component",
               ref: "components/text",
               overrides: {},
-            },
+            }),
           ],
           behaviours: [],
         },
@@ -102,7 +111,7 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
           stepId: "step-1",
           title: "Step 1",
           fields: [
-            {
+            f({
               kind: "component",
               ref: "components/email",
               overrides: {
@@ -111,7 +120,7 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
                 isDisabled: true,
                 validations: { required: { error: "This field is required" } },
               },
-            },
+            }),
           ],
           behaviours: [],
         },
@@ -146,12 +155,12 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
           stepId: "step-1",
           title: "Step 1",
           fields: [
-            {
+            f({
               kind: "block",
               ref: "blocks/name",
               overrides: {},
               childOverrides: {},
-            },
+            }),
           ],
           behaviours: [],
         },
@@ -178,7 +187,7 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
           stepId: "step-1",
           title: "Step 1",
           fields: [
-            {
+            f({
               kind: "block",
               ref: "blocks/name",
               overrides: {},
@@ -186,7 +195,7 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
                 "first-name": { label: "Given Name" },
                 "last-name": { label: "Family Name", isDisabled: true },
               },
-            },
+            }),
           ],
           behaviours: [],
         },
@@ -233,11 +242,11 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
           stepId: "step-1",
           title: "Step 1",
           fields: [
-            {
+            f({
               kind: "custom",
               ref: "components/custom-my-widget",
               overrides: {},
-            },
+            }),
           ],
           behaviours: [],
         },
@@ -365,17 +374,17 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
           stepId: "step-1",
           title: "Personal",
           fields: [
-            {
+            f({
               kind: "component",
               ref: "components/text",
               overrides: { label: "Full Name" },
-            },
-            {
+            }),
+            f({
               kind: "block",
               ref: "blocks/name",
               overrides: {},
               childOverrides: {},
-            },
+            }),
           ],
           behaviours: [],
         },
@@ -383,7 +392,7 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
           stepId: "step-2",
           title: "Contact",
           fields: [
-            { kind: "component", ref: "components/email", overrides: {} },
+            f({ kind: "component", ref: "components/email", overrides: {} }),
           ],
           behaviours: [],
         },
@@ -400,6 +409,53 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
     expect(result.steps[1].fields[0].ref).toBe("components/email");
   });
 
+  it("deserializeRecipe stamps a unique editor-only id on every field", () => {
+    // Two instances of the same component on a step. The persisted
+    // recipe is positional (no ids on the wire), but the editor must be
+    // able to tell them apart — deserialize mints a fresh id for each.
+    const draft = makeBaseDraft({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          fields: [
+            f({ kind: "component", ref: "components/text", overrides: {} }),
+            f({ kind: "component", ref: "components/text", overrides: {} }),
+          ],
+          behaviours: [],
+        },
+      ],
+    });
+
+    const recipe = serializeRecipeDraft(draft, { version: "1.0.0" });
+    const result = deserializeRecipe(recipe);
+
+    const [a, b] = result.steps[0].fields;
+    expect(typeof a.id).toBe("string");
+    expect(typeof b.id).toBe("string");
+    expect(a.id).not.toBe(b.id);
+  });
+
+  it("serializeRecipeDraft does not emit the editor-only id on the wire", () => {
+    const draft = makeBaseDraft({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          fields: [
+            f({ kind: "component", ref: "components/text", overrides: {} }),
+          ],
+          behaviours: [],
+        },
+      ],
+    });
+
+    const recipe = serializeRecipeDraft(draft, { version: "1.0.0" });
+    const element = recipe.steps[0].elements[0] as Record<string, unknown>;
+    expect(element.id).toBeUndefined();
+    expect(Object.keys(element)).not.toContain("id");
+  });
+
   it("field-level overrides with only validations.required survive round-trip", () => {
     const draft = makeBaseDraft({
       steps: [
@@ -407,11 +463,11 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
           stepId: "step-1",
           title: "Step 1",
           fields: [
-            {
+            f({
               kind: "component",
               ref: "components/text",
               overrides: { validations: { required: {} } },
-            },
+            }),
           ],
           behaviours: [],
         },

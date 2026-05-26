@@ -94,8 +94,14 @@ export function deserializeRecipe(
               ? "custom"
               : "component";
 
+          // Mint a fresh editor-only instance id for every field. Two
+          // entries with the same `ref` on a step would otherwise be
+          // indistinguishable to the reducer/editor.
+          const id = crypto.randomUUID();
+
           if (kind === "block") {
             return {
+              id,
               kind: "block",
               ref: field.ref,
               overrides: {},
@@ -109,6 +115,7 @@ export function deserializeRecipe(
             };
           } else {
             return {
+              id,
               kind,
               ref: field.ref,
               overrides:

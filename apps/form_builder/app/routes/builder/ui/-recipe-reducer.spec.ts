@@ -330,6 +330,103 @@ describe("LOAD_DRAFT", () => {
   });
 });
 
+// ── Per-instance field overrides (regression: issue #194) ──────────────────
+//
+// Pre-fix, the reducer keyed REMOVE_FIELD and UPDATE_FIELD_OVERRIDES on
+// `ref` — the catalog key — which is shared across instances of the same
+// component on a step. Updating one instance cascaded to all siblings of the
+// same ref. The fix introduces an editor-only per-instance id and switches
+// these lookups to `id`. These tests pin that behaviour.
+
+describe("per-instance field overrides (id-keyed)", () => {
+  function fieldWithId(
+    id: string,
+    ref: string,
+    overrides: Record<string, unknown> = {},
+  ): RecipeFieldDraft {
+    return {
+      id,
+      kind: "component",
+      ref,
+      overrides: overrides as RecipeFieldDraft["overrides"],
+    };
+  }
+
+  describe("ADD_FIELD", () => {
+    it("mints a fresh id on each ADD_FIELD so two instances of the same ref are distinguishable", () => {
+      const state = {
+        ...baseDraft(),
+        steps: [editableStep("step-1"), ...EMPTY_DRAFT.steps],
+      };
+      const after1 = recipeReducer(state, {
+        type: "ADD_FIELD",
+        stepId: "step-1",
+        field: { kind: "component", ref: "components/text", overrides: {} },
+      });
+      const after2 = recipeReducer(after1, {
+        type: "ADD_FIELD",
+        stepId: "step-1",
+        field: { kind: "component", ref: "components/text", overrides: {} },
+      });
+
+      const fields = after2.steps[0].fields;
+      expect(fields).toHaveLength(2);
+      expect(typeof fields[0].id).toBe("string");
+      expect(typeof fields[1].id).toBe("string");
+      expect(fields[0].id).not.toBe(fields[1].id);
+      // Both refs identical (same component twice)
+      expect(fields[0].ref).toBe(fields[1].ref);
+    });
+  });
+
+  describe("UPDATE_FIELD_OVERRIDES", () => {
+    it("updates only the targeted instance when two fields share a ref", () => {
+      const a = fieldWithId("id-a", "components/text", {});
+      const b = fieldWithId("id-b", "components/text", {});
+      const state = {
+        ...baseDraft(),
+        steps: [editableStep("step-1", [a, b]), ...EMPTY_DRAFT.steps],
+      };
+
+      const result = recipeReducer(state, {
+        type: "UPDATE_FIELD_OVERRIDES",
+        stepId: "step-1",
+        fieldId: "id-a",
+        overrides: { label: "Only A" },
+      });
+
+      const [resA, resB] = result.steps[0].fields;
+      expect(resA.id).toBe("id-a");
+      expect(resA.overrides).toEqual({ label: "Only A" });
+      expect(resB.id).toBe("id-b");
+      // B is untouched — the cascade bug would have written here too.
+      expect(resB.overrides).toEqual({});
+    });
+  });
+
+  describe("REMOVE_FIELD", () => {
+    it("removes only the targeted instance when two fields share a ref", () => {
+      const a = fieldWithId("id-a", "components/text", { label: "A" });
+      const b = fieldWithId("id-b", "components/text", { label: "B" });
+      const state = {
+        ...baseDraft(),
+        steps: [editableStep("step-1", [a, b]), ...EMPTY_DRAFT.steps],
+      };
+
+      const result = recipeReducer(state, {
+        type: "REMOVE_FIELD",
+        stepId: "step-1",
+        fieldId: "id-a",
+      });
+
+      const remaining = result.steps[0].fields;
+      expect(remaining).toHaveLength(1);
+      expect(remaining[0].id).toBe("id-b");
+      expect(remaining[0].overrides).toEqual({ label: "B" });
+    });
+  });
+});
+
 // ── nextStepId (integration) ─────────────────────────────────────────────────
 
 describe("nextStepId", () => {

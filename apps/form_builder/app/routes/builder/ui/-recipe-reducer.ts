@@ -43,12 +43,19 @@ export type RecipeAction =
       meta: Partial<Pick<RecipeStepDraft, "stepId" | "title" | "description">>;
     }
   | { type: "SET_STEP_BEHAVIOURS"; stepId: string; behaviours: Behaviour[] }
-  | { type: "ADD_FIELD"; stepId: string; field: RecipeFieldDraft }
-  | { type: "REMOVE_FIELD"; stepId: string; fieldRef: string }
+  | {
+      type: "ADD_FIELD";
+      stepId: string;
+      // Callers pass a draft without `id`; the reducer mints one. Keeps
+      // FieldPicker call sites simple and ensures every step-resident field
+      // has a unique editor id.
+      field: Omit<RecipeFieldDraft, "id">;
+    }
+  | { type: "REMOVE_FIELD"; stepId: string; fieldId: string }
   | {
       type: "UPDATE_FIELD_OVERRIDES";
       stepId: string;
-      fieldRef: string;
+      fieldId: string;
       overrides: FieldOverrides;
       childOverrides?: Record<string, FieldOverrides>;
     }
@@ -138,11 +145,17 @@ export function recipeReducer(
     }
 
     case "ADD_FIELD": {
+      // Mint the editor-only instance id here so callers (e.g. FieldPicker)
+      // stay simple and can keep building plain field drafts.
+      const fieldWithId: RecipeFieldDraft = {
+        ...action.field,
+        id: crypto.randomUUID(),
+      };
       return {
         ...state,
         steps: state.steps.map((s) =>
           s.stepId === action.stepId
-            ? { ...s, fields: [...s.fields, action.field] }
+            ? { ...s, fields: [...s.fields, fieldWithId] }
             : s,
         ),
       };
@@ -155,7 +168,7 @@ export function recipeReducer(
           s.stepId === action.stepId
             ? {
                 ...s,
-                fields: s.fields.filter((f) => f.ref !== action.fieldRef),
+                fields: s.fields.filter((f) => f.id !== action.fieldId),
               }
             : s,
         ),
@@ -170,7 +183,7 @@ export function recipeReducer(
             ? {
                 ...s,
                 fields: s.fields.map((f) =>
-                  f.ref === action.fieldRef
+                  f.id === action.fieldId
                     ? {
                         ...f,
                         overrides: action.overrides,
