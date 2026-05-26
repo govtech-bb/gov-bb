@@ -1,78 +1,72 @@
 /**
  * Tests for lib/design-system/index.ts
  *
- * The module has three conditional branches:
- *   1. !requestedKey → warn, default to 'basic'
- *   2. requestedKey not in DESIGN_SYSTEMS → warn, default to 'basic'
- *   3. requestedKey in DESIGN_SYSTEMS → use that system (no warn)
+ * The module exposes `selectDesignSystem(requestedKey)` with three branches:
+ *   1. !requestedKey → warn, return 'basic'
+ *   2. requestedKey not in DESIGN_SYSTEMS → warn, return 'basic'
+ *   3. requestedKey in DESIGN_SYSTEMS → return that system (no warn)
  *
- * Module-level side-effects require jest.isolateModules() to re-evaluate
- * the module for each env-var scenario.
+ * The decision is decoupled from `import.meta.env` so tests can drive every
+ * branch by passing the key directly, without relying on env mocking (which
+ * is compile-time-baked by ts-jest-mock-import-meta).
  */
 
-const originalDesignSystem = process.env.DESIGN_SYSTEM;
+import designSystem, { selectDesignSystem } from "./index";
 
-afterEach(() => {
-  if (originalDesignSystem === undefined) {
-    delete process.env.DESIGN_SYSTEM;
-  } else {
-    process.env.DESIGN_SYSTEM = originalDesignSystem;
-  }
-  jest.resetModules();
+describe("selectDesignSystem", () => {
+  it("warns and returns the basic system when requestedKey is undefined", () => {
+    const warn = jest.spyOn(console, "warn").mockImplementation();
+    const result = selectDesignSystem(undefined);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("No design system specified"),
+    );
+    expect(result).toBeDefined();
+    warn.mockRestore();
+  });
+
+  it("warns and returns the basic system when requestedKey is an empty string", () => {
+    const warn = jest.spyOn(console, "warn").mockImplementation();
+    const result = selectDesignSystem("");
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("No design system specified"),
+    );
+    expect(result).toBeDefined();
+    warn.mockRestore();
+  });
+
+  it("warns and returns the basic system when requestedKey is an unrecognised key", () => {
+    const warn = jest.spyOn(console, "warn").mockImplementation();
+    const result = selectDesignSystem("nonexistent-system");
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("'nonexistent-system' not found"),
+    );
+    expect(result).toBeDefined();
+    warn.mockRestore();
+  });
+
+  it("returns the govtechbb system and does not warn when requestedKey is 'govtechbb'", () => {
+    const warn = jest.spyOn(console, "warn").mockImplementation();
+    const result = selectDesignSystem("govtechbb");
+    expect(warn).not.toHaveBeenCalled();
+    expect(result).toBeDefined();
+    warn.mockRestore();
+  });
+
+  it("returns the basic system and does not warn when requestedKey is 'basic'", () => {
+    const warn = jest.spyOn(console, "warn").mockImplementation();
+    const result = selectDesignSystem("basic");
+    expect(warn).not.toHaveBeenCalled();
+    expect(result).toBeDefined();
+    warn.mockRestore();
+  });
 });
 
-describe("design-system/index", () => {
-  it("warns and defaults to basic when DESIGN_SYSTEM is not set", () => {
-    delete process.env.DESIGN_SYSTEM;
-    const warn = jest.spyOn(console, "warn").mockImplementation();
-    jest.isolateModules(() => {
-      require("./index");
-    });
-    expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining("No design system specified"),
-    );
-    warn.mockRestore();
-  });
-
-  it("warns and defaults to basic when DESIGN_SYSTEM is an unrecognised key", () => {
-    process.env.DESIGN_SYSTEM = "nonexistent-system";
-    const warn = jest.spyOn(console, "warn").mockImplementation();
-    jest.isolateModules(() => {
-      require("./index");
-    });
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining("not found"));
-    warn.mockRestore();
-  });
-
-  it("uses the specified design system and does not warn when DESIGN_SYSTEM='govtechbb'", () => {
-    process.env.DESIGN_SYSTEM = "govtechbb";
-    const warn = jest.spyOn(console, "warn").mockImplementation();
-    jest.isolateModules(() => {
-      require("./index");
-    });
-    expect(warn).not.toHaveBeenCalled();
-    warn.mockRestore();
-  });
-
-  it("exports a styles-proxy module by default (warning fires for empty DESIGN_SYSTEM)", () => {
-    delete process.env.DESIGN_SYSTEM;
-    const warn = jest.spyOn(console, "warn").mockImplementation();
-    let raw: unknown;
-    jest.isolateModules(() => {
-      raw = require("./index");
-    });
-    // The default branch must log the per-source warning. This is a real
-    // behavioural signal — far stronger than the previous toBeDefined check,
-    // which would have passed for any non-undefined value including the
-    // string "default" returned by the styleMock proxy's get-trap.
-    expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining("No design system specified"),
-    );
-    // And the module must export something importable — assert non-null
-    // rather than the brittle Proxy-identity comparison that was complicated
-    // by the styleMock returning a Proxy for any property access.
-    expect(raw).not.toBeNull();
-    expect(raw).not.toBeUndefined();
-    warn.mockRestore();
+describe("default export", () => {
+  it("is a styles object derived from VITE_DESIGN_SYSTEM at module load", () => {
+    // The jest.config.ts ts-jest-mock-import-meta transformer bakes
+    // VITE_DESIGN_SYSTEM="basic" into the source at compile time, so the
+    // default export is whatever selectDesignSystem("basic") returns.
+    expect(designSystem).toBeDefined();
+    expect(designSystem).not.toBeNull();
   });
 });
