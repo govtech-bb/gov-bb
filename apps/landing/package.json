@@ -8,8 +8,6 @@
   },
   "scripts": {
     "fetch-form-manifest": "node scripts/fetch-form-manifest.mjs",
-    "predev": "pnpm run fetch-form-manifest",
-    "prebuild": "pnpm run fetch-form-manifest",
     "dev": "vite dev --port 3000",
     "build": "vite build",
     "preview": "nitro preview",
