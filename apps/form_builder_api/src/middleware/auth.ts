@@ -3,13 +3,19 @@ import type { Request, Response, NextFunction } from "express";
 
 const ADMIN_TOKEN_HEADER = "x-admin-token";
 
-export function authMiddleware(req: Request, res: Response, next: NextFunction): void {
+export function authMiddleware(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
   const expected = process.env.ADMIN_API_TOKEN;
   const isProd = process.env.NODE_ENV === "production";
 
   if (!expected) {
     if (isProd) {
-      res.status(500).json({ error: "Server misconfigured: ADMIN_API_TOKEN required" });
+      res
+        .status(500)
+        .json({ error: "Server misconfigured: ADMIN_API_TOKEN required" });
       return;
     }
     // Dev passthrough

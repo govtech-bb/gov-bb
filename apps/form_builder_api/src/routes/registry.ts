@@ -7,8 +7,14 @@ import {
   BEHAVIOUR_TYPE_DESCRIPTORS,
   VALIDATION_RULE_DESCRIPTORS,
 } from "@govtech-bb/form-builder";
-import type { RegistryCatalog, CustomComponentEntry } from "@govtech-bb/form-builder";
-import type { ServiceContractRecipe, ServiceContract } from "@govtech-bb/form-types";
+import type {
+  RegistryCatalog,
+  CustomComponentEntry,
+} from "@govtech-bb/form-builder";
+import type {
+  ServiceContractRecipe,
+  ServiceContract,
+} from "@govtech-bb/form-types";
 import { CustomComponent } from "@govtech-bb/database";
 import { getDataSource } from "../db.js";
 

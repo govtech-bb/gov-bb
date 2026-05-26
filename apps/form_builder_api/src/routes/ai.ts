@@ -55,7 +55,13 @@ aiRouter.post("/sessions", async (req, res) => {
       ? `${basePrompt}\n\n## Live Custom Components (from database)\n${componentList}`
       : basePrompt;
 
-    const session: Session = { id, name, messages: [], recipe: null, systemPrompt };
+    const session: Session = {
+      id,
+      name,
+      messages: [],
+      recipe: null,
+      systemPrompt,
+    };
     sessions.set(id, session);
 
     res.status(201).json({ sessionId: id, messages: [], recipe: null });
@@ -71,7 +77,11 @@ aiRouter.get("/sessions/:id", (req, res) => {
     res.status(404).json({ error: "Session not found" });
     return;
   }
-  res.json({ sessionId: session.id, messages: session.messages, recipe: session.recipe });
+  res.json({
+    sessionId: session.id,
+    messages: session.messages,
+    recipe: session.recipe,
+  });
 });
 
 // POST /builder/ai/sessions/:id/message
@@ -98,7 +108,11 @@ aiRouter.post("/sessions/:id/message", async (req, res) => {
     }
 
     session.messages.push({ role: "user", content: message });
-    const assistantText = await chat(session.systemPrompt, session.messages, session.pdfPages);
+    const assistantText = await chat(
+      session.systemPrompt,
+      session.messages,
+      session.pdfPages,
+    );
     session.messages.push({ role: "assistant", content: assistantText });
 
     let recipe = extractRecipe(assistantText);
@@ -112,7 +126,11 @@ aiRouter.post("/sessions/:id/message", async (req, res) => {
     }
     if (recipe) session.recipe = recipe;
 
-    res.json({ sessionId: session.id, messages: session.messages, recipe: session.recipe });
+    res.json({
+      sessionId: session.id,
+      messages: session.messages,
+      recipe: session.recipe,
+    });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -219,7 +237,9 @@ aiRouter.post("/sessions/:id/delete", async (req, res) => {
       return;
     }
     const ds = await getDataSource();
-    await ds.getRepository(FormDefinitionEntity).delete({ formId: session.publishedFormId });
+    await ds
+      .getRepository(FormDefinitionEntity)
+      .delete({ formId: session.publishedFormId });
     const deleted = session.publishedFormId;
     session.publishedFormId = undefined;
     res.json({ message: `Form "${deleted}" deleted.` });

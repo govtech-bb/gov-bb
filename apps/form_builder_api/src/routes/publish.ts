@@ -36,7 +36,9 @@ publishRouter.post("/", async (req, res) => {
       headers: authHeaders(token),
     });
     if (!refRes.ok) {
-      res.status(502).json({ error: `Failed to read dev branch: ${refRes.status}` });
+      res
+        .status(502)
+        .json({ error: `Failed to read dev branch: ${refRes.status}` });
       return;
     }
     const refJson = (await refRes.json()) as { object: { sha: string } };
@@ -50,7 +52,9 @@ publishRouter.post("/", async (req, res) => {
       body: JSON.stringify({ ref: `refs/heads/${branch}`, sha: baseSha }),
     });
     if (!createRefRes.ok) {
-      res.status(502).json({ error: `Failed to create branch: ${createRefRes.status}` });
+      res
+        .status(502)
+        .json({ error: `Failed to create branch: ${createRefRes.status}` });
       return;
     }
 
@@ -85,7 +89,10 @@ publishRouter.post("/", async (req, res) => {
       if (!prRes.ok) {
         throw new Error(`Failed to open PR: ${prRes.status}`);
       }
-      const prJson = (await prRes.json()) as { number: number; html_url: string };
+      const prJson = (await prRes.json()) as {
+        number: number;
+        html_url: string;
+      };
       res.json({ prUrl: prJson.html_url, prNumber: prJson.number });
     } catch (err: any) {
       // Cleanup branch on failure

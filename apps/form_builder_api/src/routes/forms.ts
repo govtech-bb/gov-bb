@@ -1,6 +1,9 @@
 import { Router } from "express";
 import { FormDefinitionEntity } from "@govtech-bb/database";
-import { serviceContractRecipeSchema, type ServiceContractRecipe } from "@govtech-bb/form-types";
+import {
+  serviceContractRecipeSchema,
+  type ServiceContractRecipe,
+} from "@govtech-bb/form-types";
 import { getDataSource } from "../db.js";
 
 export const formsRouter = Router();
@@ -41,7 +44,9 @@ formsRouter.get("/:formId", async (req, res) => {
       [req.params.formId],
     );
     if (!rows.length) {
-      res.status(404).json({ error: `No recipe found for formId: ${req.params.formId}` });
+      res
+        .status(404)
+        .json({ error: `No recipe found for formId: ${req.params.formId}` });
       return;
     }
     res.json(rows[0].schema);
@@ -89,7 +94,11 @@ formsRouter.post("/", async (req, res) => {
       where: { formId: recipe.formId, version: recipe.version },
     });
     if (existing) {
-      res.status(409).json({ error: `Recipe ${recipe.formId} v${recipe.version} already exists` });
+      res
+        .status(409)
+        .json({
+          error: `Recipe ${recipe.formId} v${recipe.version} already exists`,
+        });
       return;
     }
     const entity = repo.create({
@@ -118,7 +127,9 @@ formsRouter.put("/:formId", async (req, res) => {
       [req.params.formId],
     );
     if (!rows.length) {
-      res.status(404).json({ error: `No recipe found for formId: ${req.params.formId}` });
+      res
+        .status(404)
+        .json({ error: `No recipe found for formId: ${req.params.formId}` });
       return;
     }
     if (rows[0].published_at !== null) {
@@ -126,10 +137,17 @@ formsRouter.put("/:formId", async (req, res) => {
       return;
     }
     if (recipe.version !== rows[0].version) {
-      res.status(409).json({ error: `Version mismatch: stored=${rows[0].version}, provided=${recipe.version}` });
+      res
+        .status(409)
+        .json({
+          error: `Version mismatch: stored=${rows[0].version}, provided=${recipe.version}`,
+        });
       return;
     }
-    await ds.query(`UPDATE form_definitions SET schema = $1 WHERE id = $2`, [recipe, rows[0].id]);
+    await ds.query(`UPDATE form_definitions SET schema = $1 WHERE id = $2`, [
+      recipe,
+      rows[0].id,
+    ]);
     res.json({ ok: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
