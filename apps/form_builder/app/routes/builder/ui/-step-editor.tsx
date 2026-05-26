@@ -9,24 +9,16 @@ import { getRegistryItem } from "@govtech-bb/form-builder";
 import type { Behaviour } from "@govtech-bb/form-types";
 import type { RecipeAction } from "./-recipe-reducer";
 import { isRequiredStep } from "./-recipe-reducer";
+import { KEBAB_ID_PATTERN, kebabize } from "./-id-validation";
 import { getFieldRefs, getStepRefs } from "./-recipe-refs";
 import { BehavioursEditor } from "./-behaviours-editor";
 import { FieldPicker } from "./-field-picker";
 import { FieldEditPanel } from "./-field-edit-panel";
 import styles from "../../../styles/builder.module.css";
 
-const STEP_ID_PATTERN = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
 const STEP_ID_ERROR =
   "Use lowercase letters, digits, and hyphens only. Must start with a letter (e.g. my-step, step-1).";
 const STEP_ID_DEFAULT_PATTERN = /^step-\d+$/;
-
-function kebabize(input: string): string {
-  return input
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
 
 interface StepEditorProps {
   step: RecipeStepDraft;
@@ -64,7 +56,7 @@ export function StepEditor({
 
   function handleStepIdChange(newId: string) {
     setLocalStepId(newId);
-    if (!STEP_ID_PATTERN.test(newId)) {
+    if (!KEBAB_ID_PATTERN.test(newId)) {
       setStepIdError(STEP_ID_ERROR);
       return;
     }
