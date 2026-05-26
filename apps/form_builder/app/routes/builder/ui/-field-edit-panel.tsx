@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { getRegistryItem } from "@govtech-bb/form-builder";
+import { getRegistryItem, fieldIdDuplicatesAnother } from "@govtech-bb/form-builder";
 import type {
   RecipeFieldDraft,
   RegistryCatalog,
@@ -18,6 +18,8 @@ import styles from "../../../styles/builder.module.css";
 
 const FIELD_ID_ERROR =
   "Use lowercase letters, digits, and hyphens only. Must start with a letter (e.g. applicant-first-name).";
+const FIELD_ID_DUPLICATE_ERROR =
+  "This Field ID is already used by another field. Field IDs must be unique within a form.";
 
 interface FieldEditPanelProps {
   field: RecipeFieldDraft;
@@ -34,6 +36,9 @@ interface OverrideFormProps {
   fieldRefs: FieldRef[];
   stepRefs: StepRef[];
   onChange: (overrides: FieldOverrides) => void;
+  // Returns true when the candidate Field ID Override duplicates another field's
+  // resolved id. Omitted for block-child forms (deferred to the recipe-wide gate).
+  checkDuplicateFieldId?: (candidateId: string) => boolean;
 }
 
 function OverrideForm({
@@ -42,8 +47,11 @@ function OverrideForm({
   fieldRefs,
   stepRefs,
   onChange,
+  checkDuplicateFieldId,
 }: OverrideFormProps) {
   const [fieldIdError, setFieldIdError] = useState("");
+  const fieldIdDuplicate =
+    checkDuplicateFieldId?.(overrides.fieldId ?? "") ?? false;
 
   function patch(partial: Partial<FieldOverrides>) {
     onChange({ ...overrides, ...partial });
@@ -74,12 +82,18 @@ function OverrideForm({
             setFieldIdError("");
           }}
           placeholder="Leave blank to use default"
-          aria-invalid={fieldIdError ? true : undefined}
+          aria-invalid={fieldIdError || fieldIdDuplicate ? true : undefined}
         />
-        {fieldIdError && (
+        {fieldIdError ? (
           <span role="alert" style={{ fontSize: "0.75rem", color: "red" }}>
             {fieldIdError}
           </span>
+        ) : (
+          fieldIdDuplicate && (
+            <span role="alert" style={{ fontSize: "0.75rem", color: "red" }}>
+              {FIELD_ID_DUPLICATE_ERROR}
+            </span>
+          )
         )}
       </div>
       <div className={fg(overrides.label !== undefined && overrides.label !== "")}>
@@ -264,6 +278,9 @@ export function FieldEditPanel({
             fieldRefs={fieldRefs}
             stepRefs={stepRefs}
             onChange={setOverrides}
+            checkDuplicateFieldId={(candidate) =>
+              fieldIdDuplicatesAnother(draft, catalog, field.id, candidate)
+            }
           />
         )}
 

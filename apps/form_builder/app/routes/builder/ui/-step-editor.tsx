@@ -18,6 +18,8 @@ import styles from "../../../styles/builder.module.css";
 
 const STEP_ID_ERROR =
   "Use lowercase letters, digits, and hyphens only. Must start with a letter (e.g. my-step, step-1).";
+const STEP_ID_DUPLICATE_ERROR =
+  "This Step ID is already used by another step. Step IDs must be unique within a form.";
 const STEP_ID_DEFAULT_PATTERN = /^step-\d+$/;
 
 interface StepEditorProps {
@@ -58,6 +60,14 @@ export function StepEditor({
     setLocalStepId(newId);
     if (!KEBAB_ID_PATTERN.test(newId)) {
       setStepIdError(STEP_ID_ERROR);
+      return;
+    }
+    // Reject a stepId that collides with another step (recipe-wide uniqueness).
+    const duplicate = draft.steps.some(
+      (s) => s.stepId !== step.stepId && s.stepId === newId,
+    );
+    if (duplicate) {
+      setStepIdError(STEP_ID_DUPLICATE_ERROR);
       return;
     }
     setStepIdError("");
