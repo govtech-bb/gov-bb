@@ -30,7 +30,7 @@ function parseVersion(v: string): number[] {
 }
 
 /** Returns positive if a > b, negative if a < b, 0 if equal. */
-function compareSemver(a: string, b: string): number {
+export function compareSemver(a: string, b: string): number {
   const aa = parseVersion(a);
   const bb = parseVersion(b);
   const len = Math.max(aa.length, bb.length);
