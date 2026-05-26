@@ -51,7 +51,7 @@ function Home() {
       <section className="border-b-4 border-teal-100 bg-green-10">
         <div className="container">
           <div className="space-y-m py-m">
-            <Heading as="h3">Or search all government services directly</Heading>
+            <Heading as="h4">Or search all government services directly</Heading>
             <Search
               action="/search-results"
               name="q"
@@ -66,7 +66,7 @@ function Home() {
       <section>
         <div className="container">
           <div className="space-y-m py-m lg:py-l">
-            <Heading as="h1" className="text-balance">All government services</Heading>
+            <Heading as="h2" className="text-balance">All government services</Heading>
             <ul className="m-0 flex list-none flex-col p-0">
               {CATEGORIES.map((cat) => (
                 <li
