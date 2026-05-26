@@ -315,22 +315,21 @@ auto-sends on mount.
 | --------------- | ----------- | ---------------------------------------------------------------------------------------- |
 | `VITE_CHAT_URL` | build time  | Base URL of the deployed chat app. Used for both the health probe and the submit handoff. |
 
-`vite.config.ts` bakes a branch-aware default at build time based on
-`$AWS_BRANCH` (Amplify-injected): `main` → `https://chat.alpha.gov.bb`,
-anything else → `https://chat.sandbox.alpha.gov.bb`. So sandbox and
-prod deploys work with no Amplify Console config.
+`ChatAssistant` defaults to `https://chat.sandbox.alpha.gov.bb` in code
+when `VITE_CHAT_URL` is unset, so deploys work with no Amplify Console
+config.
 
-To override (e.g. point the sandbox build at a feature branch's chat
-deploy, or run landing locally against a localhost chat instance), set
-`VITE_CHAT_URL` explicitly:
+To override (e.g. run landing locally against a localhost chat instance,
+or point a build at a different chat deploy), set `VITE_CHAT_URL`
+explicitly:
 
 - **Local**: add `VITE_CHAT_URL=http://localhost:3001` to
   `apps/landing/.env.local`.
 - **Amplify**: App settings → Environment variables → add
-  `VITE_CHAT_URL=<url>` scoped to the branch you want to override. **Then
-  trigger a rebuild** — the value is baked at build time, not read at
-  runtime (Amplify Hosting Compute doesn't reliably pass env to the SSR
-  Lambda at runtime, so the whole repo bakes config at build).
+  `VITE_CHAT_URL=<url>`. **Then trigger a rebuild** — the value is baked
+  at build time, not read at runtime (Amplify Hosting Compute doesn't
+  reliably pass env to the SSR Lambda at runtime, so the whole repo bakes
+  config at build).
 
 ### Why build-time, not runtime
 

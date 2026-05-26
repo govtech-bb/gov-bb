@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { Button, Heading, Input, Text } from '@govtech-bb/react'
 import { trackEvent } from '../lib/analytics'
 
-const CHAT_URL: string | undefined = import.meta.env.VITE_CHAT_URL
+const CHAT_URL =
+  import.meta.env.VITE_CHAT_URL || 'https://chat.sandbox.alpha.gov.bb'
 
 const MAX_QUERY_LENGTH = 2000
 
@@ -30,11 +31,6 @@ export function ChatAssistant({
   questions = DEFAULT_QUESTIONS,
   source = 'home',
 }: ChatAssistantProps) {
-  if (!CHAT_URL) {
-    throw new Error(
-      'VITE_CHAT_URL is required (e.g. https://chat.sandbox.alpha.gov.bb)',
-    )
-  }
   const chatUrl = CHAT_URL
 
   const [input, setInput] = useState('')
