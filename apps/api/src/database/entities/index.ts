@@ -12,3 +12,4 @@ export {
   PaymentTransactionEntity,
   PaymentTransactionStatus,
 } from "./payment-transaction.entity";
+export { FormDisabledOverrideEntity } from "./form-disabled-override.entity";

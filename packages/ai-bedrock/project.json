@@ -1,0 +1,22 @@
+{
+  "name": "ai-bedrock",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/ai-bedrock/src",
+  "projectType": "library",
+  "targets": {
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm test",
+        "cwd": "packages/ai-bedrock"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "lintFilePatterns": ["packages/ai-bedrock/**/*.ts"]
+      }
+    }
+  },
+  "tags": []
+}

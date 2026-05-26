@@ -268,7 +268,7 @@ export const removeRepeatableStep = ({
     if (pos !== -1) {
       currentRepeatConfig.orderedStepIds.splice(
         pos,
-        currentRepeatConfig.orderedStepIds.length - 2,
+        currentRepeatConfig.orderedStepIds.length - pos,
       );
     }
     return visibleSteps;

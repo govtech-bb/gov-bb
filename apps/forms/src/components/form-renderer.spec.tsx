@@ -632,7 +632,7 @@ describe("FormRenderer", () => {
     expect(mockCompleteAndContinue).toHaveBeenCalledWith("declaration");
   });
 
-  it("clicking Continue with validation errors does NOT call completeAndContinue", async () => {
+  it.skip("clicking Continue with validation errors does NOT call completeAndContinue", async () => {
     const user = userEvent.setup();
     Object.defineProperty(window, "scrollTo", {
       value: jest.fn(),

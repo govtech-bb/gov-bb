@@ -5,6 +5,7 @@ stage: "alpha"
 featured: false
 publish_date: 2026-01-30
 category: family-birth-relationships
+form_id: get-death-certificate
 ---
 
 This service can be used to get a copy of a death certificate for anyone whose death was registered in Barbados.

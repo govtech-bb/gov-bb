@@ -3,6 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useReducer, useState, useRef, useEffect } from "react";
 import { getCatalogFn } from "../../../server/registry";
 import { listForms, nextVersion, submitRecipe, updateRecipe } from "../../../server/forms";
+import { publishRecipe } from "../../../server/publish";
 import { validateRecipe, previewRecipe } from "../../../server/registry";
 import { serializeRecipeDraft } from "@govtech-bb/form-builder";
 import { bumpMinor } from "../../../lib/version";
@@ -16,6 +17,7 @@ import { StepEditor } from "./-step-editor";
 import { ValidationPanel } from "./-validation-panel";
 import { PreviewModal } from "./-preview-modal";
 import { SubmitModal } from "./-submit-modal";
+import { PublishModal } from "./-publish-modal";
 import { FormPicker } from "./-form-picker";
 
 import styles from "../../../styles/builder.module.css";
@@ -52,6 +54,12 @@ function BuilderPage() {
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [isSubmitOpen, setIsSubmitOpen] = useState(false);
+  const [isPublishOpen, setIsPublishOpen] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [publishSuccess, setPublishSuccess] = useState<
+    { prUrl: string; prNumber: number } | null
+  >(null);
+  const [publishError, setPublishError] = useState<string | null>(null);
   const [lastSaveStatus, setLastSaveStatus] = useState<"idle" | "success" | "error" | "submitted">("idle");
 
   // Derived
@@ -200,6 +208,34 @@ function BuilderPage() {
     }
   };
 
+  const handleOpenPublish = () => {
+    setPublishSuccess(null);
+    setPublishError(null);
+    setIsPublishOpen(true);
+  };
+
+  const handlePublish = async (description: string) => {
+    setIsPublishing(true);
+    setPublishError(null);
+    try {
+      const recipe = serializeRecipeDraft(draft, { version });
+      const result = await publishRecipe({
+        data: { recipe, description },
+      });
+      setPublishSuccess(result);
+    } catch (e) {
+      setPublishError(e instanceof Error ? e.message : "Publish failed");
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  const handleClosePublish = () => {
+    setIsPublishOpen(false);
+    setPublishSuccess(null);
+    setPublishError(null);
+  };
+
   const handleLoad = (loadedDraft: RecipeDraft, formId: string, ver: string) => {
     dispatch({ type: "LOAD_DRAFT", draft: loadedDraft });
     setLoadedFromId(formId);
@@ -279,6 +315,7 @@ function BuilderPage() {
         isValidating={isValidating}
         isPreviewing={isPreviewing}
         isSubmitting={isSubmitting}
+        isPublishing={isPublishing}
         canSubmit={canSubmit}
         lastSaveStatus={lastSaveStatus}
         onFormIdChange={handleFormIdChange}
@@ -288,6 +325,7 @@ function BuilderPage() {
         onValidate={handleValidate}
         onPreview={handlePreview}
         onSubmit={() => { setSubmitSuccess(false); setSubmitError(null); setIsSubmitOpen(true); }}
+        onPublish={handleOpenPublish}
       />
 
       <div className={styles.builderBody}>
@@ -347,6 +385,18 @@ function BuilderPage() {
           submitError={submitError}
           onSubmit={handleSubmit}
           onClose={() => setIsSubmitOpen(false)}
+        />
+      )}
+
+      {isPublishOpen && (
+        <PublishModal
+          draft={draft}
+          version={version}
+          isPublishing={isPublishing}
+          publishSuccess={publishSuccess}
+          publishError={publishError}
+          onPublish={handlePublish}
+          onClose={handleClosePublish}
         />
       )}
     </div>

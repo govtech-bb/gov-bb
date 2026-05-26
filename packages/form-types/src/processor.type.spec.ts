@@ -89,6 +89,41 @@ describe("processorSchema (author-time)", () => {
       }).success,
     ).toBe(true);
   });
+
+  it("accepts webhook with literal url and applies defaults", () => {
+    const parsed = processorSchema.safeParse({
+      type: "webhook",
+      config: { url: "https://hooks.example.gov.bb/submissions" },
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success && parsed.data.type === "webhook") {
+      expect(parsed.data.config.method).toBe("POST");
+      expect(parsed.data.config.signatureHeader).toBe("X-Webhook-Signature");
+      expect(parsed.data.config.timeoutMs).toBe(10_000);
+    }
+  });
+
+  it("accepts webhook with a JSONLogic-rule url", () => {
+    expect(
+      processorSchema.safeParse({
+        type: "webhook",
+        config: {
+          url: {
+            cat: ["https://hooks.example.gov.bb/", { var: "values.dept" }],
+          },
+        },
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects webhook whose secret is shorter than 16 chars", () => {
+    expect(
+      processorSchema.safeParse({
+        type: "webhook",
+        config: { url: "https://hooks.example.gov.bb/x", secret: "tooshort" },
+      }).success,
+    ).toBe(false);
+  });
 });
 
 describe("resolvedProcessorSchema (post-resolution)", () => {
@@ -134,6 +169,15 @@ describe("resolvedProcessorSchema (post-resolution)", () => {
           recipientField: "personal.email",
           subject: { cat: ["Hi ", { var: "values.x" }] },
         },
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects webhook whose url is still a JSONLogic rule", () => {
+    expect(
+      resolvedProcessorSchema.safeParse({
+        type: "webhook",
+        config: { url: { var: "values.url" } },
       }).success,
     ).toBe(false);
   });
