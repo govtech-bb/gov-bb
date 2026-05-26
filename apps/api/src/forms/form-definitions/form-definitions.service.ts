@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { FormDefinitionRepository } from "./form-definition.repository";
 import { RecipeFileLoaderService } from "./recipe-file-loader.service";
@@ -13,6 +13,8 @@ type RecipeSource = "db" | "files";
 
 @Injectable()
 export class FormDefinitionsService {
+  private readonly logger = new Logger(FormDefinitionsService.name);
+
   constructor(
     private readonly formDefRepo: FormDefinitionRepository,
     private readonly registryService: RegistryService,
@@ -21,8 +23,22 @@ export class FormDefinitionsService {
   ) {}
 
   private source(): RecipeSource {
-    const raw = this.configService.get<string>("RECIPE_SOURCE", "db");
-    return raw === "files" ? "files" : "db";
+    const raw = this.configService.get<string>("RECIPE_SOURCE", "files");
+    if (raw === "db") {
+      // Honour `db` only as a dev iteration escape hatch. Outside of
+      // development (e.g. NODE_ENV=production, =test), force `files` so
+      // unpublished `form_definitions` rows can't leak to end users.
+      // See issue #145.
+      const nodeEnv = this.configService.get<string>("NODE_ENV");
+      if (nodeEnv !== "development") {
+        this.logger.warn(
+          `RECIPE_SOURCE=db is only honored when NODE_ENV=development (got NODE_ENV=${nodeEnv ?? "undefined"}); falling back to "files".`,
+        );
+        return "files";
+      }
+      return "db";
+    }
+    return "files";
   }
 
   async findAll(): Promise<{ formId: string; title: string }[]> {
@@ -53,7 +69,7 @@ export class FormDefinitionsService {
     version?: string;
     includeProcessors?: boolean;
   }): Promise<ServiceContract> {
-    const recipe = await this.loadRecipe({ formId, version });
+    const recipe = await this.getRecipe({ formId, version });
     if (!recipe) {
       throw AppError.notFound("Form definition", { formId, version });
     }
@@ -65,7 +81,13 @@ export class FormDefinitionsService {
     return stripped as ServiceContract;
   }
 
-  private async loadRecipe({
+  /**
+   * Resolve a raw recipe by formId (and optional version) from the configured
+   * source. Public so other services (e.g. FormDraftsService) can pin draft
+   * `formVersion` without reaching into the `form_definitions` table directly
+   * — which would expose unpublished builder scratch space (issue #145).
+   */
+  async getRecipe({
     formId,
     version,
   }: {
