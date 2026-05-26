@@ -11,8 +11,11 @@ import { presentChoicesDef, submitFormDef } from "#/lib/chat-tools";
 
 export const Route = createFileRoute("/")({ component: ChatPage });
 
+const MAX_QUERY_LENGTH = 2000;
+
 function ChatPage() {
   const [input, setInput] = useState("");
+  const [pendingQuery, setPendingQuery] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   // Citations keyed by assistant messageId. Populated from the `citations`
   // custom event the server emits right after TEXT_MESSAGE_START.
@@ -43,9 +46,28 @@ function ChatPage() {
 
   const isStreaming = status === "submitted" || status === "streaming";
 
+  const autoSentRef = useRef(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot mount effect; sendMessage identity is irrelevant, autoSentRef guards re-entry.
+  useEffect(() => {
+    if (autoSentRef.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get("q")?.trim().slice(0, MAX_QUERY_LENGTH);
+    if (!q) return;
+    autoSentRef.current = true;
+    const url = new URL(window.location.href);
+    url.searchParams.delete("q");
+    window.history.replaceState({}, "", url.toString());
+    setPendingQuery(q);
+    sendMessage(q);
+  }, []);
+
+  useEffect(() => {
+    if (messages.length > 0) setPendingQuery(null);
+  }, [messages.length]);
+
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
-  }, [messages.length]);
+  }, [messages.length, pendingQuery]);
 
   const pickChoice = useCallback(
     (choice: string) => {
@@ -91,6 +113,12 @@ function ChatPage() {
       <main className="flex-1 overflow-y-auto px-s pb-s" ref={scrollRef}>
         <div className="mx-auto max-w-2xl space-y-s py-s">
           <WelcomeBubble />
+          {pendingQuery && messages.length === 0 && (
+            <>
+              <OptimisticUserBubble text={pendingQuery} />
+              <ThinkingIndicator />
+            </>
+          )}
           {messages.map((m, i) => (
             <Bubble
               key={m.id}
@@ -101,7 +129,7 @@ function ChatPage() {
               citations={citationsByMessageId[m.id]}
             />
           ))}
-          {shouldShowThinking(messages) && <ThinkingIndicator />}
+          {messages.length > 0 && shouldShowThinking(messages) && <ThinkingIndicator />}
           {error && (
             <div className="rounded-md bg-red-10 px-3 py-2 text-red-00 text-sm">
               {error.message}
@@ -162,6 +190,16 @@ function ChatHeader() {
         <TridentAvatar size="sm" tone="filled" />
       </div>
     </header>
+  );
+}
+
+function OptimisticUserBubble({ text }: { text: string }) {
+  return (
+    <div className="flex justify-end">
+      <div className="text-bubble max-w-[75%] rounded-[16px_16px_4px_16px] bg-blue-100 px-4 py-2.5 text-white-00">
+        {text}
+      </div>
+    </div>
   );
 }
 
