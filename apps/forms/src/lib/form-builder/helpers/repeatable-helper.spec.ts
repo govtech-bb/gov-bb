@@ -557,7 +557,7 @@ describe("removeRepeatableStep", () => {
     expect(result).toBe(visibleSteps);
   });
 
-  it.skip("removes the orphan id from orderedStepIds when targetStep is not in visibleSteps", () => {
+  it("removes the orphan id from orderedStepIds when targetStep is not in visibleSteps", () => {
     const step = makeStep("personalInfo", ["firstName"]);
     // personalInfo~1 is in orderedStepIds but not in visibleSteps
     const repeatSettings: RepeatableStepSettings = {
@@ -580,11 +580,6 @@ describe("removeRepeatableStep", () => {
 
     // No crash; visibleSteps returned unfiltered
     expect(result).toBe(visibleSteps);
-    // Currently RED: repeatable-helper.ts:269-272 does
-    // `splice(pos, orderedStepIds.length - 2)`, which is splice(1, 0) (no-op)
-    // when orderedStepIds.length === 2 and pos === 1. The dangling orphan id
-    // is therefore never removed from settings. This pins the intended
-    // behaviour: the orphan must be cleaned up. Source fix tracked separately.
     expect(repeatSettings.personalInfo.orderedStepIds).not.toContain(
       "personalInfo~1",
     );

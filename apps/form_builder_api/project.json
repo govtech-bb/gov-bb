@@ -1,1 +1,15 @@
-{"name":"form-builder-api","sourceRoot":"apps/form_builder_api/src","projectType":"application","targets":{"build":{"executor":"nx:run-commands","options":{"commands":["pnpm exec tsc","pnpm exec tsc-alias"],"cwd":"apps/form_builder_api"},"dependsOn":["^build"]}}}
+{
+  "name": "form-builder-api",
+  "sourceRoot": "apps/form_builder_api/src",
+  "projectType": "application",
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": ["pnpm exec tsc", "pnpm exec tsc-alias"],
+        "cwd": "apps/form_builder_api"
+      },
+      "dependsOn": ["^build"]
+    }
+  }
+}

@@ -99,7 +99,14 @@ jest.mock("@forms/lib", () => ({
   getRepeatStepCount: jest.fn(() => undefined),
 }));
 
+jest.mock("../lib/env", () => ({
+  isDevMode: jest.fn(() => true),
+}));
+
 import FormRenderer from "./form-renderer";
+import { isDevMode } from "../lib/env";
+
+const mockIsDevMode = isDevMode as jest.Mock;
 
 const mockUseStore = useStore as jest.Mock;
 const mockUseStepGuard = useStepGuard as jest.Mock;
@@ -632,7 +639,8 @@ describe("FormRenderer", () => {
     expect(mockCompleteAndContinue).toHaveBeenCalledWith("declaration");
   });
 
-  it.skip("clicking Continue with validation errors does NOT call completeAndContinue", async () => {
+  it("clicking Continue with validation errors does NOT call completeAndContinue (production mode)", async () => {
+    mockIsDevMode.mockReturnValue(false);
     const user = userEvent.setup();
     Object.defineProperty(window, "scrollTo", {
       value: jest.fn(),
