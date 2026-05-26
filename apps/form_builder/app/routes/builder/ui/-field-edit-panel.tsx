@@ -13,7 +13,11 @@ import { getFieldRefs, getStepRefs } from "./-recipe-refs";
 import type { RecipeAction } from "./-recipe-reducer";
 import { ValidationRulesEditor } from "./-validation-rules-editor";
 import { BehavioursEditor } from "./-behaviours-editor";
+import { KEBAB_ID_PATTERN, kebabize } from "./-id-validation";
 import styles from "../../../styles/builder.module.css";
+
+const FIELD_ID_ERROR =
+  "Use lowercase letters, digits, and hyphens only. Must start with a letter (e.g. applicant-first-name).";
 
 interface FieldEditPanelProps {
   field: RecipeFieldDraft;
@@ -39,6 +43,8 @@ function OverrideForm({
   stepRefs,
   onChange,
 }: OverrideFormProps) {
+  const [fieldIdError, setFieldIdError] = useState("");
+
   function patch(partial: Partial<FieldOverrides>) {
     onChange({ ...overrides, ...partial });
   }
@@ -54,9 +60,27 @@ function OverrideForm({
         <input
           type="text"
           value={overrides.fieldId ?? ""}
-          onChange={(e) => patch({ fieldId: e.target.value || undefined })}
+          onChange={(e) => {
+            const value = e.target.value;
+            patch({ fieldId: value || undefined });
+            setFieldIdError(
+              value !== "" && !KEBAB_ID_PATTERN.test(value) ? FIELD_ID_ERROR : "",
+            );
+          }}
+          onBlur={(e) => {
+            const value = e.target.value;
+            const normalized = kebabize(value);
+            if (normalized !== value) patch({ fieldId: normalized || undefined });
+            setFieldIdError("");
+          }}
           placeholder="Leave blank to use default"
+          aria-invalid={fieldIdError ? true : undefined}
         />
+        {fieldIdError && (
+          <span role="alert" style={{ fontSize: "0.75rem", color: "red" }}>
+            {fieldIdError}
+          </span>
+        )}
       </div>
       <div className={fg(overrides.label !== undefined && overrides.label !== "")}>
         <label>Label</label>
