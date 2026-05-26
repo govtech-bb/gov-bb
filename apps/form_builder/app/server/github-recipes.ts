@@ -3,6 +3,11 @@ export const REPO_NAME = "gov-bb";
 
 const API_BASE = "https://api.github.com";
 
+// Colocated with the API form-definitions module so the API loader, the dump
+// script, the Dockerfile, the publish flow, and this read path all share one
+// canonical location. See plan/issue #145.
+const RECIPES_BASE = "apps/api/src/forms/form-definitions/recipes";
+
 export interface PublishedFormSummary {
   formId: string;
   title: string;
@@ -68,18 +73,18 @@ export async function listPublishedForms(
   token: string,
 ): Promise<PublishedFormSummary[]> {
   const top = await ghGet(
-    `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/recipes`,
+    `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${RECIPES_BASE}`,
     token,
   );
   if (top.status === 404) return [];
   if (top.status < 200 || top.status >= 300) {
     throw new Error(
-      `GitHub Contents API returned ${top.status} for recipes/: ${JSON.stringify(top.body)}`,
+      `GitHub Contents API returned ${top.status} for ${RECIPES_BASE}/: ${JSON.stringify(top.body)}`,
     );
   }
   if (!Array.isArray(top.body)) {
     throw new Error(
-      `Expected recipes/ to be a directory listing, got a non-array response`,
+      `Expected ${RECIPES_BASE}/ to be a directory listing, got a non-array response`,
     );
   }
   const entries = top.body as ContentsListEntry[];
@@ -122,18 +127,18 @@ export async function getPublishedRecipe(
 
 async function listVersions(token: string, formId: string): Promise<string[]> {
   const res = await ghGet(
-    `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/recipes/${encodeURIComponent(formId)}`,
+    `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${RECIPES_BASE}/${encodeURIComponent(formId)}`,
     token,
   );
   if (res.status === 404) return [];
   if (res.status < 200 || res.status >= 300) {
     throw new Error(
-      `GitHub Contents API returned ${res.status} for recipes/${formId}: ${JSON.stringify(res.body)}`,
+      `GitHub Contents API returned ${res.status} for ${RECIPES_BASE}/${formId}: ${JSON.stringify(res.body)}`,
     );
   }
   if (!Array.isArray(res.body)) {
     throw new Error(
-      `Expected recipes/${formId} to be a directory listing, got a non-array response`,
+      `Expected ${RECIPES_BASE}/${formId} to be a directory listing, got a non-array response`,
     );
   }
   const entries = res.body as ContentsListEntry[];
@@ -148,11 +153,13 @@ async function fetchRecipeFile(
   version: string,
 ): Promise<Record<string, unknown>> {
   const res = await ghGet(
-    `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/recipes/${encodeURIComponent(formId)}/${encodeURIComponent(version)}.json`,
+    `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${RECIPES_BASE}/${encodeURIComponent(formId)}/${encodeURIComponent(version)}.json`,
     token,
   );
   if (res.status === 404) {
-    throw new Error(`Recipe not found: recipes/${formId}/${version}.json`);
+    throw new Error(
+      `Recipe not found: ${RECIPES_BASE}/${formId}/${version}.json`,
+    );
   }
   if (res.status < 200 || res.status >= 300) {
     throw new Error(

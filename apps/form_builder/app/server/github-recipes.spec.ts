@@ -111,7 +111,7 @@ describe("github-recipes", () => {
 
       const { url, init } = lastFetch(fetchMock);
       expect(url).toBe(
-        `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/recipes`,
+        `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/apps/api/src/forms/form-definitions/recipes`,
       );
       const headers = init.headers as Record<string, string>;
       expect(headers.Authorization).toBe(`Bearer ${TOKEN}`);
@@ -192,7 +192,7 @@ describe("github-recipes", () => {
       expect(recipe).toEqual(RECIPE);
       const { url, init } = lastFetch(fetchMock);
       expect(url).toBe(
-        `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/recipes/passport-renewal/1.1.0.json`,
+        `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/apps/api/src/forms/form-definitions/recipes/passport-renewal/1.1.0.json`,
       );
       const headers = init.headers as Record<string, string>;
       expect(headers.Authorization).toBe(`Bearer ${TOKEN}`);

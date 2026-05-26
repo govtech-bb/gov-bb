@@ -138,7 +138,7 @@ export const publishRecipe = createServerFn({ method: "POST" })
       // (Checking on `dev` would be equivalent because the branch was just
       // created from dev; we use the new branch so the URL pattern matches
       // step 4.)
-      const contentsPath = `/contents/recipes/${recipe.formId}/${recipe.version}.json`;
+      const contentsPath = `/contents/apps/api/src/forms/form-definitions/recipes/${recipe.formId}/${recipe.version}.json`;
       const checkRes = await fetch(
         repoUrl(`${contentsPath}?ref=${encodeURIComponent(branch)}`),
         { headers: authHeaders(token) },

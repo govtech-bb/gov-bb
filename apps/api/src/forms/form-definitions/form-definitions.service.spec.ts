@@ -1,4 +1,4 @@
-import { NotFoundException } from "@nestjs/common";
+import { Logger, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { FormDefinitionEntity } from "../../database/entities/form-definition.entity";
 import { FormDefinitionRepository } from "./form-definition.repository";
@@ -42,10 +42,14 @@ function makeFindAllMocks(entities: FormDefinitionEntity[]) {
     findByFormId: jest.fn(),
   } as unknown as jest.Mocked<RecipeFileLoaderService>;
 
+  // Force "db" mode (NODE_ENV=development) so these tests, which target the
+  // DB findAll path, route through the repo.
   const config = {
-    get: jest.fn((key: string, def?: string) =>
-      key === "RECIPE_SOURCE" ? "db" : def,
-    ),
+    get: jest.fn((key: string, def?: string) => {
+      if (key === "RECIPE_SOURCE") return "db";
+      if (key === "NODE_ENV") return "development";
+      return def;
+    }),
   } as unknown as jest.Mocked<ConfigService>;
 
   const service = new FormDefinitionsService(
@@ -90,7 +94,15 @@ function makeEntity(
   } as FormDefinitionEntity;
 }
 
-function makeMocks({ source }: { source: "db" | "files" } = { source: "db" }) {
+function makeMocks(
+  {
+    source,
+    nodeEnv = "development",
+  }: { source?: "db" | "files"; nodeEnv?: string } = {
+    source: "files",
+    nodeEnv: "development",
+  },
+) {
   const repo = {
     find: jest.fn(),
     findOne: jest.fn(),
@@ -106,9 +118,11 @@ function makeMocks({ source }: { source: "db" | "files" } = { source: "db" }) {
   } as unknown as jest.Mocked<RecipeFileLoaderService>;
 
   const config = {
-    get: jest.fn((key: string, def?: string) =>
-      key === "RECIPE_SOURCE" ? source : def,
-    ),
+    get: jest.fn((key: string, def?: string) => {
+      if (key === "RECIPE_SOURCE") return source ?? def;
+      if (key === "NODE_ENV") return nodeEnv;
+      return def;
+    }),
   } as unknown as jest.Mocked<ConfigService>;
 
   const service = new FormDefinitionsService(
@@ -121,10 +135,79 @@ function makeMocks({ source }: { source: "db" | "files" } = { source: "db" }) {
 }
 
 describe("FormDefinitionsService", () => {
-  describe("RECIPE_SOURCE=db (default)", () => {
+  describe("source resolution", () => {
+    it("defaults to 'files' when RECIPE_SOURCE is unset", async () => {
+      const { fileLoader, service } = makeMocks({
+        source: undefined,
+        nodeEnv: "development",
+      });
+      (fileLoader.findByFormId as jest.Mock).mockReturnValue(MOCK_RECIPE);
+
+      await service.findByFormId({ formId: "passport-renewal" });
+
+      expect(fileLoader.findByFormId).toHaveBeenCalled();
+    });
+
+    it("honors RECIPE_SOURCE=db when NODE_ENV=development", async () => {
+      const { repo, service } = makeMocks({
+        source: "db",
+        nodeEnv: "development",
+      });
+      (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
+
+      await service.findByFormId({ formId: "passport-renewal" });
+
+      expect(repo.findOne).toHaveBeenCalled();
+    });
+
+    it("forces RECIPE_SOURCE=db to 'files' (with warning) outside development", async () => {
+      const { fileLoader, repo, service } = makeMocks({
+        source: "db",
+        nodeEnv: "production",
+      });
+      const warnSpy = jest
+        .spyOn(Logger.prototype, "warn")
+        .mockImplementation(() => undefined);
+      (fileLoader.findByFormId as jest.Mock).mockReturnValue(MOCK_RECIPE);
+
+      await service.findByFormId({ formId: "passport-renewal" });
+
+      expect(fileLoader.findByFormId).toHaveBeenCalled();
+      expect(repo.findOne).not.toHaveBeenCalled();
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("RECIPE_SOURCE=db"),
+      );
+
+      warnSpy.mockRestore();
+    });
+
+    it("forces RECIPE_SOURCE=db to 'files' when NODE_ENV=test", async () => {
+      const { fileLoader, repo, service } = makeMocks({
+        source: "db",
+        nodeEnv: "test",
+      });
+      const warnSpy = jest
+        .spyOn(Logger.prototype, "warn")
+        .mockImplementation(() => undefined);
+      (fileLoader.findByFormId as jest.Mock).mockReturnValue(MOCK_RECIPE);
+
+      await service.findByFormId({ formId: "passport-renewal" });
+
+      expect(repo.findOne).not.toHaveBeenCalled();
+      expect(fileLoader.findByFormId).toHaveBeenCalled();
+      expect(warnSpy).toHaveBeenCalled();
+
+      warnSpy.mockRestore();
+    });
+  });
+
+  describe("RECIPE_SOURCE=db (NODE_ENV=development)", () => {
     describe("findByFormId", () => {
       it("returns the latest hydrated form when no version is given", async () => {
-        const { repo, registry, service } = makeMocks({ source: "db" });
+        const { repo, registry, service } = makeMocks({
+          source: "db",
+          nodeEnv: "development",
+        });
         (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
 
         const result = await service.findByFormId({
@@ -140,7 +223,10 @@ describe("FormDefinitionsService", () => {
       });
 
       it("returns a specific version when version is given", async () => {
-        const { repo, registry, service } = makeMocks({ source: "db" });
+        const { repo, registry, service } = makeMocks({
+          source: "db",
+          nodeEnv: "development",
+        });
         (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
 
         const result = await service.findByFormId({
@@ -157,7 +243,10 @@ describe("FormDefinitionsService", () => {
       });
 
       it("throws NotFoundException when formId is not found", async () => {
-        const { repo, service } = makeMocks({ source: "db" });
+        const { repo, service } = makeMocks({
+          source: "db",
+          nodeEnv: "development",
+        });
         (repo.findOne as jest.Mock).mockResolvedValue(null);
 
         await expect(service.findByFormId({ formId: "ghost" })).rejects.toThrow(
@@ -166,7 +255,10 @@ describe("FormDefinitionsService", () => {
       });
 
       it("throws NotFoundException when formId + version is not found", async () => {
-        const { repo, service } = makeMocks({ source: "db" });
+        const { repo, service } = makeMocks({
+          source: "db",
+          nodeEnv: "development",
+        });
         (repo.findOne as jest.Mock).mockResolvedValue(null);
 
         await expect(
@@ -182,7 +274,10 @@ describe("FormDefinitionsService", () => {
       };
 
       it("strips processors by default (includeProcessors omitted)", async () => {
-        const { repo, registry, service } = makeMocks({ source: "db" });
+        const { repo, registry, service } = makeMocks({
+          source: "db",
+          nodeEnv: "development",
+        });
         (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
         (registry.hydrateForm as jest.Mock).mockResolvedValue(
           HYDRATED_WITH_PROCESSORS,
@@ -194,7 +289,10 @@ describe("FormDefinitionsService", () => {
       });
 
       it("strips processors when includeProcessors:false", async () => {
-        const { repo, registry, service } = makeMocks({ source: "db" });
+        const { repo, registry, service } = makeMocks({
+          source: "db",
+          nodeEnv: "development",
+        });
         (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
         (registry.hydrateForm as jest.Mock).mockResolvedValue(
           HYDRATED_WITH_PROCESSORS,
@@ -209,7 +307,10 @@ describe("FormDefinitionsService", () => {
       });
 
       it("keeps processors when includeProcessors:true", async () => {
-        const { repo, registry, service } = makeMocks({ source: "db" });
+        const { repo, registry, service } = makeMocks({
+          source: "db",
+          nodeEnv: "development",
+        });
         (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
         (registry.hydrateForm as jest.Mock).mockResolvedValue(
           HYDRATED_WITH_PROCESSORS,
@@ -279,6 +380,69 @@ describe("FormDefinitionsService", () => {
       expect(result).toEqual([
         { formId: "passport-renewal", title: "Passport Renewal" },
       ]);
+    });
+  });
+
+  describe("getRecipe (public)", () => {
+    it("is exposed as a public method on the service", () => {
+      const { service } = makeMocks({ source: "files" });
+      expect(typeof service.getRecipe).toBe("function");
+    });
+
+    it("returns the raw recipe from the file loader in files mode", async () => {
+      const { fileLoader, registry, service } = makeMocks({ source: "files" });
+      (fileLoader.findByFormId as jest.Mock).mockReturnValue(MOCK_RECIPE);
+
+      const result = await service.getRecipe({
+        formId: "passport-renewal",
+        version: "1.0.0",
+      });
+
+      expect(fileLoader.findByFormId).toHaveBeenCalledWith({
+        formId: "passport-renewal",
+        version: "1.0.0",
+      });
+      // Raw recipe — no hydration when called via getRecipe directly.
+      expect(registry.hydrateForm).not.toHaveBeenCalled();
+      expect(result).toBe(MOCK_RECIPE);
+    });
+
+    it("returns null when the file loader has no matching recipe", async () => {
+      const { fileLoader, service } = makeMocks({ source: "files" });
+      (fileLoader.findByFormId as jest.Mock).mockReturnValue(null);
+
+      const result = await service.getRecipe({ formId: "ghost" });
+
+      expect(result).toBeNull();
+    });
+
+    it("returns the raw recipe schema from the repo in db mode (dev)", async () => {
+      const { repo, registry, service } = makeMocks({
+        source: "db",
+        nodeEnv: "development",
+      });
+      (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
+
+      const result = await service.getRecipe({ formId: "passport-renewal" });
+
+      expect(repo.findOne).toHaveBeenCalledWith({
+        where: { formId: "passport-renewal" },
+        order: { createdAt: "DESC" },
+      });
+      expect(registry.hydrateForm).not.toHaveBeenCalled();
+      expect(result).toEqual(MOCK_RECIPE);
+    });
+
+    it("returns null when no DB row matches in db mode", async () => {
+      const { repo, service } = makeMocks({
+        source: "db",
+        nodeEnv: "development",
+      });
+      (repo.findOne as jest.Mock).mockResolvedValue(null);
+
+      const result = await service.getRecipe({ formId: "ghost" });
+
+      expect(result).toBeNull();
     });
   });
 });
