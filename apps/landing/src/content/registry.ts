@@ -109,9 +109,29 @@ export const PAGES: Array<ContentPage> = Object.entries(modules).map(
 )
 
 const BY_URL = new Map(PAGES.map((p) => [p.url, p]))
+const BY_SLUG = new Map(PAGES.map((p) => [p.slug, p]))
 
 export function findPage(urlPath: string): ContentPage | undefined {
   return BY_URL.get(urlPath.replace(/^\/+|\/+$/g, ''))
+}
+
+/**
+ * A page is a sub-page when its parent *slug* is itself a page — e.g. the
+ * `calculate-severance-pay/start` step lives in the same directory as the
+ * service page `calculate-severance-pay` (its `index.md`). Sub-pages are
+ * reached from their parent's detail page, so they are excluded from
+ * category/subcategory listings to avoid duplicate entries.
+ *
+ * Keyed on slug, not URL: the slug mirrors the on-disk directory structure
+ * and is independent of categories, so this stays correct when a service
+ * lives in more than one category (the URL only carries the primary one).
+ * Pages nested only under a category/subcategory directory — with no parent
+ * page — are not sub-pages and stay listed.
+ */
+export function isSubPage(page: ContentPage): boolean {
+  const i = page.slug.lastIndexOf('/')
+  if (i < 0) return false
+  return BY_SLUG.has(page.slug.slice(0, i))
 }
 
 /**
