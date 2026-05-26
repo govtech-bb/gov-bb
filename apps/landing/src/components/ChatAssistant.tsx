@@ -69,14 +69,23 @@ export function ChatAssistant({
     }
   }, [chatUrl])
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    const trimmed = input.trim().slice(0, MAX_QUERY_LENGTH)
+  const isOffline = status === 'offline'
+
+  const goToChat = (query: string) => {
+    if (isOffline) return
+    const trimmed = query.trim().slice(0, MAX_QUERY_LENGTH)
     if (!trimmed) return
-    trackEvent('chat-submit', { query: trimmed, source })
     const url = new URL('/', chatUrl)
     url.searchParams.set('q', trimmed)
     window.location.href = url.toString()
+  }
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const trimmed = input.trim().slice(0, MAX_QUERY_LENGTH)
+    if (!trimmed || isOffline) return
+    trackEvent('chat-submit', { query: trimmed, source })
+    goToChat(trimmed)
   }
 
   const { dot, label } = STATUS_STYLES[status]
@@ -112,10 +121,7 @@ export function ChatAssistant({
             </div>
             <div className="rounded-2xl rounded-bl-xs bg-blue-10 px-s py-3.5 text-black-00 max-w-130">
               <Text as="p" className="text-pretty">
-                Welcome to <strong>alpha.gov.bb.</strong> I can help you find
-                the right government service, understand what you need to
-                apply, or point you to the right organisation. What would you
-                like help with today?
+                Welcome to <strong>alpha.gov.bb.</strong> What would you like help with today?
               </Text>
             </div>
           </div>
@@ -135,7 +141,7 @@ export function ChatAssistant({
                 placeholder="Ask a question..."
                 maxLength={MAX_QUERY_LENGTH}
               />
-              <Button type="submit" disabled={!input.trim()}>
+              <Button type="submit" disabled={!input.trim() || isOffline}>
                 Send
               </Button>
             </div>
@@ -155,11 +161,12 @@ export function ChatAssistant({
             <button
               key={q}
               type="button"
+              disabled={isOffline}
               onClick={() => {
-                setInput(q)
                 trackEvent('chat-suggestion', { question: q, source })
+                goToChat(q)
               }}
-              className="rounded-xl border border-grey-00 bg-blue-00 px-s py-xs text-sm text-white-00 hover:bg-blue-100 focus:outline-none focus-visible:ring-4 focus-visible:ring-teal-100 pointer-coarse:min-h-11"
+              className="rounded-xl border border-grey-00 bg-blue-00 px-s py-xs text-sm text-white-00 hover:bg-blue-100 focus:outline-none focus-visible:ring-4 focus-visible:ring-teal-100 pointer-coarse:min-h-11 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-00"
             >
               {q}
             </button>
