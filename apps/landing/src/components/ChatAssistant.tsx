@@ -1,6 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button, Heading, Input, Text } from '@govtech-bb/react'
 import { trackEvent } from '../lib/analytics'
+
+const CHAT_URL =
+  import.meta.env.VITE_CHAT_URL ?? 'https://chat.sandbox.alpha.gov.bb'
 
 const DEFAULT_QUESTIONS = [
   'How do I get a passport?',
@@ -19,15 +22,35 @@ export function ChatAssistant({
   source = 'home',
 }: ChatAssistantProps) {
   const [input, setInput] = useState('')
+  const [online, setOnline] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    const controller = new AbortController()
+    fetch(`${CHAT_URL}/api/health`, {
+      signal: controller.signal,
+      cache: 'no-store',
+    })
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data: { ok?: boolean }) => setOnline(data.ok === true))
+      .catch(() => {
+        if (!controller.signal.aborted) setOnline(false)
+      })
+    return () => controller.abort()
+  }, [])
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    trackEvent('chat-submit', { query: input, source })
+    const trimmed = input.trim()
+    if (!trimmed) return
+    trackEvent('chat-submit', { query: trimmed, source })
+    const url = new URL('/', CHAT_URL)
+    url.searchParams.set('q', trimmed)
+    window.location.href = url.toString()
   }
 
   return (
     <div className="space-y-m">
-      <div className="max-w-250 overflow-hidden rounded-lg border border-white-00 bg-white-00 shadow-md">
+      <div className="max-w-200 overflow-hidden rounded-lg border border-white-00 bg-white-00 shadow-md">
         <div className="flex items-center gap-xm bg-teal-00 p-xm text-white-00">
           <div className="flex-1 space-y-xxs">
             <Heading as="h2" size="h3">
@@ -37,9 +60,21 @@ export function ChatAssistant({
               <div className="flex items-center gap-xs border-r border-grey-00 pr-xs">
                 <span
                   aria-hidden="true"
-                  className="inline-block size-1.5 rounded-full bg-green-100"
+                  className={`inline-block size-1.5 rounded-full ${
+                    online === null
+                      ? 'bg-grey-00'
+                      : online
+                        ? 'bg-green-100'
+                        : 'bg-red-100'
+                  }`}
                 />
-                <span className="text-base">Online</span>
+                <span className="text-base">
+                  {online === null
+                    ? 'Checking...'
+                    : online
+                      ? 'Online'
+                      : 'Offline'}
+                </span>
               </div>
               <span className="text-base">Powered by alpha.gov.bb</span>
             </div>
@@ -54,7 +89,7 @@ export function ChatAssistant({
             >
               A
             </div>
-            <div className="rounded-2xl rounded-bl-xs bg-blue-10 px-s py-3.5 text-black-00">
+            <div className="rounded-2xl rounded-bl-xs bg-blue-10 px-s py-3.5 text-black-00 max-w-130">
               <Text as="p" className="text-pretty">
                 Welcome to <strong>alpha.gov.bb.</strong> I can help you find
                 the right government service, understand what you need to

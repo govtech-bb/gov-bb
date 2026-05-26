@@ -43,6 +43,19 @@ function ChatPage() {
 
   const isStreaming = status === "submitted" || status === "streaming";
 
+  const autoSentRef = useRef(false);
+  useEffect(() => {
+    if (autoSentRef.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get("q")?.trim();
+    if (!q) return;
+    autoSentRef.current = true;
+    sendMessage(q);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("q");
+    window.history.replaceState({}, "", url.toString());
+  }, [sendMessage]);
+
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [messages.length]);

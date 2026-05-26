@@ -52,7 +52,10 @@ async function handleGet(): Promise<Response> {
   };
   return new Response(JSON.stringify(report), {
     status: report.ok ? 200 : 503,
-    headers: { "content-type": "application/json" },
+    headers: {
+      "content-type": "application/json",
+      "access-control-allow-origin": "*",
+    },
   });
 }
 
