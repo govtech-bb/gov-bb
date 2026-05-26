@@ -302,6 +302,43 @@ button silently disappears) or pick up the new ID (in which case any
 content still pointing at the old ID also silently disappears, with a
 dev warning).
 
+## Chat handoff (ChatAssistant)
+
+The `ChatAssistant` component on the homepage probes the chat app's
+`/api/health/public` for the live Online badge and, on submit, redirects
+to the chat app with the user's question prefilled via `?q=` so chat
+auto-sends on mount.
+
+### Environment variable
+
+| Variable        | When used   | Purpose                                                                                  |
+| --------------- | ----------- | ---------------------------------------------------------------------------------------- |
+| `VITE_CHAT_URL` | build time  | Base URL of the deployed chat app. Used for both the health probe and the submit handoff. |
+
+`vite.config.ts` bakes a branch-aware default at build time based on
+`$AWS_BRANCH` (Amplify-injected): `main` → `https://chat.alpha.gov.bb`,
+anything else → `https://chat.sandbox.alpha.gov.bb`. So sandbox and
+prod deploys work with no Amplify Console config.
+
+To override (e.g. point the sandbox build at a feature branch's chat
+deploy, or run landing locally against a localhost chat instance), set
+`VITE_CHAT_URL` explicitly:
+
+- **Local**: add `VITE_CHAT_URL=http://localhost:3001` to
+  `apps/landing/.env.local`.
+- **Amplify**: App settings → Environment variables → add
+  `VITE_CHAT_URL=<url>` scoped to the branch you want to override. **Then
+  trigger a rebuild** — the value is baked at build time, not read at
+  runtime (Amplify Hosting Compute doesn't reliably pass env to the SSR
+  Lambda at runtime, so the whole repo bakes config at build).
+
+### Why build-time, not runtime
+
+The SSR bundle runs in a Lambda where `process.env.*` reads are not
+reliably populated by Amplify. `apps/chat/src/config/env.ts` documents
+the same constraint. Treat changing this URL as a deploy: set the var,
+rebuild, ship.
+
 # Demo files
 
 Files prefixed with `demo` can be safely deleted. They are there to provide a starting point for you to play around with the features you've installed.
