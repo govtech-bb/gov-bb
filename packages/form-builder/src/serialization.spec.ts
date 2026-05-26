@@ -14,10 +14,7 @@ function makeBaseDraft(overrides: Partial<RecipeDraft> = {}): RecipeDraft {
   };
 }
 
-// Convenience: stamp a deterministic editor id on a field-draft fixture so
-// tests don't need to think about `id` for the in-memory cases. The
-// serializer drops the id; deserialize regenerates one. Tests that assert on
-// per-instance behaviour should generate distinct ids per fixture.
+// Stamps a deterministic id on a field-draft fixture so tests needn't supply one.
 let __idCounter = 0;
 function f<T extends Omit<RecipeFieldDraft, "id">>(draft: T): RecipeFieldDraft {
   return { ...draft, id: `test-field-${++__idCounter}` };
@@ -410,9 +407,6 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
   });
 
   it("deserializeRecipe stamps a unique editor-only id on every field", () => {
-    // Two instances of the same component on a step. The persisted
-    // recipe is positional (no ids on the wire), but the editor must be
-    // able to tell them apart — deserialize mints a fresh id for each.
     const draft = makeBaseDraft({
       steps: [
         {

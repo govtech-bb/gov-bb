@@ -331,12 +331,7 @@ describe("LOAD_DRAFT", () => {
 });
 
 // ── Per-instance field overrides (regression: issue #194) ──────────────────
-//
-// Pre-fix, the reducer keyed REMOVE_FIELD and UPDATE_FIELD_OVERRIDES on
-// `ref` — the catalog key — which is shared across instances of the same
-// component on a step. Updating one instance cascaded to all siblings of the
-// same ref. The fix introduces an editor-only per-instance id and switches
-// these lookups to `id`. These tests pin that behaviour.
+// Pins id-keyed lookups so overrides on one instance don't cascade to siblings.
 
 describe("per-instance field overrides (id-keyed)", () => {
   function fieldWithId(
@@ -374,7 +369,6 @@ describe("per-instance field overrides (id-keyed)", () => {
       expect(typeof fields[0].id).toBe("string");
       expect(typeof fields[1].id).toBe("string");
       expect(fields[0].id).not.toBe(fields[1].id);
-      // Both refs identical (same component twice)
       expect(fields[0].ref).toBe(fields[1].ref);
     });
   });
@@ -399,7 +393,6 @@ describe("per-instance field overrides (id-keyed)", () => {
       expect(resA.id).toBe("id-a");
       expect(resA.overrides).toEqual({ label: "Only A" });
       expect(resB.id).toBe("id-b");
-      // B is untouched — the cascade bug would have written here too.
       expect(resB.overrides).toEqual({});
     });
   });

@@ -145,8 +145,7 @@ export function recipeReducer(
     }
 
     case "ADD_FIELD": {
-      // Mint the editor-only instance id here so callers (e.g. FieldPicker)
-      // stay simple and can keep building plain field drafts.
+      // Mint id here so callers can pass plain drafts.
       const fieldWithId: RecipeFieldDraft = {
         ...action.field,
         id: crypto.randomUUID(),

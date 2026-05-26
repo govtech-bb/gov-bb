@@ -5,8 +5,7 @@ import styles from "../../../styles/builder.module.css";
 
 interface FieldPickerProps {
   catalog: RegistryCatalog;
-  // The picker emits drafts WITHOUT an editor id. The reducer's ADD_FIELD
-  // mints the id when the field lands in editor state.
+  // id is minted by the reducer's ADD_FIELD, not by the picker.
   onAddField: (field: Omit<RecipeFieldDraft, "id">) => void;
 }
 
