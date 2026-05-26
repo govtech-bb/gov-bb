@@ -5,7 +5,8 @@ import styles from "../../../styles/builder.module.css";
 
 interface FieldPickerProps {
   catalog: RegistryCatalog;
-  onAddField: (field: RecipeFieldDraft) => void;
+  // id is minted by the reducer's ADD_FIELD, not by the picker.
+  onAddField: (field: Omit<RecipeFieldDraft, "id">) => void;
 }
 
 type Tab = "Components" | "Blocks" | "Custom";
