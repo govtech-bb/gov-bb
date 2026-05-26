@@ -11,7 +11,12 @@ import {
   type ServiceContractRecipe,
 } from "@govtech-bb/form-types";
 
-const DEFAULT_RECIPES_ROOT = path.resolve(process.cwd(), "recipes");
+// Resolved relative to this file so the loader works in both the source tree
+// (dev: apps/api/src/forms/form-definitions/recipes/) and the compiled tree
+// (prod: /app/dist/src/forms/form-definitions/recipes/, once the Dockerfile
+// copies the .json recipes alongside the compiled .js — tsc doesn't bundle
+// non-`.ts` assets).
+const DEFAULT_RECIPES_ROOT = path.resolve(__dirname, "recipes");
 
 /**
  * Parse a semver string ("1.10.2") into a tuple of integers. Falls back to
