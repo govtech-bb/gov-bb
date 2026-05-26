@@ -1,11 +1,11 @@
 import "../../../styles/builder.global.css";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useReducer, useState, useRef, useEffect } from "react";
+import { useReducer, useState, useRef, useEffect, useMemo } from "react";
 import { getCatalogFn } from "../../../server/registry";
 import { listForms, nextVersion, submitRecipe, updateRecipe } from "../../../server/forms";
 import { publishRecipe } from "../../../server/publish";
 import { validateRecipe, previewRecipe } from "../../../server/registry";
-import { serializeRecipeDraft } from "@govtech-bb/form-builder";
+import { serializeRecipeDraft, findRecipeIdCollisions } from "@govtech-bb/form-builder";
 import { bumpMinor } from "../../../lib/version";
 import type { ServiceContract } from "@govtech-bb/form-types";
 import type { RecipeDraft, ValidationResult, RecipeValidateResponse } from "@govtech-bb/form-builder";
@@ -71,8 +71,22 @@ function BuilderPage() {
   const editableSteps = draft.steps.filter((s) => !isRequiredStep(s.stepId));
   const hasEditableSteps = editableSteps.length > 0;
   const allEditableStepsHaveFields = editableSteps.every((s) => s.fields.length > 0);
+  // Live recipe-wide uniqueness check over resolved field ids + step ids. Folding
+  // this into canSubmit (not only into handleValidate) matters because
+  // validateResult is NOT reset when the draft is edited — a stale-green result
+  // would otherwise leave the buttons enabled after a duplicate is introduced.
+  const idCollisions = useMemo(
+    () => findRecipeIdCollisions(draft, catalog),
+    [draft, catalog],
+  );
+  const hasIdCollisions =
+    idCollisions.fieldIdCollisions.length > 0 ||
+    idCollisions.stepIdCollisions.length > 0;
   const canSubmit =
-    validateResult?.valid === true && hasEditableSteps && allEditableStepsHaveFields;
+    validateResult?.valid === true &&
+    hasEditableSteps &&
+    allEditableStepsHaveFields &&
+    !hasIdCollisions;
 
   // Debounced nextVersion fetch when formId changes
   const nextVersionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -126,6 +140,36 @@ function BuilderPage() {
               path: `steps[${emptyStep.stepId}].fields`,
               message: `Step "${emptyStep.title || emptyStep.stepId}" has no fields.`,
             },
+          ],
+        };
+        setValidateResult(result);
+        setLastSaveStatus("error");
+        return;
+      }
+
+      // Pre-flight: surface duplicate resolved fieldIds / stepIds in the panel.
+      // (The server contract validator can't resolve catalog defaults, so this
+      // is the client's job — same pattern as the empty-step pre-flight above.)
+      const { fieldIdCollisions, stepIdCollisions } = findRecipeIdCollisions(
+        draft,
+        catalog,
+      );
+      if (fieldIdCollisions.length > 0 || stepIdCollisions.length > 0) {
+        const result: RecipeValidateResponse = {
+          valid: false,
+          issues: [
+            ...fieldIdCollisions.map((c) => ({
+              path: `fieldId:${c.id}`,
+              message: `Field ID "${c.id}" is used by ${c.locations.length} fields: ${c.locations
+                .map((l) => `${l.stepTitle || l.stepId} › ${l.display}`)
+                .join("; ")}.`,
+            })),
+            ...stepIdCollisions.map((c) => ({
+              path: `stepId:${c.stepId}`,
+              message: `Step ID "${c.stepId}" is used by ${c.locations.length} steps: ${c.locations
+                .map((l) => l.stepTitle || l.stepId)
+                .join("; ")}.`,
+            })),
           ],
         };
         setValidateResult(result);
@@ -352,6 +396,30 @@ function BuilderPage() {
           <div className={styles.noStepSelected}>Select or add a step to begin</div>
         )}
       </div>
+
+      {hasIdCollisions && (
+        <div className={styles.validationErrors} role="alert">
+          <strong>Duplicate IDs must be fixed before saving or deploying</strong>
+          <ul>
+            {idCollisions.fieldIdCollisions.map((c) => (
+              <li key={`field-${c.id}`}>
+                Field ID <code>{c.id}</code> is used by {c.locations.length}{" "}
+                fields:{" "}
+                {c.locations
+                  .map((l) => `${l.stepTitle || l.stepId} › ${l.display}`)
+                  .join("; ")}
+              </li>
+            ))}
+            {idCollisions.stepIdCollisions.map((c) => (
+              <li key={`step-${c.stepId}`}>
+                Step ID <code>{c.stepId}</code> is used by {c.locations.length}{" "}
+                steps:{" "}
+                {c.locations.map((l) => l.stepTitle || l.stepId).join("; ")}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <ValidationPanel result={validateResult} onDismiss={handleDismissValidation} />
 
