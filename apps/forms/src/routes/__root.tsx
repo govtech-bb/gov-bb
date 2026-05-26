@@ -25,7 +25,7 @@ const RootLayout = () => (
     <OfficialBanner />
     <SiteHeader />
     <main className="flex-1">
-      <div className="mx-auto w-full max-w-[720px] px-4 py-8 lg:py-12">
+      <div className="container py-8 lg:py-16">
         <Outlet />
       </div>
     </main>
