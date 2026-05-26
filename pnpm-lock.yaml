@@ -792,6 +792,9 @@ importers:
       '@govtech-bb/form-types':
         specifier: workspace:*
         version: link:../form-types
+      '@govtech-bb/registry':
+        specifier: workspace:*
+        version: link:../registry
 
   packages/form-conditions:
     devDependencies:

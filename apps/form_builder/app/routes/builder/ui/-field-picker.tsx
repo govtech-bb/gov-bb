@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { RegistryCatalog, RecipeFieldDraft } from "@govtech-bb/form-builder";
-import { REGISTRY_COMPONENTS } from "@govtech-bb/registry";
+import { REGISTRY_COMPONENTS, REGISTRY_BLOCKS } from "@govtech-bb/registry";
 import styles from "../../../styles/builder.module.css";
 
 interface FieldPickerProps {
@@ -8,11 +8,11 @@ interface FieldPickerProps {
   onAddField: (field: RecipeFieldDraft) => void;
 }
 
-type Tab = "Primitives" | "Components" | "Blocks" | "Custom";
-const TABS: Tab[] = ["Primitives", "Components", "Blocks", "Custom"];
+type Tab = "Components" | "Blocks" | "Custom";
+const TABS: Tab[] = ["Components", "Blocks", "Custom"];
 
 export function FieldPicker({ catalog, onAddField }: FieldPickerProps) {
-  const [activeTab, setActiveTab] = useState<Tab>("Primitives");
+  const [activeTab, setActiveTab] = useState<Tab>("Components");
 
   return (
     <div>
@@ -28,24 +28,6 @@ export function FieldPicker({ catalog, onAddField }: FieldPickerProps) {
           </button>
         ))}
       </div>
-
-      {activeTab === "Primitives" && (
-        <div>
-          {catalog.components.map((item) => (
-            <div
-              key={item.ref}
-              className={styles.fieldRow}
-              style={{ cursor: "pointer" }}
-              onClick={() =>
-                onAddField({ kind: "component", ref: item.ref, overrides: {} })
-              }
-            >
-              <span style={{ flex: 1 }}>{item.displayName}</span>
-              <span className={styles.badge}>{item.ref}</span>
-            </div>
-          ))}
-        </div>
-      )}
 
       {activeTab === "Components" && (
         <div>
@@ -70,17 +52,20 @@ export function FieldPicker({ catalog, onAddField }: FieldPickerProps) {
 
       {activeTab === "Blocks" && (
         <div>
-          {catalog.blocks.map((item) => (
+          {Object.entries(REGISTRY_BLOCKS).length === 0 && (
+            <p style={{ color: "#888" }}>No registry blocks available.</p>
+          )}
+          {Object.entries(REGISTRY_BLOCKS).map(([ref, block]) => (
             <div
-              key={item.ref}
+              key={ref}
               className={styles.fieldRow}
               style={{ cursor: "pointer" }}
               onClick={() =>
-                onAddField({ kind: "block", ref: item.ref, overrides: {}, childOverrides: {} })
+                onAddField({ kind: "block", ref, overrides: {}, childOverrides: {} })
               }
             >
-              <span style={{ flex: 1 }}>{item.displayName}</span>
-              <span className={styles.badge}>{item.ref}</span>
+              <span style={{ flex: 1 }}>{block.blockId}</span>
+              <span className={styles.badge}>{ref}</span>
             </div>
           ))}
         </div>
