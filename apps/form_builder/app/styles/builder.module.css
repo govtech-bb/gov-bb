@@ -172,6 +172,61 @@
   overflow-y: auto;
 }
 
+/* ── Field picker search ─────────────────────────── */
+
+.pickerSearch {
+  position: relative;
+  margin-bottom: 12px;
+}
+
+.pickerSearchInput {
+  width: 100%;
+  padding: 8px 28px 8px 10px;
+  font-size: 0.875rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.pickerSearchInput:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.pickerSearchClear {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 0;
+}
+
+.pickerSearchClear:hover {
+  color: var(--color-text);
+}
+
+.pickerHintLink {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: var(--color-accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 /* ── Tabs ────────────────────────────────────────── */
 
 .tabs {
