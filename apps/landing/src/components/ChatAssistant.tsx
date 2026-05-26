@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import { Button, Heading, Input, Text } from '@govtech-bb/react'
 import { trackEvent } from '../lib/analytics'
 
-const CHAT_URL =
-  import.meta.env.VITE_CHAT_URL ?? 'https://chat.sandbox.alpha.gov.bb'
+const CHAT_URL: string | undefined = import.meta.env.VITE_CHAT_URL
+
+const MAX_QUERY_LENGTH = 2000
 
 const DEFAULT_QUESTIONS = [
   'How do I get a passport?',
@@ -11,6 +12,14 @@ const DEFAULT_QUESTIONS = [
   'What financial assistance is available?',
   "How do I apply for a driver's licence?",
 ]
+
+type OnlineState = 'checking' | 'online' | 'offline'
+
+const STATUS_STYLES: Record<OnlineState, { dot: string; label: string }> = {
+  checking: { dot: 'bg-grey-00', label: 'Checking...' },
+  online: { dot: 'bg-green-100', label: 'Online' },
+  offline: { dot: 'bg-red-100', label: 'Offline' },
+}
 
 interface ChatAssistantProps {
   questions?: Array<string>
@@ -21,36 +30,64 @@ export function ChatAssistant({
   questions = DEFAULT_QUESTIONS,
   source = 'home',
 }: ChatAssistantProps) {
+  if (!CHAT_URL) {
+    throw new Error(
+      'VITE_CHAT_URL is required (e.g. https://chat.sandbox.alpha.gov.bb)',
+    )
+  }
+  const chatUrl = CHAT_URL
+
   const [input, setInput] = useState('')
-  const [online, setOnline] = useState<boolean | null>(null)
+  const [status, setStatus] = useState<OnlineState>('checking')
 
   useEffect(() => {
-    const controller = new AbortController()
-    fetch(`${CHAT_URL}/api/health`, {
-      signal: controller.signal,
-      cache: 'no-store',
-    })
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data: { ok?: boolean }) => setOnline(data.ok === true))
-      .catch(() => {
-        if (!controller.signal.aborted) setOnline(false)
-      })
-    return () => controller.abort()
-  }, [])
+    let probeId = 0
+    let unmounted = false
+
+    async function probe() {
+      const myId = ++probeId
+      try {
+        const r = await fetch(`${chatUrl}/api/health/public`, {
+          cache: 'no-store',
+          signal: AbortSignal.timeout(3000),
+        })
+        if (unmounted || myId !== probeId) return
+        const data = r.ok ? ((await r.json()) as { ok?: boolean }) : null
+        if (unmounted || myId !== probeId) return
+        setStatus(data?.ok === true ? 'online' : 'offline')
+      } catch {
+        if (!unmounted && myId === probeId) setStatus('offline')
+      }
+    }
+
+    void probe()
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void probe()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onVisible)
+    return () => {
+      unmounted = true
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onVisible)
+    }
+  }, [chatUrl])
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    const trimmed = input.trim()
+    const trimmed = input.trim().slice(0, MAX_QUERY_LENGTH)
     if (!trimmed) return
     trackEvent('chat-submit', { query: trimmed, source })
-    const url = new URL('/', CHAT_URL)
+    const url = new URL('/', chatUrl)
     url.searchParams.set('q', trimmed)
     window.location.href = url.toString()
   }
 
+  const { dot, label } = STATUS_STYLES[status]
+
   return (
     <div className="space-y-m">
-      <div className="max-w-200 overflow-hidden rounded-lg border border-white-00 bg-white-00 shadow-md">
+      <div className="max-w-250 overflow-hidden rounded-lg border border-white-00 bg-white-00 shadow-md">
         <div className="flex items-center gap-xm bg-teal-00 p-xm text-white-00">
           <div className="flex-1 space-y-xxs">
             <Heading as="h2" size="h3">
@@ -60,21 +97,9 @@ export function ChatAssistant({
               <div className="flex items-center gap-xs border-r border-grey-00 pr-xs">
                 <span
                   aria-hidden="true"
-                  className={`inline-block size-1.5 rounded-full ${
-                    online === null
-                      ? 'bg-grey-00'
-                      : online
-                        ? 'bg-green-100'
-                        : 'bg-red-100'
-                  }`}
+                  className={`inline-block size-1.5 rounded-full ${dot}`}
                 />
-                <span className="text-base">
-                  {online === null
-                    ? 'Checking...'
-                    : online
-                      ? 'Online'
-                      : 'Offline'}
-                </span>
+                <span className="text-base">{label}</span>
               </div>
               <span className="text-base">Powered by alpha.gov.bb</span>
             </div>
@@ -89,7 +114,7 @@ export function ChatAssistant({
             >
               A
             </div>
-            <div className="rounded-2xl rounded-bl-xs bg-blue-10 px-s py-3.5 text-black-00 max-w-130">
+            <div className="rounded-2xl rounded-bl-xs bg-blue-10 px-s py-3.5 text-black-00">
               <Text as="p" className="text-pretty">
                 Welcome to <strong>alpha.gov.bb.</strong> I can help you find
                 the right government service, understand what you need to
@@ -112,6 +137,7 @@ export function ChatAssistant({
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Ask a question..."
+                maxLength={MAX_QUERY_LENGTH}
               />
               <Button type="submit" disabled={!input.trim()}>
                 Send
