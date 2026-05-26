@@ -272,12 +272,61 @@ jobs:
             sleep 30
           done
 
+      # =====================================================================
+      # Chatbot RAG ingest (apps/chat) — one-shot Fargate image
+      # Infra: govtech-bb/alpha-infra SANDBOX-CHATBOT-INGEST.md
+      # ECR repo + task def + indexer Lambda live there; this builds the
+      # image and fires an instant ingest so the chat (on Amplify SSR) picks
+      # up content changes without waiting for the 15-min cron.
+      # Separate from the chat-app Amplify deploy above — different concern.
+      # =====================================================================
+
+      - name: Build and push chat-ingest image
+        id: chat-ingest-build
+        env:
+          REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          INGEST_URI="$REGISTRY/chatbot-ingest-sandbox:$IMAGE_TAG"
+          INGEST_LATEST="$REGISTRY/chatbot-ingest-sandbox:latest"
+
+          docker build --platform linux/amd64 -f apps/chat/Dockerfile.ingest -t "$INGEST_URI" -t "$INGEST_LATEST" .
+          docker push "$INGEST_URI"
+          docker push "$INGEST_LATEST"
+
+          echo "image=$INGEST_URI" >> "$GITHUB_OUTPUT"
+          echo "✅ Pushed chat-ingest $INGEST_URI"
+
+      - name: Trigger chatbot RAG ingest
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          INDEXER=$(aws ssm get-parameter \
+            --name /chatbot/sandbox/rag-indexer-name \
+            --region "$AWS_REGION" \
+            --query Parameter.Value --output text)
+
+          PAYLOAD=$(printf '{"startedBy":"gh-%.36s"}' "$COMMIT_SHA")
+
+          aws lambda invoke \
+            --function-name "$INDEXER" \
+            --payload "$PAYLOAD" \
+            --cli-binary-format raw-in-base64-out \
+            --region "$AWS_REGION" \
+            /tmp/indexer-out.json
+
+          echo "Indexer response:"
+          cat /tmp/indexer-out.json
+          echo
+          echo "✅ Ingest task started — follow with: aws logs tail /ecs/chatbot-ingest-sandbox --follow"
+
       - name: Summary
         if: always()
         run: |
           echo "## Sandbox Deployment Summary" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "**API Image:** ${{ steps.build.outputs.image }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Chat-Ingest Image:** ${{ steps.chat-ingest-build.outputs.image }}" >> "$GITHUB_STEP_SUMMARY"
           echo "**Commit:** ${{ github.sha }}" >> "$GITHUB_STEP_SUMMARY"
           echo "**API URL:** https://forms.api.sandbox.alpha.gov.bb" >> "$GITHUB_STEP_SUMMARY"
           echo "**Landing URL:** https://landing.sandbox.alpha.gov.bb" >> "$GITHUB_STEP_SUMMARY"
