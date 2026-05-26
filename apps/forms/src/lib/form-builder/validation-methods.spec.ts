@@ -1250,10 +1250,6 @@ describe("evaluateCondition", () => {
       expect(evaluateCondition(5, "abc", "gt")).toBe(false);
     });
 
-    // Currently RED: validation-methods.ts:484 uses
-    // `if (conditionValue && targetFieldValue)`, a truthy-only guard that
-    // skips the comparison whenever either side is 0. Numeric 0 is a valid
-    // operand for >/< and must not short-circuit. Source fix tracked separately.
     it("returns true when conditionValue > 0 and target is 0", () => {
       expect(evaluateCondition(5, 0, "gt")).toBe(true);
     });
@@ -1281,7 +1277,6 @@ describe("evaluateCondition", () => {
       expect(evaluateCondition(5, "abc", "lt")).toBe(false);
     });
 
-    // Currently RED: see note on gt above; same truthy-guard at line 491.
     it("returns true when conditionValue is 0 and target is positive", () => {
       expect(evaluateCondition(0, 5, "lt")).toBe(true);
     });
