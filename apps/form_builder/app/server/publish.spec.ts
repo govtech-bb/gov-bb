@@ -108,15 +108,17 @@ describe("publishRecipe", () => {
       sha: "devsha123",
     });
 
-    // Step 3: contents GET on the new branch
+    // Step 3: contents GET on the new branch — recipes live colocated with the
+    // API form-definitions module so the API's file loader, the dump script,
+    // the Dockerfile, and this publish flow all point at the same path.
     expect(fetchMock.mock.calls[2][0]).toBe(
-      "https://api.github.com/repos/govtech-bb/gov-bb/contents/recipes/passport-renewal/1.2.0.json?ref=form-builder%2Fpassport-renewal-1.2.0-1700000000000",
+      "https://api.github.com/repos/govtech-bb/gov-bb/contents/apps/api/src/forms/form-definitions/recipes/passport-renewal/1.2.0.json?ref=form-builder%2Fpassport-renewal-1.2.0-1700000000000",
     );
 
     // Step 4: PUT with base64 content and matching message
     const step4 = fetchMock.mock.calls[3];
     expect(step4[0]).toBe(
-      "https://api.github.com/repos/govtech-bb/gov-bb/contents/recipes/passport-renewal/1.2.0.json",
+      "https://api.github.com/repos/govtech-bb/gov-bb/contents/apps/api/src/forms/form-definitions/recipes/passport-renewal/1.2.0.json",
     );
     const step4Body = JSON.parse((step4[1] as RequestInit).body as string);
     expect(step4Body.branch).toBe(
