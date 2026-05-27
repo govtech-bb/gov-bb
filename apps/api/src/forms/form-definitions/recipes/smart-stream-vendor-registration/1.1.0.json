@@ -1,0 +1,241 @@
+{
+  "formId": "smart-stream-vendor-registration",
+  "title": "Smart Stream Vendor Registration Form",
+  "description": "Ministry of Finance, Economic Affairs and Investment - Treasury Department vendor registration form",
+  "version": "1.1.0",
+  "steps": [
+    {
+      "stepId": "step-1-basic-info",
+      "title": "Basic Information",
+      "elements": [
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Min/Dept.",
+            "fieldId": "minDept",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Vendor Name",
+            "fieldId": "vendorName",
+            "required": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "step-2-vendor-classification",
+      "title": "Vendor Classification",
+      "elements": [
+        {
+          "ref": "components/generic/radio",
+          "overrides": {
+            "label": "Vendor Classification - Please tick appropriate box",
+            "fieldId": "vendorClassification",
+            "options": [
+              {
+                "label": "Individual",
+                "value": "individual"
+              },
+              {
+                "label": "Small Business",
+                "value": "smallBusiness"
+              },
+              {
+                "label": "Other Business",
+                "value": "otherBusiness"
+              },
+              {
+                "label": "Medium Size Business",
+                "value": "mediumBusiness"
+              },
+              {
+                "label": "Large Business",
+                "value": "largeBusiness"
+              }
+            ],
+            "required": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "step-3-identification",
+      "title": "Identification Numbers",
+      "elements": [
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "TAMIS Number",
+            "fieldId": "tamisNumber",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Company Registration No.",
+            "fieldId": "companyRegistrationNo",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Small Business Association No.",
+            "fieldId": "smallBusinessAssociationNo",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "NRN",
+            "fieldId": "nrn",
+            "required": false
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "step-4-contact-info",
+      "title": "Contact Information",
+      "elements": [
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Vendor Address (Line 1)",
+            "fieldId": "vendorAddress1",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Vendor Address (Line 2)",
+            "fieldId": "vendorAddress2",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "type": "email",
+            "label": "Vendor Email Address",
+            "fieldId": "vendorEmail",
+            "required": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "step-5-bank-details",
+      "title": "Bank Account Details",
+      "elements": [
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Bank Name",
+            "fieldId": "bankName",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Bank Account Number",
+            "fieldId": "bankAccountNumber",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Branch Name",
+            "fieldId": "branchName",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Name on Account",
+            "fieldId": "nameOnAccount",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/radio",
+          "overrides": {
+            "label": "Account Type",
+            "fieldId": "accountType",
+            "options": [
+              {
+                "label": "Deposit",
+                "value": "deposit"
+              },
+              {
+                "label": "Savings",
+                "value": "savings"
+              }
+            ],
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "BIC / Swift",
+            "fieldId": "bicSwift",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Bank Address",
+            "fieldId": "bankAddress",
+            "required": false
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "step-6-authorization",
+      "title": "Authorization",
+      "elements": [
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Authorized by",
+            "fieldId": "authorizedBy",
+            "required": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Submission Confirmation",
+      "elements": [],
+      "behaviours": []
+    }
+  ],
+  "createdAt": "2026-05-27T14:36:29.044Z",
+  "updatedAt": "2026-05-27T14:36:29.044Z"
+}
