@@ -1,9 +1,10 @@
 import {
   listPublishedForms,
   getPublishedRecipe,
-  REPO_OWNER,
   REPO_NAME,
 } from "./github-recipes";
+
+const REPO_OWNER = "govtech-bb";
 
 type FetchMock = jest.Mock<
   Promise<Response>,
@@ -28,6 +29,7 @@ describe("github-recipes", () => {
   const TOKEN = "ghu_testtoken";
 
   beforeEach(() => {
+    process.env.GITHUB_ORG = REPO_OWNER;
     fetchMock = jest.fn() as unknown as FetchMock;
     globalThis.fetch = fetchMock as unknown as typeof fetch;
   });

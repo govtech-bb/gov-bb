@@ -49,7 +49,7 @@ export const Route = createFileRoute("/auth/github")({
     const params = new URLSearchParams({
       client_id: clientId,
       redirect_uri: `${base}/auth/github/callback`,
-      scope: "repo read:user",
+      scope: "repo read:org read:user",
       state,
       allow_signup: "false",
     });

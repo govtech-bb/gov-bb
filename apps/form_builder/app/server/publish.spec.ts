@@ -44,6 +44,7 @@ function emptyResponse(status: number): Response {
 beforeEach(() => {
   jest.resetAllMocks();
   process.env.SESSION_SECRET = Buffer.alloc(32).toString("base64");
+  process.env.GITHUB_ORG = "govtech-bb";
   (getSession as jest.Mock).mockReturnValue(SESSION);
   // Freeze "now" so branch names are deterministic.
   jest.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
@@ -52,6 +53,7 @@ beforeEach(() => {
 afterEach(() => {
   jest.restoreAllMocks();
   delete process.env.SESSION_SECRET;
+  delete process.env.GITHUB_ORG;
 });
 
 describe("publishRecipe", () => {
