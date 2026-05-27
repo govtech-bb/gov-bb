@@ -79,17 +79,6 @@ jest.mock("./applicant-name-display", () => ({
   default: () => <div data-testid="applicant-name-display" />,
 }));
 
-jest.mock("../lib/design-system", () => ({
-  __esModule: true,
-  default: {
-    formRoot: "",
-    formTitle: "",
-    formStep: "",
-    formNavigation: "",
-    formStepDescription: "",
-  },
-}));
-
 jest.mock("@forms/lib", () => ({
   getFullFieldId: (step: string, field: string) => `${step}_${field}`,
   addRepeatableStep: jest.fn(() => []),
