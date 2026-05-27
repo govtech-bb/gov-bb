@@ -9,6 +9,12 @@ permissions:
   id-token: write
   contents: read
 
+# Queue deploys; never cancel one mid-flight. A half-applied deploy (migrations
+# run, ECS rolling, Amplify building) must finish before the next starts.
+concurrency:
+  group: deploy-sandbox-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   AWS_REGION: ca-central-1
   ECR_REPOSITORY: modular-forms-api
@@ -16,17 +22,87 @@ env:
   ECS_SERVICE: modular-forms-api-sandbox
 
 jobs:
-  deploy:
-    name: Build, Push & Deploy to Sandbox
+  # Decide which deploy targets actually changed, so unchanged apps are skipped.
+  # The base is the last SUCCESSFUL deploy (nx-set-shas), not the push range:
+  # a target that failed to deploy stays "affected" until it ships green, where
+  # a github.event.before diff would wrongly skip it on the next unrelated push.
+  setup:
+    name: Detect affected targets
     runs-on: ubuntu-latest
-
+    outputs:
+      api: ${{ steps.affected.outputs.api }}
+      fb-api: ${{ steps.affected.outputs.fb-api }}
+      forms: ${{ steps.affected.outputs.forms }}
+      landing: ${{ steps.affected.outputs.landing }}
+      chat: ${{ steps.affected.outputs.chat }}
+      migrations: ${{ steps.affected.outputs.migrations }}
+      amplify-config: ${{ steps.affected.outputs.amplify-config }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
-          # Full history so we can diff github.event.before..github.sha to
-          # decide whether the migration task needs to run this deploy.
+          # Full history so nx-set-shas can find the last successful deploy and
+          # the migration/amplify path-diffs can compare against it.
           fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+
+      - name: Derive base/head SHAs
+        uses: nrwl/nx-set-shas@v4
+        with:
+          # MUST be sandbox: the default "main" makes nx-set-shas search a branch
+          # this workflow never runs on, so it falls back to HEAD~1 every time.
+          main-branch-name: sandbox
+          workflow-id: deploy-sandbox.yml
+
+      - name: Compute affected deploy targets
+        id: affected
+        run: |
+          AFFECTED=$(pnpm exec nx show projects \
+            --affected --base="$NX_BASE" --head="$NX_HEAD" --type app --json 2>/dev/null || echo '[]')
+          echo "Affected apps: $AFFECTED"
+          has() { echo "$AFFECTED" | jq -e --arg p "$1" 'index($p)' >/dev/null && echo true || echo false; }
+
+          echo "api=$(has api)" >> "$GITHUB_OUTPUT"
+          echo "fb-api=$(has form-builder-api)" >> "$GITHUB_OUTPUT"
+          echo "forms=$(has forms)" >> "$GITHUB_OUTPUT"
+          echo "landing=$(has landing)" >> "$GITHUB_OUTPUT"
+          echo "chat=$(has chat)" >> "$GITHUB_OUTPUT"
+
+          # Migrations: precise path-grep (from PR #216) on the unified base. The
+          # migration task is a ~1.5-3 min cold Fargate run; migration:run is
+          # idempotent, so gate it on real migration file changes only.
+          if git diff --name-only "$NX_BASE" "$NX_HEAD" | grep -q '^apps/api/src/database/migrations/'; then
+            echo "migrations=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "migrations=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          # amplify.yml is a workspace-root file nx affected can't attribute to
+          # any app, but a change to it (e.g. security headers) must rebuild ALL
+          # Amplify apps. Force the frontend gates when it or this workflow changes.
+          if git diff --name-only "$NX_BASE" "$NX_HEAD" \
+              | grep -qE '^(amplify\.yml|\.github/workflows/deploy-sandbox\.yml)$'; then
+            echo "amplify-config=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "amplify-config=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  deploy-api:
+    name: Build, Push & Deploy API
+    needs: setup
+    if: needs.setup.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.build.outputs.image }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v6
@@ -72,37 +148,10 @@ jobs:
           container-name: api
           image: ${{ steps.build.outputs.image }}
 
-      # The migration task is a cold-start Fargate run + wait (~1.5-3 min). Most
-      # deploys ship no new migrations, so only run it when files under the
-      # migrations dir actually changed. Fail safe: if we can't determine the
-      # diff (manual dispatch, first push, missing before-SHA), run it anyway —
-      # migration:run is idempotent, so a needless run is just wasted time,
-      # whereas a wrongly-skipped run ships a broken schema.
-      - name: Detect migration changes
-        id: migrations
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "Manual dispatch — running migrations to be safe"
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          BEFORE="${{ github.event.before }}"
-          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
-            echo "No usable before-SHA — running migrations to be safe"
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          if git diff --name-only "$BEFORE" "${{ github.sha }}" \
-              | grep -q '^apps/api/src/database/migrations/'; then
-            echo "Migration files changed — will run migrations"
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "No migration changes — skipping migration task"
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-          fi
-
+      # Gated on the migrations output from setup (real migration file changes
+      # since the last successful deploy). migration:run is idempotent.
       - name: Run database migrations
-        if: steps.migrations.outputs.changed == 'true'
+        if: needs.setup.outputs.migrations == 'true'
         run: |
           TASK_DEF_ARN=$(aws ecs register-task-definition \
             --cli-input-json "$(cat ${{ steps.new-task-def.outputs.task-definition }} | \
@@ -157,6 +206,25 @@ jobs:
       # tofu tracks gets deregistered, making tofu think the resource is gone).
       # AWS allows thousands of revisions per family, so this is safe to skip.
 
+  deploy-form-builder:
+    name: Build, Push & Deploy form-builder
+    needs: setup
+    if: needs.setup.outputs.fb-api == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
       - name: Build and push form-builder image
         id: build-form-builder
         env:
@@ -201,11 +269,22 @@ jobs:
             --output text
           echo "✅ Form-builder ECS deploy started"
 
-      - name: Monitor Amplify build (forms)
-        id: amplify
+  amplify-forms:
+    name: Amplify build (forms)
+    needs: setup
+    if: needs.setup.outputs.forms == 'true' || needs.setup.outputs.amplify-config == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Trigger and monitor Amplify build
         env:
           AMPLIFY_APP_ID: d1yjf5g5ckxcxg
           AMPLIFY_BRANCH: sandbox
+          APP_LABEL: forms
         run: |
           JOB_ID=$(aws amplify start-job \
             --app-id "$AMPLIFY_APP_ID" \
@@ -214,8 +293,7 @@ jobs:
             --region "$AWS_REGION" \
             --query jobSummary.jobId \
             --output text)
-          echo "job_id=$JOB_ID" >> "$GITHUB_OUTPUT"
-          echo "Amplify forms job started: $JOB_ID"
+          echo "Amplify $APP_LABEL job started: $JOB_ID"
 
           for i in $(seq 1 30); do
             STATUS=$(aws amplify get-job \
@@ -225,22 +303,35 @@ jobs:
               --region "$AWS_REGION" \
               --query job.summary.status \
               --output text)
-            echo "[$i/30] Amplify forms status: $STATUS"
+            echo "[$i/30] Amplify $APP_LABEL status: $STATUS"
             if [ "$STATUS" = "SUCCEED" ]; then
-              echo "✅ Amplify forms build succeeded"
-              break
+              echo "✅ Amplify $APP_LABEL build succeeded"
+              exit 0
             elif [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "CANCELLED" ]; then
-              echo "❌ Amplify forms build $STATUS"
+              echo "❌ Amplify $APP_LABEL build $STATUS"
               exit 1
             fi
             sleep 30
           done
+          echo "❌ Amplify $APP_LABEL build did not finish within 15 minutes"
+          exit 1
 
-      - name: Monitor Amplify build (landing)
-        id: amplify-landing
+  amplify-landing:
+    name: Amplify build (landing)
+    needs: setup
+    if: needs.setup.outputs.landing == 'true' || needs.setup.outputs.amplify-config == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Trigger and monitor Amplify build
         env:
           AMPLIFY_APP_ID: d3kbl8o0ovutw4
           AMPLIFY_BRANCH: sandbox
+          APP_LABEL: landing
         run: |
           JOB_ID=$(aws amplify start-job \
             --app-id "$AMPLIFY_APP_ID" \
@@ -249,8 +340,7 @@ jobs:
             --region "$AWS_REGION" \
             --query jobSummary.jobId \
             --output text)
-          echo "job_id=$JOB_ID" >> "$GITHUB_OUTPUT"
-          echo "Amplify landing job started: $JOB_ID"
+          echo "Amplify $APP_LABEL job started: $JOB_ID"
 
           for i in $(seq 1 30); do
             STATUS=$(aws amplify get-job \
@@ -260,22 +350,35 @@ jobs:
               --region "$AWS_REGION" \
               --query job.summary.status \
               --output text)
-            echo "[$i/30] Amplify landing status: $STATUS"
+            echo "[$i/30] Amplify $APP_LABEL status: $STATUS"
             if [ "$STATUS" = "SUCCEED" ]; then
-              echo "✅ Amplify landing build succeeded"
-              break
+              echo "✅ Amplify $APP_LABEL build succeeded"
+              exit 0
             elif [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "CANCELLED" ]; then
-              echo "❌ Amplify landing build $STATUS"
+              echo "❌ Amplify $APP_LABEL build $STATUS"
               exit 1
             fi
             sleep 30
           done
+          echo "❌ Amplify $APP_LABEL build did not finish within 15 minutes"
+          exit 1
 
-      - name: Monitor Amplify build (chat)
-        id: amplify-chat
+  amplify-chat:
+    name: Amplify build (chat)
+    needs: setup
+    if: needs.setup.outputs.chat == 'true' || needs.setup.outputs.amplify-config == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Trigger and monitor Amplify build
         env:
           AMPLIFY_APP_ID: d3snq1f0c10466
           AMPLIFY_BRANCH: sandbox
+          APP_LABEL: chat
         run: |
           JOB_ID=$(aws amplify start-job \
             --app-id "$AMPLIFY_APP_ID" \
@@ -284,8 +387,7 @@ jobs:
             --region "$AWS_REGION" \
             --query jobSummary.jobId \
             --output text)
-          echo "job_id=$JOB_ID" >> "$GITHUB_OUTPUT"
-          echo "Amplify chat job started: $JOB_ID"
+          echo "Amplify $APP_LABEL job started: $JOB_ID"
 
           for i in $(seq 1 30); do
             STATUS=$(aws amplify get-job \
@@ -295,25 +397,44 @@ jobs:
               --region "$AWS_REGION" \
               --query job.summary.status \
               --output text)
-            echo "[$i/30] Amplify chat status: $STATUS"
+            echo "[$i/30] Amplify $APP_LABEL status: $STATUS"
             if [ "$STATUS" = "SUCCEED" ]; then
-              echo "✅ Amplify chat build succeeded"
-              break
+              echo "✅ Amplify $APP_LABEL build succeeded"
+              exit 0
             elif [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "CANCELLED" ]; then
-              echo "❌ Amplify chat build $STATUS"
+              echo "❌ Amplify $APP_LABEL build $STATUS"
               exit 1
             fi
             sleep 30
           done
+          echo "❌ Amplify $APP_LABEL build did not finish within 15 minutes"
+          exit 1
 
+  summary:
+    name: Deployment summary
+    needs: [setup, deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-chat]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
       - name: Summary
-        if: always()
         run: |
-          echo "## Sandbox Deployment Summary" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "**API Image:** ${{ steps.build.outputs.image }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "**Commit:** ${{ github.sha }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "**API URL:** https://forms.api.sandbox.alpha.gov.bb" >> "$GITHUB_STEP_SUMMARY"
-          echo "**Landing URL:** https://landing.sandbox.alpha.gov.bb" >> "$GITHUB_STEP_SUMMARY"
-          echo "**Forms URL:** https://forms.sandbox.alpha.gov.bb" >> "$GITHUB_STEP_SUMMARY"
-          echo "**Chat URL:** https://chat.sandbox.alpha.gov.bb" >> "$GITHUB_STEP_SUMMARY"
+          gate() { [ "$1" = "true" ] && echo "deployed" || echo "skipped (unaffected)"; }
+          {
+            echo "## Sandbox Deployment Summary"
+            echo ""
+            echo "**Commit:** ${{ github.sha }}"
+            echo ""
+            echo "| Target | Result |"
+            echo "|--------|--------|"
+            echo "| API | $(gate '${{ needs.setup.outputs.api }}') |"
+            echo "| API migrations | $(gate '${{ needs.setup.outputs.migrations }}') |"
+            echo "| form-builder | $(gate '${{ needs.setup.outputs.fb-api }}') |"
+            echo "| Amplify forms | $(gate '${{ needs.setup.outputs.forms }}') |"
+            echo "| Amplify landing | $(gate '${{ needs.setup.outputs.landing }}') |"
+            echo "| Amplify chat | $(gate '${{ needs.setup.outputs.chat }}') |"
+            echo ""
+            echo "**API URL:** https://forms.api.sandbox.alpha.gov.bb"
+            echo "**Landing URL:** https://landing.sandbox.alpha.gov.bb"
+            echo "**Forms URL:** https://forms.sandbox.alpha.gov.bb"
+            echo "**Chat URL:** https://chat.sandbox.alpha.gov.bb"
+          } >> "$GITHUB_STEP_SUMMARY"
