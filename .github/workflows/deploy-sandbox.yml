@@ -35,6 +35,7 @@ jobs:
       forms: ${{ steps.affected.outputs.forms }}
       landing: ${{ steps.affected.outputs.landing }}
       chat: ${{ steps.affected.outputs.chat }}
+      fb-app: ${{ steps.affected.outputs.fb-app }}
       migrations: ${{ steps.affected.outputs.migrations }}
       amplify-config: ${{ steps.affected.outputs.amplify-config }}
     steps:
@@ -73,6 +74,7 @@ jobs:
           echo "forms=$(has forms)" >> "$GITHUB_OUTPUT"
           echo "landing=$(has landing)" >> "$GITHUB_OUTPUT"
           echo "chat=$(has chat)" >> "$GITHUB_OUTPUT"
+          echo "fb-app=$(has form-builder-app)" >> "$GITHUB_OUTPUT"
 
           # Migrations: precise path-grep (from PR #216) on the unified base. The
           # migration task is a ~1.5-3 min cold Fargate run; migration:run is
@@ -282,7 +284,9 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
       - name: Trigger and monitor Amplify build
         env:
-          AMPLIFY_APP_ID: d1yjf5g5ckxcxg
+          # Forms homepage (lists live forms) at forms.sandbox.alpha.gov.bb.
+          # NOT d1yjf5g5ckxcxg — that is the archived legacy monorepo app.
+          AMPLIFY_APP_ID: d1j7z1k0h7u5nb
           AMPLIFY_BRANCH: sandbox
           APP_LABEL: forms
         run: |
@@ -410,9 +414,56 @@ jobs:
           echo "❌ Amplify $APP_LABEL build did not finish within 15 minutes"
           exit 1
 
+  amplify-form-builder:
+    name: Amplify build (form-builder)
+    needs: setup
+    if: needs.setup.outputs.fb-app == 'true' || needs.setup.outputs.amplify-config == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Trigger and monitor Amplify build
+        env:
+          AMPLIFY_APP_ID: d16oo4n0w76zwn
+          AMPLIFY_BRANCH: sandbox
+          APP_LABEL: form-builder
+        run: |
+          JOB_ID=$(aws amplify start-job \
+            --app-id "$AMPLIFY_APP_ID" \
+            --branch-name "$AMPLIFY_BRANCH" \
+            --job-type RELEASE \
+            --region "$AWS_REGION" \
+            --query jobSummary.jobId \
+            --output text)
+          echo "Amplify $APP_LABEL job started: $JOB_ID"
+
+          for i in $(seq 1 30); do
+            STATUS=$(aws amplify get-job \
+              --app-id "$AMPLIFY_APP_ID" \
+              --branch-name "$AMPLIFY_BRANCH" \
+              --job-id "$JOB_ID" \
+              --region "$AWS_REGION" \
+              --query job.summary.status \
+              --output text)
+            echo "[$i/30] Amplify $APP_LABEL status: $STATUS"
+            if [ "$STATUS" = "SUCCEED" ]; then
+              echo "✅ Amplify $APP_LABEL build succeeded"
+              exit 0
+            elif [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "CANCELLED" ]; then
+              echo "❌ Amplify $APP_LABEL build $STATUS"
+              exit 1
+            fi
+            sleep 30
+          done
+          echo "❌ Amplify $APP_LABEL build did not finish within 15 minutes"
+          exit 1
+
   summary:
     name: Deployment summary
-    needs: [setup, deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-chat]
+    needs: [setup, deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-chat, amplify-form-builder]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -428,13 +479,15 @@ jobs:
             echo "|--------|--------|"
             echo "| API | $(gate '${{ needs.setup.outputs.api }}') |"
             echo "| API migrations | $(gate '${{ needs.setup.outputs.migrations }}') |"
-            echo "| form-builder | $(gate '${{ needs.setup.outputs.fb-api }}') |"
+            echo "| form-builder API | $(gate '${{ needs.setup.outputs.fb-api }}') |"
             echo "| Amplify forms | $(gate '${{ needs.setup.outputs.forms }}') |"
             echo "| Amplify landing | $(gate '${{ needs.setup.outputs.landing }}') |"
             echo "| Amplify chat | $(gate '${{ needs.setup.outputs.chat }}') |"
+            echo "| Amplify form-builder | $(gate '${{ needs.setup.outputs.fb-app }}') |"
             echo ""
             echo "**API URL:** https://forms.api.sandbox.alpha.gov.bb"
             echo "**Landing URL:** https://landing.sandbox.alpha.gov.bb"
             echo "**Forms URL:** https://forms.sandbox.alpha.gov.bb"
             echo "**Chat URL:** https://chat.sandbox.alpha.gov.bb"
+            echo "**Form Builder URL:** https://builder.sandbox.alpha.gov.bb"
           } >> "$GITHUB_STEP_SUMMARY"
