@@ -3,7 +3,14 @@ import { Heading, Text, linkVariants } from '@govtech-bb/react'
 import { Breadcrumbs } from '../components/Breadcrumbs'
 import { HelpfulBox } from '../components/HelpfulBox'
 import { MarkdownContent } from '../components/MarkdownContent'
-import { findPage, isSubPage, PAGES  } from '../content/registry'
+import {
+  findPage,
+  isPreview,
+  isSubPage,
+  isVisible,
+  PAGES,
+  startSubPageInPreview,
+} from '../content/registry'
 import type {ContentPage} from '../content/registry';
 import { CATEGORY_BY_SLUG, getSubcategory } from '../content/categories'
 import type {Category, SubCategory} from '../content/categories';
@@ -30,7 +37,8 @@ type LoaderData =
     }
 
 export const Route = createFileRoute('/$')({
-  loader: ({ params }): LoaderData => {
+  loader: ({ params, context }): LoaderData => {
+    const { preview } = context
     const splat = (params._splat ?? '').replace(/^\/+|\/+$/g, '')
     const segments = splat.split('/').filter(Boolean)
 
@@ -45,7 +53,10 @@ export const Route = createFileRoute('/$')({
           }
         }
         const items = PAGES.filter(
-          (p) => p.frontmatter.categories.includes(cat.slug) && !isSubPage(p),
+          (p) =>
+            p.frontmatter.categories.includes(cat.slug) &&
+            !isSubPage(p) &&
+            isVisible(p, preview),
         ).map((p) => ({
           title: p.frontmatter.title,
           description: p.frontmatter.description,
@@ -56,7 +67,10 @@ export const Route = createFileRoute('/$')({
     }
 
     const page = findPage(splat)
-    if (page) return { kind: 'page', page }
+    if (page) {
+      if (!isVisible(page, preview)) throw notFound()
+      return { kind: 'page', page }
+    }
 
     if (segments.length === 2) {
       const cat = CATEGORY_BY_SLUG[segments[0]]
@@ -66,7 +80,8 @@ export const Route = createFileRoute('/$')({
           (p) =>
             p.frontmatter.categories.includes(cat.slug) &&
             p.frontmatter.subcategory === sub.slug &&
-            !isSubPage(p),
+            !isSubPage(p) &&
+            isVisible(p, preview),
         ).map((p) => ({
           title: p.frontmatter.title,
           description: p.frontmatter.description,
@@ -92,6 +107,11 @@ export const Route = createFileRoute('/$')({
                 },
               ]
             : []),
+          // A preview page only reaches here for a token holder, but keep
+          // crawlers out in case the URL is ever shared.
+          ...(isPreview(loaderData.page)
+            ? [{ name: 'robots', content: 'noindex' }]
+            : []),
         ],
       }
     }
@@ -111,7 +131,9 @@ export const Route = createFileRoute('/$')({
 
 function ContentRoute() {
   const data = Route.useLoaderData()
-  if (data.kind === 'page') return <PageView page={data.page} />
+  const { preview } = Route.useRouteContext()
+  if (data.kind === 'page')
+    return <PageView page={data.page} inPreview={preview} />
   if (data.kind === 'subcategory-index')
     return (
       <SubcategoryIndexView
@@ -126,10 +148,24 @@ function ContentRoute() {
   return <CategoryView category={data.category} items={data.items} />
 }
 
-function PageView({ page }: { page: ContentPage }) {
+function PageView({
+  page,
+  inPreview,
+}: {
+  page: ContentPage
+  inPreview: boolean
+}) {
+  // A public visitor on a page whose `/start` sub-page is in preview sees the
+  // online-application method stripped and the "N ways" count rewritten down.
+  const hideStartLink = !inPreview && startSubPageInPreview(page)
   return (
     <Shell>
-      <MarkdownContent body={page.body} frontmatter={page.frontmatter} />
+      {isPreview(page) ? <PreviewBanner /> : null}
+      <MarkdownContent
+        body={page.body}
+        frontmatter={page.frontmatter}
+        hideStartLink={hideStartLink}
+      />
     </Shell>
   )
 }
@@ -252,6 +288,27 @@ function SubcategoryView({
         </div>
       )}
     </Shell>
+  )
+}
+
+/**
+ * Shown only to a reviewer in preview mode, and only on a page that is
+ * effectively preview — a public visitor never reaches such a page.
+ */
+function PreviewBanner() {
+  return (
+    <div
+      role="status"
+      className="mb-6 border-yellow-40 border-l-4 bg-yellow-10 p-4"
+    >
+      <Text as="p" className="font-bold">
+        Under review — not public
+      </Text>
+      <Text as="p" size="caption" className="text-mid-grey-00">
+        This page is visible to you because you are in preview mode. It is hidden
+        from the public and search engines until it is published.
+      </Text>
+    </div>
   )
 }
 
