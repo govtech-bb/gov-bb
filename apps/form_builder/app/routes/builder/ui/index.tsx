@@ -1,8 +1,8 @@
 import "../../../styles/builder.global.css";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { useReducer, useState, useRef, useEffect, useMemo } from "react";
 import { getCatalogFn } from "../../../server/registry";
-import { listForms, nextVersion, submitRecipe, updateRecipe, getRecipe } from "../../../server/forms";
+import { listForms, nextVersion, submitRecipe, updateRecipe, deleteForm, getRecipe } from "../../../server/forms";
 import { publishRecipe } from "../../../server/publish";
 import { validateRecipe, previewRecipe } from "../../../server/registry";
 import { serializeRecipeDraft, findRecipeIdCollisions, formatCollisionIssues } from "@govtech-bb/form-builder";
@@ -20,6 +20,8 @@ import { PreviewModal } from "./-preview-modal";
 import { SubmitModal } from "./-submit-modal";
 import { PublishModal } from "./-publish-modal";
 import { FormPicker } from "./-form-picker";
+import { DeleteModal } from "./-delete-modal";
+import type { FormDefinitionSummary } from "../../../types/index";
 
 import styles from "../../../styles/builder.module.css";
 
@@ -39,6 +41,7 @@ function BuilderPage() {
   const { catalog, forms } = Route.useLoaderData();
   const { formId: openFormId } = Route.useSearch();
   const navigate = useNavigate();
+  const router = useRouter();
   const [draft, dispatch] = useReducer(recipeReducer, EMPTY_DRAFT);
 
   // UI state
@@ -64,6 +67,9 @@ function BuilderPage() {
   >(null);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [lastSaveStatus, setLastSaveStatus] = useState<"idle" | "success" | "error" | "submitted">("idle");
+  const [deleteTarget, setDeleteTarget] = useState<FormDefinitionSummary | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   // Auto-open-from-AI: a one-shot load driven by the `?formId=` handoff param.
   const [openError, setOpenError] = useState<string | null>(null);
   const openedRef = useRef(false);
@@ -337,6 +343,36 @@ function BuilderPage() {
     setPreviewError(null);
   };
 
+  const handleRequestDelete = (form: FormDefinitionSummary) => {
+    setDeleteError(null);
+    setDeleteTarget(form);
+    setIsPickerOpen(false);
+  };
+
+  const handleConfirmDelete = async (reason: string) => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteForm({ data: { formId: deleteTarget.formId, reason } });
+      // If the deleted form is the one open in the editor, clear it.
+      if (loadedFromId === deleteTarget.formId) handleNew();
+      setDeleteTarget(null);
+      // Re-run the route loader so the forms list drops the deleted entry.
+      await router.invalidate();
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleCloseDelete = () => {
+    if (isDeleting) return;
+    setDeleteTarget(null);
+    setDeleteError(null);
+  };
+
   const handleFormIdChange = (id: string) => {
     dispatch({ type: "SET_FORM_META", formId: id, title: draft.title, description: draft.description });
   };
@@ -455,6 +491,7 @@ function BuilderPage() {
           catalog={catalog}
           onLoad={handleLoad}
           onClose={() => setIsPickerOpen(false)}
+          onRequestDelete={handleRequestDelete}
         />
       )}
 
@@ -490,6 +527,17 @@ function BuilderPage() {
           publishError={publishError}
           onPublish={handlePublish}
           onClose={handleClosePublish}
+        />
+      )}
+
+      {deleteTarget && (
+        <DeleteModal
+          formId={deleteTarget.formId}
+          title={deleteTarget.title}
+          isDeleting={isDeleting}
+          deleteError={deleteError}
+          onConfirm={handleConfirmDelete}
+          onClose={handleCloseDelete}
         />
       )}
     </div>
