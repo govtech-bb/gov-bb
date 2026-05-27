@@ -1,9 +1,12 @@
 {
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
-  "defaultBase": "main",
+  "defaultBase": "sandbox",
   "namedInputs": {
     "default": ["{projectRoot}/**/*", "sharedGlobals"],
-    "sharedGlobals": [],
+    "sharedGlobals": [
+      "{workspaceRoot}/tsconfig.base.json",
+      "{workspaceRoot}/pnpm-lock.yaml"
+    ],
     "production": [
       "default",
       "!{projectRoot}/**/*.spec.ts",
@@ -28,7 +31,7 @@
     }
   },
   "affected": {
-    "defaultBase": "main"
+    "defaultBase": "sandbox"
   },
   "analytics": false
 }
