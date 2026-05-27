@@ -1,0 +1,37 @@
+{
+  "formId": "sample-this",
+  "title": "This is a sample",
+  "version": "1.1.0",
+  "steps": [
+    {
+      "stepId": "step-1",
+      "title": "Step 1",
+      "elements": [
+        {
+          "ref": "components/account-name"
+        },
+        {
+          "ref": "components/account-name",
+          "overrides": {
+            "fieldId": "account-name-2"
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Submission Confirmation",
+      "elements": [],
+      "behaviours": []
+    }
+  ],
+  "createdAt": "2026-05-27T16:31:57.913Z",
+  "updatedAt": "2026-05-27T16:31:57.913Z"
+}
