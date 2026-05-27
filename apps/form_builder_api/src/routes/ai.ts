@@ -1,7 +1,10 @@
 import { Router } from "express";
 import { randomUUID } from "node:crypto";
 import { CustomComponent, FormDefinitionEntity } from "@govtech-bb/database";
+import { findRecipeIdCollisionsFromRecipe } from "@govtech-bb/form-builder";
+import type { ServiceContractRecipe } from "@govtech-bb/form-types";
 import { getDataSource } from "../db.js";
+import { getFullCatalog } from "../catalog.js";
 import { getSystemPrompt } from "../ai/system-prompt.js";
 import { chat, ensureInitialised, isAvailable } from "../ai/client.js";
 import { extractRecipe } from "../ai/recipe-extractor.js";
@@ -193,6 +196,29 @@ aiRouter.post("/sessions/:id/publish", async (req, res) => {
     const formId = req.body.formId ?? recipe.formId;
     if (!formId) {
       res.status(400).json({ error: "No formId in recipe or request" });
+      return;
+    }
+
+    // Backstop: reject duplicate resolved fieldIds/stepIds before persisting.
+    // The AI builder's only other guard is a prompt instruction, and this
+    // recipe is written straight to FormDefinitionEntity (read by the live
+    // forms API), so a collision here would reach users. Uniqueness-only — not
+    // a full Zod gate — since raw AI recipes may legitimately lack
+    // createdAt/updatedAt/version (ADR 0010).
+    const catalog = await getFullCatalog();
+    const collisions = findRecipeIdCollisionsFromRecipe(
+      recipe as ServiceContractRecipe,
+      catalog,
+    );
+    if (
+      collisions.fieldIdCollisions.length > 0 ||
+      collisions.stepIdCollisions.length > 0
+    ) {
+      res.status(422).json({
+        error:
+          "Recipe has duplicate field or step IDs and was not published. Every resolved fieldId and stepId must be unique across the form.",
+        collisions,
+      });
       return;
     }
 
