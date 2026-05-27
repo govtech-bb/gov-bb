@@ -68,7 +68,9 @@ export function serializeRecipeDraft(
       ? { description: draft.description }
       : {}),
     version: opts.version,
-    // processors are managed outside the builder (e.g. by the API); never set here
+    // Carry processors through unchanged (issue #255). `!== undefined` (not a
+    // truthiness/length check) keeps "absent" distinct from an explicit `[]`.
+    ...(draft.processors !== undefined ? { processors: draft.processors } : {}),
     steps,
     createdAt: now,
     updatedAt: now,
@@ -141,6 +143,10 @@ export function deserializeRecipe(
     title: recipe.title,
     ...(recipe.description !== undefined
       ? { description: recipe.description }
+      : {}),
+    // Symmetric read so processors survive an open → deploy cycle (issue #255).
+    ...(recipe.processors !== undefined
+      ? { processors: recipe.processors }
       : {}),
     steps,
   };

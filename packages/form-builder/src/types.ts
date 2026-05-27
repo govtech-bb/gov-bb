@@ -1,4 +1,8 @@
-import type { FieldOverrides, Behaviour } from "@govtech-bb/form-types";
+import type {
+  FieldOverrides,
+  Behaviour,
+  Processor,
+} from "@govtech-bb/form-types";
 
 // Per-child field overrides for a block (keyed by child fieldId)
 export type ChildOverrides = Record<string, FieldOverrides>;
@@ -25,4 +29,7 @@ export interface RecipeDraft {
   title: string;
   description?: string;
   steps: RecipeStepDraft[];
+  // Carried through unchanged so re-deploying a form never wipes processors
+  // authored elsewhere (issue #255). No builder UI yet — see Session 2.
+  processors?: Processor[];
 }

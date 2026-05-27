@@ -1,5 +1,7 @@
 import { serializeRecipeDraft, deserializeRecipe } from "./serialization";
 import { getCatalog } from "./catalog";
+import { serviceContractRecipeSchema } from "@govtech-bb/form-types";
+import type { Processor, ServiceContractRecipe } from "@govtech-bb/form-types";
 import type { RegistryCatalog } from "./catalog";
 import type { RecipeDraft, RecipeFieldDraft } from "./types";
 
@@ -58,11 +60,18 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
     expect(typeof recipe.updatedAt).toBe("string");
   });
 
-  it("processors are not set in serialize output", () => {
-    const draft = makeBaseDraft();
-    const recipe = serializeRecipeDraft(draft, { version: "1.0.0" });
+  it("a recipe with no processors round-trips with the key absent (no spurious [] or undefined)", () => {
+    // deserialize a recipe that has no processors → draft must not carry the key
+    const recipe = serializeRecipeDraft(makeBaseDraft(), { version: "1.0.0" });
+    expect(Object.keys(recipe)).not.toContain("processors");
 
-    expect(recipe.processors).toBeUndefined();
+    const draft = deserializeRecipe(recipe);
+    expect(Object.keys(draft)).not.toContain("processors");
+
+    // serialize that draft again → still no processors key on the wire
+    const reserialized = serializeRecipeDraft(draft, { version: "1.0.0" });
+    expect(reserialized.processors).toBeUndefined();
+    expect(Object.keys(reserialized)).not.toContain("processors");
   });
 
   it("empty steps array survives round-trip", () => {
@@ -474,5 +483,94 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
     expect(result.steps[0].fields[0].overrides).toEqual({
       validations: { required: {} },
     });
+  });
+});
+
+// ─── processors round-trip (data-loss fix, issue #255) ─────────────────────
+
+describe("processors round-trip through deserialize/serialize", () => {
+  // The three processors with the richest config. Webhook includes its
+  // defaulted fields explicitly so the array is a clean identity through both
+  // the builder round-trip and serviceContractRecipeSchema parsing.
+  const processorsFixture: Processor[] = [
+    {
+      type: "email",
+      config: {
+        recipientField: "applicant.email",
+        subject: "Your application has been received",
+      },
+    },
+    {
+      type: "payment",
+      config: {
+        provider: "ezpay",
+        department: "Treasury",
+        paymentCode: "FEE-001",
+        amount: 50,
+        description: "Application processing fee",
+        customerEmailPath: "applicant.email",
+        customerNamePath: "applicant.fullName",
+        allowCredit: true,
+        allowDebit: true,
+        allowPayce: false,
+      },
+    },
+    {
+      type: "webhook",
+      config: {
+        url: "https://example.gov.bb/hooks/applications",
+        method: "POST",
+        headers: { "X-Source": "gov-bb" },
+        secret: "supersecretkey1234",
+        signatureHeader: "X-Webhook-Signature",
+        timeoutMs: 10_000,
+      },
+    },
+  ];
+
+  function makeRecipeWithProcessors(): ServiceContractRecipe {
+    return {
+      formId: "form-001",
+      title: "Test Form",
+      version: "1.0.0",
+      steps: [],
+      processors: processorsFixture,
+      createdAt: "2025-01-01T00:00:00.000Z",
+      updatedAt: "2025-01-01T00:00:00.000Z",
+    };
+  }
+
+  it("preserves a processors array byte-for-byte across deserialize → serialize", () => {
+    const draft = deserializeRecipe(makeRecipeWithProcessors());
+    const result = serializeRecipeDraft(draft, { version: "1.0.0" });
+
+    expect(result.processors).toEqual(processorsFixture);
+  });
+
+  it("preserves an explicit empty processors array (not collapsed to absent)", () => {
+    // The whole point of the `!== undefined` guard: an explicit `[]` must
+    // survive distinct from "no processors field". A truthiness/length check
+    // would silently drop it and reintroduce the data-loss bug.
+    const recipe: ServiceContractRecipe = {
+      ...makeRecipeWithProcessors(),
+      processors: [],
+    };
+
+    const draft = deserializeRecipe(recipe);
+    expect(draft.processors).toEqual([]);
+
+    const result = serializeRecipeDraft(draft, { version: "1.0.0" });
+    expect(result.processors).toEqual([]);
+  });
+
+  it("the serialized recipe (with processors) parses through serviceContractRecipeSchema", () => {
+    const draft = deserializeRecipe(makeRecipeWithProcessors());
+    const result = serializeRecipeDraft(draft, { version: "1.0.0" });
+
+    const parsed = serviceContractRecipeSchema.safeParse(result);
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.processors).toEqual(processorsFixture);
+    }
   });
 });
