@@ -2,7 +2,7 @@ import "../../../styles/builder.global.css";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useReducer, useState, useRef, useEffect, useMemo } from "react";
 import { getCatalogFn } from "../../../server/registry";
-import { listForms, nextVersion, submitRecipe, updateRecipe } from "../../../server/forms";
+import { nextVersion, submitRecipe, updateRecipe } from "../../../server/forms";
 import { publishRecipe } from "../../../server/publish";
 import { validateRecipe, previewRecipe } from "../../../server/registry";
 import { serializeRecipeDraft, findRecipeIdCollisions } from "@govtech-bb/form-builder";
@@ -19,22 +19,25 @@ import { PreviewModal } from "./-preview-modal";
 import { SubmitModal } from "./-submit-modal";
 import { PublishModal } from "./-publish-modal";
 import { FormPicker } from "./-form-picker";
+import { useFormsList } from "./-use-forms-list";
 
 import styles from "../../../styles/builder.module.css";
 
 export const Route = createFileRoute("/builder/ui/")({
+  // Only the catalog is awaited here — it's needed for the first render
+  // (StepEditor, the duplicate-ID memo) and is cheap thanks to its 60s server
+  // cache. The forms list is a slow, uncached GitHub-API waterfall consumed only
+  // by the Open picker, so it's fetched off the critical path via useFormsList.
   loader: async () => {
-    const [catalog, forms] = await Promise.all([
-      getCatalogFn(),
-      listForms(),
-    ]);
-    return { catalog, forms };
+    const catalog = await getCatalogFn();
+    return { catalog };
   },
   component: BuilderPage,
 });
 
 function BuilderPage() {
-  const { catalog, forms } = Route.useLoaderData();
+  const { catalog } = Route.useLoaderData();
+  const { forms, loadError: formsLoadError } = useFormsList();
   const navigate = useNavigate();
   const [draft, dispatch] = useReducer(recipeReducer, EMPTY_DRAFT);
 
@@ -426,6 +429,7 @@ function BuilderPage() {
       {isPickerOpen && (
         <FormPicker
           forms={forms}
+          loadError={formsLoadError}
           isDirty={isDirty}
           catalog={catalog}
           onLoad={handleLoad}

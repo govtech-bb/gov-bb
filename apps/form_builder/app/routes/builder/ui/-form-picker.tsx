@@ -7,14 +7,17 @@ import type { FormDefinitionSummary } from "../../../types/index";
 import styles from "../../../styles/builder.module.css";
 
 interface FormPickerProps {
-  forms: FormDefinitionSummary[];
+  /** The forms to choose from, or `null` while the background fetch is in flight. */
+  forms: FormDefinitionSummary[] | null;
+  /** A message if the background fetch failed, otherwise `null`. */
+  loadError: string | null;
   isDirty: boolean;
   catalog: RegistryCatalog;
   onLoad: (draft: RecipeDraft, formId: string, version: string) => void;
   onClose: () => void;
 }
 
-export function FormPicker({ forms, isDirty, catalog, onLoad, onClose }: FormPickerProps) {
+export function FormPicker({ forms, loadError, isDirty, catalog, onLoad, onClose }: FormPickerProps) {
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,15 +45,21 @@ export function FormPicker({ forms, isDirty, catalog, onLoad, onClose }: FormPic
           <button type="button" onClick={onClose}>Close</button>
         </div>
 
-        {error && (
+        {(error || loadError) && (
           <div className={styles.validationErrors} style={{ marginBottom: 8 }}>
-            {error}
+            {error || loadError}
           </div>
         )}
 
-        {forms.length === 0 && <p style={{ color: "#888" }}>No forms found.</p>}
+        {forms === null && !loadError && (
+          <p style={{ color: "#888" }}>Loading forms…</p>
+        )}
 
-        {forms.map((form) => (
+        {forms !== null && forms.length === 0 && (
+          <p style={{ color: "#888" }}>No forms found.</p>
+        )}
+
+        {forms?.map((form) => (
           <div
             key={form.id}
             className={styles.fieldRow}
