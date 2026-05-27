@@ -1,4 +1,5 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
+import { z } from "zod";
 import { FormDefinitionEntity } from "@govtech-bb/database";
 import {
   serviceContractRecipeSchema,
@@ -7,6 +8,22 @@ import {
 import { getDataSource } from "../db.js";
 
 export const formsRouter = Router();
+
+// GET /builder/forms/disabled — form_ids with a tombstone (deleted/disabled).
+// Registered before "/:formId" so "disabled" isn't captured as a formId.
+export async function listDisabledHandler(
+  _req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const ds = await getDataSource();
+    const rows = await ds.query(`SELECT form_id FROM form_disabled_overrides`);
+    res.json(rows.map((r: { form_id: string }) => r.form_id));
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+}
+formsRouter.get("/disabled", listDisabledHandler);
 
 // GET /builder/forms — list all forms (latest version per formId)
 formsRouter.get("/", async (_req, res) => {
@@ -94,11 +111,9 @@ formsRouter.post("/", async (req, res) => {
       where: { formId: recipe.formId, version: recipe.version },
     });
     if (existing) {
-      res
-        .status(409)
-        .json({
-          error: `Recipe ${recipe.formId} v${recipe.version} already exists`,
-        });
+      res.status(409).json({
+        error: `Recipe ${recipe.formId} v${recipe.version} already exists`,
+      });
       return;
     }
     const entity = repo.create({
@@ -137,11 +152,9 @@ formsRouter.put("/:formId", async (req, res) => {
       return;
     }
     if (recipe.version !== rows[0].version) {
-      res
-        .status(409)
-        .json({
-          error: `Version mismatch: stored=${rows[0].version}, provided=${recipe.version}`,
-        });
+      res.status(409).json({
+        error: `Version mismatch: stored=${rows[0].version}, provided=${recipe.version}`,
+      });
       return;
     }
     await ds.query(`UPDATE form_definitions SET schema = $1 WHERE id = $2`, [
@@ -153,3 +166,71 @@ formsRouter.put("/:formId", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// DELETE /builder/forms/:formId — hard-remove every version of a form and
+// write a tombstone so the form_id stays claimed (public fetch -> 410 Gone).
+// Submitted data (form_submissions) is deliberately never touched.
+//
+// Column names (form_id, reason, disabled_by, disabled_at) are pinned to
+// apps/api's FormDisabledOverrideEntity — that app owns the table and its
+// migration; this app writes it via raw SQL over the shared DB.
+const deleteFormBodySchema = z.object({
+  reason: z.string().min(1).max(2000),
+  deletedBy: z.string().min(1).max(255),
+});
+
+export async function deleteFormHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const parsed = deleteFormBodySchema.safeParse(req.body);
+  if (!parsed.success) {
+    const detail = parsed.error.issues
+      .map((i) => `${i.path.join(".") || "body"}: ${i.message}`)
+      .join("; ");
+    res.status(400).json({ error: detail || "Invalid request body" });
+    return;
+  }
+  const { reason, deletedBy } = parsed.data;
+  const { formId } = req.params;
+
+  try {
+    const ds = await getDataSource();
+    const result = await ds.transaction(async (manager) => {
+      // Unknown form: no versions AND no existing tombstone -> 404, no write.
+      const defs = await manager.query(
+        `SELECT 1 FROM form_definitions WHERE form_id = $1 LIMIT 1`,
+        [formId],
+      );
+      const existing = await manager.query(
+        `SELECT 1 FROM form_disabled_overrides WHERE form_id = $1 LIMIT 1`,
+        [formId],
+      );
+      if (defs.length === 0 && existing.length === 0) {
+        return { notFound: true as const };
+      }
+
+      const deleted = await manager.query(
+        `DELETE FROM form_definitions WHERE form_id = $1 RETURNING id`,
+        [formId],
+      );
+      await manager.query(
+        `INSERT INTO form_disabled_overrides (form_id, reason, disabled_by)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (form_id) DO UPDATE
+         SET reason = EXCLUDED.reason, disabled_by = EXCLUDED.disabled_by`,
+        [formId, reason, deletedBy],
+      );
+      return { notFound: false as const, deletedVersions: deleted.length };
+    });
+
+    if (result.notFound) {
+      res.status(404).json({ error: `No form found for formId: ${formId}` });
+      return;
+    }
+    res.json({ ok: true, deletedVersions: result.deletedVersions });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+}
+formsRouter.delete("/:formId", deleteFormHandler);

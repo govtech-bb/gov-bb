@@ -15,6 +15,7 @@ interface FormPickerProps {
   catalog: RegistryCatalog;
   onLoad: (draft: RecipeDraft, formId: string, version: string) => void;
   onClose: () => void;
+  onRequestDelete: (form: FormDefinitionSummary) => void;
 }
 
 function matches(query: string, ...fields: Array<string | undefined>) {
@@ -23,7 +24,7 @@ function matches(query: string, ...fields: Array<string | undefined>) {
   return fields.some((f) => f !== undefined && f.toLowerCase().includes(q));
 }
 
-export function FormPicker({ forms, loadError, isDirty, catalog, onLoad, onClose }: FormPickerProps) {
+export function FormPicker({ forms, loadError, isDirty, catalog, onLoad, onClose, onRequestDelete }: FormPickerProps) {
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -114,6 +115,18 @@ export function FormPicker({ forms, loadError, isDirty, catalog, onLoad, onClose
             </span>
             <span style={{ color: "#888", fontSize: "0.8rem" }}>{form.formId}</span>
             {loadingId === form.formId && <span> Loading…</span>}
+            <button
+              type="button"
+              className={styles.btnDanger}
+              style={{ marginLeft: 8 }}
+              disabled={!!loadingId}
+              onClick={(e) => {
+                e.stopPropagation();
+                onRequestDelete(form);
+              }}
+            >
+              Delete
+            </button>
           </div>
         ))}
       </div>

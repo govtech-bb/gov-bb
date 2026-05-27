@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { listForms } from "../../../server/forms";
 import type { FormDefinitionSummary } from "../../../types/index";
 
@@ -7,6 +7,12 @@ export interface FormsListState {
   forms: FormDefinitionSummary[] | null;
   /** A message if the mount fetch failed, otherwise `null`. */
   loadError: string | null;
+  /**
+   * Re-fetch the list on demand. The route loader no longer owns this data, so
+   * router invalidation can't refresh it — the delete-form flow calls this after
+   * removing a form so the Open picker drops the deleted entry.
+   */
+  refetch: () => void;
 }
 
 /**
@@ -21,21 +27,28 @@ export function useFormsList(): FormsListState {
   const [forms, setForms] = useState<FormDefinitionSummary[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let active = true;
+  // `isActive` lets the mount effect drop a resolution that lands after unmount;
+  // a manual refetch passes the default (always-active) guard.
+  const load = useCallback((isActive: () => boolean = () => true) => {
+    setLoadError(null);
     listForms()
       .then((result) => {
-        if (active) setForms(result);
+        if (isActive()) setForms(result);
       })
       .catch((e) => {
-        if (active) {
+        if (isActive()) {
           setLoadError(e instanceof Error ? e.message : "Failed to load forms");
         }
       });
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    load(() => active);
     return () => {
       active = false;
     };
-  }, []);
+  }, [load]);
 
-  return { forms, loadError };
+  return { forms, loadError, refetch: () => load() };
 }

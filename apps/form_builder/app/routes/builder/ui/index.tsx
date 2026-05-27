@@ -2,7 +2,7 @@ import "../../../styles/builder.global.css";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useReducer, useState, useRef, useEffect, useMemo } from "react";
 import { getCatalogFn } from "../../../server/registry";
-import { nextVersion, submitRecipe, updateRecipe, getRecipe } from "../../../server/forms";
+import { nextVersion, submitRecipe, updateRecipe, deleteForm, getRecipe } from "../../../server/forms";
 import { publishRecipe } from "../../../server/publish";
 import { validateRecipe, previewRecipe } from "../../../server/registry";
 import { serializeRecipeDraft, findRecipeIdCollisions, formatCollisionIssues } from "@govtech-bb/form-builder";
@@ -21,6 +21,8 @@ import { SubmitModal } from "./-submit-modal";
 import { PublishModal } from "./-publish-modal";
 import { FormPicker } from "./-form-picker";
 import { useFormsList } from "./-use-forms-list";
+import { DeleteModal } from "./-delete-modal";
+import type { FormDefinitionSummary } from "../../../types/index";
 
 import styles from "../../../styles/builder.module.css";
 
@@ -39,7 +41,7 @@ export const Route = createFileRoute("/builder/ui/")({
 
 function BuilderPage() {
   const { catalog } = Route.useLoaderData();
-  const { forms, loadError: formsLoadError } = useFormsList();
+  const { forms, loadError: formsLoadError, refetch: refetchForms } = useFormsList();
   const { formId: openFormId } = Route.useSearch();
   const navigate = useNavigate();
   const [draft, dispatch] = useReducer(recipeReducer, EMPTY_DRAFT);
@@ -67,6 +69,9 @@ function BuilderPage() {
   >(null);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [lastSaveStatus, setLastSaveStatus] = useState<"idle" | "success" | "error" | "submitted">("idle");
+  const [deleteTarget, setDeleteTarget] = useState<FormDefinitionSummary | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   // Auto-open-from-AI: a one-shot load driven by the `?formId=` handoff param.
   const [openError, setOpenError] = useState<string | null>(null);
   const openedRef = useRef(false);
@@ -340,6 +345,37 @@ function BuilderPage() {
     setPreviewError(null);
   };
 
+  const handleRequestDelete = (form: FormDefinitionSummary) => {
+    setDeleteError(null);
+    setDeleteTarget(form);
+    setIsPickerOpen(false);
+  };
+
+  const handleConfirmDelete = async (reason: string) => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteForm({ data: { formId: deleteTarget.formId, reason } });
+      // If the deleted form is the one open in the editor, clear it.
+      if (loadedFromId === deleteTarget.formId) handleNew();
+      setDeleteTarget(null);
+      // The forms list lives in useFormsList (no longer route-loader data), so
+      // refetch it directly to drop the deleted entry from the Open picker.
+      refetchForms();
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleCloseDelete = () => {
+    if (isDeleting) return;
+    setDeleteTarget(null);
+    setDeleteError(null);
+  };
+
   const handleFormIdChange = (id: string) => {
     dispatch({ type: "SET_FORM_META", formId: id, title: draft.title, description: draft.description });
   };
@@ -459,6 +495,7 @@ function BuilderPage() {
           catalog={catalog}
           onLoad={handleLoad}
           onClose={() => setIsPickerOpen(false)}
+          onRequestDelete={handleRequestDelete}
         />
       )}
 
@@ -494,6 +531,17 @@ function BuilderPage() {
           publishError={publishError}
           onPublish={handlePublish}
           onClose={handleClosePublish}
+        />
+      )}
+
+      {deleteTarget && (
+        <DeleteModal
+          formId={deleteTarget.formId}
+          title={deleteTarget.title}
+          isDeleting={isDeleting}
+          deleteError={deleteError}
+          onConfirm={handleConfirmDelete}
+          onClose={handleCloseDelete}
         />
       )}
     </div>

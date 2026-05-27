@@ -27,6 +27,7 @@ function renderPicker(props: Partial<React.ComponentProps<typeof FormPicker>> = 
       catalog={CATALOG}
       onLoad={jest.fn()}
       onClose={jest.fn()}
+      onRequestDelete={jest.fn()}
       {...props}
     />,
   );
