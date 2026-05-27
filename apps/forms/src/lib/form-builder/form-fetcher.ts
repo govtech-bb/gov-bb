@@ -16,12 +16,13 @@ import { fetchFormDefinition } from "@forms/form-api";
  */
 export const fetchContract = async (
   id: string,
+  preview?: string,
 ): Promise<ClientServiceContract> => {
   if (id === "example" || id === "master") {
     return fetchExampleContract(id);
   }
 
-  const contract = await fetchFormDefinition(id);
+  const contract = await fetchFormDefinition(id, preview);
 
   return mapContractToLocale(contract);
 };

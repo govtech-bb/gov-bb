@@ -67,11 +67,24 @@ describe("fetchContract(<real-id>)", () => {
     mockFetchFormDefinition.mockClear();
   });
 
-  it("calls fetchFormDefinition with the supplied id", async () => {
+  it("calls fetchFormDefinition with the supplied id (no preview)", async () => {
     mockFetchFormDefinition.mockResolvedValue(minimalContract);
     await fetchContract("some-real-id");
     expect(mockFetchFormDefinition).toHaveBeenCalledTimes(1);
-    expect(mockFetchFormDefinition).toHaveBeenCalledWith("some-real-id");
+    expect(mockFetchFormDefinition).toHaveBeenCalledWith(
+      "some-real-id",
+      undefined,
+    );
+  });
+
+  it("forwards preview token to fetchFormDefinition when provided", async () => {
+    mockFetchFormDefinition.mockResolvedValue(minimalContract);
+    await fetchContract("some-real-id", "mytoken");
+    expect(mockFetchFormDefinition).toHaveBeenCalledTimes(1);
+    expect(mockFetchFormDefinition).toHaveBeenCalledWith(
+      "some-real-id",
+      "mytoken",
+    );
   });
 
   it("returns a ClientServiceContract mapped from the API response", async () => {

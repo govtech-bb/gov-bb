@@ -72,12 +72,19 @@ export const formSchemaCacheKey = (
  * - For the synthetic "example" / "master" IDs, fetchContract loads a local
  *   JSON fixture and skips the network call entirely.
  *
- * @param formId  The form identifier (path param from the URL).
+ * @param formId   The form identifier (path param from the URL).
+ * @param preview  Optional operator preview token sourced from the `?preview=`
+ *                 URL search param. When present, the token is forwarded to the
+ *                 API as the `X-Recipe-Preview` header so the server returns the
+ *                 unpublished DB draft instead of the published file recipe.
+ *                 Including preview in the cache key ensures a preview response
+ *                 can never collide with — or be served as — a normal (published)
+ *                 response for the same formId.
  */
-export const contractQueryOptions = (formId: string) =>
+export const contractQueryOptions = (formId: string, preview?: string) =>
   queryOptions<ClientServiceContract>({
-    queryKey: [CONTRACT_CACHE_KEY, formId] as const,
-    queryFn: () => fetchContract(formId),
+    queryKey: [CONTRACT_CACHE_KEY, formId, preview ?? null] as const,
+    queryFn: () => fetchContract(formId, preview),
     staleTime: 60_000,
     gcTime: 10 * 60_000,
   });

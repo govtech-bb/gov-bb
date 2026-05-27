@@ -66,7 +66,7 @@ describe("formSchemaCacheKey", () => {
 describe("contractQueryOptions", () => {
   it("queryKey starts with CONTRACT_CACHE_KEY and includes formId", () => {
     const opts = contractQueryOptions("benefit-claim");
-    expect(opts.queryKey).toEqual([CONTRACT_CACHE_KEY, "benefit-claim"]);
+    expect(opts.queryKey).toEqual([CONTRACT_CACHE_KEY, "benefit-claim", null]);
   });
 
   it("staleTime is 60 seconds", () => {
@@ -77,6 +77,23 @@ describe("contractQueryOptions", () => {
   it("queryFn is defined", () => {
     const opts = contractQueryOptions("benefit-claim");
     expect(typeof opts.queryFn).toBe("function");
+  });
+
+  it("queryKey includes the preview token when provided", () => {
+    const opts = contractQueryOptions("benefit-claim", "tok");
+    expect(opts.queryKey).toEqual([CONTRACT_CACHE_KEY, "benefit-claim", "tok"]);
+  });
+
+  it("with-token and without-token keys for the same formId are NOT equal", () => {
+    const withToken = contractQueryOptions("benefit-claim", "tok");
+    const withoutToken = contractQueryOptions("benefit-claim");
+    expect(withToken.queryKey).not.toEqual(withoutToken.queryKey);
+  });
+
+  it("two different tokens for the same formId produce different keys", () => {
+    const opts1 = contractQueryOptions("benefit-claim", "tokenA");
+    const opts2 = contractQueryOptions("benefit-claim", "tokenB");
+    expect(opts1.queryKey).not.toEqual(opts2.queryKey);
   });
 });
 
