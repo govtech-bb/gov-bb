@@ -54,13 +54,13 @@ test.describe("upload-document (single file, required)", () => {
     );
 
     const listItem = page
-      .locator("[data-file-upload]")
+      .locator(".govbb-file-upload")
       .filter({
         has: page.locator(
           "input[type=file]#step-4-documents-uploads_upload-document",
         ),
       })
-      .locator("[data-file-upload-item-name]");
+      .locator(".govbb-file-upload__name");
 
     await expect(listItem).toHaveText("test-document.png");
   });
@@ -73,13 +73,13 @@ test.describe("upload-document (single file, required)", () => {
     );
 
     const listItem = page
-      .locator("[data-file-upload]")
+      .locator(".govbb-file-upload")
       .filter({
         has: page.locator(
           "input[type=file]#step-4-documents-uploads_upload-document",
         ),
       })
-      .locator("[data-file-upload-item]");
+      .locator(".govbb-file-upload__item");
 
     await expect(listItem).toHaveCount(1);
     await form.removeUploadedFile(
@@ -135,13 +135,13 @@ test.describe("proof-of-address (multiple files, min 2 / max 3)", () => {
     );
 
     const items = page
-      .locator("[data-file-upload]")
+      .locator(".govbb-file-upload")
       .filter({
         has: page.locator(
           "input[type=file]#step-4-documents-uploads_proof-of-address",
         ),
       })
-      .locator("[data-file-upload-item]");
+      .locator(".govbb-file-upload__item");
 
     await expect(items).toHaveCount(2);
   });
@@ -224,13 +224,13 @@ test.describe("additional-documents (field array)", () => {
     );
 
     const fileItems = page
-      .locator("[data-file-upload]")
+      .locator(".govbb-file-upload")
       .filter({
         has: page.locator(
           "input[type=file]#step-4-documents-uploads_additional-documents",
         ),
       })
-      .locator("[data-file-upload-item-name]");
+      .locator(".govbb-file-upload__name");
 
     await expect(fileItems.first()).toHaveText("test-document.png");
   });

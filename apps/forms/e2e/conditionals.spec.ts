@@ -319,7 +319,7 @@ test.describe("Step 5 — fund-source radio conditional reveal", () => {
       "step-5-financial-information_fund-source-other",
     );
     // The inset field should be inside [data-radio-conditional]
-    const inset = page.locator("[data-radio-conditional]");
+    const inset = page.locator(".govbb-radio-item__conditional");
     await expect(inset).toBeVisible();
   });
 

@@ -135,7 +135,7 @@ test.describe("Master Contract — Happy Path", () => {
 
     // Verify uploaded file names appear in the list
     await expect(
-      page.locator("[data-file-upload-item-name]").first(),
+      page.locator(".govbb-file-upload__name").first(),
     ).toBeVisible();
 
     await form.clickContinue();
