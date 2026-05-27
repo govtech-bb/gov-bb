@@ -2,6 +2,8 @@
 
 The public-facing landing site for the Government of Barbados service portal, built with TanStack Start.
 
+Sandbox: https://landing.sandbox.alpha.gov.bb
+
 # Getting Started
 
 To run this application:
