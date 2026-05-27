@@ -286,14 +286,31 @@ jobs:
           AMPLIFY_BRANCH: sandbox
           APP_LABEL: forms
         run: |
-          JOB_ID=$(aws amplify start-job \
+          # Start a RELEASE job. If the branch already has one running (Amplify
+          # branch auto-build from the push, or an overlapping deploy), monitor
+          # that job instead of failing on LimitExceededException.
+          if JOB_ID=$(aws amplify start-job \
             --app-id "$AMPLIFY_APP_ID" \
             --branch-name "$AMPLIFY_BRANCH" \
             --job-type RELEASE \
             --region "$AWS_REGION" \
             --query jobSummary.jobId \
-            --output text)
-          echo "Amplify $APP_LABEL job started: $JOB_ID"
+            --output text 2>/tmp/amplify-start-err); then
+            echo "Amplify $APP_LABEL job started: $JOB_ID"
+          elif grep -q 'LimitExceededException' /tmp/amplify-start-err; then
+            JOB_ID=$(aws amplify list-jobs \
+              --app-id "$AMPLIFY_APP_ID" \
+              --branch-name "$AMPLIFY_BRANCH" \
+              --region "$AWS_REGION" \
+              --max-results 1 \
+              --query 'jobSummaries[0].jobId' \
+              --output text)
+            echo "Amplify $APP_LABEL already building — monitoring existing job: $JOB_ID"
+          else
+            cat /tmp/amplify-start-err
+            echo "❌ Failed to start Amplify $APP_LABEL job"
+            exit 1
+          fi
 
           for i in $(seq 1 30); do
             STATUS=$(aws amplify get-job \
@@ -333,14 +350,31 @@ jobs:
           AMPLIFY_BRANCH: sandbox
           APP_LABEL: landing
         run: |
-          JOB_ID=$(aws amplify start-job \
+          # Start a RELEASE job. If the branch already has one running (Amplify
+          # branch auto-build from the push, or an overlapping deploy), monitor
+          # that job instead of failing on LimitExceededException.
+          if JOB_ID=$(aws amplify start-job \
             --app-id "$AMPLIFY_APP_ID" \
             --branch-name "$AMPLIFY_BRANCH" \
             --job-type RELEASE \
             --region "$AWS_REGION" \
             --query jobSummary.jobId \
-            --output text)
-          echo "Amplify $APP_LABEL job started: $JOB_ID"
+            --output text 2>/tmp/amplify-start-err); then
+            echo "Amplify $APP_LABEL job started: $JOB_ID"
+          elif grep -q 'LimitExceededException' /tmp/amplify-start-err; then
+            JOB_ID=$(aws amplify list-jobs \
+              --app-id "$AMPLIFY_APP_ID" \
+              --branch-name "$AMPLIFY_BRANCH" \
+              --region "$AWS_REGION" \
+              --max-results 1 \
+              --query 'jobSummaries[0].jobId' \
+              --output text)
+            echo "Amplify $APP_LABEL already building — monitoring existing job: $JOB_ID"
+          else
+            cat /tmp/amplify-start-err
+            echo "❌ Failed to start Amplify $APP_LABEL job"
+            exit 1
+          fi
 
           for i in $(seq 1 30); do
             STATUS=$(aws amplify get-job \
@@ -380,14 +414,31 @@ jobs:
           AMPLIFY_BRANCH: sandbox
           APP_LABEL: chat
         run: |
-          JOB_ID=$(aws amplify start-job \
+          # Start a RELEASE job. If the branch already has one running (Amplify
+          # branch auto-build from the push, or an overlapping deploy), monitor
+          # that job instead of failing on LimitExceededException.
+          if JOB_ID=$(aws amplify start-job \
             --app-id "$AMPLIFY_APP_ID" \
             --branch-name "$AMPLIFY_BRANCH" \
             --job-type RELEASE \
             --region "$AWS_REGION" \
             --query jobSummary.jobId \
-            --output text)
-          echo "Amplify $APP_LABEL job started: $JOB_ID"
+            --output text 2>/tmp/amplify-start-err); then
+            echo "Amplify $APP_LABEL job started: $JOB_ID"
+          elif grep -q 'LimitExceededException' /tmp/amplify-start-err; then
+            JOB_ID=$(aws amplify list-jobs \
+              --app-id "$AMPLIFY_APP_ID" \
+              --branch-name "$AMPLIFY_BRANCH" \
+              --region "$AWS_REGION" \
+              --max-results 1 \
+              --query 'jobSummaries[0].jobId' \
+              --output text)
+            echo "Amplify $APP_LABEL already building — monitoring existing job: $JOB_ID"
+          else
+            cat /tmp/amplify-start-err
+            echo "❌ Failed to start Amplify $APP_LABEL job"
+            exit 1
+          fi
 
           for i in $(seq 1 30); do
             STATUS=$(aws amplify get-job \
