@@ -14,9 +14,10 @@ export const listForms = createServerFn({ method: "GET" })
   .middleware([requireSession])
   .handler(async ({ context }): Promise<FormDefinitionSummary[]> => {
     const token = context.session.accessToken;
-    const [drafts, published] = await Promise.all([
+    const [drafts, published, disabled] = await Promise.all([
       api.get<FormDefinitionSummary[]>("/builder/forms"),
       listPublishedForms(token),
+      api.get<string[]>("/builder/forms/disabled"),
     ]);
 
     const byFormId = new Map<string, FormDefinitionSummary>();
@@ -32,7 +33,13 @@ export const listForms = createServerFn({ method: "GET" })
         isPublished: true,
       });
     }
-    return Array.from(byFormId.values());
+
+    // Drop tombstoned forms: a deleted form's drafts are already gone, but a
+    // GitHub-published entry survives the delete and must be hidden here.
+    const disabledIds = new Set(disabled);
+    return Array.from(byFormId.values()).filter(
+      (f) => !disabledIds.has(f.formId),
+    );
   });
 
 export const getRecipe = createServerFn({ method: "GET", strict: false })
@@ -92,6 +99,24 @@ export const updateRecipe = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<void> => {
     await api.put(`/builder/forms/${encodeURIComponent(data.formId)}`, {
       recipe: data.recipe,
+    });
+  });
+
+// Permanently delete a form: the API hard-removes every version and writes a
+// tombstone (public fetch -> 410). `deletedBy` is the GitHub login from the
+// session — form_builder_api only sees the shared admin token.
+export const deleteForm = createServerFn({ method: "POST" })
+  .middleware([requireSession])
+  .inputValidator(
+    z.object({
+      formId: z.string().min(1),
+      reason: z.string().min(1).max(2000),
+    }),
+  )
+  .handler(async ({ data, context }): Promise<void> => {
+    await api.del(`/builder/forms/${encodeURIComponent(data.formId)}`, {
+      reason: data.reason,
+      deletedBy: context.session.login,
     });
   });
 

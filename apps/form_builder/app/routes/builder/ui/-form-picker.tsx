@@ -12,9 +12,10 @@ interface FormPickerProps {
   catalog: RegistryCatalog;
   onLoad: (draft: RecipeDraft, formId: string, version: string) => void;
   onClose: () => void;
+  onRequestDelete: (form: FormDefinitionSummary) => void;
 }
 
-export function FormPicker({ forms, isDirty, catalog, onLoad, onClose }: FormPickerProps) {
+export function FormPicker({ forms, isDirty, catalog, onLoad, onClose, onRequestDelete }: FormPickerProps) {
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -68,6 +69,18 @@ export function FormPicker({ forms, isDirty, catalog, onLoad, onClose }: FormPic
             </span>
             <span style={{ color: "#888", fontSize: "0.8rem" }}>{form.formId}</span>
             {loadingId === form.formId && <span> Loading…</span>}
+            <button
+              type="button"
+              className={styles.btnDanger}
+              style={{ marginLeft: 8 }}
+              disabled={!!loadingId}
+              onClick={(e) => {
+                e.stopPropagation();
+                onRequestDelete(form);
+              }}
+            >
+              Delete
+            </button>
           </div>
         ))}
       </div>
