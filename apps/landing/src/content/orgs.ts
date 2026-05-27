@@ -50,6 +50,7 @@ function syntheticPage(
     description: entry.shortDescription,
     source_url: entry.originalSource,
     categories: [],
+    visibility: 'public',
   }
   return {
     slug: `government/organisations/${slug}`,
