@@ -5,7 +5,7 @@ import { getCatalogFn } from "../../../server/registry";
 import { nextVersion, submitRecipe, updateRecipe, deleteForm, getRecipe } from "../../../server/forms";
 import { publishRecipe } from "../../../server/publish";
 import { validateRecipe, previewRecipe } from "../../../server/registry";
-import { serializeRecipeDraft, findRecipeIdCollisions, formatCollisionIssues } from "@govtech-bb/form-builder";
+import { serializeRecipeDraft, findRecipeIdCollisions, formatCollisionIssues, resolveFieldIds } from "@govtech-bb/form-builder";
 import { bumpMinor } from "../../../lib/version";
 import type { ServiceContract, ServiceContractRecipe } from "@govtech-bb/form-types";
 import type { RecipeDraft, ValidationResult, RecipeValidateResponse } from "@govtech-bb/form-builder";
@@ -15,6 +15,7 @@ import { recipeReducer, EMPTY_DRAFT, nextStepId, REQUIRED_STEP_IDS, isRequiredSt
 import { Toolbar } from "./-toolbar";
 import { StepList } from "./-step-list";
 import { StepEditor } from "./-step-editor";
+import { ProcessorsEditor } from "./-processors-editor";
 import { ValidationPanel } from "./-validation-panel";
 import { PreviewModal } from "./-preview-modal";
 import { SubmitModal } from "./-submit-modal";
@@ -48,6 +49,9 @@ function BuilderPage() {
 
   // UI state
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
+  // Which view the main area shows. Processors are form-scoped, so they get a
+  // sibling view to the per-step editor rather than living inside a step.
+  const [mainView, setMainView] = useState<"step" | "processors">("step");
   const [version, setVersion] = useState("1.0.0");
   const [currentVersion, setCurrentVersion] = useState<string | null>(null);
   const [loadedFromId, setLoadedFromId] = useState<string | null>(null);
@@ -101,6 +105,13 @@ function BuilderPage() {
     hasEditableSteps &&
     allEditableStepsHaveFields &&
     !hasIdCollisions;
+
+  // Resolved field paths (stepId.fieldId, blocks expanded) for the processor
+  // config path-pickers. Same memo shape as idCollisions above.
+  const resolvedFieldIds = useMemo(
+    () => resolveFieldIds(draft, catalog),
+    [draft, catalog],
+  );
 
   // Debounced nextVersion fetch when formId changes
   const nextVersionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -287,6 +298,7 @@ function BuilderPage() {
     setCurrentVersion(ver);
     setVersion(ver);
     setSelectedStepId(null);
+    setMainView("step");
     setValidateResult(null);
     setSubmitSuccess(false);
     setSubmitError(null);
@@ -329,6 +341,7 @@ function BuilderPage() {
   const handleNew = () => {
     dispatch({ type: "RESET" });
     setSelectedStepId(null);
+    setMainView("step");
     setVersion("1.0.0");
     setCurrentVersion(null);
     setLoadedFromId(null);
@@ -384,10 +397,20 @@ function BuilderPage() {
     dispatch({ type: "SET_FORM_META", formId: draft.formId, title, description: draft.description });
   };
 
+  const handleSelectStep = (stepId: string) => {
+    setSelectedStepId(stepId);
+    setMainView("step");
+  };
+
+  const handleSelectProcessors = () => {
+    setMainView("processors");
+  };
+
   const handleAddStep = () => {
     const stepId = nextStepId(draft.steps);
     dispatch({ type: "ADD_STEP" });
     setSelectedStepId(stepId);
+    setMainView("step");
   };
 
   const handleRemoveStep = (stepId: string) => {
@@ -439,16 +462,25 @@ function BuilderPage() {
       <div className={styles.builderBody}>
         <StepList
           steps={draft.steps}
-          selectedStepId={selectedStepId}
-          onSelect={setSelectedStepId}
+          selectedStepId={mainView === "step" ? selectedStepId : null}
+          onSelect={handleSelectStep}
           onAdd={handleAddStep}
           onRemove={handleRemoveStep}
           onMoveUp={handleMoveStepUp}
           onMoveDown={handleMoveStepDown}
           onSwitchToAi={handleSwitchToAi}
+          processorCount={draft.processors?.length ?? 0}
+          isProcessorsActive={mainView === "processors"}
+          onSelectProcessors={handleSelectProcessors}
         />
 
-        {selectedStep !== null ? (
+        {mainView === "processors" ? (
+          <ProcessorsEditor
+            draft={draft}
+            dispatch={dispatch}
+            fields={resolvedFieldIds}
+          />
+        ) : selectedStep !== null ? (
           <StepEditor
             step={selectedStep}
             draft={draft}
