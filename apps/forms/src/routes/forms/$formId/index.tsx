@@ -29,8 +29,10 @@ export const Route = createFileRoute("/forms/$formId/")({
    * Two-tier caching loader:
    *
    * 1. Tier 1 — Fetch (or serve from cache) the ClientServiceContract.
-   *    Cache key: ["service-contract", formId]
+   *    Cache key: ["service-contract", formId, preview | null]
    *    This gives us the current `version` without building the form first.
+   *    The preview token (from `?preview=`) is forwarded here so an operator
+   *    can preview an unpublished draft.
    *
    * 2. Version check — The formMetaQueryOptions key includes the version.
    *    If a FormMeta for this exact (formId, version) pair is already in the
@@ -44,12 +46,12 @@ export const Route = createFileRoute("/forms/$formId/")({
    * in-memory cache; the contract re-validates after 60 s in the background
    * so version bumps are caught on the next full navigation.
    */
-  loader: async ({ params, context }): Promise<FormMeta> => {
+  loader: async ({ params, context, deps }): Promise<FormMeta> => {
     const { queryClient } = context;
 
     // Tier 1: get the contract (from cache or server).
     const clientContract = await queryClient.ensureQueryData(
-      contractQueryOptions(params.formId),
+      contractQueryOptions(params.formId, deps.preview),
     );
 
     // Tier 2: get or build the FormMeta for this specific version.
@@ -57,6 +59,7 @@ export const Route = createFileRoute("/forms/$formId/")({
       formMetaQueryOptions(params.formId, clientContract),
     );
   },
+  loaderDeps: ({ search }) => ({ preview: search.preview }),
   validateSearch: (search) => formSearchParamSchema.parse(search),
 });
 

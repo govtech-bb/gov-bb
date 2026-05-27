@@ -207,12 +207,13 @@ describe("Route.loader", () => {
     const result = await Route.loader({
       params: { formId: "test-form" },
       context: { queryClient: mockQueryClient },
+      deps: { preview: undefined },
     } as any);
     expect(mockQueryClient.ensureQueryData).toHaveBeenCalledTimes(2);
     expect(result).toBe(mockFormMeta);
   });
 
-  it("passes formId to contractQueryOptions on first call", async () => {
+  it("passes formId and undefined preview to contractQueryOptions on first call", async () => {
     const { contractQueryOptions } = jest.requireMock("@forms/lib");
     const mockQueryClient = {
       ensureQueryData: jest.fn().mockResolvedValue(mockFormMeta),
@@ -220,8 +221,9 @@ describe("Route.loader", () => {
     await Route.loader({
       params: { formId: "test-form" },
       context: { queryClient: mockQueryClient },
+      deps: { preview: undefined },
     } as any);
-    expect(contractQueryOptions).toHaveBeenCalledWith("test-form");
+    expect(contractQueryOptions).toHaveBeenCalledWith("test-form", undefined);
   });
 
   it("passes formId and contract result to formMetaQueryOptions on second call", async () => {
@@ -232,11 +234,37 @@ describe("Route.loader", () => {
     await Route.loader({
       params: { formId: "test-form" },
       context: { queryClient: mockQueryClient },
+      deps: { preview: undefined },
     } as any);
     expect(formMetaQueryOptions).toHaveBeenCalledWith(
       "test-form",
       mockFormMeta,
     );
+  });
+
+  it("forwards the preview token to contractQueryOptions when deps.preview is set", async () => {
+    const { contractQueryOptions } = jest.requireMock("@forms/lib");
+    const mockQueryClient = {
+      ensureQueryData: jest.fn().mockResolvedValue(mockFormMeta),
+    };
+    await Route.loader({
+      params: { formId: "test-form" },
+      context: { queryClient: mockQueryClient },
+      deps: { preview: "s3cret" },
+    } as any);
+    expect(contractQueryOptions).toHaveBeenCalledWith("test-form", "s3cret");
+  });
+});
+
+describe("Route.loaderDeps", () => {
+  it("extracts the preview token from search when present", () => {
+    const result = Route.loaderDeps({ search: { preview: "s3cret" } } as any);
+    expect(result).toEqual({ preview: "s3cret" });
+  });
+
+  it("returns preview as undefined when not present in search", () => {
+    const result = Route.loaderDeps({ search: {} } as any);
+    expect(result).toEqual({ preview: undefined });
   });
 });
 
