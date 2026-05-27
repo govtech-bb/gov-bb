@@ -12,7 +12,7 @@ contact:
     value:
       - Warrens House
       - Warrens
-      - St Michael
+      - St. Michael
       - BB22026
   - label: Telephone
     type: phone

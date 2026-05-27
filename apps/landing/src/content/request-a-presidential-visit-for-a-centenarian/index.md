@@ -40,4 +40,4 @@ Private Secretary to the President
 Office of the President  
 State House  
 Government Hill  
-St Michael
+St. Michael

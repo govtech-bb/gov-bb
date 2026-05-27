@@ -11,7 +11,7 @@ contact:
     type: address
     value:
       - Cave Hill
-      - St Michael
+      - St. Michael
   - label: Telephone
     type: phone
     value: (246) 417-4000

@@ -47,7 +47,7 @@ St. Michael
 Republic Bank Building,  
 Chapel St,  
 Speightstown,  
-Saint Peter
+St. Peter
 
 Country Road  
 Bridgetown  
@@ -99,7 +99,7 @@ Welfare Department
 Weymouth Corporate Centre  
 Roebuck Street  
 Bridgetown  
-Saint Michael
+St. Michael
 
 +1 246-535-1000/16/23
 
