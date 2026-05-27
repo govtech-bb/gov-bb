@@ -24,12 +24,22 @@ export interface RecipeStepDraft {
   behaviours: Behaviour[];
 }
 
+// Editor-only id mirrors RecipeFieldDraft.id: minted on deserialize, stripped on
+// serialize, never persisted (per ADR 0009). Intersecting with the Processor
+// discriminated union keeps the `type` discriminant intact across all members.
+export type RecipeProcessorDraft = Processor & { id: string };
+
+// The processor types the builder can author. `payment` is intentionally not
+// authorable in the UI (issue #255 Session 2): an existing payment processor is
+// shown read-only and round-trips intact, but new ones aren't created here.
+export type AuthorableProcessorType = Exclude<Processor["type"], "payment">;
+
 export interface RecipeDraft {
   formId: string;
   title: string;
   description?: string;
   steps: RecipeStepDraft[];
-  // Carried through unchanged so re-deploying a form never wipes processors
-  // authored elsewhere (issue #255). No builder UI yet — see Session 2.
-  processors?: Processor[];
+  // Carried through with an editor-only id per entry (issue #255). Serializer
+  // drops the id; deserialize mints a fresh one. Authoring UI: Session 2.
+  processors?: RecipeProcessorDraft[];
 }

@@ -540,11 +540,22 @@ describe("processors round-trip through deserialize/serialize", () => {
     };
   }
 
-  it("preserves a processors array byte-for-byte across deserialize → serialize", () => {
+  it("preserves a processors array across deserialize → serialize (id-aware: minted on the draft, stripped from the wire)", () => {
+    const draft = deserializeRecipe(makeRecipeWithProcessors());
+    // The deserialized draft carries minted editor-only ids the persisted
+    // recipe must not — so the round-trip is exact only once `id` is stripped.
+    expect(draft.processors?.every((p) => typeof p.id === "string")).toBe(true);
+
+    const result = serializeRecipeDraft(draft, { version: "1.0.0" });
+    expect(result.processors).toEqual(processorsFixture);
+  });
+
+  it("serializeRecipeDraft does not emit the editor-only processor id on the wire", () => {
     const draft = deserializeRecipe(makeRecipeWithProcessors());
     const result = serializeRecipeDraft(draft, { version: "1.0.0" });
-
-    expect(result.processors).toEqual(processorsFixture);
+    for (const p of result.processors ?? []) {
+      expect(Object.keys(p)).not.toContain("id");
+    }
   });
 
   it("preserves an explicit empty processors array (not collapsed to absent)", () => {
@@ -572,5 +583,15 @@ describe("processors round-trip through deserialize/serialize", () => {
     if (parsed.success) {
       expect(parsed.data.processors).toEqual(processorsFixture);
     }
+  });
+
+  it("deserializeRecipe mints a unique editor-only id on every processor", () => {
+    const draft = deserializeRecipe(makeRecipeWithProcessors());
+    const ids = (draft.processors ?? []).map(
+      (p) => (p as Processor & { id?: string }).id,
+    );
+    expect(ids).toHaveLength(3);
+    for (const id of ids) expect(typeof id).toBe("string");
+    expect(new Set(ids).size).toBe(ids.length); // all unique
   });
 });
