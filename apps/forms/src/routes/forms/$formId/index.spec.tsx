@@ -226,7 +226,7 @@ describe("Route.loader", () => {
     expect(contractQueryOptions).toHaveBeenCalledWith("test-form", undefined);
   });
 
-  it("passes formId and contract result to formMetaQueryOptions on second call", async () => {
+  it("passes formId, contract result, and undefined preview to formMetaQueryOptions on second call", async () => {
     const { formMetaQueryOptions } = jest.requireMock("@forms/lib");
     const mockQueryClient = {
       ensureQueryData: jest.fn().mockResolvedValue(mockFormMeta),
@@ -239,6 +239,24 @@ describe("Route.loader", () => {
     expect(formMetaQueryOptions).toHaveBeenCalledWith(
       "test-form",
       mockFormMeta,
+      undefined,
+    );
+  });
+
+  it("forwards the preview token to formMetaQueryOptions when deps.preview is set", async () => {
+    const { formMetaQueryOptions } = jest.requireMock("@forms/lib");
+    const mockQueryClient = {
+      ensureQueryData: jest.fn().mockResolvedValue(mockFormMeta),
+    };
+    await Route.loader({
+      params: { formId: "test-form" },
+      context: { queryClient: mockQueryClient },
+      deps: { preview: "s3cret" },
+    } as any);
+    expect(formMetaQueryOptions).toHaveBeenCalledWith(
+      "test-form",
+      mockFormMeta,
+      "s3cret",
     );
   });
 

@@ -7,12 +7,13 @@
  *   Fetches and maps the raw API contract to a ClientServiceContract.
  *   Stale after 60 seconds — version bumps are detected on next navigation.
  *
- * Tier 2 — FormMeta cache  (key: form-schema:<formId>:<version>)
+ * Tier 2 — FormMeta cache  (key: form-schema:<formId>:<version>:<preview|null>)
  *   Stores the fully-built FormMeta (Zod validation schema, step list,
- *   default values, idempotency key, etc.).  The version is part of the
- *   cache key so a version bump produces a new entry automatically without
- *   any manual invalidation.  staleTime: Infinity because a given
- *   (formId, version) pair is deterministic and never changes.
+ *   default values, idempotency key, etc.).  The version AND preview token
+ *   are both part of the cache key so a version bump produces a new entry
+ *   automatically, and a preview-built FormMeta can never be served to an
+ *   untokened request at the same version.  staleTime: Infinity because a
+ *   given (formId, version, preview) combination is deterministic.
  *
  * Usage in a TanStack Router loader:
  *
@@ -20,7 +21,7 @@
  *     contractQueryOptions(formId, deps.preview),
  *   );
  *   return queryClient.ensureQueryData(
- *     formMetaQueryOptions(formId, clientContract),
+ *     formMetaQueryOptions(formId, clientContract, deps.preview),
  *   );
  */
 
@@ -40,8 +41,17 @@ import { buildForm } from "./build-form";
 export const CONTRACT_CACHE_KEY = "service-contract" as const;
 
 /**
+ * Normalize an operator preview token: an empty or whitespace-only value
+ * becomes `undefined` (treated as no preview). Shared by both cache tiers so
+ * the contract key, the FormMeta key, and the X-Recipe-Preview header guard
+ * can never disagree about whether a request is a preview.
+ */
+export const normalizePreviewToken = (preview?: string): string | undefined =>
+  preview?.trim() ? preview.trim() : undefined;
+
+/**
  * Prefix for built FormMeta cache entries.
- * Full key shape: ["form-schema", formId, version]
+ * Full key shape: ["form-schema", formId, version, preview | null]
  *
  * Matches the task-specified format  `form-schema:${schemaId}:${version}`.
  */
@@ -53,12 +63,19 @@ export const FORM_SCHEMA_CACHE_KEY = "form-schema" as const;
  *
  * @example
  *   queryClient.invalidateQueries({ queryKey: formSchemaCacheKey("my-form", "1.2.0") });
+ *   queryClient.invalidateQueries({ queryKey: formSchemaCacheKey("my-form", "1.2.0", "tok") });
  */
 export const formSchemaCacheKey = (
   formId: string,
   version: string,
-): readonly [string, string, string] =>
-  [FORM_SCHEMA_CACHE_KEY, formId, version] as const;
+  preview?: string,
+): readonly [string, string, string, string | null] =>
+  [
+    FORM_SCHEMA_CACHE_KEY,
+    formId,
+    version,
+    normalizePreviewToken(preview) ?? null,
+  ] as const;
 
 // ---------------------------------------------------------------------------
 // Tier 1 — ServiceContract query options
@@ -86,7 +103,7 @@ export const formSchemaCacheKey = (
 export const contractQueryOptions = (formId: string, preview?: string) => {
   // Treat an empty/blank ?preview= the same as no preview, so the cache key
   // and the X-Recipe-Preview header guard can never disagree.
-  const token = preview?.trim() ? preview.trim() : undefined;
+  const token = normalizePreviewToken(preview);
   return queryOptions<ClientServiceContract>({
     queryKey: [CONTRACT_CACHE_KEY, formId, token ?? null] as const,
     queryFn: () => fetchContract(formId, token),
@@ -110,9 +127,9 @@ export const contractQueryOptions = (formId: string, preview?: string) => {
  *   becomes stale → re-fetches → new version → new formMetaQueryOptions key
  *   → cache miss → buildForm() runs → new FormMeta cached under 1.1.0 key.
  *
- * staleTime: Infinity — a given (formId, version) combination is deterministic.
- * The same contract always produces the same FormMeta; there is no reason to
- * rebuild it unless the version changes.
+ * staleTime: Infinity — a given (formId, version, preview) combination is
+ * deterministic. The same contract always produces the same FormMeta; there is
+ * no reason to rebuild it unless the version or preview token changes.
  *
  * gcTime: 30 minutes — keeps recently-visited forms readily available without
  * holding memory indefinitely.
@@ -120,13 +137,19 @@ export const contractQueryOptions = (formId: string, preview?: string) => {
  * @param formId          The form identifier.
  * @param clientContract  The already-fetched and locale-mapped contract.
  *                        Its `.version` field becomes part of the cache key.
+ * @param preview         Optional operator preview token. When present it is
+ *                        included in the cache key so a preview-built FormMeta
+ *                        can never be served to an untokened request at the same
+ *                        version. Normalization follows the same rules as
+ *                        `normalizePreviewToken` (blank → treated as no preview).
  */
 export const formMetaQueryOptions = (
   formId: string,
   clientContract: ClientServiceContract,
+  preview?: string,
 ) =>
   queryOptions<FormMeta>({
-    queryKey: formSchemaCacheKey(formId, clientContract.version),
+    queryKey: formSchemaCacheKey(formId, clientContract.version, preview),
     queryFn: () => buildForm(clientContract),
     staleTime: Infinity,
     gcTime: 30 * 60_000,

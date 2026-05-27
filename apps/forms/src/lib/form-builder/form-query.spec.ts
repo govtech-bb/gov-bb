@@ -15,6 +15,7 @@ import {
   formSchemaCacheKey,
   contractQueryOptions,
   formMetaQueryOptions,
+  normalizePreviewToken,
   CONTRACT_CACHE_KEY,
   FORM_SCHEMA_CACHE_KEY,
 } from "./form-query";
@@ -41,9 +42,9 @@ function makeClientContract(
 // ---------------------------------------------------------------------------
 
 describe("formSchemaCacheKey", () => {
-  it("returns a tuple of [FORM_SCHEMA_CACHE_KEY, formId, version]", () => {
+  it("returns a tuple of [FORM_SCHEMA_CACHE_KEY, formId, version, null] when no preview", () => {
     const key = formSchemaCacheKey("my-form", "2.1.0");
-    expect(key).toEqual([FORM_SCHEMA_CACHE_KEY, "my-form", "2.1.0"]);
+    expect(key).toEqual([FORM_SCHEMA_CACHE_KEY, "my-form", "2.1.0", null]);
   });
 
   it("two calls with the same args produce deeply-equal keys", () => {
@@ -56,6 +57,63 @@ describe("formSchemaCacheKey", () => {
     const a = formSchemaCacheKey("passport", "1.0.0");
     const b = formSchemaCacheKey("passport", "1.1.0");
     expect(a).not.toEqual(b);
+  });
+
+  it("includes the preview token in the 4th slot when provided", () => {
+    const key = formSchemaCacheKey("my-form", "2.1.0", "tok");
+    expect(key).toEqual([FORM_SCHEMA_CACHE_KEY, "my-form", "2.1.0", "tok"]);
+  });
+
+  it("blank/whitespace token normalizes to null (same as no preview)", () => {
+    const withBlank = formSchemaCacheKey("my-form", "2.1.0", "   ");
+    const withEmpty = formSchemaCacheKey("my-form", "2.1.0", "");
+    const withNone = formSchemaCacheKey("my-form", "2.1.0");
+    expect(withBlank).toEqual([
+      FORM_SCHEMA_CACHE_KEY,
+      "my-form",
+      "2.1.0",
+      null,
+    ]);
+    expect(withEmpty).toEqual([
+      FORM_SCHEMA_CACHE_KEY,
+      "my-form",
+      "2.1.0",
+      null,
+    ]);
+    expect(withBlank).toEqual(withNone);
+    expect(withEmpty).toEqual(withNone);
+  });
+
+  it("token and no-token keys for the same formId+version are NOT equal", () => {
+    const withToken = formSchemaCacheKey("my-form", "2.1.0", "tok");
+    const withoutToken = formSchemaCacheKey("my-form", "2.1.0");
+    expect(withToken).not.toEqual(withoutToken);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// normalizePreviewToken
+// ---------------------------------------------------------------------------
+
+describe("normalizePreviewToken", () => {
+  it("returns undefined for undefined input", () => {
+    expect(normalizePreviewToken(undefined)).toBeUndefined();
+  });
+
+  it("returns undefined for an empty string", () => {
+    expect(normalizePreviewToken("")).toBeUndefined();
+  });
+
+  it("returns undefined for a whitespace-only string", () => {
+    expect(normalizePreviewToken("   ")).toBeUndefined();
+  });
+
+  it("trims and returns the token for a padded string", () => {
+    expect(normalizePreviewToken(" tok ")).toBe("tok");
+  });
+
+  it("returns the token unchanged when already trimmed", () => {
+    expect(normalizePreviewToken("s3cret")).toBe("s3cret");
   });
 });
 
@@ -122,13 +180,14 @@ describe("contractQueryOptions", () => {
 // ---------------------------------------------------------------------------
 
 describe("formMetaQueryOptions", () => {
-  it("queryKey includes FORM_SCHEMA_CACHE_KEY, formId, and contract version", () => {
+  it("queryKey includes FORM_SCHEMA_CACHE_KEY, formId, contract version, and null when no preview", () => {
     const contract = makeClientContract("benefit-claim", "3.0.0");
     const opts = formMetaQueryOptions("benefit-claim", contract);
     expect(opts.queryKey).toEqual([
       FORM_SCHEMA_CACHE_KEY,
       "benefit-claim",
       "3.0.0",
+      null,
     ]);
   });
 
@@ -144,6 +203,35 @@ describe("formMetaQueryOptions", () => {
     const optsV1 = formMetaQueryOptions("benefit-claim", v1);
     const optsV2 = formMetaQueryOptions("benefit-claim", v2);
     expect(optsV1.queryKey).not.toEqual(optsV2.queryKey);
+  });
+
+  it("preview token lands in the 4th slot of the queryKey", () => {
+    const contract = makeClientContract("benefit-claim", "3.0.0");
+    const opts = formMetaQueryOptions("benefit-claim", contract, "tok");
+    expect(opts.queryKey).toEqual([
+      FORM_SCHEMA_CACHE_KEY,
+      "benefit-claim",
+      "3.0.0",
+      "tok",
+    ]);
+  });
+
+  it("blank/whitespace preview normalizes to null in queryKey", () => {
+    const contract = makeClientContract("benefit-claim", "3.0.0");
+    const withBlank = formMetaQueryOptions("benefit-claim", contract, "  ");
+    expect(withBlank.queryKey).toEqual([
+      FORM_SCHEMA_CACHE_KEY,
+      "benefit-claim",
+      "3.0.0",
+      null,
+    ]);
+  });
+
+  it("preview and no-preview builds at the SAME version produce DIFFERENT queryKeys (regression guard)", () => {
+    const contractV1 = makeClientContract("f", "1.0.0");
+    const withToken = formMetaQueryOptions("f", contractV1, "tok");
+    const withoutToken = formMetaQueryOptions("f", contractV1);
+    expect(withToken.queryKey).not.toEqual(withoutToken.queryKey);
   });
 });
 

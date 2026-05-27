@@ -40,7 +40,7 @@ export const Route = createFileRoute("/forms/$formId/")({
    *    If the version has changed (or this is the first load), the queryFn
    *    runs buildForm() and the result is stored under the new key.
    *
-   *    Cache key: ["form-schema", formId, version]
+   *    Cache key: ["form-schema", formId, version, preview | null]
    *
    * On navigation back to this route, the first call resolves from the
    * in-memory cache; the contract re-validates after 60 s in the background
@@ -54,9 +54,9 @@ export const Route = createFileRoute("/forms/$formId/")({
       contractQueryOptions(params.formId, deps.preview),
     );
 
-    // Tier 2: get or build the FormMeta for this specific version.
+    // Tier 2: get or build the FormMeta for this specific (version, preview) pair.
     return queryClient.ensureQueryData(
-      formMetaQueryOptions(params.formId, clientContract),
+      formMetaQueryOptions(params.formId, clientContract, deps.preview),
     );
   },
   loaderDeps: ({ search }) => ({ preview: search.preview }),
