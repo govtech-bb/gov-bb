@@ -11,6 +11,9 @@ interface StepListProps {
   onMoveUp: (index: number) => void;
   onMoveDown: (index: number) => void;
   onSwitchToAi: () => void;
+  processorCount: number;
+  isProcessorsActive: boolean;
+  onSelectProcessors: () => void;
 }
 
 export function StepList({
@@ -22,6 +25,9 @@ export function StepList({
   onMoveUp,
   onMoveDown,
   onSwitchToAi,
+  processorCount,
+  isProcessorsActive,
+  onSelectProcessors,
 }: StepListProps) {
   const editableCount = steps.length - REQUIRED_STEP_IDS.length;
 
@@ -77,6 +83,16 @@ export function StepList({
           )}
         </div>
       ))}
+
+      {/* Form-level processors live beside the steps, not inside one. */}
+      <div
+        className={`${styles.stepRow} ${styles.processorsRow} ${isProcessorsActive ? styles.stepRowActive : ""}`}
+        onClick={onSelectProcessors}
+      >
+        <span style={{ flex: 1, fontSize: "0.9rem" }}>
+          Processors ({processorCount})
+        </span>
+      </div>
     </div>
   );
 }
