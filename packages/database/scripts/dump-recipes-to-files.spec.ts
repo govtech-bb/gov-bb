@@ -16,18 +16,12 @@ async function loadFixture(name: string): Promise<PublishedRow> {
     form_id: string;
     version: string;
     schema: Record<string, unknown>;
-    published_at: string | null;
-    created_at: string;
-    updated_at: string;
   };
   return {
     id: parsed.id,
     form_id: parsed.form_id,
     version: parsed.version,
     schema: parsed.schema,
-    published_at: parsed.published_at ? new Date(parsed.published_at) : null,
-    created_at: new Date(parsed.created_at),
-    updated_at: new Date(parsed.updated_at),
   };
 }
 

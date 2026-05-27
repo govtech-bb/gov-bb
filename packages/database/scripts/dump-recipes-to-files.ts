@@ -8,9 +8,6 @@ export type PublishedRow = {
   form_id: string;
   version: string;
   schema: Record<string, unknown>;
-  published_at: Date | null;
-  created_at: Date;
-  updated_at: Date;
 };
 
 export type Logger = {
@@ -175,7 +172,7 @@ async function runDump({
 
   try {
     const result = await client.query<PublishedRow>(
-      `SELECT id, form_id, version, schema, published_at, created_at, updated_at
+      `SELECT id, form_id, version, schema
        FROM form_definitions
        WHERE published_at IS NOT NULL
        ORDER BY form_id ASC, version ASC`,
