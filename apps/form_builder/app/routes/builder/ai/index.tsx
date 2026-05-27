@@ -7,6 +7,7 @@ import {
   deletePublished,
   extractRecipeFromSession,
 } from "../../../server/ai-builder/sessions";
+import { formPreviewUrl } from "../../../lib/form-url";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -123,7 +124,7 @@ function AiFormBuilderPage() {
         data: { sessionId: session.sessionId },
       });
       setPublishResult(data.message ?? "Published!");
-      if (data.previewUrl) setPreviewUrl(data.previewUrl);
+      if (data.formId) setPreviewUrl(formPreviewUrl(data.formId));
     } catch (err: any) {
       setPublishResult(`Error: ${err.message}`);
     }
