@@ -131,7 +131,7 @@ export function Toolbar({
         onClick={onPublish}
         disabled={!canSubmit || isPublishing}
       >
-        {isPublishing ? "Opening PR…" : "Deploy via GitHub"}
+        {isPublishing ? "Opening PR…" : "Deploy"}
       </button>
       {lastSaveStatus !== "idle" && (
         <span
