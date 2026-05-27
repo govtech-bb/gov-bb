@@ -115,4 +115,4 @@ St. Michael
 
 Ministry of the Public Service
 Level 5, Warrens Towers II
-Warrens, St Michael, Barbados
+Warrens, St. Michael, Barbados

@@ -59,6 +59,23 @@ describe('fetchContract("master")', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Synthetic IDs ignore preview — fetchFormDefinition never called
+// ---------------------------------------------------------------------------
+
+describe("fetchContract synthetic IDs — preview token ignored", () => {
+  it("fetchContract('master', token) resolves the local fixture and does NOT call fetchFormDefinition", async () => {
+    mockFetchFormDefinition.mockClear();
+    const result: ClientServiceContract = await fetchContract(
+      "master",
+      "sometoken",
+    );
+    expect(result).toBeDefined();
+    expect(Array.isArray(result.steps)).toBe(true);
+    expect(mockFetchFormDefinition).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // fetchContract(<real-id>) — delegates to fetchFormDefinition
 // ---------------------------------------------------------------------------
 
@@ -67,11 +84,24 @@ describe("fetchContract(<real-id>)", () => {
     mockFetchFormDefinition.mockClear();
   });
 
-  it("calls fetchFormDefinition with the supplied id", async () => {
+  it("calls fetchFormDefinition with the supplied id (no preview)", async () => {
     mockFetchFormDefinition.mockResolvedValue(minimalContract);
     await fetchContract("some-real-id");
     expect(mockFetchFormDefinition).toHaveBeenCalledTimes(1);
-    expect(mockFetchFormDefinition).toHaveBeenCalledWith("some-real-id");
+    expect(mockFetchFormDefinition).toHaveBeenCalledWith(
+      "some-real-id",
+      undefined,
+    );
+  });
+
+  it("forwards preview token to fetchFormDefinition when provided", async () => {
+    mockFetchFormDefinition.mockResolvedValue(minimalContract);
+    await fetchContract("some-real-id", "mytoken");
+    expect(mockFetchFormDefinition).toHaveBeenCalledTimes(1);
+    expect(mockFetchFormDefinition).toHaveBeenCalledWith(
+      "some-real-id",
+      "mytoken",
+    );
   });
 
   it("returns a ClientServiceContract mapped from the API response", async () => {

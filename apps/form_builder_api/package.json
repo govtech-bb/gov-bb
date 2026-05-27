@@ -3,9 +3,10 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "tsx watch src/main.ts",
+    "dev": "TSX_TSCONFIG_PATH=tsconfig.dev.json tsx watch src/main.ts",
     "build": "tsc && tsc-alias",
-    "start": "node dist/main.js"
+    "start": "node dist/main.js",
+    "test": "jest --no-coverage"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.700.0",
@@ -21,7 +22,10 @@
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
+    "@types/jest": "^30.0.0",
     "@types/node": "^22.0.0",
+    "jest": "^30.3.0",
+    "ts-jest": "^29.4.6",
     "tsc-alias": "^1.8.10",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0"

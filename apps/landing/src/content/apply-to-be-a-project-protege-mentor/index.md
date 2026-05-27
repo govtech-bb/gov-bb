@@ -31,7 +31,7 @@ You can apply online using the Apply to be a Project Protégé mentor form.
    \
    Haggatt Hall
    \
-   St Michael
+   St. Michael
 
 ### What you will need to share
 

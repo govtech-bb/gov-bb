@@ -3,7 +3,7 @@ import { Heading, Text, linkVariants } from '@govtech-bb/react'
 import { Breadcrumbs } from '../components/Breadcrumbs'
 import { HelpfulBox } from '../components/HelpfulBox'
 import { MarkdownContent } from '../components/MarkdownContent'
-import { findPage, PAGES  } from '../content/registry'
+import { findPage, isSubPage, PAGES  } from '../content/registry'
 import type {ContentPage} from '../content/registry';
 import { CATEGORY_BY_SLUG, getSubcategory } from '../content/categories'
 import type {Category, SubCategory} from '../content/categories';
@@ -44,8 +44,8 @@ export const Route = createFileRoute('/$')({
             subcategories: cat.subcategories,
           }
         }
-        const items = PAGES.filter((p) =>
-          p.frontmatter.categories.includes(cat.slug),
+        const items = PAGES.filter(
+          (p) => p.frontmatter.categories.includes(cat.slug) && !isSubPage(p),
         ).map((p) => ({
           title: p.frontmatter.title,
           description: p.frontmatter.description,
@@ -65,7 +65,8 @@ export const Route = createFileRoute('/$')({
         const items = PAGES.filter(
           (p) =>
             p.frontmatter.categories.includes(cat.slug) &&
-            p.frontmatter.subcategory === sub.slug,
+            p.frontmatter.subcategory === sub.slug &&
+            !isSubPage(p),
         ).map((p) => ({
           title: p.frontmatter.title,
           description: p.frontmatter.description,

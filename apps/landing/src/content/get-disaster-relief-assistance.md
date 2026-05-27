@@ -22,7 +22,7 @@ Report the emergency to the:
 Welfare Department.  
 Perry Gap,  
 Bridgetown,  
-Saint Michael Barbados  
+St. Michael Barbados  
 [+1 246-535-1000](tel:+12465351000)
 
 Depending on the scale and the severity of the incident, a social worker or a representative from the Department of Emergency Management (DEM) will travel to where you are. They will assess the situation and determine the most appropriate support.
@@ -41,7 +41,7 @@ You cannot apply for non-urgent support online yet. To report damage and loss, g
 Welfare Department.  
 Perry Gap,  
 Bridgetown,  
-Saint Michael  
+St. Michael  
 [+1 246-535-1000](tel:+12465351000)
 
 ### Give details on the damage
@@ -59,7 +59,7 @@ If the damage you are reporting is to a rented home, you will need to contact:
 National Housing Corporation  
 Country Road  
 Bridgetown  
-Saint Michael  
+St. Michael  
 [+1 246-536-5300](tel:+12465365300)
 
 ### What to bring

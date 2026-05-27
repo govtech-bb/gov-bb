@@ -38,3 +38,19 @@ export type {
   ValidationIssue,
   RecipeValidateResponse,
 } from "./validation";
+
+// Duplicate id detection (fieldId/stepId uniqueness)
+export {
+  resolveFieldIds,
+  findDuplicateFieldIds,
+  findDuplicateStepIds,
+  findRecipeIdCollisions,
+  findRecipeIdCollisionsFromRecipe,
+  formatCollisionIssues,
+  fieldIdDuplicatesAnother,
+} from "./duplicate-ids";
+export type {
+  ResolvedFieldId,
+  FieldIdCollision,
+  StepIdCollision,
+} from "./duplicate-ids";

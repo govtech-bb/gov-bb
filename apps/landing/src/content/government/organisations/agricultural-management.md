@@ -9,7 +9,7 @@ contact:
   - label: Address
     type: address
     value:
-      - 'Warrens, St Michael Admin Office'
+      - 'Warrens, St. Michael Admin Office'
       - St. Michael
   - label: Admin Office
     type: phone

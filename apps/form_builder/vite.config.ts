@@ -31,6 +31,8 @@ export default defineConfig(({ mode }) => {
       "process.env.OAUTH_REDIRECT_BASE": JSON.stringify(
         pick("OAUTH_REDIRECT_BASE"),
       ),
+      // GitHub org — team-membership login check + PR-publish repo owner.
+      "process.env.GITHUB_ORG": JSON.stringify(pick("GITHUB_ORG")),
     },
     plugins: [
       nitro({

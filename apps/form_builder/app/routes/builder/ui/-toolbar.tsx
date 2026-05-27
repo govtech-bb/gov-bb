@@ -120,6 +120,11 @@ export function Toolbar({
       >
         {isSubmitting ? "Submitting…" : "Save draft"}
       </button>
+      {import.meta.env.DEV && (
+        <span className={styles.toolbarHint}>
+          Saved drafts are served by the local API immediately — no PR needed.
+        </span>
+      )}
       <button
         type="button"
         className={styles.btnPrimary}

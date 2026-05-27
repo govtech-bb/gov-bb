@@ -1,9 +1,10 @@
 import {
   listPublishedForms,
   getPublishedRecipe,
-  REPO_OWNER,
   REPO_NAME,
 } from "./github-recipes";
+
+const REPO_OWNER = "govtech-bb";
 
 type FetchMock = jest.Mock<
   Promise<Response>,
@@ -28,6 +29,7 @@ describe("github-recipes", () => {
   const TOKEN = "ghu_testtoken";
 
   beforeEach(() => {
+    process.env.GITHUB_ORG = REPO_OWNER;
     fetchMock = jest.fn() as unknown as FetchMock;
     globalThis.fetch = fetchMock as unknown as typeof fetch;
   });
@@ -111,7 +113,7 @@ describe("github-recipes", () => {
 
       const { url, init } = lastFetch(fetchMock);
       expect(url).toBe(
-        `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/recipes`,
+        `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/apps/api/src/forms/form-definitions/recipes`,
       );
       const headers = init.headers as Record<string, string>;
       expect(headers.Authorization).toBe(`Bearer ${TOKEN}`);
@@ -192,7 +194,7 @@ describe("github-recipes", () => {
       expect(recipe).toEqual(RECIPE);
       const { url, init } = lastFetch(fetchMock);
       expect(url).toBe(
-        `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/recipes/passport-renewal/1.1.0.json`,
+        `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/apps/api/src/forms/form-definitions/recipes/passport-renewal/1.1.0.json`,
       );
       const headers = init.headers as Record<string, string>;
       expect(headers.Authorization).toBe(`Bearer ${TOKEN}`);

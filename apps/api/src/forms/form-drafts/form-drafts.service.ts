@@ -7,7 +7,7 @@ import {
   FormDraftEntity,
 } from "../../database/entities/form-draft.entity";
 import { FormDraftRepository } from "./form-draft.repository";
-import { FormDefinitionRepository } from "../form-definitions/form-definition.repository";
+import { FormDefinitionsService } from "../form-definitions/form-definitions.service";
 import { AppError } from "../../common/errors";
 
 const DRAFT_EXPIRY_DAYS = 7;
@@ -18,7 +18,7 @@ export class FormDraftsService {
 
   constructor(
     private readonly draftRepo: FormDraftRepository,
-    private readonly formDefRepo: FormDefinitionRepository,
+    private readonly formDefinitionsService: FormDefinitionsService,
   ) {}
 
   async create({
@@ -37,19 +37,22 @@ export class FormDraftsService {
     const existing = await this.draftRepo.findOne({ where: { draftId } });
     if (existing) return existing;
 
-    // Pin the form version at creation time
-    const formDef = await this.formDefRepo.findOne({
-      where: { formId, ...(version && { version }) },
-      order: { createdAt: "DESC" },
+    // Pin the form version at creation time. Routed through
+    // FormDefinitionsService.getRecipe so end-user drafts only succeed for
+    // published recipes (files-mode) — they can no longer reach an
+    // unpublished `form_definitions` row directly. See issue #145.
+    const recipe = await this.formDefinitionsService.getRecipe({
+      formId,
+      version,
     });
-    if (!formDef) {
+    if (!recipe) {
       throw AppError.notFound("Form definition", { formId, version });
     }
 
     const draft = this.draftRepo.create({
       draftId,
       formId,
-      formVersion: formDef.version,
+      formVersion: recipe.version,
       values,
       lastActivePage,
       status: DraftStatus.ACTIVE,

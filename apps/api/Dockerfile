@@ -35,10 +35,11 @@ COPY --chown=app:app packages/form-validation/package.json packages/form-validat
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,uid=1001,gid=1001 \
     pnpm install --store-dir=/pnpm/store --frozen-lockfile --ignore-scripts
 
-# Source — copy only what's needed to build `api`.
+# Source — copy only what's needed to build `api`. Recipes live under
+# apps/api/src/forms/form-definitions/recipes/ and arrive with the apps/api/
+# copy above.
 COPY --chown=app:app apps/api/ apps/api/
 COPY --chown=app:app packages/ packages/
-COPY --chown=app:app recipes/ recipes/
 
 RUN pnpm exec nx build api
 
@@ -99,8 +100,10 @@ COPY --from=builder --chown=app:app /app/apps/api/package.json ./apps/api/
 COPY --from=builder --chown=app:app /app/apps/api/tsconfig.json ./apps/api/
 COPY --from=builder --chown=app:app /app/apps/api/typeorm.config.ts ./apps/api/
 COPY --from=builder --chown=app:app /app/apps/api/src/database/ ./apps/api/src/database/
-# Recipe files — read by RecipeFileLoaderService when RECIPE_SOURCE=files.
-COPY --from=builder --chown=app:app /app/recipes/ ./recipes/
+# Recipe files (.json) — read by RecipeFileLoaderService. tsc/nx don't bundle
+# non-`.ts` assets into dist/, so we copy them alongside the compiled output
+# (mirrors the email-templates COPY below).
+COPY --from=builder --chown=app:app /app/apps/api/src/forms/form-definitions/recipes/ ./dist/src/forms/form-definitions/recipes/
 # Email templates (.hbs files not copied by tsc build)
 COPY --from=builder --chown=app:app /app/apps/api/src/email/templates/ ./dist/src/email/templates/
 

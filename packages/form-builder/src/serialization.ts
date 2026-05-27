@@ -94,8 +94,12 @@ export function deserializeRecipe(
               ? "custom"
               : "component";
 
+          // Editor-only id; two same-ref entries on a step would otherwise be indistinguishable.
+          const id = crypto.randomUUID();
+
           if (kind === "block") {
             return {
+              id,
               kind: "block",
               ref: field.ref,
               overrides: {},
@@ -109,6 +113,7 @@ export function deserializeRecipe(
             };
           } else {
             return {
+              id,
               kind,
               ref: field.ref,
               overrides:

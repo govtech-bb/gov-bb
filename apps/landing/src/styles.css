@@ -28,19 +28,20 @@ body {
   font-family: var(--font-family-base);
 }
 
-.container {
-  width: min(1080px, calc(100% - 2rem));
+@utility container {
   margin-inline: auto;
-}
+  width: 100%;
+  padding-inline: var(--spacing-s); /* 16px */
 
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
+  @media (min-width: 640px) {
+    padding-inline: var(--spacing-m); /* 32px */
+  }
+
+  @media (min-width: 1280px) {
+    padding-inline: var(--spacing-l); /* 64px */
+  }
+
+  @media (min-width: 1512px) {
+    padding-inline: var(--spacing-xl); /* 128px */
+  }
 }
