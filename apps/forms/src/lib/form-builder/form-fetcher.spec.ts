@@ -59,6 +59,23 @@ describe('fetchContract("master")', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Synthetic IDs ignore preview — fetchFormDefinition never called
+// ---------------------------------------------------------------------------
+
+describe("fetchContract synthetic IDs — preview token ignored", () => {
+  it("fetchContract('master', token) resolves the local fixture and does NOT call fetchFormDefinition", async () => {
+    mockFetchFormDefinition.mockClear();
+    const result: ClientServiceContract = await fetchContract(
+      "master",
+      "sometoken",
+    );
+    expect(result).toBeDefined();
+    expect(Array.isArray(result.steps)).toBe(true);
+    expect(mockFetchFormDefinition).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // fetchContract(<real-id>) — delegates to fetchFormDefinition
 // ---------------------------------------------------------------------------
 

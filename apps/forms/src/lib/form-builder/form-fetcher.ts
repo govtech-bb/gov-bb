@@ -11,6 +11,10 @@ import { fetchFormDefinition } from "@forms/form-api";
  * Fetches a service contract by ID from the API, validates its shape, and
  * maps it into a ClientServiceContract ready for the form renderer.
  *
+ * Note: the synthetic `"example"` and `"master"` IDs resolve local JSON
+ * fixtures and are not backed by the database, so the `preview` token is not
+ * applicable to them and is intentionally ignored when either ID is supplied.
+ *
  * @throws {FormFetchError} when the API returns a non-OK response or the
  *   response body indicates failure.
  */

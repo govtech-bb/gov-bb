@@ -95,6 +95,26 @@ describe("contractQueryOptions", () => {
     const opts2 = contractQueryOptions("benefit-claim", "tokenB");
     expect(opts1.queryKey).not.toEqual(opts2.queryKey);
   });
+
+  it("empty string preview produces the same key as no preview (null slot)", () => {
+    const withEmpty = contractQueryOptions("benefit-claim", "");
+    const withoutPreview = contractQueryOptions("benefit-claim");
+    expect(withEmpty.queryKey).toEqual([
+      CONTRACT_CACHE_KEY,
+      "benefit-claim",
+      null,
+    ]);
+    expect(withEmpty.queryKey).toEqual(withoutPreview.queryKey);
+  });
+
+  it("whitespace-only preview is treated as no preview", () => {
+    const withSpaces = contractQueryOptions("benefit-claim", "   ");
+    expect(withSpaces.queryKey).toEqual([
+      CONTRACT_CACHE_KEY,
+      "benefit-claim",
+      null,
+    ]);
+  });
 });
 
 // ---------------------------------------------------------------------------

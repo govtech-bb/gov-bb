@@ -80,14 +80,20 @@ export const formSchemaCacheKey = (
  *                 Including preview in the cache key ensures a preview response
  *                 can never collide with — or be served as — a normal (published)
  *                 response for the same formId.
+ *                 An empty or whitespace-only value is treated as no preview so
+ *                 the cache key and the header guard can never disagree.
  */
-export const contractQueryOptions = (formId: string, preview?: string) =>
-  queryOptions<ClientServiceContract>({
-    queryKey: [CONTRACT_CACHE_KEY, formId, preview ?? null] as const,
-    queryFn: () => fetchContract(formId, preview),
+export const contractQueryOptions = (formId: string, preview?: string) => {
+  // Treat an empty/blank ?preview= the same as no preview, so the cache key
+  // and the X-Recipe-Preview header guard can never disagree.
+  const token = preview?.trim() ? preview.trim() : undefined;
+  return queryOptions<ClientServiceContract>({
+    queryKey: [CONTRACT_CACHE_KEY, formId, token ?? null] as const,
+    queryFn: () => fetchContract(formId, token),
     staleTime: 60_000,
     gcTime: 10 * 60_000,
   });
+};
 
 // ---------------------------------------------------------------------------
 // Tier 2 — FormMeta query options
