@@ -7,7 +7,10 @@ import {
   formMetaQueryOptions,
 } from "@forms/lib";
 import { FormRenderer, FormError } from "@forms/components";
-import { formSearchParamSchema } from "../../../types/form-search-param.type";
+import {
+  formSearchParamSchema,
+  type FormSearchParams,
+} from "../../../types/form-search-param.type";
 import { useForm, useStore } from "@tanstack/react-form";
 import {
   RepeatableStepSettings,
@@ -59,8 +62,11 @@ export const Route = createFileRoute("/forms/$formId/")({
       formMetaQueryOptions(params.formId, clientContract, deps.preview),
     );
   },
-  loaderDeps: ({ search }) => ({ preview: search.preview }),
-  validateSearch: (search) => formSearchParamSchema.parse(search),
+  loaderDeps: ({ search }: { search: FormSearchParams }) => ({
+    preview: search.preview,
+  }),
+  validateSearch: (search): FormSearchParams =>
+    formSearchParamSchema.parse(search),
 });
 
 function RouteComponent() {
