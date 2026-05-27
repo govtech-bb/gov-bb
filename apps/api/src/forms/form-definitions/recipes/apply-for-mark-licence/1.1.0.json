@@ -1,0 +1,53 @@
+{
+  "formId": "apply-for-mark-licence",
+  "title": "Get your own Mark",
+  "version": "1.1.0",
+  "steps": [
+    {
+      "stepId": "applicant-information",
+      "title": "Applicant Information",
+      "elements": [
+        {
+          "ref": "blocks/personal-information"
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "mark-information",
+      "title": "Tell us about your Mark",
+      "elements": [
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "fieldId": "mark-name-first"
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "fieldId": "mark-name-last"
+          }
+        },
+        {
+          "ref": "components/bank"
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Submission Confirmation",
+      "elements": [],
+      "behaviours": []
+    }
+  ],
+  "createdAt": "2026-05-27T17:24:46.685Z",
+  "updatedAt": "2026-05-27T17:24:46.685Z"
+}
