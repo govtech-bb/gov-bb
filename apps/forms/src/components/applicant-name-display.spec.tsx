@@ -43,12 +43,12 @@ describe("ApplicantNameDisplay", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("renders data-applicant-name div when firstName is set", () => {
+  it("renders the applicant name block when firstName is set", () => {
     mockUseStore.mockReturnValue({
       "applicant-details_applicant-first-name": "Alice",
     });
     const { container } = render(<ApplicantNameDisplay form={mockForm} />);
-    expect(container.querySelector("[data-applicant-name]")).toBeTruthy();
+    expect(container.querySelector(".form-page__applicant")).toBeTruthy();
   });
 
   it("displays full name when both firstName and lastName are provided", () => {
@@ -70,7 +70,7 @@ describe("ApplicantNameDisplay", () => {
     // with the first name and contain no second word that could leak from
     // a stale lastName.
     const applicantP = container.querySelector(
-      "[data-applicant-name] p:first-of-type",
+      ".form-page__applicant p:first-of-type",
     );
     expect(applicantP?.textContent).toMatch(/Applicant:\s+Alice\s*$/);
   });

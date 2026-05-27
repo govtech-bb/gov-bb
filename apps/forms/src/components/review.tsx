@@ -1,4 +1,3 @@
-import designSystem from "../lib/design-system";
 import React from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { AnyFormApi } from "@tanstack/react-form";
@@ -111,14 +110,15 @@ export default function Review({
   };
 
   return (
-    <div className={designSystem.review}>
+    <div className="form-page__review">
       {visibleSteps
         .filter((step) => !excludeStepIds.includes(step.stepId))
         .map((step) => (
-          <div key={step.stepId} className={designSystem.reviewStep}>
-            <div className={designSystem.reviewStepTitle}>
-              <h2>{step.title}</h2>
+          <div key={step.stepId} className="form-page__review-step">
+            <div className="form-page__review-step-title">
+              <h2 className="govbb-text-h2">{step.title}</h2>
               <a
+                className="govbb-link"
                 href={`/forms/${formMeta.formId}?step=${step.stepId}`}
                 onClick={handleChangeClick(step.stepId)}
               >
@@ -126,18 +126,16 @@ export default function Review({
               </a>
             </div>
 
-            <table className={designSystem.reviewFieldTable}>
+            <table className="form-page__review-table">
               <tbody>
                 {step.fields
                   .filter(
                     (field) => !field.hidden && !field.conditionallyHidden,
                   )
                   .map((field: ClientPrimitive) => (
-                    <tr key={field.id} className={designSystem.reviewFieldRow}>
-                      <td className={designSystem.reviewFieldLabel}>
-                        {field.label}
-                      </td>
-                      <td className={designSystem.reviewFieldValue}>
+                    <tr key={field.id}>
+                      <td className="form-page__review-label">{field.label}</td>
+                      <td className="form-page__review-value">
                         {getFieldDisplayValue(field)}
                       </td>
                     </tr>
