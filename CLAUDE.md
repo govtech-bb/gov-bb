@@ -16,6 +16,11 @@ A green local build/test before push avoids the round-trip of a failed CI run.
 The CI build captures output and fails the job on any error, so a single
 TypeScript error in one package fails the whole "Build all packages" step.
 
+**Local caveat:** `landing`'s prebuild fetches from a live external forms API, so
+a fully offline `build` fails on that package. When verifying locally without
+network, exclude it — `pnpm exec nx run-many -t build --exclude=landing` — then
+let CI (which has network) build everything.
+
 ## Monorepo build gotcha: new packages must be buildable AND referenced
 
 This is an nx + TypeScript project-references monorepo. Packages build with the

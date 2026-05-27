@@ -1,0 +1,44 @@
+# syntax=docker/dockerfile:1.7
+# Chat RAG ingest image — runs `pnpm ingest` against the sandbox pgvector RDS
+# as a one-shot Fargate task. Kept separate from apps/chat/Dockerfile so the
+# chat dev image (Vite, port 3000) doesn't carry an ingest entrypoint and the
+# ingest image doesn't expose a server.
+#
+# Infra side: govtech-bb/alpha-infra
+#   environments/sandbox/modular-forms-sandbox/lambda-rag-indexer.tf
+#   SANDBOX-CHATBOT-INGEST.md
+
+FROM node:20-alpine
+
+RUN corepack enable && corepack prepare pnpm@10.33.4 --activate
+RUN addgroup -S -g 1001 app && adduser -S -u 1001 -G app app
+
+WORKDIR /app
+RUN chown app:app /app
+USER app
+
+COPY --chown=app:app package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc nx.json tsconfig.base.json ./
+COPY --chown=app:app apps/chat/package.json apps/chat/
+COPY --chown=app:app packages/content/package.json packages/content/
+COPY --chown=app:app packages/expressions/package.json packages/expressions/
+COPY --chown=app:app packages/form-conditions/package.json packages/form-conditions/
+COPY --chown=app:app packages/form-types/package.json packages/form-types/
+COPY --chown=app:app packages/form-validation/package.json packages/form-validation/
+
+# Filter to chat + its workspace deps only. Skips api/landing/forms which the
+# server image needs but ingest never touches — keeps the image lean.
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,uid=1001,gid=1001 \
+    pnpm install --store-dir=/pnpm/store --frozen-lockfile --ignore-scripts \
+      --filter @govtech-bb/chat... --filter @govtech-bb/content...
+
+COPY --chown=app:app apps/chat/ apps/chat/
+COPY --chown=app:app packages/content/ packages/content/
+
+ENV NODE_ENV=production
+
+WORKDIR /app/apps/chat
+# Apply pending migrations before ingest — ingest's plan/apply assumes the
+# schema is current. Identical to the chat dev image's bootstrap step minus
+# the dev server.
+ENTRYPOINT ["sh", "-c", "pnpm exec tsx src/lib/db/migrate.ts && exec \"$@\"", "--"]
+CMD ["pnpm", "exec", "tsx", "src/ingest/cli.ts"]

@@ -191,6 +191,23 @@ describe("fetchFormDefinition", () => {
     const calledUrl = mockFetch.mock.calls[0][0] as string;
     expect(calledUrl).toContain("my%20form%2Fid");
   });
+
+  it("sends X-Recipe-Preview header when preview token is provided", async () => {
+    mockFetch.mockResolvedValue(makeOkResponse(minimalServiceContract));
+    await fetchFormDefinition("passport-renewal", "s3cret");
+    const fetchOptions = mockFetch.mock.calls[0][1] as RequestInit;
+    expect(
+      (fetchOptions.headers as Record<string, string>)["X-Recipe-Preview"],
+    ).toBe("s3cret");
+  });
+
+  it("does NOT send X-Recipe-Preview header when no preview token is provided", async () => {
+    mockFetch.mockResolvedValue(makeOkResponse(minimalServiceContract));
+    await fetchFormDefinition("passport-renewal");
+    const fetchOptions = mockFetch.mock.calls[0][1] as RequestInit;
+    const headers = fetchOptions?.headers as Record<string, string> | undefined;
+    expect(headers?.["X-Recipe-Preview"]).toBeUndefined();
+  });
 });
 
 // ---------------------------------------------------------------------------

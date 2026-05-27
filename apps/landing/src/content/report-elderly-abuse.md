@@ -30,7 +30,7 @@ You cannot report your concern online yet, so you need to either:
 Country Rd  
 National Assistance Board  
 Bridgetown  
-Saint Michael  
+St. Michael  
 (246) 535-3131  
 nab.department@barbados.gov.bb
 

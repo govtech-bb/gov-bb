@@ -4,8 +4,13 @@ const config: Config = {
   preset: "ts-jest",
   testEnvironment: "node",
   rootDir: "app",
-  testRegex: ".*\\.spec\\.ts$",
+  // Match .spec.ts (server/logic suites, node env) and .spec.tsx (component
+  // suites, which opt into jsdom per-file via a @jest-environment docblock).
+  testRegex: ".*\\.spec\\.tsx?$",
   moduleNameMapper: {
+    // CSS-module imports resolve to a proxy that echoes the class name, so
+    // components importing `*.module.css` render in tests without a CSS loader.
+    "\\.(css)$": "identity-obj-proxy",
     "^@govtech-bb/form-types$":
       "<rootDir>/../../../packages/form-types/src/index.ts",
     "^@govtech-bb/form-builder$":
@@ -20,7 +25,39 @@ const config: Config = {
       "<rootDir>/../test-mocks/tanstack-react-start-$1.js",
   },
   transform: {
-    "^.+\\.tsx?$": ["ts-jest", { useESM: false }],
+    // ts-jest runs in CJS mode, where `import.meta` is a syntax error. Modules
+    // that read browser config via `import.meta.env` (per ADR 0005) — e.g.
+    // lib/form-url.ts — need the references rewritten at compile time to a stub
+    // object. Mirrors apps/forms/jest.config.ts.
+    "^.+\\.tsx?$": [
+      "ts-jest",
+      {
+        useESM: false,
+        // ts-jest emits CJS, so TS1343 ("import.meta only allowed when module
+        // is esnext…") fires before the transformer below rewrites it. Ignore
+        // only that code — unlike apps/forms (diagnostics: false), this keeps
+        // the rest of form_builder's tests type-checked, which is its only
+        // type-check in CI (it's noEmit / not in `tsc -b`).
+        diagnostics: { ignoreCodes: [1343] },
+        astTransformers: {
+          before: [
+            {
+              path: "ts-jest-mock-import-meta",
+              options: {
+                metaObjectReplacement: {
+                  env: {
+                    DEV: true,
+                    PROD: false,
+                    MODE: "test",
+                    VITE_FORMS_URL: "https://forms.example.test",
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    ],
   },
 };
 

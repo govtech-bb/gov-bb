@@ -34,7 +34,7 @@ contact:
       - Wildey Gymnasium
       - Garfield Sobers Sports Complex
       - Wildey
-      - St Michael
+      - St. Michael
       - BB 22026
 onlineServices: []
 associatedDepartments: []

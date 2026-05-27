@@ -18,7 +18,7 @@ You can collect an application form from:
 National Sports Council office  
 My Lords Hill  
 Bridgetown  
-St Michael
+St. Michael
 
 Wildey Gymnasium  
 Garfield Sobers Complex  

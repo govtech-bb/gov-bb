@@ -77,6 +77,9 @@ export const envValidationSchema = Joi.object({
     otherwise: Joi.string().optional().allow(""),
   }),
 
+  // Recipe preview (optional — empty disables the per-request preview escape hatch)
+  RECIPE_PREVIEW_TOKEN: Joi.string().allow("").default(""),
+
   // S3 file uploads (optional — required only when a form uses file fields)
   S3_BUCKET: Joi.string().allow("").default(""),
   S3_REGION: Joi.string().optional(),

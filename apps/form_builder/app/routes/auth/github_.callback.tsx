@@ -9,6 +9,7 @@ import {
   exchangeCodeForToken,
   fetchGitHubLogin,
   userHasRepoWriteAccess,
+  userIsTeamMember,
 } from "../../server/github-oauth";
 import {
   parseOAuthStateCookie,
@@ -77,10 +78,14 @@ export const Route = createFileRoute("/auth/github_/callback")({
     const clientSecret = process.env.GITHUB_OAUTH_CLIENT_SECRET;
     const sessionSecret = process.env.SESSION_SECRET;
     const base = process.env.OAUTH_REDIRECT_BASE;
+    const org = process.env.GITHUB_ORG;
+    const teamSlug = process.env.GITHUB_TEAM_SLUG;
     if (!clientId) throw new Error("GITHUB_OAUTH_CLIENT_ID is not set");
     if (!clientSecret) throw new Error("GITHUB_OAUTH_CLIENT_SECRET is not set");
     if (!sessionSecret) throw new Error("SESSION_SECRET is not set");
     if (!base) throw new Error("OAUTH_REDIRECT_BASE is not set");
+    if (!org) throw new Error("GITHUB_ORG is not set");
+    if (!teamSlug) throw new Error("GITHUB_TEAM_SLUG is not set");
 
     // CSRF state check (read-only on the cookie).
     const cookie = readCookieHeader();
@@ -98,7 +103,9 @@ export const Route = createFileRoute("/auth/github_/callback")({
       redirectUri: `${base}/auth/github/callback`,
     });
     const login = await fetchGitHubLogin(accessToken);
-    const allowed = await userHasRepoWriteAccess({ accessToken, login });
+    const allowed =
+      (await userIsTeamMember({ accessToken, org, teamSlug, login })) ||
+      (await userHasRepoWriteAccess({ accessToken, org, login }));
 
     if (!allowed) {
       // Clear the CSRF state cookie even on denial, so a retry starts clean.

@@ -202,6 +202,11 @@ services:
       GITHUB_OAUTH_CLIENT_ID: ${GITHUB_OAUTH_CLIENT_ID:-}
       GITHUB_OAUTH_CLIENT_SECRET: ${GITHUB_OAUTH_CLIENT_SECRET:-}
       OAUTH_REDIRECT_BASE: ${OAUTH_REDIRECT_BASE:-http://localhost:3003}
+      # Org owning the repo + hosting the access team, and the team slug (URL form)
+      # whose members may log in. Like the OAuth creds above, the empty TEAM_SLUG
+      # default lets the app boot; the login round-trip throws until it's set.
+      GITHUB_ORG: ${GITHUB_ORG:-govtech-bb}
+      GITHUB_TEAM_SLUG: ${GITHUB_TEAM_SLUG:-}
       # AI-assisted authoring (form_builder uses AI_PROVIDER/AI_MODEL, not the
       # chat app's LLM_MODEL).
       AI_PROVIDER: ${AI_PROVIDER:-anthropic}

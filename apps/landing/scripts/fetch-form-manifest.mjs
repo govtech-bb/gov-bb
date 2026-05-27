@@ -8,8 +8,11 @@
  * decide whether to render Start now buttons at render time.
  *
  * Runs as the `prebuild` and `predev` lifecycle script of the
- * landing app. Failure here fails the build by design — better than
- * silently shipping a landing site with zero Start now buttons.
+ * landing app. A genuine failure (unreachable API, malformed response,
+ * invalid form IDs) fails the build by design. A successful response
+ * with zero forms is a valid empty state: we emit an empty manifest so
+ * the build still succeeds and no Start now buttons render until forms
+ * exist.
  *
  * See:
  *   - docs/plans/start-now-form-links.md (revision 2)
@@ -59,12 +62,6 @@ const ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/
 
 function assertValidFormIds(ids) {
   if (!Array.isArray(ids)) fail('response.data was not an array')
-  if (ids.length === 0) {
-    fail(
-      'forms API returned zero forms — refusing to build a landing site ' +
-        'with no Start now buttons',
-    )
-  }
   for (const id of ids) {
     if (typeof id !== 'string' || !ID_PATTERN.test(id)) {
       fail(`form ID failed validation: ${JSON.stringify(id)}`)
