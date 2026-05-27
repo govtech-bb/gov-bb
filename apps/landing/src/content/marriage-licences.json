@@ -1,0 +1,2291 @@
+{
+  "title": "Marriage licences",
+  "description": "This article outlines the requirements, procedures, and fees for obtaining a marriage licence in Barbados, including details for nationals and non-nationals, minors, and special arrangements.",
+  "categories": ["family-birth-relationships"],
+  "section": "Family, Birth and Relationships",
+  "stage": "alpha",
+  "source_url": "https://www.gov.bb/Citizens/marriage-licence",
+  "publish_date": "2025-10-24",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Getting Married in Barbados",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Requirements for Obtaining a Marriage Licence in Barbados",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Application for a marriage licence must be made by ",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": "both",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 1,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": " (male and female) persons at the Ministry of Home Affairs and Information office. The marriage licence is valid for three (3) months ",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": "only",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 1,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": "; therefore, couples can get married within three (3) months from the time they receive their marriage licence.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "All couples are advised to peruse the information contained in this document and to ensure that they satisfy all the requirements for getting married in Barbados before making the actual application for a marriage licence.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 1,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 1
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Documents Required for Obtaining a Marriage Licence",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "tag": "ul",
+          "type": "list",
+          "start": 1,
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "type": "listitem",
+              "value": 1,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "  Nationals ",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": "must",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 1,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": " present to the Officer at the Ministry of Home Affairs and Information their original birth certificates (",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": "in good condition",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 1,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": ") and national identification card/driver's licence ",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": "or",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 1,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": " a ",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": "valid",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 1,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": " passport (if available). All non-nationals must present their ",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": "valid",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 1,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": " passports and/or birth certificates;",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 2,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "  Non-Nationals ",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": "must",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 1,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": " present to the Officer at the Ministry of Home Affairs and Information ",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": "proof of valid entry into Barbados",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 1,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": ";",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 3,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "  In the case of a widow or widower, the ",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": "original",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 1,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": " death certificate and ",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": "original",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 1,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": " marriage certificate must be submitted;",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 4,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "  If either party was divorced, an ",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": "original",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 1,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": " Decree Absolute or Final Judgement or a certified copy of either document by a Notary Public* must be presented. The Decree Nisi is ",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": "not",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 1,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": " acceptable; and",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 5,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "  An originally signed letter from the Marriage Officer or an official note from the Magistrate that states his/her intention to perform the wedding ceremony must be presented when applying for the license.",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "listType": "bullet",
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "*A Notary Public is a person authorized to perform certain legal formalities, especially to draw up or certify contracts, deeds, and other documents for use in other jurisdictions.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 1,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 1
+        },
+        {
+          "tag": "ul",
+          "type": "list",
+          "start": 1,
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "type": "listitem",
+              "value": 1,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "  The letter from the Marriage Officer should be addressed to: \\ \\ ",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": "The Permanent Secretary, Home Affairs",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 1,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": " \\ ",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": "Ministry of Home Affairs and Information",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 1,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": " \\ ",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": "Jones Building",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 1,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": " \\ ",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": "Webster's Business Park",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 1,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": " \\ ",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": "Wildey",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 1,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": " \\ ",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": "St. Michael",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 1,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": " \\ ",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": "BARBADOS",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 1,
+                  "version": 1
+                },
+                {
+                  "type": "linebreak",
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": "    ",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 2,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "  It should be dated and include the following:",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 3,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "tag": "ul",
+                  "type": "list",
+                  "start": 1,
+                  "format": "",
+                  "indent": 0,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "listitem",
+                      "value": 1,
+                      "format": "",
+                      "indent": 1,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": "the date and time of the wedding",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null
+                    },
+                    {
+                      "type": "listitem",
+                      "value": 2,
+                      "format": "",
+                      "indent": 1,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": "the names of the parties to be married",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null
+                    },
+                    {
+                      "type": "listitem",
+                      "value": 3,
+                      "format": "",
+                      "indent": 1,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": "the place of the ceremony",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null
+                    },
+                    {
+                      "type": "listitem",
+                      "value": 4,
+                      "format": "",
+                      "indent": 1,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": "an original signature of the official performing the wedding",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null
+                    }
+                  ],
+                  "listType": "bullet",
+                  "direction": null
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "listType": "bullet",
+          "direction": null
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Additional Requirements",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Persons who have been granted Barbadian citizenship either by descent or registration, immigration status or permanent residence, are required to produce the ",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": "original",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 1,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": " ",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": "and valid",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 1,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": " documents issued by the Immigration Department of Barbados or passports in which the relevant information has been stamped.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Non-nationals who have been granted work permits must produce the passport showing that a work permit was issued to them, or the relevant document issued by the Immigration Department. The application form or receipt will ",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": "not",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 1,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": " be accepted.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Please note that a work permit does not confer permanent status and should be valid at the time of application.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 1,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 1
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Note also that a marriage licence will not be issued for a date beyond the expiry date of any visitor's stay or work permit in Barbados.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 1,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 1
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "N.B.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 1,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": " All documents (except passports and identification cards) not in English ",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": "must",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 1,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": " be accompanied by an English translation that is certified by an authorized Notary Public ",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": "(NOT a Justice of the Peace).",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 1,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 1
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Marriage of Minors",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Persons under the age of sixteen (16) years cannot be legally married in Barbados. Regarding consent required for marriage of a minor between sixteen (16) and eighteen (18) years, the following stipulations should be noted:",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "ul",
+          "type": "list",
+          "start": 1,
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "type": "listitem",
+              "value": 1,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "  If the parents are living together, either parent can give consent;",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 2,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "  If the parents are divorced or living apart, the parent having legal or actual custody, or where legal custody is given to each parent for part of the year, either parent can give consent;",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 3,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "  If both parents have been deprived of custody by order of a court, the person to whose custody the minor is committed by order of the court can give consent;",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 4,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "  Where one parent is dead and no other guardian exists, the surviving parent can give consent;",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 5,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "  If a guardian has been appointed by the deceased parent, the surviving parent or the appointed guardian can give consent for marriage of a minor; and",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 6,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "  Where both parents are dead or are ",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": "non-compos mentis",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 2,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": " (mentally incapable of managing their affairs/unsound mind) a lawfully appointed guardian or acknowledged guardian who has raised the minor or who for at least three years immediately preceding the intended marriage has supported the minor can give consent for marriage of a minor.",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "listType": "bullet",
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "If none of the foregoing options is possible, a Judge in Barbados may in his discretion on an application being made to him make an order to dispense with the consent required for the marriage of the minor.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Persons eighteen (18) years of age and older do not require parental consent.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Licence Fees",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "tag": "ul",
+          "type": "list",
+          "start": 1,
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "type": "listitem",
+              "value": 1,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "  ",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": "Non-Nationals",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 1,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": " - BDS$200.00 cash and a $25.00 stamp (this does not apply to persons who have residence or citizenship in Barbados).",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 2,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "  ",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": "Nationals",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 1,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": " - BDS$200.00 cash and a $10.00 stamp (this applies if either party is a citizen or resident of Barbados).",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "listType": "bullet",
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The $10.00 and $25.00 stamps ",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": "can be obtained from",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 1,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": " the Ministry at the time of application.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Prior Arrangements",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Arrangements should be made with a Marriage Officer (a Minister of Religion or a Magistrate who is authorized to perform wedding ceremonies in Barbados) before applying for a Marriage Licence. As was previously mentioned under ",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": "'Requirements'",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 1,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": " the couple must submit correspondence from the Marriage Officer who has consented to perform the wedding ceremony. One of the ways persons from abroad can obtain the services of a Marriage Officer resident on this island (a Minister of Religion) is to call the number of any of the churches operating in Barbados or the Supreme Court (for a Magistrate). Please see contact information related to acquiring the services of a Magistrate, below.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "This Ministry is not authorized to arrange or execute weddings. However, many hotels in Barbados have their own Wedding Planners/Coordinators. It is therefore advisable to contact the hotel (if staying at one) to obtain the services of its Wedding Planner. If staying elsewhere, please contact the Barbados Tourism Marketing Inc. (BTMI) at (246) 535-3700, for the relevant assistance.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "A non-resident Minister of Religion (who must also be a registered Marriage Officer, in the jurisdiction where he is currently serving)",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 1,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": ", who has been requested to solemnize a marriage in Barbados, may, after satisfactorily fulfilling all of the necessary criteria be appointed as a ",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": "Temporary",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 1,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": " Marriage Officer of Barbados. Information outlining this procedure can be obtained at ",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "id": "6a175156a4471fc1012af59f",
+              "type": "link",
+              "fields": {
+                "url": "http://www.gov.bb",
+                "newTab": false,
+                "linkType": "custom"
+              },
+              "format": "",
+              "indent": 0,
+              "version": 3,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "www.gov.bb",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "mode": "normal",
+              "text": ". For further assistance, please email ",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "id": "6a175156a4471fc1012af5a0",
+              "type": "link",
+              "fields": {
+                "url": "mailto:haffairs@mha.gov.bb",
+                "newTab": false,
+                "linkType": "custom"
+              },
+              "format": "",
+              "indent": 0,
+              "version": 3,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "haffairs@mha.gov.bb",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "mode": "normal",
+              "text": " or call the Ministry of Home Affairs and Information at telephone number 1 (246) 535-7267. ",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": "A marriage may be solemnized shortly after the issue of the licence.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 1,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 1
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Ministry of Home Affairs and Information's Office Hours and Bookings",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "An appointment to obtain a marriage licence can be done between the hours of 8:30 a.m. and 3:30 p.m. from Monday to Friday. The form can be downloaded, completed and submitted or brought together with the other relevant documents to the Ministry. The booking of an appointment is required to facilitate the granting of a Marriage Licence. To book an appointment, kindly visit the BGIS website ",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "id": "6a175156a4471fc1012af5a1",
+              "type": "link",
+              "fields": {
+                "url": "http://gisbarbados.gov.bb/faqs",
+                "newTab": false,
+                "linkType": "custom"
+              },
+              "format": "",
+              "indent": 0,
+              "version": 3,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "gisbarbados.gov.bb/faqs",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "mode": "normal",
+              "text": " or ",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "id": "6a175156a4471fc1012af5a2",
+              "type": "link",
+              "fields": {
+                "url": "http://www.gov.bb",
+                "newTab": false,
+                "linkType": "custom"
+              },
+              "format": "",
+              "indent": 0,
+              "version": 3,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "www.gov.bb",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "mode": "normal",
+              "text": " under the heading ",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "id": "6a175156a4471fc1012af5a3",
+              "type": "link",
+              "fields": {
+                "url": "https://govtbarbadosapointmentsystem.as.me/MarriageLicense",
+                "newTab": false,
+                "linkType": "custom"
+              },
+              "format": "",
+              "indent": 0,
+              "version": 3,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Marriage Licence Appointments",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "mode": "normal",
+              "text": ". The system will allow bookings from 8:30 a.m. until 2:30 p.m. at half (1/2) hour intervals. Appointments via the link above are preferred, however, applicants can also call to make an appointment at telephone number 1 (246) 535-7260. Additional queries can be directed to ",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "id": "6a175156a4471fc1012af5a4",
+              "type": "link",
+              "fields": {
+                "url": "mailto:haffairs@mha.gov.bb",
+                "newTab": false,
+                "linkType": "custom"
+              },
+              "format": "",
+              "indent": 0,
+              "version": 3,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "haffairs@mha.gov.bb",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "mode": "normal",
+              "text": " or the Desk Officer at 1 (246) 535-7267.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h3",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Special Arrangements",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Special arrangements can be made to grant a marriage licence on weekends, public holidays or in some situations where the couple is unable to visit the Ministry of Home Affairs and Information.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "In such instances, an ",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": "additional fee",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 1,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": " of BDS $100.00 or USD $50.00 is required. Please contact the Marriage Licence Desk at 1 (246) 535-7285 or 1 (246) 535-7267 for further assistance.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Marriage Certificate",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "A marriage certificate or a copy can ",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": "only",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 1,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": " be obtained from the Registration Department. The address is:",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The Registrar of the Supreme Court",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 1,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": " \\ ",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": "Registration Department",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 1,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": " \\ ",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": "Judicial Centre",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 1,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": " \\ ",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": "White Park Road",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 1,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": " \\ ",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": "St. Michael",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 1,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": " \\ ",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": "BARBADOS",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 1,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 1
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Telephone No.: (246) 535-9700 \\ Fax No.: (246) 426-2405",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Telephone No.: (246) 536-3507 / 3504 / 3631",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "E-Mail Address:  \\ ",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "id": "6a175156a4471fc1012af5a5",
+              "type": "link",
+              "fields": {
+                "url": "mailto:registrar@lawcourt.gov.bb",
+                "newTab": false,
+                "linkType": "custom"
+              },
+              "format": "",
+              "indent": 0,
+              "version": 3,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "registrar@lawcourt.gov.bb",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "mode": "normal",
+              "text": " \\ ",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "id": "6a175156a4471fc1012af5a6",
+              "type": "link",
+              "fields": {
+                "url": "mailto:correspondenceregistration@live.com",
+                "newTab": false,
+                "linkType": "custom"
+              },
+              "format": "",
+              "indent": 0,
+              "version": 3,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "correspondenceregistration@live.com",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Registration Department's Office Hours",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Office Hours: Mondays to Fridays 8:30 a.m. - 3:45 p.m.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Court Fees",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "(Magistrate to perform the ceremony)",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Nationals",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 1,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": " - outside the precincts of the court is $125.00 Barbados Dollars or within the court $100.00 Barbados Dollars.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 1
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Non-Nationals",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 1,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": " - outside the precincts of the court is $350.00 Barbados Dollars or within the court is $250.00 Barbados Dollars.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 1
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Marriage Certificate Fees",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Nationals - $10.00",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Non-nationals - $20.00",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "It is strongly advised that non-nationals and persons that intend to live/transact any legal business abroad obtain an apostille. A fee of $50.00 is charged by the Registration Department.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "type": "linebreak",
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": "```",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "## Getting Married in Barbados\n\n## Requirements for Obtaining a Marriage Licence in Barbados\n\nApplication for a marriage licence must be made by **both** (male and female) persons at the Ministry of Home Affairs and Information office. The marriage licence is valid for three (3) months **only**; therefore, couples can get married within three (3) months from the time they receive their marriage licence.\n\n**All couples are advised to peruse the information contained in this document and to ensure that they satisfy all the requirements for getting married in Barbados before making the actual application for a marriage licence.**\n\n## Documents Required for Obtaining a Marriage Licence\n\n-   Nationals **must** present to the Officer at the Ministry of Home Affairs and Information their original birth certificates (**in good condition**) and national identification card/driver's licence **or** a **valid** passport (if available). All non-nationals must present their **valid** passports and/or birth certificates;\n-   Non-Nationals **must** present to the Officer at the Ministry of Home Affairs and Information **proof of valid entry into Barbados**;\n-   In the case of a widow or widower, the **original** death certificate and **original** marriage certificate must be submitted;\n-   If either party was divorced, an **original** Decree Absolute or Final Judgement or a certified copy of either document by a Notary Public\\* must be presented. The Decree Nisi is **not** acceptable; and\n-   An originally signed letter from the Marriage Officer or an official note from the Magistrate that states his/her intention to perform the wedding ceremony must be presented when applying for the license.\n\n**\\*A Notary Public is a person authorized to perform certain legal formalities, especially to draw up or certify contracts, deeds, and other documents for use in other jurisdictions.**\n\n-   The letter from the Marriage Officer should be addressed to: \\\\ \\\\ **The Permanent Secretary, Home Affairs** \\\\ **Ministry of Home Affairs and Information** \\\\ **Jones Building** \\\\ **Webster's Business Park** \\\\ **Wildey** \\\\ **St. Michael** \\\\ **BARBADOS**\n    \n-   It should be dated and include the following:\n    - the date and time of the wedding\n    - the names of the parties to be married\n    - the place of the ceremony\n    - an original signature of the official performing the wedding\n\n## Additional Requirements\n\nPersons who have been granted Barbadian citizenship either by descent or registration, immigration status or permanent residence, are required to produce the **original** **and valid** documents issued by the Immigration Department of Barbados or passports in which the relevant information has been stamped.\n\nNon-nationals who have been granted work permits must produce the passport showing that a work permit was issued to them, or the relevant document issued by the Immigration Department. The application form or receipt will **not** be accepted.\n\n**Please note that a work permit does not confer permanent status and should be valid at the time of application.**\n\n**Note also that a marriage licence will not be issued for a date beyond the expiry date of any visitor's stay or work permit in Barbados.**\n\n**N.B.** All documents (except passports and identification cards) not in English **must** be accompanied by an English translation that is certified by an authorized Notary Public **(NOT a Justice of the Peace).**\n\n## Marriage of Minors\n\nPersons under the age of sixteen (16) years cannot be legally married in Barbados. Regarding consent required for marriage of a minor between sixteen (16) and eighteen (18) years, the following stipulations should be noted:\n\n-   If the parents are living together, either parent can give consent;\n-   If the parents are divorced or living apart, the parent having legal or actual custody, or where legal custody is given to each parent for part of the year, either parent can give consent;\n-   If both parents have been deprived of custody by order of a court, the person to whose custody the minor is committed by order of the court can give consent;\n-   Where one parent is dead and no other guardian exists, the surviving parent can give consent;\n-   If a guardian has been appointed by the deceased parent, the surviving parent or the appointed guardian can give consent for marriage of a minor; and\n-   Where both parents are dead or are *non-compos mentis* (mentally incapable of managing their affairs/unsound mind) a lawfully appointed guardian or acknowledged guardian who has raised the minor or who for at least three years immediately preceding the intended marriage has supported the minor can give consent for marriage of a minor.\n\nIf none of the foregoing options is possible, a Judge in Barbados may in his discretion on an application being made to him make an order to dispense with the consent required for the marriage of the minor.\n\nPersons eighteen (18) years of age and older do not require parental consent.\n\n## Licence Fees\n\n-   **Non-Nationals** - BDS$200.00 cash and a $25.00 stamp (this does not apply to persons who have residence or citizenship in Barbados).\n-   **Nationals** - BDS$200.00 cash and a $10.00 stamp (this applies if either party is a citizen or resident of Barbados).\n\nThe $10.00 and $25.00 stamps **can be obtained from** the Ministry at the time of application.\n\n## Prior Arrangements\n\nArrangements should be made with a Marriage Officer (a Minister of Religion or a Magistrate who is authorized to perform wedding ceremonies in Barbados) before applying for a Marriage Licence. As was previously mentioned under **'Requirements'** the couple must submit correspondence from the Marriage Officer who has consented to perform the wedding ceremony. One of the ways persons from abroad can obtain the services of a Marriage Officer resident on this island (a Minister of Religion) is to call the number of any of the churches operating in Barbados or the Supreme Court (for a Magistrate). Please see contact information related to acquiring the services of a Magistrate, below.\n\nThis Ministry is not authorized to arrange or execute weddings. However, many hotels in Barbados have their own Wedding Planners/Coordinators. It is therefore advisable to contact the hotel (if staying at one) to obtain the services of its Wedding Planner. If staying elsewhere, please contact the Barbados Tourism Marketing Inc. (BTMI) at (246) 535-3700, for the relevant assistance.\n\n**A non-resident Minister of Religion (who must also be a registered Marriage Officer, in the jurisdiction where he is currently serving)**, who has been requested to solemnize a marriage in Barbados, may, after satisfactorily fulfilling all of the necessary criteria be appointed as a **Temporary** Marriage Officer of Barbados. Information outlining this procedure can be obtained at [www.gov.bb](http://www.gov.bb). For further assistance, please email [haffairs@mha.gov.bb](mailto:haffairs@mha.gov.bb) or call the Ministry of Home Affairs and Information at telephone number 1 (246) 535-7267. **A marriage may be solemnized shortly after the issue of the licence.**\n\n## Ministry of Home Affairs and Information's Office Hours and Bookings\n\nAn appointment to obtain a marriage licence can be done between the hours of 8:30 a.m. and 3:30 p.m. from Monday to Friday. The form can be downloaded, completed and submitted or brought together with the other relevant documents to the Ministry. The booking of an appointment is required to facilitate the granting of a Marriage Licence. To book an appointment, kindly visit the BGIS website [gisbarbados.gov.bb/faqs](http://gisbarbados.gov.bb/faqs) or [www.gov.bb](http://www.gov.bb) under the heading [Marriage Licence Appointments](https://govtbarbadosapointmentsystem.as.me/MarriageLicense). The system will allow bookings from 8:30 a.m. until 2:30 p.m. at half (1/2) hour intervals. Appointments via the link above are preferred, however, applicants can also call to make an appointment at telephone number 1 (246) 535-7260. Additional queries can be directed to [haffairs@mha.gov.bb](mailto:haffairs@mha.gov.bb) or the Desk Officer at 1 (246) 535-7267.\n\n### Special Arrangements\n\nSpecial arrangements can be made to grant a marriage licence on weekends, public holidays or in some situations where the couple is unable to visit the Ministry of Home Affairs and Information.\n\nIn such instances, an **additional fee** of BDS $100.00 or USD $50.00 is required. Please contact the Marriage Licence Desk at 1 (246) 535-7285 or 1 (246) 535-7267 for further assistance.\n\n## Marriage Certificate\n\nA marriage certificate or a copy can **only** be obtained from the Registration Department. The address is:\n\n**The Registrar of the Supreme Court** \\\\ **Registration Department** \\\\ **Judicial Centre** \\\\ **White Park Road** \\\\ **St. Michael** \\\\ **BARBADOS**\n\nTelephone No.: (246) 535-9700 \\\\ Fax No.: (246) 426-2405\n\nTelephone No.: (246) 536-3507 / 3504 / 3631\n\nE-Mail Address:  \\\\ [registrar@lawcourt.gov.bb](mailto:registrar@lawcourt.gov.bb) \\\\ [correspondenceregistration@live.com](mailto:correspondenceregistration@live.com)\n\n## Registration Department's Office Hours\n\nOffice Hours: Mondays to Fridays 8:30 a.m. - 3:45 p.m.\n\n## Court Fees\n\n(Magistrate to perform the ceremony)\n\n**Nationals** - outside the precincts of the court is $125.00 Barbados Dollars or within the court $100.00 Barbados Dollars.\n\n**Non-Nationals** - outside the precincts of the court is $350.00 Barbados Dollars or within the court is $250.00 Barbados Dollars.\n\n## Marriage Certificate Fees\n\nNationals - $10.00\n\nNon-nationals - $20.00\n\nIt is strongly advised that non-nationals and persons that intend to live/transact any legal business abroad obtain an apostille. A fee of $50.00 is charged by the Registration Department.\n\\`\\`\\`"
+}

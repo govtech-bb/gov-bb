@@ -1,5 +1,5 @@
 import { createFileRoute, notFound } from '@tanstack/react-router'
-import { MarkdownBody } from '../components/MarkdownContent'
+import { LexicalBody } from '../components/LexicalContent'
 import { MinistryPage } from '../components/MinistryPage'
 import { ORG_PAGE_BY_SLUG, resolveOrgProps } from '../content/orgs'
 
@@ -33,7 +33,7 @@ function OrganisationDetail() {
   return (
     <MinistryPage
       {...props}
-      body={page ? <MarkdownBody body={page.body} /> : null}
+      body={page ? <LexicalBody body={page.body} /> : null}
     />
   )
 }

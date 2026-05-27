@@ -1,0 +1,381 @@
+{
+  "title": "Apply for a conductor's licence",
+  "description": "Apply for a conductor's licence to work on a Public Service Vehicle (PSV) in Barbados. You must be 18 years or older to apply.",
+  "categories": ["work-employment"],
+  "stage": "alpha",
+  "publish_date": "2026-03-06",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "If you are 18 years old or older, you can use this service to apply for a licence to become a conductor on a Public Service Vehicle (PSV).",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "How to apply",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "tag": "h3",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Complete the form",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "There are 2 ways to apply for a conductor's licence. You can:",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "ol",
+          "type": "list",
+          "start": 1,
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "type": "listitem",
+              "value": 1,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Apply online",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "listType": "number",
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "   You can complete the application online",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "   <a data-start-link href=\"/work-employment/apply-for-conductor-licence/start\">Apply online</a>",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "ol",
+          "type": "list",
+          "start": 2,
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "type": "listitem",
+              "value": 2,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Get a paper application form from the Ministry of Transport and Works.",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "listType": "number",
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "   You must complete it by hand and return it to the department.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "   \\ Ministry of Transport and Works \\ 2nd Floor \\ The Goddard Building \\ Haggatt Hall \\ St. Michael \\ Bridgetown",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h3",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "What you will need to share",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Along with your personal details, the application form will ask for information about your licences, driving history, and any relevant convictions.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "You will also need to provide a copy of your ",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "id": "6a175155a4471fc1012af586",
+              "type": "link",
+              "fields": {
+                "url": "https://forms.gov.bb/CertificateOfCharacter",
+                "newTab": false,
+                "linkType": "custom"
+              },
+              "format": "",
+              "indent": 0,
+              "version": 3,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Police Certificate of Character",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h3",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "After you apply",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "We will review your application.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "You must contact the department (246-536-0282) to schedule your in-person oral test.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "If you are 18 years old or older, you can use this service to apply for a licence to become a conductor on a Public Service Vehicle (PSV).\n\n## How to apply\n\n### Complete the form\n\nThere are 2 ways to apply for a conductor's licence. You can:\n\n1. Apply online\n\n   You can complete the application online\n\n   <a data-start-link href=\"/work-employment/apply-for-conductor-licence/start\">Apply online</a>\n\n2. Get a paper application form from the Ministry of Transport and Works.\n\n   You must complete it by hand and return it to the department.\n\n   \\\\ Ministry of Transport and Works \\\\ 2nd Floor \\\\ The Goddard Building \\\\ Haggatt Hall \\\\ St. Michael \\\\ Bridgetown\n\n### What you will need to share\n\nAlong with your personal details, the application form will ask for information about your licences, driving history, and any relevant convictions.\n\nYou will also need to provide a copy of your [Police Certificate of Character](https://forms.gov.bb/CertificateOfCharacter)\n\n### After you apply\n\nWe will review your application.\n\nYou must contact the department (246-536-0282) to schedule your in-person oral test."
+}

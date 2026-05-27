@@ -1,0 +1,1101 @@
+{
+  "kind": "ministry",
+  "slug": "ministry-of-health-and-wellness",
+  "name": "Ministry of Health and Wellness",
+  "shortDescription": "Provides quality, equitable, and accessible health care services to all Barbadians.",
+  "intro": "To provide quality, equitable, and accessible health care services to all Barbadians.",
+  "category": "ministerial",
+  "keywords": ["MHW", "MOH", "MoH", "Ministry of Health", "Health", "Wellness"],
+  "minister": {
+    "name": "The Hon. Davidson I. Ishmael, M.P.",
+    "role": "Minister of State, Ministry of Health and Wellness"
+  },
+  "contact": [
+    {
+      "label": "Email",
+      "type": "email",
+      "value": "ps-secretary@health.gov.bb"
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 536-3800"
+    },
+    {
+      "label": "Website",
+      "type": "website",
+      "value": "http://www.health.gov.bb/"
+    },
+    {
+      "label": "Address",
+      "type": "address",
+      "value": [
+        "Frank Walcott Building, Culloden Road",
+        "St. Michael",
+        "Barbados, W.I."
+      ]
+    }
+  ],
+  "onlineServices": [
+    {
+      "title": "Medical requirements",
+      "href": "/medical-requirements",
+      "description": "Medical requirements for entering or living in Barbados."
+    }
+  ],
+  "associatedDepartments": [
+    {
+      "category": "Health",
+      "items": [
+        {
+          "name": "Barbados Drug Service",
+          "slug": "drug-service"
+        },
+        {
+          "name": "The Queen Elizabeth Hospital",
+          "slug": "queen-elizabeth-hospital"
+        },
+        {
+          "name": "The Psychiatric Hospital",
+          "slug": "psychiatric-hospital"
+        }
+      ]
+    }
+  ],
+  "originalSource": "https://www.gov.bb/Ministries/health",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The Ministry of Health and Wellness is to promote and manage health and ensure environmental concerns are considered in all aspects of national development, through the provision of comprehensive, coordinated and integrated care, supported by appropriately trained staff, national leadership and standards of excellence.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Directory",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "table",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "type": "tablerow",
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " Section / Office                   ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 1,
+                  "backgroundColor": null
+                },
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " Telephone      ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 1,
+                  "backgroundColor": null
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "tablerow",
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " PBX                                ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                },
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " (246) 536-3800 ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "tablerow",
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " Minister                           ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                },
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " (246) 536-3801 ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "tablerow",
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " Permanent Secretary                ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                },
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " (246) 536-3802 ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "tablerow",
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " PS Secretary                       ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                },
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " (246) 536-3806 ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "tablerow",
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " Chief Medical Officer              ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                },
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " (246) 536-3803 ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "tablerow",
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " Deputy Permanent Secretary         ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                },
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " (246) 536-3804 ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "tablerow",
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " Principal Personnel Officer        ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                },
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " (246) 536-3815 ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "tablerow",
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " Chief Public Health Nurse          ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                },
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " (246) 536-3846 ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "tablerow",
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " Chief Environmental Health Officer ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                },
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " (246) 536-3854 ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "tablerow",
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " Senior Health Promotion Officer    ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                },
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " (246) 536-3867 ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "tablerow",
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " Medical Council                    ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                },
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " (246) 536-3910 ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "tablerow",
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " Nursing Council                    ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                },
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " (246) 536-3908 ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "direction": null
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "The Ministry of Health and Wellness is to promote and manage health and ensure environmental concerns are considered in all aspects of national development, through the provision of comprehensive, coordinated and integrated care, supported by appropriately trained staff, national leadership and standards of excellence.\n\n## Directory\n\n| Section / Office | Telephone |\n| --- | --- |\n| PBX | (246) 536-3800 |\n| Minister | (246) 536-3801 |\n| Permanent Secretary | (246) 536-3802 |\n| PS Secretary | (246) 536-3806 |\n| Chief Medical Officer | (246) 536-3803 |\n| Deputy Permanent Secretary | (246) 536-3804 |\n| Principal Personnel Officer | (246) 536-3815 |\n| Chief Public Health Nurse | (246) 536-3846 |\n| Chief Environmental Health Officer | (246) 536-3854 |\n| Senior Health Promotion Officer | (246) 536-3867 |\n| Medical Council | (246) 536-3910 |\n| Nursing Council | (246) 536-3908 |"
+}

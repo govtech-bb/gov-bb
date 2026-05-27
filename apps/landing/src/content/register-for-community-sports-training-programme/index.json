@@ -1,0 +1,489 @@
+{
+  "title": "Register for a Youth Development Programme (YDP) Community Sports Training programme",
+  "description": "Register for a government-run Youth Development Programme (YDP) community sports training programme in Barbados. Open to residents aged 30 and under.",
+  "categories": ["work-employment"],
+  "stage": "alpha",
+  "publish_date": "2026-02-06",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Anyone living in Barbados, aged 30 and under, can register for a place on government-run community sports programmes.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "New programmes begin throughout the year.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "How to register",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "tag": "h3",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Complete the form",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "There are 2 ways to complete the form. You can:",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "ol",
+          "type": "list",
+          "start": 1,
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "type": "listitem",
+              "value": 1,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "#### Complete the online form",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "listType": "number",
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "   <a data-start-link href=\"/work-employment/register-for-community-sports-training-programme/start\">Register now</a>",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "ol",
+          "type": "list",
+          "start": 2,
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "type": "listitem",
+              "value": 2,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "#### Collect a paper form",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "listType": "number",
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "   You can get one from your local youth commissioner or from:",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "   Ministry of Youth, Sports and Community Empowerment   Sky Mall Haggatt Hall St. Michael",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "   If you complete a paper form, submit it by taking it to:",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "ul",
+          "type": "list",
+          "start": 1,
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "type": "listitem",
+              "value": 1,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "your local youth commissioner or coach",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 2,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "the ministry office",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "listType": "bullet",
+          "direction": null
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "After you register",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The Youth Commissioner will be in touch to confirm:",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "ul",
+          "type": "list",
+          "start": 1,
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "type": "listitem",
+              "value": 1,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "the location of the programme",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 2,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "the start date and times",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 3,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "what you will need to bring",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "listType": "bullet",
+          "direction": null
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "When to register",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "When to register depends on what you would like to register for. You can see a list of current programmes at the ",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "id": "6a175156a4471fc1012af5b4",
+              "type": "link",
+              "fields": {
+                "url": "https://youthaffairs.gov.bb/programme-channels/youth-development-programme/",
+                "newTab": false,
+                "linkType": "custom"
+              },
+              "format": "",
+              "indent": 0,
+              "version": 3,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Youth Development Programme page",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "mode": "normal",
+              "text": " or contact the Ministry at (246) 535-3835 and ask to be redirected to the Youth Commissioner or the Principal Youth Development Officer.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "Anyone living in Barbados, aged 30 and under, can register for a place on government-run community sports programmes.\n\nNew programmes begin throughout the year.\n\n## How to register\n\n### Complete the form\n\nThere are 2 ways to complete the form. You can:\n\n1. #### Complete the online form\n\n   <a data-start-link href=\"/work-employment/register-for-community-sports-training-programme/start\">Register now</a>\n\n2. #### Collect a paper form\n\n   You can get one from your local youth commissioner or from:\n\n   Ministry of Youth, Sports and Community Empowerment   Sky Mall Haggatt Hall St. Michael\n\n   If you complete a paper form, submit it by taking it to:\n\n- your local youth commissioner or coach\n- the ministry office\n\n## After you register\n\nThe Youth Commissioner will be in touch to confirm:\n\n- the location of the programme\n- the start date and times\n- what you will need to bring\n\n## When to register\n\nWhen to register depends on what you would like to register for. You can see a list of current programmes at the [Youth Development Programme page](https://youthaffairs.gov.bb/programme-channels/youth-development-programme/) or contact the Ministry at (246) 535-3835 and ask to be redirected to the Youth Commissioner or the Principal Youth Development Officer."
+}

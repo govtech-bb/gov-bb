@@ -1,0 +1,325 @@
+{
+  "kind": "department",
+  "slug": "disabilities-unit",
+  "name": "National Disabilities Unit",
+  "shortDescription": "Facilitates, advocates, and promotes the advancement and empowerment of persons with disabilities to ensure equal opportunities for integration in all aspects of community living.",
+  "intro": "To facilitate, advocate, and promote the advancement and empowerment of persons with disabilities in order to ensure equal opportunities for integration and participation in all aspects of community living.",
+  "keywords": ["NDU", "Disabilities"],
+  "head": {
+    "name": "Mr. John Hollingsworth",
+    "role": "Director"
+  },
+  "contact": [
+    {
+      "label": "Email",
+      "type": "email",
+      "value": "disabilities.unit@barbados.gov.bb"
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 535-3600"
+    },
+    {
+      "label": "Fax",
+      "type": "phone",
+      "value": "(246) 535-3618"
+    },
+    {
+      "label": "Address",
+      "type": "address",
+      "value": [
+        "National Disabilities Unit",
+        "Maxwelton",
+        "Collymore Rock",
+        "St. Michael"
+      ]
+    }
+  ],
+  "originalSource": "https://www.gov.bb/Departments/disabilities-unit",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "To facilitate, advocate, and promote the advancement and empowerment of persons with disabilities in order to ensure equal opportunities for integration and participation in all aspects of community living.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Directory",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "table",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "type": "tablerow",
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " Role               ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 1,
+                  "backgroundColor": null
+                },
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " Telephone      ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 1,
+                  "backgroundColor": null
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "tablerow",
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " Director           ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                },
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " (246) 535-3601 ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "tablerow",
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " Assistant Director ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                },
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " (246) 535-3602 ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "direction": null
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "To facilitate, advocate, and promote the advancement and empowerment of persons with disabilities in order to ensure equal opportunities for integration and participation in all aspects of community living.\n\n## Directory\n\n| Role | Telephone |\n| --- | --- |\n| Director | (246) 535-3601 |\n| Assistant Director | (246) 535-3602 |"
+}

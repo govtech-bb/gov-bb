@@ -1,0 +1,172 @@
+{
+  "title": "Visa information",
+  "description": "Details on how to apply for a visa, including required forms, passport photos, and contact information for Barbados Immigration Department offices.",
+  "categories": ["travel-id-citizenship"],
+  "section": "Travel, ID and Citizenship",
+  "stage": "alpha",
+  "source_url": "https://www.gov.bb/Visit-Barbados/visa-information",
+  "publish_date": "2025-10-24",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The requisite application form should be completed in duplicate and must be accompanied by two (2) passport-size photographs.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Careenage House",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Wharf Road   Bridgetown BARBADOS",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Phone: (246) 434-4100   Fax: (246) 426-0819 Email: imm-dept@caribsurf.com",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Grantley Adams International Airport",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Christ Church   BARBADOS",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Phone: (246) 418-4180   Fax: (246) 420-7180 Email: imm-dept@caribsurf.com",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "type": "linebreak",
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": "```",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "The requisite application form should be completed in duplicate and must be accompanied by two (2) passport-size photographs.\n\n## Careenage House\n\nWharf Road   Bridgetown BARBADOS\n\nPhone: (246) 434-4100   Fax: (246) 426-0819 Email: imm-dept@caribsurf.com\n\n## Grantley Adams International Airport\n\nChrist Church   BARBADOS\n\nPhone: (246) 418-4180   Fax: (246) 420-7180 Email: imm-dept@caribsurf.com\n\\`\\`\\`"
+}

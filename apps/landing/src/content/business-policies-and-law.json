@@ -1,0 +1,128 @@
+{
+  "title": "Business policies and law",
+  "description": "An overview of the Ministry of Labour's role in Barbados, focusing on promoting decent work, social benefits, and a skilled workforce for local and international markets.",
+  "categories": ["business-trade"],
+  "section": "Business and Trade",
+  "stage": "alpha",
+  "source_url": "https://www.gov.bb/Business/policies-laws",
+  "publish_date": "2025-10-24",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Labour Laws and Regulations",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The Ministry of Labour assists the Government and its Social Partners in promoting opportunities for the provision of decent and productive work, in conditions of freedom of association, equity, security and human dignity and to provide quality social and economic benefits for Barbadians.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The Ministry of Labour strives to develop a Barbadian workforce, including persons with disabilities, that is well informed, properly trained and conditioned for the local, regional and extra-regional labour markets ...",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "id": "6a175156a4471fc1012af58c",
+              "type": "link",
+              "fields": {
+                "url": "https://labour.gov.bb/",
+                "newTab": false,
+                "linkType": "custom"
+              },
+              "format": "",
+              "indent": 0,
+              "version": 3,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "LEARN MORE",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "linebreak",
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": "```",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "## Labour Laws and Regulations\n\nThe Ministry of Labour assists the Government and its Social Partners in promoting opportunities for the provision of decent and productive work, in conditions of freedom of association, equity, security and human dignity and to provide quality social and economic benefits for Barbadians.\n\nThe Ministry of Labour strives to develop a Barbadian workforce, including persons with disabilities, that is well informed, properly trained and conditioned for the local, regional and extra-regional labour markets ...\n\n[LEARN MORE](https://labour.gov.bb/)\n\\`\\`\\`"
+}

@@ -1,0 +1,503 @@
+{
+  "kind": "department",
+  "slug": "meteorological-department",
+  "name": "Meteorological Office",
+  "shortDescription": "Observes and understands the weather and climate of Barbados and the region, providing meteorological, hydrological, and marine services.",
+  "intro": "To observe and understand the weather and climate of Barbados and the region, and provide meteorological, hydrological and marine services in support of the national needs and international obligations.",
+  "keywords": ["Met Office", "Meteorology", "Weather", "BMS"],
+  "head": {
+    "name": "Mr. Hampden Lovell",
+    "role": "Director"
+  },
+  "contact": [
+    {
+      "label": "Email",
+      "type": "email",
+      "value": "hampden.lovell@barbados.gov.bb"
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 535-0020"
+    },
+    {
+      "label": "Fax",
+      "type": "phone",
+      "value": "(246) 535-0029"
+    },
+    {
+      "label": "Address",
+      "type": "address",
+      "value": [
+        "Building #4 Grantley Adams",
+        "Industrial Park",
+        "Christ Church",
+        "Barbados, W.I."
+      ]
+    }
+  ],
+  "originalSource": "https://www.gov.bb/Departments/meteorological-department",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "To observe and understand the weather and climate of Barbados and the region, and provide meteorological, hydrological and marine services in support of the national needs and international obligations.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Directory",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "table",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "type": "tablerow",
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " Role                                ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 1,
+                  "backgroundColor": null
+                },
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " Telephone      ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 1,
+                  "backgroundColor": null
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "tablerow",
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " Director of Meteorological Services ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                },
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " (246) 535-0016 ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "tablerow",
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " Deputy Director                     ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                },
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " (246) 535-0017 ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "direction": null
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Residence",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "table",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "type": "tablerow",
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " Person                              ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 1,
+                  "backgroundColor": null
+                },
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " Telephone      ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 1,
+                  "backgroundColor": null
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "tablerow",
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " Dir. Met. Svcs — Dr. Hampden Lovell ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                },
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " (246) 438-3029 ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "direction": null
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "To observe and understand the weather and climate of Barbados and the region, and provide meteorological, hydrological and marine services in support of the national needs and international obligations.\n\n## Directory\n\n| Role | Telephone |\n| --- | --- |\n| Director of Meteorological Services | (246) 535-0016 |\n| Deputy Director | (246) 535-0017 |\n\n## Residence\n\n| Person | Telephone |\n| --- | --- |\n| Dir. Met. Svcs — Dr. Hampden Lovell | (246) 438-3029 |"
+}

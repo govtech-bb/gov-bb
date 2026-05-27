@@ -1,0 +1,471 @@
+{
+  "kind": "department",
+  "slug": "school-meals",
+  "name": "The School Meals Department",
+  "shortDescription": "Provides nutritious lunches at low cost to school children across Barbados, maintaining high health standards through a network of service locations.",
+  "intro": "To provide a lunch which is of high nutritional value at a low cost to school children while maintaining proper health standards and work ethics.",
+  "keywords": ["School Meals", "BSMD"],
+  "head": {
+    "name": "Dr. Marcilia Nelson",
+    "role": "Manager"
+  },
+  "contact": [
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 535-6801"
+    },
+    {
+      "label": "Fax",
+      "type": "phone",
+      "value": "(246) 228-5221"
+    },
+    {
+      "label": "Address",
+      "type": "address",
+      "value": [
+        "Coles Building",
+        "Lower Bay Street",
+        "Bridgetown",
+        "St. Michael",
+        "Barbados, W.I."
+      ]
+    }
+  ],
+  "originalSource": "https://www.gov.bb/Departments/school-meals",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "To provide a lunch which is of high nutritional value at a low cost to school children and at the same time ensure that this objective is achieved in an environment that is congenial to good work ethics and meets the highest health standards.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Centres",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "table",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "type": "tablerow",
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " Centre                 ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 1,
+                  "backgroundColor": null
+                },
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " Telephone      ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 1,
+                  "backgroundColor": null
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "tablerow",
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " Country Road           ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                },
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " (246) 535-6823 ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "tablerow",
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " Harbour Centre         ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                },
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " (246) 535-6822 ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "tablerow",
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " Lancaster              ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                },
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " (246) 535-6821 ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "tablerow",
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " St. Christopher Centre ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                },
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " (246) 535-6824 ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "direction": null
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "To provide a lunch which is of high nutritional value at a low cost to school children and at the same time ensure that this objective is achieved in an environment that is congenial to good work ethics and meets the highest health standards.\n\n## Centres\n\n| Centre | Telephone |\n| --- | --- |\n| Country Road | (246) 535-6823 |\n| Harbour Centre | (246) 535-6822 |\n| Lancaster | (246) 535-6821 |\n| St. Christopher Centre | (246) 535-6824 |"
+}

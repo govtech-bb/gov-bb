@@ -1,0 +1,926 @@
+{
+  "kind": "department",
+  "slug": "statistical-services",
+  "name": "Statistical Services Department",
+  "shortDescription": "Provides reliable and timely economic and social statistics to support decision-makers and other users across government and the public.",
+  "intro": "The goal of the Barbados Statistical Service is to provide reliable and timely key economic and social statistics which decision makers and other users need.",
+  "keywords": ["SSD", "Statistics", "BSS", "Census"],
+  "contact": [
+    {
+      "label": "Email",
+      "type": "email",
+      "value": "barstats@caribsurf.com"
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 535-2699"
+    },
+    {
+      "label": "Fax",
+      "type": "phone",
+      "value": "(246) 421-8294"
+    },
+    {
+      "label": "Website",
+      "type": "website",
+      "value": "http://www.barstats.gov.bb/"
+    },
+    {
+      "label": "Address",
+      "type": "address",
+      "value": [
+        "5th Floor Baobab Tower Building",
+        "Warrens",
+        "St. Michael",
+        "Barbados, W.I."
+      ]
+    }
+  ],
+  "originalSource": "https://www.gov.bb/Departments/statistical-services",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The Goal of the Barbados Statistical Service is to provide reliable and timely key economic and social statistics which decision makers and other users need.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Directory",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "table",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "type": "tablerow",
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " Role                          ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 1,
+                  "backgroundColor": null
+                },
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " Telephone      ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 1,
+                  "backgroundColor": null
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "tablerow",
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " PBX                           ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                },
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " (246) 535-2600 ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "tablerow",
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " Director                      ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                },
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " (246) 535-2601 ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "tablerow",
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " Deputy Director               ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                },
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " (246) 535-2602 ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "tablerow",
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " Project Co-Ordinator          ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                },
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " (246) 535-2699 ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "tablerow",
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " Socio-Economic & Gender       ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                },
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " (246) 535-2677 ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "tablerow",
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " Census & Surveys Division     ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                },
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " (246) 535-2650 ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "tablerow",
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " Trade & National Accounts     ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                },
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " (246) 535-2684 ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "tablerow",
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " Business Surveys              ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                },
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " (246) 535-2620 ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "tablerow",
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " Accounts & Personnel Division ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                },
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " (246) 535-2604 ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "tablerow",
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " Fax                           ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                },
+                {
+                  "type": "tablecell",
+                  "format": "",
+                  "indent": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "version": 1,
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "format": "",
+                      "indent": 0,
+                      "version": 1,
+                      "children": [
+                        {
+                          "mode": "normal",
+                          "text": " (246) 421-8294 ",
+                          "type": "text",
+                          "style": "",
+                          "detail": 0,
+                          "format": 0,
+                          "version": 1
+                        }
+                      ],
+                      "direction": null,
+                      "textStyle": "",
+                      "textFormat": 0
+                    }
+                  ],
+                  "direction": null,
+                  "headerState": 0,
+                  "backgroundColor": null
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "direction": null
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "The Goal of the Barbados Statistical Service is to provide reliable and timely key economic and social statistics which decision makers and other users need.\n\n## Directory\n\n| Role | Telephone |\n| --- | --- |\n| PBX | (246) 535-2600 |\n| Director | (246) 535-2601 |\n| Deputy Director | (246) 535-2602 |\n| Project Co-Ordinator | (246) 535-2699 |\n| Socio-Economic & Gender | (246) 535-2677 |\n| Census & Surveys Division | (246) 535-2650 |\n| Trade & National Accounts | (246) 535-2684 |\n| Business Surveys | (246) 535-2620 |\n| Accounts & Personnel Division | (246) 535-2604 |\n| Fax | (246) 421-8294 |"
+}

@@ -1,5 +1,5 @@
+import type { SerializedEditorState } from 'lexical'
 import { FrontmatterSchema, titleFromSlug } from '../lib/frontmatter'
-import { parseFrontmatter } from '../lib/parse-frontmatter'
 import type { Frontmatter } from '../lib/frontmatter'
 import { CATEGORIES, CATEGORY_BY_SLUG, getSubcategory } from './categories'
 
@@ -9,14 +9,17 @@ export interface ContentPage {
   /** Full URL path with category prefix when present. */
   url: string
   frontmatter: Frontmatter
-  body: string
+  /** Lexical editor state rendered on the page (exported from the CMS). */
+  body: SerializedEditorState
+  /** Markdown rendering of the body, used for search indexing. */
+  bodyText: string
 }
 
 function slugFromPath(path: string): string {
   return path
     .replace(/^\.\//, '')
-    .replace(/\/index\.md$/, '')
-    .replace(/\.md$/, '')
+    .replace(/\/index\.json$/, '')
+    .replace(/\.json$/, '')
 }
 
 /**
@@ -40,22 +43,24 @@ function leafFromSlug(
   return slug
 }
 
-// Organisation MDs (government/organisations/*.md) have their own loader and
+// Organisation content (government/organisations/*.json) has its own loader and
 // content shape — they aren't content pages and must not be parsed by the
 // page registry's FrontmatterSchema.
-const modules = import.meta.glob(
-  ['./**/*.md', '!./government/organisations/**'],
+const modules = import.meta.glob<Record<string, unknown>>(
+  ['./**/*.json', '!./government/organisations/**'],
   {
-    query: '?raw',
     import: 'default',
     eager: true,
   },
 )
 
 export const PAGES: Array<ContentPage> = Object.entries(modules).map(
-  ([path, source]) => {
+  ([path, mod]) => {
     const slug = slugFromPath(path)
-    const { data, content } = parseFrontmatter(source as string)
+    const { body, bodyText, ...data } = mod as {
+      body: SerializedEditorState
+      bodyText?: string
+    } & Record<string, unknown>
     const parsed = FrontmatterSchema.safeParse(data)
     if (!parsed.success) {
       throw new Error(
@@ -104,7 +109,7 @@ export const PAGES: Array<ContentPage> = Object.entries(modules).map(
       (part): part is string => Boolean(part),
     )
     const url = urlParts.join('/')
-    return { slug, url, frontmatter, body: content }
+    return { slug, url, frontmatter, body, bodyText: bodyText ?? '' }
   },
 )
 

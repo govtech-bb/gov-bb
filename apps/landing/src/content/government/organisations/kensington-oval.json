@@ -1,0 +1,66 @@
+{
+  "kind": "state-body",
+  "slug": "kensington-oval",
+  "name": "Kensington Oval Management Inc.",
+  "keywords": ["Kensington Oval", "Cricket Stadium"],
+  "contact": [
+    {
+      "label": "Address",
+      "type": "address",
+      "value": ["Kensington Oval", "Fontabelle", "St. Michael"]
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 274-1200"
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 227-2503"
+    },
+    {
+      "label": "Email",
+      "type": "email",
+      "value": "info@kensingtonoval.com.bb"
+    },
+    {
+      "label": "Website",
+      "type": "website",
+      "value": "http://kensingtonoval.org/"
+    }
+  ],
+  "originalSource": "https://www.gov.bb/State-Bodies/kensington-oval",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Whatever you conceive, Kensington Oval will transform to your imagination.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "Whatever you conceive, Kensington Oval will transform to your imagination."
+}

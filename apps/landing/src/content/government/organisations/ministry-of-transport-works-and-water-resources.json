@@ -1,0 +1,456 @@
+{
+  "kind": "ministry",
+  "slug": "ministry-of-transport-works-and-water-resources",
+  "name": "Ministry of Transport, Works and Water Resources",
+  "shortDescription": "Safe and efficient road network, public transport, and water resources.",
+  "intro": "To provide a safe and efficient road network, public transportation system, and management of water resources.",
+  "category": "ministerial",
+  "keywords": ["MTWWR", "Transport", "Works", "Water Resources"],
+  "minister": {
+    "name": "The Hon. Kirk D. M. Humphrey, M.P.",
+    "role": "Minister of Transport and Works, and Senior Minister coordinating Infrastructure"
+  },
+  "contact": [
+    {
+      "label": "Email",
+      "type": "email",
+      "value": "psmtwm@barbados.gov.bb"
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 536-0000"
+    },
+    {
+      "label": "Fax",
+      "type": "phone",
+      "value": "(246) 536-8133"
+    },
+    {
+      "label": "Website",
+      "type": "website",
+      "value": "http://www.mtw.gov.bb"
+    },
+    {
+      "label": "Address",
+      "type": "address",
+      "value": [
+        "Pine East/West Boulevard",
+        "The Pine",
+        "St. Michael",
+        "Barbados, W. I"
+      ]
+    }
+  ],
+  "onlineServices": [
+    {
+      "title": "Apply for a driver's licence",
+      "href": "/apply-for-a-drivers-licence",
+      "description": "Apply for or renew a Barbados driver's licence."
+    },
+    {
+      "title": "Apply for a conductor licence",
+      "href": "/apply-for-conductor-licence",
+      "description": "Apply for a public service vehicle conductor licence."
+    },
+    {
+      "title": "Getting around Barbados",
+      "href": "/getting-around-barbados",
+      "description": "Public transport and travel information."
+    }
+  ],
+  "associatedDepartments": [
+    {
+      "category": "Transport",
+      "items": [
+        {
+          "name": "Barbados Licensing Authority",
+          "slug": "licensing-authority"
+        },
+        {
+          "name": "Transport Board",
+          "slug": "transport-board"
+        }
+      ]
+    },
+    {
+      "category": "Works",
+      "items": [
+        {
+          "name": "Electrical Engineering Department",
+          "slug": "electrical-engineering"
+        }
+      ]
+    }
+  ],
+  "originalSource": "https://www.gov.bb/Ministries/transport-works-water-resources",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Mission Statement",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "To provide efficient road network services, proper maintenance of Government building and vehicles, effective drainage solutions, special electrical services and public transportation.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Vision Statement",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "To be the most efficient and innovative of such agencies among developing nations.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Objectives",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The objectives of the Ministry of Transport, Works and Water Resources are:",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "ul",
+          "type": "list",
+          "start": 1,
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "type": "listitem",
+              "value": 1,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "To provide sound planning/policy advice and technical services in the areas of transport, works and electrical services.",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 2,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "To provide a well regulated and competitive environment for the land transport industry.",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 3,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "To provide an excellent and safe technology driven, modern and efficient public transportation system.",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 4,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "To provide a supply-driven integrated transport network infrastructure.",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 5,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "To maintain and rehabilitate highways, tenantry and residential roads and other public accesses.",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 6,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "To develop and maintain all government buildings, bridges, jetties and wharves and similar structures and other public assets.",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 7,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "To develop, maintain and regulate road transport and ancillary facilities conducted through the Barbados Licensing Authority, the Transport Authority and private operators and the provision of ancillary services.",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 8,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "To promote safety in all work relating to roads, public transport and electrical systems management.",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 9,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "To regulate the traffic system in conjunction with the police.",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 10,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "To support other Ministries and government agencies in the execution and implementation of projects.",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 11,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "To provide effective standards and law enforcement and monitoring with integrity.",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 12,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "To provide effective flood alleviation and mitigation solutions across Barbados.",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "listType": "bullet",
+          "direction": null
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "## Mission Statement\n\nTo provide efficient road network services, proper maintenance of Government building and vehicles, effective drainage solutions, special electrical services and public transportation.\n\n## Vision Statement\n\nTo be the most efficient and innovative of such agencies among developing nations.\n\n## Objectives\n\nThe objectives of the Ministry of Transport, Works and Water Resources are:\n\n- To provide sound planning/policy advice and technical services in the areas of transport, works and electrical services.\n- To provide a well regulated and competitive environment for the land transport industry.\n- To provide an excellent and safe technology driven, modern and efficient public transportation system.\n- To provide a supply-driven integrated transport network infrastructure.\n- To maintain and rehabilitate highways, tenantry and residential roads and other public accesses.\n- To develop and maintain all government buildings, bridges, jetties and wharves and similar structures and other public assets.\n- To develop, maintain and regulate road transport and ancillary facilities conducted through the Barbados Licensing Authority, the Transport Authority and private operators and the provision of ancillary services.\n- To promote safety in all work relating to roads, public transport and electrical systems management.\n- To regulate the traffic system in conjunction with the police.\n- To support other Ministries and government agencies in the execution and implementation of projects.\n- To provide effective standards and law enforcement and monitoring with integrity.\n- To provide effective flood alleviation and mitigation solutions across Barbados."
+}

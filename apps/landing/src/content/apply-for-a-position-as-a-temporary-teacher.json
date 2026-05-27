@@ -1,0 +1,547 @@
+{
+  "title": "Apply for a position as a temporary teacher",
+  "description": "Apply for a temporary teaching position in the Government of Barbados school system.",
+  "categories": ["work-employment"],
+  "stage": "alpha",
+  "publish_date": "2026-01-15",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "If you want to be a temporary teacher in a government-funded primary school in Barbados, you must apply. If your application meets the requirements and a suitable position becomes available, you may be contacted for an interview.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Who is eligible to apply?",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "To apply, you need to:",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "ul",
+          "type": "list",
+          "start": 1,
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "type": "listitem",
+              "value": 1,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "be a Barbadian citizen or a CARICOM national with the right to work",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 2,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "have at least 5 CXC subjects at CSEC general proficiency level, including English language, maths and a science subject",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "listType": "bullet",
+          "direction": null
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "How to apply",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "tag": "h3",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Watch for vacancy notices",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Job vacancies are advertised all year round but the number increases over the summer months ahead of the new school year which starts in September. You can look out for updates on the Ministry of Educational Transformation or Government Information Service websites.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h3",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Complete an application form",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "At the moment, you can only apply online by completing the ",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "id": "6a175155a4471fc1012af584",
+              "type": "link",
+              "fields": {
+                "url": "https://barbados.seamlessdocs.com/f/pvyf07u3v0j2",
+                "newTab": false,
+                "linkType": "custom"
+              },
+              "format": "",
+              "indent": 0,
+              "version": 3,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Application for registration as temporary/acting teacher form",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "mode": "normal",
+              "text": ". You can find it on the Ministry of Educational Transformation website under the ‘resources’ tab in the menu, and then the ‘download forms’ option.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h3",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Gather your supporting information",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "You’ll also need to share:",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "ol",
+          "type": "list",
+          "start": 1,
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "type": "listitem",
+              "value": 1,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Your curriculum vitae (CV).",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 2,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "The name and contact details of 2 referees and their short letters of recommendation (a paragraph is enough).",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "listType": "number",
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "You can upload these and submit them with your online application.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "After you apply",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "If you meet the qualification requirements and a suitable position becomes available, you will be invited for an interview. At this point you will need to share:",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "ol",
+          "type": "list",
+          "start": 1,
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "type": "listitem",
+              "value": 1,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Certified copies of your academic and teaching qualifications. You can get them certified by a Justice of the peace.",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 2,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Proof of citizenship, for example, your passport or ID card. Or, proof of your immigration status and your work permit.",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 3,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "A recent Police Certificate of Character. You can ",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                },
+                {
+                  "id": "6a175155a4471fc1012af585",
+                  "type": "link",
+                  "fields": {
+                    "url": "https://forms.gov.bb/CertificateOfCharacter",
+                    "newTab": false,
+                    "linkType": "custom"
+                  },
+                  "format": "",
+                  "indent": 0,
+                  "version": 3,
+                  "children": [
+                    {
+                      "mode": "normal",
+                      "text": "apply for one here",
+                      "type": "text",
+                      "style": "",
+                      "detail": 0,
+                      "format": 0,
+                      "version": 1
+                    }
+                  ],
+                  "direction": null
+                },
+                {
+                  "mode": "normal",
+                  "text": ". The fee is BBD $20.",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "listType": "number",
+          "direction": null
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Successful applicants",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "If you are successful, you will receive a letter of appointment.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "If you want to be a temporary teacher in a government-funded primary school in Barbados, you must apply. If your application meets the requirements and a suitable position becomes available, you may be contacted for an interview.\n\n## Who is eligible to apply?\n\nTo apply, you need to:\n\n- be a Barbadian citizen or a CARICOM national with the right to work\n- have at least 5 CXC subjects at CSEC general proficiency level, including English language, maths and a science subject\n\n## How to apply\n\n### Watch for vacancy notices\n\nJob vacancies are advertised all year round but the number increases over the summer months ahead of the new school year which starts in September. You can look out for updates on the Ministry of Educational Transformation or Government Information Service websites.\n\n### Complete an application form\n\nAt the moment, you can only apply online by completing the [Application for registration as temporary/acting teacher form](https://barbados.seamlessdocs.com/f/pvyf07u3v0j2). You can find it on the Ministry of Educational Transformation website under the ‘resources’ tab in the menu, and then the ‘download forms’ option.\n\n### Gather your supporting information\n\nYou’ll also need to share:\n\n1. Your curriculum vitae (CV).\n2. The name and contact details of 2 referees and their short letters of recommendation (a paragraph is enough).\n\nYou can upload these and submit them with your online application.\n\n## After you apply\n\nIf you meet the qualification requirements and a suitable position becomes available, you will be invited for an interview. At this point you will need to share:\n\n1. Certified copies of your academic and teaching qualifications. You can get them certified by a Justice of the peace.\n2. Proof of citizenship, for example, your passport or ID card. Or, proof of your immigration status and your work permit.\n3. A recent Police Certificate of Character. You can [apply for one here](https://forms.gov.bb/CertificateOfCharacter). The fee is BBD $20.\n\n## Successful applicants\n\nIf you are successful, you will receive a letter of appointment."
+}

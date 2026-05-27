@@ -1,0 +1,117 @@
+{
+  "title": "Registering a business name",
+  "description": "An overview of the simple requirements and procedures for registering a business name in Barbados, with a link to the CAIPO website for more information.",
+  "categories": ["business-trade"],
+  "section": "Business and Trade",
+  "stage": "alpha",
+  "source_url": "https://www.gov.bb/Business/registering-business-name",
+  "publish_date": "2025-10-24",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Registering a Business Name",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Barbados has simple establishment requirements and procedures which combine due diligence with ease of doing business.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "For more information please visit ",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "id": "6a175156a4471fc1012af5b5",
+              "type": "link",
+              "fields": {
+                "url": "https://caipo.gov.bb/",
+                "newTab": false,
+                "linkType": "custom"
+              },
+              "format": "",
+              "indent": 0,
+              "version": 3,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "CAIPO WEBSITE",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "linebreak",
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": "```",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "## Registering a Business Name\n\nBarbados has simple establishment requirements and procedures which combine due diligence with ease of doing business.\n\nFor more information please visit [CAIPO WEBSITE](https://caipo.gov.bb/)\n\\`\\`\\`"
+}

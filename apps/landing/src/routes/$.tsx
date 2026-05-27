@@ -1,8 +1,7 @@
 import { createFileRoute, notFound } from '@tanstack/react-router'
 import { Heading, Text, linkVariants } from '@govtech-bb/react'
-import { Breadcrumbs } from '../components/Breadcrumbs'
-import { HelpfulBox } from '../components/HelpfulBox'
-import { MarkdownContent } from '../components/MarkdownContent'
+import { PageShell } from '../components/PageShell'
+import { LexicalContent } from '../components/LexicalContent'
 import { findPage, isSubPage, PAGES  } from '../content/registry'
 import type {ContentPage} from '../content/registry';
 import { CATEGORY_BY_SLUG, getSubcategory } from '../content/categories'
@@ -128,9 +127,9 @@ function ContentRoute() {
 
 function PageView({ page }: { page: ContentPage }) {
   return (
-    <Shell>
-      <MarkdownContent body={page.body} frontmatter={page.frontmatter} />
-    </Shell>
+    <PageShell>
+      <LexicalContent body={page.body} frontmatter={page.frontmatter} />
+    </PageShell>
   )
 }
 
@@ -143,7 +142,7 @@ function CategoryView({
 }) {
   const sorted = [...items].sort((a, b) => a.title.localeCompare(b.title))
   return (
-    <Shell>
+    <PageShell>
       <div className="space-y-4 lg:space-y-6">
         <Heading as="h1">{category.title}</Heading>
         {category.description ? (
@@ -171,7 +170,7 @@ function CategoryView({
           ))}
         </div>
       )}
-    </Shell>
+    </PageShell>
   )
 }
 
@@ -183,7 +182,7 @@ function SubcategoryIndexView({
   subcategories: SubCategory[]
 }) {
   return (
-    <Shell>
+    <PageShell>
       <div className="space-y-4 lg:space-y-6">
         <Heading as="h1">{category.title}</Heading>
         {category.description ? (
@@ -210,7 +209,7 @@ function SubcategoryIndexView({
           </li>
         ))}
       </ul>
-    </Shell>
+    </PageShell>
   )
 }
 
@@ -223,7 +222,7 @@ function SubcategoryView({
 }) {
   const sorted = [...items].sort((a, b) => a.title.localeCompare(b.title))
   return (
-    <Shell>
+    <PageShell>
       <div className="space-y-4 lg:space-y-6">
         <Heading as="h1">{subcategory.title}</Heading>
         {subcategory.description ? (
@@ -251,20 +250,6 @@ function SubcategoryView({
           ))}
         </div>
       )}
-    </Shell>
-  )
-}
-
-function Shell({ children }: { children: React.ReactNode }) {
-  return (
-    <>
-      <div className="container py-4 lg:py-6">
-        <Breadcrumbs />
-      </div>
-      <div className="container pt-4 pb-8 lg:py-8">{children}</div>
-      <div className="container">
-        <HelpfulBox className="mb-4 lg:mb-16" />
-      </div>
-    </>
+    </PageShell>
   )
 }

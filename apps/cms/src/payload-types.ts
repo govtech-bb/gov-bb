@@ -128,7 +128,7 @@ export interface UserAuthOperations {
   }
 }
 /**
- * Service and guide pages shown to the public on the site.
+ * Service and guide pages shown to the public on the site. Some services have sub-pages with a slashed slug like service-name/start — edit the main page for its description and listings, and the sub-page for the form-start content.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "services".
@@ -136,19 +136,30 @@ export interface UserAuthOperations {
 export interface Service {
   id: number
   /**
-   * URL id for this page. Leave blank to fill from the title. Changing it changes the page URL.
+   * The web address for this page. Leave blank and it fills in from the title. Once the page is live this is locked — changing it breaks every existing link, so ask an admin if it really must change.
    */
   slug: string
+  /**
+   * The team or person responsible for keeping this page accurate.
+   */
+  contentOwner?: string | null
+  /**
+   * When someone last checked this page is still correct.
+   */
+  lastReviewed?: string | null
+  /**
+   * When this page should next be checked for accuracy.
+   */
+  reviewBy?: string | null
   title: string
   /**
-   * A short summary. Shown in search results and listings.
+   * A one-sentence summary, shown in search results and listings. Aim for under 160 characters — that’s roughly what search engines show in results.
    */
   description?: string | null
   /**
-   * The page content, written in Markdown.
+   * The page content. Write normally; use the block menu to insert a Callout, Show / hide, Start now button or Link button.
    */
-  body?: string | null
-  bodyLexical?: {
+  body?: {
     root: {
       type: string
       children: {
@@ -168,21 +179,29 @@ export interface Service {
    */
   categories?: (number | Category)[] | null
   /**
-   * Optional. Only subcategories of the chosen categories are offered.
+   * Optional. Choose categories first — only subcategories of those categories are offered.
    */
   subcategory?: (number | null) | Subcategory
   serviceType?: ('digital' | 'information') | null
-  stage?: 'alpha' | null
+  /**
+   * How finished this page is. New pages start at Alpha. Use “Migrated” only for content carried over from the old gov.bb site.
+   */
+  stage?: ('alpha' | 'beta' | 'migrated') | null
+  /**
+   * Tick to show this service in the highlighted section on the site homepage.
+   */
   featured?: boolean | null
+  /**
+   * Optional. A heading to group this service under on topic listing pages (e.g. “Births, deaths & marriages”). Leave blank if you’re not sure.
+   */
   section?: string | null
   /**
-   * Links the in-page "Start now" button to a form in the forms app.
-   */
-  formId?: string | null
-  /**
-   * The original gov.bb page this content came from, if any.
+   * The original gov.bb page this migrated content came from.
    */
   sourceUrl?: string | null
+  /**
+   * The date this page first went live, shown to the public. This is not a scheduling field — it does not publish the page for you.
+   */
   publishDate?: string | null
   updatedAt: string
   createdAt: string
@@ -238,17 +257,32 @@ export interface Subcategory {
 export interface Organisation {
   id: number
   /**
-   * URL id for this page. Leave blank to fill from the title. Changing it changes the page URL.
+   * The web address for this page. Leave blank and it fills in from the title. Once the page is live this is locked — changing it breaks every existing link, so ask an admin if it really must change.
    */
   slug: string
+  /**
+   * The team or person responsible for keeping this page accurate.
+   */
+  contentOwner?: string | null
+  /**
+   * When someone last checked this page is still correct.
+   */
+  lastReviewed?: string | null
+  /**
+   * When this page should next be checked for accuracy.
+   */
+  reviewBy?: string | null
   /**
    * What type of organisation this is.
    */
   kind: 'ministry' | 'department' | 'state-body'
   name: string
+  /**
+   * How this ministry is classified.
+   */
   category?: ('ministerial' | 'non-ministerial' | 'agency') | null
   /**
-   * One sentence shown in organisation listings.
+   * One sentence shown in organisation listings. Aim for under 160 characters — that’s roughly what search engines show in results.
    */
   shortDescription?: string | null
   /**
@@ -277,7 +311,7 @@ export interface Organisation {
       }[]
     | null
   /**
-   * The original gov.bb page, if any.
+   * Only fill this in if the page was copied from the old gov.bb site.
    */
   originalSource?: string | null
   /**
@@ -368,6 +402,9 @@ export interface Organisation {
   featured?:
     | {
         title: string
+        /**
+         * Where the tile links to: a path on this site like /apply-for-a-passport, or a full external URL.
+         */
         href: string
         description: string
         image?: (number | null) | Media
@@ -376,23 +413,16 @@ export interface Organisation {
       }[]
     | null
   /**
-   * Services this ministry provides.
+   * Services this ministry provides. Start typing to find and link a service page — its title and summary are pulled in automatically, and the link can never break.
    */
-  services?:
-    | {
-        title: string
-        href: string
-        description?: string | null
-        id?: string | null
-      }[]
-    | null
+  services?: (number | Service)[] | null
   /**
    * Departments and bodies grouped under this organisation.
    */
   associatedDepartments?:
     | {
         /**
-         * Optional group heading.
+         * Optional heading to group these departments under (e.g. “Agencies”).
          */
         category?: string | null
         items?:
@@ -409,10 +439,9 @@ export interface Organisation {
       }[]
     | null
   /**
-   * Page content in Markdown.
+   * The page content. Write normally; use the block menu to insert a Callout, Show / hide, Start now button or Link button.
    */
-  body?: string | null
-  bodyLexical?: {
+  body?: {
     root: {
       type: string
       children: {
@@ -438,7 +467,7 @@ export interface Organisation {
 export interface Media {
   id: number
   /**
-   * Describes the image for screen readers and when it can’t load.
+   * Describes the image for screen readers and when it can't load.
    */
   alt: string
   /**
@@ -468,7 +497,7 @@ export interface Media {
 export interface User {
   id: number
   /**
-   * The person’s name, shown in the users list.
+   * The person's name, shown in the users list.
    */
   name?: string | null
   /**
@@ -590,17 +619,18 @@ export interface PayloadMigration {
  */
 export interface ServicesSelect<T extends boolean = true> {
   slug?: T
+  contentOwner?: T
+  lastReviewed?: T
+  reviewBy?: T
   title?: T
   description?: T
   body?: T
-  bodyLexical?: T
   categories?: T
   subcategory?: T
   serviceType?: T
   stage?: T
   featured?: T
   section?: T
-  formId?: T
   sourceUrl?: T
   publishDate?: T
   updatedAt?: T
@@ -613,6 +643,9 @@ export interface ServicesSelect<T extends boolean = true> {
  */
 export interface OrganisationsSelect<T extends boolean = true> {
   slug?: T
+  contentOwner?: T
+  lastReviewed?: T
+  reviewBy?: T
   kind?: T
   name?: T
   category?: T
@@ -701,14 +734,7 @@ export interface OrganisationsSelect<T extends boolean = true> {
         imageAlt?: T
         id?: T
       }
-  services?:
-    | T
-    | {
-        title?: T
-        href?: T
-        description?: T
-        id?: T
-      }
+  services?: T
   associatedDepartments?:
     | T
     | {
@@ -723,7 +749,6 @@ export interface OrganisationsSelect<T extends boolean = true> {
         id?: T
       }
   body?: T
-  bodyLexical?: T
   updatedAt?: T
   createdAt?: T
   _status?: T

@@ -1,0 +1,44 @@
+{
+  "kind": "state-body",
+  "slug": "agricultural-management",
+  "name": "The Barbados Agricultural Management Company",
+  "keywords": ["BAMC", "Agricultural Management"],
+  "contact": [
+    {
+      "label": "Address",
+      "type": "address",
+      "value": ["Warrens, St. Michael Admin Office", "St. Michael"]
+    },
+    {
+      "label": "Admin Office",
+      "type": "phone",
+      "value": "(246) 425-0010"
+    },
+    {
+      "label": "Fax",
+      "type": "phone",
+      "value": "(246) 421-7879"
+    }
+  ],
+  "originalSource": "https://www.gov.bb/State-Bodies/agricultural-management",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [],
+          "direction": null
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": ""
+}

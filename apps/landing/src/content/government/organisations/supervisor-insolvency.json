@@ -1,0 +1,49 @@
+{
+  "kind": "state-body",
+  "slug": "supervisor-insolvency",
+  "name": "Office of Supervisor of Insolvency",
+  "keywords": ["OSI", "Insolvency", "Bankruptcy"],
+  "contact": [
+    {
+      "label": "Address",
+      "type": "address",
+      "value": ["Warrens Office Complex", "Warrens", "St. Michael"]
+    },
+    {
+      "label": "General Office",
+      "type": "phone",
+      "value": "(246) 535-2752/3"
+    },
+    {
+      "label": "Supervisor of Insolvency",
+      "type": "phone",
+      "value": "(246) 535-2751"
+    },
+    {
+      "label": "Fax",
+      "type": "phone",
+      "value": "(246) 535-2767"
+    }
+  ],
+  "originalSource": "https://www.gov.bb/State-Bodies/supervisor-insolvency",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [],
+          "direction": null
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": ""
+}

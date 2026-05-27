@@ -1,0 +1,66 @@
+{
+  "kind": "state-body",
+  "slug": "vocational-training-board",
+  "name": "Barbados Vocational Training Board",
+  "keywords": ["BVTB", "TVET", "Vocational Training"],
+  "contact": [
+    {
+      "label": "Address",
+      "type": "address",
+      "value": ["Lawrence Green House", "Culloden Road", "St. Michael"]
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 621-2882"
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 621-2908"
+    },
+    {
+      "label": "Email",
+      "type": "email",
+      "value": "info@bvtb.gov.bb"
+    },
+    {
+      "label": "Website",
+      "type": "website",
+      "value": "https://www.bvtb.gov.bb/"
+    }
+  ],
+  "originalSource": "https://www.gov.bb/State-Bodies/vocational-training-board",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The Barbados Vocational Training Board is a premier agency of social development which designs and delivers industry needs and empowers participants at any level of scholastic attainment to operate effectively in the market place, and which fulfills Government's Human Resource Development Policy.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "The Barbados Vocational Training Board is a premier agency of social development which designs and delivers industry needs and empowers participants at any level of scholastic attainment to operate effectively in the market place, and which fulfills Government's Human Resource Development Policy."
+}

@@ -1,0 +1,653 @@
+{
+  "title": "Get a copy of a birth certificate",
+  "description": "Apply online to get a certified copy of a birth certificate for anyone whose birth was registered in Barbados. Certificates are issued by the Registration Department.",
+  "categories": ["family-birth-relationships"],
+  "stage": "alpha",
+  "publish_date": "2026-01-22",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "This service can be used to get a copy of a birth certificate for anyone whose birth was registered in Barbados.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Most copies of birth certificates are requested at the same time a birth is registered as part of the ",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "id": "6a175156a4471fc1012af592",
+              "type": "link",
+              "fields": {
+                "url": "/family-birth-relationships/register-a-birth",
+                "newTab": false,
+                "linkType": "custom"
+              },
+              "format": "",
+              "indent": 0,
+              "version": 3,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Register a birth service",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "mode": "normal",
+              "text": ". A copy is essential for access to certain public services and welfare support.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "However, copies for Barbadian citizens can be requested at any point. They are needed as official identification so you can apply for a passport or driving licence, and as proof of identity in financial or legal-related matters such as opening a bank account or getting married.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "You can request a copy on someone else’s behalf but you must disclose:",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "ul",
+          "type": "list",
+          "start": 1,
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "type": "listitem",
+              "value": 1,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "your relationship to them",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 2,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "why you need the certificate",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "listType": "bullet",
+          "direction": null
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "How to get a copy of a birth certificate",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "tag": "h3",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Complete the form",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "There are 2 ways to get a copy of a birth certificate. You can:",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "ol",
+          "type": "list",
+          "start": 1,
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "type": "listitem",
+              "value": 1,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "#### Request a copy online",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "listType": "number",
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "   You must pay online so you will need a debit or credit card, and you will need to have (or create) an EZPay+ account.<br /> Every question is compulsory so if you are unsure about the basic information asked for, you should complete the paper form instead.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "   <a data-start-link href=\"/family-birth-relationships/get-birth-certificate/start\">Complete the online form</a>",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "ol",
+          "type": "list",
+          "start": 2,
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "type": "listitem",
+              "value": 2,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "#### Get a paper Application for birth certificate form from the Registration Department",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "listType": "number",
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "   You must complete it by hand and return it to the department. You can pay with cash or by card when you collect it.<br /> If you are unsure about the basic details asked for (for example, if there is estrangement in the family), you should complete the paper form.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "   Registration Department<br> Supreme Court Complex<br> Whitepark Road<br> St. Michael<br> (246) 535-9700<br> Open Monday to Friday: 8:30am to 3:15pm",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Cost of certificates",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Each certified copy costs $5 BBD. People aged 60 and over pay $1 BBD per certificate.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "After your request is processed",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "A certificate is usually ready to collect in 5 to 7 business days.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "A certificate can sometimes be issued on the same day, in the case of a medical or travel emergency. You will need to show proof of the emergency.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "If you complete the paper form, you will be given a receipt when you return it to the Applications Desk at the Registration Department. You will need to show your receipt when you collect your copy or copies and you will be able to pay in cash or by card.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "If basic information is unknown",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "There are circumstances when you may not be able to provide all the information asked for in the form. For example, if there is estrangement in the family, or if the birth was registered in Barbados a significant time ago. In these cases you must complete a paper form and provide as much information as you can – the more details you can give, the better the chance of finding the records you are looking for.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Get a copy of a birth certificate if you live overseas",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Contact the Registration Department.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "id": "6a175156a4471fc1012af593",
+              "type": "link",
+              "fields": {
+                "url": "mailto:registrarsupremecourt@barbados.gov.bb",
+                "newTab": false,
+                "linkType": "custom"
+              },
+              "format": "",
+              "indent": 0,
+              "version": 3,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "registrarsupremecourt@barbados.gov.bb",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "(246) 535-9700",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "+1 (246) 535-9751 (if you are calling from overseas)",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "This service can be used to get a copy of a birth certificate for anyone whose birth was registered in Barbados.\n\nMost copies of birth certificates are requested at the same time a birth is registered as part of the [Register a birth service](/family-birth-relationships/register-a-birth). A copy is essential for access to certain public services and welfare support.\n\nHowever, copies for Barbadian citizens can be requested at any point. They are needed as official identification so you can apply for a passport or driving licence, and as proof of identity in financial or legal-related matters such as opening a bank account or getting married.\n\nYou can request a copy on someone else’s behalf but you must disclose:\n\n- your relationship to them\n- why you need the certificate\n\n## How to get a copy of a birth certificate\n\n### Complete the form\n\nThere are 2 ways to get a copy of a birth certificate. You can:\n\n1. #### Request a copy online\n\n   You must pay online so you will need a debit or credit card, and you will need to have (or create) an EZPay+ account.<br /> Every question is compulsory so if you are unsure about the basic information asked for, you should complete the paper form instead.\n\n   <a data-start-link href=\"/family-birth-relationships/get-birth-certificate/start\">Complete the online form</a>\n\n2. #### Get a paper Application for birth certificate form from the Registration Department\n\n   You must complete it by hand and return it to the department. You can pay with cash or by card when you collect it.<br /> If you are unsure about the basic details asked for (for example, if there is estrangement in the family), you should complete the paper form.\n\n   Registration Department<br> Supreme Court Complex<br> Whitepark Road<br> St. Michael<br> (246) 535-9700<br> Open Monday to Friday: 8:30am to 3:15pm\n\n## Cost of certificates\n\nEach certified copy costs $5 BBD. People aged 60 and over pay $1 BBD per certificate.\n\n## After your request is processed\n\nA certificate is usually ready to collect in 5 to 7 business days.\n\nA certificate can sometimes be issued on the same day, in the case of a medical or travel emergency. You will need to show proof of the emergency.\n\nIf you complete the paper form, you will be given a receipt when you return it to the Applications Desk at the Registration Department. You will need to show your receipt when you collect your copy or copies and you will be able to pay in cash or by card.\n\n## If basic information is unknown\n\nThere are circumstances when you may not be able to provide all the information asked for in the form. For example, if there is estrangement in the family, or if the birth was registered in Barbados a significant time ago. In these cases you must complete a paper form and provide as much information as you can – the more details you can give, the better the chance of finding the records you are looking for.\n\n## Get a copy of a birth certificate if you live overseas\n\nContact the Registration Department.\n\n[registrarsupremecourt@barbados.gov.bb](mailto:registrarsupremecourt@barbados.gov.bb)\n\n(246) 535-9700\n\n+1 (246) 535-9751 (if you are calling from overseas)"
+}

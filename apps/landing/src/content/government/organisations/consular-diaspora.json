@@ -1,0 +1,391 @@
+{
+  "kind": "department",
+  "slug": "consular-diaspora",
+  "name": "Consular and Diaspora Division",
+  "shortDescription": "Manages consular functions including assistance for Barbadians abroad, visa agreements, government travel, and diaspora engagement.",
+  "intro": "The Consular function has historically been linked to the development of international trade (commercial diplomacy), and to promoting the economic interests of nation states. The division handles assistance for Barbadians abroad, manages Honorary Consul recruitment, facilitates visa agreements, supports government travel, and coordinates deportation and extradition matters.",
+  "keywords": ["Consular", "Diaspora"],
+  "contact": [
+    {
+      "label": "Website",
+      "type": "website",
+      "value": "https://www.foreign.gov.bb/consular-and-diaspora-division/"
+    }
+  ],
+  "originalSource": "https://www.gov.bb/Departments/consular-diaspora",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The Consular function has historically been linked to the development of international trade (commercial diplomacy), and to promoting the economic interests of nation states. Consular responsibilities have evolved over time to include a range of services, including the protection of citizens in foreign countries. The Government of Barbados is committed to the preservation of consular relations, and adheres to its general principles which are codified in the ",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "id": "6a175156a4471fc1012af6bd",
+              "type": "link",
+              "fields": {
+                "url": "https://treaties.un.org/",
+                "newTab": false,
+                "linkType": "custom"
+              },
+              "format": "",
+              "indent": 0,
+              "version": 3,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Vienna Convention on Consular Relations, 1963",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "mode": "normal",
+              "text": ".",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Core Responsibilities",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "tag": "ul",
+          "type": "list",
+          "start": 1,
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "type": "listitem",
+              "value": 1,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Assistance to Barbadians stranded overseas without access to consular resources",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 2,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "The establishment of guidelines for the recruitment, review and renewal of Honorary Consuls of Barbados overseas",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 3,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Preparation of policy papers for the establishment of Visa Waiver Agreements",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 4,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Facilitation of Barbadians travelling on government business with foreign visas",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 5,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Collaborating with stakeholder organizations on deportations and extraditions",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 6,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Advising the Government of Barbados on enhancing its incentive programmes geared toward the diaspora",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 7,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Building sustainable networks with the Barbadian diaspora and the resettlement community",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "listType": "bullet",
+          "direction": null
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Services",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Services provided by the Consular Division include:",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "ul",
+          "type": "list",
+          "start": 1,
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "type": "listitem",
+              "value": 1,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Nationals in Distress",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 2,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Arrested Nationals",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 3,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Deportation of Barbadian Nationals",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 4,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Extradition / Enforcement of Court Orders",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 5,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Application for Passports",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "listType": "bullet",
+          "direction": null
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "The Consular function has historically been linked to the development of international trade (commercial diplomacy), and to promoting the economic interests of nation states. Consular responsibilities have evolved over time to include a range of services, including the protection of citizens in foreign countries. The Government of Barbados is committed to the preservation of consular relations, and adheres to its general principles which are codified in the [Vienna Convention on Consular Relations, 1963](https://treaties.un.org/).\n\n## Core Responsibilities\n\n- Assistance to Barbadians stranded overseas without access to consular resources\n- The establishment of guidelines for the recruitment, review and renewal of Honorary Consuls of Barbados overseas\n- Preparation of policy papers for the establishment of Visa Waiver Agreements\n- Facilitation of Barbadians travelling on government business with foreign visas\n- Collaborating with stakeholder organizations on deportations and extraditions\n- Advising the Government of Barbados on enhancing its incentive programmes geared toward the diaspora\n- Building sustainable networks with the Barbadian diaspora and the resettlement community\n\n## Services\n\nServices provided by the Consular Division include:\n\n- Nationals in Distress\n- Arrested Nationals\n- Deportation of Barbadian Nationals\n- Extradition / Enforcement of Court Orders\n- Application for Passports"
+}

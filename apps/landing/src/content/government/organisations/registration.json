@@ -1,0 +1,118 @@
+{
+  "kind": "department",
+  "slug": "registration",
+  "name": "Registration Department",
+  "shortDescription": "Ensures the administration of justice functions speedily and efficiently while recording vital occurrences such as births, deaths, and marriages.",
+  "intro": "The department aims to ensure that the administration of justice functions speedily, efficiently and effectively while recording vital occurrences and delivering essential services to the population per Barbadian law.",
+  "keywords": [
+    "Registration",
+    "Birth Certificate",
+    "Death Certificate",
+    "Marriage Certificate",
+    "Civil Registration"
+  ],
+  "head": {
+    "name": "Ms. Barbara Cooke-Alleyne",
+    "role": "Registrar Ag."
+  },
+  "contact": [
+    {
+      "label": "Email",
+      "type": "email",
+      "value": "registrar@lawcourts.gov.bb"
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 535-9700"
+    },
+    {
+      "label": "Fax",
+      "type": "phone",
+      "value": "(246) 427-8917"
+    },
+    {
+      "label": "Address",
+      "type": "address",
+      "value": [
+        "Supreme Court Complex",
+        "Whitepark Road",
+        "St. Michael",
+        "Barbados, W.I."
+      ]
+    }
+  ],
+  "originalSource": "https://www.gov.bb/Departments/registration",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "To ensure that the administration of justice functions speedily, efficiently and effectively and provides reasonable access to justice for all persons irrespective of their means.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "To ensure that the island's most vital occurrences are recorded.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "To provide essential services to the entire population as required by the Laws of Barbados",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "To ensure that the administration of justice functions speedily, efficiently and effectively and provides reasonable access to justice for all persons irrespective of their means.\n\nTo ensure that the island's most vital occurrences are recorded.\n\nTo provide essential services to the entire population as required by the Laws of Barbados"
+}

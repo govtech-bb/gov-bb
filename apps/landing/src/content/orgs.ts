@@ -43,8 +43,8 @@ function syntheticPage(
   slug: string,
   entry: Ministry | MdaEntry,
 ): ContentPage | undefined {
-  const body = BODY_BY_SLUG.get(slug)
-  if (!body) return undefined
+  const orgBody = BODY_BY_SLUG.get(slug)
+  if (!orgBody) return undefined
   const frontmatter: Frontmatter = {
     title: entry.name,
     description: entry.shortDescription,
@@ -55,7 +55,8 @@ function syntheticPage(
     slug: `government/organisations/${slug}`,
     url: orgHref(slug),
     frontmatter,
-    body,
+    body: orgBody.body,
+    bodyText: orgBody.bodyText,
   }
 }
 
@@ -137,6 +138,19 @@ export function resolveOrgProps(
 ): MinistryPageProps {
   const entry = getEntry(kind, slug)
   if (!entry) return fallback
+  if (kind === 'ministry') return ministryToProps(entry as Ministry)
+  return mdaToProps(entry as MdaEntry, KIND_CONFIG[kind].leadershipLabel)
+}
+
+/**
+ * Build MinistryPage props from an already-resolved org entry (the frontmatter
+ * shape produced by `@govtech-bb/content/map`), rather than looking it up by
+ * slug. Used by the live-preview route, which has the entry from the draft doc.
+ */
+export function orgEntryToProps(
+  kind: OrgKind,
+  entry: Ministry | MdaEntry,
+): MinistryPageProps {
   if (kind === 'ministry') return ministryToProps(entry as Ministry)
   return mdaToProps(entry as MdaEntry, KIND_CONFIG[kind].leadershipLabel)
 }

@@ -1,0 +1,223 @@
+{
+  "title": "Ports of Entry",
+  "description": "Information on the various ports of entry into Barbados, including the Bridgetown Port, Grantley Adams International Airport, and Port Saint Charles.",
+  "categories": ["travel-id-citizenship"],
+  "section": "Travel, ID and Citizenship",
+  "stage": "alpha",
+  "source_url": "https://www.gov.bb/Visit-Barbados/ports-of-entry",
+  "publish_date": "2025-10-24",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The Bridgetown Port",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "From the moment they arrive at the Bridgetown Port, cruise passengers can expect a warm welcome from the people of Barbados. The cheerful ambience is complemented by musical performers, organized by the BTA, who entertain arriving passengers from the quayside. They include a steel band, dancers, singer and other entertainers. ",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "id": "6a175156a4471fc1012af5a7",
+              "type": "link",
+              "fields": {
+                "url": "http://www.barbadosport.com/",
+                "newTab": false,
+                "linkType": "custom"
+              },
+              "format": "",
+              "indent": 0,
+              "version": 3,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "BRIDGETOWN PORT",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Grantley Adams International Airport",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "GAIA is Barbados' only airport and the aviation hub of the Eastern Caribbean, handling daily flights to and from the other Caribbean islands connecting to major cities in the US, Canada, UK and Europe. Nonstop flights occur daily to London, Toronto, New York, and Miami as well as to most of our Caribbean neighbours. GAIA is located in the south-east of the island, along the Adams-Barrow-Cummins Highway, just half an hour's journey to the spectacular west coast beaches. South coast and city destinations are all minutes away by car or public transport. At Grantley Adams International Airport we try our best to provide the best services possible for you the traveller. Our services range from ATMs and Money Exchange Facilities to Ambulance Centers and Charging Stations. ",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "id": "6a175156a4471fc1012af5a8",
+              "type": "link",
+              "fields": {
+                "url": "http://www.gaia.bb/",
+                "newTab": false,
+                "linkType": "custom"
+              },
+              "format": "",
+              "indent": 0,
+              "version": 3,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "GAIA",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Port Saint Charles",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The Port St. Charles marina is a luxury marina development situated on the western coast of Barbados. Found within the parish of St. Peter, the marina is in Heywoods and is in close proximity to Speightstown. The Port St. Charles marina contains an admeasurement of sum 1549 square meters, and a small inland lagoon area (with a depth of 14 feet at low tide) and adorned with facilities for residents to berth their yachts close to their vacation homes. Port St Charles Resort, facing the idyllic aquamarine Caribbean sea offers beautiful villas and apartments for either a short holiday or if you wished to visit at your convenience, ownership becomes a dream come true. Our luxury homes vary from one bedroom to five bedroom homes located in the 22-acre community, either on the lagoon-front or directly on the beachfront with your berth and boat just outside your doorstep. ",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "id": "6a175156a4471fc1012af5a9",
+              "type": "link",
+              "fields": {
+                "url": "http://www.portstcharles.com/",
+                "newTab": false,
+                "linkType": "custom"
+              },
+              "format": "",
+              "indent": 0,
+              "version": 3,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "PORT SAINT CHARLES",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "linebreak",
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": "```",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "## The Bridgetown Port\n\nFrom the moment they arrive at the Bridgetown Port, cruise passengers can expect a warm welcome from the people of Barbados. The cheerful ambience is complemented by musical performers, organized by the BTA, who entertain arriving passengers from the quayside. They include a steel band, dancers, singer and other entertainers. [BRIDGETOWN PORT](http://www.barbadosport.com/)\n\n## Grantley Adams International Airport\n\nGAIA is Barbados' only airport and the aviation hub of the Eastern Caribbean, handling daily flights to and from the other Caribbean islands connecting to major cities in the US, Canada, UK and Europe. Nonstop flights occur daily to London, Toronto, New York, and Miami as well as to most of our Caribbean neighbours. GAIA is located in the south-east of the island, along the Adams-Barrow-Cummins Highway, just half an hour's journey to the spectacular west coast beaches. South coast and city destinations are all minutes away by car or public transport. At Grantley Adams International Airport we try our best to provide the best services possible for you the traveller. Our services range from ATMs and Money Exchange Facilities to Ambulance Centers and Charging Stations. [GAIA](http://www.gaia.bb/)\n\n## Port Saint Charles\n\nThe Port St. Charles marina is a luxury marina development situated on the western coast of Barbados. Found within the parish of St. Peter, the marina is in Heywoods and is in close proximity to Speightstown. The Port St. Charles marina contains an admeasurement of sum 1549 square meters, and a small inland lagoon area (with a depth of 14 feet at low tide) and adorned with facilities for residents to berth their yachts close to their vacation homes. Port St Charles Resort, facing the idyllic aquamarine Caribbean sea offers beautiful villas and apartments for either a short holiday or if you wished to visit at your convenience, ownership becomes a dream come true. Our luxury homes vary from one bedroom to five bedroom homes located in the 22-acre community, either on the lagoon-front or directly on the beachfront with your berth and boat just outside your doorstep. [PORT SAINT CHARLES](http://www.portstcharles.com/)\n\\`\\`\\`"
+}

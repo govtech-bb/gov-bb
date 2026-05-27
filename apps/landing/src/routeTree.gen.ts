@@ -13,6 +13,7 @@ import { Route as TellUsRouteImport } from './routes/tell-us'
 import { Route as ServicesRouteImport } from './routes/services'
 import { Route as ServiceUnavailableRouteImport } from './routes/service-unavailable'
 import { Route as SearchResultsRouteImport } from './routes/search-results'
+import { Route as PreviewRouteImport } from './routes/preview'
 import { Route as JavascriptRequiredRouteImport } from './routes/javascript-required'
 import { Route as FeedbackRouteImport } from './routes/feedback'
 import { Route as BankHolidayCalendarRouteImport } from './routes/bank-holiday-calendar'
@@ -44,6 +45,11 @@ const ServiceUnavailableRoute = ServiceUnavailableRouteImport.update({
 const SearchResultsRoute = SearchResultsRouteImport.update({
   id: '/search-results',
   path: '/search-results',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PreviewRoute = PreviewRouteImport.update({
+  id: '/preview',
+  path: '/preview',
   getParentRoute: () => rootRouteImport,
 } as any)
 const JavascriptRequiredRoute = JavascriptRequiredRouteImport.update({
@@ -118,6 +124,7 @@ export interface FileRoutesByFullPath {
   '/bank-holiday-calendar': typeof BankHolidayCalendarRoute
   '/feedback': typeof FeedbackRoute
   '/javascript-required': typeof JavascriptRequiredRoute
+  '/preview': typeof PreviewRoute
   '/search-results': typeof SearchResultsRoute
   '/service-unavailable': typeof ServiceUnavailableRoute
   '/services': typeof ServicesRoute
@@ -136,6 +143,7 @@ export interface FileRoutesByTo {
   '/bank-holiday-calendar': typeof BankHolidayCalendarRoute
   '/feedback': typeof FeedbackRoute
   '/javascript-required': typeof JavascriptRequiredRoute
+  '/preview': typeof PreviewRoute
   '/search-results': typeof SearchResultsRoute
   '/service-unavailable': typeof ServiceUnavailableRoute
   '/services': typeof ServicesRoute
@@ -154,6 +162,7 @@ export interface FileRoutesById {
   '/bank-holiday-calendar': typeof BankHolidayCalendarRoute
   '/feedback': typeof FeedbackRoute
   '/javascript-required': typeof JavascriptRequiredRoute
+  '/preview': typeof PreviewRoute
   '/search-results': typeof SearchResultsRoute
   '/service-unavailable': typeof ServiceUnavailableRoute
   '/services': typeof ServicesRoute
@@ -174,6 +183,7 @@ export interface FileRouteTypes {
     | '/bank-holiday-calendar'
     | '/feedback'
     | '/javascript-required'
+    | '/preview'
     | '/search-results'
     | '/service-unavailable'
     | '/services'
@@ -192,6 +202,7 @@ export interface FileRouteTypes {
     | '/bank-holiday-calendar'
     | '/feedback'
     | '/javascript-required'
+    | '/preview'
     | '/search-results'
     | '/service-unavailable'
     | '/services'
@@ -209,6 +220,7 @@ export interface FileRouteTypes {
     | '/bank-holiday-calendar'
     | '/feedback'
     | '/javascript-required'
+    | '/preview'
     | '/search-results'
     | '/service-unavailable'
     | '/services'
@@ -228,6 +240,7 @@ export interface RootRouteChildren {
   BankHolidayCalendarRoute: typeof BankHolidayCalendarRoute
   FeedbackRoute: typeof FeedbackRoute
   JavascriptRequiredRoute: typeof JavascriptRequiredRoute
+  PreviewRoute: typeof PreviewRoute
   SearchResultsRoute: typeof SearchResultsRoute
   ServiceUnavailableRoute: typeof ServiceUnavailableRoute
   ServicesRoute: typeof ServicesRoute
@@ -267,6 +280,13 @@ declare module '@tanstack/react-router' {
       path: '/search-results'
       fullPath: '/search-results'
       preLoaderRoute: typeof SearchResultsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/preview': {
+      id: '/preview'
+      path: '/preview'
+      fullPath: '/preview'
+      preLoaderRoute: typeof PreviewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/javascript-required': {
@@ -378,6 +398,7 @@ const rootRouteChildren: RootRouteChildren = {
   BankHolidayCalendarRoute: BankHolidayCalendarRoute,
   FeedbackRoute: FeedbackRoute,
   JavascriptRequiredRoute: JavascriptRequiredRoute,
+  PreviewRoute: PreviewRoute,
   SearchResultsRoute: SearchResultsRoute,
   ServiceUnavailableRoute: ServiceUnavailableRoute,
   ServicesRoute: ServicesRoute,

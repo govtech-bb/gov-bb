@@ -1,0 +1,61 @@
+{
+  "kind": "department",
+  "slug": "international-business-financial-services",
+  "name": "International Business & Financial Services Unit",
+  "shortDescription": "Supports international business and financial services for Barbados under the Ministry of Industry, Innovation, Science and Technology.",
+  "keywords": ["IBFSU", "International Business", "Financial Services"],
+  "contact": [
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 535-7200"
+    },
+    {
+      "label": "Fax",
+      "type": "phone",
+      "value": "(246) 535-7245"
+    },
+    {
+      "label": "Fax",
+      "type": "phone",
+      "value": "(246) 535-7244"
+    },
+    {
+      "label": "Website",
+      "type": "website",
+      "value": "https://internationalbusiness.gov.bb/"
+    },
+    {
+      "label": "Address",
+      "type": "address",
+      "value": [
+        "8th Floor Baobab Tower",
+        "Warrens",
+        "St. Michael",
+        "Barbados",
+        "West Indies"
+      ]
+    }
+  ],
+  "originalSource": "https://www.gov.bb/Departments/international-business-financial-services",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [],
+          "direction": null
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": ""
+}

@@ -1,0 +1,522 @@
+{
+  "title": "Jobseekers",
+  "description": "Learn about various employment opportunities in Barbados, including overseas programs, guidance for job seekers, and public sector positions, provided by the Ministry of Labour and Social Partnership Relations.",
+  "categories": ["work-employment"],
+  "section": "Work and Employment",
+  "stage": "alpha",
+  "source_url": "https://www.gov.bb/Citizens/job-seekers",
+  "publish_date": "2025-10-24",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Overseas Employment Opportunities",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The Ministry of Labour and Social Partnership Relations is committed to helping you find the right job. Under the Employment Relations section, learn more about the following:",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "ul",
+          "type": "list",
+          "start": 1,
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "type": "listitem",
+              "value": 1,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "  ",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                },
+                {
+                  "id": "6a175156a4471fc1012af598",
+                  "type": "link",
+                  "fields": {
+                    "url": "https://labour.gov.bb/employment-services/one-stop-resource-centre/",
+                    "newTab": false,
+                    "linkType": "custom"
+                  },
+                  "format": "",
+                  "indent": 0,
+                  "version": 3,
+                  "children": [
+                    {
+                      "mode": "normal",
+                      "text": "One Stop Resource Centre",
+                      "type": "text",
+                      "style": "",
+                      "detail": 0,
+                      "format": 1,
+                      "version": 1
+                    }
+                  ],
+                  "direction": null
+                },
+                {
+                  "mode": "normal",
+                  "text": " under the National Employment Bureau and the services provided for job seekers like you.",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 2,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "  ",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                },
+                {
+                  "id": "6a175156a4471fc1012af599",
+                  "type": "link",
+                  "fields": {
+                    "url": "https://labour.gov.bb/employment-services/overseas-employment-programmes/",
+                    "newTab": false,
+                    "linkType": "custom"
+                  },
+                  "format": "",
+                  "indent": 0,
+                  "version": 3,
+                  "children": [
+                    {
+                      "mode": "normal",
+                      "text": "Overseas Employment Programmes",
+                      "type": "text",
+                      "style": "",
+                      "detail": 0,
+                      "format": 1,
+                      "version": 1
+                    }
+                  ],
+                  "direction": null
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 3,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "  ",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": "Applying for Jobs Online (Coming Soon)",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 1,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "listType": "bullet",
+          "direction": null
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Guidance and Counseling",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The Ministry of Labour and Social Partnership Relations also wants to help you throughout the job search process. Check out Guidance and Counseling for great tips on:",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "ul",
+          "type": "list",
+          "start": 1,
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "type": "listitem",
+              "value": 1,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "  Preparing a great resume",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 2,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "  Writing an effective cover letter",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 3,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "  Searching for available vacancies",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 4,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "  Making an application for a job",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 5,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "  Preparing for the job interview",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 6,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "  Getting ready for that first day on the job",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "listType": "bullet",
+          "direction": null
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Education and Training Services",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "You may also be interested in learning more about Education and Training services within the Ministry of Labour and Social Partnership Relations.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Public Sector Employment Opportunities",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The provisions of the First Schedule – ",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": "Recruitment and Employment Code of the Public Service Act, CAP 29",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 1,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": " require, that all job opportunities or offices vacant for periods in excess of twelve months must be circularized or advertised and should be filled on merit, but where the nature of the work so requires, consideration shall be given to seniority and experience.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Visit the Ministry of the Public Service at ",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "id": "6a175156a4471fc1012af59a",
+              "type": "link",
+              "fields": {
+                "url": "https://mps.gov.bb/People_Resourcing/",
+                "newTab": false,
+                "linkType": "custom"
+              },
+              "format": "",
+              "indent": 0,
+              "version": 3,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "https://mps.gov.bb/People_Resourcing/",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "mode": "normal",
+              "text": " for more information.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "type": "linebreak",
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": "```",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "## Overseas Employment Opportunities\n\nThe Ministry of Labour and Social Partnership Relations is committed to helping you find the right job. Under the Employment Relations section, learn more about the following:\n\n-   [**One Stop Resource Centre**](https://labour.gov.bb/employment-services/one-stop-resource-centre/) under the National Employment Bureau and the services provided for job seekers like you.\n-   [**Overseas Employment Programmes**](https://labour.gov.bb/employment-services/overseas-employment-programmes/)\n-   **Applying for Jobs Online (Coming Soon)**\n\n## Guidance and Counseling\n\nThe Ministry of Labour and Social Partnership Relations also wants to help you throughout the job search process. Check out Guidance and Counseling for great tips on:\n\n-   Preparing a great resume\n-   Writing an effective cover letter\n-   Searching for available vacancies\n-   Making an application for a job\n-   Preparing for the job interview\n-   Getting ready for that first day on the job\n\n## Education and Training Services\n\nYou may also be interested in learning more about Education and Training services within the Ministry of Labour and Social Partnership Relations.\n\n## Public Sector Employment Opportunities\n\nThe provisions of the First Schedule – **Recruitment and Employment Code of the Public Service Act, CAP 29** require, that all job opportunities or offices vacant for periods in excess of twelve months must be circularized or advertised and should be filled on merit, but where the nature of the work so requires, consideration shall be given to seniority and experience.\n\nVisit the Ministry of the Public Service at [https://mps.gov.bb/People\\_Resourcing/](https://mps.gov.bb/People_Resourcing/) for more information.\n\\`\\`\\`"
+}

@@ -1,0 +1,79 @@
+{
+  "kind": "ministry",
+  "slug": "ministry-of-housing-lands-and-maintenance",
+  "name": "Ministry of Housing, Lands and Maintenance",
+  "shortDescription": "Affordable housing solutions, state lands management, and infrastructure maintenance.",
+  "intro": "To provide affordable housing solutions and manage state lands and government infrastructure maintenance.",
+  "category": "ministerial",
+  "keywords": ["MHLM", "Housing", "Lands"],
+  "minister": {
+    "name": "The Hon. Christopher D. L. Gibbs, M.P.",
+    "role": "Minister of Housing, Lands and Maintenance"
+  },
+  "contact": [
+    {
+      "label": "Email",
+      "type": "email",
+      "value": "pshousing@barbados.gov.bb"
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 536-5000"
+    },
+    {
+      "label": "Address",
+      "type": "address",
+      "value": [
+        "National Housing Corporation",
+        "Country Road",
+        "St. Michael",
+        "Barbados, W.I"
+      ]
+    }
+  ],
+  "associatedDepartments": [
+    {
+      "category": "Housing",
+      "items": [
+        {
+          "name": "The National Housing Corporation",
+          "slug": "national-housing-corporation"
+        }
+      ]
+    }
+  ],
+  "originalSource": "https://www.gov.bb/Ministries/housing",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "To provide quality and affordable housing, land and office accommodation solutions for its customers.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "To provide quality and affordable housing, land and office accommodation solutions for its customers."
+}

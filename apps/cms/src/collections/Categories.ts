@@ -11,7 +11,7 @@ export const Categories: CollectionConfig = {
     useAsTitle: 'title',
     defaultColumns: ['title', 'slug'],
     description: 'The top-level groupings services are listed under on the site.',
-    group: 'Taxonomy',
+    group: 'Topics & categories',
   },
   access: {
     read: anyone,
@@ -44,7 +44,7 @@ export const Subcategories: CollectionConfig = {
     useAsTitle: 'title',
     defaultColumns: ['title', 'parent', 'slug'],
     description: 'Optional second level within a category. Most categories have none.',
-    group: 'Taxonomy',
+    group: 'Topics & categories',
   },
   access: {
     read: anyone,

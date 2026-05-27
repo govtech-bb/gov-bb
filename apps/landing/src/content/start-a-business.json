@@ -1,0 +1,158 @@
+{
+  "title": "Start a business",
+  "description": "Learn how Invest Barbados facilitates starting or expanding business operations in Barbados.",
+  "categories": ["business-trade"],
+  "section": "Business and Trade",
+  "stage": "alpha",
+  "source_url": "https://www.gov.bb/Business/start-business",
+  "publish_date": "2025-10-24",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Starting a Business",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Barbados wants your investment and the Invest Barbados facilitation team makes it as seamless as possible for you to start or expand business operations in Barbados.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 1,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 1
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "id": "6a175156a4471fc1012af5b9",
+              "type": "link",
+              "fields": {
+                "url": "https://www.investbarbados.org/starting-a-business-in-barbados/",
+                "newTab": false,
+                "linkType": "custom"
+              },
+              "format": "",
+              "indent": 0,
+              "version": 3,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Visit Invest Barbados",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 1,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h3",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Category",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "tag": "ul",
+          "type": "list",
+          "start": 1,
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "type": "listitem",
+              "value": 1,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "  Analytical Services",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                },
+                {
+                  "type": "linebreak",
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": "```",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "listType": "bullet",
+          "direction": null
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "## Starting a Business\n\n**Barbados wants your investment and the Invest Barbados facilitation team makes it as seamless as possible for you to start or expand business operations in Barbados.**\n\n[**Visit Invest Barbados**](https://www.investbarbados.org/starting-a-business-in-barbados/)\n\n### Category\n\n-   Analytical Services\n\\`\\`\\`"
+}

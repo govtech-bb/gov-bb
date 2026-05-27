@@ -1,4 +1,4 @@
-// These block `slug`s are matched by string in src/lib/frontmatter-map.ts on
+// These block `slug`s are matched by string in @govtech-bb/content/map on
 // export. Renaming one here without updating the mapper breaks that mapping —
 // the contract test uses fixtures and won't catch it.
 import type { Block } from 'payload'

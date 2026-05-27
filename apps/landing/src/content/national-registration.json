@@ -1,0 +1,281 @@
+{
+  "title": "National registration",
+  "description": "An overview of national registration in Barbados, outlining eligibility, required documents, photo guidelines, fees, and contact information for the Electoral and Boundaries Commission.",
+  "categories": ["travel-id-citizenship"],
+  "section": "Travel, ID and Citizenship",
+  "stage": "alpha",
+  "source_url": "https://www.gov.bb/Citizens/national-registration",
+  "publish_date": "2025-10-24",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "National Registration",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "A person is qualified to be registered if they are a citizen of Barbados or a citizen of another country who has been granted permission by the Chief Immigration Officer to remain in Barbados for a period of not less than six months. Upon completion of registration, the applicant is issued a Barbados Identification (ID) card.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "When applying for your National Registration Number you must produce original documents or certified copies. For certified copies, the person signing the documents must write his/her name and position in block letters. Official stamps may also be used to authenticate documents.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Photo Requirements",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "When taking your photograph for your identification card you should not wear:",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "ul",
+          "type": "list",
+          "start": 1,
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "type": "listitem",
+              "value": 1,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "  A hat, cap, shawl, scarf or another form of covering for the head or",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 2,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "  Tinted spectacles or any other form of tinted eyeglasses",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "listType": "bullet",
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "There is a fee of $60.00 for replacing Identification Cards which are lost, defaced or destroyed.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Contact Information",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "For further information contact/visit the Electoral and Boundaries Commission at:",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "1st Floor, Warrens Towers II   Warrens St. Michael",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "(Tel.) 1 (246) 535-4800   (Fax) 1 (246) 535-4863",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "type": "linebreak",
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": "```",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "## National Registration\n\nA person is qualified to be registered if they are a citizen of Barbados or a citizen of another country who has been granted permission by the Chief Immigration Officer to remain in Barbados for a period of not less than six months. Upon completion of registration, the applicant is issued a Barbados Identification (ID) card.\n\nWhen applying for your National Registration Number you must produce original documents or certified copies. For certified copies, the person signing the documents must write his/her name and position in block letters. Official stamps may also be used to authenticate documents.\n\n## Photo Requirements\n\nWhen taking your photograph for your identification card you should not wear:\n\n-   A hat, cap, shawl, scarf or another form of covering for the head or\n-   Tinted spectacles or any other form of tinted eyeglasses\n\nThere is a fee of $60.00 for replacing Identification Cards which are lost, defaced or destroyed.\n\n## Contact Information\n\nFor further information contact/visit the Electoral and Boundaries Commission at:\n\n1st Floor, Warrens Towers II   Warrens St. Michael\n\n(Tel.) 1 (246) 535-4800   (Fax) 1 (246) 535-4863\n\\`\\`\\`"
+}

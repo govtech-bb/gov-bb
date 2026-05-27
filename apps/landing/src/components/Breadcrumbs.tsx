@@ -20,8 +20,9 @@ function titleForSegment(seg: string, previousSegment?: string): string {
   )
 }
 
-export function Breadcrumbs() {
-  const { pathname } = useLocation()
+export function Breadcrumbs({ pathname: pathnameProp }: { pathname?: string } = {}) {
+  const { pathname: locationPathname } = useLocation()
+  const pathname = pathnameProp ?? locationPathname
   const segments = pathname.split('/').filter(Boolean)
   if (segments.length === 0) return null
 

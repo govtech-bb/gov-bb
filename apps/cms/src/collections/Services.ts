@@ -1,13 +1,16 @@
 import type { CollectionConfig } from 'payload'
 import { anyone, isAdminOrEditor } from '../access/roles'
 import { slugField } from '../fields/slug'
+import { editorialFields } from '../fields/publishing'
+import { lockSlugAfterPublish } from '../hooks/lockSlugAfterPublish'
+import { bodyEditor } from '../lib/body-editor'
 
 export const Services: CollectionConfig = {
   slug: 'services',
   labels: { singular: 'Service / Guide', plural: 'Services & Guides' },
   admin: {
     useAsTitle: 'title',
-    defaultColumns: ['title', 'slug', 'categories', 'stage', 'updatedAt'],
+    defaultColumns: ['title', '_status', 'categories', 'stage', 'reviewBy', 'updatedAt'],
     description:
       'Service and guide pages shown to the public on the site. Some services have sub-pages with a slashed slug like service-name/start — edit the main page for its description and listings, and the sub-page for the form-start content.',
     group: 'Content',
@@ -19,8 +22,12 @@ export const Services: CollectionConfig = {
     delete: isAdminOrEditor,
   },
   versions: { drafts: { autosave: true } },
+  hooks: {
+    beforeChange: [lockSlugAfterPublish],
+  },
   fields: [
     slugField(),
+    ...editorialFields,
     {
       type: 'tabs',
       tabs: [
@@ -31,26 +38,31 @@ export const Services: CollectionConfig = {
             {
               name: 'description',
               type: 'textarea',
-              admin: { description: 'A short summary. Shown in search results and listings.' },
-            },
-            {
-              name: 'body',
-              type: 'textarea',
+              // Required for top-level service pages (which appear in listings and
+              // search), but not for sub-pages like `service-name/start`, which
+              // have no standalone listing. Enforced at publish — drafts skip it.
+              validate: (
+                value: string | null | undefined,
+                { data }: { data?: { slug?: string | null } },
+              ) => {
+                const isSubPage = (data?.slug ?? '').includes('/')
+                if (!value && !isSubPage)
+                  return 'Add a short summary — it appears in search results and listings.'
+                return true
+              },
               admin: {
                 description:
-                  'The page content, written in Markdown. To add a "Start now" button, put `<a data-start-link>Start now</a>` on its own line — it links to the form set by Form ID on the Details tab.',
-                rows: 20,
+                  'A one-sentence summary, shown in search results and listings. Aim for under 160 characters — that’s roughly what search engines show in results.',
               },
             },
             {
-              name: 'bodyPreview',
-              type: 'ui',
-              admin: { components: { Field: '/components/MarkdownPreview#MarkdownPreview' } },
-            },
-            {
-              name: 'bodyLexical',
+              name: 'body',
               type: 'richText',
-              admin: { hidden: true },
+              editor: bodyEditor,
+              admin: {
+                description:
+                  'The page content. Write normally; use the block menu to insert a Callout, Show / hide, Start now button or Link button.',
+              },
             },
           ],
         },
@@ -91,35 +103,50 @@ export const Services: CollectionConfig = {
             {
               name: 'stage',
               type: 'select',
-              options: [{ label: 'Alpha', value: 'alpha' }],
+              label: 'Maturity',
+              options: [
+                { label: 'Alpha — new, still being tested', value: 'alpha' },
+                { label: 'Beta — live but still improving', value: 'beta' },
+                { label: 'Migrated from gov.bb', value: 'migrated' },
+              ],
               defaultValue: 'alpha',
+              admin: {
+                description:
+                  'How finished this page is. New pages start at Alpha. Use “Migrated” only for content carried over from the old gov.bb site.',
+              },
             },
             {
               name: 'featured',
               type: 'checkbox',
               defaultValue: false,
-              admin: { description: 'Promote this service in featured listings on the site.' },
+              admin: {
+                description:
+                  'Tick to show this service in the highlighted section on the site homepage.',
+              },
             },
             {
               name: 'section',
               type: 'text',
               admin: {
-                description: 'Optional heading this service appears under in some listings.',
-              },
-            },
-            {
-              name: 'formId',
-              type: 'text',
-              admin: {
-                description: 'Links the in-page "Start now" button to a form in the forms app.',
+                description:
+                  'Optional. A heading to group this service under on topic listing pages (e.g. “Births, deaths & marriages”). Leave blank if you’re not sure.',
               },
             },
             {
               name: 'sourceUrl',
               type: 'text',
-              admin: { description: 'The original gov.bb page this content came from, if any.' },
-              validate: (value: string | null | undefined) => {
-                if (!value) return true
+              admin: {
+                description: 'The original gov.bb page this migrated content came from.',
+                // Only relevant for migrated content — hidden otherwise.
+                condition: (_, siblingData) => siblingData?.stage === 'migrated',
+              },
+              validate: (
+                value: string | null | undefined,
+                { siblingData }: { siblingData?: Record<string, unknown> },
+              ) => {
+                const isMigrated = siblingData?.stage === 'migrated'
+                if (!value)
+                  return isMigrated ? 'Add the original gov.bb URL for migrated content.' : true
                 try {
                   const { protocol } = new URL(value)
                   if (protocol !== 'http:' && protocol !== 'https:') {
@@ -131,7 +158,15 @@ export const Services: CollectionConfig = {
                 }
               },
             },
-            { name: 'publishDate', type: 'date' },
+            {
+              name: 'publishDate',
+              type: 'date',
+              label: 'First published',
+              admin: {
+                description:
+                  'The date this page first went live, shown to the public. This is not a scheduling field — it does not publish the page for you.',
+              },
+            },
           ],
         },
       ],

@@ -1,0 +1,54 @@
+{
+  "kind": "state-body",
+  "slug": "barbados-youth-business-trust",
+  "name": "Barbados Youth Business Trust",
+  "keywords": ["BYBT", "Youth Business Trust"],
+  "contact": [
+    {
+      "label": "Address",
+      "type": "address",
+      "value": ["1st Floor, Equity House", "Pinfold Street", "St. Michael"]
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 228-2772"
+    },
+    {
+      "label": "Fax",
+      "type": "phone",
+      "value": "(246) 228-2773"
+    },
+    {
+      "label": "Email",
+      "type": "email",
+      "value": "info@youthbusiness.bb"
+    },
+    {
+      "label": "Website",
+      "type": "website",
+      "value": "https://www.youthbusiness.bb"
+    }
+  ],
+  "originalSource": "https://www.gov.bb/State-Bodies/barbados-youth-business-trust",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [],
+          "direction": null
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": ""
+}

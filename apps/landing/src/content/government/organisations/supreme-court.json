@@ -1,0 +1,159 @@
+{
+  "kind": "state-body",
+  "slug": "supreme-court",
+  "name": "Supreme Court",
+  "keywords": ["Supreme Court", "Courts"],
+  "contact": [
+    {
+      "label": "Address",
+      "type": "address",
+      "value": ["White Park Road", "St. Michael"]
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 434-9970"
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 436-1210"
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 426-2405"
+    },
+    {
+      "label": "Email",
+      "type": "email",
+      "value": "registrar@lawcourts.gov.bb"
+    },
+    {
+      "label": "Website",
+      "type": "website",
+      "value": "http://www.barbadoslawcourts.gov.bb/"
+    }
+  ],
+  "originalSource": "https://www.gov.bb/State-Bodies/supreme-court",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The Judicature (as the judicial system is officially known) was established by s.79C of the Constitution of Barbados and is comprised of a four-level Court structure consisting of:",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "ol",
+          "type": "list",
+          "start": 1,
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "type": "listitem",
+              "value": 1,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "The Caribbean Court of Justice established by the Agreement Establishing the Caribbean Court of Justice to which Barbados is a party, and which was signed at Bridgetown, Barbados on 14th February, 2002;",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 2,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "The Court of Appeal;",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 3,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "The High Court;",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 4,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "The Magistrate's Courts.",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "listType": "number",
+          "direction": null
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "The Judicature (as the judicial system is officially known) was established by s.79C of the Constitution of Barbados and is comprised of a four-level Court structure consisting of:\n\n1. The Caribbean Court of Justice established by the Agreement Establishing the Caribbean Court of Justice to which Barbados is a party, and which was signed at Bridgetown, Barbados on 14th February, 2002;\n2. The Court of Appeal;\n3. The High Court;\n4. The Magistrate's Courts."
+}

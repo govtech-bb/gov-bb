@@ -1,0 +1,144 @@
+{
+  "title": "What we mean by alpha",
+  "description": "We’re testing ideas and learning what works before building the full service.",
+  "stage": "alpha",
+  "publish_date": "2025-11-12",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "This is an Alpha website. This means it's an early version and we're still working on it.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "You might notice things that feel unfinished, change often, and sometimes even break. That’s part of the process. We’re using ",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "id": "6a175156a4471fc1012af5c0",
+              "type": "link",
+              "fields": {
+                "url": "https://alpha.gov.bb",
+                "newTab": false,
+                "linkType": "custom"
+              },
+              "format": "",
+              "indent": 0,
+              "version": 3,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "alpha.gov.bb",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "mode": "normal",
+              "text": " to test ideas and get feedback so we can learn what works and what doesn’t before we build the full service.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "If you have thoughts or spot something that could be better, ",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "id": "6a175156a4471fc1012af5c1",
+              "type": "link",
+              "fields": {
+                "url": "https://alpha.gov.bb/feedback",
+                "newTab": false,
+                "linkType": "custom"
+              },
+              "format": "",
+              "indent": 0,
+              "version": 3,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "let us know",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "mode": "normal",
+              "text": ". We’d love to hear from you.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "This is an Alpha website. This means it's an early version and we're still working on it.\n\nYou might notice things that feel unfinished, change often, and sometimes even break. That’s part of the process. We’re using [alpha.gov.bb](https://alpha.gov.bb) to test ideas and get feedback so we can learn what works and what doesn’t before we build the full service.\n\nIf you have thoughts or spot something that could be better, [let us know](https://alpha.gov.bb/feedback). We’d love to hear from you."
+}

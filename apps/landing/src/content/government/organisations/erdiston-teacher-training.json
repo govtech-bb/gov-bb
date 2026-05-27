@@ -1,0 +1,66 @@
+{
+  "kind": "state-body",
+  "slug": "erdiston-teacher-training",
+  "name": "Erdiston Teachers' Training College",
+  "keywords": ["Erdiston", "ETTC", "Teacher Training"],
+  "contact": [
+    {
+      "label": "Address",
+      "type": "address",
+      "value": ["Government Hill", "St. Michael"]
+    },
+    {
+      "label": "PBX",
+      "type": "phone",
+      "value": "(246) 535-3247"
+    },
+    {
+      "label": "Library",
+      "type": "phone",
+      "value": "(246) 535-3239"
+    },
+    {
+      "label": "Principal",
+      "type": "phone",
+      "value": "(246) 535-3223"
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 427-2776"
+    }
+  ],
+  "originalSource": "https://www.gov.bb/State-Bodies/erdiston-teacher-training",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Erdiston Teachers' Training College, founded in 1948, offers exemplary teacher education programs on a beautiful, pristine campus in St. Michael, Barbados.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "Erdiston Teachers' Training College, founded in 1948, offers exemplary teacher education programs on a beautiful, pristine campus in St. Michael, Barbados."
+}

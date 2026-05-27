@@ -1,0 +1,66 @@
+{
+  "kind": "state-body",
+  "slug": "national-standards",
+  "name": "Barbados National Standards Institution",
+  "keywords": ["BNSI", "National Standards", "Standards"],
+  "contact": [
+    {
+      "label": "Address",
+      "type": "address",
+      "value": ["Flodden Culloden Road", "St. Michael"]
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 426-3870"
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 436-1495"
+    },
+    {
+      "label": "Email",
+      "type": "email",
+      "value": "office@bnsi.com.bb"
+    },
+    {
+      "label": "Website",
+      "type": "website",
+      "value": "https://commerce.gov.bb/barbados-national-standards-institution-bnsi/"
+    }
+  ],
+  "originalSource": "https://www.gov.bb/State-Bodies/national-standards",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The Barbados National Standards Institution (BNSI) is a joint undertaking between the Government of Barbados and the private sector, incorporated by private law and recognized by Government. It was established on June in 1973 under the Companies Act, as a non-profit benevolent organization.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "The Barbados National Standards Institution (BNSI) is a joint undertaking between the Government of Barbados and the private sector, incorporated by private law and recognized by Government. It was established on June in 1973 under the Companies Act, as a non-profit benevolent organization."
+}

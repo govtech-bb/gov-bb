@@ -1,0 +1,658 @@
+{
+  "title": "Terms & Conditions",
+  "stage": "alpha",
+  "source_url": "https://www.gov.bb/terms-conditions",
+  "publish_date": "2026-05-14",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "tag": "h3",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Ownership of Website Content",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "GOV.BB has a copyright in the content of this website. The trademarks, logos, images, and service marks of GOV.BB and its Subsidiaries that are used on this website are and shall remain the exclusive property of GOV.BB and its subsidiaries and may not be used without prior written permission.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "All content on this website is and shall remain the sole and exclusive property of GOV.BB, except where a different owner has been specifically indicated. GOV.BB hereby grants permission to any user of this website to download content only for personal use for non-commercial purposes. However, users may not alter, modify, reproduce, display, publish, post, transmit, or distribute any of the content found on this website without the express written permission of GOV.BB.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h3",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Disclaimer of Warranties",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "GOV.BB operates this site to inform users as to our various services, projects, how to communicate with us, and other information about the Government of Barbados. The information contained herein is not intended as a substitute for qualified technical or engineering services and under no circumstances shall be deemed to constitute such services. Users should also note that Internet software including, but not limited to, browsers or even transmission problems can produce inaccurate or incomplete copies of documents when downloaded and displayed on a user's computer.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "GOV.BB makes no warranties or representations of any kind, whether express or implied, as to the validity, accuracy, or reliability of any of the content found herein or on any other websites linked to or from this website. Any and all information contained herein or in such other websites is provided \"AS IS\" and without warranties of any kind, whether express or implied.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "GOV.BB expressly disclaims any and all implied warranties of merchantability or fitness for a particular purpose. To the fullest extent permitted by applicable law, GOV.BB further disclaims any liability for damages of any kind arising out of or relating to the use or inability to use this website, its content, or links, including, but not limited to, special, incidental or consequential damages.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "As a convenience to the user, certain links in this website will connect the user to external websites maintained by third parties. GOV.BB has no control over these websites, the information they contain, or the goods and/or services provided by such third parties, and the content of such websites does not in any way reflect the policies or beliefs of GOV.BB, its officers, directors, or employees. GOV.BB shall have no liability for any use or reliance by a user on such third party websites.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h3",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Governing Law",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "As consideration for any use of this website, including merely accessing the website, you agree to be bound by the laws of Barbados, without regard to any conflicts of law principles. You further agree to be subject to the jurisdiction of any of the courts of Barbados for any dispute relating in any way to your use of this website.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h3",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Your Data",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "alpha.gov.bb is run by the Ministry of Innovation, Science and Smart Technology. We handle your information under the Data Protection Act 2019.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h3",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "What we collect",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "What you type into an application form, any files you upload, payment details you enter on EZpay+, and basic analytics about how the site is used.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h3",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Where it's stored",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The site runs on Amazon Web Services in the United States. This means your information leaves Barbados to be processed.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "ul",
+          "type": "list",
+          "start": 1,
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "type": "listitem",
+              "value": 1,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Forms without payment",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 1,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": " are emailed straight to the relevant Ministry, Department or Agency. We don't keep a copy.",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 2,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Forms with payment",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 1,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": " are encrypted and held only until payment goes through, then deleted. Anything left unpaid for 72 hours is deleted automatically.",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 3,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Uploaded files",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 1,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": " pass through our storage for the few seconds it takes to attach them to your application.",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 4,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Payment records",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 1,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": " (your name, email, amount, transaction number) are kept for accounting and audit. They don't include what you wrote in the form.",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 5,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Error logs and analytics",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 1,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": " never contain the values you type. Email addresses in logs are masked.",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 6,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Partly filled forms",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 1,
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": " live only in your own browser so you can go back a step without losing your work.",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "listType": "bullet",
+          "direction": null
+        },
+        {
+          "tag": "h3",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Cookies",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "We use your browser's session storage to remember your progress through a form. We don't use tracking cookies.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h3",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Your rights",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Under the Data Protection Act 2019 you can ask to see, correct or delete the information we hold about you, and you can complain to the Data Protection Commissioner.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Contact: ",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": "privacy@govtech.bb",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 1,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h3",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Changes",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "alpha.gov.bb is still in alpha and changes often. We'll update this page when how we handle your data changes.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "### Ownership of Website Content\n\nGOV.BB has a copyright in the content of this website. The trademarks, logos, images, and service marks of GOV.BB and its Subsidiaries that are used on this website are and shall remain the exclusive property of GOV.BB and its subsidiaries and may not be used without prior written permission.\n\nAll content on this website is and shall remain the sole and exclusive property of GOV.BB, except where a different owner has been specifically indicated. GOV.BB hereby grants permission to any user of this website to download content only for personal use for non-commercial purposes. However, users may not alter, modify, reproduce, display, publish, post, transmit, or distribute any of the content found on this website without the express written permission of GOV.BB.\n\n### Disclaimer of Warranties\n\nGOV.BB operates this site to inform users as to our various services, projects, how to communicate with us, and other information about the Government of Barbados. The information contained herein is not intended as a substitute for qualified technical or engineering services and under no circumstances shall be deemed to constitute such services. Users should also note that Internet software including, but not limited to, browsers or even transmission problems can produce inaccurate or incomplete copies of documents when downloaded and displayed on a user's computer.\n\nGOV.BB makes no warranties or representations of any kind, whether express or implied, as to the validity, accuracy, or reliability of any of the content found herein or on any other websites linked to or from this website. Any and all information contained herein or in such other websites is provided \"AS IS\" and without warranties of any kind, whether express or implied.\n\nGOV.BB expressly disclaims any and all implied warranties of merchantability or fitness for a particular purpose. To the fullest extent permitted by applicable law, GOV.BB further disclaims any liability for damages of any kind arising out of or relating to the use or inability to use this website, its content, or links, including, but not limited to, special, incidental or consequential damages.\n\nAs a convenience to the user, certain links in this website will connect the user to external websites maintained by third parties. GOV.BB has no control over these websites, the information they contain, or the goods and/or services provided by such third parties, and the content of such websites does not in any way reflect the policies or beliefs of GOV.BB, its officers, directors, or employees. GOV.BB shall have no liability for any use or reliance by a user on such third party websites.\n\n### Governing Law\n\nAs consideration for any use of this website, including merely accessing the website, you agree to be bound by the laws of Barbados, without regard to any conflicts of law principles. You further agree to be subject to the jurisdiction of any of the courts of Barbados for any dispute relating in any way to your use of this website.\n\n### Your Data\n\nalpha.gov.bb is run by the Ministry of Innovation, Science and Smart Technology. We handle your information under the Data Protection Act 2019.\n\n### What we collect\n\nWhat you type into an application form, any files you upload, payment details you enter on EZpay+, and basic analytics about how the site is used.\n\n### Where it's stored\n\nThe site runs on Amazon Web Services in the United States. This means your information leaves Barbados to be processed.\n\n- **Forms without payment** are emailed straight to the relevant Ministry, Department or Agency. We don't keep a copy.\n- **Forms with payment** are encrypted and held only until payment goes through, then deleted. Anything left unpaid for 72 hours is deleted automatically.\n- **Uploaded files** pass through our storage for the few seconds it takes to attach them to your application.\n- **Payment records** (your name, email, amount, transaction number) are kept for accounting and audit. They don't include what you wrote in the form.\n- **Error logs and analytics** never contain the values you type. Email addresses in logs are masked.\n- **Partly filled forms** live only in your own browser so you can go back a step without losing your work.\n\n### Cookies\n\nWe use your browser's session storage to remember your progress through a form. We don't use tracking cookies.\n\n### Your rights\n\nUnder the Data Protection Act 2019 you can ask to see, correct or delete the information we hold about you, and you can complain to the Data Protection Commissioner.\n\nContact: **privacy@govtech.bb**\n\n### Changes\n\nalpha.gov.bb is still in alpha and changes often. We'll update this page when how we handle your data changes."
+}

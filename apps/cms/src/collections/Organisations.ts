@@ -1,7 +1,10 @@
 import type { CollectionConfig } from 'payload'
 import { anyone, isAdminOrEditor } from '../access/roles'
 import { slugField } from '../fields/slug'
+import { editorialFields } from '../fields/publishing'
+import { lockSlugAfterPublish } from '../hooks/lockSlugAfterPublish'
 import { contactBlocks, onlineServiceBlocks } from '../fields/contactBlocks'
+import { bodyEditor } from '../lib/body-editor'
 
 const isMinistry = (data: unknown): boolean => (data as { kind?: string })?.kind === 'ministry'
 
@@ -10,7 +13,7 @@ export const Organisations: CollectionConfig = {
   labels: { singular: 'Organisation', plural: 'Organisations' },
   admin: {
     useAsTitle: 'name',
-    defaultColumns: ['name', 'kind', 'updatedAt'],
+    defaultColumns: ['name', 'kind', '_status', 'reviewBy', 'updatedAt'],
     description: 'Ministries, departments and state bodies.',
     group: 'Content',
   },
@@ -21,8 +24,12 @@ export const Organisations: CollectionConfig = {
     delete: isAdminOrEditor,
   },
   versions: { drafts: { autosave: true } },
+  hooks: {
+    beforeChange: [lockSlugAfterPublish],
+  },
   fields: [
     slugField('name'),
+    ...editorialFields,
     {
       name: 'kind',
       type: 'select',
@@ -54,7 +61,10 @@ export const Organisations: CollectionConfig = {
             {
               name: 'shortDescription',
               type: 'textarea',
-              admin: { description: 'One sentence shown in organisation listings.' },
+              admin: {
+                description:
+                  'One sentence shown in organisation listings. Aim for under 160 characters — that’s roughly what search engines show in results.',
+              },
             },
             {
               name: 'intro',
@@ -86,7 +96,9 @@ export const Organisations: CollectionConfig = {
             {
               name: 'originalSource',
               type: 'text',
-              admin: { description: 'The original gov.bb page, if any.' },
+              admin: {
+                description: 'Only fill this in if the page was copied from the old gov.bb site.',
+              },
             },
           ],
         },
@@ -119,7 +131,15 @@ export const Organisations: CollectionConfig = {
               },
               fields: [
                 { name: 'title', type: 'text', required: true },
-                { name: 'href', type: 'text', required: true },
+                {
+                  name: 'href',
+                  type: 'text',
+                  required: true,
+                  admin: {
+                    description:
+                      'Where the tile links to: a path on this site like /apply-for-a-passport, or a full external URL.',
+                  },
+                },
                 { name: 'description', type: 'text', required: true },
                 { name: 'image', type: 'upload', relationTo: 'media' },
                 { name: 'imageAlt', type: 'text' },
@@ -127,13 +147,14 @@ export const Organisations: CollectionConfig = {
             },
             {
               name: 'services',
-              type: 'array',
-              admin: { condition: isMinistry, description: 'Services this ministry provides.' },
-              fields: [
-                { name: 'title', type: 'text', required: true },
-                { name: 'href', type: 'text', required: true },
-                { name: 'description', type: 'text' },
-              ],
+              type: 'relationship',
+              relationTo: 'services',
+              hasMany: true,
+              admin: {
+                condition: isMinistry,
+                description:
+                  'Services this ministry provides. Start typing to find and link a service page — its title and summary are pulled in automatically, and the link can never break.',
+              },
             },
             {
               name: 'associatedDepartments',
@@ -143,7 +164,11 @@ export const Organisations: CollectionConfig = {
                 {
                   name: 'category',
                   type: 'text',
-                  admin: { description: 'Optional group heading.' },
+                  label: 'Group heading',
+                  admin: {
+                    description:
+                      'Optional heading to group these departments under (e.g. “Agencies”).',
+                  },
                 },
                 {
                   name: 'items',
@@ -166,19 +191,13 @@ export const Organisations: CollectionConfig = {
           fields: [
             {
               name: 'body',
-              type: 'textarea',
+              type: 'richText',
+              editor: bodyEditor,
               admin: {
                 description:
-                  'Page content in Markdown. To add a "Start now" button, put `<a data-start-link>Start now</a>` on its own line.',
-                rows: 20,
+                  'The page content. Write normally; use the block menu to insert a Callout, Show / hide, Start now button or Link button.',
               },
             },
-            {
-              name: 'bodyPreview',
-              type: 'ui',
-              admin: { components: { Field: '/components/MarkdownPreview#MarkdownPreview' } },
-            },
-            { name: 'bodyLexical', type: 'richText', admin: { hidden: true } },
           ],
         },
       ],

@@ -1,0 +1,259 @@
+{
+  "title": "Government requirements",
+  "description": "A guide to the process of applying for and maintaining a license for international financial services in Barbados, including annual requirements.",
+  "categories": ["business-trade"],
+  "section": "Business and Trade",
+  "stage": "alpha",
+  "source_url": "https://www.gov.bb/Business/government-requirements",
+  "publish_date": "2025-10-24",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "A prospective applicant must submit a preliminary application to the Central Bank of Barbados for approval.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The application for a licence must include a brief description of the nature of the international financial service to be provided from Barbados, financial projections, the names and addresses of the directors, names and addresses of the shareholders and the number of shares to be held, together with other due diligence information.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "After the submission is appraised, consent is obtained from the Minister of Finance for the incorporation or registration of the company in Barbados. A final application must be made to the Director of Bank Supervision who, subject to the approval of the Minister of Finance, may issue a licence to the company to carry on international financial services.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The company must also have a minimum assigned capital of US$2,000,000 if the bank is authorised to accept third party deposits or a minimum assigned capital of US$500,000 if the bank does not accept third party deposits. The minister may at his discretion alter the above sums.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "What are the Annual Requirements of an IFSC?",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "tag": "ul",
+          "type": "list",
+          "start": 1,
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "type": "listitem",
+              "value": 1,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "  A licence must be renewed annually by January 1, of each year",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 2,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "  An annual audit is required",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 3,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "  Annual returns to be filed by January 31, of each year",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 4,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "  Annual filing of audited financial statements",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 5,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "  Submission of quarterly statements of a licensee's assets and liabilities to the Central Bank",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 6,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "  Annual tax returns must be filed with the Barbados Revenue Authority",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                },
+                {
+                  "type": "linebreak",
+                  "version": 1
+                },
+                {
+                  "mode": "normal",
+                  "text": "```",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "listType": "bullet",
+          "direction": null
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "A prospective applicant must submit a preliminary application to the Central Bank of Barbados for approval.\n\nThe application for a licence must include a brief description of the nature of the international financial service to be provided from Barbados, financial projections, the names and addresses of the directors, names and addresses of the shareholders and the number of shares to be held, together with other due diligence information.\n\nAfter the submission is appraised, consent is obtained from the Minister of Finance for the incorporation or registration of the company in Barbados. A final application must be made to the Director of Bank Supervision who, subject to the approval of the Minister of Finance, may issue a licence to the company to carry on international financial services.\n\nThe company must also have a minimum assigned capital of US$2,000,000 if the bank is authorised to accept third party deposits or a minimum assigned capital of US$500,000 if the bank does not accept third party deposits. The minister may at his discretion alter the above sums.\n\n## What are the Annual Requirements of an IFSC?\n\n-   A licence must be renewed annually by January 1, of each year\n-   An annual audit is required\n-   Annual returns to be filed by January 31, of each year\n-   Annual filing of audited financial statements\n-   Submission of quarterly statements of a licensee's assets and liabilities to the Central Bank\n-   Annual tax returns must be filed with the Barbados Revenue Authority\n\\`\\`\\`"
+}

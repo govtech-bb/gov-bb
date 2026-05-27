@@ -1,0 +1,61 @@
+{
+  "kind": "state-body",
+  "slug": "community-college",
+  "name": "Barbados Community College",
+  "keywords": ["BCC", "Community College"],
+  "contact": [
+    {
+      "label": "Address",
+      "type": "address",
+      "value": ["Howells' Road", "St. Michael"]
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 426-2858"
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 429-5935"
+    },
+    {
+      "label": "Email",
+      "type": "email",
+      "value": "eyrie@bcc.edu.bb"
+    }
+  ],
+  "originalSource": "https://www.gov.bb/State-Bodies/community-college",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The Barbados Community College is a dynamic center of learning which exists to meet the changing education, training and development needs of the societies that it serves, by providing a range of courses and programs of study in a learning environment conducive to the intellectual, physical and social development of students and staff, so that they can make a meaningful contribution to their country, region and the wider community.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "The Barbados Community College is a dynamic center of learning which exists to meet the changing education, training and development needs of the societies that it serves, by providing a range of courses and programs of study in a learning environment conducive to the intellectual, physical and social development of students and staff, so that they can make a meaningful contribution to their country, region and the wider community."
+}

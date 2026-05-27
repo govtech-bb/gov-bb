@@ -1,0 +1,203 @@
+{
+  "kind": "department",
+  "slug": "public-sector-reform",
+  "name": "Office of Public Sector Reform",
+  "shortDescription": "Facilitates transformational change across the public service by assisting Ministries, Departments, and Agencies in improving their performance.",
+  "intro": "The role of the Efficiency Unit is to facilitate transformational change across the public service by assisting Ministries, Departments and Agencies in improving their performance and results in alignment with the government's strategic priorities and best practices.",
+  "keywords": ["OPSR", "Public Sector Reform"],
+  "contact": [
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 535-1200"
+    },
+    {
+      "label": "Fax",
+      "type": "phone",
+      "value": "(246) 535-1284"
+    },
+    {
+      "label": "Address",
+      "type": "address",
+      "value": ["3rd and 4th Floor, Baobab Tower", "Warrens", "St. Michael"]
+    }
+  ],
+  "originalSource": "https://www.gov.bb/Departments/public-sector-reform",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Efficiency Unit",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "tag": "h4",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "(Formerly Office of Public Sector Reform)",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The role of the Efficiency Unit is to facilitate transformational change across the public service by assisting Ministries, Departments and Agencies (MDAs) in improving their performance and results in alignment with the government's strategic priorities and best practices.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Main Activities",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "tag": "ul",
+          "type": "list",
+          "start": 1,
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "type": "listitem",
+              "value": 1,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Organisational Reviews and Manpower Audits",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 2,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Record Management Reviews",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 3,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Business Process Mapping and Reengineering",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 4,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Service Assessment and Improvement",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "listType": "bullet",
+          "direction": null
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "## Efficiency Unit\n\n#### (Formerly Office of Public Sector Reform)\n\nThe role of the Efficiency Unit is to facilitate transformational change across the public service by assisting Ministries, Departments and Agencies (MDAs) in improving their performance and results in alignment with the government's strategic priorities and best practices.\n\n## Main Activities\n\n- Organisational Reviews and Manpower Audits\n- Record Management Reviews\n- Business Process Mapping and Reengineering\n- Service Assessment and Improvement"
+}

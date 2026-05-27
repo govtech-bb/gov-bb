@@ -1,0 +1,414 @@
+{
+  "title": "Getting around Barbados",
+  "description": "Information for visitors and temporary residents on obtaining a driver's permit and various transportation options in Barbados, including buses, minibuses, route taxis, and regular taxis.",
+  "categories": ["travel-id-citizenship"],
+  "section": "Travel, ID and Citizenship",
+  "stage": "alpha",
+  "source_url": "https://www.gov.bb/Visit-Barbados/getting-around-barbados",
+  "publish_date": "2025-10-24",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Obtaining a Drivers Permit - Visitors and Temporary Residents",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "A visitor or temporary resident of Barbados may obtain a temporary driving permit by applying to The Licensing Authority offices at The Pine, St. Michael, Oistins in Christ Church and Holetown in St. James at any approved hired car agency.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The applicant must be in possession of a valid driving license issued by the traffic authorities in his/her country of normal residence. There is a fee for the permit, which will be valid for one year or until the expiry of the applicants driving license, whichever is the shorter time.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Permit Fees:",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 1,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 1
+        },
+        {
+          "tag": "ul",
+          "type": "list",
+          "start": 1,
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "type": "listitem",
+              "value": 1,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "  Visitors permit - $10.00 for less than two months",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 2,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "  Visitors Permit - $100.00 for two months and over and up to a maximum of one year.",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "listType": "bullet",
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The transportation used for getting around Barbados are the Barbados Transport Board, Public Service Vehicles (PSVs), Route Taxis/ZR and Taxi Cabs.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Barbados Transport Board",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Barbados Transport Board Bus Schedules",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "id": "6a175156a4471fc1012af597",
+              "type": "link",
+              "fields": {
+                "url": "http://www.transportboard.com/route-finder/",
+                "newTab": false,
+                "linkType": "custom"
+              },
+              "format": "",
+              "indent": 0,
+              "version": 3,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "VIEW SCHEDULE",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Minibuses",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The minibuses which are a bit smaller than the transport board buses and are painted bright yellow with a blue stripe. The final destination of these buses is usually displayed in the bottom left-hand corner of the windshield and you should really check it out because these buses are privately owned and therefore only travel select routes.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The fare for these buses is the same $3.50 BBD as the transport board buses.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Route Taxis/ZRs",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "ZR vans are white minivans with a maroon stripe down the side, and the letters ZR on the license plate. These are privately owned and run specific routes numbered one through eleven.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Taxi Cabs",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Taxis will take you wherever you need to go at whatever hour. Our taxis do not operate on a meter system, therefore, it is imperative to establish a fare before accepting a ride.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Keep in mind that the fares are regulated by the government and most drivers are very fair and eager to please. Most Taxies also offer special island tours in which they take you to various tourist hot spots throughout the island for one flat rate.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "type": "linebreak",
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": "```",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "## Obtaining a Drivers Permit - Visitors and Temporary Residents\n\nA visitor or temporary resident of Barbados may obtain a temporary driving permit by applying to The Licensing Authority offices at The Pine, St. Michael, Oistins in Christ Church and Holetown in St. James at any approved hired car agency.\n\nThe applicant must be in possession of a valid driving license issued by the traffic authorities in his/her country of normal residence. There is a fee for the permit, which will be valid for one year or until the expiry of the applicants driving license, whichever is the shorter time.\n\n**Permit Fees:**\n\n-   Visitors permit - $10.00 for less than two months\n-   Visitors Permit - $100.00 for two months and over and up to a maximum of one year.\n\nThe transportation used for getting around Barbados are the Barbados Transport Board, Public Service Vehicles (PSVs), Route Taxis/ZR and Taxi Cabs.\n\n## Barbados Transport Board\n\nBarbados Transport Board Bus Schedules\n\n[VIEW SCHEDULE](http://www.transportboard.com/route-finder/)\n\n## Minibuses\n\nThe minibuses which are a bit smaller than the transport board buses and are painted bright yellow with a blue stripe. The final destination of these buses is usually displayed in the bottom left-hand corner of the windshield and you should really check it out because these buses are privately owned and therefore only travel select routes.\n\nThe fare for these buses is the same $3.50 BBD as the transport board buses.\n\n## Route Taxis/ZRs\n\nZR vans are white minivans with a maroon stripe down the side, and the letters ZR on the license plate. These are privately owned and run specific routes numbered one through eleven.\n\n## Taxi Cabs\n\nTaxis will take you wherever you need to go at whatever hour. Our taxis do not operate on a meter system, therefore, it is imperative to establish a fare before accepting a ride.\n\nKeep in mind that the fares are regulated by the government and most drivers are very fair and eager to please. Most Taxies also offer special island tours in which they take you to various tourist hot spots throughout the island for one flat rate.\n\\`\\`\\`"
+}

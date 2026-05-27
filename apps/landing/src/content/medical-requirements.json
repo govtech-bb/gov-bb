@@ -1,0 +1,119 @@
+{
+  "title": "Medical requirements",
+  "description": "Information for applicants for U.S. immigrant visas regarding mandatory medical examinations in Barbados at The Diagnostic Clinic, including location, contact, and scheduling details.",
+  "categories": ["travel-id-citizenship"],
+  "section": "Travel, ID and Citizenship",
+  "stage": "alpha",
+  "source_url": "https://www.gov.bb/Visit-Barbados/medical-requirements",
+  "publish_date": "2025-10-30",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Medical Examinations",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "tag": "h3",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Where and when will the immigrant visa medical examination take place?",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Applicants for U.S. immigrant visas must undergo the mandatory medical examination only at the designated facility - The Diagnostic Clinic in Barbados. Please refer to the Medical Examination Instructions. The contact information for the facility is below. You should contact the facility directly to schedule an appointment. Please note that the exam must be completed before your immigrant visa interview can take place.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Diagnostic Clinic   Beckles Road, St. Michael Barbados, W.I. (246) 426-5051",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "```",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "## Medical Examinations\n\n### Where and when will the immigrant visa medical examination take place?\n\nApplicants for U.S. immigrant visas must undergo the mandatory medical examination only at the designated facility - The Diagnostic Clinic in Barbados. Please refer to the Medical Examination Instructions. The contact information for the facility is below. You should contact the facility directly to schedule an appointment. Please note that the exam must be completed before your immigrant visa interview can take place.\n\nDiagnostic Clinic   Beckles Road, St. Michael Barbados, W.I. (246) 426-5051\n\n\\`\\`\\`"
+}

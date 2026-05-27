@@ -1,0 +1,197 @@
+{
+  "kind": "state-body",
+  "slug": "financial-services-commission",
+  "name": "Financial Services Commission",
+  "keywords": ["FSC", "Financial Services"],
+  "contact": [
+    {
+      "label": "Address",
+      "type": "address",
+      "value": [
+        "Bay Corporate Building",
+        "Bay Street",
+        "St. Michael",
+        "BB14038"
+      ]
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 421-2142"
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 421-2146"
+    },
+    {
+      "label": "Email",
+      "type": "email",
+      "value": "info@fsc.gov.bb"
+    },
+    {
+      "label": "Website",
+      "type": "website",
+      "value": "https://www.fsc.gov.bb/"
+    }
+  ],
+  "originalSource": "https://www.gov.bb/State-Bodies/financial-services-commission",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "We are responsible for supervising and regulating non-bank financial institutions in Barbados, particularly those entities licensed or registered under the following Acts of parliament:",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "ul",
+          "type": "list",
+          "start": 1,
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "type": "listitem",
+              "value": 1,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Exempt Insurance Act, Cap. 308A",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 2,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Insurance Act, Cap. 310",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 3,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Occupational Pension Benefits Act, Cap. 350B",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 4,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Securities Act, Cap. 318A",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 5,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Mutual Funds Act, Cap. 320B",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 6,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Co-operatives Societies Act, Cap. 378A (as it relates to the services provided by a credit union)",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "listType": "bullet",
+          "direction": null
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "We are responsible for supervising and regulating non-bank financial institutions in Barbados, particularly those entities licensed or registered under the following Acts of parliament:\n\n- Exempt Insurance Act, Cap. 308A\n- Insurance Act, Cap. 310\n- Occupational Pension Benefits Act, Cap. 350B\n- Securities Act, Cap. 318A\n- Mutual Funds Act, Cap. 320B\n- Co-operatives Societies Act, Cap. 378A (as it relates to the services provided by a credit union)"
+}

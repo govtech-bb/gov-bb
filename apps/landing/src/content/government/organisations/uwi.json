@@ -1,0 +1,61 @@
+{
+  "kind": "state-body",
+  "slug": "uwi",
+  "name": "University of the West Indies",
+  "keywords": ["UWI", "Cave Hill", "University"],
+  "contact": [
+    {
+      "label": "Address",
+      "type": "address",
+      "value": ["Cave Hill", "St. Michael"]
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 417-4000"
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 425-1327"
+    },
+    {
+      "label": "Website",
+      "type": "website",
+      "value": "https://cavehill.uwi.edu/"
+    }
+  ],
+  "originalSource": "https://www.gov.bb/State-Bodies/uwi",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The University of the West Indies, Cave Hill Campus' academic programmes offer diversity at both the undergraduate and graduate level. There are 7 faculties with supporting academic departments; various research units & centres; and two graduate institutions and more than 500 programmes. The UWI, Cave Hill is accredited.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "The University of the West Indies, Cave Hill Campus' academic programmes offer diversity at both the undergraduate and graduate level. There are 7 faculties with supporting academic departments; various research units & centres; and two graduate institutions and more than 500 programmes. The UWI, Cave Hill is accredited."
+}

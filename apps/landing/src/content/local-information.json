@@ -1,0 +1,74 @@
+{
+  "title": "Local information",
+  "description": "Barbados is a highly-ranked Caribbean travel destination known for its natural beauty, attracting visitors seeking relaxation or vibrant experiences, leading to significant international interest and media coverage.",
+  "categories": ["travel-id-citizenship"],
+  "section": "Travel, ID and Citizenship",
+  "stage": "alpha",
+  "source_url": "https://www.gov.bb/Visit-Barbados/local-information",
+  "publish_date": "2025-10-24",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Barbados is an island of natural wonder to many individuals of the world. No Surprise its rank as one of the top Caribbean travel destination for the rich and famous, in addition to those who are seeking rest and relaxation or party vibes in a tropical wonderland. Barbados really is the island that has it all, and as a result, receives a great deal of press coverage.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Ranked highly in most global population indexes, this draws additional international interest and exposure which makes Barbados the thriving tourist attraction it is today.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            },
+            {
+              "type": "linebreak",
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": "```",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "Barbados is an island of natural wonder to many individuals of the world. No Surprise its rank as one of the top Caribbean travel destination for the rich and famous, in addition to those who are seeking rest and relaxation or party vibes in a tropical wonderland. Barbados really is the island that has it all, and as a result, receives a great deal of press coverage.\n\nRanked highly in most global population indexes, this draws additional international interest and exposure which makes Barbados the thriving tourist attraction it is today.\n\\`\\`\\`"
+}

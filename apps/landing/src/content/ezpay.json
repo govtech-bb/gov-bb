@@ -1,0 +1,443 @@
+{
+  "title": "EZPay",
+  "description": "An overview of the Government of Barbados' EZpay+ payments platform, detailing its purpose, registration requirements, and available payment methods for various government services.",
+  "categories": ["money-financial-support"],
+  "section": "Work and Employment",
+  "stage": "alpha",
+  "source_url": "https://www.gov.bb/Citizens/ezpay",
+  "publish_date": "2025-10-24",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "What is the EZpay+ Payments Platform?",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The Government of Barbados has created a payments platform where citizens can pay for various government services using multiple payment options such as Credit Cards, Visa Debit Cards, Direct Debit, Payce Digital and the Barbados Post Office.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Payments can be made 24/7 at your convenience.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "What are the Requirements?",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "tag": "ul",
+          "type": "list",
+          "start": 1,
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "type": "listitem",
+              "value": 1,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "  An account on the Barbados Payment Portal - ",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                },
+                {
+                  "id": "6a175156a4471fc1012af58f",
+                  "type": "link",
+                  "fields": {
+                    "url": "https://www.ezpay.gov.bb",
+                    "newTab": false,
+                    "linkType": "custom"
+                  },
+                  "format": "",
+                  "indent": 0,
+                  "version": 3,
+                  "children": [
+                    {
+                      "mode": "normal",
+                      "text": "www.ezpay.gov.bb",
+                      "type": "text",
+                      "style": "",
+                      "detail": 0,
+                      "format": 0,
+                      "version": 1
+                    }
+                  ],
+                  "direction": null
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 2,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "  For Direct Debit - A bank account at any of the commercial banks in Barbados. (It is recommended that you register for online banking if provided. This is to speed up the process of the Bank Account Number validation.)",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 3,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "  A valid billing account at the particular government agency to which payment is being made e.g. the NIS Department, if applicable.",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "listType": "bullet",
+          "direction": null
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Options for Payment",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Credit Card",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 1,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": " - You can use your Credit Card to make payment by choosing the Credit Card option and completing the online payment process. The transaction is processed immediately.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 1
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Visa/Mastercard Debit Cards",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 1,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": " - You can use your Visa or Mastercard Debit Card to make payment by following the same process as to make payment via Credit Card. The transaction will be processed immediately.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 1
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Direct Debit",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 1,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": " - You can proceed to add your Bank Account for validation, which will take a period of two-three (2-3) working days. Once you have added the account to your Dashboard, complete the Authorization Form as directed. On completion of the process, you will be able to make payments on the platform. Direct Debit transactions are processed within five (5) business days by your bank. Please note that your payment will have to be cleared by your bank first before the department renders the service. It would be wise to take payment deadline dates into consideration when making payment using this method.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 1
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Payce Digital",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 1,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": " - You can use your Payce mobile app to scan and make payments on the portal.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 1
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Barbados Postal Service",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 1,
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": " - You can choose to pay by CASH by choosing the Barbados Postal Service option. On completion of the payment process, print the Payment Note and take it to the Post Office to pay by cash. The Post Office must SCAN the Barcode on your Payment Note for EZpay+ to register your payment.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 1
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Key Point to Note",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "After logging on the portal the date that the payment is initiated will be used when there is a need to calculate whether a discount, penalty or interest is to be applied.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "id": "6a175156a4471fc1012af590",
+              "type": "link",
+              "fields": {
+                "url": "https://www.ezpay.gov.bb/login.php",
+                "newTab": false,
+                "linkType": "custom"
+              },
+              "format": "",
+              "indent": 0,
+              "version": 3,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "LOG IN TO EZpay+",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 1,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "linebreak",
+              "version": 1
+            },
+            {
+              "mode": "normal",
+              "text": "```",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "## What is the EZpay+ Payments Platform?\n\nThe Government of Barbados has created a payments platform where citizens can pay for various government services using multiple payment options such as Credit Cards, Visa Debit Cards, Direct Debit, Payce Digital and the Barbados Post Office.\n\nPayments can be made 24/7 at your convenience.\n\n## What are the Requirements?\n\n-   An account on the Barbados Payment Portal - [www.ezpay.gov.bb](https://www.ezpay.gov.bb)\n-   For Direct Debit - A bank account at any of the commercial banks in Barbados. (It is recommended that you register for online banking if provided. This is to speed up the process of the Bank Account Number validation.)\n-   A valid billing account at the particular government agency to which payment is being made e.g. the NIS Department, if applicable.\n\n## Options for Payment\n\n**Credit Card** - You can use your Credit Card to make payment by choosing the Credit Card option and completing the online payment process. The transaction is processed immediately.\n\n**Visa/Mastercard Debit Cards** - You can use your Visa or Mastercard Debit Card to make payment by following the same process as to make payment via Credit Card. The transaction will be processed immediately.\n\n**Direct Debit** - You can proceed to add your Bank Account for validation, which will take a period of two-three (2-3) working days. Once you have added the account to your Dashboard, complete the Authorization Form as directed. On completion of the process, you will be able to make payments on the platform. Direct Debit transactions are processed within five (5) business days by your bank. Please note that your payment will have to be cleared by your bank first before the department renders the service. It would be wise to take payment deadline dates into consideration when making payment using this method.\n\n**Payce Digital** - You can use your Payce mobile app to scan and make payments on the portal.\n\n**Barbados Postal Service** - You can choose to pay by CASH by choosing the Barbados Postal Service option. On completion of the payment process, print the Payment Note and take it to the Post Office to pay by cash. The Post Office must SCAN the Barcode on your Payment Note for EZpay+ to register your payment.\n\n## Key Point to Note\n\nAfter logging on the portal the date that the payment is initiated will be used when there is a need to calculate whether a discount, penalty or interest is to be applied.\n\n[**LOG IN TO EZpay+**](https://www.ezpay.gov.bb/login.php)\n\\`\\`\\`"
+}

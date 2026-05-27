@@ -1,0 +1,197 @@
+{
+  "kind": "state-body",
+  "slug": "directorate-human-resource",
+  "name": "Directorate, Human Resource Policy and Staffing",
+  "keywords": ["DHRPS", "HR Policy", "Human Resource", "Staffing"],
+  "contact": [
+    {
+      "label": "Address",
+      "type": "address",
+      "value": [
+        "E Humphrey Walcott Building",
+        "Cnr. Culloden Road & Collymore Rock",
+        "St. Michael, Barbados"
+      ]
+    },
+    {
+      "label": "Main Office",
+      "type": "phone",
+      "value": "(246) 535-4400"
+    },
+    {
+      "label": "Director, HR Policy and Staffing",
+      "type": "phone",
+      "value": "(246) 535-4426"
+    },
+    {
+      "label": "Fax",
+      "type": "phone",
+      "value": "(246) 228-0093"
+    },
+    {
+      "label": "Email",
+      "type": "email",
+      "value": "hrps@mps.gov.bb"
+    }
+  ],
+  "originalSource": "https://www.gov.bb/State-Bodies/directorate-human-resource",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The Directorate, Human Resource Policy and Staffing (HRPS), formerly the Ministry of the Civil Service, has overall responsibility for the development of organisational design, career streaming and planning, as well as:",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "ul",
+          "type": "list",
+          "start": 1,
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "type": "listitem",
+              "value": 1,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Manpower Planning",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 2,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Employee Relations",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 3,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Industrial Relations",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 4,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Leave and Pensions Policy",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 5,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Wages and Compensation Management",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "listType": "bullet",
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Part of the Ministry of the Public Service.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "The Directorate, Human Resource Policy and Staffing (HRPS), formerly the Ministry of the Civil Service, has overall responsibility for the development of organisational design, career streaming and planning, as well as:\n\n- Manpower Planning\n- Employee Relations\n- Industrial Relations\n- Leave and Pensions Policy\n- Wages and Compensation Management\n\nPart of the Ministry of the Public Service."
+}

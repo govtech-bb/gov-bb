@@ -12,8 +12,14 @@ import path from 'path'
 import matter from 'gray-matter'
 import { pathToFileURL } from 'url'
 import { getPayload, type Payload } from 'payload'
+import {
+  convertMarkdownToLexical,
+  type SanitizedServerEditorConfig,
+} from '@payloadcms/richtext-lexical'
 import config from '../payload.config.js'
 import { CONTENT_DIR, ORGANISATIONS_DIR } from './content-paths.js'
+import { getBodyEditorConfig } from '../lib/body-editor.js'
+import { EMPTY_EDITOR_STATE } from '@govtech-bb/content/map'
 
 interface SeedCategory {
   slug: string
@@ -104,9 +110,15 @@ async function subcategoryId(payload: Payload, slug: string): Promise<string | n
   return found.docs[0]?.id
 }
 
+const mdToBody = (markdown: string, editorConfig: SanitizedServerEditorConfig) =>
+  markdown.trim()
+    ? convertMarkdownToLexical({ editorConfig, markdown: markdown.trim() })
+    : EMPTY_EDITOR_STATE
+
 async function seedServices(
   payload: Payload,
   categoryIds: Map<string, string | number>,
+  editorConfig: SanitizedServerEditorConfig,
 ): Promise<void> {
   const files = await walkMarkdown(CONTENT_DIR, [ORGANISATIONS_DIR])
   for (const file of files) {
@@ -122,14 +134,13 @@ async function seedServices(
       slug,
       title: fm.title ?? slug,
       description: fm.description,
-      body: content.trim(),
+      body: mdToBody(content, editorConfig),
       categories,
       subcategory: subId,
       section: fm.section,
       serviceType: fm.service_type,
       stage: fm.stage ?? 'alpha',
       featured: Boolean(fm.featured),
-      formId: fm.form_id,
       sourceUrl: fm.source_url,
       publishDate: fm.publish_date ? new Date(fm.publish_date).toISOString() : undefined,
       _status: 'published',
@@ -168,7 +179,10 @@ function onlineServiceBlocksFromFm(services: unknown): unknown[] {
   )
 }
 
-async function seedOrganisations(payload: Payload): Promise<void> {
+async function seedOrganisations(
+  payload: Payload,
+  editorConfig: SanitizedServerEditorConfig,
+): Promise<void> {
   const files = await walkMarkdown(ORGANISATIONS_DIR)
   for (const file of files) {
     const { data: fm, content } = matter(await fs.readFile(file, 'utf8'))
@@ -197,7 +211,7 @@ async function seedOrganisations(payload: Payload): Promise<void> {
       onlineServices: onlineServiceBlocksFromFm(fm.onlineServices),
       associatedDepartments: associated,
       originalSource: fm.originalSource,
-      body: content.trim(),
+      body: mdToBody(content, editorConfig),
       _status: 'published',
     })
   }
@@ -230,9 +244,10 @@ async function seedAdmin(payload: Payload): Promise<void> {
 async function run(): Promise<void> {
   const payload = await getPayload({ config })
   await seedAdmin(payload)
+  const editorConfig = await getBodyEditorConfig(payload.config)
   const categoryIds = await seedTaxonomy(payload)
-  await seedServices(payload, categoryIds)
-  await seedOrganisations(payload)
+  await seedServices(payload, categoryIds, editorConfig)
+  await seedOrganisations(payload, editorConfig)
   console.log('Seed complete')
   process.exit(0)
 }

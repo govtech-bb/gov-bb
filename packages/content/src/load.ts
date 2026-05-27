@@ -1,6 +1,5 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
-import matter from "gray-matter";
 import { mdaFrontmatterSchema, serviceFrontmatterSchema } from "./schemas";
 import type { ContentArtifact, MdaEntity, ServiceEntity } from "./types";
 
@@ -63,11 +62,10 @@ async function loadMdas(
 
   const out: MdaEntity[] = [];
   for (const name of entries) {
-    if (!name.endsWith(".md")) continue;
+    if (!name.endsWith(".json")) continue;
     const filePath = join(dir, name);
-    const raw = await readFile(filePath, "utf8");
-    const { data, content } = matter(raw);
-    const parsed = mdaFrontmatterSchema.safeParse(data);
+    const json = JSON.parse(await readFile(filePath, "utf8"));
+    const parsed = mdaFrontmatterSchema.safeParse(json);
     if (!parsed.success) {
       warnings.push(
         `[mda] ${name}: ${parsed.error.issues[0]?.message ?? "invalid frontmatter"}`,
@@ -76,7 +74,7 @@ async function loadMdas(
     }
     out.push({
       ...parsed.data,
-      body: content.trim(),
+      body: (json.bodyText ?? "").trim(),
       filePath,
     });
   }
@@ -107,18 +105,18 @@ async function loadServices(
 
     if (s.isDirectory()) {
       slug = name;
-      filePath = join(path, "index.md");
+      filePath = join(path, "index.json");
       raw = await readFileSafe(filePath);
       if (!raw) continue;
     } else {
-      if (!name.endsWith(".md")) continue;
-      slug = name.slice(0, -3);
+      if (!name.endsWith(".json")) continue;
+      slug = name.slice(0, -5);
       filePath = path;
       raw = await readFile(path, "utf8");
     }
 
-    const { data, content } = matter(raw);
-    const parsed = serviceFrontmatterSchema.safeParse(data);
+    const json = JSON.parse(raw);
+    const parsed = serviceFrontmatterSchema.safeParse(json);
     if (!parsed.success) {
       warnings.push(
         `[service] ${name}: ${parsed.error.issues[0]?.message ?? "invalid frontmatter"}`,
@@ -128,7 +126,7 @@ async function loadServices(
     out.push({
       ...parsed.data,
       slug,
-      body: content.trim(),
+      body: (json.bodyText ?? "").trim(),
       filePath,
     });
   }

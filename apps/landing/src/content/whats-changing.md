@@ -1,5 +1,6 @@
 ---
 title: "What's changing?"
+description: How and why the way you find and use public services is changing.
 publish_date: 2025-09-25
 ---
 

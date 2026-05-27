@@ -1,0 +1,67 @@
+{
+  "kind": "department",
+  "slug": "library-service",
+  "name": "National Library Service",
+  "shortDescription": "Serves as a ready source of dynamic information products and services to satisfy the educational, recreational, and informational needs of the community.",
+  "intro": "To be a ready source of dynamic information products and services to satisfy the educational, recreational and informational needs of the community.",
+  "keywords": ["NLS", "Library"],
+  "head": {
+    "name": "Mrs. Grace Haynes",
+    "role": "Director (Ag.)"
+  },
+  "contact": [
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 535-2900"
+    },
+    {
+      "label": "Fax",
+      "type": "phone",
+      "value": "(246) 535-2954"
+    },
+    {
+      "label": "Address",
+      "type": "address",
+      "value": [
+        "Fairchild Street",
+        "Bridgetown",
+        "St. Michael",
+        "Barbados, W.I."
+      ]
+    }
+  ],
+  "originalSource": "https://www.gov.bb/Departments/library-service",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "To be a ready source of dynamic information products and services to satisfied the educational, recreational and informational needs of the community.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "To be a ready source of dynamic information products and services to satisfied the educational, recreational and informational needs of the community."
+}

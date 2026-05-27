@@ -1,0 +1,49 @@
+{
+  "kind": "state-body",
+  "slug": "rural-development",
+  "name": "Rural Development Commission",
+  "keywords": ["RDC", "Rural Development"],
+  "contact": [
+    {
+      "label": "Address",
+      "type": "address",
+      "value": ["2nd Floor NSR Grand Building", "Bridge Street", "St. Michael"]
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 422-7669"
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 227-4500"
+    },
+    {
+      "label": "Email",
+      "type": "email",
+      "value": "ruraldevcom@caribsurf.com"
+    }
+  ],
+  "originalSource": "https://www.gov.bb/State-Bodies/rural-development",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [],
+          "direction": null
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": ""
+}

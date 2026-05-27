@@ -1,15 +1,21 @@
 import type { Field } from 'payload'
 
+// Slugs may be hierarchical (e.g. `calculate-severance-pay/start` for a service
+// sub-page); `/` is preserved as a path separator and each segment slugified.
 export const slugify = (input: string): string =>
   input
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
+    .split('/')
+    .map((segment) => segment.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''))
+    .filter(Boolean)
+    .join('/')
 
 /**
  * URL slug, auto-filled from `title` only when left blank, so existing slugs
- * (and the page URLs built from them) stay stable across edits.
+ * (and the page URLs built from them) stay stable across edits. Once a page is
+ * published the slug is locked for editors — changing a live URL breaks every
+ * existing link to it — and only an admin may change it.
  */
 export const slugField = (sourceField = 'title'): Field => ({
   name: 'slug',
@@ -20,7 +26,7 @@ export const slugField = (sourceField = 'title'): Field => ({
   admin: {
     position: 'sidebar',
     description:
-      'URL id for this page. Leave blank to fill from the title. Changing it changes the page URL.',
+      'The web address for this page. Leave blank and it fills in from the title. Once the page is live this is locked — changing it breaks every existing link, so ask an admin if it really must change.',
   },
   hooks: {
     beforeValidate: [

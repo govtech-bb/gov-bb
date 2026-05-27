@@ -22,8 +22,10 @@
   },
   "dependencies": {
     "@fontsource/figtree": "^5.0.0",
+    "@govtech-bb/content": "workspace:*",
     "@govtech-bb/design": "^1.0.0-alpha.14",
     "@govtech-bb/react": "^1.0.0-alpha.14",
+    "@payloadcms/live-preview-react": "3.85.0",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-query": "^5.100.11",
     "@tanstack/react-query-devtools": "^5.100.11",

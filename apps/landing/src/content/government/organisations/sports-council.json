@@ -1,0 +1,80 @@
+{
+  "kind": "department",
+  "slug": "sports-council",
+  "name": "The National Sports Council",
+  "shortDescription": "Dedicated to developing sports in Barbados and responsible for sports development programmes at the national level.",
+  "intro": "Dedicated to developing sports in Barbados and responsible for sports development programmes at the national level.",
+  "keywords": ["NSC", "Sports Council"],
+  "contact": [
+    {
+      "label": "Email",
+      "type": "email",
+      "value": "nsc.bdos@barbados.gov.bb"
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 535-9601"
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 535-9602"
+    },
+    {
+      "label": "Fax",
+      "type": "phone",
+      "value": "(246) 535-9659"
+    },
+    {
+      "label": "Website",
+      "type": "website",
+      "value": "http://www.nsc.gov.bb"
+    },
+    {
+      "label": "Address",
+      "type": "address",
+      "value": [
+        "The National Sports Complex",
+        "Wildey Gymnasium",
+        "Garfield Sobers Sports Complex",
+        "Wildey",
+        "St. Michael",
+        "BB 22026"
+      ]
+    }
+  ],
+  "originalSource": "https://www.gov.bb/Departments/sports-council",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The National Sports Council is dedicated to developing sports in Barbados and is responsible for sports development programmes at the national level.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "The National Sports Council is dedicated to developing sports in Barbados and is responsible for sports development programmes at the national level."
+}

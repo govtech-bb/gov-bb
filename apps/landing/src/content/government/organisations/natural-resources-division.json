@@ -1,0 +1,44 @@
+{
+  "kind": "state-body",
+  "slug": "natural-resources-division",
+  "name": "Natural Resources Unit",
+  "keywords": ["NRU", "Natural Resources"],
+  "contact": [
+    {
+      "label": "Address",
+      "type": "address",
+      "value": ["Trinity Business Centre Inc.", "Country Road", "St. Michael"]
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 535-2507"
+    },
+    {
+      "label": "Fax",
+      "type": "phone",
+      "value": "(246) 429-7489"
+    }
+  ],
+  "originalSource": "https://www.gov.bb/State-Bodies/natural-resources-division",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [],
+          "direction": null
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": ""
+}

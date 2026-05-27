@@ -11,7 +11,7 @@ export const FrontmatterSchema = z.object({
   subcategory: z.string().optional(),
   publish_date: z.coerce.date().optional(),
   source_url: z.url().optional(),
-  stage: z.enum(['alpha']).optional(),
+  stage: z.enum(['alpha', 'beta', 'migrated']).optional(),
   featured: z.boolean().optional(),
   section: z.string().optional(),
   service_type: z.enum(['digital', 'information']).optional(),
@@ -23,6 +23,18 @@ export const FrontmatterSchema = z.object({
    * See docs/decisions/0005 for the convention.
    */
   form_id: z.string().optional(),
+  /**
+   * Structured Start now button from the CMS. Rendered after the body when
+   * no `<a data-start-link>` anchor exists in the body (legacy pages keep
+   * their authored mid-body placement; new pages use this field).
+   */
+  start_button: z
+    .object({
+      type: z.enum(['form', 'page', 'url']),
+      href: z.string().optional(),
+      label: z.string().optional(),
+    })
+    .optional(),
 })
 
 export type RawFrontmatter = z.infer<typeof FrontmatterSchema>

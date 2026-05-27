@@ -1,0 +1,59 @@
+{
+  "kind": "state-body",
+  "slug": "soil-conservation",
+  "name": "Soil Conservation",
+  "keywords": ["SCU", "Soil Conservation"],
+  "contact": [
+    {
+      "label": "Address",
+      "type": "address",
+      "value": ["Haggatts", "St. Andrew"]
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 422-9030"
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 422-9192"
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 422-9193"
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 422-9910"
+    },
+    {
+      "label": "Fax",
+      "type": "phone",
+      "value": "(246) 422-9833"
+    }
+  ],
+  "originalSource": "https://www.gov.bb/State-Bodies/soil-conservation",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [],
+          "direction": null
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": ""
+}

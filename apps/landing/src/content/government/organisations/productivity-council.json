@@ -1,0 +1,71 @@
+{
+  "kind": "state-body",
+  "slug": "productivity-council",
+  "name": "The Productivity Council",
+  "keywords": ["BNPC", "Productivity Council"],
+  "contact": [
+    {
+      "label": "Address",
+      "type": "address",
+      "value": ["3rd Floor Baobab Towers Warrens", "St. Michael"]
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 626-9416"
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 626-9421"
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 626-8364"
+    },
+    {
+      "label": "Email",
+      "type": "email",
+      "value": "bnpcouncil@caribsurf.com"
+    },
+    {
+      "label": "Website",
+      "type": "website",
+      "value": "http://www.productivitycouncil.org.bb/"
+    }
+  ],
+  "originalSource": "https://www.gov.bb/State-Bodies/productivity-council",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The Productivity Council (formerly the National Productivity Board) was established by an Act of Parliament on August 31, 1993 to further the objectives of the Protocol for the Implementation of a Prices and Incomes Policy which was signed by Government, employers and workers representatives.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "The Productivity Council (formerly the National Productivity Board) was established by an Act of Parliament on August 31, 1993 to further the objectives of the Protocol for the Implementation of a Prices and Incomes Policy which was signed by Government, employers and workers representatives."
+}

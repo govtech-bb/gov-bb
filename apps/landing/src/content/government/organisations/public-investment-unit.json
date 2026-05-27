@@ -1,0 +1,50 @@
+{
+  "kind": "state-body",
+  "slug": "public-investment-unit",
+  "name": "Public Investment Unit",
+  "keywords": ["PIU", "Public Investment"],
+  "contact": [
+    {
+      "label": "Address",
+      "type": "address",
+      "value": [
+        "Finance and Economic Affairs",
+        "Government Headquarters",
+        "Bay Street",
+        "St. Michael",
+        "Barbados"
+      ]
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 436-6435"
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 429-4032"
+    }
+  ],
+  "originalSource": "https://www.gov.bb/State-Bodies/public-investment-unit",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [],
+          "direction": null
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": ""
+}

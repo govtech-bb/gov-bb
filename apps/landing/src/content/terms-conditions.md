@@ -1,5 +1,6 @@
 ---
 title: "Terms & Conditions"
+description: The terms and conditions for using the alpha.gov.bb website.
 source_url: https://www.gov.bb/terms-conditions
 publish_date: 2026-05-14
 ---

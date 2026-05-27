@@ -3,21 +3,21 @@ import { serviceFrontmatterSchema, mdaFrontmatterSchema } from '@govtech-bb/cont
 import {
   serviceDocToFrontmatter,
   organisationDocToFrontmatter,
+  EMPTY_EDITOR_STATE,
   type ServiceDoc,
   type OrganisationDoc,
-} from '@/lib/frontmatter-map'
+} from '@govtech-bb/content/map'
 
 const fullService: ServiceDoc = {
   title: 'Apply for a passport',
   description: 'How to apply for a Barbados passport.',
-  body: '## How to apply\n\nVisit the Immigration Department.',
+  body: EMPTY_EDITOR_STATE,
   categories: [{ slug: 'travel-id-citizenship' }],
   subcategory: { slug: 'youth-development-leadership' },
   serviceType: 'information',
   stage: 'alpha',
   featured: true,
   section: 'Travel, ID and Citizenship',
-  formId: 'passport-application',
   sourceUrl: 'https://www.gov.bb/Citizens/apply-passport',
   publishDate: '2025-10-24',
 }
@@ -26,7 +26,7 @@ const fullMinistry: OrganisationDoc = {
   kind: 'ministry',
   slug: 'ministry-of-education',
   name: 'Ministry of Education',
-  body: 'Body content.',
+  body: EMPTY_EDITOR_STATE,
   shortDescription: 'Transforms education.',
   intro: 'An introduction.',
   category: 'ministerial',
@@ -65,7 +65,10 @@ const fullMinistry: OrganisationDoc = {
       imageAlt: 'Tile',
     },
   ],
-  services: [{ title: 'A service', href: '/a-service', description: 'Does a thing.' }],
+  // `services` is now a relationship to the services collection; exported with
+  // depth it arrives as populated service docs, and the mapper resolves each to
+  // { title, href: slug, description }.
+  services: [{ slug: 'a-service', title: 'A service', description: 'Does a thing.' }],
   associatedDepartments: [
     {
       category: 'Departments',
@@ -79,7 +82,7 @@ const fullDepartment: OrganisationDoc = {
   kind: 'department',
   slug: 'school-meals',
   name: 'School Meals Department',
-  body: 'Body.',
+  body: EMPTY_EDITOR_STATE,
   shortDescription: 'Feeds schoolchildren.',
   leader: { name: 'The Head', role: 'Director' },
   contact: [{ blockType: 'phone', label: 'Phone', value: '(246) 000-0000' }],
@@ -91,11 +94,29 @@ describe('content export contract', () => {
     expect(() => serviceFrontmatterSchema.parse(data)).not.toThrow()
   })
 
+  it('service export returns the Lexical body editor state alongside the frontmatter', () => {
+    const { data, body } = serviceDocToFrontmatter(fullService)
+    // `data` is the structured frontmatter (validated below); `body` is the
+    // raw Lexical editor state the JSON artifact embeds for the landing renderer.
+    expect(body.root).toBeDefined()
+    expect(Array.isArray(body.root.children)).toBe(true)
+    expect(() => serviceFrontmatterSchema.parse(data)).not.toThrow()
+  })
+
   it('ministry export satisfies the canonical MDA schema', () => {
     const { data } = organisationDocToFrontmatter(fullMinistry)
     const parsed = mdaFrontmatterSchema.parse(data)
     expect(parsed.minister?.name).toBe('The Hon. Minister')
     expect(parsed.contact).toHaveLength(4)
+  })
+
+  it('ministry services relationship resolves to { title, href: /slug, description }', () => {
+    const { data } = organisationDocToFrontmatter(fullMinistry)
+    // href is slash-prefixed so the landing's resolveServiceHref resolves the
+    // slug to its category-prefixed URL (a bare slug would return unresolved).
+    expect(data.services).toEqual([
+      { title: 'A service', href: '/a-service', description: 'Does a thing.' },
+    ])
   })
 
   it('department export maps leader to `head`, not `minister`', () => {

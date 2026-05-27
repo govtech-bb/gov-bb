@@ -1,0 +1,66 @@
+{
+  "kind": "state-body",
+  "slug": "tourism-investment",
+  "name": "Barbados Tourism Investment Incorporated",
+  "keywords": ["BTII", "Tourism Investment"],
+  "contact": [
+    {
+      "label": "Address",
+      "type": "address",
+      "value": ["Ground Floor, Old Town Hall Building", "St. Michael"]
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 426-7085"
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 426-7086"
+    },
+    {
+      "label": "Email",
+      "type": "email",
+      "value": "btii@tourisminvest.com.bb"
+    },
+    {
+      "label": "Website",
+      "type": "website",
+      "value": "http://www.barbadostourisminvestment.com/"
+    }
+  ],
+  "originalSource": "https://www.gov.bb/State-Bodies/tourism-investment",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The Barbados tourism industry has shown steady growth over the last 50 years despite periods of relative instability driven by world economic and Geo-political crises. Travel and tourism is expected to grow by 4.6% per annum, in real terms, between 2002 and 2012. The travel and tourism economic contribution should rise from 37.4% to 43.8% during that same period.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "The Barbados tourism industry has shown steady growth over the last 50 years despite periods of relative instability driven by world economic and Geo-political crises. Travel and tourism is expected to grow by 4.6% per annum, in real terms, between 2002 and 2012. The travel and tourism economic contribution should rise from 37.4% to 43.8% during that same period."
+}

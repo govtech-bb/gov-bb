@@ -1,0 +1,133 @@
+{
+  "kind": "department",
+  "slug": "emergency-management",
+  "name": "Department of Emergency Management",
+  "shortDescription": "Develops and maintains a comprehensive National Disaster Management Programme to educate citizens and create disaster preparedness mechanisms across all societal levels.",
+  "intro": "The department's mission is to develop, promote, and maintain a comprehensive National Disaster Management Programme that educates citizens about disaster management and creates mechanisms to advance these activities across all levels of society.",
+  "keywords": ["DEM", "Emergency Management", "Disaster"],
+  "head": {
+    "name": "Ms. Kerry Hinds",
+    "role": "Director Ag."
+  },
+  "contact": [
+    {
+      "label": "Email",
+      "type": "email",
+      "value": "kerry.hinds@barbados.gov.bb"
+    },
+    {
+      "label": "Email",
+      "type": "email",
+      "value": "deminfo@barbados.gov.bb"
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 438-7575"
+    },
+    {
+      "label": "Fax",
+      "type": "phone",
+      "value": "(246) 421-8612"
+    },
+    {
+      "label": "Website",
+      "type": "website",
+      "value": "http://dem.gov.bb/"
+    },
+    {
+      "label": "Address",
+      "type": "address",
+      "value": [
+        "The George Greaves Building",
+        "#24 Warrens Industrial Park",
+        "Warrens",
+        "St. Michael",
+        "Barbados, W.I."
+      ]
+    }
+  ],
+  "originalSource": "https://www.gov.bb/Departments/emergency-management",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "To develop, promote and maintain a comprehensive National Disaster Management Programme which will:",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "ul",
+          "type": "list",
+          "start": 1,
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "type": "listitem",
+              "value": 1,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Educate all citizens about the various elements of Disaster Management.",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 2,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "Create appropriate mechanisms which will promote and advance Disaster Management activities at all levels of the society.",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "listType": "bullet",
+          "direction": null
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "To develop, promote and maintain a comprehensive National Disaster Management Programme which will:\n\n- Educate all citizens about the various elements of Disaster Management.\n- Create appropriate mechanisms which will promote and advance Disaster Management activities at all levels of the society."
+}

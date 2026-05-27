@@ -1,0 +1,49 @@
+{
+  "kind": "state-body",
+  "slug": "poverty-alleviation",
+  "name": "Poverty Alleviation Bureau",
+  "keywords": ["PAB", "Poverty Alleviation"],
+  "contact": [
+    {
+      "label": "Address",
+      "type": "address",
+      "value": ["4th Floor Warrens Office Complex", "St. Michael"]
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 310-1803"
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 310-1807"
+    },
+    {
+      "label": "Website",
+      "type": "website",
+      "value": "http://www.socialcare.gov.bb/"
+    }
+  ],
+  "originalSource": "https://www.gov.bb/State-Bodies/poverty-alleviation",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [],
+          "direction": null
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": ""
+}

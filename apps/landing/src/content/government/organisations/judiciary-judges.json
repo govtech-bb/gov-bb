@@ -1,0 +1,66 @@
+{
+  "kind": "state-body",
+  "slug": "judiciary-judges",
+  "name": "Judiciary - Judges",
+  "keywords": ["Judiciary", "Judges", "Courts"],
+  "contact": [
+    {
+      "label": "Address",
+      "type": "address",
+      "value": ["White Park Road", "St. Michael"]
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 434-9970"
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 427-8917"
+    },
+    {
+      "label": "Email",
+      "type": "email",
+      "value": "registrar@lawcourts.gov.bb"
+    },
+    {
+      "label": "Website",
+      "type": "website",
+      "value": "http://www.barbadoslawcourts.gov.bb/"
+    }
+  ],
+  "originalSource": "https://www.gov.bb/State-Bodies/judiciary-judges",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The Supreme Court of Judicature Act, Cap. 117A provides for the establishment of a Judicial Council chaired by the Chief Justice. The membership of the Judicial Council comprises the Judges, the Solicitor General, a Magistrate appointed by the Governor General, the Registrar, the President of the Barbados Bar Association and representatives of the Barbados Bar Association and persons drawn from civil society.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "The Supreme Court of Judicature Act, Cap. 117A provides for the establishment of a Judicial Council chaired by the Chief Justice. The membership of the Judicial Council comprises the Judges, the Solicitor General, a Magistrate appointed by the Governor General, the Registrar, the President of the Barbados Bar Association and representatives of the Barbados Bar Association and persons drawn from civil society."
+}

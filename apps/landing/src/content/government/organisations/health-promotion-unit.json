@@ -1,0 +1,71 @@
+{
+  "kind": "state-body",
+  "slug": "health-promotion-unit",
+  "name": "Health Promotion Unit",
+  "keywords": ["HPU", "Health Promotion"],
+  "contact": [
+    {
+      "label": "Address",
+      "type": "address",
+      "value": ["Frank Walcott Building", "Culloden Road", "St. Michael"]
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 426-5080"
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 467-9300"
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 426-5570"
+    },
+    {
+      "label": "Email",
+      "type": "email",
+      "value": "Ps-secretary@health.gov.bb"
+    },
+    {
+      "label": "Website",
+      "type": "website",
+      "value": "https://www.health.gov.bb/"
+    }
+  ],
+  "originalSource": "https://www.gov.bb/State-Bodies/health-promotion-unit",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "To provide comprehensive health services to all Barbadians. The Ministry of Health is the executing agency for the delivery of health care in the public sector and has responsibility for planning, regulation and evaluation across the public, private and NGO sectors. It is headed by a Minister who has overall responsibility for policy-making and political direction. Decision-making is centralized and there are no local authorities.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "To provide comprehensive health services to all Barbadians. The Ministry of Health is the executing agency for the delivery of health care in the public sector and has responsibility for planning, regulation and evaluation across the public, private and NGO sectors. It is headed by a Minister who has overall responsibility for policy-making and political direction. Decision-making is centralized and there are no local authorities."
+}

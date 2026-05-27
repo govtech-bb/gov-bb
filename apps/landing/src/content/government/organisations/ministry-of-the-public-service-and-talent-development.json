@@ -1,0 +1,640 @@
+{
+  "kind": "ministry",
+  "slug": "ministry-of-the-public-service-and-talent-development",
+  "name": "Ministry of the Public Service and Talent Development",
+  "shortDescription": "Strategic management of the human resource function across the public service.",
+  "intro": "Responsible for the strategic management of the human resource function across the Government of Barbados, including recruitment, selection, placement, promotion, discipline, retirement, and the training and development of public officers.",
+  "category": "ministerial",
+  "keywords": ["MPSTD", "Public Service", "Talent Development"],
+  "contact": [
+    {
+      "label": "Email",
+      "type": "email",
+      "value": "dg@mps.gov.bb"
+    },
+    {
+      "label": "Email",
+      "type": "email",
+      "value": "HRPS@mps.gov.bb"
+    },
+    {
+      "label": "Email",
+      "type": "email",
+      "value": "PRC@mps.gov.bb"
+    },
+    {
+      "label": "Email",
+      "type": "email",
+      "value": "LD@mps.gov.bb"
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 535-4423"
+    },
+    {
+      "label": "Fax",
+      "type": "phone",
+      "value": "(246) 535-6728"
+    },
+    {
+      "label": "Website",
+      "type": "website",
+      "value": "https://mps.gov.bb"
+    },
+    {
+      "label": "Address",
+      "type": "address",
+      "value": [
+        "E. Humphrey Walcott Building, Cnr. Collymore Rock and Culloden Road, St. Michael"
+      ]
+    }
+  ],
+  "associatedDepartments": [
+    {
+      "items": [
+        {
+          "name": "Directorate, Human Resource Policy and Staffing",
+          "slug": "directorate-human-resource"
+        },
+        {
+          "name": "Directorate, Learning and Development",
+          "slug": "directorate-learning-development"
+        },
+        {
+          "name": "Directorate, People Resourcing and Compliance",
+          "slug": "directorate-people-resourcing-and-compliance"
+        }
+      ]
+    }
+  ],
+  "originalSource": "https://www.gov.bb/Ministries/public-service",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Our Vision",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The Ministry of the Public Service will be the model of excellence in Human Resource Management and Development.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "About Us",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The Ministry is led by a Director General, Human Resources, who is responsible for:",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "ul",
+          "type": "list",
+          "start": 1,
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "type": "listitem",
+              "value": 1,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "providing human resource management advice to the Service Commissions, Permanent Secretaries and Heads of Departments",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 2,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "assisting the Minister in the formulation and development of the human resource management policy for the public service",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 3,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "performing the functions relating to the recruitment, selection, placement and transfer, appointment, promotion, discipline and retirement, training and development of personnel",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 4,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "ensuring that each Ministry or Department implements the appropriate human resource systems to adequately manage the Ministry or Department",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            },
+            {
+              "type": "listitem",
+              "value": 5,
+              "format": "",
+              "indent": 0,
+              "version": 1,
+              "children": [
+                {
+                  "mode": "normal",
+                  "text": "carrying out human resource management audits throughout the public service to ensure that Ministries or Departments complies with the human resource management and development policy",
+                  "type": "text",
+                  "style": "",
+                  "detail": 0,
+                  "format": 0,
+                  "version": 1
+                }
+              ],
+              "direction": null
+            }
+          ],
+          "listType": "bullet",
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The Ministry of the Public Service was created in January 2019, through the amalgamation of the entities (Ministry of the Civil Service, Personnel Administration Division, and Training Administration Division).",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The amalgamation was passed on the 19th August, 2019 under the Public Service (Miscellaneous Provisions) Act, 2019-35.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Role of the Directorates",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "tag": "h3",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Human Resource Policy and Staffing Directorate",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The Human Resource Policy and Staffing Directorate, facilitates the formulation and implementation of human resource policies; ensuring an adequate staffing complement and the best possible conditions of service.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h3",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "People Resourcing and Compliance Directorate",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The People Resourcing and Compliance Directorate, is responsible for the implementation of policies on Human Resource Management.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h3",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Learning and Development Directorate",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The Learning and Development Directorate, has overall responsibility for coordinating human resource development in the Public Service of Barbados. This Directorate has a broad mandate to assist in improving the efficiency and effectiveness of the Public Service through an integrated human resource development effort aimed at improving individual and organizational work performance.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h2",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Contact Information",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "tag": "h3",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Director General's Office",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "The Ministry of the Public Service E. Humphrey Walcott Building Cnr. Collymore Rock and Culloden Road St. Michael",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "<a data-start-link href=\"https://mps.gov.bb\" target=\"_blank\" rel=\"noopener noreferrer\">Go to mps.gov.bb</a>",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h3",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Director of Human Resource Policy and Staffing",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Ministry of the Public Service Human Resource Policy and Staffing Directorate 2nd Floor, E. Humphrey Walcott Building Cnr. Collymore Rock and Culloden Road St. Michael",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h3",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Director of People Resourcing and Compliance",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Ministry of the Public Service People Resourcing and Compliance Directorate 1st Floor E. Humphrey Walcott Building Cnr. Collymore Rock & Culloden Road St. Michael",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        },
+        {
+          "tag": "h3",
+          "type": "heading",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Director, Learning and Development Directorate",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null
+        },
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "Ministry of the Public Service Level 5, Warrens Towers II Warrens, St. Michael, Barbados",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "## Our Vision\n\nThe Ministry of the Public Service will be the model of excellence in Human Resource Management and Development.\n\n## About Us\n\nThe Ministry is led by a Director General, Human Resources, who is responsible for:\n\n- providing human resource management advice to the Service Commissions, Permanent Secretaries and Heads of Departments\n- assisting the Minister in the formulation and development of the human resource management policy for the public service\n- performing the functions relating to the recruitment, selection, placement and transfer, appointment, promotion, discipline and retirement, training and development of personnel\n- ensuring that each Ministry or Department implements the appropriate human resource systems to adequately manage the Ministry or Department\n- carrying out human resource management audits throughout the public service to ensure that Ministries or Departments complies with the human resource management and development policy\n\nThe Ministry of the Public Service was created in January 2019, through the amalgamation of the entities (Ministry of the Civil Service, Personnel Administration Division, and Training Administration Division).\n\nThe amalgamation was passed on the 19th August, 2019 under the Public Service (Miscellaneous Provisions) Act, 2019-35.\n\n## Role of the Directorates\n\n### Human Resource Policy and Staffing Directorate\n\nThe Human Resource Policy and Staffing Directorate, facilitates the formulation and implementation of human resource policies; ensuring an adequate staffing complement and the best possible conditions of service.\n\n### People Resourcing and Compliance Directorate\n\nThe People Resourcing and Compliance Directorate, is responsible for the implementation of policies on Human Resource Management.\n\n### Learning and Development Directorate\n\nThe Learning and Development Directorate, has overall responsibility for coordinating human resource development in the Public Service of Barbados. This Directorate has a broad mandate to assist in improving the efficiency and effectiveness of the Public Service through an integrated human resource development effort aimed at improving individual and organizational work performance.\n\n## Contact Information\n\n### Director General's Office\n\nThe Ministry of the Public Service E. Humphrey Walcott Building Cnr. Collymore Rock and Culloden Road St. Michael\n\n<a data-start-link href=\"https://mps.gov.bb\" target=\"\\_blank\" rel=\"noopener noreferrer\">Go to mps.gov.bb</a>\n\n### Director of Human Resource Policy and Staffing\n\nMinistry of the Public Service Human Resource Policy and Staffing Directorate 2nd Floor, E. Humphrey Walcott Building Cnr. Collymore Rock and Culloden Road St. Michael\n\n### Director of People Resourcing and Compliance\n\nMinistry of the Public Service People Resourcing and Compliance Directorate 1st Floor E. Humphrey Walcott Building Cnr. Collymore Rock & Culloden Road St. Michael\n\n### Director, Learning and Development Directorate\n\nMinistry of the Public Service Level 5, Warrens Towers II Warrens, St. Michael, Barbados"
+}

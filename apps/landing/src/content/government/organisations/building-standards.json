@@ -1,0 +1,29 @@
+{
+  "kind": "department",
+  "slug": "building-standards",
+  "name": "Barbados Building Standards Authority",
+  "shortDescription": "Enforces the Barbados National Building Code and the Building Act to facilitate cost-effective construction.",
+  "intro": "To enforce the provision of the Barbados National Building Code and the Building Act so as to facilitate the cost-effective construction of buildings.",
+  "keywords": ["BBSA", "Building Standards"],
+  "originalSource": "https://www.gov.bb/Departments/building-standards",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [],
+          "direction": null
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": ""
+}

@@ -1,0 +1,49 @@
+{
+  "kind": "state-body",
+  "slug": "meteorology",
+  "name": "Meteorology",
+  "keywords": ["Met", "Meteorology", "Weather"],
+  "contact": [
+    {
+      "label": "Address",
+      "type": "address",
+      "value": ["Husbands", "St. James"]
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 425-1362 / 1363"
+    },
+    {
+      "label": "Fax",
+      "type": "phone",
+      "value": "(246) 424-4733"
+    },
+    {
+      "label": "Website",
+      "type": "website",
+      "value": "http://www.cimh.edu.bb/?p=home"
+    }
+  ],
+  "originalSource": "https://www.gov.bb/State-Bodies/meteorology",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [],
+          "direction": null
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": ""
+}

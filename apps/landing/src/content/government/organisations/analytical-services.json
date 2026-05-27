@@ -1,0 +1,72 @@
+{
+  "kind": "department",
+  "slug": "analytical-services",
+  "name": "Analytical Services",
+  "shortDescription": "Provides timely and reliable analytical services through a commitment to quality.",
+  "intro": "To provide, through a commitment to quality, a timely and reliable analytical service.",
+  "keywords": ["Analytical Services", "Lab"],
+  "head": {
+    "name": "Dr. Beverley P. Wood",
+    "role": "Director"
+  },
+  "contact": [
+    {
+      "label": "Email",
+      "type": "email",
+      "value": "director@gas.gov.bb"
+    },
+    {
+      "label": "Telephone",
+      "type": "phone",
+      "value": "(246) 535-1711"
+    },
+    {
+      "label": "Fax",
+      "type": "phone",
+      "value": "(246) 436-7682"
+    },
+    {
+      "label": "Website",
+      "type": "website",
+      "value": "https://agriculture.gov.bb/Departments/Government-Analytical-Services/"
+    },
+    {
+      "label": "Address",
+      "type": "address",
+      "value": ["Culloden Road", "St. Michael"]
+    }
+  ],
+  "originalSource": "https://www.gov.bb/Departments/analytical-services",
+  "body": {
+    "root": {
+      "type": "root",
+      "format": "",
+      "indent": 0,
+      "version": 1,
+      "children": [
+        {
+          "type": "paragraph",
+          "format": "",
+          "indent": 0,
+          "version": 1,
+          "children": [
+            {
+              "mode": "normal",
+              "text": "To provide, through a commitment to quality, a timely and reliable analytical service.",
+              "type": "text",
+              "style": "",
+              "detail": 0,
+              "format": 0,
+              "version": 1
+            }
+          ],
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
+        }
+      ],
+      "direction": null
+    }
+  },
+  "bodyText": "To provide, through a commitment to quality, a timely and reliable analytical service."
+}
