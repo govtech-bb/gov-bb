@@ -65,15 +65,6 @@ export const extractRecipeFromSession = createServerFn({ method: "POST" })
     );
   });
 
-export const getSql = createServerFn({ method: "GET" })
-  .middleware([requireSession])
-  .inputValidator(sessionIdSchema)
-  .handler(async ({ data }): Promise<{ sql: string }> => {
-    return api.get(
-      `/builder/ai/sessions/${encodeURIComponent(data.sessionId)}/sql`,
-    );
-  });
-
 export const publishSession = createServerFn({ method: "POST" })
   .middleware([requireSession])
   .inputValidator(
