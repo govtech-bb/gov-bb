@@ -1,4 +1,6 @@
-Welcome to your new TanStack Start app!
+# alpha.gov.bb — Landing app
+
+The public-facing landing site for the Government of Barbados service portal, built with TanStack Start.
 
 # Getting Started
 
