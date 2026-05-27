@@ -68,7 +68,14 @@ export function serializeRecipeDraft(
       ? { description: draft.description }
       : {}),
     version: opts.version,
-    // processors are managed outside the builder (e.g. by the API); never set here
+    // Carry processors through, stripping the editor-only id (never persisted,
+    // per ADR 0009). `!== undefined` (not a truthiness/length check) keeps
+    // "absent" distinct from an explicit `[]`.
+    ...(draft.processors !== undefined
+      ? {
+          processors: draft.processors.map(({ id: _id, ...rest }) => rest),
+        }
+      : {}),
     steps,
     createdAt: now,
     updatedAt: now,
@@ -141,6 +148,17 @@ export function deserializeRecipe(
     title: recipe.title,
     ...(recipe.description !== undefined
       ? { description: recipe.description }
+      : {}),
+    // Symmetric read so processors survive an open → deploy cycle (issue #255).
+    // Mint an editor-only id per processor (mirrors RecipeFieldDraft); stripped
+    // again on serialize. `!== undefined` keeps "absent" distinct from `[]`.
+    ...(recipe.processors !== undefined
+      ? {
+          processors: recipe.processors.map((p) => ({
+            ...p,
+            id: crypto.randomUUID(),
+          })),
+        }
       : {}),
     steps,
   };
