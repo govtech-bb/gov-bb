@@ -3,11 +3,14 @@ import {
   findDuplicateFieldIds,
   findDuplicateStepIds,
   findRecipeIdCollisions,
+  findRecipeIdCollisionsFromRecipe,
+  formatCollisionIssues,
   fieldIdDuplicatesAnother,
 } from "./duplicate-ids";
 import { getCatalog } from "./catalog";
 import type { RegistryCatalog } from "./catalog";
 import type { RecipeDraft, RecipeFieldDraft } from "./types";
+import type { ServiceContractRecipe } from "@govtech-bb/form-types";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -558,5 +561,203 @@ describe("fieldIdDuplicatesAnother", () => {
     expect(fieldIdDuplicatesAnother(draft, catalog, "editor-B", "nope")).toBe(
       false,
     );
+  });
+});
+
+// ─── findRecipeIdCollisionsFromRecipe ─────────────────────────────────────────
+
+describe("findRecipeIdCollisionsFromRecipe", () => {
+  let catalog: RegistryCatalog;
+
+  beforeEach(() => {
+    catalog = getCatalog();
+  });
+
+  // Builds a persisted-format recipe (ServiceContractRecipe shape) so the
+  // wrapper is exercised on the same input the server routes hold.
+  function makeRecipe(
+    steps: ServiceContractRecipe["steps"],
+  ): ServiceContractRecipe {
+    return {
+      formId: "form-001",
+      title: "Test Form",
+      steps,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+      version: "1.0.0",
+    };
+  }
+
+  it("flags two same-component elements with blank overrides on the default id", () => {
+    const recipe = makeRecipe([
+      {
+        stepId: "step-1",
+        title: "Step 1",
+        elements: [{ ref: "components/text" }, { ref: "components/text" }],
+      },
+    ]);
+
+    const result = findRecipeIdCollisionsFromRecipe(recipe, catalog);
+    expect(result.fieldIdCollisions).toHaveLength(1);
+    expect(result.fieldIdCollisions[0].id).toBe("text");
+    expect(result.fieldIdCollisions[0].locations).toHaveLength(2);
+    expect(result.stepIdCollisions).toEqual([]);
+  });
+
+  it("flags two same-ref blocks colliding on each child id", () => {
+    const recipe = makeRecipe([
+      {
+        stepId: "step-1",
+        title: "Step 1",
+        elements: [{ ref: "blocks/name" }, { ref: "blocks/name" }],
+      },
+    ]);
+
+    const result = findRecipeIdCollisionsFromRecipe(recipe, catalog);
+    const ids = result.fieldIdCollisions.map((c) => c.id).sort();
+    expect(ids).toEqual(["first-name", "last-name"]);
+  });
+
+  it("flags a block child id colliding with a top-level element", () => {
+    const recipe = makeRecipe([
+      {
+        stepId: "step-1",
+        title: "Step 1",
+        elements: [
+          { ref: "components/text", overrides: { fieldId: "first-name" } },
+          { ref: "blocks/name" },
+        ],
+      },
+    ]);
+
+    const result = findRecipeIdCollisionsFromRecipe(recipe, catalog);
+    expect(result.fieldIdCollisions).toHaveLength(1);
+    expect(result.fieldIdCollisions[0].id).toBe("first-name");
+  });
+
+  it("flags duplicate stepIds across the recipe", () => {
+    const recipe = makeRecipe([
+      { stepId: "dup", title: "One", elements: [] },
+      { stepId: "dup", title: "Two", elements: [] },
+    ]);
+
+    const result = findRecipeIdCollisionsFromRecipe(recipe, catalog);
+    expect(result.fieldIdCollisions).toEqual([]);
+    expect(result.stepIdCollisions).toHaveLength(1);
+    expect(result.stepIdCollisions[0].stepId).toBe("dup");
+  });
+
+  it("returns no collisions for a clean recipe", () => {
+    const recipe = makeRecipe([
+      {
+        stepId: "step-1",
+        title: "Step 1",
+        elements: [
+          { ref: "components/text" },
+          { ref: "components/email" },
+          { ref: "blocks/name" },
+        ],
+      },
+    ]);
+
+    const result = findRecipeIdCollisionsFromRecipe(recipe, catalog);
+    expect(result.fieldIdCollisions).toEqual([]);
+    expect(result.stepIdCollisions).toEqual([]);
+  });
+
+  it("returns no collisions (and does not throw) for a structurally malformed recipe", () => {
+    const malformed = {
+      formId: "x",
+      title: "X",
+    } as unknown as ServiceContractRecipe;
+    const result = findRecipeIdCollisionsFromRecipe(malformed, catalog);
+    expect(result.fieldIdCollisions).toEqual([]);
+    expect(result.stepIdCollisions).toEqual([]);
+  });
+});
+
+// ─── formatCollisionIssues ────────────────────────────────────────────────────
+
+describe("formatCollisionIssues", () => {
+  it("formats a fieldId collision into a ValidationIssue with the UI's strings", () => {
+    const issues = formatCollisionIssues({
+      fieldIdCollisions: [
+        {
+          id: "text",
+          locations: [
+            {
+              fieldId: "text",
+              editorFieldId: "a",
+              stepId: "step-1",
+              stepTitle: "Personal details",
+              display: "Text",
+            },
+            {
+              fieldId: "text",
+              editorFieldId: "b",
+              stepId: "step-1",
+              stepTitle: "Personal details",
+              display: "Text",
+            },
+          ],
+        },
+      ],
+      stepIdCollisions: [],
+    });
+
+    expect(issues).toEqual([
+      {
+        path: "fieldId:text",
+        message:
+          'Field ID "text" is used by 2 fields: Personal details › Text; Personal details › Text.',
+      },
+    ]);
+  });
+
+  it("formats a stepId collision into a ValidationIssue with the UI's strings", () => {
+    const issues = formatCollisionIssues({
+      fieldIdCollisions: [],
+      stepIdCollisions: [
+        {
+          stepId: "dup",
+          locations: [
+            { stepId: "dup", stepTitle: "One", stepIndex: 0 },
+            { stepId: "dup", stepTitle: "Two", stepIndex: 1 },
+          ],
+        },
+      ],
+    });
+
+    expect(issues).toEqual([
+      {
+        path: "stepId:dup",
+        message: 'Step ID "dup" is used by 2 steps: One; Two.',
+      },
+    ]);
+  });
+
+  it("falls back to stepId when a location has no stepTitle", () => {
+    const issues = formatCollisionIssues({
+      fieldIdCollisions: [],
+      stepIdCollisions: [
+        {
+          stepId: "dup",
+          locations: [
+            { stepId: "dup", stepTitle: "", stepIndex: 0 },
+            { stepId: "dup", stepTitle: "", stepIndex: 1 },
+          ],
+        },
+      ],
+    });
+
+    expect(issues[0].message).toBe(
+      'Step ID "dup" is used by 2 steps: dup; dup.',
+    );
+  });
+
+  it("returns an empty array when there are no collisions", () => {
+    expect(
+      formatCollisionIssues({ fieldIdCollisions: [], stepIdCollisions: [] }),
+    ).toEqual([]);
   });
 });

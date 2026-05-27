@@ -45,6 +45,8 @@ export {
   findDuplicateFieldIds,
   findDuplicateStepIds,
   findRecipeIdCollisions,
+  findRecipeIdCollisionsFromRecipe,
+  formatCollisionIssues,
   fieldIdDuplicatesAnother,
 } from "./duplicate-ids";
 export type {

@@ -5,7 +5,7 @@ import { getCatalogFn } from "../../../server/registry";
 import { listForms, nextVersion, submitRecipe, updateRecipe } from "../../../server/forms";
 import { publishRecipe } from "../../../server/publish";
 import { validateRecipe, previewRecipe } from "../../../server/registry";
-import { serializeRecipeDraft, findRecipeIdCollisions } from "@govtech-bb/form-builder";
+import { serializeRecipeDraft, findRecipeIdCollisions, formatCollisionIssues } from "@govtech-bb/form-builder";
 import { bumpMinor } from "../../../lib/version";
 import type { ServiceContract } from "@govtech-bb/form-types";
 import type { RecipeDraft, ValidationResult, RecipeValidateResponse } from "@govtech-bb/form-builder";
@@ -150,27 +150,14 @@ function BuilderPage() {
       // Pre-flight: surface duplicate resolved fieldIds / stepIds in the panel.
       // (The server contract validator can't resolve catalog defaults, so this
       // is the client's job — same pattern as the empty-step pre-flight above.)
-      const { fieldIdCollisions, stepIdCollisions } = findRecipeIdCollisions(
-        draft,
-        catalog,
-      );
-      if (fieldIdCollisions.length > 0 || stepIdCollisions.length > 0) {
+      const collisions = findRecipeIdCollisions(draft, catalog);
+      if (
+        collisions.fieldIdCollisions.length > 0 ||
+        collisions.stepIdCollisions.length > 0
+      ) {
         const result: RecipeValidateResponse = {
           valid: false,
-          issues: [
-            ...fieldIdCollisions.map((c) => ({
-              path: `fieldId:${c.id}`,
-              message: `Field ID "${c.id}" is used by ${c.locations.length} fields: ${c.locations
-                .map((l) => `${l.stepTitle || l.stepId} › ${l.display}`)
-                .join("; ")}.`,
-            })),
-            ...stepIdCollisions.map((c) => ({
-              path: `stepId:${c.stepId}`,
-              message: `Step ID "${c.stepId}" is used by ${c.locations.length} steps: ${c.locations
-                .map((l) => l.stepTitle || l.stepId)
-                .join("; ")}.`,
-            })),
-          ],
+          issues: formatCollisionIssues(collisions),
         };
         setValidateResult(result);
         setLastSaveStatus("error");

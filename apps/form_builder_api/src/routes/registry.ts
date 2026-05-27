@@ -1,47 +1,20 @@
 import { Router } from "express";
 import {
-  getCatalog,
   getRegistryItem,
   hydrateForm,
   validateFormContract,
+  findRecipeIdCollisionsFromRecipe,
+  formatCollisionIssues,
   BEHAVIOUR_TYPE_DESCRIPTORS,
   VALIDATION_RULE_DESCRIPTORS,
-} from "@govtech-bb/form-builder";
-import type {
-  RegistryCatalog,
-  CustomComponentEntry,
 } from "@govtech-bb/form-builder";
 import type {
   ServiceContractRecipe,
   ServiceContract,
 } from "@govtech-bb/form-types";
-import { CustomComponent } from "@govtech-bb/database";
-import { getDataSource } from "../db.js";
+import { getFullCatalog } from "../catalog.js";
 
 export const registryRouter = Router();
-
-let _catalogCache: { data: RegistryCatalog; expiresAt: number } | null = null;
-
-async function getFullCatalog(): Promise<RegistryCatalog> {
-  const now = Date.now();
-  if (_catalogCache && _catalogCache.expiresAt > now) {
-    return _catalogCache.data;
-  }
-  const builtinCatalog = getCatalog();
-  const ds = await getDataSource();
-  const repo = ds.getRepository(CustomComponent);
-  const dbComponents = await repo.find();
-  const customEntries: CustomComponentEntry[] = dbComponents.map((c) => ({
-    ref: `components/${c.namespace}-${c.type}`,
-    displayName: `${c.namespace}/${c.type}`,
-    namespace: c.namespace,
-    type: c.type,
-    definition: c.definition,
-  }));
-  const catalog = { ...builtinCatalog, custom: customEntries };
-  _catalogCache = { data: catalog, expiresAt: now + 60_000 };
-  return catalog;
-}
 
 // GET /builder/registry/catalog
 registryRouter.get("/catalog", async (_req, res) => {
@@ -85,6 +58,21 @@ registryRouter.get("/metadata", async (_req, res) => {
 registryRouter.post("/validate", async (req, res) => {
   try {
     const result = validateFormContract(req.body.recipe);
+    if (!result.ok) {
+      res.json(result);
+      return;
+    }
+    // Contract parse passed — now backstop recipe-wide fieldId/stepId
+    // uniqueness, which the Zod schema can't check (it has no catalog to
+    // resolve defaults). Catalog-dependent, so it lives here, not in
+    // validateFormContract (ADR 0010).
+    const catalog = await getFullCatalog();
+    const collisions = findRecipeIdCollisionsFromRecipe(result.data, catalog);
+    const issues = formatCollisionIssues(collisions);
+    if (issues.length > 0) {
+      res.json({ ok: false, issues });
+      return;
+    }
     res.json(result);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
