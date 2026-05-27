@@ -84,6 +84,9 @@ importers:
       husky:
         specifier: ^9.1.7
         version: 9.1.7
+      identity-obj-proxy:
+        specifier: ^3.0.0
+        version: 3.0.0
       jest-axe:
         specifier: ^10.0.0
         version: 10.0.0

@@ -7,7 +7,10 @@ import type { FormDefinitionSummary } from "../../../types/index";
 import styles from "../../../styles/builder.module.css";
 
 interface FormPickerProps {
-  forms: FormDefinitionSummary[];
+  /** The forms to choose from, or `null` while the background fetch is in flight. */
+  forms: FormDefinitionSummary[] | null;
+  /** A message if the background fetch failed, otherwise `null`. */
+  loadError: string | null;
   isDirty: boolean;
   catalog: RegistryCatalog;
   onLoad: (draft: RecipeDraft, formId: string, version: string) => void;
@@ -21,12 +24,14 @@ function matches(query: string, ...fields: Array<string | undefined>) {
   return fields.some((f) => f !== undefined && f.toLowerCase().includes(q));
 }
 
-export function FormPicker({ forms, isDirty, catalog, onLoad, onClose, onRequestDelete }: FormPickerProps) {
+export function FormPicker({ forms, loadError, isDirty, catalog, onLoad, onClose, onRequestDelete }: FormPickerProps) {
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
 
-  const filtered = forms.filter((form) => matches(query, form.title, form.formId));
+  // `forms` is null while the background fetch is in flight; treat that as an
+  // empty list for filtering so the loading/empty states below own the messaging.
+  const filtered = (forms ?? []).filter((form) => matches(query, form.title, form.formId));
 
   async function handleSelect(form: FormDefinitionSummary) {
     if (isDirty && !window.confirm("Unsaved changes will be lost. Continue?")) return;
@@ -74,14 +79,21 @@ export function FormPicker({ forms, isDirty, catalog, onLoad, onClose, onRequest
           )}
         </div>
 
-        {error && (
+        {(error || loadError) && (
           <div className={styles.validationErrors} style={{ marginBottom: 8 }}>
-            {error}
+            {error || loadError}
           </div>
         )}
 
-        {forms.length === 0 && <p style={{ color: "#888" }}>No forms found.</p>}
-        {forms.length > 0 && filtered.length === 0 && (
+        {forms === null && !loadError && (
+          <p style={{ color: "#888" }}>Loading forms…</p>
+        )}
+
+        {forms !== null && forms.length === 0 && (
+          <p style={{ color: "#888" }}>No forms found.</p>
+        )}
+
+        {forms !== null && forms.length > 0 && filtered.length === 0 && (
           <p style={{ color: "#888" }}>No forms match your search.</p>
         )}
 
