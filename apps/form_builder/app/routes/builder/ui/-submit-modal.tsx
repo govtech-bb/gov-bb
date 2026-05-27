@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { RecipeDraft } from "@govtech-bb/form-builder";
 import { validate, compare } from "../../../lib/version";
+import { formPreviewUrl } from "../../../lib/form-url";
 import styles from "../../../styles/builder.module.css";
 
 interface SubmitModalProps {
@@ -61,6 +62,15 @@ export function SubmitModal({
         {submitSuccess ? (
           <div className={styles.validationSuccess}>
             Recipe submitted successfully!
+            <div style={{ marginTop: 8 }}>
+              <a
+                href={formPreviewUrl(draft.formId)}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                🔗 Preview form
+              </a>
+            </div>
           </div>
         ) : (
           <div>
