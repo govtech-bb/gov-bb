@@ -14,9 +14,18 @@ interface FormPickerProps {
   onClose: () => void;
 }
 
+function matches(query: string, ...fields: Array<string | undefined>) {
+  if (!query) return true;
+  const q = query.toLowerCase();
+  return fields.some((f) => f !== undefined && f.toLowerCase().includes(q));
+}
+
 export function FormPicker({ forms, isDirty, catalog, onLoad, onClose }: FormPickerProps) {
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+
+  const filtered = forms.filter((form) => matches(query, form.title, form.formId));
 
   async function handleSelect(form: FormDefinitionSummary) {
     if (isDirty && !window.confirm("Unsaved changes will be lost. Continue?")) return;
@@ -42,6 +51,28 @@ export function FormPicker({ forms, isDirty, catalog, onLoad, onClose }: FormPic
           <button type="button" onClick={onClose}>Close</button>
         </div>
 
+        <div className={styles.pickerSearch}>
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search forms…"
+            className={styles.pickerSearchInput}
+            aria-label="Search forms"
+            autoFocus
+          />
+          {query && (
+            <button
+              type="button"
+              className={styles.pickerSearchClear}
+              onClick={() => setQuery("")}
+              aria-label="Clear search"
+            >
+              ×
+            </button>
+          )}
+        </div>
+
         {error && (
           <div className={styles.validationErrors} style={{ marginBottom: 8 }}>
             {error}
@@ -49,8 +80,11 @@ export function FormPicker({ forms, isDirty, catalog, onLoad, onClose }: FormPic
         )}
 
         {forms.length === 0 && <p style={{ color: "#888" }}>No forms found.</p>}
+        {forms.length > 0 && filtered.length === 0 && (
+          <p style={{ color: "#888" }}>No forms match your search.</p>
+        )}
 
-        {forms.map((form) => (
+        {filtered.map((form) => (
           <div
             key={form.id}
             className={styles.fieldRow}
