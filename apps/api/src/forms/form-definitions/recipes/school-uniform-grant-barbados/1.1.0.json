@@ -1,0 +1,235 @@
+{
+  "formId": "school-uniform-grant-barbados",
+  "title": "School Uniform Grant",
+  "description": "Application form for $100.00 uniform grant from the Ministry of Educational Transformation, Barbados",
+  "version": "1.1.0",
+  "steps": [
+    {
+      "stepId": "step-1",
+      "title": "Candidate Information",
+      "elements": [
+        {
+          "ref": "components/generic/text-input",
+          "overrides": {
+            "label": "Name of School/Institution",
+            "fieldId": "school_name",
+            "required": true,
+            "placeholder": "A. DACOSTA EDWARDS PRIMARY"
+          }
+        },
+        {
+          "ref": "components/generic/text-input",
+          "overrides": {
+            "label": "Candidate Full Name",
+            "fieldId": "candidate_full_name",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/text-input",
+          "overrides": {
+            "label": "Candidate ID",
+            "fieldId": "candidate_id",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/text-input",
+          "overrides": {
+            "type": "email",
+            "label": "Candidate Email",
+            "fieldId": "candidate_email",
+            "required": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "step-2",
+      "title": "Parent/Guardian Information",
+      "elements": [
+        {
+          "ref": "components/generic/text-input",
+          "overrides": {
+            "label": "First Name",
+            "fieldId": "parent_first_name",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/text-input",
+          "overrides": {
+            "label": "Last Name",
+            "fieldId": "parent_last_name",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/text-input",
+          "overrides": {
+            "label": "Address",
+            "fieldId": "parent_address",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/text-input",
+          "overrides": {
+            "label": "Parish",
+            "fieldId": "parent_parish",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/text-input",
+          "overrides": {
+            "type": "tel",
+            "label": "Main Phone",
+            "fieldId": "parent_main_phone",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/text-input",
+          "overrides": {
+            "type": "tel",
+            "label": "Cell Phone",
+            "fieldId": "parent_cell_phone"
+          }
+        },
+        {
+          "ref": "components/generic/text-input",
+          "overrides": {
+            "label": "National ID",
+            "fieldId": "parent_national_id",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/text-input",
+          "overrides": {
+            "label": "N.I.S NO",
+            "fieldId": "parent_nlis_no"
+          }
+        },
+        {
+          "ref": "components/generic/text-input",
+          "overrides": {
+            "label": "TAMIS NO",
+            "fieldId": "parent_tamis_no"
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "step-3",
+      "title": "Banking Information",
+      "elements": [
+        {
+          "ref": "components/generic/text-input",
+          "overrides": {
+            "label": "Name of Bank",
+            "fieldId": "bank_name",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/text-input",
+          "overrides": {
+            "label": "Name on Account",
+            "fieldId": "bank_account_name",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/text-input",
+          "overrides": {
+            "label": "Bank Number",
+            "fieldId": "bank_number",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/text-input",
+          "overrides": {
+            "label": "Bank Account Type",
+            "fieldId": "bank_account_type",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/text-input",
+          "overrides": {
+            "label": "Branch",
+            "fieldId": "bank_branch",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/text-input",
+          "overrides": {
+            "label": "Bank Account No",
+            "fieldId": "bank_account_no",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/text-input",
+          "overrides": {
+            "label": "Bank Address",
+            "fieldId": "bank_address",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/text-input",
+          "overrides": {
+            "label": "BIC/SWIFT CODE",
+            "fieldId": "bic_swift_code",
+            "required": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "step-4",
+      "title": "Signature and Date",
+      "elements": [
+        {
+          "ref": "components/generic/signature",
+          "overrides": {
+            "label": "Signature of Parent/Guardian",
+            "fieldId": "parent_guardian_signature",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/date-input",
+          "overrides": {
+            "label": "Date",
+            "fieldId": "submission_date",
+            "required": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Submission Confirmation",
+      "elements": [],
+      "behaviours": []
+    }
+  ],
+  "createdAt": "2026-05-27T20:17:17.379Z",
+  "updatedAt": "2026-05-27T20:17:17.379Z"
+}
