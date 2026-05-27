@@ -6,7 +6,6 @@ import {
   publishSession,
   deletePublished,
   extractRecipeFromSession,
-  getSql,
 } from "../../../server/ai-builder/sessions";
 
 interface ChatMessage {
@@ -49,6 +48,7 @@ function AiFormBuilderPage() {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [pdfName, setPdfName] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
+  const [opening, setOpening] = useState(false);
   const [publishResult, setPublishResult] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -144,21 +144,21 @@ function AiFormBuilderPage() {
     }
   };
 
-  const handleExportSql = async () => {
-    if (!session.sessionId) return;
+  const handleOpenInBuilder = async () => {
+    if (!session.sessionId || !session.recipe) return;
+    setOpening(true);
+    setPublishResult(null);
     try {
-      const data = await getSql({ data: { sessionId: session.sessionId } });
-      if (data.sql) {
-        const blob = new Blob([data.sql], { type: "text/sql" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `${(session.recipe as any)?.formId ?? "form"}.sql`;
-        a.click();
-        URL.revokeObjectURL(url);
-      }
+      // Publish persists the recipe and returns its formId; the UI builder then
+      // loads that form by id (same path the Open picker uses). publishSession is
+      // idempotent within a session, so this works whether or not Publish was clicked.
+      const data = await publishSession({
+        data: { sessionId: session.sessionId },
+      });
+      navigate({ to: "/builder/ui", search: { formId: data.formId } });
     } catch (err: any) {
-      setSession((s) => ({ ...s, error: err.message }));
+      setPublishResult(`Error: ${err.message}`);
+      setOpening(false);
     }
   };
 
@@ -336,23 +336,8 @@ function AiFormBuilderPage() {
               Extract
             </button>
             <button
-              onClick={handleExportSql}
-              disabled={!session.recipe}
-              style={{
-                padding: "6px 12px",
-                background: session.recipe ? "#ff9800" : "#e0e0e0",
-                color: session.recipe ? "white" : "#999",
-                border: "none",
-                borderRadius: "4px",
-                cursor: session.recipe ? "pointer" : "default",
-                fontSize: "12px",
-              }}
-            >
-              Export SQL
-            </button>
-            <button
               onClick={handlePublish}
-              disabled={!session.recipe || publishing}
+              disabled={!session.recipe || publishing || opening}
               style={{
                 padding: "6px 12px",
                 background: session.recipe ? "#4caf50" : "#e0e0e0",
@@ -364,6 +349,21 @@ function AiFormBuilderPage() {
               }}
             >
               {publishing ? "Publishing..." : "Publish"}
+            </button>
+            <button
+              onClick={handleOpenInBuilder}
+              disabled={!session.recipe || opening || publishing}
+              style={{
+                padding: "6px 12px",
+                background: session.recipe ? "#7c3aed" : "#e0e0e0",
+                color: session.recipe ? "white" : "#999",
+                border: "none",
+                borderRadius: "4px",
+                cursor: session.recipe && !opening ? "pointer" : "default",
+                fontSize: "12px",
+              }}
+            >
+              {opening ? "Opening…" : "Open in builder"}
             </button>
           </div>
         </div>
@@ -410,20 +410,9 @@ function AiFormBuilderPage() {
         )}
         <div style={{ flex: 1, overflow: "auto", padding: "16px" }}>
           {session.recipe ? (
-            <pre
-              style={{
-                fontSize: "11px",
-                background: "#263238",
-                color: "#eeffff",
-                padding: "16px",
-                borderRadius: "8px",
-                overflow: "auto",
-                whiteSpace: "pre-wrap",
-                wordBreak: "break-word",
-              }}
-            >
-              {JSON.stringify(session.recipe, null, 2)}
-            </pre>
+            <div style={{ color: "#2e7d32", textAlign: "center", marginTop: "40px" }}>
+              <p>✓ Recipe ready. Publish it, or open it in the builder to edit.</p>
+            </div>
           ) : (
             <div style={{ color: "#999", textAlign: "center", marginTop: "40px" }}>
               <p>Recipe will appear here once the AI generates it.</p>

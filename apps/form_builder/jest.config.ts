@@ -4,8 +4,13 @@ const config: Config = {
   preset: "ts-jest",
   testEnvironment: "node",
   rootDir: "app",
-  testRegex: ".*\\.spec\\.ts$",
+  // Match .spec.ts (server/logic suites, node env) and .spec.tsx (component
+  // suites, which opt into jsdom per-file via a @jest-environment docblock).
+  testRegex: ".*\\.spec\\.tsx?$",
   moduleNameMapper: {
+    // CSS-module imports resolve to a proxy that echoes the class name, so
+    // components importing `*.module.css` render in tests without a CSS loader.
+    "\\.(css)$": "identity-obj-proxy",
     "^@govtech-bb/form-types$":
       "<rootDir>/../../../packages/form-types/src/index.ts",
     "^@govtech-bb/form-builder$":

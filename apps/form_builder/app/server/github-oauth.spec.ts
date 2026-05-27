@@ -2,6 +2,7 @@ import {
   exchangeCodeForToken,
   fetchGitHubLogin,
   userHasRepoWriteAccess,
+  userIsTeamMember,
 } from "./github-oauth";
 
 type FetchMock = jest.Mock<
@@ -120,6 +121,7 @@ describe("github-oauth helpers", () => {
       );
       const ok = await userHasRepoWriteAccess({
         accessToken: "t",
+        org: "govtech-bb",
         login: "alice",
       });
       expect(ok).toBe(true);
@@ -135,6 +137,7 @@ describe("github-oauth helpers", () => {
       );
       const ok = await userHasRepoWriteAccess({
         accessToken: "t",
+        org: "govtech-bb",
         login: "a",
       });
       expect(ok).toBe(true);
@@ -146,6 +149,7 @@ describe("github-oauth helpers", () => {
       );
       const ok = await userHasRepoWriteAccess({
         accessToken: "t",
+        org: "govtech-bb",
         login: "a",
       });
       expect(ok).toBe(false);
@@ -155,6 +159,7 @@ describe("github-oauth helpers", () => {
       fetchMock.mockResolvedValueOnce(jsonResponse(404, {}));
       const ok = await userHasRepoWriteAccess({
         accessToken: "t",
+        org: "govtech-bb",
         login: "a",
       });
       expect(ok).toBe(false);
@@ -164,6 +169,7 @@ describe("github-oauth helpers", () => {
       fetchMock.mockResolvedValueOnce(jsonResponse(403, {}));
       const ok = await userHasRepoWriteAccess({
         accessToken: "t",
+        org: "govtech-bb",
         login: "a",
       });
       expect(ok).toBe(false);
@@ -172,7 +178,11 @@ describe("github-oauth helpers", () => {
     it("throws on other non-OK statuses", async () => {
       fetchMock.mockResolvedValueOnce(jsonResponse(500, {}));
       await expect(
-        userHasRepoWriteAccess({ accessToken: "t", login: "a" }),
+        userHasRepoWriteAccess({
+          accessToken: "t",
+          org: "govtech-bb",
+          login: "a",
+        }),
       ).rejects.toThrow(/Permission check failed: 500/);
     });
 
@@ -182,10 +192,85 @@ describe("github-oauth helpers", () => {
       );
       await userHasRepoWriteAccess({
         accessToken: "t",
+        org: "govtech-bb",
         login: "name with space",
       });
       const { url } = lastFetch(fetchMock);
       expect(url).toContain("/collaborators/name%20with%20space/permission");
+    });
+  });
+
+  describe("userIsTeamMember", () => {
+    it("returns true when membership state is active", async () => {
+      fetchMock.mockResolvedValueOnce(jsonResponse(200, { state: "active" }));
+      const ok = await userIsTeamMember({
+        accessToken: "t",
+        org: "govtech-bb",
+        teamSlug: "form-authors",
+        login: "alice",
+      });
+      expect(ok).toBe(true);
+      const { url } = lastFetch(fetchMock);
+      expect(url).toBe(
+        "https://api.github.com/orgs/govtech-bb/teams/form-authors/memberships/alice",
+      );
+    });
+
+    it("returns false when membership state is pending", async () => {
+      fetchMock.mockResolvedValueOnce(jsonResponse(200, { state: "pending" }));
+      const ok = await userIsTeamMember({
+        accessToken: "t",
+        org: "govtech-bb",
+        teamSlug: "form-authors",
+        login: "alice",
+      });
+      expect(ok).toBe(false);
+    });
+
+    it("returns false on 404 (not a member)", async () => {
+      fetchMock.mockResolvedValueOnce(jsonResponse(404, {}));
+      const ok = await userIsTeamMember({
+        accessToken: "t",
+        org: "govtech-bb",
+        teamSlug: "form-authors",
+        login: "alice",
+      });
+      expect(ok).toBe(false);
+    });
+
+    it("returns false on 403 (token can't see the org/team)", async () => {
+      fetchMock.mockResolvedValueOnce(jsonResponse(403, {}));
+      const ok = await userIsTeamMember({
+        accessToken: "t",
+        org: "govtech-bb",
+        teamSlug: "form-authors",
+        login: "alice",
+      });
+      expect(ok).toBe(false);
+    });
+
+    it("throws on other non-OK statuses", async () => {
+      fetchMock.mockResolvedValueOnce(jsonResponse(500, {}));
+      await expect(
+        userIsTeamMember({
+          accessToken: "t",
+          org: "govtech-bb",
+          teamSlug: "form-authors",
+          login: "alice",
+        }),
+      ).rejects.toThrow(/Team membership check failed: 500/);
+    });
+
+    it("URL-encodes the login segment", async () => {
+      fetchMock.mockResolvedValueOnce(jsonResponse(200, { state: "active" }));
+      await userIsTeamMember({
+        accessToken: "t",
+        org: "govtech-bb",
+        teamSlug: "form-authors",
+        login: "name with space",
+      });
+      const { url } = lastFetch(fetchMock);
+      expect(url).toContain("/memberships/name%20with%20space");
     });
   });
 });

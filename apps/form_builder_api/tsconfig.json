@@ -12,11 +12,13 @@
     "declaration": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
+    "isolatedModules": true,
     "paths": {
       "@govtech-bb/database": ["../../packages/database/src/index.ts"],
       "@govtech-bb/form-builder": ["../../packages/form-builder/src/index.ts"],
       "@govtech-bb/form-types": ["../../packages/form-types/src/index.ts"]
     }
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts"],
+  "exclude": ["dist", "**/*.spec.ts"]
 }

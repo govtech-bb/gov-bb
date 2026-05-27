@@ -414,6 +414,78 @@ jobs:
           echo "❌ Amplify $APP_LABEL build did not finish within 15 minutes"
           exit 1
 
+  deploy-chat-ingest:
+    # Chatbot RAG ingest image — one-shot Fargate task that runs
+    # `pnpm exec tsx src/ingest/cli.ts` from apps/chat against the sandbox
+    # pgvector RDS. Infra (ECR repo, ECS task def, indexer Lambda, 15-min
+    # EventBridge cron) lives in govtech-bb/alpha-infra — see
+    # SANDBOX-CHATBOT-INGEST.md there. This job builds the image and fires
+    # an instant ingest so content changes reach chat.sandbox.alpha.gov.bb
+    # in seconds instead of waiting for the cron.
+    #
+    # Gated on the same `chat` affected output as amplify-chat — nx-affected
+    # marks chat as affected when packages/content changes (chat depends on
+    # it via workspace), so this captures both code- and content-driven
+    # rebuilds without a second gate.
+    name: Build, Push & Trigger chat-ingest
+    needs: setup
+    if: needs.setup.outputs.chat == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.build.outputs.image }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push chat-ingest image
+        id: build
+        env:
+          REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          INGEST_URI="$REGISTRY/chatbot-ingest-sandbox:$IMAGE_TAG"
+          INGEST_LATEST="$REGISTRY/chatbot-ingest-sandbox:latest"
+
+          docker build --platform linux/amd64 -f apps/chat/Dockerfile.ingest -t "$INGEST_URI" -t "$INGEST_LATEST" .
+          docker push "$INGEST_URI"
+          docker push "$INGEST_LATEST"
+
+          echo "image=$INGEST_URI" >> "$GITHUB_OUTPUT"
+          echo "✅ Pushed chat-ingest $INGEST_URI"
+
+      - name: Trigger chatbot RAG ingest
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          INDEXER=$(aws ssm get-parameter \
+            --name /chatbot/sandbox/rag-indexer-name \
+            --region "$AWS_REGION" \
+            --query Parameter.Value --output text)
+
+          PAYLOAD=$(printf '{"startedBy":"gh-%.36s"}' "$COMMIT_SHA")
+
+          aws lambda invoke \
+            --function-name "$INDEXER" \
+            --payload "$PAYLOAD" \
+            --cli-binary-format raw-in-base64-out \
+            --region "$AWS_REGION" \
+            /tmp/indexer-out.json
+
+          echo "Indexer response:"
+          cat /tmp/indexer-out.json
+          echo
+          echo "✅ Ingest task started — follow with: aws logs tail /ecs/chatbot-ingest-sandbox --follow"
+
   amplify-form-builder:
     name: Amplify build (form-builder)
     needs: setup
@@ -461,9 +533,81 @@ jobs:
           echo "❌ Amplify $APP_LABEL build did not finish within 15 minutes"
           exit 1
 
+  deploy-chat-ingest:
+    # Chatbot RAG ingest image — one-shot Fargate task that runs
+    # `pnpm exec tsx src/ingest/cli.ts` from apps/chat against the sandbox
+    # pgvector RDS. Infra (ECR repo, ECS task def, indexer Lambda, 15-min
+    # EventBridge cron) lives in govtech-bb/alpha-infra — see
+    # SANDBOX-CHATBOT-INGEST.md there. This job builds the image and fires
+    # an instant ingest so content changes reach chat.sandbox.alpha.gov.bb
+    # in seconds instead of waiting for the cron.
+    #
+    # Gated on the same `chat` affected output as amplify-chat — nx-affected
+    # marks chat as affected when packages/content changes (chat depends on
+    # it via workspace), so this captures both code- and content-driven
+    # rebuilds without a second gate.
+    name: Build, Push & Trigger chat-ingest
+    needs: setup
+    if: needs.setup.outputs.fb-app == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.build.outputs.image }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push chat-ingest image
+        id: build
+        env:
+          REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          INGEST_URI="$REGISTRY/chatbot-ingest-sandbox:$IMAGE_TAG"
+          INGEST_LATEST="$REGISTRY/chatbot-ingest-sandbox:latest"
+
+          docker build --platform linux/amd64 -f apps/chat/Dockerfile.ingest -t "$INGEST_URI" -t "$INGEST_LATEST" .
+          docker push "$INGEST_URI"
+          docker push "$INGEST_LATEST"
+
+          echo "image=$INGEST_URI" >> "$GITHUB_OUTPUT"
+          echo "✅ Pushed chat-ingest $INGEST_URI"
+
+      - name: Trigger chatbot RAG ingest
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          INDEXER=$(aws ssm get-parameter \
+            --name /chatbot/sandbox/rag-indexer-name \
+            --region "$AWS_REGION" \
+            --query Parameter.Value --output text)
+
+          PAYLOAD=$(printf '{"startedBy":"gh-%.36s"}' "$COMMIT_SHA")
+
+          aws lambda invoke \
+            --function-name "$INDEXER" \
+            --payload "$PAYLOAD" \
+            --cli-binary-format raw-in-base64-out \
+            --region "$AWS_REGION" \
+            /tmp/indexer-out.json
+
+          echo "Indexer response:"
+          cat /tmp/indexer-out.json
+          echo
+          echo "✅ Ingest task started — follow with: aws logs tail /ecs/chatbot-ingest-sandbox --follow"
+
   summary:
     name: Deployment summary
-    needs: [setup, deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-chat, amplify-form-builder]
+    needs: [setup, deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-chat, deploy-chat-ingest, amplify-form-builder]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -484,6 +628,7 @@ jobs:
             echo "| Amplify landing | $(gate '${{ needs.setup.outputs.landing }}') |"
             echo "| Amplify chat | $(gate '${{ needs.setup.outputs.chat }}') |"
             echo "| Amplify form-builder | $(gate '${{ needs.setup.outputs.fb-app }}') |"
+            echo "| chat-ingest image | $(gate '${{ needs.setup.outputs.chat }}') |"
             echo ""
             echo "**API URL:** https://forms.api.sandbox.alpha.gov.bb"
             echo "**Landing URL:** https://landing.sandbox.alpha.gov.bb"
