@@ -31,9 +31,9 @@ function Home() {
 
   return (
     <>
-      <section className="border-b-4 border-yellow-00 bg-blue-00 text-white-00">
+      <section className="border-b-4 border-yellow-100 bg-blue-00 text-white-00">
         <div className="container">
-          <div className="space-y-m py-m lg:py-l">
+          <div className="space-y-m py-[clamp(var(--spacing-m),5vw,var(--spacing-l))]">
             <div className="max-w-210 space-y-s">
               <Heading as="h1" className="text-balance">
                 Find and use Barbados government services
@@ -75,7 +75,7 @@ function Home() {
                 >
                   <a
                     href={`/${cat.slug}`}
-                    className={`${linkVariants()} text-[20px] leading-normal font-bold lg:text-3xl`}
+                    className={`${linkVariants()} text-[clamp(1.25rem,2.5vw,2rem)] leading-normal font-bold text-green-00`}
                   >
                     {cat.title}
                   </a>

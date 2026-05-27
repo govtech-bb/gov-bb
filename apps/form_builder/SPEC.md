@@ -168,8 +168,8 @@ An **Extract** button manually re-runs extraction across the conversation histor
 
 Once a recipe is present, three actions are available:
 
-- **Export SQL** — downloads an `INSERT INTO form_definitions …` statement using Postgres dollar-quoted strings.
 - **Publish** — inserts the recipe into `form_definitions` with `published_at = NOW()`. On re-publish within the same session, the previously published form is deleted first so the AI session owns at most one published form at a time. Validates that the recipe has `formId`, `steps`, well-formed elements with proper `ref` prefixes (`components/` or `blocks/`), `fieldId` overrides on components, and `createdAt`/`updatedAt`/`version`.
+- **Open in builder** — publishes the recipe (via the same `publishSession` path) and then opens the just-created form in the UI builder (`/builder/ui?formId=<id>`) ready to edit.
 - **Delete** — removes the form published from this session.
 
 After a successful publish, a preview link is shown pointing at `https://app-sandbox.alpha.gov.bb/forms/<formId>`.
@@ -205,7 +205,6 @@ The app uses TanStack Start's `createServerFn` so all "API endpoints" are in-pro
 - `getSession(sessionId)` — fetch session state.
 - `getRecipe(sessionId)` — last successfully-extracted recipe.
 - `extractRecipeFromSession(sessionId)` — retry extraction across the session's assistant messages.
-- `getSql(sessionId)` — render the recipe as an `INSERT` statement.
 - `publishSession(sessionId, formId?)` — persist to `form_definitions`.
 - `deletePublished(sessionId)` — undo the most recent publish from this session.
 

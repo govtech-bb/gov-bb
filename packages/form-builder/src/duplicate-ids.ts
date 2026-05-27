@@ -1,6 +1,11 @@
+import type {
+  ServiceContractRecipe,
+  ValidationIssue,
+} from "@govtech-bb/form-types";
 import type { RecipeDraft } from "./types";
 import type { RegistryCatalog } from "./catalog";
 import { getRegistryItem } from "./catalog";
+import { deserializeRecipe } from "./serialization";
 import type { ComponentDefinition, BlockDefinition } from "./definition-types";
 
 export interface ResolvedFieldId {
@@ -72,6 +77,57 @@ export function findRecipeIdCollisions(
     fieldIdCollisions: findDuplicateFieldIds(draft, catalog),
     stepIdCollisions: findDuplicateStepIds(draft),
   };
+}
+
+/**
+ * Run the duplicate-id detector against a persisted-format recipe
+ * (`ServiceContractRecipe`) rather than the editor's `RecipeDraft`.
+ *
+ * Server/ingest callers (the `/builder/registry/validate` route and the AI
+ * publish handler) hold a recipe, not a draft. `deserializeRecipe` bridges the
+ * two so every consumer reuses the single detector instead of re-deriving id
+ * resolution (per ADR 0010).
+ *
+ * Defensive on purpose: the AI publish path passes an unvalidated recipe, so a
+ * structurally malformed shape (e.g. `steps` missing or not an array) yields no
+ * collisions and never throws — full contract conformance is a separate check.
+ */
+export function findRecipeIdCollisionsFromRecipe(
+  recipe: ServiceContractRecipe,
+  catalog: RegistryCatalog,
+): {
+  fieldIdCollisions: FieldIdCollision[];
+  stepIdCollisions: StepIdCollision[];
+} {
+  if (!recipe || !Array.isArray((recipe as { steps?: unknown }).steps)) {
+    return { fieldIdCollisions: [], stepIdCollisions: [] };
+  }
+  return findRecipeIdCollisions(deserializeRecipe(recipe, catalog), catalog);
+}
+
+/**
+ * Format a set of resolved id collisions into `ValidationIssue[]`, so the
+ * builder UI and the server `/validate` endpoint emit identical messages for
+ * the same collision. The strings here are the single source of truth.
+ */
+export function formatCollisionIssues(collisions: {
+  fieldIdCollisions: FieldIdCollision[];
+  stepIdCollisions: StepIdCollision[];
+}): ValidationIssue[] {
+  return [
+    ...collisions.fieldIdCollisions.map((c) => ({
+      path: `fieldId:${c.id}`,
+      message: `Field ID "${c.id}" is used by ${c.locations.length} fields: ${c.locations
+        .map((l) => `${l.stepTitle || l.stepId} › ${l.display}`)
+        .join("; ")}.`,
+    })),
+    ...collisions.stepIdCollisions.map((c) => ({
+      path: `stepId:${c.stepId}`,
+      message: `Step ID "${c.stepId}" is used by ${c.locations.length} steps: ${c.locations
+        .map((l) => l.stepTitle || l.stepId)
+        .join("; ")}.`,
+    })),
+  ];
 }
 
 export function fieldIdDuplicatesAnother(
