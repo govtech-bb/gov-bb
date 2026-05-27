@@ -13,7 +13,7 @@ contact:
     value:
       - E Humphrey Walcott Building
       - Cnr. Culloden Road & Collymore Rock
-      - 'St Michael, Barbados'
+      - 'St. Michael, Barbados'
   - label: Main Office
     type: phone
     value: (246) 535-4400

@@ -31,7 +31,7 @@ You can collect a paper form from the National Conservation Commission (NCC), co
 
 Codrington Road,  
 Bridgetown,  
-Saint Michael
+St. Michael
 
 You can also return a paper application form by post. However, returning it in person can speed up the process because NCC colleagues may be able to check your application for missing information and let you know immediately.
 

@@ -28,7 +28,7 @@ contact:
     value:
       - Lower Roebuck Street
       - Bridgetown
-      - Saint Michael
+      - St. Michael
 onlineServices: []
 associatedDepartments: []
 originalSource: 'https://www.gov.bb/Departments/police-department'
@@ -45,7 +45,7 @@ In 1981, the RBPF became a full member of the International Criminal Police Orga
 
 ## Organisation
 
-The headquarters for the RBPF is in the former Barclays Bank Complex on Lower Roebuck Street, Bridgetown, Saint Michael.
+The headquarters for the RBPF is in the former Barclays Bank Complex on Lower Roebuck Street, Bridgetown, St. Michael.
 
 The headquarters houses the Commissioner of Police; the Deputy Commissioner of Police; the offices of all assistant commissioners of police; all staff officers of the above commissioners; the secretary to the Commissioner of Police; the Research and Development Department; the Police Registry; and the Office of Compliance.
 

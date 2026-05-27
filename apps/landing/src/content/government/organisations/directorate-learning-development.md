@@ -10,7 +10,7 @@ contact:
     type: address
     value:
       - 'Level 5, Warrens Towers II'
-      - 'Warrens, St Michael, Barbados'
+      - 'Warrens, St. Michael, Barbados'
   - label: Main Office
     type: phone
     value: (246) 535-6700

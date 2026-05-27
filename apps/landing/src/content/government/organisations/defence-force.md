@@ -31,7 +31,7 @@ The Barbados Defense Force (BDF) is the name given to the combined armed forces 
 | Medical Emergencies | (246) 536-2083 |
 | Operations Room | (246) 536-2216 |
 
-## Barbados Coast Guard, HMBS PELICAN, Spring Garden Highway, St Michael
+## Barbados Coast Guard, HMBS PELICAN, Spring Garden Highway, St. Michael
 
 | | |
 |---|---|
@@ -45,14 +45,14 @@ The Barbados Defense Force (BDF) is the name given to the combined armed forces 
 | Main Number | (246) 536-2800 |
 | Operations Room | (246) 536-2889 |
 
-## Barbados Cadet Corps, Cherry Tree Cottage, Garrison, St Michael
+## Barbados Cadet Corps, Cherry Tree Cottage, Garrison, St. Michael
 
 | | |
 |---|---|
 | Main Number | (246) 536-2000 |
 | CEO Barbados Cadets Corps | (246) 536-2002 |
 
-## Main Guard — Barbados Poppy League & Military Cemetery, Garrison, St Michael
+## Main Guard — Barbados Poppy League & Military Cemetery, Garrison, St. Michael
 
 | | |
 |---|---|
