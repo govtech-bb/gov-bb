@@ -84,12 +84,14 @@ export class FormDefinitionsService {
     formId,
     version,
     includeProcessors = false,
+    preview = false,
   }: {
     formId: string;
     version?: string;
     includeProcessors?: boolean;
+    preview?: boolean;
   }): Promise<ServiceContract> {
-    const recipe = await this.getRecipe({ formId, version });
+    const recipe = await this.getRecipe({ formId, version, preview });
     if (!recipe) {
       throw AppError.notFound("Form definition", { formId, version });
     }
@@ -106,27 +108,35 @@ export class FormDefinitionsService {
    * source. Public so other services (e.g. FormDraftsService) can pin draft
    * `formVersion` without reaching into the `form_definitions` table directly
    * — which would expose unpublished builder scratch space (issue #145).
+   *
+   * When `preview` is `true`, resolution always uses the "both" path regardless
+   * of the configured source or NODE_ENV — enabling per-request DB preview.
    */
   async getRecipe({
     formId,
     version,
+    preview = false,
   }: {
     formId: string;
     version?: string;
+    preview?: boolean;
   }): Promise<ServiceContractRecipe | null> {
-    const source = this.source();
+    // When preview is true, force "both" so the DB is consulted regardless of
+    // the configured RECIPE_SOURCE or NODE_ENV. Otherwise, use the normal
+    // source() resolution (which enforces the dev-only guard).
+    const effectiveSource: RecipeSource = preview ? "both" : this.source();
 
-    if (source === "files") {
+    if (effectiveSource === "files") {
       return this.recipeFileLoader.findByFormId({ formId, version });
     }
 
-    if (source === "db") {
+    if (effectiveSource === "db") {
       return this.getRecipeFromDb({ formId, version });
     }
 
-    // source === "both": DB wins on collision. With a version supplied, try DB
-    // first and fall through to files on miss. Without a version, pick the
-    // candidate with the higher semver across sources (DB wins on tie).
+    // effectiveSource === "both": DB wins on collision. With a version supplied,
+    // try DB first and fall through to files on miss. Without a version, pick
+    // the candidate with the higher semver across sources (DB wins on tie).
     if (version) {
       const dbRecipe = await this.getRecipeFromDb({ formId, version });
       if (dbRecipe) return dbRecipe;

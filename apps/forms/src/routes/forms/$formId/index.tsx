@@ -7,7 +7,10 @@ import {
   formMetaQueryOptions,
 } from "@forms/lib";
 import { FormRenderer, FormError } from "@forms/components";
-import { formSearchParamSchema } from "../../../types/form-search-param.type";
+import {
+  formSearchParamSchema,
+  type FormSearchParams,
+} from "../../../types/form-search-param.type";
 import { useForm, useStore } from "@tanstack/react-form";
 import {
   RepeatableStepSettings,
@@ -29,8 +32,10 @@ export const Route = createFileRoute("/forms/$formId/")({
    * Two-tier caching loader:
    *
    * 1. Tier 1 — Fetch (or serve from cache) the ClientServiceContract.
-   *    Cache key: ["service-contract", formId]
+   *    Cache key: ["service-contract", formId, preview | null]
    *    This gives us the current `version` without building the form first.
+   *    The preview token (from `?preview=`) is forwarded here so an operator
+   *    can preview an unpublished draft.
    *
    * 2. Version check — The formMetaQueryOptions key includes the version.
    *    If a FormMeta for this exact (formId, version) pair is already in the
@@ -38,26 +43,30 @@ export const Route = createFileRoute("/forms/$formId/")({
    *    If the version has changed (or this is the first load), the queryFn
    *    runs buildForm() and the result is stored under the new key.
    *
-   *    Cache key: ["form-schema", formId, version]
+   *    Cache key: ["form-schema", formId, version, preview | null]
    *
    * On navigation back to this route, the first call resolves from the
    * in-memory cache; the contract re-validates after 60 s in the background
    * so version bumps are caught on the next full navigation.
    */
-  loader: async ({ params, context }): Promise<FormMeta> => {
+  loader: async ({ params, context, deps }): Promise<FormMeta> => {
     const { queryClient } = context;
 
     // Tier 1: get the contract (from cache or server).
     const clientContract = await queryClient.ensureQueryData(
-      contractQueryOptions(params.formId),
+      contractQueryOptions(params.formId, deps.preview),
     );
 
-    // Tier 2: get or build the FormMeta for this specific version.
+    // Tier 2: get or build the FormMeta for this specific (version, preview) pair.
     return queryClient.ensureQueryData(
-      formMetaQueryOptions(params.formId, clientContract),
+      formMetaQueryOptions(params.formId, clientContract, deps.preview),
     );
   },
-  validateSearch: (search) => formSearchParamSchema.parse(search),
+  loaderDeps: ({ search }: { search: FormSearchParams }) => ({
+    preview: search.preview,
+  }),
+  validateSearch: (search): FormSearchParams =>
+    formSearchParamSchema.parse(search),
 });
 
 function RouteComponent() {

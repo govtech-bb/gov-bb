@@ -89,10 +89,14 @@ const makeFetch = async <T extends ApiResponse>(
 
 export const fetchFormDefinition = async (
   contractId: string,
+  preview?: string,
 ): Promise<ServiceContract> => {
   const { body } = await makeFetch<FormDefinitionResponse>(
     `/form-definitions/${encodeURIComponent(contractId)}`,
     { not_found: `The form "${contractId}" could not be found.` },
+    preview
+      ? { method: "GET", headers: { "X-Recipe-Preview": preview } }
+      : undefined,
   );
 
   try {
