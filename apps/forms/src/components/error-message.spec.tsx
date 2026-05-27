@@ -9,9 +9,9 @@ describe("ErrorMessage", () => {
     expect(screen.getByText("This field is required")).toBeInTheDocument();
   });
 
-  it("applies data-error attribute", () => {
+  it("applies the govbb-error-message class", () => {
     render(<ErrorMessage message="Error text" />);
-    expect(screen.getByRole("alert")).toHaveAttribute("data-error");
+    expect(screen.getByRole("alert")).toHaveClass("govbb-error-message");
   });
 
   it("renders nothing when message is empty string", () => {

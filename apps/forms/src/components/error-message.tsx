@@ -5,7 +5,7 @@ export default function ErrorMessage({ message }: { message: string }) {
     return null;
   }
   return (
-    <p data-error role="alert">
+    <p className="govbb-error-message" role="alert">
       {message}
     </p>
   );

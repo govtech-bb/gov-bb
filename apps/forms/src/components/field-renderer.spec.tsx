@@ -165,9 +165,9 @@ describe("FieldRenderer", () => {
   // show-hide
   // -------------------------------------------------------------------------
   describe("show-hide htmlType", () => {
-    it("renders a button with [data-show-hide-toggle] and aria-expanded=false by default", () => {
+    it("renders a toggle button with aria-expanded=false by default", () => {
       const { container } = renderField(primitive("show-hide"));
-      const button = container.querySelector("[data-show-hide-toggle]");
+      const button = container.querySelector(".form-page__show-hide-toggle");
       expect(button).toBeTruthy();
       expect(button).toHaveAttribute("aria-expanded", "false");
     });
@@ -176,7 +176,7 @@ describe("FieldRenderer", () => {
       const user = userEvent.setup();
       const { container } = renderField(primitive("show-hide"));
       const button = container.querySelector(
-        "[data-show-hide-toggle]",
+        ".form-page__show-hide-toggle",
       ) as HTMLButtonElement;
       await user.click(button);
       expect(mockFieldApi.handleChange).toHaveBeenCalledWith(true);
@@ -185,7 +185,7 @@ describe("FieldRenderer", () => {
     it("when value is true, aria-expanded is true", () => {
       mockState = { value: true, meta: { isValid: true, errors: [] } };
       const { container } = renderField(primitive("show-hide"));
-      const button = container.querySelector("[data-show-hide-toggle]");
+      const button = container.querySelector(".form-page__show-hide-toggle");
       expect(button).toHaveAttribute("aria-expanded", "true");
     });
 
@@ -194,7 +194,7 @@ describe("FieldRenderer", () => {
       mockState = { value: true, meta: { isValid: true, errors: [] } };
       const { container } = renderField(primitive("show-hide"));
       const button = container.querySelector(
-        "[data-show-hide-toggle]",
+        ".form-page__show-hide-toggle",
       ) as HTMLButtonElement;
       await user.click(button);
       expect(mockFieldApi.handleChange).toHaveBeenCalledWith(false);
@@ -388,7 +388,7 @@ describe("FieldRenderer", () => {
               : undefined,
         });
         const { container } = renderField(field);
-        const hint = container.querySelector("[data-hint]");
+        const hint = container.querySelector(".govbb-hint");
         expect(hint).toBeTruthy();
         expect(hint?.textContent).toBe("This is a hint");
       },
@@ -475,7 +475,7 @@ describe("FieldRenderer", () => {
         meta: { isValid: true, errors: [] },
       };
       const { container } = renderField(primitive("date"));
-      const dateParts = container.querySelectorAll("[data-date-part]");
+      const dateParts = container.querySelectorAll(".govbb-date-input__part");
       const dayInput = dateParts[0].querySelector("input") as HTMLInputElement;
       await user.clear(dayInput);
       await user.type(dayInput, "15");
@@ -489,7 +489,7 @@ describe("FieldRenderer", () => {
         meta: { isValid: true, errors: [] },
       };
       const { container } = renderField(primitive("date"));
-      const dateParts = container.querySelectorAll("[data-date-part]");
+      const dateParts = container.querySelectorAll(".govbb-date-input__part");
       const monthInput = dateParts[1].querySelector(
         "input",
       ) as HTMLInputElement;
@@ -505,7 +505,7 @@ describe("FieldRenderer", () => {
         meta: { isValid: true, errors: [] },
       };
       const { container } = renderField(primitive("date"));
-      const dateParts = container.querySelectorAll("[data-date-part]");
+      const dateParts = container.querySelectorAll(".govbb-date-input__part");
       const yearInput = dateParts[2].querySelector("input") as HTMLInputElement;
       await user.clear(yearInput);
       await user.type(yearInput, "2025");
@@ -551,7 +551,9 @@ describe("FieldRenderer", () => {
         { insetFieldsByOption },
       );
 
-      expect(container.querySelector("[data-radio-conditional]")).toBeTruthy();
+      expect(
+        container.querySelector(".govbb-radio-item__conditional"),
+      ).toBeTruthy();
     });
 
     it("does not show inset fields when a different option is selected", () => {
@@ -579,7 +581,9 @@ describe("FieldRenderer", () => {
         { insetFieldsByOption },
       );
 
-      expect(container.querySelector("[data-radio-conditional]")).toBeNull();
+      expect(
+        container.querySelector(".govbb-radio-item__conditional"),
+      ).toBeNull();
     });
   });
 });

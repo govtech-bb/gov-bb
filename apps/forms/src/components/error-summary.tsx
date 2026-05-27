@@ -21,7 +21,9 @@ export default function ErrorSummary({
     if (!errorMessages || errorMessages.length === 0) continue;
     fieldErrorItems.push(
       <li key={fieldId}>
-        <a href={`#${fieldId}`}>{formatter.format(errorMessages)}</a>
+        <a className="govbb-error-summary__link" href={`#${fieldId}`}>
+          {formatter.format(errorMessages)}
+        </a>
       </li>,
     );
   }
@@ -29,9 +31,9 @@ export default function ErrorSummary({
   if (fieldErrorItems.length === 0) return null;
 
   return (
-    <div data-error-summary role="alert">
-      <h2>There is a problem</h2>
-      <ul>{fieldErrorItems}</ul>
+    <div className="govbb-error-summary" role="alert">
+      <h2 className="govbb-error-summary__title">There is a problem</h2>
+      <ul className="govbb-error-summary__list">{fieldErrorItems}</ul>
     </div>
   );
 }
