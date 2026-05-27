@@ -5,13 +5,18 @@ import { type SessionPayload } from "./session";
 import { getSession } from "./session-cipher.server";
 import type { ServiceContractRecipe } from "@govtech-bb/form-types";
 
-const REPO_OWNER = "govtech-bb";
 const REPO_NAME = "gov-bb";
 const BASE_BRANCH = "dev";
 const GH_API = "https://api.github.com";
 
+function repoOwner(): string {
+  const v = process.env.GITHUB_ORG;
+  if (!v) throw new Error("GITHUB_ORG is not set");
+  return v;
+}
+
 function repoUrl(suffix: string): string {
-  return `${GH_API}/repos/${REPO_OWNER}/${REPO_NAME}${suffix}`;
+  return `${GH_API}/repos/${repoOwner()}/${REPO_NAME}${suffix}`;
 }
 
 function authHeaders(token: string): Record<string, string> {

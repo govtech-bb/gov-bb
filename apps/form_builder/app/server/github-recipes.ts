@@ -1,5 +1,10 @@
-export const REPO_OWNER = "govtech-bb";
 export const REPO_NAME = "gov-bb";
+
+export function repoOwner(): string {
+  const v = process.env.GITHUB_ORG;
+  if (!v) throw new Error("GITHUB_ORG is not set");
+  return v;
+}
 
 const API_BASE = "https://api.github.com";
 
@@ -73,7 +78,7 @@ export async function listPublishedForms(
   token: string,
 ): Promise<PublishedFormSummary[]> {
   const top = await ghGet(
-    `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${RECIPES_BASE}`,
+    `${API_BASE}/repos/${repoOwner()}/${REPO_NAME}/contents/${RECIPES_BASE}`,
     token,
   );
   if (top.status === 404) return [];
@@ -127,7 +132,7 @@ export async function getPublishedRecipe(
 
 async function listVersions(token: string, formId: string): Promise<string[]> {
   const res = await ghGet(
-    `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${RECIPES_BASE}/${encodeURIComponent(formId)}`,
+    `${API_BASE}/repos/${repoOwner()}/${REPO_NAME}/contents/${RECIPES_BASE}/${encodeURIComponent(formId)}`,
     token,
   );
   if (res.status === 404) return [];
@@ -153,7 +158,7 @@ async function fetchRecipeFile(
   version: string,
 ): Promise<Record<string, unknown>> {
   const res = await ghGet(
-    `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${RECIPES_BASE}/${encodeURIComponent(formId)}/${encodeURIComponent(version)}.json`,
+    `${API_BASE}/repos/${repoOwner()}/${REPO_NAME}/contents/${RECIPES_BASE}/${encodeURIComponent(formId)}/${encodeURIComponent(version)}.json`,
     token,
   );
   if (res.status === 404) {
