@@ -17,7 +17,7 @@
  * Usage in a TanStack Router loader:
  *
  *   const clientContract = await queryClient.ensureQueryData(
- *     contractQueryOptions(formId),
+ *     contractQueryOptions(formId, deps.preview),
  *   );
  *   return queryClient.ensureQueryData(
  *     formMetaQueryOptions(formId, clientContract),
