@@ -185,6 +185,13 @@ describe("RegistryService", () => {
       expect((result as any).blockId).toBe("personal-information");
     });
 
+    it("returns the show-hide builtin by ref", async () => {
+      const result = await makeService().resolve("components/show-hide");
+      expect(result).not.toBeNull();
+      expect((result as any).fieldId).toBe("show-hide");
+      expect((result as any).htmlType).toBe("show-hide");
+    });
+
     it("returns null for an unknown ref", async () => {
       expect(
         await makeService().resolve("components/does-not-exist"),
@@ -365,6 +372,33 @@ describe("RegistryService", () => {
           ],
         }),
       ).rejects.toThrow(UnresolvableComponentError);
+    });
+
+    it("hydrates a show-hide ref and applies field overrides", async () => {
+      const result = await makeService().hydrateForm({
+        ...base,
+        steps: [
+          {
+            stepId: "step-1",
+            title: "Step 1",
+            elements: [
+              {
+                ref: "components/show-hide" as const,
+                overrides: {
+                  label: "Show advanced options",
+                  hint: "Reveals extra fields",
+                  fieldId: "show-advanced",
+                },
+              },
+            ],
+          },
+        ],
+      });
+      const el = result.steps[0].elements[0] as any;
+      expect(el.label).toBe("Show advanced options");
+      expect(el.hint).toBe("Reveals extra fields");
+      expect(el.fieldId).toBe("show-advanced");
+      expect(el.htmlType).toBe("show-hide");
     });
   });
 });
