@@ -5,16 +5,35 @@ interface PreviewModalProps {
   contract: ServiceContract | null;
   isLoading: boolean;
   error?: string | null;
+  /**
+   * Link to the saved recipe on the live forms app, or null when the recipe
+   * has never been saved (so there is no DB record to resolve). When set, the
+   * modal offers a "Preview saved form" link; otherwise it hints to save first.
+   * Note: this previews the *last saved* version, which may lag in-memory edits.
+   */
+  previewUrl?: string | null;
   onClose: () => void;
 }
 
-export function PreviewModal({ contract, isLoading, error, onClose }: PreviewModalProps) {
+export function PreviewModal({ contract, isLoading, error, previewUrl, onClose }: PreviewModalProps) {
   return (
     <div className={styles.modal} onClick={onClose}>
       <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
           <strong>Preview</strong>
           <button type="button" onClick={onClose}>Close</button>
+        </div>
+
+        <div className={styles.formGroup}>
+          {previewUrl ? (
+            <a href={previewUrl} target="_blank" rel="noopener noreferrer">
+              🔗 Preview saved form
+            </a>
+          ) : (
+            <span style={{ color: "#888", fontSize: "0.85rem" }}>
+              Save this recipe to enable a live preview link.
+            </span>
+          )}
         </div>
 
         {isLoading && <p>Loading preview…</p>}
