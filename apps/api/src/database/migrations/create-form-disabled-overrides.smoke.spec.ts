@@ -59,56 +59,71 @@ function loadMigrationClass(): new () => {
       const MigrationClass = loadMigrationClass();
       const migration = new MigrationClass();
 
-      // Clean slate.
-      await queryRunner.query(`DROP TABLE IF EXISTS "form_disabled_overrides"`);
+      // Run every statement inside a transaction we ALWAYS roll back. Postgres
+      // DDL is transactional, so on rollback the developer's real
+      // form_disabled_overrides table (and its data) is left exactly as we
+      // found it. Without this, the migration.down() below — a raw
+      // `DROP TABLE` — would leave the table dropped against the live local DB
+      // (DB_HOST is injected from apps/api/.env by nx) while TypeORM's
+      // `migrations` bookkeeping still records the migration as applied. The
+      // API would then boot, see nothing pending, and never recreate the table.
+      await queryRunner.startTransaction();
+      try {
+        // Clean slate within the transaction (rolled back afterwards).
+        await queryRunner.query(
+          `DROP TABLE IF EXISTS "form_disabled_overrides"`,
+        );
 
-      await migration.up(queryRunner);
+        await migration.up(queryRunner);
 
-      const cols = await queryRunner.query(
-        `SELECT column_name, data_type, is_nullable, column_default
-         FROM information_schema.columns
-         WHERE table_name = 'form_disabled_overrides'
-         ORDER BY column_name`,
-      );
+        const cols = await queryRunner.query(
+          `SELECT column_name, data_type, is_nullable, column_default
+           FROM information_schema.columns
+           WHERE table_name = 'form_disabled_overrides'
+           ORDER BY column_name`,
+        );
 
-      const byName = Object.fromEntries(
-        cols.map((c: { column_name: string }) => [c.column_name, c]),
-      );
-      expect(byName.form_id).toMatchObject({
-        data_type: "character varying",
-        is_nullable: "NO",
-      });
-      expect(byName.reason).toMatchObject({
-        data_type: "text",
-        is_nullable: "NO",
-      });
-      expect(byName.disabled_by).toMatchObject({
-        data_type: "character varying",
-        is_nullable: "NO",
-      });
-      expect(byName.disabled_at).toMatchObject({
-        data_type: "timestamp without time zone",
-        is_nullable: "NO",
-      });
-      expect(byName.disabled_at.column_default).toMatch(/now\(\)/i);
+        const byName = Object.fromEntries(
+          cols.map((c: { column_name: string }) => [c.column_name, c]),
+        );
+        expect(byName.form_id).toMatchObject({
+          data_type: "character varying",
+          is_nullable: "NO",
+        });
+        expect(byName.reason).toMatchObject({
+          data_type: "text",
+          is_nullable: "NO",
+        });
+        expect(byName.disabled_by).toMatchObject({
+          data_type: "character varying",
+          is_nullable: "NO",
+        });
+        expect(byName.disabled_at).toMatchObject({
+          data_type: "timestamp without time zone",
+          is_nullable: "NO",
+        });
+        expect(byName.disabled_at.column_default).toMatch(/now\(\)/i);
 
-      // Primary key check.
-      const pk = await queryRunner.query(
-        `SELECT a.attname AS column_name
-         FROM pg_index i
-         JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
-         WHERE i.indrelid = 'form_disabled_overrides'::regclass AND i.indisprimary`,
-      );
-      expect(pk).toEqual([{ column_name: "form_id" }]);
+        // Primary key check.
+        const pk = await queryRunner.query(
+          `SELECT a.attname AS column_name
+           FROM pg_index i
+           JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
+           WHERE i.indrelid = 'form_disabled_overrides'::regclass AND i.indisprimary`,
+        );
+        expect(pk).toEqual([{ column_name: "form_id" }]);
 
-      // Tidy up so this test is rerunnable.
-      await migration.down(queryRunner);
-      const after = await queryRunner.query(
-        `SELECT to_regclass('public.form_disabled_overrides') AS exists`,
-      );
-      expect(after[0].exists).toBeNull();
-
-      await queryRunner.release();
+        // down() should remove the table it created.
+        await migration.down(queryRunner);
+        const after = await queryRunner.query(
+          `SELECT to_regclass('public.form_disabled_overrides') AS exists`,
+        );
+        expect(after[0].exists).toBeNull();
+      } finally {
+        // Discard everything above — the live database is never mutated.
+        await queryRunner.rollbackTransaction();
+        await queryRunner.release();
+      }
     });
   },
 );
