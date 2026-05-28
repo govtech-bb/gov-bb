@@ -453,6 +453,12 @@ importers:
       '@aws-sdk/client-bedrock-runtime':
         specifier: ^3.700.0
         version: 3.1051.0
+      '@aws-sdk/client-s3':
+        specifier: ^3.1047.0
+        version: 3.1052.0
+      '@aws-sdk/s3-request-presigner':
+        specifier: ^3.1047.0
+        version: 3.1052.0
       '@govtech-bb/database':
         specifier: workspace:*
         version: link:../../packages/database
