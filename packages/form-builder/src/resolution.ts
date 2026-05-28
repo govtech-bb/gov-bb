@@ -8,6 +8,7 @@ import type {
 import type { RegistryCatalog } from "./catalog";
 import type { ComponentDefinition, BlockDefinition } from "./definition-types";
 import { getRegistryItem } from "./catalog";
+import { UnknownRefError, type UnknownRef } from "./errors";
 
 /**
  * Deep-merge validation rules: both can have keys; override keys win.
@@ -55,15 +56,23 @@ export function hydrateForm(
 ): ServiceContract {
   const now = new Date().toISOString();
 
+  // Collect every unknown ref across the whole recipe in one pass so we can
+  // report them all together, then throw (the API resolver throws too — this
+  // keeps the preview path consistent instead of silently dropping fields).
+  const unknownRefs: UnknownRef[] = [];
+
   const steps = recipe.steps.map((recipeStep) => {
     const elements: Primitive[] = [];
 
-    for (const field of recipeStep.elements) {
+    recipeStep.elements.forEach((field, index) => {
       const item = getRegistryItem(field.ref, catalog);
 
       if (!item) {
-        console.warn(`[hydrateForm] Unknown ref: "${field.ref}" — skipping`);
-        continue;
+        unknownRefs.push({
+          ref: field.ref,
+          path: `steps[${recipeStep.stepId}].elements[${index}].ref`,
+        });
+        return;
       }
 
       if (field.ref.startsWith("components/")) {
@@ -83,7 +92,7 @@ export function hydrateForm(
           elements.push(applyOverrides(element, childOverride));
         }
       }
-    }
+    });
 
     return {
       stepId: recipeStep.stepId,
@@ -97,6 +106,10 @@ export function hydrateForm(
         : {}),
     };
   });
+
+  if (unknownRefs.length > 0) {
+    throw new UnknownRefError(unknownRefs);
+  }
 
   return {
     formId: recipe.formId,

@@ -36,6 +36,8 @@ export { makeDefaultProcessor } from "./processor-defaults";
 
 // Core utilities
 export { hydrateForm } from "./resolution";
+export { UnknownRefError } from "./errors";
+export type { UnknownRef } from "./errors";
 export { serializeRecipeDraft, deserializeRecipe } from "./serialization";
 export { validateFormContract } from "./validation";
 export type {
