@@ -64,6 +64,19 @@ export default function FieldRenderer({
       {(f: AnyFieldApi) => {
         // For each field type, be sure to establish...
         // const value = f.state.value as ValueType | undefined
+        let errorMessage = "";
+        if (!f.state.meta.isValid) {
+          errorMessage = f.state.meta.errors[0];
+        }
+
+        // Associate the hint and error text with the input(s) via
+        // aria-describedby (GOV.UK pattern) — the inline error itself is not a
+        // live region; the focus-managed ErrorSummary does the announcing.
+        const hintId = field.hint ? `${field.id}-hint` : undefined;
+        const errorId = errorMessage ? `${field.id}-error` : undefined;
+        const describedBy =
+          [hintId, errorId].filter(Boolean).join(" ") || undefined;
+
         const sharedProps = {
           type: field.htmlType,
           name: field.name,
@@ -71,6 +84,7 @@ export default function FieldRenderer({
           disabled: field.disabled,
           placeholder: field.placeholder,
           onBlur: f.handleBlur,
+          "aria-describedby": describedBy,
         };
 
         // Surface required state to assistive tech. Not spread onto multi-option
@@ -80,19 +94,18 @@ export default function FieldRenderer({
           ? { required: true, "aria-required": true }
           : {};
 
-        let errorMessage = "";
-        if (!f.state.meta.isValid) {
-          errorMessage = f.state.meta.errors[0];
-        }
-
         switch (field.htmlType) {
           case "date": {
             const value = f.state.value as DateValue | undefined;
             return (
               <fieldset data-field data-date-field>
                 <legend>{field.label}</legend>
-                {field.hint && <p data-hint>{field.hint}</p>}
-                <ErrorMessage message={errorMessage} />
+                {field.hint && (
+                  <p data-hint id={hintId}>
+                    {field.hint}
+                  </p>
+                )}
+                <ErrorMessage id={errorId} message={errorMessage} />
                 <div data-date-group>
                   <div data-date-part>
                     <label htmlFor={`${field.id}-day`}>Day</label>
@@ -163,7 +176,11 @@ export default function FieldRenderer({
               textareaElement = (
                 <div data-field data-field-width={field.ui?.width}>
                   <label htmlFor={field.id}> {field.label} </label>
-                  {field.hint && <p data-hint>{field.hint}</p>}
+                  {field.hint && (
+                    <p data-hint id={hintId}>
+                      {field.hint}
+                    </p>
+                  )}
                   <textarea
                     key={field.id}
                     {...sharedProps}
@@ -252,8 +269,12 @@ export default function FieldRenderer({
               <div data-field data-field-width={field.ui?.width}>
                 <div>
                   <label htmlFor={field.id}> {field.label} </label>
-                  {field.hint && <p data-hint>{field.hint}</p>}
-                  <ErrorMessage message={errorMessage} />
+                  {field.hint && (
+                    <p data-hint id={hintId}>
+                      {field.hint}
+                    </p>
+                  )}
+                  <ErrorMessage id={errorId} message={errorMessage} />
                 </div>
                 {inputElement}
               </div>
@@ -270,8 +291,12 @@ export default function FieldRenderer({
                 data-field-width={field.ui?.width}
               >
                 <label htmlFor={field.id}> {field.label} </label>
-                {field.hint && <p data-hint>{field.hint}</p>}
-                <ErrorMessage message={errorMessage} />
+                {field.hint && (
+                  <p data-hint id={hintId}>
+                    {field.hint}
+                  </p>
+                )}
+                <ErrorMessage id={errorId} message={errorMessage} />
                 <div data-select-control>
                   <select
                     {...sharedProps}
@@ -297,8 +322,12 @@ export default function FieldRenderer({
               return (
                 <fieldset data-checkbox-group>
                   <legend>{field.label}</legend>
-                  {field.hint && <p data-hint>{field.hint}</p>}
-                  <ErrorMessage message={errorMessage} />
+                  {field.hint && (
+                    <p data-hint id={hintId}>
+                      {field.hint}
+                    </p>
+                  )}
+                  <ErrorMessage id={errorId} message={errorMessage} />
                   <div key={option.value} data-checkbox-option>
                     <label htmlFor={`${field.id}-${option.value}`}>
                       <input
@@ -333,8 +362,12 @@ export default function FieldRenderer({
               <fieldset data-fieldset>
                 <div>
                   <legend>{field.label}</legend>
-                  {field.hint && <p data-hint>{field.hint}</p>}
-                  <ErrorMessage message={errorMessage} />
+                  {field.hint && (
+                    <p data-hint id={hintId}>
+                      {field.hint}
+                    </p>
+                  )}
+                  <ErrorMessage id={errorId} message={errorMessage} />
                 </div>
                 <div data-checkbox-group>
                   {field.options?.map((option) => {
@@ -360,8 +393,12 @@ export default function FieldRenderer({
             return (
               <fieldset data-fieldset>
                 <legend>{field.label}</legend>
-                {field.hint && <p data-hint>{field.hint}</p>}
-                <ErrorMessage message={errorMessage} />
+                {field.hint && (
+                  <p data-hint id={hintId}>
+                    {field.hint}
+                  </p>
+                )}
+                <ErrorMessage id={errorId} message={errorMessage} />
                 <div data-radio-group>
                   {field.options?.map((option) => {
                     const insetEntries = insetFieldsByOption?.get(option.value);

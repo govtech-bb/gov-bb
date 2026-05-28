@@ -4,17 +4,22 @@ import { axe } from "jest-axe";
 import ErrorMessage from "./error-message";
 
 describe("ErrorMessage", () => {
-  it("renders the message string", () => {
+  it("renders the message string with a visually-hidden Error: prefix", () => {
     render(<ErrorMessage message="This field is required" />);
-    expect(screen.getByText("This field is required")).toBeInTheDocument();
+    expect(screen.getByText(/This field is required/)).toBeInTheDocument();
+    expect(screen.getByText("Error:")).toBeInTheDocument();
   });
 
-  it("applies data-error attribute and a polite status role (#320)", () => {
-    render(<ErrorMessage message="Error text" />);
-    const el = screen.getByRole("status");
-    expect(el).toHaveAttribute("data-error");
-    // Must not be assertive — inline errors should not interrupt per field.
+  it("is not a live region and exposes data-error + id (#320, GOV.UK pattern)", () => {
+    const { container } = render(
+      <ErrorMessage id="field-1-error" message="Error text" />,
+    );
+    const p = container.querySelector("p[data-error]");
+    expect(p).toHaveAttribute("id", "field-1-error");
+    // No live role — announcement comes from the focus-managed ErrorSummary.
+    expect(p).not.toHaveAttribute("role");
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
   it("renders nothing when message is empty string", () => {
