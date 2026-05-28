@@ -295,9 +295,12 @@ export function recipeReducer(
       // No-op (and don't introduce an empty array) when none exist, so the
       // absent-vs-empty distinction the serializer relies on is preserved.
       if (!state.processors) return state;
+      const remaining = state.processors.filter((p) => p.id !== action.id);
+      // Collapse the empty case back to undefined for the same reason — removing
+      // the last processor must not leave a `[]` behind.
       return {
         ...state,
-        processors: state.processors.filter((p) => p.id !== action.id),
+        processors: remaining.length > 0 ? remaining : undefined,
       };
     }
 
