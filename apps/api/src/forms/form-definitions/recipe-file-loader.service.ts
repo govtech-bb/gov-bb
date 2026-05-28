@@ -29,6 +29,18 @@ function parseVersion(v: string): number[] {
   });
 }
 
+/**
+ * CWE-22 guard. `fs.readdir` already returns leaf names on POSIX, but every
+ * directory or file entry the loader consumes is run through this before
+ * being fed to `path.join`, so a future input source (env-configured root,
+ * operator-editable manifest, etc.) reaching the same code path cannot
+ * smuggle traversal segments. Exported for direct unit-testing.
+ */
+export function isLeafName(name: string): boolean {
+  if (name === "" || name === "." || name === "..") return false;
+  return path.basename(name) === name;
+}
+
 /** Returns positive if a > b, negative if a < b, 0 if equal. */
 export function compareSemver(a: string, b: string): number {
   const aa = parseVersion(a);
@@ -79,11 +91,23 @@ export class RecipeFileLoaderService implements OnModuleInit {
     }
 
     for (const formId of formDirs) {
+      if (!isLeafName(formId)) {
+        this.logger.error(
+          `Refusing recipes directory entry "${formId}" under ${this.recipesRoot} — not a leaf name`,
+        );
+        continue;
+      }
       const dir = path.join(this.recipesRoot, formId);
       const files = (await fs.readdir(dir)).filter((f) => f.endsWith(".json"));
       const byVersion = new Map<string, ServiceContractRecipe>();
 
       for (const file of files) {
+        if (!isLeafName(file)) {
+          this.logger.error(
+            `Refusing recipe file entry "${file}" under ${dir} — not a leaf name`,
+          );
+          continue;
+        }
         const filePath = path.join(dir, file);
         try {
           const raw = await fs.readFile(filePath, "utf8");

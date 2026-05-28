@@ -2,7 +2,10 @@ import * as path from "node:path";
 import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import { Logger } from "@nestjs/common";
-import { RecipeFileLoaderService } from "./recipe-file-loader.service";
+import {
+  RecipeFileLoaderService,
+  isLeafName,
+} from "./recipe-file-loader.service";
 
 const FIXTURES_ROOT = path.join(__dirname, "__fixtures__");
 
@@ -244,6 +247,30 @@ describe("RecipeFileLoaderService", () => {
       expect(
         loader.findByFormId({ formId: "passport-renewal", version: "9.9.9" }),
       ).toBeNull();
+    });
+  });
+
+  // CWE-22 defense-in-depth. `fs.readdir` already returns leaf names, but the
+  // loader pipes every entry through `isLeafName` before constructing a path,
+  // so any future input source that reaches the same code path (an env-
+  // configured root, an operator-editable manifest, etc.) cannot smuggle
+  // traversal segments through `path.join`. This unit-tests the guard
+  // directly; integration follows by the loader applying it on every entry.
+  describe("isLeafName", () => {
+    it.each<[string, boolean]>([
+      ["passport-renewal", true],
+      ["1.0.0.json", true],
+      ["weird but legal name", true],
+      ["", false],
+      [".", false],
+      ["..", false],
+      ["../escape", false],
+      ["../etc/passwd", false],
+      ["foo/bar", false],
+      ["/abs/path", false],
+      ["nested/sub", false],
+    ])("isLeafName(%j) === %j", (name, expected) => {
+      expect(isLeafName(name)).toBe(expected);
     });
   });
 });
