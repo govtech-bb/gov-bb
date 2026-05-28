@@ -2,6 +2,7 @@ import { createFileRoute, notFound } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { Heading, Text, linkVariants } from '@govtech-bb/react'
 import type { SerializedEditorState } from 'lexical'
+import { ErrorPage } from '../components/ErrorPage'
 import { PageShell } from '../components/PageShell'
 import { LexicalContent } from '../components/LexicalContent'
 import { findPage } from '../content/registry'
@@ -226,13 +227,17 @@ function ContentRoute() {
 
 function FlaggedView() {
   return (
-    <PageShell>
-      <Heading as="h1">This page isn&apos;t available yet</Heading>
-      <Text as="p" className="mt-4 text-mid-grey-00">
-        The service you&apos;re looking for is still being prepared and
-        isn&apos;t public yet. Please check back later.
-      </Text>
-    </PageShell>
+    <ErrorPage
+      title="This service is temporarily unavailable"
+      intro="We're performing scheduled maintenance or experiencing unusually high traffic. This service should be back shortly."
+      suggestions={[
+        'Try again in a few minutes',
+        'Return to the homepage to access other services',
+        'Contact us for urgent enquiries',
+      ]}
+      secondary={{ label: 'Contact us', href: '/feedback' }}
+      primary={{ label: 'Return to homepage', href: '/' }}
+    />
   )
 }
 
