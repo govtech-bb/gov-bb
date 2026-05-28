@@ -1,4 +1,5 @@
 import { hydrateForm } from "./resolution";
+import { UnknownRefError } from "./errors";
 import { getCatalog } from "./catalog";
 import type { RegistryCatalog } from "./catalog";
 import type { ServiceContractRecipe } from "@govtech-bb/form-types";
@@ -222,9 +223,7 @@ describe("hydrateForm", () => {
     expect(lastName.label).toBe("Last Name");
   });
 
-  it("skips unknown ref with console.warn and does not appear in output", () => {
-    const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
-
+  it("throws UnknownRefError pointing at an unknown ref's recipe path", () => {
     const recipe = makeRecipe({
       steps: [
         {
@@ -238,36 +237,51 @@ describe("hydrateForm", () => {
       ],
     });
 
-    const contract = hydrateForm(recipe, catalog);
+    expect(() => hydrateForm(recipe, catalog)).toThrow(UnknownRefError);
 
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("components/unknown-widget"),
-    );
-    // Only the known field appears
-    expect(contract.steps[0].elements).toHaveLength(1);
-    expect(contract.steps[0].elements[0].fieldId).toBe("text");
-
-    warnSpy.mockRestore();
+    try {
+      hydrateForm(recipe, catalog);
+      throw new Error("expected hydrateForm to throw");
+    } catch (err) {
+      expect(err).toBeInstanceOf(UnknownRefError);
+      expect((err as UnknownRefError).unknownRefs).toEqual([
+        {
+          ref: "components/unknown-widget",
+          path: "steps[step-1].elements[0].ref",
+        },
+      ]);
+    }
   });
 
-  it("does not throw when all refs in a step are unknown", () => {
-    const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
-
+  it("collects every unknown ref across all steps before throwing", () => {
     const recipe = makeRecipe({
       steps: [
         {
           stepId: "step-1",
           title: "Step 1",
-          elements: [{ ref: "components/nonexistent" }],
+          elements: [
+            { ref: "components/text" },
+            { ref: "components/nope-one" },
+          ],
+        },
+        {
+          stepId: "step-2",
+          title: "Step 2",
+          elements: [{ ref: "blocks/nope-two" }],
         },
       ],
     });
 
-    const result = hydrateForm(recipe, catalog);
-    expect(result).toBeDefined();
-    expect(warnSpy).toHaveBeenCalled();
-
-    warnSpy.mockRestore();
+    try {
+      hydrateForm(recipe, catalog);
+      throw new Error("expected hydrateForm to throw");
+    } catch (err) {
+      expect(err).toBeInstanceOf(UnknownRefError);
+      expect((err as UnknownRefError).unknownRefs).toEqual([
+        { ref: "components/nope-one", path: "steps[step-1].elements[1].ref" },
+        { ref: "blocks/nope-two", path: "steps[step-2].elements[0].ref" },
+      ]);
+    }
   });
 
   it("expands a custom component ref when it exists in catalog.custom", () => {

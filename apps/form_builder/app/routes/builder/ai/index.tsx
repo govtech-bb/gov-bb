@@ -94,7 +94,16 @@ function AiFormBuilderPage() {
         loading: false,
       }));
     } catch (err: any) {
-      setSession((s) => ({ ...s, loading: false, error: err.message }));
+      // TanStack Start strips invariant detail in production, so we surface
+      // a useful hint when this fires from a 413 at the Amplify edge — the
+      // most common cause is the request body exceeding the SSR Lambda's
+      // ~6 MB cap (e.g., a large PDF that slipped past the file-size guard).
+      const raw = err?.message ?? "Unknown error";
+      const message =
+        raw === "Invariant failed"
+          ? "Upload failed — the file may be too large or the connection was interrupted. Try a smaller PDF (under 4 MB)."
+          : raw;
+      setSession((s) => ({ ...s, loading: false, error: message }));
     }
   };
 
@@ -109,9 +118,29 @@ function AiFormBuilderPage() {
     }
   };
 
+  // Hard cap matches the Amplify SSR Lambda request-body limit. The PDF is
+  // base64-encoded and wrapped in a JSON server-function body, which inflates
+  // the on-the-wire size by ~1.4× — so a 4 MB raw PDF lands around 5.6 MB,
+  // safely under the ~6 MB cap. Anything larger trips a 413 at the Amplify
+  // edge, which surfaces in production as the cryptic "Invariant failed"
+  // (TanStack Start strips the underlying message). Once the presigned-S3
+  // upload flow ships, this limit can be relaxed to Bedrock's ~32 MB ceiling.
+  const MAX_PDF_BYTES = 4 * 1024 * 1024;
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > MAX_PDF_BYTES) {
+      const mb = (file.size / 1024 / 1024).toFixed(1);
+      setSession((s) => ({
+        ...s,
+        error: `PDF is ${mb} MB; maximum is 4 MB. Please use a smaller file or split it into separate pages.`,
+      }));
+      // Clear the picker so the same file can be re-selected after the user picks a smaller one.
+      e.target.value = "";
+      return;
+    }
+    setSession((s) => ({ ...s, error: null }));
     setPdfName(file.name);
     setPdfFile(file);
   };

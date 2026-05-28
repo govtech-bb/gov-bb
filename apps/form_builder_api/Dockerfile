@@ -65,7 +65,8 @@ RUN mkdir -p node_modules/@govtech-bb && \
     ln -sfn ../../packages/form-types node_modules/@govtech-bb/form-types && \
     ln -sfn ../../packages/form-conditions node_modules/@govtech-bb/form-conditions && \
     ln -sfn ../../packages/form-validation node_modules/@govtech-bb/form-validation && \
-    ln -sfn ../../packages/expressions node_modules/@govtech-bb/expressions
+    ln -sfn ../../packages/expressions node_modules/@govtech-bb/expressions && \
+    ln -sfn ../../packages/registry node_modules/@govtech-bb/registry
 
 # Package manifests needed for module resolution
 COPY --from=builder --chown=app:app /app/packages/database/package.json ./packages/database/
@@ -74,6 +75,7 @@ COPY --from=builder --chown=app:app /app/packages/form-types/package.json ./pack
 COPY --from=builder --chown=app:app /app/packages/form-conditions/package.json ./packages/form-conditions/
 COPY --from=builder --chown=app:app /app/packages/form-validation/package.json ./packages/form-validation/
 COPY --from=builder --chown=app:app /app/packages/expressions/package.json ./packages/expressions/
+COPY --from=builder --chown=app:app /app/packages/registry/package.json ./packages/registry/
 
 # Root package.json + tsconfig for path resolution
 COPY --from=builder --chown=app:app /app/package.json ./

@@ -1,6 +1,10 @@
 import { useState } from "react";
 import type { RegistryCatalog, RecipeFieldDraft } from "@govtech-bb/form-builder";
-import { REGISTRY_COMPONENTS, REGISTRY_BLOCKS } from "@govtech-bb/registry";
+import {
+  REGISTRY_COMPONENTS,
+  REGISTRY_BLOCKS,
+  REGISTRY_PRIMITIVES,
+} from "@govtech-bb/registry";
 import styles from "../../../styles/builder.module.css";
 
 interface FieldPickerProps {
@@ -22,15 +26,35 @@ export function FieldPicker({ catalog, onAddField }: FieldPickerProps) {
   const [activeTab, setActiveTab] = useState<Tab>("Components");
   const [query, setQuery] = useState("");
 
-  const components = Object.entries(REGISTRY_COMPONENTS).filter(([ref, primitive]) =>
-    matches(query, primitive.label, primitive.fieldId, ref),
-  );
+  const components = Object.entries(REGISTRY_COMPONENTS)
+    .filter(([ref]) => !(ref in REGISTRY_PRIMITIVES))
+    .filter(([ref, primitive]) =>
+      matches(query, primitive.label, primitive.fieldId, ref),
+    );
   const blocks = Object.entries(REGISTRY_BLOCKS).filter(([ref, block]) =>
     matches(query, block.blockId, ref),
   );
-  const custom = catalog.custom.filter((item) =>
-    matches(query, item.displayName, item.ref),
-  );
+
+  type CustomRow =
+    | { source: "primitive"; label: string; ref: string; badge: string }
+    | { source: "custom"; label: string; ref: string; badge: string };
+
+  const customRows: CustomRow[] = [
+    ...Object.entries(REGISTRY_PRIMITIVES).map(([ref, primitive]) => ({
+      source: "primitive" as const,
+      label: primitive.label,
+      ref,
+      badge: primitive.fieldId,
+    })),
+    ...catalog.custom.map((item) => ({
+      source: "custom" as const,
+      label: item.displayName,
+      ref: item.ref,
+      badge: item.ref,
+    })),
+  ].sort((a, b) => a.label.localeCompare(b.label));
+
+  const custom = customRows.filter((row) => matches(query, row.label, row.ref));
 
   const counts: Record<Tab, number> = {
     Components: components.length,
@@ -140,20 +164,24 @@ export function FieldPicker({ catalog, onAddField }: FieldPickerProps) {
 
       {activeTab === "Custom" && (
         <div>
-          {catalog.custom.length === 0 && (
-            <p style={{ color: "#888" }}>No custom components registered.</p>
+          {custom.length === 0 && (
+            <p style={{ color: "#888" }}>No matches.</p>
           )}
-          {custom.map((item) => (
+          {custom.map((row) => (
             <div
-              key={item.ref}
+              key={`${row.source}:${row.ref}`}
               className={styles.fieldRow}
               style={{ cursor: "pointer" }}
               onClick={() =>
-                onAddField({ kind: "custom", ref: item.ref, overrides: {} })
+                onAddField(
+                  row.source === "primitive"
+                    ? { kind: "component", ref: row.ref, overrides: {} }
+                    : { kind: "custom", ref: row.ref, overrides: {} },
+                )
               }
             >
-              <span style={{ flex: 1 }}>{item.displayName}</span>
-              <span className={styles.badge}>{item.ref}</span>
+              <span style={{ flex: 1 }}>{row.label}</span>
+              <span className={styles.badge}>{row.badge}</span>
             </div>
           ))}
         </div>
