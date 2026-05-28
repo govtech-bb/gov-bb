@@ -276,9 +276,9 @@ export default function FormRenderer({
     completeAndContinue(currentStep.stepId);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     trackEvent("form-submit", { form_id: formMeta.formId });
-    form.handleSubmit();
+    await form.handleSubmit();
     completeAndContinue(currentStep.stepId);
   };
 
@@ -291,6 +291,8 @@ export default function FormRenderer({
     }
     return fieldValidationErrors;
   });
+
+  const isSubmitting = useStore(form.store, (state) => state.isSubmitting);
 
   const isSubmissionConfirmation =
     currentStep.stepId === "submission-confirmation";
@@ -443,9 +445,14 @@ export default function FormRenderer({
             <button
               data-variant="primary"
               type="button"
+              disabled={isLastFormStep && isSubmitting}
               onClick={isLastFormStep ? handleSubmit : handleContinue}
             >
-              {isLastFormStep ? "Submit" : "Continue"}
+              {isLastFormStep && isSubmitting
+                ? "Submitting…"
+                : isLastFormStep
+                  ? "Submit"
+                  : "Continue"}
             </button>
           </div>
         )}
