@@ -215,7 +215,11 @@ export function LexicalBody({ body }: { body: SerializedEditorState }) {
   return (
     <>
       {sections.map((section, i) => (
-        <div key={i} className="space-y-s">
+        // Each section: 16px internal stack between heading and its content.
+        // After the first, 8px top padding pushes the heading down — combined
+        // with the parent's 24px row gap this yields the ~32px breathing
+        // room between sections shown in the Figma spec.
+        <div key={i} className={`space-y-s${i > 0 ? ' pt-xs' : ''}`}>
           <RichText data={section} converters={converters} disableContainer />
         </div>
       ))}
