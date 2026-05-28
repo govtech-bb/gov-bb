@@ -258,7 +258,10 @@ export default function FieldRenderer({
                           className="govbb-btn--destructive-link"
                           onClick={() => removeField(values)}
                         >
-                          Remove
+                          Remove{" "}
+                          <span className="govbb-visually-hidden">
+                            {field.label}
+                          </span>
                         </button>
                       ) : null}
                     </React.Fragment>
@@ -269,7 +272,10 @@ export default function FieldRenderer({
                       className="govbb-btn--link"
                       onClick={() => addAnotherField(values)}
                     >
-                      Add Another
+                      Add Another{" "}
+                      <span className="govbb-visually-hidden">
+                        {field.label}
+                      </span>
                     </button>
                   ) : null}
                 </>

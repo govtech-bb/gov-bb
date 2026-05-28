@@ -279,6 +279,37 @@ describe("FieldRenderer", () => {
       // regression that rendered max or every defaultValue entry is caught.
       expect(inputs.length).toBe(1);
     });
+
+    it("'Add Another' button exposes the field label to assistive tech", () => {
+      mockState = { value: ["first"], meta: { isValid: true, errors: [] } };
+      renderField(
+        primitive("text", {
+          label: "Address line",
+          behaviours: [fieldArrayBehaviour],
+        }),
+      );
+      // Sighted users see "Add Another"; the field label is appended via a
+      // visually-hidden span so screen readers know what is being added.
+      expect(
+        screen.getByRole("button", { name: "Add Another Address line" }),
+      ).toBeInTheDocument();
+    });
+
+    it("'Remove' button exposes the field label to assistive tech", () => {
+      mockState = {
+        value: ["first", "second"],
+        meta: { isValid: true, errors: [] },
+      };
+      renderField(
+        primitive("text", {
+          label: "Address line",
+          behaviours: [fieldArrayBehaviour],
+        }),
+      );
+      expect(
+        screen.getByRole("button", { name: "Remove Address line" }),
+      ).toBeInTheDocument();
+    });
   });
 
   // -------------------------------------------------------------------------
