@@ -139,6 +139,10 @@ export interface Service {
    * The web address for this page. Leave blank and it fills in from the title. Once the page is live this is locked — changing it breaks every existing link, so ask an admin if it really must change.
    */
   slug: string
+  /**
+   * Set to “Flagged” while preparing — the page is hidden from the public and only visible to reviewers with the feature-flag cookie. Switch to “Live” when ready to release.
+   */
+  flag: 'live' | 'flagged'
   title: string
   /**
    * A one-sentence summary, shown in search results and listings. Aim for under 160 characters — that’s roughly what search engines show in results.
@@ -243,6 +247,10 @@ export interface Organisation {
    * The web address for this page. Leave blank and it fills in from the title. Once the page is live this is locked — changing it breaks every existing link, so ask an admin if it really must change.
    */
   slug: string
+  /**
+   * Set to “Flagged” while preparing — the page is hidden from the public and only visible to reviewers with the feature-flag cookie. Switch to “Live” when ready to release.
+   */
+  flag: 'live' | 'flagged'
   /**
    * What type of organisation this is.
    */
@@ -603,6 +611,7 @@ export interface PayloadMigration {
  */
 export interface ServicesSelect<T extends boolean = true> {
   slug?: T
+  flag?: T
   title?: T
   description?: T
   body?: T
@@ -621,6 +630,7 @@ export interface ServicesSelect<T extends boolean = true> {
  */
 export interface OrganisationsSelect<T extends boolean = true> {
   slug?: T
+  flag?: T
   kind?: T
   stage?: T
   name?: T

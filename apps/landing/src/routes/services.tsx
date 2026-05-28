@@ -6,7 +6,8 @@ import { allServicesQueryOptions, cmsRouteHeaders } from '../lib/cms'
 import { trackEvent } from '../lib/analytics'
 
 export const Route = createFileRoute('/services')({
-  loader: ({ context }) => context.queryClient.ensureQueryData(allServicesQueryOptions()),
+  loader: ({ context }) =>
+    context.queryClient.ensureQueryData(allServicesQueryOptions(context.flag)),
   headers: ({ match }) => cmsRouteHeaders(match.status),
   head: () => ({
     meta: [
@@ -23,7 +24,8 @@ export const Route = createFileRoute('/services')({
 })
 
 function ServicesPage() {
-  const { data: services } = useSuspenseQuery(allServicesQueryOptions())
+  const { flag } = Route.useRouteContext()
+  const { data: services } = useSuspenseQuery(allServicesQueryOptions(flag))
 
   // `fetchAllServices` already filters out `/start` sub-pages at the API
   // boundary; classification is driven by the structured `serviceType`

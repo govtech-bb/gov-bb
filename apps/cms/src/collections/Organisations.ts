@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload'
 import { anyone, isAdminOrEditor } from '../access/roles'
 import { slugField } from '../fields/slug'
+import { flagField } from '../fields/flag'
 import { lockSlugAfterPublish } from '../hooks/lockSlugAfterPublish'
 import { contactBlocks, onlineServiceBlocks } from '../fields/contactBlocks'
 import { bodyEditor } from '../lib/body-editor'
@@ -28,6 +29,7 @@ export const Organisations: CollectionConfig = {
   },
   fields: [
     slugField('name'),
+    flagField,
     {
       name: 'kind',
       type: 'select',

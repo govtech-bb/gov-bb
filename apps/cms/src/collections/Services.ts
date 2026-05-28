@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload'
 import { anyone, isAdminOrEditor } from '../access/roles'
 import { slugField } from '../fields/slug'
+import { flagField } from '../fields/flag'
 import { lockSlugAfterPublish } from '../hooks/lockSlugAfterPublish'
 import { bodyEditor } from '../lib/body-editor'
 
@@ -26,6 +27,7 @@ export const Services: CollectionConfig = {
   },
   fields: [
     slugField(),
+    flagField,
     {
       type: 'tabs',
       tabs: [

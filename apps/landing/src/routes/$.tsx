@@ -37,7 +37,7 @@ export const Route = createFileRoute('/$')({
   loader: async ({ params, context }): Promise<LoaderData> => {
     const splat = (params._splat ?? '').replace(/^\/+|\/+$/g, '')
     const segments = splat.split('/').filter(Boolean)
-    const { queryClient } = context
+    const { queryClient, flag } = context
 
     // Try CMS routing first. If the CMS is unreachable, we still want static
     // service pages to render (kind 'page' from findPage); a true notFound is
@@ -57,7 +57,7 @@ export const Route = createFileRoute('/$')({
         // only for the 1-of-8 category that has subcategories.
         const [subs] = await Promise.all([
           queryClient.ensureQueryData(subcategoriesByCategoryQueryOptions(cat.slug)),
-          queryClient.ensureQueryData(servicesByCategoryQueryOptions(cat.slug)),
+          queryClient.ensureQueryData(servicesByCategoryQueryOptions(cat.slug, flag)),
         ])
         if (subs.length > 0) {
           return { kind: 'subcategory-index', category: cat, categorySlug: cat.slug }
@@ -76,7 +76,7 @@ export const Route = createFileRoute('/$')({
         const [subs] = await Promise.all([
           queryClient.ensureQueryData(subcategoriesByCategoryQueryOptions(cat.slug)),
           queryClient.ensureQueryData(
-            servicesBySubcategoryQueryOptions(cat.slug, segments[1]),
+            servicesBySubcategoryQueryOptions(cat.slug, segments[1], flag),
           ),
         ])
         const sub = subs.find((s) => s.slug === segments[1])
@@ -193,7 +193,10 @@ function CategoryView({
   category: CmsCategory
   categorySlug: string
 }) {
-  const { data: items } = useSuspenseQuery(servicesByCategoryQueryOptions(categorySlug))
+  const { flag } = Route.useRouteContext()
+  const { data: items } = useSuspenseQuery(
+    servicesByCategoryQueryOptions(categorySlug, flag),
+  )
   return (
     <PageShell>
       <div className="space-y-4 lg:space-y-6">
@@ -255,8 +258,9 @@ function SubcategoryView({
   categorySlug: string
   subcategorySlug: string
 }) {
+  const { flag } = Route.useRouteContext()
   const { data: items } = useSuspenseQuery(
-    servicesBySubcategoryQueryOptions(categorySlug, subcategorySlug),
+    servicesBySubcategoryQueryOptions(categorySlug, subcategorySlug, flag),
   )
   return (
     <PageShell>

@@ -33,6 +33,7 @@ export interface CmsServiceListItem {
   description?: string
   stage?: 'alpha' | 'beta' | 'migrated'
   serviceType?: 'digital' | 'information'
+  flag?: 'live' | 'flagged'
   categories: string[]
   subcategory?: string
 }
@@ -64,6 +65,7 @@ interface PayloadServiceDoc {
   description?: string | null
   stage?: 'alpha' | 'beta' | 'migrated' | null
   serviceType?: 'digital' | 'information' | null
+  flag?: 'live' | 'flagged' | null
   categories?: Array<PayloadRelationship | string | number> | null
   subcategory?: PayloadRelationship | string | number | null
 }
@@ -120,14 +122,22 @@ function normaliseService(doc: PayloadServiceDoc): CmsServiceListItem {
     description: doc.description ?? undefined,
     stage: doc.stage ?? undefined,
     serviceType: doc.serviceType ?? undefined,
+    flag: doc.flag ?? undefined,
     categories,
     subcategory,
   }
 }
 
+// Public traffic filters to `flag: 'live'` so flagged docs stay hidden. A
+// reviewer with the cookie sees both.
+function flagWhere(flag: boolean): string {
+  return flag ? '' : '&where[flag][equals]=live'
+}
+
 const PUBLISHED = 'where[_status][equals]=published'
 
 export async function fetchCategories(): Promise<CmsCategory[]> {
+  // Categories don't carry the flag field — they're a small fixed set.
   const res = await cmsFetch<PayloadCategoryDoc>(
     '/api/categories?sort=order&limit=100',
   )
@@ -154,9 +164,10 @@ export async function fetchSubcategoriesByCategory(
 
 export async function fetchServicesByCategory(
   categorySlug: string,
+  flag: boolean,
 ): Promise<CmsServiceListItem[]> {
   const res = await cmsFetch<PayloadServiceDoc>(
-    `/api/services?${PUBLISHED}&where[categories.slug][in]=${encodeURIComponent(categorySlug)}&depth=1&sort=title&limit=200`,
+    `/api/services?${PUBLISHED}${flagWhere(flag)}&where[categories.slug][in]=${encodeURIComponent(categorySlug)}&depth=1&sort=title&limit=200`,
   )
   return res.docs
     .map(normaliseService)
@@ -166,9 +177,10 @@ export async function fetchServicesByCategory(
 export async function fetchServicesBySubcategory(
   categorySlug: string,
   subcategorySlug: string,
+  flag: boolean,
 ): Promise<CmsServiceListItem[]> {
   const res = await cmsFetch<PayloadServiceDoc>(
-    `/api/services?${PUBLISHED}` +
+    `/api/services?${PUBLISHED}${flagWhere(flag)}` +
       `&where[categories.slug][in]=${encodeURIComponent(categorySlug)}` +
       `&where[subcategory.slug][equals]=${encodeURIComponent(subcategorySlug)}` +
       `&depth=1&sort=title&limit=200`,
@@ -178,9 +190,11 @@ export async function fetchServicesBySubcategory(
     .filter((s) => !s.slug.endsWith('/start'))
 }
 
-export async function fetchAllServices(): Promise<CmsServiceListItem[]> {
+export async function fetchAllServices(
+  flag: boolean,
+): Promise<CmsServiceListItem[]> {
   const res = await cmsFetch<PayloadServiceDoc>(
-    `/api/services?${PUBLISHED}&depth=1&sort=title&limit=500`,
+    `/api/services?${PUBLISHED}${flagWhere(flag)}&depth=1&sort=title&limit=500`,
   )
   return res.docs
     .map(normaliseService)
@@ -188,7 +202,9 @@ export async function fetchAllServices(): Promise<CmsServiceListItem[]> {
 }
 
 // Query options — passed to `queryClient.ensureQueryData` in loaders and to
-// `useSuspenseQuery` in components.
+// `useSuspenseQuery` in components. The `flag` boolean is part of the cache
+// key so a reviewer's flagged-included result doesn't bleed into a public
+// session.
 
 export const categoriesQueryOptions = () =>
   queryOptions({
@@ -202,15 +218,19 @@ export const subcategoriesByCategoryQueryOptions = (categorySlug: string) =>
     queryFn: () => fetchSubcategoriesByCategory(categorySlug),
   })
 
-export const servicesByCategoryQueryOptions = (categorySlug: string) =>
+export const servicesByCategoryQueryOptions = (
+  categorySlug: string,
+  flag: boolean,
+) =>
   queryOptions({
-    queryKey: ['cms', 'services', 'by-category', categorySlug] as const,
-    queryFn: () => fetchServicesByCategory(categorySlug),
+    queryKey: ['cms', 'services', 'by-category', categorySlug, flag] as const,
+    queryFn: () => fetchServicesByCategory(categorySlug, flag),
   })
 
 export const servicesBySubcategoryQueryOptions = (
   categorySlug: string,
   subcategorySlug: string,
+  flag: boolean,
 ) =>
   queryOptions({
     queryKey: [
@@ -219,14 +239,16 @@ export const servicesBySubcategoryQueryOptions = (
       'by-subcategory',
       categorySlug,
       subcategorySlug,
+      flag,
     ] as const,
-    queryFn: () => fetchServicesBySubcategory(categorySlug, subcategorySlug),
+    queryFn: () =>
+      fetchServicesBySubcategory(categorySlug, subcategorySlug, flag),
   })
 
-export const allServicesQueryOptions = () =>
+export const allServicesQueryOptions = (flag: boolean) =>
   queryOptions({
-    queryKey: ['cms', 'services', 'all'] as const,
-    queryFn: fetchAllServices,
+    queryKey: ['cms', 'services', 'all', flag] as const,
+    queryFn: () => fetchAllServices(flag),
   })
 
 export const CMS_CACHE_HEADERS: Record<string, string> = {

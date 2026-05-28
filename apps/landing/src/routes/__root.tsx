@@ -3,11 +3,13 @@ import {
   Outlet,
   Scripts,
   createRootRouteWithContext,
+  redirect,
 } from '@tanstack/react-router'
 import { Footer, textVariants } from '@govtech-bb/react'
 import Header from '../components/Header'
 import { ErrorPage } from '../components/ErrorPage'
 import { trackEvent } from '../lib/analytics'
+import { resolveFlag } from '../lib/flag'
 
 import appCss from '../styles.css?url'
 
@@ -29,9 +31,20 @@ const FOOTER_LINKS = [
 
 interface MyRouterContext {
   queryClient: QueryClient
+  flag: boolean
 }
 
 export const Route = createRootRouteWithContext<MyRouterContext>()({
+  beforeLoad: async () => {
+    // Resolve the feature-flag cookie/token once per request. The result is
+    // exposed on router context so every loader can branch (CMS queries
+    // include or exclude `flag: 'flagged'` docs accordingly).
+    const { flag, redirectTo } = await resolveFlag()
+    if (redirectTo) {
+      throw redirect({ to: redirectTo, reloadDocument: true })
+    }
+    return { flag }
+  },
   head: () => ({
     meta: [
       { charSet: 'utf-8' },
