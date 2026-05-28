@@ -4,7 +4,7 @@ import {
 } from "./registry.service";
 import { mergeEntry, hydrateStep, hydrateForm } from "./resolution";
 import { CustomComponent } from "./entities/custom-component.entity";
-import { BUILTIN_REGISTRY } from "./builtins";
+import { BUILTIN_REGISTRY } from "@govtech-bb/registry";
 import type { Block, ServiceContractRecipe } from "@govtech-bb/form-types";
 import type { Primitive } from "@govtech-bb/form-types";
 import { Repository } from "typeorm";

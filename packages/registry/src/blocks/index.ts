@@ -1,4 +1,3 @@
-// Re-exports — keep in sync with apps/api/src/registry/builtins/blocks/index.ts
 export { AdditionalInformation } from "./additional-information";
 export { ApplicantDeclaration } from "./applicant-declaration";
 export { ContactInformation } from "./contact-information";
@@ -29,7 +28,8 @@ const ALL_BLOCKS = [
   SupportingDocuments,
 ] as const satisfies Block[];
 
-// Compile-time guard: bump the literal type whenever ALL_BLOCKS changes length.
+// Completeness guard: bump the literal type whenever you add a block to
+// ALL_BLOCKS, so a registered-but-unlisted block fails the build.
 const _blockCount: 8 = ALL_BLOCKS.length;
 
 export const REGISTRY_BLOCKS: Record<`blocks/${string}`, Block> =
