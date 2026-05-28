@@ -67,6 +67,15 @@ export const Route = createFileRoute("/forms/$formId/")({
   }),
   validateSearch: (search): FormSearchParams =>
     formSearchParamSchema.parse(search),
+  head: ({ loaderData }) => ({
+    meta: [
+      {
+        title: loaderData
+          ? `Government Services | ${loaderData.formTitle}`
+          : "Government Services",
+      },
+    ],
+  }),
 });
 
 function RouteComponent() {
