@@ -9,7 +9,7 @@ import type {
   ServiceContract,
   ServiceContractRecipe,
 } from "@govtech-bb/form-types";
-import type { RegistryEntry } from "./builtins";
+import type { RegistryEntry } from "@govtech-bb/registry";
 
 export type Resolver = (ref: string) => Promise<RegistryEntry | null>;
 

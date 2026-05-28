@@ -1,4 +1,3 @@
-// Re-exports — keep in sync with apps/api/src/registry/builtins/components/index.ts
 export { AccountName } from "./account-name";
 export { AccountNumber } from "./account-number";
 export { AccountType } from "./account-type";
@@ -141,7 +140,8 @@ const ALL = [
   ...PRIMITIVES,
 ] as const satisfies Primitive[];
 
-// Compile-time guard: bump the literal type whenever ALL changes length.
+// Completeness guard: bump the literal type whenever you add a component to
+// ALL, so a registered-but-unlisted component fails the build.
 const _componentCount: 44 = ALL.length;
 
 export const REGISTRY_COMPONENTS: Record<`components/${string}`, Primitive> =
