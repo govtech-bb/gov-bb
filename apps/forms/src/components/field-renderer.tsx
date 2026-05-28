@@ -70,9 +70,6 @@ export default function FieldRenderer({
         }
         const invalid = errorMessage ? true : undefined;
 
-        // Associate the hint and error text with the input(s) via
-        // aria-describedby (GOV.UK pattern). Each branch renders the hint/error
-        // nodes with these ids so the references always resolve.
         const hintId = field.hint ? `${field.id}-hint` : undefined;
         const errorId = errorMessage ? `${field.id}-error` : undefined;
         const describedBy =
