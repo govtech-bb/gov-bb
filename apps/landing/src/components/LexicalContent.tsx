@@ -215,11 +215,14 @@ export function LexicalBody({ body }: { body: SerializedEditorState }) {
   return (
     <>
       {sections.map((section, i) => (
-        // Each section: 16px internal stack between heading and its content.
-        // After the first, 8px top padding pushes the heading down — combined
-        // with the parent's 24px row gap this yields the ~32px breathing
-        // room between sections shown in the Figma spec.
-        <div key={i} className={`space-y-s${i > 0 ? ' pt-xs' : ''}`}>
+        // Flex column with `gap-s` (16px) — mirrors the Figma section
+        // (gap-[16px]) and avoids margin-top hacks. After the first
+        // section, 8px top padding combines with the parent's 24px row
+        // gap to give the ~32px breathing room before each new heading.
+        <div
+          key={i}
+          className={`flex flex-col gap-s${i > 0 ? ' pt-xs' : ''}`}
+        >
           <RichText data={section} converters={converters} disableContainer />
         </div>
       ))}
