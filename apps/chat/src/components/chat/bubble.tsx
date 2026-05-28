@@ -77,11 +77,15 @@ function buildMarkdownComponents(citations: Citation[]) {
         const citation = byNumber.get(num);
         if (citation) return <CitationMarker citation={citation} />;
       }
-      // Everything else (user URLs, mailto:, tel:, model-emitted links)
-      // renders as a plain underlined anchor — no citation chrome.
+      // Only allow safe URL schemes — block javascript:, data:, vbscript:,
+      // etc. that a model could emit via prompt injection.
+      const safe =
+        typeof href === "string" && /^(https?:|mailto:|tel:|#)/i.test(href);
+      if (!safe) {
+        return <span className="text-teal-00 underline">{children}</span>;
+      }
       const external =
-        typeof href === "string" &&
-        (href.startsWith("http://") || href.startsWith("https://"));
+        href.startsWith("http://") || href.startsWith("https://");
       return (
         <a
           className="text-teal-00 underline hover:text-teal-100"
