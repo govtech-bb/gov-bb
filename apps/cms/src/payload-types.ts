@@ -200,6 +200,10 @@ export interface Category {
    */
   slug: string
   /**
+   * Position in the homepage category list. Lower numbers appear first. Leave at 999 for new categories — they’ll land at the end until an admin reorders them.
+   */
+  order: number
+  /**
    * One sentence shown under the category heading on the site.
    */
   description?: string | null
@@ -738,6 +742,7 @@ export interface OrganisationsSelect<T extends boolean = true> {
 export interface CategoriesSelect<T extends boolean = true> {
   title?: T
   slug?: T
+  order?: T
   description?: T
   updatedAt?: T
   createdAt?: T

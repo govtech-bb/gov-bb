@@ -1,10 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { Heading, Link, Search, Text } from '@govtech-bb/react'
 import { HelpfulBox } from '../components/HelpfulBox'
-import { PAGES } from '../content/registry'
+import { allServicesQueryOptions, cmsRouteHeaders } from '../lib/cms'
 import { trackEvent } from '../lib/analytics'
 
 export const Route = createFileRoute('/services')({
+  loader: ({ context }) => context.queryClient.ensureQueryData(allServicesQueryOptions()),
+  headers: ({ match }) => cmsRouteHeaders(match.status),
   head: () => ({
     meta: [
       { title: 'Alpha services | Government of Barbados' },
@@ -15,47 +18,31 @@ export const Route = createFileRoute('/services')({
       },
     ],
   }),
+  errorComponent: ServicesError,
   component: ServicesPage,
 })
 
 function ServicesPage() {
-  const startSlugs = new Set(
-    PAGES.filter((p) => p.slug.endsWith('/start')).map((p) => p.slug),
-  )
-  const items = PAGES.filter(
-    (p) => p.frontmatter.stage === 'alpha' && !p.slug.endsWith('/start'),
-  )
-    .map((p) => ({
-      title: p.frontmatter.title,
-      href: `/${p.url}`,
-      slug: p.url,
-      isEntry: startSlugs.has(`${p.slug}/start`),
+  const { data: services } = useSuspenseQuery(allServicesQueryOptions())
+
+  // `fetchAllServices` already filters out `/start` sub-pages at the API
+  // boundary; classification is driven by the structured `serviceType`
+  // field (required on Services as of the previous commit), so no
+  // proxy-by-presence-of-/start dance is needed here.
+  const items = services
+    .filter((s) => s.stage === 'alpha')
+    .map((s) => ({
+      title: s.title,
+      href: `/${s.url}`,
+      slug: s.slug,
+      isEntry: s.serviceType === 'digital',
     }))
+    // API already returns sort=title, but re-sort defensively in case of locale.
     .sort((a, b) => a.title.localeCompare(b.title))
 
   return (
     <>
-      <section className="border-teal-40 border-b-4 bg-teal-10 py-8">
-        <div className="container">
-          <div className="flex flex-col gap-2">
-            <Text as="p" className="font-bold">
-              Search for a service
-            </Text>
-            <Search
-              action="/search-results"
-              name="q"
-              label="Search for a service"
-              buttonLabel="Search"
-              onSearch={(q) => {
-                trackEvent('search-submit', { query: q, source: 'services' })
-                window.location.href = q
-                  ? `/search-results?q=${encodeURIComponent(q)}`
-                  : '/search-results'
-              }}
-            />
-          </div>
-        </div>
-      </section>
+      <ServicesHero />
 
       <section className="pt-4 pb-8">
         <div className="container">
@@ -95,6 +82,51 @@ function ServicesPage() {
       <div className="container">
         <HelpfulBox className="mb-4 lg:mb-16" />
       </div>
+    </>
+  )
+}
+
+function ServicesHero() {
+  return (
+    <section className="border-teal-40 border-b-4 bg-teal-10 py-8">
+      <div className="container">
+        <div className="flex flex-col gap-2">
+          <Text as="p" className="font-bold">
+            Search for a service
+          </Text>
+          <Search
+            action="/search-results"
+            name="q"
+            label="Search for a service"
+            buttonLabel="Search"
+            onSearch={(q) => {
+              trackEvent('search-submit', { query: q, source: 'services' })
+              window.location.href = q
+                ? `/search-results?q=${encodeURIComponent(q)}`
+                : '/search-results'
+            }}
+          />
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function ServicesError() {
+  return (
+    <>
+      <ServicesHero />
+      <section className="pt-4 pb-8">
+        <div className="container">
+          <Heading as="h1" className="mb-s">
+            Alpha services
+          </Heading>
+          <Text as="p" className="text-mid-grey-00">
+            The service list is temporarily unavailable. Please try again
+            shortly.
+          </Text>
+        </div>
+      </section>
     </>
   )
 }

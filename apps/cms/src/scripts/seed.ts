@@ -81,11 +81,12 @@ async function upsert(
 async function seedTaxonomy(payload: Payload): Promise<Map<string, string | number>> {
   const categoryIds = new Map<string, string | number>()
   const categories = await loadCategories()
-  for (const cat of categories) {
+  for (const [index, cat] of categories.entries()) {
     const id = await upsert(payload, 'categories', cat.slug, {
       slug: cat.slug,
       title: cat.title,
       description: cat.description,
+      order: index,
     })
     categoryIds.set(cat.slug, id)
     for (const sub of cat.subcategories ?? []) {

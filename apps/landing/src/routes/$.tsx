@@ -1,80 +1,105 @@
 import { createFileRoute, notFound } from '@tanstack/react-router'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { Heading, Text, linkVariants } from '@govtech-bb/react'
 import { PageShell } from '../components/PageShell'
 import { LexicalContent } from '../components/LexicalContent'
-import { findPage, isSubPage, PAGES  } from '../content/registry'
-import type {ContentPage} from '../content/registry';
-import { CATEGORY_BY_SLUG, getSubcategory } from '../content/categories'
-import type {Category, SubCategory} from '../content/categories';
-
-interface CategoryListItem {
-  title: string
-  description?: string
-  href: string
-}
+import { findPage } from '../content/registry'
+import type { ContentPage } from '../content/registry'
+import {
+  categoriesQueryOptions,
+  cmsRouteHeaders,
+  servicesByCategoryQueryOptions,
+  servicesBySubcategoryQueryOptions,
+  subcategoriesByCategoryQueryOptions,
+  type CmsCategory,
+  type CmsServiceListItem,
+  type CmsSubcategory,
+} from '../lib/cms'
 
 type LoaderData =
   | { kind: 'page'; page: ContentPage }
-  | { kind: 'category'; category: Category; items: CategoryListItem[] }
-  | {
-      kind: 'subcategory-index'
-      category: Category
-      subcategories: SubCategory[]
-    }
+  | { kind: 'category'; category: CmsCategory; categorySlug: string }
+  | { kind: 'subcategory-index'; category: CmsCategory; categorySlug: string }
   | {
       kind: 'subcategory'
-      category: Category
-      subcategory: SubCategory
-      items: CategoryListItem[]
+      category: CmsCategory
+      subcategory: CmsSubcategory
+      categorySlug: string
+      subcategorySlug: string
     }
 
 export const Route = createFileRoute('/$')({
-  loader: ({ params }): LoaderData => {
+  // Cache header applies to CMS-fed routes; static page (kind 'page') paths
+  // also benefit from CDN caching since they don't change between deploys.
+  // On error we send no-store so an outage page isn't pinned for 5 minutes
+  // after the CMS recovers.
+  headers: ({ match }) => cmsRouteHeaders(match.status),
+  loader: async ({ params, context }): Promise<LoaderData> => {
     const splat = (params._splat ?? '').replace(/^\/+|\/+$/g, '')
     const segments = splat.split('/').filter(Boolean)
+    const { queryClient } = context
 
-    if (segments.length === 1) {
-      const cat = CATEGORY_BY_SLUG[segments[0]]
+    // Try CMS routing first. If the CMS is unreachable, we still want static
+    // service pages to render (kind 'page' from findPage); a true notFound is
+    // only correct when we *know* the CMS has no match for this URL.
+    let categories: CmsCategory[] | null = null
+    let cmsUp = true
+    try {
+      categories = await queryClient.ensureQueryData(categoriesQueryOptions())
+    } catch {
+      cmsUp = false
+    }
+
+    if (categories && segments.length === 1) {
+      const cat = categories.find((c) => c.slug === segments[0])
       if (cat) {
-        if (cat.subcategories && cat.subcategories.length > 0) {
+        // Fetch subs and services in parallel; the unused result is wasted
+        // only for the 1-of-8 category that has subcategories.
+        const [subs] = await Promise.all([
+          queryClient.ensureQueryData(subcategoriesByCategoryQueryOptions(cat.slug)),
+          queryClient.ensureQueryData(servicesByCategoryQueryOptions(cat.slug)),
+        ])
+        if (subs.length > 0) {
+          return { kind: 'subcategory-index', category: cat, categorySlug: cat.slug }
+        }
+        return { kind: 'category', category: cat, categorySlug: cat.slug }
+      }
+    }
+
+    if (categories && segments.length === 2) {
+      const cat = categories.find((c) => c.slug === segments[0])
+      if (cat) {
+        // Speculatively fetch services for the URL-provided sub-slug in
+        // parallel with subs-list validation. If the URL is a typo, the
+        // services fetch is wasted (404 path) — acceptable trade for
+        // halving the happy-path waterfall.
+        const [subs] = await Promise.all([
+          queryClient.ensureQueryData(subcategoriesByCategoryQueryOptions(cat.slug)),
+          queryClient.ensureQueryData(
+            servicesBySubcategoryQueryOptions(cat.slug, segments[1]),
+          ),
+        ])
+        const sub = subs.find((s) => s.slug === segments[1])
+        if (sub) {
           return {
-            kind: 'subcategory-index',
+            kind: 'subcategory',
             category: cat,
-            subcategories: cat.subcategories,
+            subcategory: sub,
+            categorySlug: cat.slug,
+            subcategorySlug: sub.slug,
           }
         }
-        const items = PAGES.filter(
-          (p) => p.frontmatter.categories.includes(cat.slug) && !isSubPage(p),
-        ).map((p) => ({
-          title: p.frontmatter.title,
-          description: p.frontmatter.description,
-          href: `/${p.url}`,
-        }))
-        return { kind: 'category', category: cat, items }
       }
     }
 
     const page = findPage(splat)
     if (page) return { kind: 'page', page }
 
-    if (segments.length === 2) {
-      const cat = CATEGORY_BY_SLUG[segments[0]]
-      const sub = cat ? getSubcategory(cat.slug, segments[1]) : undefined
-      if (cat && sub) {
-        const items = PAGES.filter(
-          (p) =>
-            p.frontmatter.categories.includes(cat.slug) &&
-            p.frontmatter.subcategory === sub.slug &&
-            !isSubPage(p),
-        ).map((p) => ({
-          title: p.frontmatter.title,
-          description: p.frontmatter.description,
-          href: `/${p.url}`,
-        }))
-        return { kind: 'subcategory', category: cat, subcategory: sub, items }
-      }
-    }
-
+    // Distinguish "page genuinely missing" from "CMS unreachable so we can't
+    // tell" — only the former is a notFound; the latter falls through to
+    // errorComponent so the citizen sees "temporarily unavailable" rather
+    // than "page not found" on a URL that may exist.
+    if (!cmsUp) throw new Error('CMS unreachable; cannot resolve URL')
     throw notFound()
   },
   head: ({ loaderData }) => {
@@ -105,6 +130,7 @@ export const Route = createFileRoute('/$')({
     }
     return { meta: [{ title: loaderData.category.title }] }
   },
+  errorComponent: ContentError,
   component: ContentRoute,
 })
 
@@ -112,17 +138,17 @@ function ContentRoute() {
   const data = Route.useLoaderData()
   if (data.kind === 'page') return <PageView page={data.page} />
   if (data.kind === 'subcategory-index')
-    return (
-      <SubcategoryIndexView
-        category={data.category}
-        subcategories={data.subcategories}
-      />
-    )
+    return <SubcategoryIndexView category={data.category} categorySlug={data.categorySlug} />
   if (data.kind === 'subcategory')
     return (
-      <SubcategoryView subcategory={data.subcategory} items={data.items} />
+      <SubcategoryView
+        category={data.category}
+        subcategory={data.subcategory}
+        categorySlug={data.categorySlug}
+        subcategorySlug={data.subcategorySlug}
+      />
     )
-  return <CategoryView category={data.category} items={data.items} />
+  return <CategoryView category={data.category} categorySlug={data.categorySlug} />
 }
 
 function PageView({ page }: { page: ContentPage }) {
@@ -133,61 +159,67 @@ function PageView({ page }: { page: ContentPage }) {
   )
 }
 
+function ServiceList({ items }: { items: CmsServiceListItem[] }) {
+  if (items.length === 0) {
+    return (
+      <Text as="p" className="mt-6 text-mid-grey-00">
+        No services yet.
+      </Text>
+    )
+  }
+  return (
+    <div className="mt-6 flex flex-col">
+      {items.map((item) => (
+        <div
+          key={item.url}
+          className="border-grey-00 border-t-2 py-4 first:border-0 lg:py-8"
+        >
+          <a
+            href={`/${item.url}`}
+            className={`${linkVariants()} text-[20px] leading-normal lg:text-3xl`}
+          >
+            {item.title}
+          </a>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function CategoryView({
   category,
-  items,
+  categorySlug,
 }: {
-  category: Category
-  items: CategoryListItem[]
+  category: CmsCategory
+  categorySlug: string
 }) {
-  const sorted = [...items].sort((a, b) => a.title.localeCompare(b.title))
+  const { data: items } = useSuspenseQuery(servicesByCategoryQueryOptions(categorySlug))
   return (
     <PageShell>
       <div className="space-y-4 lg:space-y-6">
         <Heading as="h1">{category.title}</Heading>
-        {category.description ? (
-          <Text as="p">{category.description}</Text>
-        ) : null}
+        {category.description ? <Text as="p">{category.description}</Text> : null}
       </div>
-      {sorted.length === 0 ? (
-        <Text as="p" className="mt-6 text-mid-grey-00">
-          No services yet.
-        </Text>
-      ) : (
-        <div className="mt-6 flex flex-col">
-          {sorted.map((item) => (
-            <div
-              key={item.href}
-              className="border-grey-00 border-t-2 py-4 first:border-0 lg:py-8"
-            >
-              <a
-                href={item.href}
-                className={`${linkVariants()} text-[20px] leading-normal lg:text-3xl`}
-              >
-                {item.title}
-              </a>
-            </div>
-          ))}
-        </div>
-      )}
+      <ServiceList items={items} />
     </PageShell>
   )
 }
 
 function SubcategoryIndexView({
   category,
-  subcategories,
+  categorySlug,
 }: {
-  category: Category
-  subcategories: SubCategory[]
+  category: CmsCategory
+  categorySlug: string
 }) {
+  const { data: subcategories } = useSuspenseQuery(
+    subcategoriesByCategoryQueryOptions(categorySlug),
+  )
   return (
     <PageShell>
       <div className="space-y-4 lg:space-y-6">
         <Heading as="h1">{category.title}</Heading>
-        {category.description ? (
-          <Text as="p">{category.description}</Text>
-        ) : null}
+        {category.description ? <Text as="p">{category.description}</Text> : null}
       </div>
       <ul className="m-0 mt-6 flex list-none flex-col p-0">
         {subcategories.map((sub) => (
@@ -215,41 +247,36 @@ function SubcategoryIndexView({
 
 function SubcategoryView({
   subcategory,
-  items,
+  categorySlug,
+  subcategorySlug,
 }: {
-  subcategory: SubCategory
-  items: CategoryListItem[]
+  category: CmsCategory
+  subcategory: CmsSubcategory
+  categorySlug: string
+  subcategorySlug: string
 }) {
-  const sorted = [...items].sort((a, b) => a.title.localeCompare(b.title))
+  const { data: items } = useSuspenseQuery(
+    servicesBySubcategoryQueryOptions(categorySlug, subcategorySlug),
+  )
   return (
     <PageShell>
       <div className="space-y-4 lg:space-y-6">
         <Heading as="h1">{subcategory.title}</Heading>
-        {subcategory.description ? (
-          <Text as="p">{subcategory.description}</Text>
-        ) : null}
+        {subcategory.description ? <Text as="p">{subcategory.description}</Text> : null}
       </div>
-      {sorted.length === 0 ? (
-        <Text as="p" className="mt-6 text-mid-grey-00">
-          No services yet.
-        </Text>
-      ) : (
-        <div className="mt-6 flex flex-col">
-          {sorted.map((item) => (
-            <div
-              key={item.href}
-              className="border-grey-00 border-t-2 py-4 first:border-0 lg:py-8"
-            >
-              <a
-                href={item.href}
-                className={`${linkVariants()} text-[20px] leading-normal lg:text-3xl`}
-              >
-                {item.title}
-              </a>
-            </div>
-          ))}
-        </div>
-      )}
+      <ServiceList items={items} />
+    </PageShell>
+  )
+}
+
+function ContentError() {
+  return (
+    <PageShell>
+      <Heading as="h1">Service list temporarily unavailable</Heading>
+      <Text as="p" className="mt-4 text-mid-grey-00">
+        We can&apos;t load this page right now. Please try again shortly. The
+        rest of the site still works.
+      </Text>
     </PageShell>
   )
 }

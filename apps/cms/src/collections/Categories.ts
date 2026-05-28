@@ -30,6 +30,17 @@ export const Categories: CollectionConfig = {
       admin: { description: slugDescription },
     },
     {
+      name: 'order',
+      type: 'number',
+      required: true,
+      defaultValue: 999,
+      admin: {
+        position: 'sidebar',
+        description:
+          'Position in the homepage category list. Lower numbers appear first. Leave at 999 for new categories — they’ll land at the end until an admin reorders them.',
+      },
+    },
+    {
       name: 'description',
       type: 'textarea',
       admin: { description: 'One sentence shown under the category heading on the site.' },
