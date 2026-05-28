@@ -16,16 +16,15 @@ const fullService: ServiceDoc = {
   subcategory: { slug: 'youth-development-leadership' },
   serviceType: 'information',
   stage: 'alpha',
-  featured: true,
-  section: 'Travel, ID and Citizenship',
   sourceUrl: 'https://www.gov.bb/Citizens/apply-passport',
-  publishDate: '2025-10-24',
+  updatedAt: '2025-10-24T12:00:00.000Z',
 }
 
 const fullMinistry: OrganisationDoc = {
   kind: 'ministry',
   slug: 'ministry-of-education',
   name: 'Ministry of Education',
+  stage: 'alpha',
   body: EMPTY_EDITOR_STATE,
   shortDescription: 'Transforms education.',
   intro: 'An introduction.',
@@ -34,9 +33,12 @@ const fullMinistry: OrganisationDoc = {
   leader: {
     name: 'The Hon. Minister',
     role: 'Minister of Education',
-    photo: { url: '/minister.jpg' },
   },
   heroImage: { url: '/hero.jpg' },
+  social: [
+    { platform: 'twitter', url: 'https://twitter.com/moe_bb' },
+    { platform: 'facebook', url: 'https://facebook.com/moe.bb' },
+  ],
   contact: [
     { blockType: 'email', label: 'Email', value: 'info@mes.gov.bb' },
     { blockType: 'phone', label: 'Telephone', value: '(246) 535-0600' },

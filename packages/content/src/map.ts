@@ -60,10 +60,8 @@ export interface ServiceDoc {
   subcategory?: Ref | null;
   serviceType?: "digital" | "information" | null;
   stage?: "alpha" | "beta" | "migrated" | null;
-  featured?: boolean | null;
-  section?: string | null;
   sourceUrl?: string | null;
-  publishDate?: string | null;
+  updatedAt?: string | null;
 }
 
 export function serviceDocToFrontmatter(doc: ServiceDoc): MappedFile {
@@ -78,13 +76,11 @@ export function serviceDocToFrontmatter(doc: ServiceDoc): MappedFile {
   const subcategory = slugOf(doc.subcategory);
   if (subcategory) data.subcategory = subcategory;
 
-  if (doc.section) data.section = doc.section;
   if (doc.serviceType) data.service_type = doc.serviceType;
   if (doc.stage) data.stage = doc.stage;
-  if (doc.featured) data.featured = true;
   if (doc.sourceUrl) data.source_url = doc.sourceUrl;
-  const publishDate = isoDate(doc.publishDate);
-  if (publishDate) data.publish_date = publishDate;
+  const updatedAt = isoDate(doc.updatedAt);
+  if (updatedAt) data.updated_at = updatedAt;
 
   return { data, body: doc.body ?? EMPTY_EDITOR_STATE };
 }
@@ -110,6 +106,7 @@ export interface OrganisationDoc {
   kind: "ministry" | "department" | "state-body";
   slug: string;
   name: string;
+  stage?: "alpha" | "beta" | "migrated" | null;
   body?: SerializedEditorState | null;
   shortDescription?: string | null;
   intro?: string | null;
@@ -118,9 +115,9 @@ export interface OrganisationDoc {
   leader?: {
     name?: string | null;
     role?: string | null;
-    photo?: Upload | null;
   } | null;
   heroImage?: Upload | null;
+  social?: Array<{ platform?: string | null; url?: string | null }> | null;
   contact?: ContactBlock[] | null;
   onlineServices?: OnlineServiceBlock[] | null;
   featured?: Array<{
@@ -204,6 +201,7 @@ export function organisationDocToFrontmatter(doc: OrganisationDoc): MappedFile {
     slug: doc.slug,
     name: doc.name,
   };
+  if (doc.stage) data.stage = doc.stage;
   if (doc.shortDescription) data.shortDescription = doc.shortDescription;
   if (doc.intro) data.intro = doc.intro;
   if (doc.kind === "ministry" && doc.category) data.category = doc.category;
@@ -216,13 +214,16 @@ export function organisationDocToFrontmatter(doc: OrganisationDoc): MappedFile {
   if (doc.leader?.name) {
     const leader: Record<string, unknown> = { name: doc.leader.name };
     if (doc.leader.role) leader.role = doc.leader.role;
-    const photo = urlOf(doc.leader.photo);
-    if (photo) leader.photo = photo;
     data[doc.kind === "ministry" ? "minister" : "head"] = leader;
   }
 
   const hero = urlOf(doc.heroImage);
   if (hero) data.heroImage = hero;
+
+  const social = (doc.social ?? [])
+    .filter((s) => s.platform && s.url)
+    .map((s) => ({ platform: s.platform ?? "", url: s.url ?? "" }));
+  if (social.length) data.social = social;
 
   const contact = (doc.contact ?? []).map(mapContact).filter(Boolean);
   if (contact.length) data.contact = contact;

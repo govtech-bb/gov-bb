@@ -208,10 +208,10 @@ export function LexicalContent({ frontmatter, body }: LexicalContentProps) {
 
           {frontmatter.source_url ? <MigrationBanner pageURL={frontmatter.source_url} /> : null}
 
-          {frontmatter.publish_date ? (
+          {frontmatter.updated_at ? (
             <div className="border-blue-10 border-b-4 pb-4 text-mid-grey-00">
               <Text as="p" size="caption">
-                Last updated on {format(frontmatter.publish_date, 'PPP')}
+                Last updated on {format(new Date(frontmatter.updated_at), 'PPP')}
               </Text>
             </div>
           ) : null}

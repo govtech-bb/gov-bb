@@ -1,7 +1,6 @@
 import type { CollectionConfig } from 'payload'
 import { anyone, isAdminOrEditor } from '../access/roles'
 import { slugField } from '../fields/slug'
-import { editorialFields } from '../fields/publishing'
 import { lockSlugAfterPublish } from '../hooks/lockSlugAfterPublish'
 import { contactBlocks, onlineServiceBlocks } from '../fields/contactBlocks'
 import { bodyEditor } from '../lib/body-editor'
@@ -13,7 +12,7 @@ export const Organisations: CollectionConfig = {
   labels: { singular: 'Organisation', plural: 'Organisations' },
   admin: {
     useAsTitle: 'name',
-    defaultColumns: ['name', 'kind', '_status', 'reviewBy', 'updatedAt'],
+    defaultColumns: ['name', 'kind', '_status', 'updatedAt'],
     description: 'Ministries, departments and state bodies.',
     group: 'Content',
   },
@@ -29,7 +28,6 @@ export const Organisations: CollectionConfig = {
   },
   fields: [
     slugField('name'),
-    ...editorialFields,
     {
       name: 'kind',
       type: 'select',
@@ -40,6 +38,23 @@ export const Organisations: CollectionConfig = {
         { label: 'State body', value: 'state-body' },
       ],
       admin: { position: 'sidebar', description: 'What type of organisation this is.' },
+    },
+    {
+      name: 'stage',
+      type: 'select',
+      label: 'Stage',
+      required: true,
+      options: [
+        { label: 'Alpha — new, still being tested', value: 'alpha' },
+        { label: 'Beta — live but still improving', value: 'beta' },
+        { label: 'Migrated from gov.bb', value: 'migrated' },
+      ],
+      defaultValue: 'alpha',
+      admin: {
+        position: 'sidebar',
+        description:
+          'How finished this page is. Use “Migrated” only for content carried over from the old gov.bb site.',
+      },
     },
     {
       type: 'tabs',
@@ -78,7 +93,6 @@ export const Organisations: CollectionConfig = {
               fields: [
                 { name: 'name', type: 'text' },
                 { name: 'role', type: 'text' },
-                { name: 'photo', type: 'upload', relationTo: 'media' },
               ],
             },
             {
@@ -96,8 +110,28 @@ export const Organisations: CollectionConfig = {
             {
               name: 'originalSource',
               type: 'text',
+              label: 'Original source',
               admin: {
-                description: 'Only fill this in if the page was copied from the old gov.bb site.',
+                description: 'The original gov.bb page this migrated content came from.',
+                // Only relevant for migrated content — hidden otherwise.
+                condition: (_, siblingData) => siblingData?.stage === 'migrated',
+              },
+              validate: (
+                value: string | null | undefined,
+                { siblingData }: { siblingData?: Record<string, unknown> },
+              ) => {
+                const isMigrated = siblingData?.stage === 'migrated'
+                if (!value)
+                  return isMigrated ? 'Add the original gov.bb URL for migrated content.' : true
+                try {
+                  const { protocol } = new URL(value)
+                  if (protocol !== 'http:' && protocol !== 'https:') {
+                    return 'Must be an http or https URL.'
+                  }
+                  return true
+                } catch {
+                  return 'Enter a full URL, e.g. https://www.gov.bb/…'
+                }
               },
             },
           ],
@@ -110,6 +144,23 @@ export const Organisations: CollectionConfig = {
               type: 'blocks',
               blocks: contactBlocks,
               admin: { description: 'Add a block per contact method.' },
+            },
+            {
+              name: 'social',
+              type: 'array',
+              label: 'Social links',
+              fields: [
+                {
+                  name: 'platform',
+                  type: 'text',
+                  required: true,
+                  admin: {
+                    description:
+                      'Lowercase platform name: twitter, facebook, instagram, linkedin, youtube.',
+                  },
+                },
+                { name: 'url', type: 'text', required: true },
+              ],
             },
           ],
         },
@@ -159,7 +210,10 @@ export const Organisations: CollectionConfig = {
             {
               name: 'associatedDepartments',
               type: 'array',
-              admin: { description: 'Departments and bodies grouped under this organisation.' },
+              admin: {
+                condition: isMinistry,
+                description: 'Departments and bodies grouped under this ministry.',
+              },
               fields: [
                 {
                   name: 'category',
@@ -195,7 +249,7 @@ export const Organisations: CollectionConfig = {
               editor: bodyEditor,
               admin: {
                 description:
-                  'The page content. Write normally; use the block menu to insert a Callout, Show / hide, Start now button or Link button.',
+                  'The page content. Write normally; use the block menu to insert a Callout, Show / hide, Start now button or Link button. For role-to-phone directories (and any other reference table), insert a table from the toolbar — you can have as many tables as the organisation needs.',
               },
             },
           ],

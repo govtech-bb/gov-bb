@@ -9,11 +9,10 @@ export const FrontmatterSchema = z.object({
   categories: z.array(z.string()).optional(),
   /** Optional sub-category slug. Must belong to one of the page's categories. */
   subcategory: z.string().optional(),
-  publish_date: z.coerce.date().optional(),
+  /** Auto-maintained from the CMS row's updatedAt — shown as "Last updated". */
+  updated_at: z.coerce.date().optional(),
   source_url: z.url().optional(),
   stage: z.enum(['alpha', 'beta', 'migrated']).optional(),
-  featured: z.boolean().optional(),
-  section: z.string().optional(),
   service_type: z.enum(['digital', 'information']).optional(),
   /**
    * Form ID in the forms API. When set, a `<a data-start-link>` element

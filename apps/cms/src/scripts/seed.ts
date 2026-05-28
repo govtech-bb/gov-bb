@@ -137,12 +137,9 @@ async function seedServices(
       body: mdToBody(content, editorConfig),
       categories,
       subcategory: subId,
-      section: fm.section,
       serviceType: fm.service_type,
       stage: fm.stage ?? 'alpha',
-      featured: Boolean(fm.featured),
       sourceUrl: fm.source_url,
-      publishDate: fm.publish_date ? new Date(fm.publish_date).toISOString() : undefined,
       _status: 'published',
     })
   }
@@ -198,10 +195,19 @@ async function seedOrganisations(
           ),
         }))
       : []
+    const social = Array.isArray(fm.social)
+      ? fm.social
+          .map((s: Record<string, unknown>) => ({
+            platform: typeof s.platform === 'string' ? s.platform : undefined,
+            url: typeof s.url === 'string' ? s.url : undefined,
+          }))
+          .filter((s) => s.platform && s.url)
+      : []
     await upsert(payload, 'organisations', fm.slug, {
       slug: fm.slug,
       name: fm.name,
       kind: fm.kind,
+      stage: fm.stage ?? 'alpha',
       category: fm.category,
       shortDescription: fm.shortDescription,
       intro: fm.intro,
@@ -209,6 +215,7 @@ async function seedOrganisations(
       leader: leaderSource ? { name: leaderSource.name, role: leaderSource.role } : undefined,
       contact: contactBlocksFromFm(fm.contact),
       onlineServices: onlineServiceBlocksFromFm(fm.onlineServices),
+      social,
       associatedDepartments: associated,
       originalSource: fm.originalSource,
       body: mdToBody(content, editorConfig),

@@ -61,7 +61,8 @@ export const StartButtonBlock: Block = {
       name: 'formId',
       type: 'text',
       admin: {
-        description: 'Form ID from the forms app.',
+        description:
+          'The form’s ID from Form Builder (the apps/form_builder admin). Open the form there; the ID is in the URL and on the form’s settings page.',
         condition: (_, siblingData) => siblingData?.type === 'form',
       },
     },

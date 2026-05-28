@@ -139,18 +139,6 @@ export interface Service {
    * The web address for this page. Leave blank and it fills in from the title. Once the page is live this is locked — changing it breaks every existing link, so ask an admin if it really must change.
    */
   slug: string
-  /**
-   * The team or person responsible for keeping this page accurate.
-   */
-  contentOwner?: string | null
-  /**
-   * When someone last checked this page is still correct.
-   */
-  lastReviewed?: string | null
-  /**
-   * When this page should next be checked for accuracy.
-   */
-  reviewBy?: string | null
   title: string
   /**
    * A one-sentence summary, shown in search results and listings. Aim for under 160 characters — that’s roughly what search engines show in results.
@@ -186,23 +174,11 @@ export interface Service {
   /**
    * How finished this page is. New pages start at Alpha. Use “Migrated” only for content carried over from the old gov.bb site.
    */
-  stage?: ('alpha' | 'beta' | 'migrated') | null
-  /**
-   * Tick to show this service in the highlighted section on the site homepage.
-   */
-  featured?: boolean | null
-  /**
-   * Optional. A heading to group this service under on topic listing pages (e.g. “Births, deaths & marriages”). Leave blank if you’re not sure.
-   */
-  section?: string | null
+  stage: 'alpha' | 'beta' | 'migrated'
   /**
    * The original gov.bb page this migrated content came from.
    */
   sourceUrl?: string | null
-  /**
-   * The date this page first went live, shown to the public. This is not a scheduling field — it does not publish the page for you.
-   */
-  publishDate?: string | null
   updatedAt: string
   createdAt: string
   _status?: ('draft' | 'published') | null
@@ -261,21 +237,13 @@ export interface Organisation {
    */
   slug: string
   /**
-   * The team or person responsible for keeping this page accurate.
-   */
-  contentOwner?: string | null
-  /**
-   * When someone last checked this page is still correct.
-   */
-  lastReviewed?: string | null
-  /**
-   * When this page should next be checked for accuracy.
-   */
-  reviewBy?: string | null
-  /**
    * What type of organisation this is.
    */
   kind: 'ministry' | 'department' | 'state-body'
+  /**
+   * How finished this page is. Use “Migrated” only for content carried over from the old gov.bb site.
+   */
+  stage: 'alpha' | 'beta' | 'migrated'
   name: string
   /**
    * How this ministry is classified.
@@ -295,7 +263,6 @@ export interface Organisation {
   leader?: {
     name?: string | null
     role?: string | null
-    photo?: (number | null) | Media
   }
   /**
    * Banner image for the ministry page.
@@ -311,7 +278,7 @@ export interface Organisation {
       }[]
     | null
   /**
-   * Only fill this in if the page was copied from the old gov.bb site.
+   * The original gov.bb page this migrated content came from.
    */
   originalSource?: string | null
   /**
@@ -368,6 +335,16 @@ export interface Organisation {
           }
       )[]
     | null
+  social?:
+    | {
+        /**
+         * Lowercase platform name: twitter, facebook, instagram, linkedin, youtube.
+         */
+        platform: string
+        url: string
+        id?: string | null
+      }[]
+    | null
   /**
    * Links to online services, or forms in the forms app.
    */
@@ -417,7 +394,7 @@ export interface Organisation {
    */
   services?: (number | Service)[] | null
   /**
-   * Departments and bodies grouped under this organisation.
+   * Departments and bodies grouped under this ministry.
    */
   associatedDepartments?:
     | {
@@ -439,7 +416,7 @@ export interface Organisation {
       }[]
     | null
   /**
-   * The page content. Write normally; use the block menu to insert a Callout, Show / hide, Start now button or Link button.
+   * The page content. Write normally; use the block menu to insert a Callout, Show / hide, Start now button or Link button. For role-to-phone directories (and any other reference table), insert a table from the toolbar — you can have as many tables as the organisation needs.
    */
   body?: {
     root: {
@@ -619,9 +596,6 @@ export interface PayloadMigration {
  */
 export interface ServicesSelect<T extends boolean = true> {
   slug?: T
-  contentOwner?: T
-  lastReviewed?: T
-  reviewBy?: T
   title?: T
   description?: T
   body?: T
@@ -629,10 +603,7 @@ export interface ServicesSelect<T extends boolean = true> {
   subcategory?: T
   serviceType?: T
   stage?: T
-  featured?: T
-  section?: T
   sourceUrl?: T
-  publishDate?: T
   updatedAt?: T
   createdAt?: T
   _status?: T
@@ -643,10 +614,8 @@ export interface ServicesSelect<T extends boolean = true> {
  */
 export interface OrganisationsSelect<T extends boolean = true> {
   slug?: T
-  contentOwner?: T
-  lastReviewed?: T
-  reviewBy?: T
   kind?: T
+  stage?: T
   name?: T
   category?: T
   shortDescription?: T
@@ -656,7 +625,6 @@ export interface OrganisationsSelect<T extends boolean = true> {
     | {
         name?: T
         role?: T
-        photo?: T
       }
   heroImage?: T
   keywords?:
@@ -702,6 +670,13 @@ export interface OrganisationsSelect<T extends boolean = true> {
               id?: T
               blockName?: T
             }
+      }
+  social?:
+    | T
+    | {
+        platform?: T
+        url?: T
+        id?: T
       }
   onlineServices?:
     | T

@@ -14,7 +14,6 @@ export type Contact = z.infer<typeof contactSchema>;
 export const ministerSchema = z.object({
   name: z.string(),
   role: z.string().optional(),
-  photo: z.string().optional(),
 });
 export type Minister = z.infer<typeof ministerSchema>;
 
@@ -34,6 +33,12 @@ export const onlineServiceLinkSchema = z.union([
   }),
 ]);
 export type OnlineServiceLink = z.infer<typeof onlineServiceLinkSchema>;
+
+export const socialLinkSchema = z.object({
+  platform: z.string(),
+  url: z.string(),
+});
+export type SocialLink = z.infer<typeof socialLinkSchema>;
 
 export const associatedDeptGroupSchema = z.object({
   category: z.string().optional(),
@@ -72,12 +77,14 @@ export const mdaFrontmatterSchema = z.object({
   kind: orgKindSchema,
   slug: z.string(),
   name: z.string(),
+  stage: z.enum(["alpha", "beta", "migrated"]).optional(),
   shortDescription: z.string().optional(),
   intro: z.string().optional(),
   category: z.string().optional(),
   keywords: z.array(z.string()).optional().default([]),
   minister: ministerSchema.optional(),
   head: ministerSchema.optional(),
+  social: z.array(socialLinkSchema).optional().default([]),
   contact: z.array(contactSchema).optional().default([]),
   onlineServices: z.array(onlineServiceLinkSchema).optional().default([]),
   // Ministry "services this ministry provides" tiles, exported from the CMS
@@ -110,15 +117,13 @@ export const serviceFrontmatterSchema = z.object({
   description: z.string().optional(),
   source_url: z.string().optional(),
   stage: z.enum(["alpha", "beta", "migrated"]).optional(),
-  publish_date: z.union([z.string(), z.date()]).optional(),
-  section: z.string().optional(),
   category: z.string().optional(),
   categories: z.array(z.string()).optional(),
   subcategory: z.string().optional(),
   service_type: z.enum(["digital", "information"]).optional(),
-  featured: z.boolean().optional(),
   form_id: z.string().optional(),
   start_button: startButtonSchema,
   forms: z.array(onlineServiceLinkSchema).optional().default([]),
+  updated_at: z.union([z.string(), z.date()]).optional(),
 });
 export type ServiceFrontmatter = z.infer<typeof serviceFrontmatterSchema>;

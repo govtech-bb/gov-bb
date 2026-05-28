@@ -1,7 +1,6 @@
 import type { CollectionConfig } from 'payload'
 import { anyone, isAdminOrEditor } from '../access/roles'
 import { slugField } from '../fields/slug'
-import { editorialFields } from '../fields/publishing'
 import { lockSlugAfterPublish } from '../hooks/lockSlugAfterPublish'
 import { bodyEditor } from '../lib/body-editor'
 
@@ -10,7 +9,7 @@ export const Services: CollectionConfig = {
   labels: { singular: 'Service / Guide', plural: 'Services & Guides' },
   admin: {
     useAsTitle: 'title',
-    defaultColumns: ['title', '_status', 'categories', 'stage', 'reviewBy', 'updatedAt'],
+    defaultColumns: ['title', '_status', 'categories', 'stage', 'updatedAt'],
     description:
       'Service and guide pages shown to the public on the site. Some services have sub-pages with a slashed slug like service-name/start — edit the main page for its description and listings, and the sub-page for the form-start content.',
     group: 'Content',
@@ -27,7 +26,6 @@ export const Services: CollectionConfig = {
   },
   fields: [
     slugField(),
-    ...editorialFields,
     {
       type: 'tabs',
       tabs: [
@@ -103,7 +101,8 @@ export const Services: CollectionConfig = {
             {
               name: 'stage',
               type: 'select',
-              label: 'Maturity',
+              label: 'Stage',
+              required: true,
               options: [
                 { label: 'Alpha — new, still being tested', value: 'alpha' },
                 { label: 'Beta — live but still improving', value: 'beta' },
@@ -113,23 +112,6 @@ export const Services: CollectionConfig = {
               admin: {
                 description:
                   'How finished this page is. New pages start at Alpha. Use “Migrated” only for content carried over from the old gov.bb site.',
-              },
-            },
-            {
-              name: 'featured',
-              type: 'checkbox',
-              defaultValue: false,
-              admin: {
-                description:
-                  'Tick to show this service in the highlighted section on the site homepage.',
-              },
-            },
-            {
-              name: 'section',
-              type: 'text',
-              admin: {
-                description:
-                  'Optional. A heading to group this service under on topic listing pages (e.g. “Births, deaths & marriages”). Leave blank if you’re not sure.',
               },
             },
             {
@@ -156,15 +138,6 @@ export const Services: CollectionConfig = {
                 } catch {
                   return 'Enter a full URL, e.g. https://www.gov.bb/…'
                 }
-              },
-            },
-            {
-              name: 'publishDate',
-              type: 'date',
-              label: 'First published',
-              admin: {
-                description:
-                  'The date this page first went live, shown to the public. This is not a scheduling field — it does not publish the page for you.',
               },
             },
           ],
