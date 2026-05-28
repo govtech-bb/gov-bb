@@ -93,10 +93,16 @@ export const Services: CollectionConfig = {
             {
               name: 'serviceType',
               type: 'select',
+              required: true,
+              defaultValue: 'information',
               options: [
                 { label: 'Digital (has an online form)', value: 'digital' },
                 { label: 'Information only', value: 'information' },
               ],
+              admin: {
+                description:
+                  'Choose “Digital” if the service has an online form authors can link to from a Start now button; otherwise leave as “Information only”.',
+              },
             },
             {
               name: 'stage',
@@ -104,9 +110,9 @@ export const Services: CollectionConfig = {
               label: 'Stage',
               required: true,
               options: [
-                { label: 'Alpha — new, still being tested', value: 'alpha' },
-                { label: 'Beta — live but still improving', value: 'beta' },
-                { label: 'Migrated from gov.bb', value: 'migrated' },
+                { label: 'Alpha', value: 'alpha' },
+                { label: 'Beta', value: 'beta' },
+                { label: 'Migrated', value: 'migrated' },
               ],
               defaultValue: 'alpha',
               admin: {

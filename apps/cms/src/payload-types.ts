@@ -170,7 +170,10 @@ export interface Service {
    * Optional. Choose categories first — only subcategories of those categories are offered.
    */
   subcategory?: (number | null) | Subcategory
-  serviceType?: ('digital' | 'information') | null
+  /**
+   * Choose “Digital” if the service has an online form authors can link to from a Start now button; otherwise leave as “Information only”.
+   */
+  serviceType: 'digital' | 'information'
   /**
    * How finished this page is. New pages start at Alpha. Use “Migrated” only for content carried over from the old gov.bb site.
    */

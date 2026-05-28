@@ -45,9 +45,9 @@ export const Organisations: CollectionConfig = {
       label: 'Stage',
       required: true,
       options: [
-        { label: 'Alpha — new, still being tested', value: 'alpha' },
-        { label: 'Beta — live but still improving', value: 'beta' },
-        { label: 'Migrated from gov.bb', value: 'migrated' },
+        { label: 'Alpha', value: 'alpha' },
+        { label: 'Beta', value: 'beta' },
+        { label: 'Migrated', value: 'migrated' },
       ],
       defaultValue: 'alpha',
       admin: {
