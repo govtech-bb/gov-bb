@@ -197,6 +197,9 @@ export const Route = createFileRoute('/$')({
         ],
       }
     }
+    if (loaderData.kind === 'flagged') {
+      return { meta: [{ title: "This page isn't available yet" }] }
+    }
     return { meta: [{ title: loaderData.category.title }] }
   },
   errorComponent: ContentError,
