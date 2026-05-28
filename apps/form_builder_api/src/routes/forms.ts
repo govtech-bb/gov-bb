@@ -39,8 +39,28 @@ export async function listPublishedHandler(
     res.status(500).json({ error: "API_BASE_URL is not set" });
     return;
   }
+  // Parse + protocol-check the configured upstream so a malformed or
+  // non-http(s) API_BASE_URL can't turn this proxy into an SSRF primitive
+  // (e.g. file://, gopher://). API_BASE_URL is operator-controlled config,
+  // not user input, but validating it cheaply at the boundary is worth the
+  // line count.
+  let parsedBase: URL;
   try {
-    const upstream = await fetch(`${baseUrl}/form-definitions`);
+    parsedBase = new URL(baseUrl);
+  } catch {
+    res.status(500).json({ error: "API_BASE_URL is not a valid URL" });
+    return;
+  }
+  if (parsedBase.protocol !== "http:" && parsedBase.protocol !== "https:") {
+    res
+      .status(500)
+      .json({ error: "API_BASE_URL must use http or https protocol" });
+    return;
+  }
+  try {
+    const upstream = await fetch(
+      `${baseUrl.replace(/\/$/, "")}/form-definitions`,
+    );
     if (!upstream.ok) {
       const upstreamBody = await upstream.text();
       res.status(502).json({
