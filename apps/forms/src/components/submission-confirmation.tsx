@@ -59,16 +59,16 @@ export default function SubmissionConfirmation({
                     Your payment has been received. We've sent a confirmation
                     email to the address you provided.
                   </p>
-                  <div className="form-page__payment-table">
-                    <p>Service</p>
-                    <p>{serviceName}</p>
-                    <p>Amount</p>
-                    <p>{amount}</p>
-                    <p>Reference Number</p>
-                    <p>{referenceNumber}</p>
-                    <p>Date</p>
-                    <p>{date}</p>
-                  </div>
+                  <dl className="form-page__payment-table">
+                    <dt>Service</dt>
+                    <dd>{serviceName}</dd>
+                    <dt>Amount</dt>
+                    <dd>{amount}</dd>
+                    <dt>Reference Number</dt>
+                    <dd>{referenceNumber}</dd>
+                    <dt>Date</dt>
+                    <dd>{date}</dd>
+                  </dl>
                 </div>
               </div>
             ) : isSafePaymentUrl(paymentUrl) ? (
@@ -86,14 +86,14 @@ export default function SubmissionConfirmation({
                     {paymentDescription ? `for ${paymentDescription}.` : "."}
                   </p>
 
-                  <div className="form-page__payment-table">
-                    <p>Service</p>
-                    <p>{serviceName}</p>
-                    <p>Quantity</p>
-                    <p>{quantity}</p>
-                    <p>Amount</p>
-                    <p>{amount}</p>
-                  </div>
+                  <dl className="form-page__payment-table">
+                    <dt>Service</dt>
+                    <dd>{serviceName}</dd>
+                    <dt>Quantity</dt>
+                    <dd>{quantity}</dd>
+                    <dt>Amount</dt>
+                    <dd>{amount}</dd>
+                  </dl>
 
                   <a href={paymentUrl}>
                     <button className="govbb-btn">Continue to payment</button>
@@ -137,10 +137,10 @@ export default function SubmissionConfirmation({
                 </p>
               </div>
               {referenceNumber && (
-                <div className="form-page__payment-table">
-                  <p>Reference Number</p>
-                  <p>{referenceNumber}</p>
-                </div>
+                <dl className="form-page__payment-table">
+                  <dt>Reference Number</dt>
+                  <dd>{referenceNumber}</dd>
+                </dl>
               )}
             </div>
           )}
