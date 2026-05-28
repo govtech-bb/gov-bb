@@ -85,36 +85,43 @@ export class RecipeFileLoaderService implements OnModuleInit {
 
       for (const file of files) {
         const filePath = path.join(dir, file);
-        const raw = await fs.readFile(filePath, "utf8");
-        let parsed: unknown;
         try {
-          parsed = JSON.parse(raw);
+          const raw = await fs.readFile(filePath, "utf8");
+          let parsed: unknown;
+          try {
+            parsed = JSON.parse(raw);
+          } catch (err) {
+            throw new Error(
+              `Failed to parse recipe ${filePath}: ${(err as Error).message}`,
+            );
+          }
+          const result = serviceContractRecipeSchema.safeParse(parsed);
+          if (!result.success) {
+            throw new Error(
+              `Recipe ${filePath} (formId=${formId}) failed validation: ${result.error.message}`,
+            );
+          }
+          const recipe = result.data;
+
+          const filenameVersion = file.replace(/\.json$/, "");
+          if (filenameVersion !== recipe.version) {
+            throw new Error(
+              `Recipe ${filePath}: filename version "${filenameVersion}" does not match recipe.version "${recipe.version}"`,
+            );
+          }
+          if (recipe.formId !== formId) {
+            throw new Error(
+              `Recipe ${filePath}: directory name "${formId}" does not match recipe.formId "${recipe.formId}"`,
+            );
+          }
+
+          byVersion.set(recipe.version, recipe);
         } catch (err) {
-          throw new Error(
-            `Failed to parse recipe ${filePath}: ${(err as Error).message}`,
+          const e = err as Error;
+          this.logger.error(
+            `Failed to load recipe ${filePath} (formId=${formId}): ${e.name}: ${e.message}`,
           );
         }
-        const result = serviceContractRecipeSchema.safeParse(parsed);
-        if (!result.success) {
-          throw new Error(
-            `Recipe ${filePath} (formId=${formId}) failed validation: ${result.error.message}`,
-          );
-        }
-        const recipe = result.data;
-
-        const filenameVersion = file.replace(/\.json$/, "");
-        if (filenameVersion !== recipe.version) {
-          throw new Error(
-            `Recipe ${filePath}: filename version "${filenameVersion}" does not match recipe.version "${recipe.version}"`,
-          );
-        }
-        if (recipe.formId !== formId) {
-          throw new Error(
-            `Recipe ${filePath}: directory name "${formId}" does not match recipe.formId "${recipe.formId}"`,
-          );
-        }
-
-        byVersion.set(recipe.version, recipe);
       }
 
       if (byVersion.size > 0) {

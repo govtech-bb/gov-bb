@@ -1,6 +1,7 @@
 import * as path from "node:path";
 import * as fs from "node:fs/promises";
 import * as os from "node:os";
+import { Logger } from "@nestjs/common";
 import { RecipeFileLoaderService } from "./recipe-file-loader.service";
 
 const FIXTURES_ROOT = path.join(__dirname, "__fixtures__");
@@ -30,12 +31,15 @@ async function buildTempRecipesRoot(
 
 describe("RecipeFileLoaderService", () => {
   let tempRoots: string[];
+  let errorSpy: jest.SpyInstance;
 
   beforeEach(() => {
     tempRoots = [];
+    errorSpy = jest.spyOn(Logger.prototype, "error").mockImplementation();
   });
 
   afterEach(async () => {
+    errorSpy.mockRestore();
     for (const r of tempRoots) {
       await fs.rm(r, { recursive: true, force: true });
     }
@@ -80,16 +84,20 @@ describe("RecipeFileLoaderService", () => {
       );
     });
 
-    it("crashes when a recipe fails zod validation", async () => {
+    it("skips a recipe that fails zod validation and logs the cause", async () => {
       const root = await newRoot({
         "broken-form": ["invalid-recipe.json"],
       });
       const loader = new RecipeFileLoaderService(root);
 
-      await expect(loader.loadAll()).rejects.toThrow(/broken-form/);
+      await loader.loadAll();
+
+      expect(loader.findAll()).toEqual([]);
+      const logged = errorSpy.mock.calls.map((c) => String(c[0])).join("\n");
+      expect(logged).toMatch(/broken-form/);
     });
 
-    it("crashes when filename version does not match the recipe's version field", async () => {
+    it("skips a recipe when filename version does not match recipe.version and logs the cause", async () => {
       const root = await fs.mkdtemp(path.join(os.tmpdir(), "recipes-test-"));
       tempRoots.push(root);
       const formDir = path.join(root, "passport-renewal");
@@ -100,7 +108,6 @@ describe("RecipeFileLoaderService", () => {
           "utf8",
         ),
       );
-      // Write with a deliberately wrong filename.
       await fs.writeFile(
         path.join(formDir, "9.9.9.json"),
         JSON.stringify(recipe),
@@ -108,10 +115,15 @@ describe("RecipeFileLoaderService", () => {
 
       const loader = new RecipeFileLoaderService(root);
 
-      await expect(loader.loadAll()).rejects.toThrow(/filename.*version/i);
+      await loader.loadAll();
+
+      expect(loader.findAll()).toEqual([]);
+      const logged = errorSpy.mock.calls.map((c) => String(c[0])).join("\n");
+      expect(logged).toMatch(/9\.9\.9\.json/);
+      expect(logged).toMatch(/passport-renewal/);
     });
 
-    it("crashes when directory name does not match the recipe's formId field", async () => {
+    it("skips a recipe when directory name does not match recipe.formId and logs the cause", async () => {
       const root = await fs.mkdtemp(path.join(os.tmpdir(), "recipes-test-"));
       tempRoots.push(root);
       const formDir = path.join(root, "wrong-directory-name");
@@ -129,7 +141,27 @@ describe("RecipeFileLoaderService", () => {
 
       const loader = new RecipeFileLoaderService(root);
 
-      await expect(loader.loadAll()).rejects.toThrow(/formId/i);
+      await loader.loadAll();
+
+      expect(loader.findAll()).toEqual([]);
+      const logged = errorSpy.mock.calls.map((c) => String(c[0])).join("\n");
+      expect(logged).toMatch(/wrong-directory-name/);
+    });
+
+    it("loads the good recipe and skips the bad one when both are present", async () => {
+      const root = await newRoot({
+        "passport-renewal": ["valid-recipe.json"],
+        "broken-form": ["invalid-recipe.json"],
+      });
+      const loader = new RecipeFileLoaderService(root);
+
+      await loader.loadAll();
+
+      expect(loader.findAll()).toEqual([
+        { formId: "passport-renewal", title: "Passport Renewal" },
+      ]);
+      const logged = errorSpy.mock.calls.map((c) => String(c[0])).join("\n");
+      expect(logged).toMatch(/broken-form/);
     });
 
     it("treats an empty recipes root as no forms", async () => {
