@@ -73,6 +73,13 @@ export default function FieldRenderer({
           onBlur: f.handleBlur,
         };
 
+        // Surface required state to assistive tech. Not spread onto multi-option
+        // checkbox inputs — there it would force every box to be checked.
+        const isRequired = field.validations?.required?.value === true;
+        const requiredProps = isRequired
+          ? { required: true, "aria-required": true }
+          : {};
+
         let errorMessage = "";
         if (!f.state.meta.isValid) {
           errorMessage = f.state.meta.errors[0];
@@ -91,10 +98,17 @@ export default function FieldRenderer({
                 <ErrorMessage message={errorMessage} />
                 <div className="govbb-date-input">
                   <div className="govbb-date-input__part">
-                    <label className="govbb-date-input__label">Day</label>
+                    <label
+                      className="govbb-date-input__label"
+                      htmlFor={`${field.id}-day`}
+                    >
+                      Day
+                    </label>
                     <div className="govbb-date-input-wrapper">
                       <input
                         {...sharedProps}
+                        {...requiredProps}
+                        id={`${field.id}-day`}
                         className="govbb-date-input__field"
                         value={value?.day ?? ""}
                         type="number"
@@ -113,10 +127,17 @@ export default function FieldRenderer({
                   </div>
 
                   <div className="govbb-date-input__part">
-                    <label className="govbb-date-input__label">Month</label>
+                    <label
+                      className="govbb-date-input__label"
+                      htmlFor={`${field.id}-month`}
+                    >
+                      Month
+                    </label>
                     <div className="govbb-date-input-wrapper">
                       <input
                         {...sharedProps}
+                        {...requiredProps}
+                        id={`${field.id}-month`}
                         className="govbb-date-input__field"
                         type="number"
                         value={value?.month ?? ""}
@@ -135,10 +156,17 @@ export default function FieldRenderer({
                   </div>
 
                   <div className="govbb-date-input__part">
-                    <label className="govbb-date-input__label">Year</label>
+                    <label
+                      className="govbb-date-input__label"
+                      htmlFor={`${field.id}-year`}
+                    >
+                      Year
+                    </label>
                     <div className="govbb-date-input-wrapper govbb-date-input-wrapper--year">
                       <input
                         {...sharedProps}
+                        {...requiredProps}
+                        id={`${field.id}-year`}
                         className="govbb-date-input__field"
                         type="number"
                         value={value?.year ?? ""}
@@ -175,6 +203,7 @@ export default function FieldRenderer({
                     <textarea
                       key={field.id}
                       {...sharedProps}
+                      {...requiredProps}
                       className="govbb-textarea"
                       value={value ?? ""}
                       aria-invalid={invalid}
@@ -200,6 +229,7 @@ export default function FieldRenderer({
                     key={field.id}
                     mask={field.mask}
                     {...sharedProps}
+                    {...requiredProps}
                     className="govbb-input"
                     value={value ?? ""}
                     aria-invalid={invalid}
@@ -316,6 +346,7 @@ export default function FieldRenderer({
                 <div className="govbb-select-wrapper">
                   <select
                     {...sharedProps}
+                    {...requiredProps}
                     className="govbb-select"
                     multiple={isMultiple}
                     value={selectValue ? selectValue : isMultiple ? [] : ""}
@@ -352,6 +383,8 @@ export default function FieldRenderer({
                     <div className="govbb-checkbox-item" key={option.value}>
                       <input
                         {...sharedProps}
+                        {...requiredProps}
+                        id={`${field.id}-${option.value}`}
                         className="govbb-checkbox"
                         checked={option.value === value}
                         aria-invalid={invalid}
@@ -361,7 +394,10 @@ export default function FieldRenderer({
                           )
                         }
                       />
-                      <label className="govbb-checkbox-item__label">
+                      <label
+                        className="govbb-checkbox-item__label"
+                        htmlFor={`${field.id}-${option.value}`}
+                      >
                         {option.label}
                       </label>
                     </div>
@@ -393,12 +429,16 @@ export default function FieldRenderer({
                       <div className="govbb-checkbox-item" key={option.value}>
                         <input
                           {...sharedProps}
+                          id={`${field.id}-${option.value}`}
                           className="govbb-checkbox"
                           checked={checkboxValues.includes(option.value)}
                           aria-invalid={invalid}
                           onChange={() => toggle(option.value)}
                         />
-                        <label className="govbb-checkbox-item__label">
+                        <label
+                          className="govbb-checkbox-item__label"
+                          htmlFor={`${field.id}-${option.value}`}
+                        >
                           {option.label}
                         </label>
                       </div>
@@ -425,12 +465,17 @@ export default function FieldRenderer({
                         <div className="govbb-radio-item">
                           <input
                             {...sharedProps}
+                            {...requiredProps}
+                            id={`${field.id}-${option.value}`}
                             className="govbb-radio"
                             checked={isSelected}
                             aria-invalid={invalid}
                             onChange={() => f.handleChange(option.value)}
                           />
-                          <label className="govbb-radio-item__label">
+                          <label
+                            className="govbb-radio-item__label"
+                            htmlFor={`${field.id}-${option.value}`}
+                          >
                             {option.label}
                           </label>
                         </div>

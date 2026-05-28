@@ -1,0 +1,256 @@
+{
+  "formId": "term-leave-application",
+  "title": "Application for Term's Leave",
+  "version": "1.2.0",
+  "steps": [
+    {
+      "stepId": "applicant-info",
+      "title": "Applicant Information",
+      "elements": [
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "School",
+            "fieldId": "school",
+            "required": true,
+            "fullWidth": true
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "First Name",
+            "fieldId": "firstName",
+            "required": true,
+            "columnWidth": "50%"
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Last Name",
+            "fieldId": "lastName",
+            "required": true,
+            "columnWidth": "50%"
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Contact No",
+            "fieldId": "contactNo",
+            "required": true,
+            "columnWidth": "50%"
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "type": "email",
+            "label": "Email",
+            "fieldId": "email",
+            "required": true,
+            "columnWidth": "50%"
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Post",
+            "fieldId": "post",
+            "required": true,
+            "columnWidth": "50%"
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "ID Number",
+            "fieldId": "idNumber",
+            "required": true,
+            "columnWidth": "50%"
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "leave-details",
+      "title": "Leave Details",
+      "elements": [
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "type": "date",
+            "label": "Start Date",
+            "fieldId": "leaveStartDate",
+            "required": true,
+            "columnWidth": "50%"
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "type": "date",
+            "label": "End Date",
+            "fieldId": "leaveEndDate",
+            "required": true,
+            "columnWidth": "50%"
+          }
+        },
+        {
+          "ref": "components/generic/radio",
+          "overrides": {
+            "label": "Have you previously been granted term's leave?",
+            "fieldId": "previousLeaveGranted",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "required": true
+          }
+        },
+        {
+          "ref": "components/show-hide",
+          "overrides": {
+            "label": "If yes, enter the last leave period",
+            "fieldId": "previousLeaveDetails",
+            "elements": [
+              {
+                "ref": "components/generic/text",
+                "overrides": {
+                  "type": "date",
+                  "label": "Start Date",
+                  "fieldId": "previousLeaveStartDate",
+                  "columnWidth": "50%"
+                }
+              },
+              {
+                "ref": "components/generic/text",
+                "overrides": {
+                  "type": "date",
+                  "label": "End Date",
+                  "fieldId": "previousLeaveEndDate",
+                  "columnWidth": "50%"
+                }
+              }
+            ],
+            "showWhen": {
+              "value": "yes",
+              "fieldId": "previousLeaveGranted"
+            }
+          }
+        },
+        {
+          "ref": "components/generic/textarea",
+          "overrides": {
+            "rows": 4,
+            "label": "Comments",
+            "fieldId": "comments",
+            "fullWidth": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "applicant-signature",
+      "title": "Applicant Signature",
+      "elements": [
+        {
+          "ref": "components/generic/signature",
+          "overrides": {
+            "label": "Signature of applicant",
+            "fieldId": "applicantSignature",
+            "required": true,
+            "columnWidth": "50%"
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "type": "date",
+            "label": "Date of Signature",
+            "fieldId": "signatureDate",
+            "required": true,
+            "columnWidth": "50%"
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "official-use",
+      "title": "For Official Use Only",
+      "elements": [
+        {
+          "ref": "components/generic/radio",
+          "overrides": {
+            "label": "Recommendation",
+            "fieldId": "recommendation",
+            "options": [
+              {
+                "label": "Recommend",
+                "value": "recommend"
+              },
+              {
+                "label": "Not Recommended",
+                "value": "notRecommend"
+              }
+            ],
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/textarea",
+          "overrides": {
+            "rows": 4,
+            "label": "Comments",
+            "fieldId": "officialComments",
+            "fullWidth": true
+          }
+        },
+        {
+          "ref": "components/generic/signature",
+          "overrides": {
+            "label": "Signature of Principal",
+            "fieldId": "principalSignature",
+            "required": true,
+            "columnWidth": "50%"
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "type": "date",
+            "label": "Date Signed",
+            "fieldId": "dateSigned",
+            "required": true,
+            "columnWidth": "50%"
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Submission Confirmation",
+      "elements": [],
+      "behaviours": []
+    }
+  ],
+  "createdAt": "2026-05-27T19:58:30.808Z",
+  "updatedAt": "2026-05-27T19:58:30.808Z"
+}

@@ -88,29 +88,32 @@ async function handlePost({
   );
 }
 
-// TEMP: surface unhandled errors in the response body so prod issues are
-// visible without CloudWatch access. Strip after the chat is stable.
-async function handlePostWithDebug(request: Request): Promise<Response> {
+async function handlePostSafely(request: Request): Promise<Response> {
   try {
     return await handlePost({ request });
   } catch (err) {
     const e = err instanceof Error ? err : new Error(String(err));
     console.error("[api.chat] unhandled:", e);
-    return new Response(
-      JSON.stringify({
-        error: e.message,
-        name: e.name,
-        stack: e.stack?.split("\n").slice(0, 8).join("\n"),
-      }),
-      { status: 500, headers: { "content-type": "application/json" } },
-    );
+    // Only expose error details in development — never leak internals (message,
+    // name, stack) to clients in production.
+    if (import.meta.env.DEV) {
+      return new Response(
+        JSON.stringify({
+          error: e.message,
+          name: e.name,
+          stack: e.stack?.split("\n").slice(0, 8).join("\n"),
+        }),
+        { status: 500, headers: { "content-type": "application/json" } },
+      );
+    }
+    return jsonError("Internal server error", 500);
   }
 }
 
 export const Route = createFileRoute("/api/chat")({
   server: {
     handlers: {
-      POST: ({ request }) => handlePostWithDebug(request),
+      POST: ({ request }) => handlePostSafely(request),
     },
   },
 });

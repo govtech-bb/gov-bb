@@ -11,6 +11,7 @@ import { radioComponent } from "./components/radio";
 import { fileComponent } from "./components/file";
 import { textareaComponent } from "./components/textarea";
 import { checkboxComponent } from "./components/checkbox";
+import { showHideComponent } from "./components/show-hide";
 
 import { nameBlock } from "./blocks/name";
 import { physicalAddressBlock } from "./blocks/physical-address";
@@ -29,6 +30,7 @@ export const BUILTIN_COMPONENTS: ComponentDefinition[] = [
   fileComponent,
   textareaComponent,
   checkboxComponent,
+  showHideComponent,
 ];
 
 export const BUILTIN_BLOCKS: BlockDefinition[] = [

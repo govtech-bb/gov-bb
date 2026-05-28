@@ -1,0 +1,188 @@
+{
+  "formId": "csec-private-candidate-registration",
+  "title": "Registration of Private Candidates - CSEC Examination",
+  "version": "1.2.0",
+  "steps": [
+    {
+      "stepId": "step-1-student-info",
+      "title": "Student Information",
+      "elements": [
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "First Name",
+            "fieldId": "firstName",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Last Name",
+            "fieldId": "lastName",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Gender",
+            "fieldId": "gender",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/number",
+          "overrides": {
+            "label": "Day",
+            "fieldId": "dobDay",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/number",
+          "overrides": {
+            "label": "Month",
+            "fieldId": "dobMonth",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/number",
+          "overrides": {
+            "label": "Year",
+            "fieldId": "dobYear",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "ID Number",
+            "fieldId": "idNumber",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Address",
+            "fieldId": "address",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Email",
+            "fieldId": "email",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Telephone No",
+            "fieldId": "telephoneNo",
+            "required": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "step-2-subject-selection",
+      "title": "Subject Selection",
+      "elements": [
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "type": "info",
+            "label": "Please list below the subject(s) for which you are registering. If you are repeating a subject from a previous sitting for which a School Based Assessment (SBA) was required, please select RESIT and type your previous registration number in the relevant field.",
+            "fieldId": "subjectsInfo",
+            "disabled": true
+          }
+        },
+        {
+          "ref": "components/generic/table",
+          "overrides": {
+            "rows": 6,
+            "label": "Subject Registration",
+            "columns": [
+              {
+                "type": "text",
+                "label": "SUBJECT(S)",
+                "fieldId": "subject"
+              },
+              {
+                "type": "checkbox",
+                "label": "ALTERNATIVE",
+                "fieldId": "alternative"
+              },
+              {
+                "type": "checkbox",
+                "label": "RESIT",
+                "fieldId": "resit"
+              },
+              {
+                "type": "text",
+                "label": "PREVIOUS REGISTRATION NUMBER",
+                "fieldId": "previousRegistrationNumber",
+                "conditional": "resit"
+              }
+            ],
+            "fieldId": "subjectsTable",
+            "required": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "step-3-declaration",
+      "title": "Declaration & Signature",
+      "elements": [
+        {
+          "ref": "components/show-hide",
+          "overrides": {
+            "label": "Important Notices",
+            "content": "Candidates should inform the CXC Local Registrar of any name changes which have occurred since their last examination sitting.\n\nCandidates should check ALL Timetables before registering so as to avoid any subject clashes with other Examination Boards.\n\nABSOLUTELY NO ALTERNATIVE ARRANGEMENTS WILL BE MADE IN RESPECT OF CLASHES",
+            "fieldId": "importantNotices"
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Signature of Claimant",
+            "fieldId": "signatureOfClaimant",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "type": "date",
+            "label": "Date",
+            "fieldId": "date",
+            "required": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Submission Confirmation",
+      "elements": [],
+      "behaviours": []
+    }
+  ],
+  "createdAt": "2026-05-27T20:37:03.164Z",
+  "updatedAt": "2026-05-27T20:37:03.164Z"
+}

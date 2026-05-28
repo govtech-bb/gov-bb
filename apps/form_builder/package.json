@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build",
+    "build": "vite build && node scripts/patch-amplify-manifest.mjs",
     "preview": "nitro preview",
     "start": "node .amplify-hosting/compute/default/server.js",
     "test": "jest --no-coverage"

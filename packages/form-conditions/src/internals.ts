@@ -61,17 +61,24 @@ export function evaluateCondition(
     instanceLocal,
   );
 
+  // Coerce both sides to string so a numeric condition value (e.g. value: 5)
+  // matches the string a number input returns from form state (e.g. "5").
+  const coerce = (v: unknown): string => String(v ?? "");
+
   switch (behaviour.operator) {
     case "equal":
-      return target === behaviour.value;
+      return coerce(target) === coerce(behaviour.value);
     case "notEqual":
-      return target !== behaviour.value;
+      return coerce(target) !== coerce(behaviour.value);
     case "in": {
       const list = behaviour.value as Array<string | number>;
-      return Array.isArray(list) && list.includes(target as string | number);
+      return Array.isArray(list) && list.map(coerce).includes(coerce(target));
     }
     case "exists":
-      return target !== undefined && target !== null && target !== "";
+      if (target === undefined || target === null || target === "")
+        return false;
+      if (Array.isArray(target) && target.length === 0) return false;
+      return true;
     default:
       return false;
   }
