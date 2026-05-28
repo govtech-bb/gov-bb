@@ -78,18 +78,20 @@ function buildMarkdownComponents(citations: Citation[]) {
         if (citation) return <CitationMarker citation={citation} />;
       }
       // Only allow safe URL schemes — block javascript:, data:, vbscript:,
-      // etc. that a model could emit via prompt injection.
-      const safe =
-        typeof href === "string" && /^(https?:|mailto:|tel:|#)/i.test(href);
+      // etc. that a model could emit via prompt injection. Trim first: browsers
+      // ignore leading whitespace before the scheme, so " javascript:" must not
+      // slip past the allowlist.
+      const trimmed = typeof href === "string" ? href.trim() : "";
+      const safe = /^(https?:|mailto:|tel:|#)/i.test(trimmed);
       if (!safe) {
         return <span className="text-teal-00 underline">{children}</span>;
       }
       const external =
-        href.startsWith("http://") || href.startsWith("https://");
+        trimmed.startsWith("http://") || trimmed.startsWith("https://");
       return (
         <a
           className="text-teal-00 underline hover:text-teal-100"
-          href={href}
+          href={trimmed}
           rel={external ? "noopener noreferrer" : undefined}
           target={external ? "_blank" : undefined}
         >
