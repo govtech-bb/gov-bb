@@ -18,6 +18,7 @@ import { StepEditor } from "./-step-editor";
 import { ProcessorsEditor } from "./-processors-editor";
 import { ValidationPanel } from "./-validation-panel";
 import { PreviewModal } from "./-preview-modal";
+import { formPreviewUrl } from "../../../lib/form-url";
 import { SubmitModal } from "./-submit-modal";
 import { PublishModal } from "./-publish-modal";
 import { FormPicker } from "./-form-picker";
@@ -536,6 +537,7 @@ function BuilderPage() {
           contract={previewData}
           isLoading={isPreviewing}
           error={previewError}
+          previewUrl={loadedFromId ? formPreviewUrl(loadedFromId) : null}
           onClose={() => { setIsPreviewOpen(false); setPreviewData(null); setPreviewError(null); }}
         />
       )}
