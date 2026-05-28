@@ -12,19 +12,37 @@
       "title": "Basic Information",
       "elements": [
         {
-          "ref": "components/generic/text",
+          "ref": "components/raw-text",
           "overrides": {
             "fieldId": "min-dept",
             "label": "Min/Dept.",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Min/Dept. is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Min/Dept. must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/raw-text",
           "overrides": {
             "fieldId": "vendor-name",
             "label": "Vendor Name",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Vendor Name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Vendor Name must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         }
       ]
@@ -34,11 +52,10 @@
       "title": "Vendor Classification",
       "elements": [
         {
-          "ref": "components/generic/radio",
+          "ref": "components/raw-radio",
           "overrides": {
             "fieldId": "vendor-classification",
             "label": "Vendor Classification - Please tick appropriate box",
-            "required": true,
             "options": [
               {
                 "value": "individual",
@@ -60,7 +77,13 @@
                 "value": "large-business",
                 "label": "Large Business"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Vendor Classification - Please tick appropriate box is required",
+                "value": true
+              }
+            }
           }
         }
       ]
@@ -70,35 +93,62 @@
       "title": "Identification Numbers",
       "elements": [
         {
-          "ref": "components/generic/text",
+          "ref": "components/raw-text",
           "overrides": {
             "fieldId": "tamis-number",
             "label": "TAMIS Number",
-            "required": false
+            "validations": {
+              "required": {
+                "error": "TAMIS Number is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "TAMIS Number must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/raw-text",
           "overrides": {
             "fieldId": "company-reg-number",
             "label": "Company Registration No.",
-            "required": false
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/raw-text",
           "overrides": {
             "fieldId": "sba-number",
             "label": "Small Business Association No.",
-            "required": false
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/raw-text",
           "overrides": {
             "fieldId": "nrn",
             "label": "NRN",
-            "required": false
+            "mask": "999999-9999",
+            "validations": {
+              "required": {
+                "error": "NRN is required",
+                "value": true
+              },
+              "pattern": {
+                "error": "NRN must be in the format YYMMDD-NNNN (e.g. 850101-0001)",
+                "value": "^\\d{6}-\\d{4}$"
+              }
+            }
           }
         }
       ]
@@ -108,28 +158,49 @@
       "title": "Contact and Address Information",
       "elements": [
         {
-          "ref": "components/generic/text",
+          "ref": "components/raw-text",
           "overrides": {
             "fieldId": "vendor-address-line-1",
             "label": "Vendor Address",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Vendor Address is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Vendor Address must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/raw-text",
           "overrides": {
             "fieldId": "vendor-address-line-2",
             "label": "Vendor Address (continued)",
-            "required": false
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/raw-email",
           "overrides": {
             "fieldId": "vendor-email",
             "label": "Vendor Email Address",
-            "required": true,
-            "type": "email"
+            "validations": {
+              "required": {
+                "error": "Vendor Email Address is required",
+                "value": true
+              },
+              "email": {
+                "error": "Please enter a valid email address",
+                "value": true
+              }
+            }
           }
         }
       ]
@@ -139,43 +210,78 @@
       "title": "Bank Account Details",
       "elements": [
         {
-          "ref": "components/generic/text",
+          "ref": "components/raw-text",
           "overrides": {
             "fieldId": "bank-name",
             "label": "Bank Name",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Bank Name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Bank Name must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/raw-text",
           "overrides": {
             "fieldId": "bank-account-number",
             "label": "Bank Account Number",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Bank Account Number is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Bank Account Number must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/raw-text",
           "overrides": {
             "fieldId": "branch-name",
             "label": "Branch Name",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Branch Name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Branch Name must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/raw-text",
           "overrides": {
             "fieldId": "name-on-account",
             "label": "Name on Account",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Name on Account is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Name on Account must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
-          "ref": "components/generic/radio",
+          "ref": "components/raw-radio",
           "overrides": {
             "fieldId": "account-type",
             "label": "Account Type",
-            "required": true,
             "options": [
               {
                 "value": "deposit",
@@ -185,37 +291,75 @@
                 "value": "savings",
                 "label": "Savings"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Account Type is required",
+                "value": true
+              }
+            }
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/raw-text",
           "overrides": {
             "fieldId": "bic-swift",
             "label": "BIC/ Swift",
-            "required": false
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/raw-text",
           "overrides": {
             "fieldId": "bank-address",
             "label": "Bank Address",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Bank Address is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Bank Address must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         }
       ]
     },
     {
-      "stepId": "step-6-authorization",
-      "title": "Authorization",
+      "title": "Declaration",
+      "stepId": "declaration",
       "elements": [
         {
-          "ref": "components/generic/text",
+          "ref": "components/confirmation",
           "overrides": {
-            "fieldId": "authorized-by",
-            "label": "Authorized by",
-            "required": true
+            "label": "Declaration",
+            "fieldId": "declaration-confirmed",
+            "options": [
+              {
+                "label": "I confirm that my information is correct and I am happy for it to be verified. I understand that false details may lead to my application being rejected, and that the Government of Barbados will keep my information confidential.",
+                "value": "confirmed"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "You must confirm the declaration to continue",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/date-of-birth",
+          "overrides": {
+            "label": "Date of declaration",
+            "fieldId": "declaration-date",
+            "isHidden": true
           }
         }
       ]

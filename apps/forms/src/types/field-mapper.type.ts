@@ -25,6 +25,7 @@ export interface ClientPrimitive {
   conditionallyHidden: boolean;
   options?: Option[];
   multiple?: boolean;
+  mask?: string;
   validations?: ValidationRule;
   behaviours?: Behaviour[];
   ui?: PrimitiveUI;

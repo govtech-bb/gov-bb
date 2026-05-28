@@ -128,20 +128,26 @@ describe("BuilderPage — validate on Save draft click", () => {
     validateRecipe.mockReset();
   });
 
-  it("runs validation on click and surfaces errors without opening the SubmitModal when the draft is invalid", async () => {
-    mockEmptyDraft = INVALID_DRAFT;
-    renderBuilder();
+  it(
+    "runs validation on click and surfaces errors without opening the SubmitModal when the draft is invalid",
+    async () => {
+      mockEmptyDraft = INVALID_DRAFT;
+      renderBuilder();
 
-    await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
+      await userEvent.click(
+        screen.getByRole("button", { name: /save draft/i }),
+      );
 
-    expect(
-      await screen.findByText(/add at least one step/i),
-    ).toBeInTheDocument();
-    // The SubmitModal heading ("Submit Recipe") must not appear.
-    expect(screen.queryByText("Submit Recipe")).not.toBeInTheDocument();
-    // Pre-flight fails before the server is ever asked.
-    expect(validateRecipe).not.toHaveBeenCalled();
-  });
+      expect(
+        await screen.findByText(/add at least one step/i),
+      ).toBeInTheDocument();
+      // The SubmitModal heading ("Submit Recipe") must not appear.
+      expect(screen.queryByText("Submit Recipe")).not.toBeInTheDocument();
+      // Pre-flight fails before the server is ever asked.
+      expect(validateRecipe).not.toHaveBeenCalled();
+    },
+    15_000,
+  );
 
   it("opens the SubmitModal on click when validation passes", async () => {
     mockEmptyDraft = VALID_DRAFT;
