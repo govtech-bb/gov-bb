@@ -121,28 +121,33 @@ export const Route = createFileRoute('/$')({
       }
     }
 
-    // Service body pages: try the CMS first (so an unpublish takes effect
-    // immediately), fall back to the static JSON when the CMS is down so
-    // existing pages still render during an outage.
+    // Service body pages: ask the CMS. If it answers cleanly (success), trust
+    // the answer — a missing/unpublished doc means the page is genuinely
+    // gone, and we 404 instead of falling back to the stale static JSON.
+    // If the CMS query *fails* (it threw — outage), fall back to the static
+    // file so existing pages keep rendering during an outage.
+    let serviceQueryOk = false
     if (cmsUp) {
       try {
         const svc = await queryClient.ensureQueryData(
           serviceByUrlQueryOptions(splat, flag),
         )
+        serviceQueryOk = true
         if (svc) return { kind: 'page', page: cmsToRenderable(svc) }
       } catch {
-        // Fall through to static fallback.
+        // Outage on this query — leave serviceQueryOk false to fall through.
       }
     }
 
-    const page = findPage(splat)
-    if (page) return { kind: 'page', page: staticToRenderable(page) }
+    if (!cmsUp || !serviceQueryOk) {
+      const page = findPage(splat)
+      if (page) return { kind: 'page', page: staticToRenderable(page) }
+      // Couldn't reach the CMS and no static page either — surface an outage
+      // message rather than a misleading 404.
+      throw new Error('CMS unreachable; cannot resolve URL')
+    }
 
-    // Distinguish "page genuinely missing" from "CMS unreachable so we can't
-    // tell" — only the former is a notFound; the latter falls through to
-    // errorComponent so the citizen sees "temporarily unavailable" rather
-    // than "page not found" on a URL that may exist.
-    if (!cmsUp) throw new Error('CMS unreachable; cannot resolve URL')
+    // CMS answered: this URL doesn't resolve to a published doc.
     throw notFound()
   },
   head: ({ loaderData }) => {
