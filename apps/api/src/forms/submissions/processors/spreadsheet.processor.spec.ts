@@ -205,6 +205,21 @@ describe("SpreadsheetProcessor", () => {
       expect(workbook.addWorksheet).not.toHaveBeenCalled();
     });
 
+    it("strips path-traversal segments from a recipe-supplied filename (#297)", async () => {
+      const { workbook } = buildWorkbookMock();
+
+      await processor.process(
+        makePayload("sub-003", { filename: "../../etc/passwd" }),
+      );
+
+      expect(workbook.xlsx.writeFile).toHaveBeenCalledWith(
+        join("/tmp/test-exports", "passwd.xlsx"),
+      );
+      const writtenPath = (workbook.xlsx.writeFile as jest.Mock).mock
+        .calls[0][0] as string;
+      expect(writtenPath).not.toContain("..");
+    });
+
     it("skips repeatable/array-valued steps when flattening values", async () => {
       // Branch: `if (Array.isArray(fields)) continue`
       const { sheet } = buildWorkbookMock();

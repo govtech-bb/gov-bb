@@ -11,7 +11,19 @@ function getClient(): S3Client {
   if (client) return client;
   const region =
     process.env.S3_REGION ?? process.env.AWS_REGION ?? "ca-central-1";
-  client = new S3Client({ region });
+  // AWS SDK v3 >= 3.726.0 enables default request-integrity protection that
+  // bakes a placeholder x-amz-checksum-crc32 into presigned PUT URLs. The
+  // browser's fetch() doesn't compute or send a matching checksum header, so
+  // S3 either rejects the upload outright or stores the object with a
+  // checksum mismatch — and the round-trip back through GetObject silently
+  // returned corrupted bytes that Bedrock refused with "Could not process
+  // PDF". WHEN_REQUIRED restores the pre-3.726 behavior: only add checksum
+  // metadata when the caller asks for it.
+  client = new S3Client({
+    region,
+    requestChecksumCalculation: "WHEN_REQUIRED",
+    responseChecksumValidation: "WHEN_REQUIRED",
+  });
   return client;
 }
 

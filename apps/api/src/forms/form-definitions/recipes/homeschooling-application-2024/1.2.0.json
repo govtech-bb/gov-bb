@@ -1,0 +1,283 @@
+{
+  "formId": "homeschooling-application-2024",
+  "title": "Ministry of Education Transformation - Homeschooling Application Form",
+  "version": "1.2.0",
+  "steps": [
+    {
+      "stepId": "step-1-applicant-info",
+      "title": "Applicant Information",
+      "elements": [
+        {
+          "ref": "components/generic/text-input",
+          "overrides": {
+            "label": "Name of Applicant",
+            "fieldId": "applicant_name",
+            "required": true,
+            "placeholder": "Enter full name"
+          }
+        },
+        {
+          "ref": "components/generic/text-input",
+          "overrides": {
+            "label": "Address",
+            "fieldId": "applicant_address",
+            "required": true,
+            "placeholder": "Enter residential address"
+          }
+        },
+        {
+          "ref": "components/generic/text-input",
+          "overrides": {
+            "label": "Contact Number(s)",
+            "fieldId": "contact_numbers",
+            "required": true,
+            "placeholder": "Enter contact number(s)"
+          }
+        },
+        {
+          "ref": "components/generic/text-input",
+          "overrides": {
+            "type": "email",
+            "label": "Email Address",
+            "fieldId": "email_address",
+            "required": true,
+            "placeholder": "Enter email address"
+          }
+        },
+        {
+          "ref": "components/generic/radio",
+          "overrides": {
+            "label": "Status Resident",
+            "fieldId": "resident_status",
+            "options": [
+              {
+                "label": "Resident",
+                "value": "resident"
+              },
+              {
+                "label": "Non-Resident",
+                "value": "non-resident"
+              }
+            ],
+            "required": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "step-2-student-info",
+      "title": "Student Information",
+      "elements": [
+        {
+          "ref": "components/generic/repeater",
+          "overrides": {
+            "label": "Name and Date of Birth of Student(s) to be Homeschooled",
+            "fields": [
+              {
+                "type": "text",
+                "label": "Student Name",
+                "fieldId": "student_name",
+                "required": true
+              },
+              {
+                "type": "date",
+                "label": "Date of Birth (DD/MM/YYYY)",
+                "fieldId": "student_dob",
+                "required": true
+              }
+            ],
+            "fieldId": "students",
+            "minRows": 1,
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/radio",
+          "overrides": {
+            "label": "Was the student(s) previously in school?",
+            "fieldId": "previously_in_school",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/text-input",
+          "overrides": {
+            "label": "If Yes, Name and Address of the School",
+            "fieldId": "previous_school_info",
+            "required": false,
+            "conditional": {
+              "value": "yes",
+              "fieldId": "previously_in_school",
+              "operator": "equals"
+            },
+            "placeholder": "Enter school name and address"
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "step-3-instructor-info",
+      "title": "Instructor/Tutor Information",
+      "elements": [
+        {
+          "ref": "components/generic/repeater",
+          "overrides": {
+            "label": "Names of Instructors/Tutors (Please provide certified copies of qualifications)",
+            "fields": [
+              {
+                "type": "text",
+                "label": "Instructor/Tutor Name",
+                "fieldId": "instructor_name",
+                "required": true
+              },
+              {
+                "type": "text",
+                "label": "List of Qualifications",
+                "fieldId": "instructor_qualifications",
+                "required": true
+              }
+            ],
+            "fieldId": "instructors",
+            "minRows": 1,
+            "required": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "step-4-curriculum-attachments",
+      "title": "Curriculum and Attachments",
+      "elements": [
+        {
+          "ref": "components/generic/file-upload",
+          "overrides": {
+            "label": "Timetable (detailing subjects and times)",
+            "fieldId": "timetable_attachment",
+            "required": true,
+            "helperText": "The timetable should include three (3) core subjects: English, Mathematics, Science and Social Studies and a session of Physical Activity",
+            "acceptedFormats": [".pdf", ".doc", ".docx", ".xls", ".xlsx"]
+          }
+        },
+        {
+          "ref": "components/generic/radio",
+          "overrides": {
+            "label": "Are you following the National Curriculum?",
+            "fieldId": "following_national_curriculum",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/file-upload",
+          "overrides": {
+            "label": "Curriculum (if not following National Curriculum)",
+            "fieldId": "curriculum_attachment",
+            "required": false,
+            "helperText": "Please attach the curriculum you will be following if you are not following the National Curriculum",
+            "conditional": {
+              "value": "no",
+              "fieldId": "following_national_curriculum",
+              "operator": "equals"
+            },
+            "acceptedFormats": [".pdf", ".doc", ".docx"]
+          }
+        },
+        {
+          "ref": "components/generic/file-upload",
+          "overrides": {
+            "label": "Certified Copies of Tutor Qualifications",
+            "fieldId": "tutor_qualifications_attachment",
+            "required": true,
+            "helperText": "Please attach certified copies of qualifications of persons who will be teaching",
+            "acceptedFormats": [".pdf", ".doc", ".docx"]
+          }
+        },
+        {
+          "ref": "components/generic/file-upload",
+          "overrides": {
+            "label": "Previous Progress Report (Report Card)",
+            "fieldId": "progress_report_attachment",
+            "required": false,
+            "acceptedFormats": [".pdf", ".doc", ".docx"]
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "step-5-declaration",
+      "title": "Declaration and Signature",
+      "elements": [
+        {
+          "ref": "components/show-hide",
+          "overrides": {
+            "label": "Requirements for Home Schooling",
+            "content": "1. A letter addressed to the Permanent Secretary must be written seeking permission from the Ministry of Education Transformation for home schooling. The reason must also be given.\n2. Please include the child's name, date of birth and any previous school(s) attended by the child.\n3. The curriculum being used must be provided for perusal by the Ministry.\n4. The qualifications and names of the tutor(s) must be provided.\n5. A timetable must be submitted.\n6. Previous Progress Report (Report Card)\n7. The Ministry of Education Transformation will then arrange an interview with the parent before written permission is given.\n8. For further details please contact the Administrative Officer in the Nursery and Primary Section at 535-0760.",
+            "fieldId": "requirements_info"
+          }
+        },
+        {
+          "ref": "components/generic/checkbox",
+          "overrides": {
+            "label": "I acknowledge that I have read and understand the requirements for home schooling",
+            "fieldId": "acknowledge_requirements",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/signature",
+          "overrides": {
+            "label": "Parent/Guardian Signature",
+            "fieldId": "parent_signature",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/date-input",
+          "overrides": {
+            "label": "Date",
+            "fieldId": "signature_date",
+            "required": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Submission Confirmation",
+      "elements": [],
+      "behaviours": []
+    }
+  ],
+  "createdAt": "2026-05-27T19:09:10.854Z",
+  "updatedAt": "2026-05-27T19:09:10.854Z"
+}

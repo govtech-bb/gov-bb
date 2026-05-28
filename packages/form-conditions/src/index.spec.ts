@@ -104,6 +104,21 @@ describe("evaluateCondition", () => {
     it("returns false when target is undefined", () => {
       expect(evaluateCondition(behaviour, EMPTY_VALUES, {})).toBe(false);
     });
+
+    it("matches a numeric condition value against a string target (#336)", () => {
+      const numeric: FieldConditionalOnBehaviour = {
+        type: "fieldConditionalOn",
+        targetFieldId: "age",
+        operator: "equal",
+        value: 18 as unknown as string,
+      };
+      expect(evaluateCondition(numeric, EMPTY_VALUES, { age: "18" })).toBe(
+        true,
+      );
+      expect(evaluateCondition(numeric, EMPTY_VALUES, { age: "19" })).toBe(
+        false,
+      );
+    });
   });
 
   describe("operator: notEqual", () => {
@@ -154,6 +169,21 @@ describe("evaluateCondition", () => {
     it("returns false when target is undefined", () => {
       expect(evaluateCondition(behaviour, EMPTY_VALUES, {})).toBe(false);
     });
+
+    it("matches a numeric list entry against a string target (#336)", () => {
+      const numeric: FieldConditionalOnBehaviour = {
+        type: "fieldConditionalOn",
+        targetFieldId: "dependants",
+        operator: "in",
+        value: [1, 2, 3] as unknown as string[],
+      };
+      expect(
+        evaluateCondition(numeric, EMPTY_VALUES, { dependants: "2" }),
+      ).toBe(true);
+      expect(
+        evaluateCondition(numeric, EMPTY_VALUES, { dependants: "4" }),
+      ).toBe(false);
+    });
   });
 
   describe("operator: exists", () => {
@@ -184,6 +214,18 @@ describe("evaluateCondition", () => {
       expect(evaluateCondition(behaviour, EMPTY_VALUES, { employer: "" })).toBe(
         false,
       );
+    });
+
+    it("returns false for an empty array (#337)", () => {
+      expect(evaluateCondition(behaviour, EMPTY_VALUES, { employer: [] })).toBe(
+        false,
+      );
+    });
+
+    it("returns true for a non-empty array (#337)", () => {
+      expect(
+        evaluateCondition(behaviour, EMPTY_VALUES, { employer: ["a"] }),
+      ).toBe(true);
     });
   });
 

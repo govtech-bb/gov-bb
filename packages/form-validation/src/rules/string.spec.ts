@@ -83,6 +83,20 @@ describe("patternRunner", () => {
       "Lowercase only",
     );
   });
+
+  it("fails closed on an invalid regex instead of throwing (#335)", () => {
+    expect(patternRunner("anything", cfg("["), {})).toBe("Invalid format");
+  });
+
+  it("fails closed when config.value is undefined (#335)", () => {
+    expect(patternRunner("anything", cfg(undefined), {})).toBe(
+      "Invalid format",
+    );
+  });
+
+  it("fails closed when config.value is a non-string (#335)", () => {
+    expect(patternRunner("anything", cfg(123), {})).toBe("Invalid format");
+  });
 });
 
 describe("emailRunner", () => {
@@ -190,5 +204,21 @@ describe("strictEqualityRunner", () => {
 
   it("fails when resolved is MISSING, no referenceFieldId, and value does not match config.value (non-string coercion)", () => {
     expect(strictEqualityRunner(123, cfg(456), {})).toBe("Values do not match");
+  });
+
+  it("fails when reference resolves to null and value is blank (#338)", () => {
+    expect(
+      strictEqualityRunner("", cfg(undefined, undefined, "password"), {
+        "step-1": { password: null },
+      }),
+    ).toBe("Values do not match");
+  });
+
+  it("fails when reference resolves to null and value is non-blank (#338)", () => {
+    expect(
+      strictEqualityRunner("secret", cfg(undefined, undefined, "password"), {
+        "step-1": { password: null },
+      }),
+    ).toBe("Values do not match");
   });
 });

@@ -41,6 +41,7 @@ export { RawCheckbox } from "./raw-checkbox";
 export { RawRadio } from "./raw-radio";
 export { RawFile } from "./raw-file";
 export { RawSelect } from "./raw-select";
+export { ShowHide } from "./show-hide";
 
 import { AccountName } from "./account-name";
 import { AccountNumber } from "./account-number";
@@ -85,6 +86,7 @@ import { RawCheckbox } from "./raw-checkbox";
 import { RawRadio } from "./raw-radio";
 import { RawFile } from "./raw-file";
 import { RawSelect } from "./raw-select";
+import { ShowHide } from "./show-hide";
 import type { Primitive } from "@govtech-bb/form-types";
 
 const PRIMITIVES = [
@@ -134,12 +136,13 @@ const ALL = [
   Title,
   UploadDocument,
   WorkTelephone,
+  ShowHide,
   ...PRIMITIVES,
 ] as const satisfies Primitive[];
 
 // Completeness guard: bump the literal type whenever you add a component to
 // ALL, so a registered-but-unlisted component fails the build.
-const _componentCount: 43 = ALL.length;
+const _componentCount: 44 = ALL.length;
 
 export const REGISTRY_COMPONENTS: Record<`components/${string}`, Primitive> =
   Object.fromEntries(ALL.map((c) => [`components/${c.fieldId}`, c]));
