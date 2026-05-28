@@ -23,6 +23,29 @@ interface ParsedError {
 
 function parseException(exception: unknown): ParsedError {
   if (!(exception instanceof HttpException)) {
+    // Express/body-parser throw plain Errors carrying a client status (e.g.
+    // PayloadTooLargeError with .status 413). Honour a 4xx status so the client
+    // sees the real cause instead of a misleading 500.
+    const rawStatus = (exception as { status?: unknown; statusCode?: unknown })
+      ?.status;
+    const rawStatusCode = (
+      exception as { status?: unknown; statusCode?: unknown }
+    )?.statusCode;
+    const clientStatus =
+      typeof rawStatus === "number"
+        ? rawStatus
+        : typeof rawStatusCode === "number"
+          ? rawStatusCode
+          : null;
+    if (
+      exception instanceof Error &&
+      clientStatus !== null &&
+      clientStatus >= 400 &&
+      clientStatus < 500
+    ) {
+      return { statusCode: clientStatus, message: exception.message };
+    }
+
     const base = {
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
       message: "An unexpected error occurred",

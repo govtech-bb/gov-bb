@@ -21,6 +21,7 @@
     "@govtech-bb/expressions": "workspace:*",
     "@govtech-bb/form-conditions": "workspace:*",
     "@govtech-bb/form-types": "workspace:*",
+    "@govtech-bb/registry": "workspace:*",
     "@nestjs/axios": "^4.0.1",
     "@nestjs/common": "^11.1.0",
     "@nestjs/config": "^4.0.3",

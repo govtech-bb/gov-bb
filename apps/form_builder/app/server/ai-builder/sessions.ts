@@ -21,38 +21,25 @@ export const createSession = createServerFn({ method: "POST" })
     });
   });
 
+// PDF is sent inline as base64 in the server-fn body. The Amplify SSR Lambda
+// caps requests at ~6 MB, so the route guards uploads at 4 MB client-side.
+// A presigned-S3 path (getPdfUploadUrl + s3Key) lives in form_builder_api
+// and is dormant — see `project_form_builder_pdf_413_handoff.md` for the
+// resumption notes when we revisit lifting the size cap.
 export const sendMessage = createServerFn({ method: "POST" })
   .middleware([requireSession])
   .inputValidator(
     z.object({
       sessionId: z.string(),
       message: z.string().min(1),
-      s3Key: z.string().optional(),
+      pdfBase64: z.string().optional(),
     }),
   )
   .handler(async ({ data }): Promise<SessionResponse> => {
     return api.post<SessionResponse>(
       `/builder/ai/sessions/${encodeURIComponent(data.sessionId)}/message`,
-      { message: data.message, s3Key: data.s3Key },
+      { message: data.message, pdfBase64: data.pdfBase64 },
     );
-  });
-
-// PDFs are uploaded directly to S3 via a presigned PUT so the AI builder isn't
-// constrained by the ~6 MB Amplify SSR Lambda request body cap. The client
-// calls this, PUTs the file to `uploadUrl`, then calls `sendMessage` with the
-// returned `s3Key`. ADMIN_API_TOKEN never leaves the SSR layer.
-export const getPdfUploadUrl = createServerFn({ method: "POST" })
-  .middleware([requireSession])
-  .inputValidator(
-    z.object({
-      sessionId: z.string(),
-      filename: z.string().min(1),
-      contentType: z.string().min(1),
-      size: z.number().int().positive(),
-    }),
-  )
-  .handler(async ({ data }): Promise<{ uploadUrl: string; s3Key: string }> => {
-    return api.post("/builder/ai/presigned-upload", data);
   });
 
 export const getSession = createServerFn({ method: "GET" })

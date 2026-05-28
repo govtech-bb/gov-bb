@@ -5,7 +5,6 @@
     "outDir": "./dist",
     "declaration": true,
     "module": "commonjs",
-    "rootDir": "./src",
     "types": ["jest"]
   },
   "include": ["src/**/*.ts"],

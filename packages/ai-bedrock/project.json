@@ -4,6 +4,15 @@
   "sourceRoot": "packages/ai-bedrock/src",
   "projectType": "library",
   "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/ai-bedrock",
+        "tsConfig": "packages/ai-bedrock/tsconfig.json",
+        "main": "packages/ai-bedrock/src/index.ts"
+      }
+    },
     "test": {
       "executor": "nx:run-commands",
       "options": {

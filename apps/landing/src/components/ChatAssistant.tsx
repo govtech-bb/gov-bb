@@ -84,7 +84,9 @@ export function ChatAssistant({
     e.preventDefault()
     const trimmed = input.trim().slice(0, MAX_QUERY_LENGTH)
     if (!trimmed || isOffline) return
-    trackEvent('chat-submit', { query: trimmed, source })
+    // Don't send the raw user query — it can contain PII. Track only that a
+    // submit happened and where from.
+    trackEvent('chat-submit', { source })
     goToChat(trimmed)
   }
 

@@ -1,6 +1,6 @@
-import { Body, Controller, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Post } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
-import { Throttle, ThrottlerGuard } from "@nestjs/throttler";
+import { Throttle } from "@nestjs/throttler";
 import { ApiResponse } from "../common/response";
 import type { ApiResponseShape } from "../common/response";
 import { FilesService } from "./files.service";
@@ -13,12 +13,15 @@ import {
 
 @ApiTags("Files")
 @Controller("files")
-@UseGuards(ThrottlerGuard)
 export class FilesController {
   constructor(private readonly filesService: FilesService) {}
 
   @Post("presign-upload")
-  @Throttle({ default: { ttl: 60_000, limit: 30 } })
+  // Override the registered "medium" bucket for this route. Using an unknown
+  // name like "default" would add a 4th ad-hoc throttler on top of the three
+  // globals instead of overriding one. The global APP_GUARD ThrottlerGuard
+  // already covers this controller, so no class-level @UseGuards is needed.
+  @Throttle({ medium: { ttl: 60_000, limit: 30 } })
   async presignUpload(
     @Body() dto: PresignUploadDto,
   ): Promise<ApiResponseShape<PresignUploadResponseDto>> {
@@ -27,7 +30,7 @@ export class FilesController {
   }
 
   @Post("confirm-upload")
-  @Throttle({ default: { ttl: 60_000, limit: 60 } })
+  @Throttle({ medium: { ttl: 60_000, limit: 60 } })
   async confirmUpload(
     @Body() dto: ConfirmUploadDto,
   ): Promise<ApiResponseShape<FileAttachmentDto>> {
