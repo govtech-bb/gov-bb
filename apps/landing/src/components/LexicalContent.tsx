@@ -188,8 +188,39 @@ const converters: JSXConvertersFunction = ({ defaultConverters }) => {
   return { ...defaultConverters, ...overrides }
 }
 
+// Split the body into sections at each top-level heading so each heading
+// starts its own visually-grouped chunk (matching the live site's per-H2/H3
+// `space-y-s` blocks). Content before the first heading lives in its own
+// leading section.
+function sectionsFromBody(body: SerializedEditorState): SerializedEditorState[] {
+  const children = body.root.children as SerializedLexicalNode[]
+  const groups: SerializedLexicalNode[][] = []
+  let current: SerializedLexicalNode[] = []
+  for (const node of children) {
+    if (node.type === 'heading' && current.length > 0) {
+      groups.push(current)
+      current = []
+    }
+    current.push(node)
+  }
+  if (current.length > 0) groups.push(current)
+  return groups.map((nodes) => ({
+    ...body,
+    root: { ...body.root, children: nodes },
+  }))
+}
+
 export function LexicalBody({ body }: { body: SerializedEditorState }) {
-  return <RichText data={body} converters={converters} disableContainer />
+  const sections = sectionsFromBody(body)
+  return (
+    <>
+      {sections.map((section, i) => (
+        <div key={i} className="space-y-s">
+          <RichText data={section} converters={converters} disableContainer />
+        </div>
+      ))}
+    </>
+  )
 }
 
 export type LexicalContentProps = {
