@@ -114,35 +114,31 @@ export default function Review({
       {visibleSteps
         .filter((step) => !excludeStepIds.includes(step.stepId))
         .map((step) => (
-          <div key={step.stepId} className="form-page__review-step">
-            <div className="form-page__review-step-title">
-              <h2 className="govbb-text-h2">{step.title}</h2>
+          <section key={step.stepId} className="govbb-summary-section">
+            <h2 className="govbb-summary-section__title">{step.title}</h2>
+            <div className="govbb-summary-section__action">
               <a
                 className="govbb-link"
                 href={`/forms/${formMeta.formId}?step=${step.stepId}`}
                 onClick={handleChangeClick(step.stepId)}
               >
-                Change
+                Change{" "}
+                <span className="govbb-visually-hidden">{step.title}</span>
               </a>
             </div>
-
-            <table className="form-page__review-table">
-              <tbody>
-                {step.fields
-                  .filter(
-                    (field) => !field.hidden && !field.conditionallyHidden,
-                  )
-                  .map((field: ClientPrimitive) => (
-                    <tr key={field.id}>
-                      <td className="form-page__review-label">{field.label}</td>
-                      <td className="form-page__review-value">
-                        {getFieldDisplayValue(field)}
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
+            <dl className="govbb-summary-list">
+              {step.fields
+                .filter((field) => !field.hidden && !field.conditionallyHidden)
+                .map((field: ClientPrimitive) => (
+                  <div key={field.id} className="govbb-summary-list__row">
+                    <dt className="govbb-summary-list__key">{field.label}</dt>
+                    <dd className="govbb-summary-list__value">
+                      {getFieldDisplayValue(field)}
+                    </dd>
+                  </div>
+                ))}
+            </dl>
+          </section>
         ))}
     </div>
   );

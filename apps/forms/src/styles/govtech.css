@@ -268,52 +268,100 @@
   gap: var(--spacing-xxs);
 }
 
-/* ---- Review / check-your-answers ----------------------------------------
- * govbb-summary-list does not exist in this package version, so the
- * label/value review table is composed from tokens. */
-.form-page__review {
+/* ---- Review / check-your-answers (summary list) -------------------------
+ * govbb-summary-section / govbb-summary-list are not in this package version
+ * (alpha.16); the official component CSS is ported here under the same class
+ * names, composed from brand tokens. Remove once the package ships them. */
+.govbb-summary-section {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-areas:
+    "heading"
+    "content"
+    "button";
+  row-gap: var(--spacing-xs);
   padding-bottom: var(--spacing-m);
+  margin-bottom: var(--spacing-m);
+  border-bottom: 4px solid var(--color-grey-00);
 }
 
-.form-page__review-step {
+.govbb-summary-section:last-child {
+  padding-bottom: 0;
+  margin-bottom: 0;
+  border-bottom: 0;
+}
+
+.govbb-summary-section__title {
+  grid-area: heading;
+  margin: 0;
+  font-size: var(--font-size-h2);
+  line-height: var(--line-height-h2);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+}
+
+.govbb-summary-section__action {
+  grid-area: button;
+  justify-self: start;
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+
+.govbb-summary-list {
+  grid-area: content;
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-s);
-  width: 100%;
-  border-bottom: 4px solid var(--color-grey-00);
-  padding: var(--spacing-s) 0;
-}
-
-.form-page__review-step-title {
-  display: flex;
-  gap: var(--spacing-xm);
-  align-items: center;
-  justify-content: space-between;
-}
-
-.form-page__review-step-title h2 {
+  gap: var(--spacing-xs);
   margin: 0;
 }
 
-.form-page__review-table {
-  width: 100%;
+.govbb-summary-list__row {
+  display: flex;
+  flex-direction: column;
 }
 
-.form-page__review-label {
+.govbb-summary-list__key {
   font-size: var(--font-size-body);
   line-height: var(--line-height-body);
   font-weight: var(--font-weight-bold);
-  width: 50%;
-  padding: var(--spacing-xs) 0;
-  text-align: left;
+  color: var(--color-text);
 }
 
-.form-page__review-value {
+.govbb-summary-list__value {
+  margin: 0;
   font-size: var(--font-size-body);
   line-height: var(--line-height-body);
-  font-weight: var(--font-weight-normal);
-  padding: var(--spacing-xs) 0;
-  text-align: left;
+  color: var(--color-text);
+}
+
+@media (min-width: 768px) {
+  .govbb-summary-section {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "heading button"
+      "content content";
+  }
+
+  .govbb-summary-section__action {
+    place-self: center end;
+  }
+
+  .govbb-summary-list {
+    gap: var(--spacing-s);
+  }
+
+  .govbb-summary-list__row {
+    flex-direction: row;
+    column-gap: var(--spacing-xs);
+  }
+
+  .govbb-summary-list__key {
+    flex: 0 0 33.3333%;
+  }
+
+  .govbb-summary-list__value {
+    flex: 0 0 66.6666%;
+  }
 }
 
 /* ---- Error / not-found pages --------------------------------------------- */
@@ -332,12 +380,8 @@
     width: 50%;
   }
 
-  .form-page__review-step {
+  .form-page__review {
     width: calc(100% * 2 / 3);
-  }
-
-  .form-page__review-label {
-    width: 25%;
   }
 
   .form-page__payment,
