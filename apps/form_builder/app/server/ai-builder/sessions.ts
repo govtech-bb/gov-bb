@@ -27,14 +27,32 @@ export const sendMessage = createServerFn({ method: "POST" })
     z.object({
       sessionId: z.string(),
       message: z.string().min(1),
-      pdfBase64: z.string().optional(),
+      s3Key: z.string().optional(),
     }),
   )
   .handler(async ({ data }): Promise<SessionResponse> => {
     return api.post<SessionResponse>(
       `/builder/ai/sessions/${encodeURIComponent(data.sessionId)}/message`,
-      { message: data.message, pdfBase64: data.pdfBase64 },
+      { message: data.message, s3Key: data.s3Key },
     );
+  });
+
+// PDFs are uploaded directly to S3 via a presigned PUT so the AI builder isn't
+// constrained by the ~6 MB Amplify SSR Lambda request body cap. The client
+// calls this, PUTs the file to `uploadUrl`, then calls `sendMessage` with the
+// returned `s3Key`. ADMIN_API_TOKEN never leaves the SSR layer.
+export const getPdfUploadUrl = createServerFn({ method: "POST" })
+  .middleware([requireSession])
+  .inputValidator(
+    z.object({
+      sessionId: z.string(),
+      filename: z.string().min(1),
+      contentType: z.string().min(1),
+      size: z.number().int().positive(),
+    }),
+  )
+  .handler(async ({ data }): Promise<{ uploadUrl: string; s3Key: string }> => {
+    return api.post("/builder/ai/presigned-upload", data);
   });
 
 export const getSession = createServerFn({ method: "GET" })
