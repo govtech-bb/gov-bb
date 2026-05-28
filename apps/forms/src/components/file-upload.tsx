@@ -9,6 +9,7 @@ export default function FileUpload({
   onFileChange,
   value,
   errorMessage,
+  errorId,
   validationRules,
   formId,
 }: FileUploadProps) {
@@ -48,7 +49,7 @@ export default function FileUpload({
 
   return (
     <div className="govbb-file-upload">
-      {errorMessage && <ErrorMessage message={errorMessage} />}
+      {errorMessage && <ErrorMessage id={errorId} message={errorMessage} />}
       <label className="govbb-file-upload__dropzone" htmlFor={field.id}>
         <div className="govbb-file-upload__info">
           <span className="govbb-file-upload__title">

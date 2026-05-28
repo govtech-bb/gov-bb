@@ -64,6 +64,20 @@ export default function FieldRenderer({
       {(f: AnyFieldApi) => {
         // For each field type, be sure to establish...
         // const value = f.state.value as ValueType | undefined
+        let errorMessage = "";
+        if (!f.state.meta.isValid) {
+          errorMessage = f.state.meta.errors[0];
+        }
+        const invalid = errorMessage ? true : undefined;
+
+        // Associate the hint and error text with the input(s) via
+        // aria-describedby (GOV.UK pattern). Each branch renders the hint/error
+        // nodes with these ids so the references always resolve.
+        const hintId = field.hint ? `${field.id}-hint` : undefined;
+        const errorId = errorMessage ? `${field.id}-error` : undefined;
+        const describedBy =
+          [hintId, errorId].filter(Boolean).join(" ") || undefined;
+
         const sharedProps = {
           type: field.htmlType,
           name: field.name,
@@ -71,6 +85,7 @@ export default function FieldRenderer({
           disabled: field.disabled,
           placeholder: field.placeholder,
           onBlur: f.handleBlur,
+          "aria-describedby": describedBy,
         };
 
         // Surface required state to assistive tech. Not spread onto multi-option
@@ -80,12 +95,6 @@ export default function FieldRenderer({
           ? { required: true, "aria-required": true }
           : {};
 
-        let errorMessage = "";
-        if (!f.state.meta.isValid) {
-          errorMessage = f.state.meta.errors[0];
-        }
-        const invalid = errorMessage ? true : undefined;
-
         switch (field.htmlType) {
           case "date": {
             const value = f.state.value as DateValue | undefined;
@@ -94,8 +103,12 @@ export default function FieldRenderer({
                 <legend className="govbb-fieldset__legend">
                   {field.label}
                 </legend>
-                {field.hint && <p className="govbb-hint">{field.hint}</p>}
-                <ErrorMessage message={errorMessage} />
+                {field.hint && (
+                  <p className="govbb-hint" id={hintId}>
+                    {field.hint}
+                  </p>
+                )}
+                <ErrorMessage id={errorId} message={errorMessage} />
                 <div className="govbb-date-input">
                   <div className="govbb-date-input__part">
                     <label
@@ -198,7 +211,12 @@ export default function FieldRenderer({
                   <label className="govbb-label" htmlFor={field.id}>
                     {field.label}
                   </label>
-                  {field.hint && <p className="govbb-hint">{field.hint}</p>}
+                  {field.hint && (
+                    <p className="govbb-hint" id={hintId}>
+                      {field.hint}
+                    </p>
+                  )}
+                  <ErrorMessage id={errorId} message={errorMessage} />
                   <div className="govbb-input-wrapper">
                     <textarea
                       key={field.id}
@@ -323,8 +341,12 @@ export default function FieldRenderer({
                 <label className="govbb-label" htmlFor={field.id}>
                   {field.label}
                 </label>
-                {field.hint && <p className="govbb-hint">{field.hint}</p>}
-                <ErrorMessage message={errorMessage} />
+                {field.hint && (
+                  <p className="govbb-hint" id={hintId}>
+                    {field.hint}
+                  </p>
+                )}
+                <ErrorMessage id={errorId} message={errorMessage} />
                 {inputElement}
               </div>
             );
@@ -341,8 +363,12 @@ export default function FieldRenderer({
                 <label className="govbb-label" htmlFor={field.id}>
                   {field.label}
                 </label>
-                {field.hint && <p className="govbb-hint">{field.hint}</p>}
-                <ErrorMessage message={errorMessage} />
+                {field.hint && (
+                  <p className="govbb-hint" id={hintId}>
+                    {field.hint}
+                  </p>
+                )}
+                <ErrorMessage id={errorId} message={errorMessage} />
                 <div className="govbb-select-wrapper">
                   <select
                     {...sharedProps}
@@ -377,8 +403,12 @@ export default function FieldRenderer({
                   <legend className="govbb-fieldset__legend">
                     {field.label}
                   </legend>
-                  {field.hint && <p className="govbb-hint">{field.hint}</p>}
-                  <ErrorMessage message={errorMessage} />
+                  {field.hint && (
+                    <p className="govbb-hint" id={hintId}>
+                      {field.hint}
+                    </p>
+                  )}
+                  <ErrorMessage id={errorId} message={errorMessage} />
                   <div className="form-page__options">
                     <div className="govbb-checkbox-item" key={option.value}>
                       <input
@@ -421,8 +451,12 @@ export default function FieldRenderer({
                 <legend className="govbb-fieldset__legend">
                   {field.label}
                 </legend>
-                {field.hint && <p className="govbb-hint">{field.hint}</p>}
-                <ErrorMessage message={errorMessage} />
+                {field.hint && (
+                  <p className="govbb-hint" id={hintId}>
+                    {field.hint}
+                  </p>
+                )}
+                <ErrorMessage id={errorId} message={errorMessage} />
                 <div className="form-page__options">
                   {field.options?.map((option) => {
                     return (
@@ -454,8 +488,12 @@ export default function FieldRenderer({
                 <legend className="govbb-fieldset__legend">
                   {field.label}
                 </legend>
-                {field.hint && <p className="govbb-hint">{field.hint}</p>}
-                <ErrorMessage message={errorMessage} />
+                {field.hint && (
+                  <p className="govbb-hint" id={hintId}>
+                    {field.hint}
+                  </p>
+                )}
+                <ErrorMessage id={errorId} message={errorMessage} />
                 <div className="form-page__options">
                   {field.options?.map((option) => {
                     const insetEntries = insetFieldsByOption?.get(option.value);
@@ -515,6 +553,7 @@ export default function FieldRenderer({
                 value={f.state.value as File[] | null | undefined}
                 onFileChange={(files) => f.handleChange(files)}
                 errorMessage={errorMessage}
+                errorId={errorId}
                 validationRules={field.validations}
                 formId={formId}
               />
