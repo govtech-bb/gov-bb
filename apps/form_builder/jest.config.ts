@@ -50,6 +50,7 @@ const config: Config = {
                     PROD: false,
                     MODE: "test",
                     VITE_FORMS_URL: "https://forms.example.test",
+                    VITE_RECIPE_PREVIEW_TOKEN: "stub-token",
                   },
                 },
               },
