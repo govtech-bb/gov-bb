@@ -13,6 +13,12 @@
         "main": "packages/registry/src/index.ts"
       }
     },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "options": {
+        "jestConfig": "packages/registry/jest.config.ts"
+      }
+    },
     "lint": {
       "executor": "@nx/eslint:lint",
       "options": {
