@@ -511,6 +511,18 @@ describe("REMOVE_PROCESSOR", () => {
     });
     expect(next.processors).toBeUndefined();
   });
+
+  it("collapses to undefined when the last processor is removed (#333)", () => {
+    const a = recipeReducer(baseDraft(), {
+      type: "ADD_PROCESSOR",
+      processorType: "email",
+    });
+    const next = recipeReducer(a, {
+      type: "REMOVE_PROCESSOR",
+      id: a.processors![0].id,
+    });
+    expect(next.processors).toBeUndefined();
+  });
 });
 
 // ── UPDATE_PROCESSOR_CONFIG ──────────────────────────────────────────────────
