@@ -2,6 +2,18 @@
 
 Guidance for working in this repo. Use **pnpm** for everything — never `npm`.
 
+## When work is finished, close the related GitHub issue
+
+After completing a piece of work, check GitHub (`gh issue list` / `gh issue
+view`) for an issue the work resolves.
+
+- **If the issue was explicitly referenced in the plan**, no confirmation is
+  needed — add a comment summarizing the resolution (link the PR/commit) and
+  close it.
+- **Otherwise**, confirm with the human that it's the right issue before
+  closing. Watch for a plan that cites a stale or duplicate issue number — the
+  live issue may differ from the one named.
+
 ## Always run the full build and tests before committing or pushing
 
 CI runs these two commands. Run the same ones locally first — don't rely on CI to
