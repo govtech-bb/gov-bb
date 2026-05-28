@@ -73,6 +73,13 @@ export default function FieldRenderer({
           onBlur: f.handleBlur,
         };
 
+        // Surface required state to assistive tech. Not spread onto multi-option
+        // checkbox inputs — there it would force every box to be checked.
+        const isRequired = field.validations?.required?.value === true;
+        const requiredProps = isRequired
+          ? { required: true, "aria-required": true }
+          : {};
+
         let errorMessage = "";
         if (!f.state.meta.isValid) {
           errorMessage = f.state.meta.errors[0];
@@ -88,9 +95,11 @@ export default function FieldRenderer({
                 <ErrorMessage message={errorMessage} />
                 <div data-date-group>
                   <div data-date-part>
-                    <label>Day</label>
+                    <label htmlFor={`${field.id}-day`}>Day</label>
                     <input
                       {...sharedProps}
+                      {...requiredProps}
+                      id={`${field.id}-day`}
                       value={value?.day ?? ""}
                       type="number"
                       min={1}
@@ -106,9 +115,11 @@ export default function FieldRenderer({
                   </div>
 
                   <div data-date-part>
-                    <label>Month</label>
+                    <label htmlFor={`${field.id}-month`}>Month</label>
                     <input
                       {...sharedProps}
+                      {...requiredProps}
+                      id={`${field.id}-month`}
                       type="number"
                       value={value?.month ?? ""}
                       min={1}
@@ -124,9 +135,11 @@ export default function FieldRenderer({
                   </div>
 
                   <div data-date-part>
-                    <label>Year</label>
+                    <label htmlFor={`${field.id}-year`}>Year</label>
                     <input
                       {...sharedProps}
+                      {...requiredProps}
+                      id={`${field.id}-year`}
                       type="number"
                       value={value?.year ?? ""}
                       onChange={(e) => {
@@ -149,11 +162,12 @@ export default function FieldRenderer({
               const value = f.state.value as string | undefined;
               textareaElement = (
                 <div data-field data-field-width={field.ui?.width}>
-                  <label> {field.label} </label>
+                  <label htmlFor={field.id}> {field.label} </label>
                   {field.hint && <p data-hint>{field.hint}</p>}
                   <textarea
                     key={field.id}
                     {...sharedProps}
+                    {...requiredProps}
                     value={value ?? ""}
                     onChange={(e) => f.handleChange(e.target.value)}
                   />
@@ -175,6 +189,7 @@ export default function FieldRenderer({
                   key={field.id}
                   mask={field.mask}
                   {...sharedProps}
+                  {...requiredProps}
                   value={value ?? ""}
                   onChange={(e) => f.handleChange(e.target.value)}
                 />
@@ -236,7 +251,7 @@ export default function FieldRenderer({
             const element: JSX.Element = (
               <div data-field data-field-width={field.ui?.width}>
                 <div>
-                  <label> {field.label} </label>
+                  <label htmlFor={field.id}> {field.label} </label>
                   {field.hint && <p data-hint>{field.hint}</p>}
                   <ErrorMessage message={errorMessage} />
                 </div>
@@ -254,12 +269,13 @@ export default function FieldRenderer({
                 data-select-field
                 data-field-width={field.ui?.width}
               >
-                <label> {field.label} </label>
+                <label htmlFor={field.id}> {field.label} </label>
                 {field.hint && <p data-hint>{field.hint}</p>}
                 <ErrorMessage message={errorMessage} />
                 <div data-select-control>
                   <select
                     {...sharedProps}
+                    {...requiredProps}
                     multiple={isMultiple}
                     value={selectValue ? selectValue : isMultiple ? [] : ""}
                     onChange={(e) => f.handleChange(e.target.value)}
@@ -279,25 +295,27 @@ export default function FieldRenderer({
               const option = field.options[0];
               const value = (f.state.value as string | undefined) ?? "";
               return (
-                <div data-checkbox-group>
-                  <div>
-                    <legend>{field.label}</legend>
-                    {field.hint && <p data-hint>{field.hint}</p>}
-                    <ErrorMessage message={errorMessage} />
-                  </div>
+                <fieldset data-checkbox-group>
+                  <legend>{field.label}</legend>
+                  {field.hint && <p data-hint>{field.hint}</p>}
+                  <ErrorMessage message={errorMessage} />
                   <div key={option.value} data-checkbox-option>
-                    <input
-                      {...sharedProps}
-                      checked={option.value === value}
-                      onChange={() =>
-                        f.handleChange(
-                          option.value === value ? "" : option.value,
-                        )
-                      }
-                    />
-                    <label>{option.label}</label>
+                    <label htmlFor={`${field.id}-${option.value}`}>
+                      <input
+                        {...sharedProps}
+                        {...requiredProps}
+                        id={`${field.id}-${option.value}`}
+                        checked={option.value === value}
+                        onChange={() =>
+                          f.handleChange(
+                            option.value === value ? "" : option.value,
+                          )
+                        }
+                      />
+                      {option.label}
+                    </label>
                   </div>
-                </div>
+                </fieldset>
               );
             }
 
@@ -322,12 +340,15 @@ export default function FieldRenderer({
                   {field.options?.map((option) => {
                     return (
                       <div key={option.value} data-checkbox-option>
-                        <input
-                          {...sharedProps}
-                          checked={checkboxValues.includes(option.value)}
-                          onChange={() => toggle(option.value)}
-                        />
-                        <label>{option.label}</label>
+                        <label htmlFor={`${field.id}-${option.value}`}>
+                          <input
+                            {...sharedProps}
+                            id={`${field.id}-${option.value}`}
+                            checked={checkboxValues.includes(option.value)}
+                            onChange={() => toggle(option.value)}
+                          />
+                          {option.label}
+                        </label>
                       </div>
                     );
                   })}
@@ -349,10 +370,14 @@ export default function FieldRenderer({
                       <div key={option.value} data-radio-item>
                         <input
                           {...sharedProps}
+                          {...requiredProps}
+                          id={`${field.id}-${option.value}`}
                           checked={isSelected}
                           onChange={() => f.handleChange(option.value)}
                         />
-                        <label>{option.label}</label>
+                        <label htmlFor={`${field.id}-${option.value}`}>
+                          {option.label}
+                        </label>
                         {/* Conditional reveal: inset fields shown below the
                             selected option with an indented left-border style */}
                         {insetEntries && isSelected && (
