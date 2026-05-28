@@ -267,6 +267,16 @@
           "overrides": {
             "label": "Provide your licence number",
             "fieldId": "licence-number",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter your licence number"
+              },
+              "pattern": {
+                "value": "^[A-Za-z0-9 -]+$",
+                "error": "Licence number can only contain letters, numbers, spaces and hyphens"
+              }
+            },
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
