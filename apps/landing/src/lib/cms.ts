@@ -309,6 +309,33 @@ export const serviceByUrlQueryOptions = (splat: string, flag: boolean) =>
     queryFn: () => fetchServiceByUrl(splat, flag),
   })
 
+/**
+ * When the flagged-filter query returns no doc, the loader uses this to ask:
+ * does a published doc exist at this URL that we're hiding behind a flag?
+ * Returns the flag value if so, otherwise null. Used to surface 503 instead
+ * of 404 for genuinely-flagged pages.
+ */
+export async function fetchServiceFlagStatus(
+  splat: string,
+): Promise<'live' | 'flagged' | null> {
+  const segments = splat.split('/').filter(Boolean)
+  const candidates = [splat]
+  if (segments.length > 1) candidates.push(segments.slice(1).join('/'))
+  const where = candidates
+    .map((c, i) => `&where[slug][in][${i}]=${encodeURIComponent(c)}`)
+    .join('')
+  const res = await cmsFetch<PayloadServiceDoc>(
+    `/api/services?${PUBLISHED}${where}&depth=0&limit=2`,
+  )
+  return res.docs[0]?.flag ?? null
+}
+
+export const serviceFlagStatusByUrlQueryOptions = (splat: string) =>
+  queryOptions({
+    queryKey: ['cms', 'service', 'flag-status', splat] as const,
+    queryFn: () => fetchServiceFlagStatus(splat),
+  })
+
 export const CMS_CACHE_HEADERS: Record<string, string> = {
   // CDN serves cached HTML for 5 minutes, then revalidates in the background
   // for 60s before hitting Lambda. Editorial content; not user-specific.

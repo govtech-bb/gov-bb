@@ -10,6 +10,7 @@ import {
   categoriesQueryOptions,
   cmsRouteHeaders,
   serviceByUrlQueryOptions,
+  serviceFlagStatusByUrlQueryOptions,
   servicesByCategoryQueryOptions,
   servicesBySubcategoryQueryOptions,
   subcategoriesByCategoryQueryOptions,
@@ -18,6 +19,7 @@ import {
   type CmsServiceListItem,
   type CmsSubcategory,
 } from '../lib/cms'
+import { markFlaggedResponse } from '../lib/flag'
 import type { Frontmatter } from '../lib/frontmatter'
 
 interface RenderablePage {
@@ -27,6 +29,7 @@ interface RenderablePage {
 
 type LoaderData =
   | { kind: 'page'; page: RenderablePage }
+  | { kind: 'flagged' }
   | { kind: 'category'; category: CmsCategory; categorySlug: string }
   | { kind: 'subcategory-index'; category: CmsCategory; categorySlug: string }
   | {
@@ -61,8 +64,12 @@ export const Route = createFileRoute('/$')({
   // Cache header applies to CMS-fed routes; static page (kind 'page') paths
   // also benefit from CDN caching since they don't change between deploys.
   // On error we send no-store so an outage page isn't pinned for 5 minutes
-  // after the CMS recovers.
-  headers: ({ match }) => cmsRouteHeaders(match.status),
+  // after the CMS recovers. A flagged page (503) is also no-store so that
+  // unflagging takes effect without CDN propagation lag.
+  headers: ({ match, loaderData }) =>
+    loaderData?.kind === 'flagged'
+      ? { 'Cache-Control': 'no-store, max-age=0' }
+      : cmsRouteHeaders(match.status),
   loader: async ({ params, context }): Promise<LoaderData> => {
     const splat = (params._splat ?? '').replace(/^\/+|\/+$/g, '')
     const segments = splat.split('/').filter(Boolean)
@@ -147,7 +154,21 @@ export const Route = createFileRoute('/$')({
       throw new Error('CMS unreachable; cannot resolve URL')
     }
 
-    // CMS answered: this URL doesn't resolve to a published doc.
+    // CMS answered with no visible doc. Before we 404, check if there's a
+    // published-but-flagged doc at this URL — that case is 503 (intentionally
+    // hidden behind a feature flag) rather than 404 (genuinely missing).
+    // Skip the check when the viewer already has the reviewer flag — their
+    // first query already included flagged docs, so a null means missing.
+    if (!flag) {
+      const status = await queryClient.ensureQueryData(
+        serviceFlagStatusByUrlQueryOptions(splat),
+      )
+      if (status === 'flagged') {
+        await markFlaggedResponse()
+        return { kind: 'flagged' }
+      }
+    }
+
     throw notFound()
   },
   head: ({ loaderData }) => {
@@ -185,6 +206,7 @@ export const Route = createFileRoute('/$')({
 function ContentRoute() {
   const data = Route.useLoaderData()
   if (data.kind === 'page') return <PageView page={data.page} />
+  if (data.kind === 'flagged') return <FlaggedView />
   if (data.kind === 'subcategory-index')
     return <SubcategoryIndexView category={data.category} categorySlug={data.categorySlug} />
   if (data.kind === 'subcategory')
@@ -197,6 +219,18 @@ function ContentRoute() {
       />
     )
   return <CategoryView category={data.category} categorySlug={data.categorySlug} />
+}
+
+function FlaggedView() {
+  return (
+    <PageShell>
+      <Heading as="h1">This page isn&apos;t available yet</Heading>
+      <Text as="p" className="mt-4 text-mid-grey-00">
+        The service you&apos;re looking for is still being prepared and
+        isn&apos;t public yet. Please check back later.
+      </Text>
+    </PageShell>
+  )
 }
 
 function PageView({ page }: { page: RenderablePage }) {

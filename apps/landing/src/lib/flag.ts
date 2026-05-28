@@ -4,6 +4,7 @@ import {
   getCookie,
   getRequest,
   setCookie,
+  setResponseStatus,
 } from '@tanstack/react-start/server'
 
 /**
@@ -75,6 +76,17 @@ export function decideFlag({
 
   return { flag: hasValidCookie, cookie: 'none' }
 }
+
+/**
+ * Server function used by the splat loader to set HTTP 503 on the response
+ * when it renders the "this page isn't available yet" page for a
+ * published-but-flagged service. Lives here (alongside other server-only
+ * helpers) so route files don't try to import `@tanstack/react-start/server`
+ * directly — the bundler blocks that.
+ */
+export const markFlaggedResponse = createServerFn().handler(async () => {
+  setResponseStatus(503)
+})
 
 export const resolveFlag = createServerFn().handler(
   async (): Promise<FlagResolution> => {
