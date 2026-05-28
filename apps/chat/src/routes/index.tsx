@@ -129,8 +129,15 @@ function ChatPage() {
       <SiteHeader />
       <ChatHeader onStartAgain={handleStartAgain} />
 
-      <main className="flex-1 overflow-y-auto px-s pb-s" ref={scrollRef}>
-        <div className="mx-auto max-w-2xl space-y-s py-s">
+      {/* Not a <main> — the root layout already provides the single main
+          landmark. role="log" + aria-live announces streamed replies. */}
+      <div className="flex-1 overflow-y-auto px-s pb-s" ref={scrollRef}>
+        <div
+          aria-label="Chat messages"
+          aria-live="polite"
+          className="mx-auto max-w-2xl space-y-s py-s"
+          role="log"
+        >
           <WelcomeBubble />
           {pendingQuery && messages.length === 0 && (
             <>
@@ -155,7 +162,7 @@ function ChatPage() {
             </div>
           )}
         </div>
-      </main>
+      </div>
 
       <Composer
         input={input}
