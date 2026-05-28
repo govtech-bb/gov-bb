@@ -1,15 +1,20 @@
 import React from "react";
 
-export default function ErrorMessage({ message }: { message: string }) {
+export default function ErrorMessage({
+  id,
+  message,
+}: {
+  id?: string;
+  message: string;
+}) {
   if (!message || message.length === 0) {
     return null;
   }
+  // Polite, not assertive: one step can render many of these at once, and the
+  // ErrorSummary already makes the single assertive announcement.
   return (
-    // role="status" (polite) not "alert" (assertive): a step with several
-    // fields would otherwise fire one interruption per field on validation.
-    // The page-level ErrorSummary keeps its assertive role for one announcement.
-    <p className="govbb-error-message" role="status">
-      {message}
+    <p className="govbb-error-message" id={id} role="status">
+      <span className="govbb-visually-hidden">Error:</span> {message}
     </p>
   );
 }
