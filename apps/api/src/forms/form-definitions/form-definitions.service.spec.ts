@@ -404,17 +404,25 @@ describe("FormDefinitionsService", () => {
       );
     });
 
-    it("findAll delegates to the file loader", async () => {
+    it("findAll delegates to the file loader (passes version through)", async () => {
       const { fileLoader, service } = makeMocks({ source: "files" });
       (fileLoader.findAll as jest.Mock).mockReturnValue([
-        { formId: "passport-renewal", title: "Passport Renewal" },
+        {
+          formId: "passport-renewal",
+          title: "Passport Renewal",
+          version: "1.0.0",
+        },
       ]);
 
       const result = await service.findAll();
 
       expect(fileLoader.findAll).toHaveBeenCalled();
       expect(result).toEqual([
-        { formId: "passport-renewal", title: "Passport Renewal" },
+        {
+          formId: "passport-renewal",
+          title: "Passport Renewal",
+          version: "1.0.0",
+        },
       ]);
     });
   });
@@ -427,18 +435,18 @@ describe("FormDefinitionsService", () => {
           nodeEnv: "development",
         });
         (fileLoader.findAll as jest.Mock).mockReturnValue([
-          { formId: "file-only", title: "File Only" },
+          { formId: "file-only", title: "File Only", version: "1.0.0" },
         ]);
         (repo.find as jest.Mock).mockResolvedValue([
-          makeEntityWithTitle("db-only", "DB Only"),
+          makeEntityWithTitle("db-only", "DB Only", { version: "2.0.0" }),
         ]);
 
         const result = await service.findAll();
 
         expect(result).toEqual(
           expect.arrayContaining([
-            { formId: "file-only", title: "File Only" },
-            { formId: "db-only", title: "DB Only" },
+            { formId: "file-only", title: "File Only", version: "1.0.0" },
+            { formId: "db-only", title: "DB Only", version: "2.0.0" },
           ]),
         );
         expect(result).toHaveLength(2);
@@ -450,16 +458,26 @@ describe("FormDefinitionsService", () => {
           nodeEnv: "development",
         });
         (fileLoader.findAll as jest.Mock).mockReturnValue([
-          { formId: "passport-renewal", title: "Passport Renewal (file)" },
+          {
+            formId: "passport-renewal",
+            title: "Passport Renewal (file)",
+            version: "1.0.0",
+          },
         ]);
         (repo.find as jest.Mock).mockResolvedValue([
-          makeEntityWithTitle("passport-renewal", "Passport Renewal (db)"),
+          makeEntityWithTitle("passport-renewal", "Passport Renewal (db)", {
+            version: "1.1.0",
+          }),
         ]);
 
         const result = await service.findAll();
 
         expect(result).toEqual([
-          { formId: "passport-renewal", title: "Passport Renewal (db)" },
+          {
+            formId: "passport-renewal",
+            title: "Passport Renewal (db)",
+            version: "1.1.0",
+          },
         ]);
       });
     });
@@ -883,7 +901,7 @@ describe("FormDefinitionsService.findAll", () => {
     expect(repo.find).toHaveBeenCalledWith({ order: { createdAt: "DESC" } });
   });
 
-  it("returns one entry per unique formId with title from schema", async () => {
+  it("returns one entry per unique formId with title and version from schema", async () => {
     const entities = [
       makeEntityWithTitle("passport-renewal", "Passport Renewal"),
       makeEntityWithTitle("birth-cert", "Birth Certificate"),
@@ -893,8 +911,12 @@ describe("FormDefinitionsService.findAll", () => {
     const result = await service.findAll();
 
     expect(result).toEqual([
-      { formId: "passport-renewal", title: "Passport Renewal" },
-      { formId: "birth-cert", title: "Birth Certificate" },
+      {
+        formId: "passport-renewal",
+        title: "Passport Renewal",
+        version: "1.0.0",
+      },
+      { formId: "birth-cert", title: "Birth Certificate", version: "1.0.0" },
     ]);
   });
 
@@ -919,6 +941,7 @@ describe("FormDefinitionsService.findAll", () => {
     expect(result[0]).toEqual({
       formId: "passport-renewal",
       title: "Passport Renewal v2",
+      version: "2.0.0",
     });
   });
 
@@ -947,9 +970,9 @@ describe("FormDefinitionsService.findAll", () => {
     const result = await service.findAll();
 
     expect(result).toEqual([
-      { formId: "form-a", title: "Form A v2" },
-      { formId: "form-b", title: "Form B" },
-      { formId: "form-c", title: "Form C" },
+      { formId: "form-a", title: "Form A v2", version: "1.0.0" },
+      { formId: "form-b", title: "Form B", version: "1.0.0" },
+      { formId: "form-c", title: "Form C", version: "1.0.0" },
     ]);
   });
 });
