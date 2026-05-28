@@ -138,7 +138,7 @@ async function seedServices(
       body: mdToBody(content, editorConfig),
       categories,
       subcategory: subId,
-      serviceType: fm.service_type,
+      serviceType: fm.service_type ?? 'information',
       stage: fm.stage ?? 'alpha',
       sourceUrl: fm.source_url,
       _status: 'published',
