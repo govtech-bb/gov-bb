@@ -508,3 +508,35 @@
   flex: 1;
   min-width: 0;
 }
+
+/* ── Options editor ──────────────────────────────── */
+
+.optionsEditor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.optionsRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.optionsRow input[type="text"] {
+  flex: 1;
+  min-width: 0;
+}
+
+.optionsDisabled {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.optionsActions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}

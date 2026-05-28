@@ -34,8 +34,14 @@ describe("FormDefinitionsController", () => {
   });
 
   describe("getAll (GET /form-definitions)", () => {
-    it("calls service.findAll and returns success response shape", async () => {
-      const list = [{ formId: "passport-renewal", title: "Passport Renewal" }];
+    it("calls service.findAll and returns success response shape with version", async () => {
+      const list = [
+        {
+          formId: "passport-renewal",
+          title: "Passport Renewal",
+          version: "1.0.0",
+        },
+      ];
       mockService.findAll.mockResolvedValue(list);
 
       const result = await controller.getAll();
