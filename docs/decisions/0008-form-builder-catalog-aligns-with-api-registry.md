@@ -82,6 +82,12 @@ Corollaries:
   comment at the top of `packages/registry/src/components/index.ts` already
   enforces this with a `Block[]` length-typed compile-time guard. The form
   builder picks it up automatically through the registry import.
+
+  > **Superseded in part by [0018](0018-registry-is-sole-home-for-builtin-definitions.md).**
+  > `apps/api/src/registry/builtins/` has since been deleted; builtin
+  > definitions now live only in `@govtech-bb/registry`. Add a new component
+  > or block there only. The rest of this record — the form builder catalog
+  > being a subset of the registry — still holds.
 - **Adding it to the form-builder package's builtins is no longer
   required.** Those files are inert as far as the running UI is concerned.
 - **Enforcement is still aspirational at the save boundary.**
