@@ -1,9 +1,11 @@
 {
   "formId": "smart-stream-vendor-registration",
   "title": "Smart Stream Vendor Registration Form",
-  "version": "1.0",
+  "version": "1.1.0",
   "organization": "Ministry of Finance, Economic Affairs and Investment",
   "department": "Treasury Department - Information Systems Unit",
+  "createdAt": "2026-05-27T14:36:29.044Z",
+  "updatedAt": "2026-05-28T00:00:00.000Z",
   "steps": [
     {
       "stepId": "step-1-basic-info",
