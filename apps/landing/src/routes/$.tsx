@@ -233,9 +233,7 @@ function FlaggedView() {
       suggestions={[
         'Try again in a few minutes',
         'Return to the homepage to access other services',
-        'Contact us for urgent enquiries',
       ]}
-      secondary={{ label: 'Contact us', href: '/feedback' }}
       primary={{ label: 'Return to homepage', href: '/' }}
     />
   )
