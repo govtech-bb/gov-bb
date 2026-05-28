@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { randomUUID } from "node:crypto";
 import { CustomComponent, FormDefinitionEntity } from "@govtech-bb/database";
 import { findRecipeIdCollisionsFromRecipe } from "@govtech-bb/form-builder";
@@ -9,6 +9,7 @@ import { getSystemPrompt } from "../ai/system-prompt.js";
 import { chat, ensureInitialised, isAvailable } from "../ai/client.js";
 import { extractRecipe } from "../ai/recipe-extractor.js";
 import { buildSql } from "../ai/sql-builder.js";
+import { fetchObjectAsBase64, presignPutObject } from "../ai/s3.js";
 
 export const aiRouter = Router();
 
@@ -27,7 +28,43 @@ interface Session {
   publishedFormId?: string;
 }
 
+// Module-private. Exposed via test helpers below for spec coverage of routes
+// that depend on session state (presigned-upload, /message s3Key branch).
 const sessions = new Map<string, Session>();
+
+// Max PDF size accepted via the presigned-upload flow. Matches Bedrock's PDF
+// document input ceiling and the SSR client-side guard.
+const MAX_UPLOAD_BYTES = 32 * 1024 * 1024;
+const ALLOWED_UPLOAD_CONTENT_TYPES = new Set([
+  "application/pdf",
+  "image/png",
+  "image/jpeg",
+]);
+
+function sanitizeFilename(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/\s+/g, "_")
+    .replace(/[^a-z0-9._-]/g, "")
+    .slice(0, 120);
+}
+
+function buildAiUploadKey(sessionId: string, filename: string): string {
+  return `ai-uploads/${sessionId}/${randomUUID()}-${sanitizeFilename(filename)}`;
+}
+
+// Test-only helpers (not part of the public API surface).
+export const __aiTestHooks = {
+  putSession(session: Session): void {
+    sessions.set(session.id, session);
+  },
+  getSession(id: string): Session | undefined {
+    return sessions.get(id);
+  },
+  clear(): void {
+    sessions.clear();
+  },
+};
 
 // GET /builder/ai/status
 aiRouter.get("/status", async (_req, res) => {
@@ -87,26 +124,105 @@ aiRouter.get("/sessions/:id", (req, res) => {
   });
 });
 
+// POST /builder/ai/presigned-upload — issue a one-shot S3 PUT URL so the SSR
+// client can stream PDFs straight to S3, bypassing the Amplify Lambda's ~6MB
+// request body cap that broke the previous base64-in-body flow (413).
+//
+// The returned s3Key is scoped to the supplied sessionId so /message's s3Key
+// branch can reject cross-session keys.
+export async function presignedUploadHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const { sessionId, filename, contentType, size } = req.body ?? {};
+    if (typeof sessionId !== "string" || !sessions.has(sessionId)) {
+      res.status(404).json({ error: "Session not found" });
+      return;
+    }
+    if (typeof filename !== "string" || !filename.trim()) {
+      res.status(400).json({ error: "filename is required" });
+      return;
+    }
+    if (
+      typeof contentType !== "string" ||
+      !ALLOWED_UPLOAD_CONTENT_TYPES.has(contentType)
+    ) {
+      res.status(400).json({
+        error: "contentType must be application/pdf, image/png, or image/jpeg",
+      });
+      return;
+    }
+    if (
+      typeof size !== "number" ||
+      !Number.isFinite(size) ||
+      size <= 0 ||
+      size > MAX_UPLOAD_BYTES
+    ) {
+      res
+        .status(400)
+        .json({
+          error: `size must be a positive integer <= ${MAX_UPLOAD_BYTES}`,
+        });
+      return;
+    }
+
+    const s3Key = buildAiUploadKey(sessionId, filename);
+    const uploadUrl = await presignPutObject({
+      key: s3Key,
+      contentType,
+      contentLength: size,
+    });
+    res.json({ uploadUrl, s3Key });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+}
+aiRouter.post("/presigned-upload", presignedUploadHandler);
+
 // POST /builder/ai/sessions/:id/message
-aiRouter.post("/sessions/:id/message", async (req, res) => {
+//
+// Accepts either `pdfBase64` (legacy, inline) or `s3Key` (new, fetched server-
+// side from the uploads bucket). Both paths funnel into `session.pdfPages` so
+// the chat() pipeline stays unchanged. Keeping `pdfBase64` for the deploy
+// window where the SSR side hasn't shipped the presigned flow yet.
+export async function sendMessageHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
   try {
     if (!(await isAvailable())) {
       res.status(503).json({ error: "AI service not configured" });
       return;
     }
-    const session = sessions.get(req.params.id);
+    // Express 5 types req.params.<key> as `string | string[]`; the route
+    // pattern `/sessions/:id` only ever yields a single string at runtime.
+    const sessionId = String(req.params.id);
+    const session = sessions.get(sessionId);
     if (!session) {
       res.status(404).json({ error: "Session not found" });
       return;
     }
 
-    const { message, pdfBase64 } = req.body;
+    const { message, pdfBase64, s3Key } = req.body;
     if (!message) {
       res.status(400).json({ error: "message is required" });
       return;
     }
 
-    if (pdfBase64 && !session.pdfPages) {
+    if (s3Key && !session.pdfPages) {
+      if (
+        typeof s3Key !== "string" ||
+        !s3Key.startsWith(`ai-uploads/${session.id}/`)
+      ) {
+        res
+          .status(400)
+          .json({ error: "s3Key does not belong to this session" });
+        return;
+      }
+      const base64 = await fetchObjectAsBase64(s3Key);
+      session.pdfPages = [base64];
+    } else if (pdfBase64 && !session.pdfPages) {
       session.pdfPages = [pdfBase64];
     }
 
@@ -137,7 +253,8 @@ aiRouter.post("/sessions/:id/message", async (req, res) => {
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
-});
+}
+aiRouter.post("/sessions/:id/message", sendMessageHandler);
 
 // GET /builder/ai/sessions/:id/recipe
 aiRouter.get("/sessions/:id/recipe", (req, res) => {
