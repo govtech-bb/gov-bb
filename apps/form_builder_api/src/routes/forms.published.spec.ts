@@ -95,9 +95,43 @@ describe("GET /builder/forms/published", () => {
     });
   });
 
-  it("returns 500 with a clear error when API_BASE_URL is unset", async () => {
+  it("falls back to the sandbox API when API_BASE_URL is unset", async () => {
     delete process.env.API_BASE_URL;
-    // fetch should never be called; if it is, the test will fail noisily.
+    const payload = { success: true, data: [], message: "" };
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: jest.fn().mockResolvedValue(payload),
+    }) as unknown as typeof fetch;
+
+    const res = mockRes();
+    await listPublishedHandler({} as Request, res);
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "https://forms.api.sandbox.alpha.gov.bb/form-definitions",
+    );
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual(payload.data);
+  });
+
+  it("strips a trailing slash on API_BASE_URL before appending the path", async () => {
+    process.env.API_BASE_URL = "http://api.test/";
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: jest.fn().mockResolvedValue({ data: [] }),
+    }) as unknown as typeof fetch;
+
+    const res = mockRes();
+    await listPublishedHandler({} as Request, res);
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "http://api.test/form-definitions",
+    );
+  });
+
+  it("returns 500 without fetching when API_BASE_URL is not a parseable URL", async () => {
+    process.env.API_BASE_URL = "not a url";
     global.fetch = jest.fn() as unknown as typeof fetch;
 
     const res = mockRes();
@@ -108,5 +142,39 @@ describe("GET /builder/forms/published", () => {
     expect(res.body).toMatchObject({
       error: expect.stringMatching(/API_BASE_URL/),
     });
+  });
+
+  it.each([["file:///etc/passwd"], ["ftp://api.test"], ["gopher://api.test"]])(
+    "returns 500 without fetching when API_BASE_URL uses non-http(s) protocol (%s)",
+    async (badUrl) => {
+      process.env.API_BASE_URL = badUrl;
+      global.fetch = jest.fn() as unknown as typeof fetch;
+
+      const res = mockRes();
+      await listPublishedHandler({} as Request, res);
+
+      expect(global.fetch).not.toHaveBeenCalled();
+      expect(res.statusCode).toBe(500);
+      expect(res.body).toMatchObject({
+        error: expect.stringMatching(/API_BASE_URL/),
+      });
+    },
+  );
+
+  it("accepts https URLs", async () => {
+    process.env.API_BASE_URL = "https://api.test";
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: jest.fn().mockResolvedValue({ data: [] }),
+    }) as unknown as typeof fetch;
+
+    const res = mockRes();
+    await listPublishedHandler({} as Request, res);
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "https://api.test/form-definitions",
+    );
+    expect(res.statusCode).toBe(200);
   });
 });

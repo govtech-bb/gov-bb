@@ -9,6 +9,12 @@ import { getDataSource } from "../db.js";
 
 export const formsRouter = Router();
 
+// Upstream apps/api base URL for the published-recipe proxy. Falls back to the
+// sandbox API when API_BASE_URL is unset so the form_builder "Open" modal works
+// out of the box (e.g. `dev` without a local apps/api). No trailing slash —
+// listPublishedHandler appends "/form-definitions".
+const DEFAULT_API_BASE_URL = "https://forms.api.sandbox.alpha.gov.bb";
+
 // GET /builder/forms/disabled — form_ids with a tombstone (deleted/disabled).
 // Registered before "/:formId" so "disabled" isn't captured as a formId.
 export async function listDisabledHandler(
@@ -34,13 +40,29 @@ export async function listPublishedHandler(
   _req: Request,
   res: Response,
 ): Promise<void> {
-  const baseUrl = process.env.API_BASE_URL;
-  if (!baseUrl) {
-    res.status(500).json({ error: "API_BASE_URL is not set" });
+  const baseUrl = process.env.API_BASE_URL || DEFAULT_API_BASE_URL;
+  // Parse + protocol-check the configured upstream so a malformed or
+  // non-http(s) API_BASE_URL can't turn this proxy into an SSRF primitive
+  // (e.g. file://, gopher://). API_BASE_URL is operator-controlled config,
+  // not user input, but validating it cheaply at the boundary is worth the
+  // line count.
+  let parsedBase: URL;
+  try {
+    parsedBase = new URL(baseUrl);
+  } catch {
+    res.status(500).json({ error: "API_BASE_URL is not a valid URL" });
+    return;
+  }
+  if (parsedBase.protocol !== "http:" && parsedBase.protocol !== "https:") {
+    res
+      .status(500)
+      .json({ error: "API_BASE_URL must use http or https protocol" });
     return;
   }
   try {
-    const upstream = await fetch(`${baseUrl}/form-definitions`);
+    const upstream = await fetch(
+      `${baseUrl.replace(/\/$/, "")}/form-definitions`,
+    );
     if (!upstream.ok) {
       const upstreamBody = await upstream.text();
       res.status(502).json({
