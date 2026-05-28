@@ -2,8 +2,9 @@
   "title": "Apply for financial assistance",
   "description": "Apply for financial assistance from the Government of Barbados if you need help with food, clothing, utility bills, housing, assistive devices, or other essential needs.",
   "categories": ["money-financial-support"],
+  "service_type": "information",
   "stage": "alpha",
-  "publish_date": "2025-11-12",
+  "updated_at": "2026-05-28",
   "body": {
     "root": {
       "type": "root",
@@ -429,7 +430,7 @@
                   "version": 1
                 },
                 {
-                  "id": "6a175155a4471fc1012af57c",
+                  "id": "6a183320bfdf3ba829d63214",
                   "type": "link",
                   "fields": {
                     "url": "https://forms.office.com/Pages/ResponsePage.aspx?id=web15Rec90GA3HzH5NzlKVed1WgQV8FEk5jHDILeRuRUNTIzQ0QyODA2OEpTOUkyVzNVVEFWS1RJMi4u",

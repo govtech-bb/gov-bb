@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "commerce",
   "name": "Department of Commerce and Consumer Affairs",
+  "stage": "alpha",
   "shortDescription": "Facilitates the development of commerce, enforces trading standards, and protects consumers to ensure goods and services are safe and legal.",
   "intro": "The department administers the Miscellaneous Controls Act, the Control Standards Act, and the Weights and Measures Act, ensuring fair trade and consumer protection across Barbados.",
   "keywords": ["DCCA", "Commerce", "Consumer Affairs"],

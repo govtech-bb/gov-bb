@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "water-authority",
   "name": "Barbados Water Authority",
+  "stage": "alpha",
   "shortDescription": "The Barbados Water Authority (BWA) is a Statutory Body established by an act of Legislature on 8th October, 1980 to replace the Waterworks Department of Government.",
   "intro": "The Barbados Water Authority (BWA) is a Statutory Body established by an act of Legislature on 8th October, 1980 to replace the Waterworks Department of Government.",
   "keywords": ["BWA", "water", "utility"],

@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "environmental-protection",
   "name": "Environmental Protection Department",
+  "stage": "alpha",
   "shortDescription": "Protects and improves Barbados's quality of life and its natural and built environment through sustainable practices, education, partnerships, and legislation enforcement.",
   "intro": "The department's mission is to protect and improve Barbados's quality of life and its natural and built environment through the promotion of sustainable practices, education, partnerships, and the enforcement of legislation.",
   "keywords": ["EPD", "Environmental Protection"],

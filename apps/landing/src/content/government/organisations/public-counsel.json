@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "public-counsel",
   "name": "Office of Public Counsel",
+  "stage": "alpha",
   "keywords": ["OPC", "Public Counsel"],
   "contact": [
     {

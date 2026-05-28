@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "constituency",
   "name": "Department of Constituency Empowerment",
+  "stage": "alpha",
   "shortDescription": "Works to improve and sustain the quality of life of Barbadians by building capacity at the constituency level and providing mechanisms for meaningful change.",
   "intro": "The department's mission is to improve and sustain the quality of life of Barbadians by building capacity at their constituency and providing the mechanisms needed to effect meaningful change in their everyday lives and environment.",
   "keywords": ["DCE", "Constituency Empowerment"],

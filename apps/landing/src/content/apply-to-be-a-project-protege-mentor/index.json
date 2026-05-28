@@ -2,8 +2,9 @@
   "title": "Apply to be a Project Protégé mentor",
   "description": "Apply to become a volunteer mentor for a young person aged 13 to 17 in the Government of Barbados Project Protégé programme.",
   "categories": ["work-employment"],
+  "service_type": "information",
   "stage": "alpha",
-  "publish_date": "2026-01-13",
+  "updated_at": "2026-05-28",
   "body": {
     "root": {
       "type": "root",
@@ -499,7 +500,7 @@
                   "version": 1
                 },
                 {
-                  "id": "6a175155a4471fc1012af588",
+                  "id": "6a183320bfdf3ba829d63220",
                   "type": "link",
                   "fields": {
                     "url": "mailto:YDP@barbados.gov.bb",
@@ -641,7 +642,7 @@
               "version": 1
             },
             {
-              "id": "6a175155a4471fc1012af589",
+              "id": "6a183320bfdf3ba829d63221",
               "type": "link",
               "fields": {
                 "url": "https://forms.gov.bb/CertificateOfCharacter",

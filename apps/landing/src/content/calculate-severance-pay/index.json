@@ -2,8 +2,9 @@
   "title": "Find out how much severance payment you are owed",
   "description": "Estimate the severance payment you may be owed under the Severance Payments Act (Cap. 355A) if you were made redundant, your workplace was damaged by a disaster, you were laid off, or your employer died.",
   "categories": ["money-financial-support", "work-employment"],
+  "service_type": "information",
   "stage": "alpha",
-  "publish_date": "2026-05-12",
+  "updated_at": "2026-05-28",
   "body": {
     "root": {
       "type": "root",
@@ -27,7 +28,7 @@
               "version": 1
             },
             {
-              "id": "6a175156a4471fc1012af58d",
+              "id": "6a183320bfdf3ba829d63225",
               "type": "link",
               "fields": {
                 "url": "https://www.nis.gov.bb/severance/",
@@ -390,7 +391,7 @@
               "version": 1
             },
             {
-              "id": "6a175156a4471fc1012af58e",
+              "id": "6a183320bfdf3ba829d63226",
               "type": "link",
               "fields": {
                 "url": "tel:+12464317400",

@@ -2,6 +2,7 @@
   "kind": "ministry",
   "slug": "ministry-of-the-public-service-and-talent-development",
   "name": "Ministry of the Public Service and Talent Development",
+  "stage": "alpha",
   "shortDescription": "Strategic management of the human resource function across the public service.",
   "intro": "Responsible for the strategic management of the human resource function across the Government of Barbados, including recruitment, selection, placement, promotion, discipline, retirement, and the training and development of public officers.",
   "category": "ministerial",

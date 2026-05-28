@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "drug-service",
   "name": "Barbados Drug Service",
+  "stage": "alpha",
   "shortDescription": "Provides quality pharmaceuticals to Barbados residents at affordable prices, serving beneficiaries courteously and efficiently.",
   "intro": "To provide quality pharmaceuticals for our residents of Barbados at an affordable price and to serve the beneficiaries in a courteous and efficient manner.",
   "keywords": ["BDS", "Drug Service", "Pharmacy"],

@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "criminal-justice",
   "name": "Criminal Justice Research and Planning Unit",
+  "stage": "alpha",
   "shortDescription": "Leads criminal justice research and crime statistics development, delivering professional and quality service through systematic collection and analysis to inform crime prevention policy.",
   "intro": "To be the leader in criminal justice research and the development of up-to-date relevant crime statistics while delivering professional and quality service to members of the public. The unit executes systematic collection, analysis, and research on crime and criminal justice matters to inform policy decisions regarding crime prevention and reduction.",
   "keywords": ["CJRPU", "Criminal Justice"],

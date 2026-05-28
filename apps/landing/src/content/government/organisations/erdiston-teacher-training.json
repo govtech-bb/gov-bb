@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "erdiston-teacher-training",
   "name": "Erdiston Teachers' Training College",
+  "stage": "alpha",
   "keywords": ["Erdiston", "ETTC", "Teacher Training"],
   "contact": [
     {

@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "post-office",
   "name": "Post Office",
+  "stage": "alpha",
   "shortDescription": "Processes and delivers communications, goods, and financial services locally and internationally in a secure, reliable, and economical manner.",
   "intro": "To process and deliver communications, goods and financial services locally and internationally in a secure, reliable, timely and economical manner.",
   "keywords": ["BPO", "Post Office", "Mail", "Postal"],

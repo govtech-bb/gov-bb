@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "national-cultural-foundation",
   "name": "National Cultural Foundation",
+  "stage": "alpha",
   "keywords": ["NCF", "Cultural Foundation", "Crop Over"],
   "contact": [
     {

@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "industrial-school",
   "name": "Government Industrial School",
+  "stage": "alpha",
   "shortDescription": "A secure residential facility for court-ordered child placements, focused on providing a safe, caring environment that supports rehabilitation and family reintegration.",
   "intro": "The facility aims to accommodate children ordered to be resident therein in a safe, secure, and caring environment, while addressing rehabilitation needs and supporting family reintegration into the community.",
   "keywords": ["GIS", "Industrial School"],
@@ -260,7 +261,7 @@
                           "version": 1
                         },
                         {
-                          "id": "6a175157a4471fc1012af7b9",
+                          "id": "6a183322bfdf3ba829d63451",
                           "type": "link",
                           "fields": {
                             "url": "mailto:ronald.brathwaite@barbados.gov.bb",
@@ -546,7 +547,7 @@
                           "version": 1
                         },
                         {
-                          "id": "6a175157a4471fc1012af7ba",
+                          "id": "6a183322bfdf3ba829d63452",
                           "type": "link",
                           "fields": {
                             "url": "mailto:seilest.bradshaw@barbados.gov.bb",

@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "community-college",
   "name": "Barbados Community College",
+  "stage": "alpha",
   "keywords": ["BCC", "Community College"],
   "contact": [
     {

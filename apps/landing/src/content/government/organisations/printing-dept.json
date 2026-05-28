@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "printing-dept",
   "name": "Government Printing Department",
+  "stage": "alpha",
   "shortDescription": "Provides printing and related services to Ministries, Departments, and specified statutory agencies in an efficient and cost-effective manner.",
   "intro": "The department's mission is to provide printing and related services for Ministries, Departments, and other specified statutory agencies in an efficient and cost-effective manner.",
   "keywords": ["GPD", "Printing", "Gazette"],

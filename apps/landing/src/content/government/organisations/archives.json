@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "archives",
   "name": "Department of Archives",
+  "stage": "alpha",
   "shortDescription": "Identifies, collects, processes, and preserves public and private records of enduring legal, cultural, and historical significance for Barbados.",
   "intro": "The department ensures organisational efficiency and accountability by collecting and preserving records of enduring legal, cultural, and historical significance, and makes information available within legal parameters.",
   "keywords": ["Archives", "National Archives"],

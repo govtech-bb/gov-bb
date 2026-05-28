@@ -2,8 +2,9 @@
   "title": "Get disaster relief assistance",
   "description": "Apply for disaster relief assistance from the Government of Barbados if your home or livelihood has been affected by a natural disaster or emergency.",
   "categories": ["money-financial-support"],
+  "service_type": "information",
   "stage": "alpha",
-  "publish_date": "2025-11-12",
+  "updated_at": "2026-05-28",
   "body": {
     "root": {
       "type": "root",
@@ -156,7 +157,7 @@
               "version": 1
             },
             {
-              "id": "6a175156a4471fc1012af594",
+              "id": "6a183320bfdf3ba829d6322c",
               "type": "link",
               "fields": {
                 "url": "tel:+12465351000",
@@ -348,7 +349,7 @@
               "version": 1
             },
             {
-              "id": "6a175156a4471fc1012af595",
+              "id": "6a183320bfdf3ba829d6322d",
               "type": "link",
               "fields": {
                 "url": "tel:+12465351000",
@@ -558,7 +559,7 @@
               "version": 1
             },
             {
-              "id": "6a175156a4471fc1012af596",
+              "id": "6a183320bfdf3ba829d6322e",
               "type": "link",
               "fields": {
                 "url": "tel:+12465365300",

@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "directorate-human-resource",
   "name": "Directorate, Human Resource Policy and Staffing",
+  "stage": "alpha",
   "keywords": ["DHRPS", "HR Policy", "Human Resource", "Staffing"],
   "contact": [
     {

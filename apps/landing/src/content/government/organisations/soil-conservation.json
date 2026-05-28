@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "soil-conservation",
   "name": "Soil Conservation",
+  "stage": "alpha",
   "keywords": ["SCU", "Soil Conservation"],
   "contact": [
     {

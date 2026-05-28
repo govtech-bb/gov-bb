@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "accreditation-council",
   "name": "Barbados Accreditation Council",
+  "stage": "alpha",
   "keywords": ["BAC", "Accreditation"],
   "contact": [
     {

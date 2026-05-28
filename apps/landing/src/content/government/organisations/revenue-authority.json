@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "revenue-authority",
   "name": "Barbados Revenue Authority",
+  "stage": "alpha",
   "keywords": ["BRA", "tax", "TAMIS", "income tax", "land tax", "VAT"],
   "head": {
     "name": "Jason King",

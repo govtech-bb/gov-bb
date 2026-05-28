@@ -2,8 +2,9 @@
   "title": "Apply to volunteer at a sports camp",
   "description": "Apply to volunteer at a government-run sports camp in Barbados for children and young people.",
   "categories": ["work-employment"],
+  "service_type": "information",
   "stage": "alpha",
-  "publish_date": "2025-11-13",
+  "updated_at": "2026-05-28",
   "body": {
     "root": {
       "type": "root",
@@ -564,7 +565,7 @@
                   "version": 1
                 },
                 {
-                  "id": "6a175155a4471fc1012af58b",
+                  "id": "6a183320bfdf3ba829d63223",
                   "type": "link",
                   "fields": {
                     "url": "https://forms.gov.bb/CertificateOfCharacter",

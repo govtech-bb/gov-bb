@@ -2,8 +2,9 @@
   "title": "Get a copy of a death certificate",
   "description": "Apply online to get a certified copy of a death certificate for anyone whose death was registered in Barbados. Certificates are issued by the Registration Department.",
   "categories": ["family-birth-relationships"],
+  "service_type": "information",
   "stage": "alpha",
-  "publish_date": "2026-01-30",
+  "updated_at": "2026-05-28",
   "body": {
     "root": {
       "type": "root",

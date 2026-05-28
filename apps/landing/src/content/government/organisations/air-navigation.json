@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "air-navigation",
   "name": "Air Navigation Services Department",
+  "stage": "alpha",
   "shortDescription": "Provides air navigation services at Grantley Adams International Airport, including air traffic control, terminal control, and aeronautical information services.",
   "intro": "The department provides air navigation services at Grantley Adams International Airport, including air traffic control, terminal control, and aeronautical information services.",
   "keywords": ["ANSD", "Air Navigation", "ATC"],

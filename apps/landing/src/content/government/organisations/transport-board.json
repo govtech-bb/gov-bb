@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "transport-board",
   "name": "Transport Board",
+  "stage": "alpha",
   "keywords": ["TB", "BTB", "Transport Board", "Bus"],
   "contact": [
     {

@@ -2,6 +2,7 @@
   "kind": "ministry",
   "slug": "ministry-of-agriculture-and-food-and-nutritional-security",
   "name": "Ministry of Agriculture and Food and Nutritional Security",
+  "stage": "alpha",
   "shortDescription": "National food security and a modern, competitive agricultural sector.",
   "intro": "To ensure national food security and promote a modern, competitive agricultural sector.",
   "category": "ministerial",

@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "corporate-affairs-intellectual-property",
   "name": "Corporate Affairs and Intellectual Property Office",
+  "stage": "alpha",
   "shortDescription": "Provides and maintains a reliable system of public records and an efficient registry service to support commercial activities and trade development in Barbados.",
   "intro": "To provide and maintain within the framework of the law and the available resources, a reliable system of public records and an efficient registry service supporting commercial activities and trade development in Barbados.",
   "keywords": [

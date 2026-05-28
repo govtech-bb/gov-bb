@@ -2,8 +2,9 @@
   "title": "Register for a Youth Development Programme (YDP) Community Sports Training programme",
   "description": "Register for a government-run Youth Development Programme (YDP) community sports training programme in Barbados. Open to residents aged 30 and under.",
   "categories": ["work-employment"],
+  "service_type": "information",
   "stage": "alpha",
-  "publish_date": "2026-02-06",
+  "updated_at": "2026-05-28",
   "body": {
     "root": {
       "type": "root",
@@ -444,7 +445,7 @@
               "version": 1
             },
             {
-              "id": "6a175156a4471fc1012af5b4",
+              "id": "6a183320bfdf3ba829d6324c",
               "type": "link",
               "fields": {
                 "url": "https://youthaffairs.gov.bb/programme-channels/youth-development-programme/",

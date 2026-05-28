@@ -2,10 +2,10 @@
   "title": "Marriage licences",
   "description": "This article outlines the requirements, procedures, and fees for obtaining a marriage licence in Barbados, including details for nationals and non-nationals, minors, and special arrangements.",
   "categories": ["family-birth-relationships"],
-  "section": "Family, Birth and Relationships",
+  "service_type": "information",
   "stage": "alpha",
   "source_url": "https://www.gov.bb/Citizens/marriage-licence",
-  "publish_date": "2025-10-24",
+  "updated_at": "2026-05-28",
   "body": {
     "root": {
       "type": "root",
@@ -1444,7 +1444,7 @@
               "version": 1
             },
             {
-              "id": "6a175156a4471fc1012af59f",
+              "id": "6a183320bfdf3ba829d63237",
               "type": "link",
               "fields": {
                 "url": "http://www.gov.bb",
@@ -1477,7 +1477,7 @@
               "version": 1
             },
             {
-              "id": "6a175156a4471fc1012af5a0",
+              "id": "6a183320bfdf3ba829d63238",
               "type": "link",
               "fields": {
                 "url": "mailto:haffairs@mha.gov.bb",
@@ -1558,7 +1558,7 @@
               "version": 1
             },
             {
-              "id": "6a175156a4471fc1012af5a1",
+              "id": "6a183320bfdf3ba829d63239",
               "type": "link",
               "fields": {
                 "url": "http://gisbarbados.gov.bb/faqs",
@@ -1591,7 +1591,7 @@
               "version": 1
             },
             {
-              "id": "6a175156a4471fc1012af5a2",
+              "id": "6a183320bfdf3ba829d6323a",
               "type": "link",
               "fields": {
                 "url": "http://www.gov.bb",
@@ -1624,7 +1624,7 @@
               "version": 1
             },
             {
-              "id": "6a175156a4471fc1012af5a3",
+              "id": "6a183320bfdf3ba829d6323b",
               "type": "link",
               "fields": {
                 "url": "https://govtbarbadosapointmentsystem.as.me/MarriageLicense",
@@ -1657,7 +1657,7 @@
               "version": 1
             },
             {
-              "id": "6a175156a4471fc1012af5a4",
+              "id": "6a183320bfdf3ba829d6323c",
               "type": "link",
               "fields": {
                 "url": "mailto:haffairs@mha.gov.bb",
@@ -1994,7 +1994,7 @@
               "version": 1
             },
             {
-              "id": "6a175156a4471fc1012af5a5",
+              "id": "6a183320bfdf3ba829d6323d",
               "type": "link",
               "fields": {
                 "url": "mailto:registrar@lawcourt.gov.bb",
@@ -2027,7 +2027,7 @@
               "version": 1
             },
             {
-              "id": "6a175156a4471fc1012af5a6",
+              "id": "6a183320bfdf3ba829d6323e",
               "type": "link",
               "fields": {
                 "url": "mailto:correspondenceregistration@live.com",

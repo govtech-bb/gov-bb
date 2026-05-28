@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "child-care-board",
   "name": "The Child Care Board",
+  "stage": "alpha",
   "keywords": ["CCB", "Child Care", "Children"],
   "contact": [
     {

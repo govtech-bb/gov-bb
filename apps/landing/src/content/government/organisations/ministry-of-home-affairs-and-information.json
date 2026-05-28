@@ -2,6 +2,7 @@
   "kind": "ministry",
   "slug": "ministry-of-home-affairs-and-information",
   "name": "Ministry of Home Affairs and Information",
+  "stage": "alpha",
   "shortDescription": "Law and order, immigration, and the flow of government information.",
   "intro": "To maintain law and order, manage immigration, and ensure the effective flow of government information.",
   "category": "ministerial",

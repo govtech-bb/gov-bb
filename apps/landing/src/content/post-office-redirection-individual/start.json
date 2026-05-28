@@ -1,8 +1,8 @@
 {
   "title": "Redirect my personal mail",
-  "section": "Travel, ID and citizenship",
+  "service_type": "information",
   "stage": "alpha",
-  "publish_date": "2026-01-29",
+  "updated_at": "2026-05-28",
   "body": {
     "root": {
       "type": "root",

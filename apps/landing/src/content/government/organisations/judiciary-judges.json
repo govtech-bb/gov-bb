@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "judiciary-judges",
   "name": "Judiciary - Judges",
+  "stage": "alpha",
   "keywords": ["Judiciary", "Judges", "Courts"],
   "contact": [
     {

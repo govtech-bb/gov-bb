@@ -2,9 +2,9 @@
   "title": "Redirect my business mail",
   "description": "Tell the Barbados Post Office to redirect your business mail to a new address when your business relocates.",
   "categories": ["travel-id-citizenship"],
-  "section": "Travel, ID and citizenship",
+  "service_type": "information",
   "stage": "alpha",
-  "publish_date": "2026-01-30",
+  "updated_at": "2026-05-28",
   "body": {
     "root": {
       "type": "root",
@@ -128,7 +128,7 @@
               "version": 1,
               "children": [
                 {
-                  "id": "6a175156a4471fc1012af5aa",
+                  "id": "6a183320bfdf3ba829d63242",
                   "type": "link",
                   "fields": {
                     "url": "/travel-id-citizenship/post-office-redirection-individual/",
@@ -162,7 +162,7 @@
               "version": 1,
               "children": [
                 {
-                  "id": "6a175156a4471fc1012af5ab",
+                  "id": "6a183320bfdf3ba829d63243",
                   "type": "link",
                   "fields": {
                     "url": "/travel-id-citizenship/post-office-redirection-deceased/",
@@ -388,7 +388,7 @@
               "version": 1,
               "children": [
                 {
-                  "id": "6a175156a4471fc1012af5ac",
+                  "id": "6a183320bfdf3ba829d63244",
                   "type": "link",
                   "fields": {
                     "url": "https://www.gov.bb/media_files/PostOffice_RedirNotice.pdf",

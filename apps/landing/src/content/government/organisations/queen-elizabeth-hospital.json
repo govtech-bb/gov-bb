@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "queen-elizabeth-hospital",
   "name": "Queen Elizabeth Hospital",
+  "stage": "alpha",
   "keywords": ["QEH", "Hospital", "Queen Elizabeth"],
   "contact": [
     {

@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "central-purchasing",
   "name": "Central Purchasing Department",
+  "stage": "alpha",
   "shortDescription": "Provides quality goods from competent, reliable sources at the most economical prices, ensuring availability to ministries and departments when required.",
   "intro": "To provide quality goods from competent reliable sources at the most economical prices. To ensure that goods are available to ministries and departments when required and that are ideally suited for the purpose intended.",
   "keywords": ["CPD", "Central Purchasing", "Procurement"],
@@ -668,7 +669,7 @@
                           "version": 1
                         },
                         {
-                          "id": "6a175156a4471fc1012af670",
+                          "id": "6a183321bfdf3ba829d63308",
                           "type": "link",
                           "fields": {
                             "url": "mailto:worrellja@gob.bb",

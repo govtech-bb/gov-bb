@@ -2,10 +2,10 @@
   "title": "Getting around Barbados",
   "description": "Information for visitors and temporary residents on obtaining a driver's permit and various transportation options in Barbados, including buses, minibuses, route taxis, and regular taxis.",
   "categories": ["travel-id-citizenship"],
-  "section": "Travel, ID and Citizenship",
+  "service_type": "information",
   "stage": "alpha",
   "source_url": "https://www.gov.bb/Visit-Barbados/getting-around-barbados",
-  "publish_date": "2025-10-24",
+  "updated_at": "2026-05-28",
   "body": {
     "root": {
       "type": "root",
@@ -208,7 +208,7 @@
           "version": 1,
           "children": [
             {
-              "id": "6a175156a4471fc1012af597",
+              "id": "6a183320bfdf3ba829d6322f",
               "type": "link",
               "fields": {
                 "url": "http://www.transportboard.com/route-finder/",

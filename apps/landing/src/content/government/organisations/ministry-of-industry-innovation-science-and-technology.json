@@ -2,6 +2,7 @@
   "kind": "ministry",
   "slug": "ministry-of-industry-innovation-science-and-technology",
   "name": "Ministry of Industry, Innovation, Science and Technology",
+  "stage": "alpha",
   "shortDescription": "Digital transformation of the public service and a culture of innovation.",
   "intro": "To drive the digital transformation of the public service and foster a culture of innovation and scientific advancement.",
   "category": "ministerial",

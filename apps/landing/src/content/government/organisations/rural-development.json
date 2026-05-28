@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "rural-development",
   "name": "Rural Development Commission",
+  "stage": "alpha",
   "keywords": ["RDC", "Rural Development"],
   "contact": [
     {

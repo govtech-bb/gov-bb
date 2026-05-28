@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "supreme-court",
   "name": "Supreme Court",
+  "stage": "alpha",
   "keywords": ["Supreme Court", "Courts"],
   "contact": [
     {

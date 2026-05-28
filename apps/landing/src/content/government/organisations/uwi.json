@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "uwi",
   "name": "University of the West Indies",
+  "stage": "alpha",
   "keywords": ["UWI", "Cave Hill", "University"],
   "contact": [
     {

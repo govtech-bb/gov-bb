@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "gender-affairs",
   "name": "Bureau of Gender Affairs",
+  "stage": "alpha",
   "shortDescription": "Ensures the integration of gender in all national development plans and policies to achieve gender equity and equality.",
   "intro": "To ensure the integration of gender in all national development plans and policies to achieve gender equity and equality.",
   "keywords": ["BGA", "Gender Affairs"],

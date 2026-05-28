@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "coalition-services",
   "name": "Barbados Coalition of Service Industries",
+  "stage": "alpha",
   "keywords": ["BCSI", "Coalition of Service Industries"],
   "contact": [
     {

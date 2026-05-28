@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "caribbean-examination-council",
   "name": "Caribbean Examination Council",
+  "stage": "alpha",
   "keywords": ["CXC", "exam", "examination", "CSEC", "CAPE"],
   "contact": [
     {

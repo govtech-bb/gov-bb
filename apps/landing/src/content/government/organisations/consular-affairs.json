@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "consular-affairs",
   "name": "Consular Affairs",
+  "stage": "alpha",
   "keywords": ["Consular Affairs"],
   "contact": [
     {

@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "veterinary-services",
   "name": "Veterinary Services",
+  "stage": "alpha",
   "keywords": ["Vet", "Veterinary"],
   "contact": [
     {

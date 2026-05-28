@@ -2,6 +2,7 @@
   "kind": "ministry",
   "slug": "ministry-of-energy-and-business-development",
   "name": "Ministry of Energy and Business Development",
+  "stage": "alpha",
   "category": "ministerial",
   "keywords": ["MEBD", "Energy", "Business Development"],
   "minister": {
@@ -182,7 +183,7 @@
               "version": 1,
               "children": [
                 {
-                  "id": "6a175157a4471fc1012af852",
+                  "id": "6a183322bfdf3ba829d634ea",
                   "type": "link",
                   "fields": {
                     "url": "https://energy.gov.bb/?wpdmdl=1885&ind=1616784951507",
@@ -432,7 +433,7 @@
                           "version": 1
                         },
                         {
-                          "id": "6a175157a4471fc1012af853",
+                          "id": "6a183322bfdf3ba829d634eb",
                           "type": "link",
                           "fields": {
                             "url": "https://energy.gov.bb",
@@ -540,7 +541,7 @@
                           "version": 1
                         },
                         {
-                          "id": "6a175157a4471fc1012af854",
+                          "id": "6a183322bfdf3ba829d634ec",
                           "type": "link",
                           "fields": {
                             "url": "https://smartenergybarbados.com",
@@ -648,7 +649,7 @@
                           "version": 1
                         },
                         {
-                          "id": "6a175157a4471fc1012af855",
+                          "id": "6a183322bfdf3ba829d634ed",
                           "type": "link",
                           "fields": {
                             "url": "https://instagram.com/smartenergybarbados",
@@ -756,7 +757,7 @@
                           "version": 1
                         },
                         {
-                          "id": "6a175157a4471fc1012af856",
+                          "id": "6a183322bfdf3ba829d634ee",
                           "type": "link",
                           "fields": {
                             "url": "https://instagram.com/energybarbados",
@@ -864,7 +865,7 @@
                           "version": 1
                         },
                         {
-                          "id": "6a175157a4471fc1012af857",
+                          "id": "6a183322bfdf3ba829d634ef",
                           "type": "link",
                           "fields": {
                             "url": "https://facebook.com/energydivisionbarbados",
@@ -972,7 +973,7 @@
                           "version": 1
                         },
                         {
-                          "id": "6a175157a4471fc1012af858",
+                          "id": "6a183322bfdf3ba829d634f0",
                           "type": "link",
                           "fields": {
                             "url": "https://facebook.com/energydivision-barbados",
@@ -1080,7 +1081,7 @@
                           "version": 1
                         },
                         {
-                          "id": "6a175157a4471fc1012af859",
+                          "id": "6a183322bfdf3ba829d634f1",
                           "type": "link",
                           "fields": {
                             "url": "https://www.linkedin.com/company/energy-barbados",

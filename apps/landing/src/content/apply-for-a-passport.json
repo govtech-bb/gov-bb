@@ -2,10 +2,10 @@
   "title": "Apply for a passport",
   "description": "This article provides detailed instructions for citizens of Barbados on how to apply for a passport, including requirements, application forms, collection procedures, and fee schedules.",
   "categories": ["travel-id-citizenship"],
-  "section": "Travel, ID and Citizenship",
+  "service_type": "information",
   "stage": "alpha",
   "source_url": "https://www.gov.bb/Citizens/apply-passport",
-  "publish_date": "2025-10-24",
+  "updated_at": "2026-05-28",
   "body": {
     "root": {
       "type": "root",
@@ -68,7 +68,7 @@
               "version": 1
             },
             {
-              "id": "6a175155a4471fc1012af57e",
+              "id": "6a183320bfdf3ba829d63216",
               "type": "link",
               "fields": {
                 "url": "http://www.immigration.gov.bb/",
@@ -121,7 +121,7 @@
               "version": 1
             },
             {
-              "id": "6a175155a4471fc1012af57f",
+              "id": "6a183320bfdf3ba829d63217",
               "type": "link",
               "fields": {
                 "url": "http://www.immigration.gov.bb/documents/Form%20A.pdf",
@@ -202,7 +202,7 @@
                   "version": 1
                 },
                 {
-                  "id": "6a175155a4471fc1012af580",
+                  "id": "6a183320bfdf3ba829d63218",
                   "type": "link",
                   "fields": {
                     "url": "http://www.immigration.gov.bb/documents/Form%20B.pdf",
@@ -292,7 +292,7 @@
                   "version": 1
                 },
                 {
-                  "id": "6a175155a4471fc1012af581",
+                  "id": "6a183320bfdf3ba829d63219",
                   "type": "link",
                   "fields": {
                     "url": "http://www.immigration.gov.bb/documents/signature.pdf#Signature",
@@ -344,7 +344,7 @@
                   "version": 1
                 },
                 {
-                  "id": "6a175155a4471fc1012af582",
+                  "id": "6a183320bfdf3ba829d6321a",
                   "type": "link",
                   "fields": {
                     "url": "http://www.immigration.gov.bb/documents/formA_Specimen.pdf",
@@ -377,7 +377,7 @@
                   "version": 1
                 },
                 {
-                  "id": "6a175155a4471fc1012af583",
+                  "id": "6a183320bfdf3ba829d6321b",
                   "type": "link",
                   "fields": {
                     "url": "http://www.immigration.gov.bb/documents/formB_Specimen.pdf",

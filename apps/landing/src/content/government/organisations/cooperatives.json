@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "cooperatives",
   "name": "Co-operatives Department",
+  "stage": "alpha",
   "shortDescription": "Encourages economic development and improved quality of life through the facilitation of commerce, entrepreneurship, and consumer protection.",
   "intro": "To encourage economic development and the improvement of the quality of life of the people of Barbados through the facilitation of commerce, entrepreneurship and the protection of consumers.",
   "keywords": ["Co-ops", "Cooperatives", "Credit Union"],

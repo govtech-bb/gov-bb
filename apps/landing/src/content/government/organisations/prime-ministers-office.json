@@ -2,6 +2,7 @@
   "kind": "ministry",
   "slug": "prime-ministers-office",
   "name": "Prime Minister's Office",
+  "stage": "alpha",
   "shortDescription": "Strategic policy direction, leadership of the public service, and oversight of national security and economic planning.",
   "intro": "To provide strategic policy direction, lead the public service, and manage national security and economic planning.",
   "category": "ministerial",

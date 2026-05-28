@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "police-department",
   "name": "The Police Department",
+  "stage": "alpha",
   "shortDescription": "Responsible for local law enforcement, established under the Police Act of 1961 and structured across Operations, Administrative, and Criminal Investigations divisions.",
   "intro": "The Barbados Police Service, as established under the Police Act of 1961 and the Constitution of Barbados, is the government body responsible for local law enforcement. Modelled after London's Metropolitan Police Service, the force was established in 1835 and received its Royal designation in 1966.",
   "keywords": ["RBPF", "Police", "Royal Barbados Police Force", "Constabulary"],

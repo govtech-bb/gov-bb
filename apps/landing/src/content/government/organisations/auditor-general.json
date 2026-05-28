@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "auditor-general",
   "name": "Office of the Auditor General",
+  "stage": "alpha",
   "shortDescription": "Provides independent audit oversight of government financial operations in Barbados.",
   "keywords": ["Auditor General", "Audit"],
   "contact": [

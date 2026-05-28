@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "public-sector-reform",
   "name": "Office of Public Sector Reform",
+  "stage": "alpha",
   "shortDescription": "Facilitates transformational change across the public service by assisting Ministries, Departments, and Agencies in improving their performance.",
   "intro": "The role of the Efficiency Unit is to facilitate transformational change across the public service by assisting Ministries, Departments and Agencies in improving their performance and results in alignment with the government's strategic priorities and best practices.",
   "keywords": ["OPSR", "Public Sector Reform"],

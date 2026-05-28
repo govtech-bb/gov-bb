@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "small-business-dev-unit",
   "name": "Small Business Development Unit",
+  "stage": "alpha",
   "keywords": ["SBDU", "Small Business", "SME"],
   "contact": [
     {

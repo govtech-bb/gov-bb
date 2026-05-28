@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "southern-meats",
   "name": "Southern Meats Inc.",
+  "stage": "alpha",
   "keywords": ["Southern Meats", "Abattoir"],
   "contact": [
     {

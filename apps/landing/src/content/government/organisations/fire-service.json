@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "fire-service",
   "name": "Fire Service Department",
+  "stage": "alpha",
   "shortDescription": "Efficiently protects the lives, property, and environment of those who live, work, visit, or invest in Barbados through fire safety, emergency response, and hazard reduction services.",
   "intro": "The department's mission is to efficiently protect the lives, property, and environment of those who live, work, visit, or invest in Barbados through fire safety initiatives, code enforcement, hazard reduction, suppression services, emergency response, and customer service excellence.",
   "keywords": ["BFS", "Fire Service", "Fire Department"],

@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "supervisor-insolvency",
   "name": "Office of Supervisor of Insolvency",
+  "stage": "alpha",
   "keywords": ["OSI", "Insolvency", "Bankruptcy"],
   "contact": [
     {

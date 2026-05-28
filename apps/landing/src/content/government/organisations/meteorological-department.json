@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "meteorological-department",
   "name": "Meteorological Office",
+  "stage": "alpha",
   "shortDescription": "Observes and understands the weather and climate of Barbados and the region, providing meteorological, hydrological, and marine services.",
   "intro": "To observe and understand the weather and climate of Barbados and the region, and provide meteorological, hydrological and marine services in support of the national needs and international obligations.",
   "keywords": ["Met Office", "Meteorology", "Weather", "BMS"],

@@ -2,8 +2,9 @@
   "title": "Report a concern about a child",
   "description": "Find out how to report a concern about a child's welfare in Barbados, including who to contact and what information you will need.",
   "categories": ["public-safety"],
+  "service_type": "information",
   "stage": "alpha",
-  "publish_date": "2025-11-12",
+  "updated_at": "2026-05-28",
   "body": {
     "root": {
       "type": "root",
@@ -224,7 +225,7 @@
               "version": 1
             },
             {
-              "id": "6a175156a4471fc1012af5b6",
+              "id": "6a183320bfdf3ba829d6324e",
               "type": "link",
               "fields": {
                 "url": "mailto:childcareboard@barbados.gov.bb",

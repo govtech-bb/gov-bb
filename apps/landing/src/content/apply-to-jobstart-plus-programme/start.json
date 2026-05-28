@@ -1,7 +1,8 @@
 {
   "title": "Register for Job Start Plus",
+  "service_type": "information",
   "stage": "alpha",
-  "publish_date": "2026-01-13",
+  "updated_at": "2026-05-28",
   "body": {
     "root": {
       "type": "root",

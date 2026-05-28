@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "national-conservation-commission",
   "name": "National Conservation Commission",
+  "stage": "alpha",
   "keywords": ["NCC", "Conservation", "Parks", "Beaches"],
   "contact": [
     {

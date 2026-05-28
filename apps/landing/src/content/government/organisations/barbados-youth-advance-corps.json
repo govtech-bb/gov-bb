@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "barbados-youth-advance-corps",
   "name": "Barbados Youth Advance Corps.",
+  "stage": "alpha",
   "keywords": ["BYAC", "Youth Advance Corps"],
   "head": {
     "name": "Mr. Hally Haynes",

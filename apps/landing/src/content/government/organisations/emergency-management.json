@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "emergency-management",
   "name": "Department of Emergency Management",
+  "stage": "alpha",
   "shortDescription": "Develops and maintains a comprehensive National Disaster Management Programme to educate citizens and create disaster preparedness mechanisms across all societal levels.",
   "intro": "The department's mission is to develop, promote, and maintain a comprehensive National Disaster Management Programme that educates citizens about disaster management and creates mechanisms to advance these activities across all levels of society.",
   "keywords": ["DEM", "Emergency Management", "Disaster"],

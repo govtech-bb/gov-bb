@@ -5,7 +5,7 @@
   "subcategory": "skills-trades-vocational-training",
   "service_type": "information",
   "stage": "alpha",
-  "publish_date": "2026-05-20",
+  "updated_at": "2026-05-28",
   "body": {
     "root": {
       "type": "root",
@@ -196,7 +196,7 @@
               "version": 1
             },
             {
-              "id": "6a175156a4471fc1012af5de",
+              "id": "6a183320bfdf3ba829d63276",
               "type": "link",
               "fields": {
                 "url": "https://alpha.gov.bb/youth-and-community/skills-trades-vocational-training/web-design-entrepreneurs/form",
@@ -259,7 +259,7 @@
           "version": 1,
           "children": [
             {
-              "id": "6a175156a4471fc1012af5df",
+              "id": "6a183320bfdf3ba829d63277",
               "type": "link",
               "fields": {
                 "url": "https://youthaffairs.gov.bb/programme-channels/youth-development-programme/",

@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "disabilities-unit",
   "name": "National Disabilities Unit",
+  "stage": "alpha",
   "shortDescription": "Facilitates, advocates, and promotes the advancement and empowerment of persons with disabilities to ensure equal opportunities for integration in all aspects of community living.",
   "intro": "To facilitate, advocate, and promote the advancement and empowerment of persons with disabilities in order to ensure equal opportunities for integration and participation in all aspects of community living.",
   "keywords": ["NDU", "Disabilities"],

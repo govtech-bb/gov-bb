@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "sports-council",
   "name": "The National Sports Council",
+  "stage": "alpha",
   "shortDescription": "Dedicated to developing sports in Barbados and responsible for sports development programmes at the national level.",
   "intro": "Dedicated to developing sports in Barbados and responsible for sports development programmes at the national level.",
   "keywords": ["NSC", "Sports Council"],

@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "library-service",
   "name": "National Library Service",
+  "stage": "alpha",
   "shortDescription": "Serves as a ready source of dynamic information products and services to satisfy the educational, recreational, and informational needs of the community.",
   "intro": "To be a ready source of dynamic information products and services to satisfy the educational, recreational and informational needs of the community.",
   "keywords": ["NLS", "Library"],

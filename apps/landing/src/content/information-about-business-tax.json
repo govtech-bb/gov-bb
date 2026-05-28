@@ -2,10 +2,10 @@
   "title": "Information about business tax",
   "description": "An overview of Barbados' corporation tax laws, including residency rules, income determination, capital allowances, loss carry-forwards, group relief provisions, and applicable tax rates for various business types.",
   "categories": ["business-trade"],
-  "section": "Business and Trade",
+  "service_type": "information",
   "stage": "alpha",
   "source_url": "https://www.gov.bb/tax-information",
-  "publish_date": "2025-10-24",
+  "updated_at": "2026-05-28",
   "body": {
     "root": {
       "type": "root",

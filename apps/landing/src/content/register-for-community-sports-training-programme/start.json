@@ -1,7 +1,8 @@
 {
   "title": "Register for a Youth Development Programme (YDP) Community Sports Training Programme",
+  "service_type": "information",
   "stage": "alpha",
-  "publish_date": "2026-01-19",
+  "updated_at": "2026-05-28",
   "body": {
     "root": {
       "type": "root",

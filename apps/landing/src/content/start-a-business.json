@@ -2,10 +2,10 @@
   "title": "Start a business",
   "description": "Learn how Invest Barbados facilitates starting or expanding business operations in Barbados.",
   "categories": ["business-trade"],
-  "section": "Business and Trade",
+  "service_type": "information",
   "stage": "alpha",
   "source_url": "https://www.gov.bb/Business/start-business",
-  "publish_date": "2025-10-24",
+  "updated_at": "2026-05-28",
   "body": {
     "root": {
       "type": "root",
@@ -59,7 +59,7 @@
           "version": 1,
           "children": [
             {
-              "id": "6a175156a4471fc1012af5b9",
+              "id": "6a183320bfdf3ba829d63251",
               "type": "link",
               "fields": {
                 "url": "https://www.investbarbados.org/starting-a-business-in-barbados/",

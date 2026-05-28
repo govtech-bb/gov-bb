@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "gov-information-service",
   "name": "Barbados Government Information Service",
+  "stage": "alpha",
   "shortDescription": "The official communications arm of the Barbados Government, responsible for disseminating public information to news media and the general public.",
   "intro": "The official communications arm of the Barbados Government. This Department is responsible for the dissemination of public information to the various news media and the general public.",
   "keywords": ["BGIS", "Government Information"],

@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "youth-affairs",
   "name": "Division of Youth Affairs",
+  "stage": "alpha",
   "shortDescription": "Supports the development and empowerment of young people in Barbados through programmes and initiatives.",
   "intro": "The division promotes youth development and operates as part of the Division of Youth, Sports and Community Empowerment.",
   "keywords": ["DYA", "Youth Affairs"],

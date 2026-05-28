@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "national-nutrition",
   "name": "National Nutrition Centre",
+  "stage": "alpha",
   "shortDescription": "Promotes and maintains a standard of good nutrition in Barbados through education and research.",
   "intro": "To promote and maintain a standard of good nutrition in Barbados through education and research.",
   "keywords": ["NNC", "Nutrition"],

@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "childrens-development",
   "name": "Children's Development Centre",
+  "stage": "alpha",
   "shortDescription": "Protects the rights and enhances the quality of life for persons in Barbados who are physically and mentally challenged.",
   "intro": "To protect the rights and enhance the quality of life for persons in Barbados who are physically and mentally challenged.",
   "keywords": ["CDC", "Children's Development"],

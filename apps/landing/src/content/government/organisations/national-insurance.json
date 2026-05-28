@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "national-insurance",
   "name": "National Insurance Department",
+  "stage": "alpha",
   "shortDescription": "Provides timely social security services through efficient collection and management of funds by customer-oriented staff.",
   "intro": "To provide timely social security services through the efficient collection and management of funds by highly motivated caring and reliable customer oriented staff.",
   "keywords": ["NIS", "NISS", "pension", "social security", "benefits"],

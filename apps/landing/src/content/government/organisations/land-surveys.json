@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "land-surveys",
   "name": "Lands and Surveys Department",
+  "stage": "alpha",
   "shortDescription": "Provides up-to-date mapping, geographical information systems, and surveying services to clients across Barbados.",
   "intro": "To provide up-to-date and reliable mapping and geographical information systems services appropriate to all our clients' needs and request, as well as excellent and timely surveying services to our customers.",
   "keywords": ["Lands and Surveys", "L&S", "Survey"],

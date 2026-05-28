@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "directorate-people-resourcing-and-compliance",
   "name": "Directorate, People Resourcing and Compliance",
+  "stage": "alpha",
   "keywords": ["DPRC", "People Resourcing", "Compliance"],
   "contact": [
     {

@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "grantley-adams-international",
   "name": "Grantley Adams International Airport",
+  "stage": "alpha",
   "keywords": ["GAIA", "BGI", "Airport", "Grantley Adams"],
   "contact": [
     {

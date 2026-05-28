@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "council-substance-abuse",
   "name": "National Council on Substance Abuse (NCSA)",
+  "stage": "alpha",
   "keywords": ["NCSA", "Substance Abuse", "Drugs"],
   "contact": [
     {

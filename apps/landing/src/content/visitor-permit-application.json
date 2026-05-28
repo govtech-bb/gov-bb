@@ -2,10 +2,10 @@
   "title": "Visitor permit application",
   "description": "This article explains how to apply online for a Visitor's Permit to drive in Barbados, outlining requirements, fees, and the application process.",
   "categories": ["travel-id-citizenship"],
-  "section": "Travel, ID and Citizenship",
+  "service_type": "information",
   "stage": "alpha",
   "source_url": "https://www.gov.bb/Visit-Barbados/visitorpermitapplication",
-  "publish_date": "2025-10-24",
+  "updated_at": "2026-05-28",
   "body": {
     "root": {
       "type": "root",
@@ -48,7 +48,7 @@
               "version": 1
             },
             {
-              "id": "6a175156a4471fc1012af5bb",
+              "id": "6a183320bfdf3ba829d63253",
               "type": "link",
               "fields": {
                 "url": "https://portal.bra.gov.bb/VisitorPermit",
@@ -180,7 +180,7 @@
           "version": 1,
           "children": [
             {
-              "id": "6a175156a4471fc1012af5bc",
+              "id": "6a183320bfdf3ba829d63254",
               "type": "link",
               "fields": {
                 "url": "https://portal.bra.gov.bb/VisitorPermit",
@@ -724,7 +724,7 @@
                   "version": 1
                 },
                 {
-                  "id": "6a175156a4471fc1012af5bd",
+                  "id": "6a183320bfdf3ba829d63255",
                   "type": "link",
                   "fields": {
                     "url": "mailto:permits@bra.gov.bb",
@@ -812,7 +812,7 @@
                   "version": 1
                 },
                 {
-                  "id": "6a175156a4471fc1012af5be",
+                  "id": "6a183320bfdf3ba829d63256",
                   "type": "link",
                   "fields": {
                     "url": "https://bb.surepaybillsonline.com/cc",
@@ -951,7 +951,7 @@
           "version": 1,
           "children": [
             {
-              "id": "6a175156a4471fc1012af5bf",
+              "id": "6a183320bfdf3ba829d63257",
               "type": "link",
               "fields": {
                 "url": "https://www.gov.bb/media_files/Visitor_Permit_Application.pdf",

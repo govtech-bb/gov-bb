@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "national-terminal-co",
   "name": "Barbados National Terminal Co. Ltd.",
+  "stage": "alpha",
   "keywords": ["BNTCL", "National Terminal"],
   "contact": [
     {

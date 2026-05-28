@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "meteorology",
   "name": "Meteorology",
+  "stage": "alpha",
   "keywords": ["Met", "Meteorology", "Weather"],
   "contact": [
     {

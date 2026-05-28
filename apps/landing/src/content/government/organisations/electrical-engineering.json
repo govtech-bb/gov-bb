@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "electrical-engineering",
   "name": "Government Electrical Engineering Department",
+  "stage": "alpha",
   "shortDescription": "Provides electrical engineering services to the Government of Barbados.",
   "keywords": ["GEED", "Electrical Engineering"],
   "head": {

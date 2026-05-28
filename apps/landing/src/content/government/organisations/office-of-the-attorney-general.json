@@ -2,6 +2,7 @@
   "kind": "ministry",
   "slug": "office-of-the-attorney-general",
   "name": "Office of the Attorney General",
+  "stage": "alpha",
   "category": "ministerial",
   "keywords": ["OAG", "AG", "Attorney General", "AG Chambers"],
   "minister": {

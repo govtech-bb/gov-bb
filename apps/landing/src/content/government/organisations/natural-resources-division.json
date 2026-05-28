@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "natural-resources-division",
   "name": "Natural Resources Unit",
+  "stage": "alpha",
   "keywords": ["NRU", "Natural Resources"],
   "contact": [
     {

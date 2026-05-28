@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "conference-services",
   "name": "Barbados Conference Services Limited (BCSL)",
+  "stage": "alpha",
   "keywords": ["BCSL", "Conference Services"],
   "contact": [
     {

@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "sanitation-services",
   "name": "Sanitation Services Authority",
+  "stage": "alpha",
   "keywords": ["SSA", "Sanitation", "Garbage", "Waste"],
   "contact": [
     {

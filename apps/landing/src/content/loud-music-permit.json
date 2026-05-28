@@ -2,9 +2,9 @@
   "title": "Get a permit to play loud music",
   "description": "Apply for a permit to play loud music at an event in Barbados. A permit is required before holding events with amplified music.",
   "categories": ["business-trade"],
+  "service_type": "information",
   "stage": "alpha",
-  "featured": true,
-  "publish_date": "2025-10-24",
+  "updated_at": "2026-05-28",
   "body": {
     "root": {
       "type": "root",
@@ -57,7 +57,7 @@
                   "version": 1
                 },
                 {
-                  "id": "6a175156a4471fc1012af59b",
+                  "id": "6a183320bfdf3ba829d63233",
                   "type": "link",
                   "fields": {
                     "url": "https://liquorlicence.gov.bb/",
@@ -109,7 +109,7 @@
                   "version": 1
                 },
                 {
-                  "id": "6a175156a4471fc1012af59c",
+                  "id": "6a183320bfdf3ba829d63234",
                   "type": "link",
                   "fields": {
                     "url": "https://coscap.org/tariffs",
@@ -240,7 +240,7 @@
               "version": 1
             },
             {
-              "id": "6a175156a4471fc1012af59d",
+              "id": "6a183320bfdf3ba829d63235",
               "type": "link",
               "fields": {
                 "url": "https://bra.gov.bb/",
@@ -483,7 +483,7 @@
               "version": 1
             },
             {
-              "id": "6a175156a4471fc1012af59e",
+              "id": "6a183320bfdf3ba829d63236",
               "type": "link",
               "fields": {
                 "url": "https://publicentertainment.bra.gov.bb/",

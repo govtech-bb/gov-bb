@@ -2,10 +2,10 @@
   "title": "Local information",
   "description": "Barbados is a highly-ranked Caribbean travel destination known for its natural beauty, attracting visitors seeking relaxation or vibrant experiences, leading to significant international interest and media coverage.",
   "categories": ["travel-id-citizenship"],
-  "section": "Travel, ID and Citizenship",
+  "service_type": "information",
   "stage": "alpha",
   "source_url": "https://www.gov.bb/Visit-Barbados/local-information",
-  "publish_date": "2025-10-24",
+  "updated_at": "2026-05-28",
   "body": {
     "root": {
       "type": "root",

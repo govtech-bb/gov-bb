@@ -2,8 +2,9 @@
   "title": "Apply for a position as a temporary teacher",
   "description": "Apply for a temporary teaching position in the Government of Barbados school system.",
   "categories": ["work-employment"],
+  "service_type": "information",
   "stage": "alpha",
-  "publish_date": "2026-01-15",
+  "updated_at": "2026-05-28",
   "body": {
     "root": {
       "type": "root",
@@ -213,7 +214,7 @@
               "version": 1
             },
             {
-              "id": "6a175155a4471fc1012af584",
+              "id": "6a183320bfdf3ba829d6321c",
               "type": "link",
               "fields": {
                 "url": "https://barbados.seamlessdocs.com/f/pvyf07u3v0j2",
@@ -461,7 +462,7 @@
                   "version": 1
                 },
                 {
-                  "id": "6a175155a4471fc1012af585",
+                  "id": "6a183320bfdf3ba829d6321d",
                   "type": "link",
                   "fields": {
                     "url": "https://forms.gov.bb/CertificateOfCharacter",

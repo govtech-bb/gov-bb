@@ -2,8 +2,9 @@
   "title": "Request a Presidential Visit for a Centenarian",
   "description": "Ask the President to visit a Barbadian who is turning 100 years old.",
   "categories": ["family-birth-relationships"],
+  "service_type": "information",
   "stage": "alpha",
-  "publish_date": "2026-05-14",
+  "updated_at": "2026-05-28",
   "body": {
     "root": {
       "type": "root",
@@ -32,14 +33,14 @@
           "textFormat": 0
         },
         {
-          "type": "quote",
+          "type": "paragraph",
           "format": "",
           "indent": 0,
           "version": 1,
           "children": [
             {
               "mode": "normal",
-              "text": "You must submit this request at least 3 months before the birthday.",
+              "text": "> You must submit this request at least 3 months before the birthday.",
               "type": "text",
               "style": "",
               "detail": 0,
@@ -47,7 +48,9 @@
               "version": 1
             }
           ],
-          "direction": null
+          "direction": null,
+          "textStyle": "",
+          "textFormat": 0
         },
         {
           "tag": "h2",

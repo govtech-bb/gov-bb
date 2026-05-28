@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "statistical-services",
   "name": "Statistical Services Department",
+  "stage": "alpha",
   "shortDescription": "Provides reliable and timely economic and social statistics to support decision-makers and other users across government and the public.",
   "intro": "The goal of the Barbados Statistical Service is to provide reliable and timely key economic and social statistics which decision makers and other users need.",
   "keywords": ["SSD", "Statistics", "BSS", "Census"],

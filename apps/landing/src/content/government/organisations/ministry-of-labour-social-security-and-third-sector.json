@@ -2,6 +2,7 @@
   "kind": "ministry",
   "slug": "ministry-of-labour-social-security-and-third-sector",
   "name": "Ministry of Labour, Social Security and Third Sector",
+  "stage": "alpha",
   "shortDescription": "Industrial harmony, worker rights, and the national social security net.",
   "intro": "To facilitate industrial harmony, protect worker rights, and manage the national social security net.",
   "category": "ministerial",

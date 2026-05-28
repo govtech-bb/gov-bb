@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "barbados-port",
   "name": "Barbados Port Inc.",
+  "stage": "alpha",
   "keywords": ["BPI", "Port", "Bridgetown Port", "Seaport"],
   "contact": [
     {

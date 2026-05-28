@@ -2,6 +2,7 @@
   "kind": "ministry",
   "slug": "ministry-of-transport-works-and-water-resources",
   "name": "Ministry of Transport, Works and Water Resources",
+  "stage": "alpha",
   "shortDescription": "Safe and efficient road network, public transport, and water resources.",
   "intro": "To provide a safe and efficient road network, public transportation system, and management of water resources.",
   "category": "ministerial",

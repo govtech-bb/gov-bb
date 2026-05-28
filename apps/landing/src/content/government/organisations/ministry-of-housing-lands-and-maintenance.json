@@ -2,6 +2,7 @@
   "kind": "ministry",
   "slug": "ministry-of-housing-lands-and-maintenance",
   "name": "Ministry of Housing, Lands and Maintenance",
+  "stage": "alpha",
   "shortDescription": "Affordable housing solutions, state lands management, and infrastructure maintenance.",
   "intro": "To provide affordable housing solutions and manage state lands and government infrastructure maintenance.",
   "category": "ministerial",

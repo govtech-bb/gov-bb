@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "immigration",
   "name": "Immigration Department",
+  "stage": "alpha",
   "shortDescription": "Enforces Barbados's immigration and citizenship laws while providing reliable, professional, and humanitarian service to both national and non-national clientele.",
   "intro": "The department enforces Immigration and Citizenship Laws while providing reliable, professional, and humanitarian service to its clientele, both national and non-national, operating within a framework supporting national security and promoting sustainable social and economic development.",
   "keywords": ["Immigration", "Passport", "Visa", "BID"],

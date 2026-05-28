@@ -2,8 +2,9 @@
   "title": "Find the permits you need for a Crop Over event",
   "description": "Find out which permits you need to run a Crop Over event, which agencies to contact, and in what order.",
   "categories": ["business-trade"],
+  "service_type": "information",
   "stage": "alpha",
-  "publish_date": "2026-05-13",
+  "updated_at": "2026-05-28",
   "body": {
     "root": {
       "type": "root",

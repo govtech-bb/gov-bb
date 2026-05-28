@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "social-policy-research-planning",
   "name": "Bureau of Social Policy, Research and Planning",
+  "stage": "alpha",
   "keywords": ["BSPRP", "Social Policy"],
   "contact": [
     {

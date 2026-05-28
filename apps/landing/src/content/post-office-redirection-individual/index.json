@@ -2,9 +2,9 @@
   "title": "Redirect my personal mail",
   "description": "Tell the Barbados Post Office to redirect your personal mail to a new address. You must complete one redirection notice per household.",
   "categories": ["travel-id-citizenship"],
-  "section": "Travel, ID and citizenship",
+  "service_type": "information",
   "stage": "alpha",
-  "publish_date": "2026-01-29",
+  "updated_at": "2026-05-28",
   "body": {
     "root": {
       "type": "root",
@@ -217,7 +217,7 @@
               "version": 1,
               "children": [
                 {
-                  "id": "6a175156a4471fc1012af5b1",
+                  "id": "6a183320bfdf3ba829d63249",
                   "type": "link",
                   "fields": {
                     "url": "/travel-id-citizenship/post-office-redirection-business",
@@ -251,7 +251,7 @@
               "version": 1,
               "children": [
                 {
-                  "id": "6a175156a4471fc1012af5b2",
+                  "id": "6a183320bfdf3ba829d6324a",
                   "type": "link",
                   "fields": {
                     "url": "/travel-id-citizenship/post-office-redirection-deceased",
@@ -445,7 +445,7 @@
               "version": 1,
               "children": [
                 {
-                  "id": "6a175156a4471fc1012af5b3",
+                  "id": "6a183320bfdf3ba829d6324b",
                   "type": "link",
                   "fields": {
                     "url": "https://www.gov.bb/media_files/PostOffice_RedirNotice.pdf",

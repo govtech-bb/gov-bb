@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "electoral",
   "name": "Electoral & Boundaries Commission",
+  "stage": "alpha",
   "shortDescription": "Maintains accurate registers for the national and electoral registration systems and ensures the conduct of free, fair, and transparent elections in Barbados.",
   "intro": "The commission's mission is to maintain accurate registers for the national and electoral registration systems and to ensure the conduct of free, fair, and transparent elections.",
   "keywords": ["EBC", "Electoral", "Boundaries", "Voting", "Election"],

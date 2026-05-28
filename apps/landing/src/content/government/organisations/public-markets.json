@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "public-markets",
   "name": "The Public Markets",
+  "stage": "alpha",
   "shortDescription": "Maintains attractive marketing infrastructure to promote vending and entrepreneurship while ensuring vendors operate under proper sanitary conditions.",
   "intro": "The department aims to maintain attractive marketing infrastructure in an effort to promote vending, entrepreneurship and encourage patronage, while ensuring vendors operate under proper sanitary conditions to protect public health.",
   "keywords": ["Public Markets", "Markets"],

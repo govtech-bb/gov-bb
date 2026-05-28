@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "treasury",
   "name": "Treasury Department",
+  "stage": "alpha",
   "shortDescription": "Ensures efficient and effective management and reporting of the Government of Barbados's financial operations.",
   "intro": "To ensure the efficient and effective management and reporting of Government's Financial Operations supported by a well-trained and competent staff and smart use of information technology.",
   "keywords": ["Treasury"],

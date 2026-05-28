@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "ombudsman",
   "name": "Office of the Ombudsman",
+  "stage": "alpha",
   "shortDescription": "Investigates complaints about government conduct deemed unreasonable or unjust, protecting citizens' rights against bureaucratic wrongdoing.",
   "intro": "To provide quality service in an impartial, timely and expeditious manner while investigating complaints about government conduct, serving to protect citizens' rights against bureaucratic wrongdoing.",
   "keywords": ["Ombudsman", "Complaints"],

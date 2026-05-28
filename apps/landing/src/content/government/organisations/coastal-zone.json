@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "coastal-zone",
   "name": "Coastal Zone Management Unit",
+  "stage": "alpha",
   "shortDescription": "Performs coastal management functions including coral reef monitoring, beach erosion control, regulation of marine research, and public education on integrated coastal zone management.",
   "intro": "Performs a variety of coastal management functions including coral reef monitoring, updating the inventory of coastal resources, beach erosion and accretion monitoring and control, regulation of marine research, public education on ICZM, coastal conservation project designs and management, and the review of any coastal projects.",
   "keywords": ["CZMU", "Coastal Zone", "Beach"],

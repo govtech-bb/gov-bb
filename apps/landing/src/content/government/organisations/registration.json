@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "registration",
   "name": "Registration Department",
+  "stage": "alpha",
   "shortDescription": "Ensures the administration of justice functions speedily and efficiently while recording vital occurrences such as births, deaths, and marriages.",
   "intro": "The department aims to ensure that the administration of justice functions speedily, efficiently and effectively while recording vital occurrences and delivering essential services to the population per Barbadian law.",
   "keywords": [

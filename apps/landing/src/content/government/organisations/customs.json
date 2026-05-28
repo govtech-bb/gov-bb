@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "customs",
   "name": "Customs and Excise Department",
+  "stage": "alpha",
   "shortDescription": "Oversees the collection of duties and excise taxes at Barbados's borders, facilitating trade while enforcing customs and immigration controls.",
   "intro": "The department is responsible for border control, revenue collection, and trade facilitation under the leadership of the Comptroller of Customs.",
   "keywords": ["Customs", "CED", "Excise", "Duty", "Border"],

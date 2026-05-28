@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "analytical-services",
   "name": "Analytical Services",
+  "stage": "alpha",
   "shortDescription": "Provides timely and reliable analytical services through a commitment to quality.",
   "intro": "To provide, through a commitment to quality, a timely and reliable analytical service.",
   "keywords": ["Analytical Services", "Lab"],

@@ -1,7 +1,8 @@
 {
   "title": "Apply for a conductor's licence",
+  "service_type": "information",
   "stage": "alpha",
-  "publish_date": "2026-03-06",
+  "updated_at": "2026-05-28",
   "body": {
     "root": {
       "type": "root",
@@ -227,7 +228,7 @@
                   "version": 1
                 },
                 {
-                  "id": "6a175155a4471fc1012af587",
+                  "id": "6a183320bfdf3ba829d6321f",
                   "type": "link",
                   "fields": {
                     "url": "https://forms.gov.bb/CertificateOfCharacter",

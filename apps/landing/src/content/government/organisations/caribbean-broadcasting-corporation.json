@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "caribbean-broadcasting-corporation",
   "name": "Caribbean Broadcasting Corporation",
+  "stage": "alpha",
   "keywords": ["CBC", "Broadcasting", "TV", "Radio"],
   "contact": [
     {

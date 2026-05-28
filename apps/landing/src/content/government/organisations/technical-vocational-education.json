@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "technical-vocational-education",
   "name": "Technical & Vocational Education and Training Council",
+  "stage": "alpha",
   "keywords": ["TVET Council", "TVET", "Technical Vocational"],
   "contact": [
     {

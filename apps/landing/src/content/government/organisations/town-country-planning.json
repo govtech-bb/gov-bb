@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "town-country-planning",
   "name": "Town and Country Planning Department",
+  "stage": "alpha",
   "keywords": ["TCPD", "Town and Country", "Planning", "Planning Permission"],
   "contact": [
     {

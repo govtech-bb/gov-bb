@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "higher-education-development-unit",
   "name": "Higher Education Development Unit",
+  "stage": "alpha",
   "keywords": ["HEDU", "Higher Education"],
   "contact": [
     {

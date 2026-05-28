@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "licensing-authority",
   "name": "Licensing Authority",
+  "stage": "alpha",
   "shortDescription": "Oversees driver licensing, vehicle inspections, and transport-related regulatory functions in Barbados.",
   "intro": "The Licensing Authority administers driver licensing, vehicle examinations, and transport regulation across Barbados.",
   "keywords": [

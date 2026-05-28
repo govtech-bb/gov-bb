@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "hiv-aids-commission",
   "name": "National HIV/AIDS Commission",
+  "stage": "alpha",
   "shortDescription": "Advises the government on plans and policies and builds strategic partnerships to effectively manage, control, and reduce the spread of HIV in Barbados.",
   "intro": "To advise the government on plans and policies and to build strategic partnerships to effectively manage, control and reduce the spread of HIV in Barbados.",
   "keywords": ["NHAC", "HIV", "AIDS"],

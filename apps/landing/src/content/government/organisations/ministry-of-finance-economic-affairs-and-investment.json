@@ -2,6 +2,7 @@
   "kind": "ministry",
   "slug": "ministry-of-finance-economic-affairs-and-investment",
   "name": "Ministry of Finance, Economic Affairs and Investment",
+  "stage": "alpha",
   "shortDescription": "Manages the country's financial resources and leads economic growth through prudent fiscal policy.",
   "intro": "To manage the country's financial resources and spearhead economic growth through prudent fiscal policy.",
   "category": "ministerial",

@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "museum-historical-society",
   "name": "Barbados Museum & Historical Society Council",
+  "stage": "alpha",
   "keywords": ["BMHS", "Museum", "Historical Society"],
   "contact": [
     {

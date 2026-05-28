@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "glebe-polyclinic",
   "name": "Glebe Polyclinic",
+  "stage": "alpha",
   "keywords": ["Glebe", "Polyclinic"],
   "contact": [
     {

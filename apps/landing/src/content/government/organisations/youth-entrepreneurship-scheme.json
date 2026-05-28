@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "youth-entrepreneurship-scheme",
   "name": "Youth Entrepreneurship Scheme",
+  "stage": "alpha",
   "keywords": ["YES", "Youth Entrepreneurship"],
   "head": {
     "name": "Mr. Ryan Mosely",

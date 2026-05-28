@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "school-meals",
   "name": "The School Meals Department",
+  "stage": "alpha",
   "shortDescription": "Provides nutritious lunches at low cost to school children across Barbados, maintaining high health standards through a network of service locations.",
   "intro": "To provide a lunch which is of high nutritional value at a low cost to school children while maintaining proper health standards and work ethics.",
   "keywords": ["School Meals", "BSMD"],

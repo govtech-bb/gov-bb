@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "national-petroleum",
   "name": "National Petroleum Corporation",
+  "stage": "alpha",
   "keywords": ["NPC", "Petroleum", "Gas"],
   "contact": [
     {

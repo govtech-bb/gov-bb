@@ -1,7 +1,8 @@
 {
   "title": "Apply for a licence to sell goods or services at a beach or park",
+  "service_type": "information",
   "stage": "alpha",
-  "publish_date": "2026-01-29",
+  "updated_at": "2026-05-28",
   "body": {
     "root": {
       "type": "root",
@@ -202,7 +203,7 @@
                   "version": 1
                 },
                 {
-                  "id": "6a175156a4471fc1012af5b8",
+                  "id": "6a183320bfdf3ba829d63250",
                   "type": "link",
                   "fields": {
                     "url": "https://forms.gov.bb/CertificateOfCharacter",

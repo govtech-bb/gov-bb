@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "natural-heritage",
   "name": "Natural Heritage Department",
+  "stage": "alpha",
   "shortDescription": "Promotes the conservation of unique biomes through effective management of a network of terrestrial and marine protected areas while supporting sustainable development.",
   "intro": "To promote the conservation of special and unique biomes of Barbados through effective management of a network of terrestrial and marine protected areas and to support sustainable development in those regions for local communities.",
   "keywords": ["NHD", "Natural Heritage"],

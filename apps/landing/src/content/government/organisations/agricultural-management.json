@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "agricultural-management",
   "name": "The Barbados Agricultural Management Company",
+  "stage": "alpha",
   "keywords": ["BAMC", "Agricultural Management"],
   "contact": [
     {

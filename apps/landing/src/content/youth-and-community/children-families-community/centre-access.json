@@ -5,7 +5,7 @@
   "subcategory": "children-families-community",
   "service_type": "information",
   "stage": "alpha",
-  "publish_date": "2026-05-20",
+  "updated_at": "2026-05-28",
   "body": {
     "root": {
       "type": "root",
@@ -177,7 +177,7 @@
               "version": 1
             },
             {
-              "id": "6a175156a4471fc1012af5ca",
+              "id": "6a183320bfdf3ba829d63262",
               "type": "link",
               "fields": {
                 "url": "https://alpha.gov.bb/youth-and-community/children-families-community/centre-access/form",
@@ -240,7 +240,7 @@
           "version": 1,
           "children": [
             {
-              "id": "6a175156a4471fc1012af5cb",
+              "id": "6a183320bfdf3ba829d63263",
               "type": "link",
               "fields": {
                 "url": "https://comdev.gov.bb/programmes/centre-access/",

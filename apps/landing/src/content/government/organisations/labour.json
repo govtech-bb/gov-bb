@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "labour",
   "name": "Labour Department",
+  "stage": "alpha",
   "shortDescription": "Promotes and maintains a stable and harmonious industrial relations climate and provides employment services to the community.",
   "intro": "To promote and maintain a stable and harmonious industrial relations climate and provide employment services to the community.",
   "keywords": ["Labour", "Labor", "Employment"],

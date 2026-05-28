@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "defence-force",
   "name": "Barbados Defence Force",
+  "stage": "alpha",
   "keywords": ["BDF", "Defence Force", "Military", "Coast Guard"],
   "contact": [
     {

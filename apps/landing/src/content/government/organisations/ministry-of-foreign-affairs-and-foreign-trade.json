@@ -2,6 +2,7 @@
   "kind": "ministry",
   "slug": "ministry-of-foreign-affairs-and-foreign-trade",
   "name": "Ministry of Foreign Affairs and Foreign Trade",
+  "stage": "alpha",
   "shortDescription": "Advances Barbados' interests globally through diplomacy, trade advocacy, and protection of citizens abroad.",
   "intro": "To advance Barbados' interests globally through diplomacy, trade advocacy, and the protection of citizens abroad.",
   "category": "ministerial",

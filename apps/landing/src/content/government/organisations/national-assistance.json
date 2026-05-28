@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "national-assistance",
   "name": "The National Assistance Board",
+  "stage": "alpha",
   "keywords": ["NAB", "National Assistance", "Seniors", "Elderly"],
   "contact": [
     {

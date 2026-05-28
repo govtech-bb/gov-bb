@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "psychiatric-hospital",
   "name": "Psychiatric Hospital",
+  "stage": "alpha",
   "shortDescription": "Provides high-quality mental health services with emphasis on community-based education, prevention, and treatment to reduce the need for institutionalised care.",
   "intro": "We aim to provide for the Barbadian public a mix of high-quality mental health services, with special emphasis on community-based education, prevention and treatment of mental illness, in order to reduce the need for institutionalized care.",
   "keywords": ["Psychiatric Hospital", "Mental Health", "Black Rock"],

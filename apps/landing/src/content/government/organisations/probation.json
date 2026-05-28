@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "probation",
   "name": "Probation Department",
+  "stage": "alpha",
   "shortDescription": "Provides social advice to the justice system and assists in the rehabilitation of offenders and community education to reduce delinquency and crime.",
   "intro": "To provide reliable social advice to the Justice System; assist in the rehabilitation of offenders and educate communities through programs designed to reduce delinquency and crime.",
   "keywords": ["Probation"],

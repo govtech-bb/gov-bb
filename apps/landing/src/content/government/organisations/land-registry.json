@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "land-registry",
   "name": "Land Registration Department",
+  "stage": "alpha",
   "shortDescription": "Manages land title registration and related administrative functions for Barbados.",
   "keywords": ["Land Registry", "Land Registration", "Deeds"],
   "head": {

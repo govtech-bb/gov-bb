@@ -2,6 +2,7 @@
   "kind": "ministry",
   "slug": "ministry-of-educational-transformation",
   "name": "Ministry of Educational Transformation",
+  "stage": "alpha",
   "shortDescription": "Transforms primary and secondary education to foster lifelong learning.",
   "intro": "To create a world-class education system that fosters lifelong learning and skill development.",
   "category": "ministerial",

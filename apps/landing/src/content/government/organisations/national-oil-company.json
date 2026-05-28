@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "national-oil-company",
   "name": "Barbados National Oil Company",
+  "stage": "alpha",
   "keywords": ["BNOCL", "BNOC", "National Oil", "Petroleum"],
   "contact": [
     {

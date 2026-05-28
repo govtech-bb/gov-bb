@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "national-housing-corporation",
   "name": "National Housing Corporation",
+  "stage": "alpha",
   "keywords": ["NHC", "Housing", "Public Housing"],
   "contact": [
     {

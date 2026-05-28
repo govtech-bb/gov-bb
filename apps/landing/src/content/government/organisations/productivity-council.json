@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "productivity-council",
   "name": "The Productivity Council",
+  "stage": "alpha",
   "keywords": ["BNPC", "Productivity Council"],
   "contact": [
     {

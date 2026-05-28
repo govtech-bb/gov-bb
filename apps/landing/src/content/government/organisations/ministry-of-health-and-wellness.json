@@ -2,6 +2,7 @@
   "kind": "ministry",
   "slug": "ministry-of-health-and-wellness",
   "name": "Ministry of Health and Wellness",
+  "stage": "alpha",
   "shortDescription": "Provides quality, equitable, and accessible health care services to all Barbadians.",
   "intro": "To provide quality, equitable, and accessible health care services to all Barbadians.",
   "category": "ministerial",

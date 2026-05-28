@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "welfare",
   "name": "Welfare Department",
+  "stage": "alpha",
   "shortDescription": "Provides professional social work services focused on resolving individual and family problems, poverty alleviation, and support for disabled and disadvantaged populations.",
   "intro": "The department provides professional social work services geared towards the resolution of individual and family problems, with key focus areas including personal and social development, poverty alleviation, and support for disabled and disadvantaged populations.",
   "keywords": ["Welfare", "BWD", "Social Assistance"],

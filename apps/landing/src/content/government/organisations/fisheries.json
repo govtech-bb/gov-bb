@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "fisheries",
   "name": "Fisheries Division",
+  "stage": "alpha",
   "shortDescription": "Ensures the optimum utilisation of fisheries resources in Barbadian waters for the benefit of the people of Barbados through management and development.",
   "intro": "The division's mission is to ensure the optimum utilisation of the fisheries resources in the waters of Barbados for the benefit of the people of Barbados through management and development.",
   "keywords": ["Fisheries"],

@@ -2,6 +2,7 @@
   "kind": "ministry",
   "slug": "ministry-of-youth-sports-and-community-empowerment",
   "name": "Ministry of Youth, Sports and Community Empowerment",
+  "stage": "alpha",
   "category": "ministerial",
   "keywords": ["MYSCE", "Youth", "Sports", "Community Empowerment"],
   "minister": {

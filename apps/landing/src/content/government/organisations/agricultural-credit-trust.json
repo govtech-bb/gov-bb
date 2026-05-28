@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "agricultural-credit-trust",
   "name": "The Barbados Agricultural Credit Trust Limited",
+  "stage": "alpha",
   "keywords": ["BACT", "Agricultural Credit Trust"],
   "contact": [
     {

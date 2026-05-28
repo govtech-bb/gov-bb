@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "vocational-training-board",
   "name": "Barbados Vocational Training Board",
+  "stage": "alpha",
   "keywords": ["BVTB", "TVET", "Vocational Training"],
   "contact": [
     {

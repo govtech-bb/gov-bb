@@ -2,6 +2,7 @@
   "kind": "department",
   "slug": "international-business-financial-services",
   "name": "International Business & Financial Services Unit",
+  "stage": "alpha",
   "shortDescription": "Supports international business and financial services for Barbados under the Ministry of Industry, Innovation, Science and Technology.",
   "keywords": ["IBFSU", "International Business", "Financial Services"],
   "contact": [

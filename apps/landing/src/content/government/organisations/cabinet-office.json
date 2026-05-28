@@ -2,6 +2,7 @@
   "kind": "ministry",
   "slug": "cabinet-office",
   "name": "Cabinet Office",
+  "stage": "alpha",
   "category": "ministerial",
   "keywords": ["Cabinet", "CO"],
   "contact": [
@@ -987,7 +988,7 @@
                           "version": 1
                         },
                         {
-                          "id": "6a175156a4471fc1012af641",
+                          "id": "6a183321bfdf3ba829d632d9",
                           "type": "link",
                           "fields": {
                             "url": "mailto:cabinetoffice@barbados.gov.bb",

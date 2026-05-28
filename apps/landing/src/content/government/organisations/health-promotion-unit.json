@@ -2,6 +2,7 @@
   "kind": "state-body",
   "slug": "health-promotion-unit",
   "name": "Health Promotion Unit",
+  "stage": "alpha",
   "keywords": ["HPU", "Health Promotion"],
   "contact": [
     {
