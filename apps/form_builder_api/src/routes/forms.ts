@@ -25,6 +25,43 @@ export async function listDisabledHandler(
 }
 formsRouter.get("/disabled", listDisabledHandler);
 
+// GET /builder/forms/published — proxy apps/api's in-memory recipe index so
+// the form_builder Open modal renders in <1s without hitting GitHub. Returns
+// {formId,title,version}[]. Registered before "/:formId" so "published" isn't
+// captured as a formId. Upstream errors surface as 502 so a flaky apps/api
+// shows in the front-end rather than as a generic 500.
+export async function listPublishedHandler(
+  _req: Request,
+  res: Response,
+): Promise<void> {
+  const baseUrl = process.env.API_BASE_URL;
+  if (!baseUrl) {
+    res.status(500).json({ error: "API_BASE_URL is not set" });
+    return;
+  }
+  try {
+    const upstream = await fetch(`${baseUrl}/form-definitions`);
+    if (!upstream.ok) {
+      const upstreamBody = await upstream.text();
+      res.status(502).json({
+        error: `Upstream apps/api returned ${upstream.status}`,
+        upstreamStatus: upstream.status,
+        upstreamBody,
+      });
+      return;
+    }
+    const body = (await upstream.json()) as {
+      data: { formId: string; title: string; version: string }[];
+    };
+    res.json(body.data);
+  } catch (err: any) {
+    res.status(502).json({
+      error: `Upstream apps/api request failed: ${err.message}`,
+    });
+  }
+}
+formsRouter.get("/published", listPublishedHandler);
+
 // GET /builder/forms — list all forms (latest version per formId)
 formsRouter.get("/", async (_req, res) => {
   try {

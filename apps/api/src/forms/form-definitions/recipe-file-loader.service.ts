@@ -131,11 +131,12 @@ export class RecipeFileLoaderService implements OnModuleInit {
     );
   }
 
-  findAll(): { formId: string; title: string }[] {
-    const out: { formId: string; title: string }[] = [];
+  findAll(): { formId: string; title: string; version: string }[] {
+    const out: { formId: string; title: string; version: string }[] = [];
     for (const [formId, versions] of this.store) {
       const latest = this.latestVersion(versions);
-      if (latest) out.push({ formId, title: latest.title });
+      if (latest)
+        out.push({ formId, title: latest.title, version: latest.version });
     }
     return out;
   }

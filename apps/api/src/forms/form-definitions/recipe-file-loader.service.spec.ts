@@ -57,7 +57,11 @@ describe("RecipeFileLoaderService", () => {
       await loader.loadAll();
 
       expect(loader.findAll()).toEqual([
-        { formId: "passport-renewal", title: "Passport Renewal" },
+        {
+          formId: "passport-renewal",
+          title: "Passport Renewal",
+          version: "1.0.0",
+        },
       ]);
     });
 
@@ -74,10 +78,35 @@ describe("RecipeFileLoaderService", () => {
       expect(all).toHaveLength(2);
       expect(all).toEqual(
         expect.arrayContaining([
-          { formId: "passport-renewal", title: "Passport Renewal" },
-          { formId: "drivers-licence", title: "Drivers Licence" },
+          {
+            formId: "passport-renewal",
+            title: "Passport Renewal",
+            version: "1.0.0",
+          },
+          {
+            formId: "drivers-licence",
+            title: "Drivers Licence",
+            version: "1.0.0",
+          },
         ]),
       );
+    });
+
+    it("uses the latest version when a form has multiple versions", async () => {
+      const root = await newRoot({
+        "passport-renewal": ["valid-recipe.json", "valid-recipe-v2.json"],
+      });
+      const loader = new RecipeFileLoaderService(root);
+
+      await loader.loadAll();
+
+      expect(loader.findAll()).toEqual([
+        {
+          formId: "passport-renewal",
+          title: "Passport Renewal",
+          version: "1.1.0",
+        },
+      ]);
     });
 
     it("crashes when a recipe fails zod validation", async () => {

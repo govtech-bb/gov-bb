@@ -5,18 +5,19 @@ import {
   type ServiceContractRecipe,
 } from "@govtech-bb/form-types";
 import { api, ApiError } from "./api-client";
-import { listPublishedForms, getPublishedRecipe } from "./github-recipes";
+import { getPublishedRecipe } from "./github-recipes";
 import { compare as compareSemver } from "../lib/version";
 import type { FormDefinitionSummary } from "../types/index";
 import { requireSession } from "./auth/require-session";
 
 export const listForms = createServerFn({ method: "GET" })
   .middleware([requireSession])
-  .handler(async ({ context }): Promise<FormDefinitionSummary[]> => {
-    const token = context.session.accessToken;
+  .handler(async (): Promise<FormDefinitionSummary[]> => {
     const [drafts, published, disabled] = await Promise.all([
       api.get<FormDefinitionSummary[]>("/builder/forms"),
-      listPublishedForms(token),
+      api.get<{ formId: string; title: string; version: string }[]>(
+        "/builder/forms/published",
+      ),
       api.get<string[]>("/builder/forms/disabled"),
     ]);
 
