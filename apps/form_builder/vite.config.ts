@@ -33,6 +33,8 @@ export default defineConfig(({ mode }) => {
       ),
       // GitHub org — team-membership login check + PR-publish repo owner.
       "process.env.GITHUB_ORG": JSON.stringify(pick("GITHUB_ORG")),
+      // GitHub team slug whose members may sign in to the builder.
+      "process.env.GITHUB_TEAM_SLUG": JSON.stringify(pick("GITHUB_TEAM_SLUG")),
     },
     plugins: [
       nitro({

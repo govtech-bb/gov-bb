@@ -36,7 +36,7 @@ export class FormDefinitionsController {
 
   @Get()
   async getAll(): Promise<
-    ApiResponseShape<{ formId: string; title: string }[]>
+    ApiResponseShape<{ formId: string; title: string; version: string }[]>
   > {
     // Known trade-off (PR 3): findAll does not filter disabled forms.
     // Ops correlates the list with per-form GET responses. If filtering is

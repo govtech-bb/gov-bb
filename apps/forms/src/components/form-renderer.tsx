@@ -21,7 +21,6 @@ import {
   getRepeatStepCount,
 } from "@forms/lib";
 import { trackEvent } from "../lib/analytics";
-import { isDevMode } from "../lib/env";
 
 // ---------------------------------------------------------------------------
 // Field grouping (show-hide + radio conditional reveal)
@@ -226,7 +225,7 @@ export default function FormRenderer({
         });
       });
       scrollToTop();
-      if (!isDevMode()) return;
+      return;
     }
 
     // Handle navigation to repeatable step.

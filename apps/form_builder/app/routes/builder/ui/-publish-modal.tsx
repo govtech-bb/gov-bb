@@ -33,7 +33,7 @@ export function PublishModal({
             marginBottom: 12,
           }}
         >
-          <strong>Deploy via GitHub</strong>
+          <strong>Deploy</strong>
           <button type="button" onClick={onClose}>
             Close
           </button>
@@ -110,7 +110,7 @@ export function PublishModal({
                 onClick={() => onPublish(description)}
                 disabled={isPublishing}
               >
-                {isPublishing ? "Opening PR…" : "Deploy via GitHub"}
+                {isPublishing ? "Opening PR…" : "Deploy"}
               </button>
               <button type="button" onClick={onClose}>
                 Cancel

@@ -6,6 +6,7 @@ import {
   publishSession,
   deletePublished,
   extractRecipeFromSession,
+  getPdfUploadUrl,
 } from "../../../server/ai-builder/sessions";
 import { formPreviewUrl } from "../../../lib/form-url";
 
@@ -25,16 +26,6 @@ interface SessionState {
 export const Route = createFileRoute("/builder/ai/")({
   component: AiFormBuilderPage,
 });
-
-async function fileToBase64(file: File): Promise<string> {
-  const buf = await file.arrayBuffer();
-  let binary = "";
-  const bytes = new Uint8Array(buf);
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-}
 
 function AiFormBuilderPage() {
   const navigate = useNavigate();
@@ -82,9 +73,30 @@ function AiFormBuilderPage() {
       error: null,
     }));
     try {
-      const pdfBase64 = pdfFile ? await fileToBase64(pdfFile) : undefined;
+      let s3Key: string | undefined;
+      if (pdfFile) {
+        const { uploadUrl, s3Key: key } = await getPdfUploadUrl({
+          data: {
+            sessionId,
+            filename: pdfFile.name,
+            contentType: pdfFile.type,
+            size: pdfFile.size,
+          },
+        });
+        // ContentType is bound into the presigned URL on the API side, so we
+        // must echo it exactly here or S3 rejects the PUT with SignatureDoesNotMatch.
+        const putRes = await fetch(uploadUrl, {
+          method: "PUT",
+          body: pdfFile,
+          headers: { "Content-Type": pdfFile.type },
+        });
+        if (!putRes.ok) {
+          throw new Error(`Upload failed (HTTP ${putRes.status}). Try again.`);
+        }
+        s3Key = key;
+      }
       const data = await sendMessage({
-        data: { sessionId, message: userMessage, pdfBase64 },
+        data: { sessionId, message: userMessage, s3Key },
       });
       if (pdfFile) setPdfFile(null);
       setSession((s) => ({
@@ -94,7 +106,11 @@ function AiFormBuilderPage() {
         loading: false,
       }));
     } catch (err: any) {
-      setSession((s) => ({ ...s, loading: false, error: err.message }));
+      setSession((s) => ({
+        ...s,
+        loading: false,
+        error: err?.message ?? "Unknown error",
+      }));
     }
   };
 
@@ -109,9 +125,25 @@ function AiFormBuilderPage() {
     }
   };
 
+  // Matches Bedrock's per-document PDF input ceiling and the server-side guard
+  // in form_builder_api's /builder/ai/presigned-upload. The upload itself goes
+  // straight to S3, so the Amplify SSR Lambda body cap no longer constrains us.
+  const MAX_PDF_BYTES = 32 * 1024 * 1024;
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > MAX_PDF_BYTES) {
+      const mb = (file.size / 1024 / 1024).toFixed(1);
+      setSession((s) => ({
+        ...s,
+        error: `PDF is ${mb} MB; maximum is 32 MB. Please use a smaller file or split it into separate pages.`,
+      }));
+      // Clear the picker so the same file can be re-selected after the user picks a smaller one.
+      e.target.value = "";
+      return;
+    }
+    setSession((s) => ({ ...s, error: null }));
     setPdfName(file.name);
     setPdfFile(file);
   };

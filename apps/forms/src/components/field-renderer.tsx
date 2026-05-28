@@ -5,6 +5,7 @@ import ErrorMessage from "./error-message";
 import { RequiredState, checkConditionalOn } from "@forms/lib";
 import { DateValue, FieldArrayBehaviour } from "@govtech-bb/form-types";
 import FileUpload from "./file-upload";
+import { MaskedInput } from "./masked-input";
 
 /** An inset field entry passed from the parent radio group. */
 export interface InsetFieldEntry {
@@ -195,8 +196,9 @@ export default function FieldRenderer({
               const value = f.state.value as string | undefined;
               inputElement = (
                 <div className="govbb-input-wrapper">
-                  <input
+                  <MaskedInput
                     key={field.id}
+                    mask={field.mask}
                     {...sharedProps}
                     className="govbb-input"
                     value={value ?? ""}
@@ -242,7 +244,8 @@ export default function FieldRenderer({
                   {Array.from({ length: fieldCount }).map((_, i) => (
                     <React.Fragment key={`${field.id}-${i}`}>
                       <div className="govbb-input-wrapper">
-                        <input
+                        <MaskedInput
+                          mask={field.mask}
                           {...sharedProps}
                           className="govbb-input"
                           value={values && values.length > 0 ? values[i] : ""}

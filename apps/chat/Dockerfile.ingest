@@ -34,6 +34,12 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,uid=1001,gid=1001 \
 COPY --chown=app:app apps/chat/ apps/chat/
 COPY --chown=app:app packages/content/ packages/content/
 
+# Source data the loader actually reads. `@govtech-bb/content`'s loadContent()
+# resolves apps/landing/src/content/ via the workspace root and returns empty
+# arrays if the dir is missing — which is exactly the silent no-op we hit on
+# first deploys. Copy only the content tree, not the whole landing app.
+COPY --chown=app:app apps/landing/src/content/ apps/landing/src/content/
+
 ENV NODE_ENV=production
 
 WORKDIR /app/apps/chat

@@ -32,6 +32,16 @@ export { Town } from "./town";
 export { UploadDocument } from "./upload-document";
 export { WorkTelephone } from "./work-telephone";
 export { Title } from "./title";
+export { RawText } from "./raw-text";
+export { RawTextarea } from "./raw-textarea";
+export { RawNumber } from "./raw-number";
+export { RawDate } from "./raw-date";
+export { RawTel } from "./raw-tel";
+export { RawEmail } from "./raw-email";
+export { RawCheckbox } from "./raw-checkbox";
+export { RawRadio } from "./raw-radio";
+export { RawFile } from "./raw-file";
+export { RawSelect } from "./raw-select";
 
 import { AccountName } from "./account-name";
 import { AccountNumber } from "./account-number";
@@ -66,7 +76,30 @@ import { Town } from "./town";
 import { UploadDocument } from "./upload-document";
 import { WorkTelephone } from "./work-telephone";
 import { Title } from "./title";
+import { RawText } from "./raw-text";
+import { RawTextarea } from "./raw-textarea";
+import { RawNumber } from "./raw-number";
+import { RawDate } from "./raw-date";
+import { RawTel } from "./raw-tel";
+import { RawEmail } from "./raw-email";
+import { RawCheckbox } from "./raw-checkbox";
+import { RawRadio } from "./raw-radio";
+import { RawFile } from "./raw-file";
+import { RawSelect } from "./raw-select";
 import type { Primitive } from "@govtech-bb/form-types";
+
+const PRIMITIVES = [
+  RawText,
+  RawTextarea,
+  RawNumber,
+  RawDate,
+  RawTel,
+  RawEmail,
+  RawCheckbox,
+  RawRadio,
+  RawFile,
+  RawSelect,
+] as const satisfies Primitive[];
 
 const ALL = [
   AccountName,
@@ -102,10 +135,14 @@ const ALL = [
   Title,
   UploadDocument,
   WorkTelephone,
+  ...PRIMITIVES,
 ] as const satisfies Primitive[];
 
 // Compile-time guard: bump the literal type whenever ALL changes length.
-const _componentCount: 33 = ALL.length;
+const _componentCount: 43 = ALL.length;
 
 export const REGISTRY_COMPONENTS: Record<`components/${string}`, Primitive> =
   Object.fromEntries(ALL.map((c) => [`components/${c.fieldId}`, c]));
+
+export const REGISTRY_PRIMITIVES: Record<`components/${string}`, Primitive> =
+  Object.fromEntries(PRIMITIVES.map((c) => [`components/${c.fieldId}`, c]));

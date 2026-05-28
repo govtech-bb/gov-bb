@@ -1,4 +1,8 @@
-import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
+import {
+  createRootRouteWithContext,
+  HeadContent,
+  Outlet,
+} from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { Footer } from "@govtech-bb/react";
 import { NotFound } from "@forms/components";
@@ -22,6 +26,7 @@ const FOOTER_LINKS = [
 
 const RootLayout = () => (
   <div className="flex min-h-dvh flex-col bg-white-00">
+    <HeadContent />
     <OfficialBanner />
     <SiteHeader />
     <main className="flex-1">

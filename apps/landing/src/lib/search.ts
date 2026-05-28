@@ -1,5 +1,5 @@
 import MiniSearch from 'minisearch'
-import { PAGES } from '../content/registry'
+import { isUrlPreview, PAGES } from '../content/registry'
 import { CATEGORY_BY_SLUG } from '../content/categories'
 import {
   BODY_BY_SLUG,
@@ -263,19 +263,27 @@ function getIndex() {
   return indexPromise.current
 }
 
-export function search(query: string): Array<SearchHit> {
+export function search(query: string, inPreview = false): Array<SearchHit> {
   const trimmed = query.trim()
   if (!trimmed) return []
   const { ms, docs } = getIndex()
-  return ms.search(trimmed).map((r): SearchHit => {
-    const stored = docs.get(String(r.id))
-    return {
-      id: String(r.id),
-      title: (r.title as string) ?? stored?.title ?? '',
-      description: (r.description as string) ?? stored?.description ?? '',
-      href: (r.href as string) ?? stored?.href ?? '',
-      category: (r.category as string) ?? stored?.category ?? '',
-      kind: (r.kind as SearchKind) ?? stored?.kind ?? 'service',
-    }
-  })
+  return ms
+    .search(trimmed)
+    .map((r): SearchHit => {
+      const stored = docs.get(String(r.id))
+      return {
+        id: String(r.id),
+        title: (r.title as string) ?? stored?.title ?? '',
+        description: (r.description as string) ?? stored?.description ?? '',
+        href: (r.href as string) ?? stored?.href ?? '',
+        category: (r.category as string) ?? stored?.category ?? '',
+        kind: (r.kind as SearchKind) ?? stored?.kind ?? 'service',
+      }
+    })
+    .filter((hit) => {
+      if (inPreview) return true
+      // Only content pages carry a visibility flag; org docs are always public.
+      if (hit.kind !== 'service') return true
+      return !isUrlPreview(hit.id.slice('service:'.length))
+    })
 }

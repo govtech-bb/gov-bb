@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { findPage, isSubPage, PAGES, resolveServiceHref } from './registry'
+import {
+  findPage,
+  isPreview,
+  isSubPage,
+  isUrlPreview,
+  isVisible,
+  PAGES,
+  resolveIsPreview,
+  resolveServiceHref,
+  startSubPageInPreview,
+} from './registry'
 
 describe('resolveServiceHref', () => {
   it('rewrites a bare service slug to its category-prefixed URL', () => {
@@ -64,6 +74,61 @@ describe('isSubPage', () => {
     const page = PAGES.find((p) => p.url.endsWith('/community-canvas'))
     expect(page).toBeDefined()
     expect(isSubPage(page!)).toBe(false)
+  })
+})
+
+describe('resolveIsPreview (ancestor inheritance)', () => {
+  // A small synthetic registry: a public service with a preview /start step,
+  // and a fully-preview service.
+  const visibility: Record<string, 'public' | 'preview'> = {
+    'get-birth-certificate': 'public',
+    'get-birth-certificate/start': 'preview',
+    'fully-hidden': 'preview',
+    'fully-hidden/start': 'public',
+  }
+  const visibilityOf = (slug: string) => visibility[slug]
+
+  it('flags a page whose own visibility is preview', () => {
+    expect(resolveIsPreview('fully-hidden', visibilityOf)).toBe(true)
+  })
+
+  it('flags a sub-page whose own visibility is preview', () => {
+    expect(resolveIsPreview('get-birth-certificate/start', visibilityOf)).toBe(
+      true,
+    )
+  })
+
+  it('inherits preview from an ancestor page even when the sub-page is public', () => {
+    expect(resolveIsPreview('fully-hidden/start', visibilityOf)).toBe(true)
+  })
+
+  it('leaves a public page with a preview sub-page public', () => {
+    expect(resolveIsPreview('get-birth-certificate', visibilityOf)).toBe(false)
+  })
+
+  it('treats an unknown slug as public', () => {
+    expect(resolveIsPreview('nothing-here', visibilityOf)).toBe(false)
+  })
+})
+
+describe('visibility helpers over real content', () => {
+  it('treats every shipped page as public (no preview content yet)', () => {
+    expect(PAGES.every((p) => !isPreview(p))).toBe(true)
+  })
+
+  it('isVisible shows any page in preview mode and public pages otherwise', () => {
+    const page = findPage('money-financial-support/calculate-severance-pay')!
+    expect(isVisible(page, false)).toBe(true)
+    expect(isVisible(page, true)).toBe(true)
+  })
+
+  it('startSubPageInPreview is false when the /start step is public', () => {
+    const service = findPage('money-financial-support/calculate-severance-pay')!
+    expect(startSubPageInPreview(service)).toBe(false)
+  })
+
+  it('isUrlPreview fails open for an unknown URL', () => {
+    expect(isUrlPreview('not-a-real-service')).toBe(false)
   })
 })
 

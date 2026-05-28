@@ -416,3 +416,127 @@
   margin: 0;
   vertical-align: middle;
 }
+
+/* ── Processors ──────────────────────────────────── */
+
+/* Rail entry for the form-level processors view. */
+.processorsRow {
+  margin-top: 8px;
+  border-top: 1px solid var(--color-border);
+  padding-top: 12px;
+  border-radius: 0;
+}
+
+.processorsEditor {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  background: var(--color-bg);
+}
+
+.processorWarning {
+  margin: 8px 0 16px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+}
+
+.addProcessorRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.addProcessorRow label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.noProcessors {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  padding: 8px 0;
+}
+
+.processorCard {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+  background: var(--color-surface);
+}
+
+.processorCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.processorReadOnly {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.fieldLabel {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+/* ── Key/value editor ────────────────────────────── */
+
+.keyValueEditor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.keyValueRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.keyValueRow input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Options editor ──────────────────────────────── */
+
+.optionsEditor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.optionsRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.optionsRow input[type="text"] {
+  flex: 1;
+  min-width: 0;
+}
+
+.optionsDisabled {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.optionsActions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}

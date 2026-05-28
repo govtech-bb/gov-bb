@@ -33,7 +33,12 @@ async function bootstrap() {
   app.enableCors({
     origin: corsOrigins,
     methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "Idempotency-Key"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "Idempotency-Key",
+      "X-Recipe-Preview",
+    ],
     credentials: true,
   });
 

@@ -1,0 +1,295 @@
+{
+  "formId": "statement-of-travelling-form",
+  "title": "Statement of Travelling Form",
+  "version": "1.1.0",
+  "steps": [
+    {
+      "stepId": "step-1-personal-information",
+      "title": "Personal Information",
+      "elements": [
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Name",
+            "fieldId": "name"
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "ID Number",
+            "fieldId": "idNumber"
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Email",
+            "fieldId": "email"
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Phone Number",
+            "fieldId": "phoneNumber"
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "step-2-travel-certification",
+      "title": "Travel Certification",
+      "elements": [
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Month",
+            "fieldId": "certificationMonth",
+            "placeholder": "MM"
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Year",
+            "fieldId": "certificationYear",
+            "placeholder": "YYYY"
+          }
+        },
+        {
+          "ref": "components/generic/textarea",
+          "overrides": {
+            "label": "I certify that during the month of [month/year] the extent of my travelling in the performance of my public duties:",
+            "fieldId": "certificationStatement"
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "step-3-travel-details",
+      "title": "Travel Details",
+      "elements": [
+        {
+          "ref": "components/generic/table",
+          "overrides": {
+            "label": "Travel Details",
+            "columns": [
+              {
+                "key": "day",
+                "label": "DAY"
+              },
+              {
+                "key": "distanceTravelled",
+                "label": "Distance Travelled"
+              },
+              {
+                "key": "particulars",
+                "label": "PARTICULARS"
+              },
+              {
+                "key": "numPassengers",
+                "label": "No. of Passengers"
+              }
+            ],
+            "fieldId": "travelDetailsTable"
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "step-4-travel-rates",
+      "title": "Travel Rates & Calculations",
+      "elements": [
+        {
+          "ref": "components/generic/display",
+          "overrides": {
+            "label": "Travel Rates",
+            "content": "FIRST 320 KM OR LESS: $2.56 PER KM\nREMAINDER OVER 320 KM: $1.03 PER KM\nPASSENGER RATE: # OF PASSENGERS * $0.11 PER KM",
+            "fieldId": "travelRatesInfo"
+          }
+        },
+        {
+          "ref": "components/generic/number",
+          "overrides": {
+            "label": "Total Distance Travelled",
+            "fieldId": "totalDistanceTravelled",
+            "readonly": true
+          }
+        },
+        {
+          "ref": "components/generic/number",
+          "overrides": {
+            "label": "First 320 KM or Less",
+            "fieldId": "first320kmOrLess",
+            "readonly": true
+          }
+        },
+        {
+          "ref": "components/generic/number",
+          "overrides": {
+            "label": "Remainder Over 320 KM",
+            "fieldId": "remainderOver320km",
+            "readonly": true
+          }
+        },
+        {
+          "ref": "components/generic/number",
+          "overrides": {
+            "label": "Passenger Subtotal",
+            "fieldId": "passengerSubtotal",
+            "readonly": true
+          }
+        },
+        {
+          "ref": "components/generic/number",
+          "overrides": {
+            "label": "Total Claimed",
+            "fieldId": "totalClaimed",
+            "readonly": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "step-5-certifications",
+      "title": "Certifications",
+      "elements": [
+        {
+          "ref": "components/generic/checkbox",
+          "overrides": {
+            "label": "I further certify that all travelling on private business or pleasure has been excluded from the total distance travelled as set out in this claim.",
+            "fieldId": "businessExclusionCertify"
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Signed",
+            "fieldId": "applicantSignature",
+            "placeholder": ".........................."
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Date",
+            "fieldId": "applicantDate",
+            "placeholder": ".........................."
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "step-6-official-examination",
+      "title": "Official Use - Examination Section",
+      "elements": [
+        {
+          "ref": "components/generic/textarea",
+          "overrides": {
+            "hint": "I hereby certify that I have examined this claim and have found it to be in respect of travelling on public duty only and by the type of vehicle specified and that the journeys made and distances involved have been necessary for the proper performance of the officer's duties.",
+            "label": "Examination Notes",
+            "fieldId": "examinationNotes"
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Examination Section Signature",
+            "fieldId": "examinationSignature",
+            "placeholder": ".........................."
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Date",
+            "fieldId": "examinationDate",
+            "placeholder": ".........................."
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "step-7-dps-approval",
+      "title": "DPS Approval",
+      "elements": [
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "DPS Signature",
+            "fieldId": "dpsSignature",
+            "placeholder": ".........................."
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Date",
+            "fieldId": "dpsDate",
+            "placeholder": ".........................."
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "step-8-processing-officer",
+      "title": "Processing Officer",
+      "elements": [
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Processing Officer Signature",
+            "fieldId": "processingOfficerSignature",
+            "placeholder": ".........................."
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Date",
+            "fieldId": "processingOfficerDate",
+            "placeholder": ".........................."
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "step-9-school-reference",
+      "title": "School Distance Reference",
+      "elements": [
+        {
+          "ref": "components/generic/display",
+          "overrides": {
+            "label": "School Distances by Parish",
+            "content": "Reference table for distances to various schools by parish - see form pages 3-5 for complete listing",
+            "fieldId": "schoolReferenceInfo"
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Submission Confirmation",
+      "elements": [],
+      "behaviours": []
+    }
+  ],
+  "createdAt": "2026-05-27T20:43:20.632Z",
+  "updatedAt": "2026-05-27T20:43:20.632Z"
+}

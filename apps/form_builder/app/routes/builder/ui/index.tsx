@@ -5,7 +5,7 @@ import { getCatalogFn } from "../../../server/registry";
 import { nextVersion, submitRecipe, updateRecipe, deleteForm, getRecipe } from "../../../server/forms";
 import { publishRecipe } from "../../../server/publish";
 import { validateRecipe, previewRecipe } from "../../../server/registry";
-import { serializeRecipeDraft, findRecipeIdCollisions, formatCollisionIssues } from "@govtech-bb/form-builder";
+import { serializeRecipeDraft, findRecipeIdCollisions, formatCollisionIssues, resolveFieldIds } from "@govtech-bb/form-builder";
 import { bumpMinor } from "../../../lib/version";
 import type { ServiceContract, ServiceContractRecipe } from "@govtech-bb/form-types";
 import type { RecipeDraft, ValidationResult, RecipeValidateResponse } from "@govtech-bb/form-builder";
@@ -15,8 +15,10 @@ import { recipeReducer, EMPTY_DRAFT, nextStepId, REQUIRED_STEP_IDS, isRequiredSt
 import { Toolbar } from "./-toolbar";
 import { StepList } from "./-step-list";
 import { StepEditor } from "./-step-editor";
+import { ProcessorsEditor } from "./-processors-editor";
 import { ValidationPanel } from "./-validation-panel";
 import { PreviewModal } from "./-preview-modal";
+import { formPreviewUrl } from "../../../lib/form-url";
 import { SubmitModal } from "./-submit-modal";
 import { PublishModal } from "./-publish-modal";
 import { FormPicker } from "./-form-picker";
@@ -48,6 +50,9 @@ function BuilderPage() {
 
   // UI state
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
+  // Which view the main area shows. Processors are form-scoped, so they get a
+  // sibling view to the per-step editor rather than living inside a step.
+  const [mainView, setMainView] = useState<"step" | "processors">("step");
   const [version, setVersion] = useState("1.0.0");
   const [currentVersion, setCurrentVersion] = useState<string | null>(null);
   const [loadedFromId, setLoadedFromId] = useState<string | null>(null);
@@ -84,11 +89,9 @@ function BuilderPage() {
     draft.title !== "";
   const editableSteps = draft.steps.filter((s) => !isRequiredStep(s.stepId));
   const hasEditableSteps = editableSteps.length > 0;
-  const allEditableStepsHaveFields = editableSteps.every((s) => s.fields.length > 0);
-  // Live recipe-wide uniqueness check over resolved field ids + step ids. Folding
-  // this into canSubmit (not only into handleValidate) matters because
-  // validateResult is NOT reset when the draft is edited — a stale-green result
-  // would otherwise leave the buttons enabled after a duplicate is introduced.
+  // Live recipe-wide uniqueness check over resolved field ids + step ids. Drives
+  // the red duplicate-ID banner below the body; the collision pre-flight inside
+  // runValidation re-checks it on every Save draft / Deploy click.
   const idCollisions = useMemo(
     () => findRecipeIdCollisions(draft, catalog),
     [draft, catalog],
@@ -96,11 +99,13 @@ function BuilderPage() {
   const hasIdCollisions =
     idCollisions.fieldIdCollisions.length > 0 ||
     idCollisions.stepIdCollisions.length > 0;
-  const canSubmit =
-    validateResult?.valid === true &&
-    hasEditableSteps &&
-    allEditableStepsHaveFields &&
-    !hasIdCollisions;
+
+  // Resolved field paths (stepId.fieldId, blocks expanded) for the processor
+  // config path-pickers. Same memo shape as idCollisions above.
+  const resolvedFieldIds = useMemo(
+    () => resolveFieldIds(draft, catalog),
+    [draft, catalog],
+  );
 
   // Debounced nextVersion fetch when formId changes
   const nextVersionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -126,7 +131,12 @@ function BuilderPage() {
   }, [draft.formId]);
 
   // Handlers
-  const handleValidate = async () => {
+  // Runs the full validation flow (pre-flight checks + server validate), sets
+  // all the state it always has, AND returns the computed result. Returning it
+  // lets the Save draft / Deploy click handlers act on a fresh validation
+  // synchronously — React state updates are async, so they can't read
+  // validateResult right after triggering it.
+  const runValidation = async (): Promise<RecipeValidateResponse> => {
     setIsValidating(true);
     try {
       // Pre-flight checks that the server schema would also fail, but with friendlier messages.
@@ -143,7 +153,7 @@ function BuilderPage() {
         };
         setValidateResult(result);
         setLastSaveStatus("error");
-        return;
+        return result;
       }
       const emptyStep = editableSteps.find((s) => s.fields.length === 0);
       if (emptyStep) {
@@ -158,7 +168,7 @@ function BuilderPage() {
         };
         setValidateResult(result);
         setLastSaveStatus("error");
-        return;
+        return result;
       }
 
       // Pre-flight: surface duplicate resolved fieldIds / stepIds in the panel.
@@ -175,7 +185,7 @@ function BuilderPage() {
         };
         setValidateResult(result);
         setLastSaveStatus("error");
-        return;
+        return result;
       }
 
       const recipe = serializeRecipeDraft(draft, { version });
@@ -186,6 +196,7 @@ function BuilderPage() {
       };
       setValidateResult(result);
       setLastSaveStatus(raw.ok ? "success" : "error");
+      return result;
     } catch (e) {
       const result: RecipeValidateResponse = {
         valid: false,
@@ -195,9 +206,28 @@ function BuilderPage() {
       };
       setValidateResult(result);
       setLastSaveStatus("error");
+      return result;
     } finally {
       setIsValidating(false);
     }
+  };
+
+  // Save draft / Deploy validate the current draft on click, then open their
+  // modal only if it's valid. One click, not two — and because every click
+  // re-validates the live draft, a stale validateResult can never green-light a
+  // bad save.
+  const handleSaveDraftClick = async () => {
+    const result = await runValidation();
+    if (result.valid) {
+      setSubmitSuccess(false);
+      setSubmitError(null);
+      setIsSubmitOpen(true);
+    }
+  };
+
+  const handleDeployClick = async () => {
+    const result = await runValidation();
+    if (result.valid) handleOpenPublish();
   };
 
   const handleDismissValidation = () => {
@@ -287,6 +317,7 @@ function BuilderPage() {
     setCurrentVersion(ver);
     setVersion(ver);
     setSelectedStepId(null);
+    setMainView("step");
     setValidateResult(null);
     setSubmitSuccess(false);
     setSubmitError(null);
@@ -329,6 +360,7 @@ function BuilderPage() {
   const handleNew = () => {
     dispatch({ type: "RESET" });
     setSelectedStepId(null);
+    setMainView("step");
     setVersion("1.0.0");
     setCurrentVersion(null);
     setLoadedFromId(null);
@@ -384,10 +416,20 @@ function BuilderPage() {
     dispatch({ type: "SET_FORM_META", formId: draft.formId, title, description: draft.description });
   };
 
+  const handleSelectStep = (stepId: string) => {
+    setSelectedStepId(stepId);
+    setMainView("step");
+  };
+
+  const handleSelectProcessors = () => {
+    setMainView("processors");
+  };
+
   const handleAddStep = () => {
     const stepId = nextStepId(draft.steps);
     dispatch({ type: "ADD_STEP" });
     setSelectedStepId(stepId);
+    setMainView("step");
   };
 
   const handleRemoveStep = (stepId: string) => {
@@ -418,16 +460,15 @@ function BuilderPage() {
         isPreviewing={isPreviewing}
         isSubmitting={isSubmitting}
         isPublishing={isPublishing}
-        canSubmit={canSubmit}
         lastSaveStatus={lastSaveStatus}
         onFormIdChange={handleFormIdChange}
         onTitleChange={handleTitleChange}
         onNew={handleNew}
         onOpen={() => setIsPickerOpen(true)}
-        onValidate={handleValidate}
+        onValidate={runValidation}
         onPreview={handlePreview}
-        onSubmit={() => { setSubmitSuccess(false); setSubmitError(null); setIsSubmitOpen(true); }}
-        onPublish={handleOpenPublish}
+        onSubmit={handleSaveDraftClick}
+        onPublish={handleDeployClick}
       />
 
       {openError && (
@@ -439,16 +480,25 @@ function BuilderPage() {
       <div className={styles.builderBody}>
         <StepList
           steps={draft.steps}
-          selectedStepId={selectedStepId}
-          onSelect={setSelectedStepId}
+          selectedStepId={mainView === "step" ? selectedStepId : null}
+          onSelect={handleSelectStep}
           onAdd={handleAddStep}
           onRemove={handleRemoveStep}
           onMoveUp={handleMoveStepUp}
           onMoveDown={handleMoveStepDown}
           onSwitchToAi={handleSwitchToAi}
+          processorCount={draft.processors?.length ?? 0}
+          isProcessorsActive={mainView === "processors"}
+          onSelectProcessors={handleSelectProcessors}
         />
 
-        {selectedStep !== null ? (
+        {mainView === "processors" ? (
+          <ProcessorsEditor
+            draft={draft}
+            dispatch={dispatch}
+            fields={resolvedFieldIds}
+          />
+        ) : selectedStep !== null ? (
           <StepEditor
             step={selectedStep}
             draft={draft}
@@ -504,6 +554,7 @@ function BuilderPage() {
           contract={previewData}
           isLoading={isPreviewing}
           error={previewError}
+          previewUrl={loadedFromId ? formPreviewUrl(loadedFromId) : null}
           onClose={() => { setIsPreviewOpen(false); setPreviewData(null); setPreviewError(null); }}
         />
       )}
