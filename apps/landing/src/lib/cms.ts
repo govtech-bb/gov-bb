@@ -8,6 +8,7 @@
 // SSRs through `@tanstack/react-router-ssr-query` and rehydrates on the client.
 
 import { queryOptions } from '@tanstack/react-query'
+import type { SerializedEditorState } from 'lexical'
 
 const CMS_URL = import.meta.env.VITE_CMS_URL ?? 'http://localhost:8000'
 
@@ -36,6 +37,12 @@ export interface CmsServiceListItem {
   flag?: 'live' | 'flagged'
   categories: string[]
   subcategory?: string
+}
+
+export interface CmsService extends CmsServiceListItem {
+  body: SerializedEditorState
+  updatedAt: string
+  sourceUrl?: string
 }
 
 interface PayloadList<T> {
@@ -68,6 +75,9 @@ interface PayloadServiceDoc {
   flag?: 'live' | 'flagged' | null
   categories?: Array<PayloadRelationship | string | number> | null
   subcategory?: PayloadRelationship | string | number | null
+  body?: SerializedEditorState | null
+  updatedAt?: string | null
+  sourceUrl?: string | null
 }
 
 // 3s upper bound per fetch — bounds SSR latency when the CMS is slow/down,
@@ -190,6 +200,48 @@ export async function fetchServicesBySubcategory(
     .filter((s) => !s.slug.endsWith('/start'))
 }
 
+/**
+ * Resolve a service by URL splat. A flat service ("apply-for-a-passport")
+ * stores its slug bare and lives at "<category>/<slug>" on the site; a nested
+ * service stores its slug as the full path and lives at the same path. So
+ * the URL splat itself OR the splat with the leading category stripped is
+ * what we look up.
+ */
+export async function fetchServiceByUrl(
+  splat: string,
+  flag: boolean,
+): Promise<CmsService | null> {
+  const segments = splat.split('/').filter(Boolean)
+  const candidates = [splat]
+  if (segments.length > 1) candidates.push(segments.slice(1).join('/'))
+  const where = candidates
+    .map((c, i) => `&where[slug][in][${i}]=${encodeURIComponent(c)}`)
+    .join('')
+  const res = await cmsFetch<PayloadServiceDoc>(
+    `/api/services?${PUBLISHED}${flagWhere(flag)}${where}&depth=1&limit=2`,
+  )
+  const doc = res.docs[0]
+  if (!doc) return null
+  const listing = normaliseService(doc)
+  return {
+    ...listing,
+    body: doc.body ?? EMPTY_BODY,
+    updatedAt: doc.updatedAt ?? '',
+    sourceUrl: doc.sourceUrl ?? undefined,
+  }
+}
+
+const EMPTY_BODY: SerializedEditorState = {
+  root: {
+    type: 'root',
+    format: '',
+    indent: 0,
+    version: 1,
+    direction: null,
+    children: [],
+  },
+} as unknown as SerializedEditorState
+
 export async function fetchAllServices(
   flag: boolean,
 ): Promise<CmsServiceListItem[]> {
@@ -249,6 +301,12 @@ export const allServicesQueryOptions = (flag: boolean) =>
   queryOptions({
     queryKey: ['cms', 'services', 'all', flag] as const,
     queryFn: () => fetchAllServices(flag),
+  })
+
+export const serviceByUrlQueryOptions = (splat: string, flag: boolean) =>
+  queryOptions({
+    queryKey: ['cms', 'service', 'by-url', splat, flag] as const,
+    queryFn: () => fetchServiceByUrl(splat, flag),
   })
 
 export const CMS_CACHE_HEADERS: Record<string, string> = {

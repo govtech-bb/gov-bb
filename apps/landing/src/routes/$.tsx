@@ -1,6 +1,7 @@
 import { createFileRoute, notFound } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { Heading, Text, linkVariants } from '@govtech-bb/react'
+import type { SerializedEditorState } from 'lexical'
 import { PageShell } from '../components/PageShell'
 import { LexicalContent } from '../components/LexicalContent'
 import { findPage } from '../content/registry'
@@ -8,16 +9,24 @@ import type { ContentPage } from '../content/registry'
 import {
   categoriesQueryOptions,
   cmsRouteHeaders,
+  serviceByUrlQueryOptions,
   servicesByCategoryQueryOptions,
   servicesBySubcategoryQueryOptions,
   subcategoriesByCategoryQueryOptions,
   type CmsCategory,
+  type CmsService,
   type CmsServiceListItem,
   type CmsSubcategory,
 } from '../lib/cms'
+import type { Frontmatter } from '../lib/frontmatter'
+
+interface RenderablePage {
+  frontmatter: Frontmatter
+  body: SerializedEditorState
+}
 
 type LoaderData =
-  | { kind: 'page'; page: ContentPage }
+  | { kind: 'page'; page: RenderablePage }
   | { kind: 'category'; category: CmsCategory; categorySlug: string }
   | { kind: 'subcategory-index'; category: CmsCategory; categorySlug: string }
   | {
@@ -27,6 +36,26 @@ type LoaderData =
       categorySlug: string
       subcategorySlug: string
     }
+
+function cmsToRenderable(svc: CmsService): RenderablePage {
+  return {
+    frontmatter: {
+      title: svc.title,
+      description: svc.description,
+      categories: svc.categories,
+      subcategory: svc.subcategory,
+      updated_at: svc.updatedAt ? new Date(svc.updatedAt) : undefined,
+      source_url: svc.sourceUrl,
+      stage: svc.stage,
+      service_type: svc.serviceType,
+    },
+    body: svc.body,
+  }
+}
+
+function staticToRenderable(page: ContentPage): RenderablePage {
+  return { frontmatter: page.frontmatter, body: page.body }
+}
 
 export const Route = createFileRoute('/$')({
   // Cache header applies to CMS-fed routes; static page (kind 'page') paths
@@ -92,8 +121,22 @@ export const Route = createFileRoute('/$')({
       }
     }
 
+    // Service body pages: try the CMS first (so an unpublish takes effect
+    // immediately), fall back to the static JSON when the CMS is down so
+    // existing pages still render during an outage.
+    if (cmsUp) {
+      try {
+        const svc = await queryClient.ensureQueryData(
+          serviceByUrlQueryOptions(splat, flag),
+        )
+        if (svc) return { kind: 'page', page: cmsToRenderable(svc) }
+      } catch {
+        // Fall through to static fallback.
+      }
+    }
+
     const page = findPage(splat)
-    if (page) return { kind: 'page', page }
+    if (page) return { kind: 'page', page: staticToRenderable(page) }
 
     // Distinguish "page genuinely missing" from "CMS unreachable so we can't
     // tell" — only the former is a notFound; the latter falls through to
@@ -151,7 +194,7 @@ function ContentRoute() {
   return <CategoryView category={data.category} categorySlug={data.categorySlug} />
 }
 
-function PageView({ page }: { page: ContentPage }) {
+function PageView({ page }: { page: RenderablePage }) {
   return (
     <PageShell>
       <LexicalContent body={page.body} frontmatter={page.frontmatter} />
