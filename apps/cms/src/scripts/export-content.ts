@@ -63,7 +63,9 @@ async function* allDocs(payload: Payload, collection: 'services' | 'organisation
       depth: 2,
       limit: 100,
       page,
-      where: { _status: { equals: 'published' } },
+      // Flagged docs are hidden from the public, and the static export IS the
+      // public site, so exclude them — only published-and-live docs ship.
+      where: { _status: { equals: 'published' }, flag: { not_equals: 'flagged' } },
     })
     yield* res.docs
     if (!res.hasNextPage) break
