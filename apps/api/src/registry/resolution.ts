@@ -103,6 +103,9 @@ export async function hydrateForm(
     formId: recipe.formId,
     title: recipe.title,
     description: recipe.description,
+    // Carry service contact details through to the citizen-facing form (#452).
+    // Without this the seeded/authored details never reach citizens.
+    contactDetails: recipe.contactDetails,
     steps,
     processors: recipe.processors,
     createdAt: recipe.createdAt,

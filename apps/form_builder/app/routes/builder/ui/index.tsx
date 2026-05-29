@@ -16,6 +16,7 @@ import { Toolbar } from "./-toolbar";
 import { StepList } from "./-step-list";
 import { StepEditor } from "./-step-editor";
 import { ProcessorsEditor } from "./-processors-editor";
+import { ContactDetailsEditor } from "./-contact-details-editor";
 import { ValidationPanel } from "./-validation-panel";
 import { PreviewModal } from "./-preview-modal";
 import { formPreviewUrl } from "../../../lib/form-url";
@@ -55,9 +56,12 @@ function BuilderPage() {
 
   // UI state
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
-  // Which view the main area shows. Processors are form-scoped, so they get a
-  // sibling view to the per-step editor rather than living inside a step.
-  const [mainView, setMainView] = useState<"step" | "processors">("step");
+  // Which view the main area shows. Processors and contact details are
+  // form-scoped, so they each get a sibling view to the per-step editor rather
+  // than living inside a step.
+  const [mainView, setMainView] = useState<
+    "step" | "processors" | "contactDetails"
+  >("step");
   const [version, setVersion] = useState("1.0.0");
   const [currentVersion, setCurrentVersion] = useState<string | null>(null);
   const [loadedFromId, setLoadedFromId] = useState<string | null>(null);
@@ -423,6 +427,10 @@ function BuilderPage() {
     setMainView("processors");
   };
 
+  const handleSelectContactDetails = () => {
+    setMainView("contactDetails");
+  };
+
   const handleAddStep = () => {
     const stepId = nextStepId(draft.steps);
     dispatch({ type: "ADD_STEP" });
@@ -488,9 +496,14 @@ function BuilderPage() {
           processorCount={draft.processors?.length ?? 0}
           isProcessorsActive={mainView === "processors"}
           onSelectProcessors={handleSelectProcessors}
+          hasContactDetails={draft.contactDetails !== undefined}
+          isContactDetailsActive={mainView === "contactDetails"}
+          onSelectContactDetails={handleSelectContactDetails}
         />
 
-        {mainView === "processors" ? (
+        {mainView === "contactDetails" ? (
+          <ContactDetailsEditor draft={draft} dispatch={dispatch} />
+        ) : mainView === "processors" ? (
           <ProcessorsEditor
             draft={draft}
             dispatch={dispatch}

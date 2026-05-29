@@ -6,7 +6,11 @@ import type {
   AuthorableProcessorType,
 } from "@govtech-bb/form-builder";
 import { makeDefaultProcessor } from "@govtech-bb/form-builder";
-import type { Behaviour, FieldOverrides } from "@govtech-bb/form-types";
+import type {
+  Behaviour,
+  ContactDetails,
+  FieldOverrides,
+} from "@govtech-bb/form-types";
 
 export const REQUIRED_STEP_IDS = [
   "declaration",
@@ -81,6 +85,12 @@ export type RecipeAction =
       // responsible for spreading existing config to keep unrendered keys (e.g.
       // webhook `secret`).
       config: Record<string, unknown>;
+    }
+  | {
+      // Set the whole contact-details object, or clear it (undefined collapses
+      // back to absent, mirroring how REMOVE_PROCESSOR drops the last entry).
+      type: "UPDATE_CONTACT_DETAILS";
+      contactDetails: ContactDetails | undefined;
     }
   | { type: "LOAD_DRAFT"; draft: RecipeDraft }
   | { type: "RESET" }
@@ -275,6 +285,16 @@ export function recipeReducer(
           ? { description: action.description }
           : {}),
       };
+    }
+
+    case "UPDATE_CONTACT_DETAILS": {
+      // Collapse "cleared" back to an absent key so the serializer's
+      // `!== undefined` guard keeps absent distinct from a set object.
+      if (action.contactDetails === undefined) {
+        const { contactDetails: _dropped, ...rest } = state;
+        return rest;
+      }
+      return { ...state, contactDetails: action.contactDetails };
     }
 
     case "ADD_PROCESSOR": {

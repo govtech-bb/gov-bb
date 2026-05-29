@@ -612,3 +612,47 @@ describe("UPDATE_PROCESSOR_CONFIG", () => {
     expect(next.processors![0].config).toEqual({ recipientField: "" });
   });
 });
+
+// ── UPDATE_CONTACT_DETAILS ───────────────────────────────────────────────────
+
+describe("UPDATE_CONTACT_DETAILS", () => {
+  const contactDetails = {
+    title: "Ministry of Health",
+    telephoneNumber: "+1 246 555 0100",
+    email: "health@gov.bb",
+    address: { line1: "Jemmotts Lane", city: "Bridgetown" },
+  };
+
+  it("sets contactDetails on the draft", () => {
+    const next = recipeReducer(baseDraft(), {
+      type: "UPDATE_CONTACT_DETAILS",
+      contactDetails,
+    });
+    expect(next.contactDetails).toEqual(contactDetails);
+  });
+
+  it("replaces existing contactDetails wholesale", () => {
+    const start: RecipeDraft = { ...baseDraft(), contactDetails };
+    const replacement = {
+      title: "Ministry of Finance",
+      telephoneNumber: "+1 246 555 0200",
+      email: "finance@gov.bb",
+    };
+    const next = recipeReducer(start, {
+      type: "UPDATE_CONTACT_DETAILS",
+      contactDetails: replacement,
+    });
+    expect(next.contactDetails).toEqual(replacement);
+    expect(next.contactDetails?.address).toBeUndefined();
+  });
+
+  it("clears contactDetails back to absent when passed undefined", () => {
+    const start: RecipeDraft = { ...baseDraft(), contactDetails };
+    const next = recipeReducer(start, {
+      type: "UPDATE_CONTACT_DETAILS",
+      contactDetails: undefined,
+    });
+    expect(next.contactDetails).toBeUndefined();
+    expect(Object.keys(next)).not.toContain("contactDetails");
+  });
+});

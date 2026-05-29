@@ -14,6 +14,9 @@ interface StepListProps {
   processorCount: number;
   isProcessorsActive: boolean;
   onSelectProcessors: () => void;
+  hasContactDetails: boolean;
+  isContactDetailsActive: boolean;
+  onSelectContactDetails: () => void;
 }
 
 export function StepList({
@@ -28,6 +31,9 @@ export function StepList({
   processorCount,
   isProcessorsActive,
   onSelectProcessors,
+  hasContactDetails,
+  isContactDetailsActive,
+  onSelectContactDetails,
 }: StepListProps) {
   const editableCount = steps.length - REQUIRED_STEP_IDS.length;
 
@@ -83,6 +89,16 @@ export function StepList({
           )}
         </div>
       ))}
+
+      {/* Form-level contact details live beside the steps, not inside one. */}
+      <div
+        className={`${styles.stepRow} ${styles.processorsRow} ${isContactDetailsActive ? styles.stepRowActive : ""}`}
+        onClick={onSelectContactDetails}
+      >
+        <span style={{ flex: 1, fontSize: "0.9rem" }}>
+          Contact Details {hasContactDetails ? "✓" : "(none)"}
+        </span>
+      </div>
 
       {/* Form-level processors live beside the steps, not inside one. */}
       <div

@@ -117,6 +117,10 @@ export function hydrateForm(
     ...(recipe.description !== undefined
       ? { description: recipe.description }
       : {}),
+    // Carry service contact details through to the citizen-facing form (#452).
+    ...(recipe.contactDetails !== undefined
+      ? { contactDetails: recipe.contactDetails }
+      : {}),
     version: recipe.version,
     steps,
     ...(recipe.processors !== undefined

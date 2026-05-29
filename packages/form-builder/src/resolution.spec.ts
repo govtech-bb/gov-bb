@@ -435,4 +435,27 @@ describe("hydrateForm", () => {
     expect(contract.steps[0].elements[1].fieldId).toBe("first-name");
     expect(contract.steps[0].elements[2].fieldId).toBe("last-name");
   });
+
+  it("carries contactDetails through to the hydrated contract (issue #452)", () => {
+    const contactDetails = {
+      title: "Ministry of Health",
+      telephoneNumber: "+1 246 555 0100",
+      email: "health@gov.bb",
+      address: {
+        line1: "Jemmotts Lane",
+        city: "Bridgetown",
+      },
+    };
+    const recipe = makeRecipe({ contactDetails });
+    const contract = hydrateForm(recipe, catalog);
+
+    expect(contract.contactDetails).toEqual(contactDetails);
+  });
+
+  it("omits contactDetails when not present in recipe", () => {
+    const recipe = makeRecipe();
+    const contract = hydrateForm(recipe, catalog);
+
+    expect(contract.contactDetails).toBeUndefined();
+  });
 });

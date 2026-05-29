@@ -67,6 +67,11 @@ export function serializeRecipeDraft(
     ...(draft.description !== undefined
       ? { description: draft.description }
       : {}),
+    // Carry contact details through (issue #452). `!== undefined` keeps an
+    // explicitly-set object distinct from "absent" — same guard as processors.
+    ...(draft.contactDetails !== undefined
+      ? { contactDetails: draft.contactDetails }
+      : {}),
     version: opts.version,
     // Carry processors through, stripping the editor-only id (never persisted,
     // per ADR 0009). `!== undefined` (not a truthiness/length check) keeps
@@ -148,6 +153,11 @@ export function deserializeRecipe(
     title: recipe.title,
     ...(recipe.description !== undefined
       ? { description: recipe.description }
+      : {}),
+    // Symmetric read so contact details survive an open → deploy cycle (issue
+    // #452). No editor-only id to mint — it's a single plain object.
+    ...(recipe.contactDetails !== undefined
+      ? { contactDetails: recipe.contactDetails }
       : {}),
     // Symmetric read so processors survive an open → deploy cycle (issue #255).
     // Mint an editor-only id per processor (mirrors RecipeFieldDraft); stripped
