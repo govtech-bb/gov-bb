@@ -38,11 +38,13 @@
     "test": "jest --config jest.config.ts",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:report": "playwright show-report"
+    "test:e2e:report": "playwright show-report",
+    "test:smoke": "playwright test --config playwright.smoke.config.ts"
   },
   "devDependencies": {
     "@eslint/css": "^1.1.0",
     "@eslint/js": "^9.39.4",
+    "@faker-js/faker": "^10.4.0",
     "@playwright/test": "^1.60.0",
     "@tanstack/router-plugin": "^1.167.22",
     "@types/jest": "^30.0.0",
