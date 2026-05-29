@@ -123,14 +123,22 @@ function renderBuilder() {
 }
 
 describe("BuilderPage — validate on Save draft click", () => {
+  let confirmSpy: jest.SpyInstance;
+
   beforeEach(() => {
     validateRecipe.mockReset();
+    confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(false);
+  });
+
+  afterEach(() => {
+    confirmSpy.mockRestore();
   });
 
   it(
-    "runs validation on click and surfaces errors without opening the SubmitModal when the draft is invalid",
+    "surfaces errors and leaves the SubmitModal closed when the draft is invalid and the user cancels the confirm",
     async () => {
       mockEmptyDraft = INVALID_DRAFT;
+      confirmSpy.mockReturnValue(false);
       renderBuilder();
 
       await userEvent.click(
@@ -140,7 +148,8 @@ describe("BuilderPage — validate on Save draft click", () => {
       expect(
         await screen.findByText(/add at least one step/i),
       ).toBeInTheDocument();
-      // The SubmitModal heading ("Submit Recipe") must not appear.
+      // User declined the "save anyway?" prompt, so the modal stays closed.
+      expect(confirmSpy).toHaveBeenCalledTimes(1);
       expect(screen.queryByText("Submit Recipe")).not.toBeInTheDocument();
       // Pre-flight fails before the server is ever asked.
       expect(validateRecipe).not.toHaveBeenCalled();
@@ -148,7 +157,31 @@ describe("BuilderPage — validate on Save draft click", () => {
     15_000,
   );
 
-  it("opens the SubmitModal on click when validation passes", async () => {
+  it(
+    "opens the SubmitModal when the draft is invalid but the user confirms the save-anyway prompt",
+    async () => {
+      mockEmptyDraft = INVALID_DRAFT;
+      confirmSpy.mockReturnValue(true);
+      renderBuilder();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: /save draft/i }),
+      );
+
+      // Errors still surface in the panel...
+      expect(
+        await screen.findByText(/add at least one step/i),
+      ).toBeInTheDocument();
+      // ...and on confirm, the version-entry modal opens just like a valid save.
+      expect(confirmSpy).toHaveBeenCalledTimes(1);
+      expect(
+        await screen.findByText("Submit Recipe", { selector: "strong" }),
+      ).toBeInTheDocument();
+    },
+    15_000,
+  );
+
+  it("opens the SubmitModal on click when validation passes, without prompting", async () => {
     mockEmptyDraft = VALID_DRAFT;
     validateRecipe.mockResolvedValue({ ok: true });
     renderBuilder();
@@ -161,5 +194,7 @@ describe("BuilderPage — validate on Save draft click", () => {
       await screen.findByText("Submit Recipe", { selector: "strong" }),
     ).toBeInTheDocument();
     expect(validateRecipe).toHaveBeenCalledTimes(1);
+    // Valid drafts must never trigger the confirm prompt.
+    expect(confirmSpy).not.toHaveBeenCalled();
   });
 });
