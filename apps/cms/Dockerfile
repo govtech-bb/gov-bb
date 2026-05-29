@@ -48,7 +48,16 @@ RUN pnpm --filter cms run build
 
 # ---------- runner: minimal image, non-root user ------------------------------
 FROM node:24-alpine AS runner
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat ca-certificates curl
+
+# RDS global CA bundle for TLS verification against sandbox/prod RDS Postgres.
+# payload.config.ts reads DATABASE_SSL_CA_PATH and passes the cert to pg's pool,
+# so connections verify the RDS server certificate instead of trusting any cert
+# presented (defends against MITM on the VPC traffic path). The bundle is
+# published by AWS and rotates infrequently — rebuilds pick up new versions.
+RUN curl -fsSL -o /etc/ssl/certs/rds-global-bundle.pem \
+    https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
+
 WORKDIR /app
 
 ENV NODE_ENV=production
