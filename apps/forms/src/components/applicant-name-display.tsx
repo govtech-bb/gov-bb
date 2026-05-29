@@ -5,6 +5,55 @@ interface ApplicantNameDisplayProps {
   form: any;
 }
 
+/**
+ * Field-id suffixes that identify the applicant's name parts, normalized to
+ * lowercase with separators stripped. Recipes name these fields differently —
+ * most use the `applicant-details` block (`applicant-first-name`, …) while
+ * others use camelCase ids (`firstName`, `otherNames`, … e.g. the
+ * temp-teacher form). Matching by normalized field id lets one component
+ * resolve the name across all of them.
+ */
+const NAME_PART_IDS = {
+  first: new Set(["firstname", "applicantfirstname"]),
+  middle: new Set([
+    "middlename",
+    "applicantmiddlename",
+    "othernames",
+    "applicantothernames",
+  ]),
+  last: new Set(["lastname", "applicantlastname"]),
+};
+
+const normalize = (value: string) => value.toLowerCase().replace(/[-_]/g, "");
+
+/**
+ * The field id is everything after the first `_` — the `${stepId}_` separator.
+ * Step ids are hyphenated slugs so they never contain `_`, which keeps this
+ * unambiguous (repeatable suffixes like `qualifications~1` stay on the stepId
+ * side).
+ */
+const fieldIdOf = (key: string) => key.slice(key.indexOf("_") + 1);
+
+/** First non-empty string value whose field id matches one of `ids`. */
+function findNamePart(
+  values: FormValues,
+  ids: Set<string>,
+): string | undefined {
+  for (const [key, value] of Object.entries(values)) {
+    if (typeof value !== "string" || value.trim() === "") continue;
+    if (ids.has(normalize(fieldIdOf(key)))) return value;
+  }
+  return undefined;
+}
+
+/** The current local date formatted as DD/MM/YYYY. */
+function formatToday(date = new Date()): string {
+  const dd = String(date.getDate()).padStart(2, "0");
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const yyyy = date.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+}
+
 export default function ApplicantNameDisplay({
   form,
 }: ApplicantNameDisplayProps) {
@@ -13,26 +62,23 @@ export default function ApplicantNameDisplay({
     (state: any) => state.values as FormValues,
   );
 
-  const firstName = formValues["applicant-details_applicant-first-name"] as
-    | string
-    | undefined;
-  const lastName = formValues["applicant-details_applicant-last-name"] as
-    | string
-    | undefined;
+  const firstName = findNamePart(formValues, NAME_PART_IDS.first);
+  const middleName = findNamePart(formValues, NAME_PART_IDS.middle);
+  const lastName = findNamePart(formValues, NAME_PART_IDS.last);
 
   if (!firstName && !lastName) {
     return null;
   }
 
-  const fullName = [firstName, lastName].filter(Boolean).join(" ");
+  const fullName = [firstName, middleName, lastName].filter(Boolean).join(" ");
 
   return (
     <div className="form-page__applicant">
       <p>
-        <strong>Applicant: </strong> {fullName}
+        <strong>Applicant&apos;s name: </strong> {fullName}
       </p>
       <p>
-        <strong>Date: </strong> {new Date().toLocaleDateString()}
+        <strong>Date: </strong> {formatToday()}
       </p>
     </div>
   );
