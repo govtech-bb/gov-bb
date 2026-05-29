@@ -131,31 +131,6 @@ formsRouter.get("/:formId", async (req, res) => {
   }
 });
 
-// GET /builder/forms/:formId/next-version
-formsRouter.get("/:formId/next-version", async (req, res) => {
-  try {
-    const ds = await getDataSource();
-    const rows = await ds.query(
-      `SELECT version FROM form_definitions
-       WHERE form_id = $1
-       ORDER BY string_to_array(version, '.')::int[] DESC
-       LIMIT 1`,
-      [req.params.formId],
-    );
-    if (!rows.length) {
-      res.json({ currentVersion: null, nextVersion: "1.0.0" });
-      return;
-    }
-    const current = rows[0].version;
-    const parts = current.split(".").map(Number);
-    parts[1] = (parts[1] ?? 0) + 1;
-    parts[2] = 0;
-    res.json({ currentVersion: current, nextVersion: parts.join(".") });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // POST /builder/forms — submit a new recipe
 formsRouter.post("/", async (req, res) => {
   try {
@@ -225,6 +200,45 @@ formsRouter.put("/:formId", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// DELETE /builder/forms/:formId/versions/:version — surgically remove a single
+// draft version row. Unlike the form-level delete below, this writes NO
+// tombstone and never touches form_disabled_overrides: it's for pruning a
+// superseded draft (e.g. a stale row the published copy already beats), leaving
+// the formId fully usable. 404 if no such row; 400 if the row is published
+// (mirrors the PUT guard — only DB-resident drafts are mutable).
+export async function deleteFormVersionHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const { formId, version } = req.params;
+  try {
+    const ds = await getDataSource();
+    const rows = await ds.query(
+      `SELECT id, published_at FROM form_definitions
+       WHERE form_id = $1 AND version = $2
+       LIMIT 1`,
+      [formId, version],
+    );
+    if (!rows.length) {
+      res.status(404).json({
+        error: `No recipe found for formId: ${formId} version: ${version}`,
+      });
+      return;
+    }
+    if (rows[0].published_at !== null) {
+      res.status(400).json({ error: "Cannot delete a published recipe" });
+      return;
+    }
+    await ds.query(`DELETE FROM form_definitions WHERE id = $1`, [rows[0].id]);
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+}
+// Registered before the catch-all "/:formId" delete so the extra path segments
+// are matched here, not swallowed as a formId.
+formsRouter.delete("/:formId/versions/:version", deleteFormVersionHandler);
 
 // DELETE /builder/forms/:formId — hard-remove every version of a form and
 // write a tombstone so the form_id stays claimed (public fetch -> 410 Gone).

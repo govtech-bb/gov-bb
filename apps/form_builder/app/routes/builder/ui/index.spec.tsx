@@ -30,7 +30,6 @@ jest.mock("../../../server/registry", () => ({
   previewRecipe: jest.fn(),
 }));
 jest.mock("../../../server/forms", () => ({
-  nextVersion: jest.fn().mockRejectedValue(new Error("not used")),
   submitRecipe: jest.fn(),
   updateRecipe: jest.fn(),
   deleteForm: jest.fn(),

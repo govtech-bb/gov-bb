@@ -2,11 +2,11 @@ import "../../../styles/builder.global.css";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useReducer, useState, useRef, useEffect, useMemo } from "react";
 import { getCatalogFn } from "../../../server/registry";
-import { nextVersion, submitRecipe, updateRecipe, deleteForm, getRecipe } from "../../../server/forms";
+import { submitRecipe, updateRecipe, deleteForm, getRecipe } from "../../../server/forms";
 import { publishRecipe } from "../../../server/publish";
 import { validateRecipe, previewRecipe } from "../../../server/registry";
 import { serializeRecipeDraft, findRecipeIdCollisions, formatCollisionIssues, resolveFieldIds } from "@govtech-bb/form-builder";
-import { bumpMinor } from "../../../lib/version";
+import { bumpMinor, bumpPatch } from "../../../lib/version";
 import type { ServiceContract, ServiceContractRecipe } from "@govtech-bb/form-types";
 import type { RecipeDraft, ValidationResult, RecipeValidateResponse } from "@govtech-bb/form-builder";
 
@@ -107,28 +107,13 @@ function BuilderPage() {
     [draft, catalog],
   );
 
-  // Debounced nextVersion fetch when formId changes
-  const nextVersionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    if (!draft.formId) {
-      setVersion("1.0.0");
-      setCurrentVersion(null);
-      return;
-    }
-    if (nextVersionTimerRef.current) clearTimeout(nextVersionTimerRef.current);
-    nextVersionTimerRef.current = setTimeout(async () => {
-      try {
-        const result = await nextVersion({ data: { formId: draft.formId } }) as { currentVersion: string | null; nextVersion: string };
-        setCurrentVersion(result.currentVersion ?? null);
-        setVersion(result.nextVersion);
-      } catch {
-        setVersion(bumpMinor(currentVersion ?? "1.0.0"));
-      }
-    }, 300);
-    return () => {
-      if (nextVersionTimerRef.current) clearTimeout(nextVersionTimerRef.current);
-    };
-  }, [draft.formId]);
+  // Versioning is deterministic and client-side — no async round-trip on the
+  // load path (that fetch was the source of the version flicker). The loaded /
+  // working version (`version`, set by handleLoad / handleNew / handleSubmit) is
+  // the single source of truth. Save draft cuts a patch; Deploy cuts a minor; a
+  // brand-new form (no current version) starts at 1.0.0.
+  const saveDraftVersion = currentVersion ? bumpPatch(currentVersion) : "1.0.0";
+  const deployVersion = currentVersion ? bumpMinor(currentVersion) : "1.0.0";
 
   // Handlers
   // Runs the full validation flow (pre-flight checks + server validate), sets
@@ -264,18 +249,11 @@ function BuilderPage() {
       setLastSaveStatus("submitted");
       setLoadedFromId(draft.formId);
 
-      // Bump to next version so a follow-up submit doesn't conflict
-      try {
-        const next = (await nextVersion({ data: { formId: draft.formId } })) as {
-          currentVersion: string | null;
-          nextVersion: string;
-        };
-        setCurrentVersion(next.currentVersion ?? submitVersion);
-        setVersion(next.nextVersion);
-      } catch {
-        setCurrentVersion(submitVersion);
-        setVersion(bumpMinor(submitVersion));
-      }
+      // The just-saved version becomes the new working/current version, so the
+      // toolbar reflects it and the next Save-draft patch / Deploy minor bumps
+      // off it. No server round-trip — the bump is computed client-side.
+      setCurrentVersion(submitVersion);
+      setVersion(submitVersion);
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : "Submission failed");
     } finally {
@@ -293,7 +271,11 @@ function BuilderPage() {
     setIsPublishing(true);
     setPublishError(null);
     try {
-      const recipe = serializeRecipeDraft(draft, { version });
+      // Deploy publishes a fresh minor of the current version — both the
+      // PublishModal display and the published recipe use deployVersion, so
+      // they can't diverge, and a redeploy never collides with the existing
+      // <current>.json on GitHub.
+      const recipe = serializeRecipeDraft(draft, { version: deployVersion });
       const result = await publishRecipe({
         data: { recipe, description },
       });
@@ -562,7 +544,7 @@ function BuilderPage() {
       {isSubmitOpen && (
         <SubmitModal
           draft={draft}
-          version={version}
+          version={saveDraftVersion}
           currentVersion={currentVersion}
           loadedFromId={loadedFromId}
           isSubmitting={isSubmitting}
@@ -576,7 +558,7 @@ function BuilderPage() {
       {isPublishOpen && (
         <PublishModal
           draft={draft}
-          version={version}
+          version={deployVersion}
           isPublishing={isPublishing}
           publishSuccess={publishSuccess}
           publishError={publishError}
