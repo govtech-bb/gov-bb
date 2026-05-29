@@ -1,7 +1,7 @@
 import type { NumberPrimitive } from "@govtech-bb/form-types";
 
-export const RawNumber: NumberPrimitive = {
-  fieldId: "raw-number",
+export const GenericNumber: NumberPrimitive = {
+  fieldId: "generic-number",
   htmlType: "number",
   label: "Number",
   validations: {

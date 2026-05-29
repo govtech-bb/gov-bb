@@ -1,7 +1,7 @@
 import type { RadioPrimitive } from "@govtech-bb/form-types";
 
-export const RawRadio: RadioPrimitive = {
-  fieldId: "raw-radio",
+export const GenericRadio: RadioPrimitive = {
+  fieldId: "generic-radio",
   htmlType: "radio",
   label: "Radio",
   options: [],

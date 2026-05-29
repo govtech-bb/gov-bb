@@ -1,7 +1,7 @@
 import type { SelectPrimitive } from "@govtech-bb/form-types";
 
-export const RawSelect: SelectPrimitive = {
-  fieldId: "raw-select",
+export const GenericSelect: SelectPrimitive = {
+  fieldId: "generic-select",
   htmlType: "select",
   label: "Select",
   options: [],
