@@ -14,6 +14,12 @@ view`) for an issue the work resolves.
   closing. Watch for a plan that cites a stale or duplicate issue number — the
   live issue may differ from the one named.
 
+## When creating a GitHub issue, assign it to the author
+
+Whenever you create a GitHub issue (`gh issue create`), always assign it to the
+author — pass `--assignee @me` so the new issue is assigned to the account
+creating it.
+
 ## Always run the full build and tests before committing or pushing
 
 CI runs these two commands. Run the same ones locally first — don't rely on CI to
