@@ -2,9 +2,25 @@
   "formId": "temp-teacher-application-barbados",
   "title": "Application for the Post of Temporary Teacher",
   "version": "1.1.0",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "subject": "Your Application for the Post of Temporary Teacher has been received",
+        "recipientField": "personal-data.email"
+      }
+    },
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "testing@govtech.bb",
+        "subject": "Application for the Post of Temporary Teacher"
+      }
+    }
+  ],
   "steps": [
     {
-      "stepId": "step-1-personal-data",
+      "stepId": "personal-data",
       "title": "Personal Data",
       "elements": [
         {
@@ -12,7 +28,16 @@
           "overrides": {
             "label": "First Name",
             "fieldId": "firstName",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "First Name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "First Name must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -20,14 +45,28 @@
           "overrides": {
             "label": "Last Name",
             "fieldId": "lastName",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Last Name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Last Name must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Other Names",
-            "fieldId": "otherNames"
+            "fieldId": "otherNames",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -35,7 +74,16 @@
           "overrides": {
             "label": "ID Number",
             "fieldId": "idNumber",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "ID Number is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "ID Number must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -43,7 +91,12 @@
           "overrides": {
             "label": "Date of birth",
             "fieldId": "dateOfBirth",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Date of birth is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -65,14 +118,24 @@
                 "value": "other"
               }
             ],
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Gender is required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "NIS No",
-            "fieldId": "nisNumber"
+            "fieldId": "nisNumber",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -80,8 +143,17 @@
           "overrides": {
             "label": "Address",
             "fieldId": "address",
-            "required": true,
-            "multiline": true
+            "multiline": true,
+            "validations": {
+              "required": {
+                "error": "Address is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Address must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -90,7 +162,16 @@
             "label": "Parish",
             "value": "Christ Church",
             "fieldId": "parish",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Parish is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Parish must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -99,14 +180,24 @@
             "type": "email",
             "label": "Email",
             "fieldId": "email",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Email is required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Tel Home",
-            "fieldId": "telHome"
+            "fieldId": "telHome",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -114,21 +205,40 @@
           "overrides": {
             "label": "Tel Cell",
             "fieldId": "telCell",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Tel Cell is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Tel Cell must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Place of birth",
-            "fieldId": "placeOfBirth"
+            "fieldId": "placeOfBirth",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Marital Status",
-            "fieldId": "maritalStatus"
+            "fieldId": "maritalStatus",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -136,123 +246,280 @@
           "overrides": {
             "label": "Citizenship",
             "fieldId": "citizenship",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Citizenship is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Citizenship must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Period Residing in Barbados",
-            "fieldId": "periodResidingBarbados"
+            "fieldId": "periodResidingBarbados",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         }
       ],
       "behaviours": []
     },
     {
-      "stepId": "step-2-educational-record",
+      "stepId": "educational-record",
       "title": "Educational Record",
+      "description": "Details of institutions at which you have received your Academic/Technical/Professional Education",
       "elements": [
         {
-          "ref": "components/generic/table",
+          "ref": "components/generic-text",
           "overrides": {
-            "rows": 6,
-            "label": "Details of institutions at which you have received your Academic/Technical/Professional Education",
-            "columns": [
-              {
-                "key": "institution",
-                "label": "Name of Institution"
+            "label": "Name of Institution",
+            "fieldId": "institution",
+            "validations": {
+              "required": {
+                "error": "Name of Institution is required",
+                "value": true
               },
-              {
-                "key": "country",
-                "label": "Country"
-              },
-              {
-                "key": "dates",
-                "label": "Dates"
+              "minLength": {
+                "error": "Name of Institution must be at least 2 characters",
+                "value": 2
               }
-            ],
-            "fieldId": "educationalInstitutions",
-            "required": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Country",
+            "fieldId": "country",
+            "validations": {
+              "required": {
+                "error": "Country is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Country must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Dates",
+            "fieldId": "dates",
+            "validations": {
+              "required": {
+                "error": "Dates is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Dates must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         }
       ],
-      "behaviours": []
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 1,
+          "max": 6
+        }
+      ]
     },
     {
-      "stepId": "step-3-qualifications",
+      "stepId": "qualifications",
       "title": "Qualifications",
       "elements": [
         {
-          "ref": "components/generic/table",
+          "ref": "components/generic-text",
           "overrides": {
-            "rows": 10,
-            "label": "Qualifications",
-            "columns": [
-              {
-                "key": "subject",
-                "label": "Subject Passed: Academic/Technical/Professional"
+            "label": "Subject Passed: Academic/Technical/Professional",
+            "fieldId": "subject",
+            "validations": {
+              "required": {
+                "error": "Subject Passed: Academic/Technical/Professional is required",
+                "value": true
               },
-              {
-                "key": "examiningBody",
-                "label": "Examining Body"
-              },
-              {
-                "key": "dates",
-                "label": "Dates"
-              },
-              {
-                "key": "level",
-                "label": "Level/Grade at which passed"
+              "minLength": {
+                "error": "Subject Passed: Academic/Technical/Professional must be at least 2 characters",
+                "value": 2
               }
-            ],
-            "fieldId": "qualifications",
-            "required": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Examining Body",
+            "fieldId": "examiningBody",
+            "validations": {
+              "required": {
+                "error": "Examining Body is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Examining Body must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Dates",
+            "fieldId": "dates",
+            "validations": {
+              "required": {
+                "error": "Dates is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Dates must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Level/Grade at which passed",
+            "fieldId": "level",
+            "validations": {
+              "required": {
+                "error": "Level/Grade at which passed is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Level/Grade at which passed must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         }
       ],
-      "behaviours": []
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 1,
+          "max": 10
+        }
+      ]
     },
     {
-      "stepId": "step-4-work-experience",
+      "stepId": "work-experience",
       "title": "Work Experience",
       "elements": [
         {
-          "ref": "components/generic/table",
+          "ref": "components/generic-text",
           "overrides": {
-            "rows": 6,
-            "label": "Work Experience",
-            "columns": [
-              {
-                "key": "employer",
-                "label": "Name of Employer"
+            "label": "Name of Employer",
+            "fieldId": "employer",
+            "validations": {
+              "required": {
+                "error": "Name of Employer is required",
+                "value": true
               },
-              {
-                "key": "from",
-                "label": "From"
-              },
-              {
-                "key": "to",
-                "label": "To"
-              },
-              {
-                "key": "position",
-                "label": "Position Held"
-              },
-              {
-                "key": "duties",
-                "label": "Brief Description of duties"
+              "minLength": {
+                "error": "Name of Employer must be at least 2 characters",
+                "value": 2
               }
-            ],
-            "fieldId": "workExperience",
-            "required": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "From",
+            "fieldId": "from",
+            "validations": {
+              "required": {
+                "error": "From is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "From must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "To",
+            "fieldId": "to",
+            "validations": {
+              "required": {
+                "error": "To is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "To must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Position Held",
+            "fieldId": "position",
+            "validations": {
+              "required": {
+                "error": "Position Held is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Position Held must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Brief Description of duties",
+            "fieldId": "duties",
+            "multiline": true,
+            "validations": {
+              "required": {
+                "error": "Brief Description of duties is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Brief Description of duties must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         }
       ],
-      "behaviours": []
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 1,
+          "max": 6
+        }
+      ]
     },
     {
-      "stepId": "step-5-other-related-information",
+      "stepId": "other-related-information",
       "title": "Other Related Information",
       "elements": [
         {
@@ -260,7 +527,12 @@
           "overrides": {
             "label": "Skills possessed in athletics/games/crafts/etc. (Please specify)",
             "fieldId": "skillsAthletics",
-            "multiline": true
+            "multiline": true,
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -268,7 +540,12 @@
           "overrides": {
             "label": "Experience in Youth/Community Organisations (Specify indicating any positions of responsibility held)",
             "fieldId": "youthCommunityExperience",
-            "multiline": true
+            "multiline": true,
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -276,7 +553,12 @@
           "overrides": {
             "label": "Positions of responsibility held at School/College/University (Specify indicating any positions of responsibility held)",
             "fieldId": "positionsResponsibility",
-            "multiline": true
+            "multiline": true,
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -284,14 +566,19 @@
           "overrides": {
             "label": "Any other relevant information not covered by the foregoing",
             "fieldId": "otherRelevantInfo",
-            "multiline": true
+            "multiline": true,
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         }
       ],
       "behaviours": []
     },
     {
-      "stepId": "step-6-references",
+      "stepId": "references",
       "title": "References",
       "elements": [
         {
@@ -299,7 +586,16 @@
           "overrides": {
             "label": "Reference 1 - Name",
             "fieldId": "ref1Name",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Reference 1 - Name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Reference 1 - Name must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -307,8 +603,17 @@
           "overrides": {
             "label": "Reference 1 - Address",
             "fieldId": "ref1Address",
-            "required": true,
-            "multiline": true
+            "multiline": true,
+            "validations": {
+              "required": {
+                "error": "Reference 1 - Address is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Reference 1 - Address must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -316,7 +621,16 @@
           "overrides": {
             "label": "Reference 1 - Occupation/Profession",
             "fieldId": "ref1Occupation",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Reference 1 - Occupation/Profession is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Reference 1 - Occupation/Profession must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -324,7 +638,16 @@
           "overrides": {
             "label": "Reference 1 - Contact No",
             "fieldId": "ref1Contact",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Reference 1 - Contact No is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Reference 1 - Contact No must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -332,7 +655,12 @@
           "overrides": {
             "type": "email",
             "label": "Reference 1 - Email",
-            "fieldId": "ref1Email"
+            "fieldId": "ref1Email",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -340,7 +668,16 @@
           "overrides": {
             "label": "Reference 2 - Name",
             "fieldId": "ref2Name",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Reference 2 - Name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Reference 2 - Name must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -348,8 +685,17 @@
           "overrides": {
             "label": "Reference 2 - Address",
             "fieldId": "ref2Address",
-            "required": true,
-            "multiline": true
+            "multiline": true,
+            "validations": {
+              "required": {
+                "error": "Reference 2 - Address is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Reference 2 - Address must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -357,7 +703,16 @@
           "overrides": {
             "label": "Reference 2 - Occupation/Profession",
             "fieldId": "ref2Occupation",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Reference 2 - Occupation/Profession is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Reference 2 - Occupation/Profession must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -365,7 +720,16 @@
           "overrides": {
             "label": "Reference 2 - Contact No",
             "fieldId": "ref2Contact",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Reference 2 - Contact No is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Reference 2 - Contact No must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -373,21 +737,31 @@
           "overrides": {
             "type": "email",
             "label": "Reference 2 - Email",
-            "fieldId": "ref2Email"
+            "fieldId": "ref2Email",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         }
       ],
       "behaviours": []
     },
     {
-      "stepId": "step-7-submission",
+      "stepId": "submission",
       "title": "Document Submission & Signature",
       "elements": [
         {
-          "ref": "components/generic/info-box",
+          "ref": "components/generic-text",
           "overrides": {
             "content": "PLEASE NOTE: When submitting this form, you will be asked to upload a zipped folder containing the following documents:\n1. A copy of your Certificates/Diplomas and/or Transcripts from College/University\n2. A copy of two (2) Testimonials",
-            "fieldId": "submissionNote"
+            "fieldId": "submissionNote",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -396,15 +770,29 @@
             "label": "Upload Supporting Documents (Zipped Folder)",
             "accept": ".zip",
             "fieldId": "documentUpload",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Upload Supporting Documents (Zipped Folder) is required",
+                "value": true
+              }
+            }
           }
         },
         {
-          "ref": "components/generic/signature",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Applicant Signature",
             "fieldId": "applicantSignature",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Applicant Signature is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Applicant Signature must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -412,7 +800,12 @@
           "overrides": {
             "label": "Date Signed",
             "fieldId": "dateSigned",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Date Signed is required",
+                "value": true
+              }
+            }
           }
         }
       ],
