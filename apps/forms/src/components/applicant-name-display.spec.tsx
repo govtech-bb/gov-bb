@@ -24,6 +24,9 @@ const mockUseStore = useStore as jest.Mock;
 
 const mockForm = { store: {} };
 
+const escapeRegExp = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 describe("ApplicantNameDisplay", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -122,7 +125,7 @@ describe("ApplicantNameDisplay", () => {
         now.getFullYear(),
       ].join("/");
       expect(dateP?.textContent).toMatch(
-        new RegExp(`Date:\\s+${expected.replace(/\//g, "\\/")}\\s*$`),
+        new RegExp(`Date:\\s+${escapeRegExp(expected)}\\s*$`),
       );
     } finally {
       jest.useRealTimers();
