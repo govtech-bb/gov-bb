@@ -1,15 +1,9 @@
-import {
-  decideActions,
-  type SyncInput,
-  type IssuePlan,
-} from "./project-board-sync";
-
-const plan = (input: SyncInput): IssuePlan[] => decideActions(input);
+import { decideActions } from "./project-board-sync";
 
 describe("decideActions", () => {
   it("issue opened → ensure on board, set Backlog", () => {
     expect(
-      plan({ eventName: "issues", action: "opened", issueNumber: 5 }),
+      decideActions({ eventName: "issues", action: "opened", issueNumber: 5 }),
     ).toEqual([
       {
         issue: 5,
@@ -23,7 +17,7 @@ describe("decideActions", () => {
 
   it("label 'ready' → strip progressing, set Ready", () => {
     expect(
-      plan({
+      decideActions({
         eventName: "issues",
         action: "labeled",
         issueNumber: 5,
@@ -43,7 +37,7 @@ describe("decideActions", () => {
 
   it("label 'progressing' → strip ready, set In progress", () => {
     expect(
-      plan({
+      decideActions({
         eventName: "issues",
         action: "labeled",
         issueNumber: 5,
@@ -63,7 +57,7 @@ describe("decideActions", () => {
 
   it("an unrelated label → no actions", () => {
     expect(
-      plan({
+      decideActions({
         eventName: "issues",
         action: "labeled",
         issueNumber: 5,
@@ -74,7 +68,7 @@ describe("decideActions", () => {
 
   it("PR opened with closing refs → In review for each linked issue", () => {
     expect(
-      plan({
+      decideActions({
         eventName: "pull_request",
         action: "opened",
         baseRef: "sandbox",
@@ -101,7 +95,7 @@ describe("decideActions", () => {
 
   it("PR opened with no closing refs → no actions", () => {
     expect(
-      plan({
+      decideActions({
         eventName: "pull_request",
         action: "opened",
         baseRef: "sandbox",
@@ -113,7 +107,7 @@ describe("decideActions", () => {
 
   it("PR merged into sandbox → Done, remove progressing, close", () => {
     expect(
-      plan({
+      decideActions({
         eventName: "pull_request",
         action: "closed",
         baseRef: "sandbox",
@@ -135,7 +129,7 @@ describe("decideActions", () => {
 
   it("PR merged into dev → Done, remove progressing, close", () => {
     expect(
-      plan({
+      decideActions({
         eventName: "pull_request",
         action: "closed",
         baseRef: "dev",
@@ -157,7 +151,7 @@ describe("decideActions", () => {
 
   it("PR closed without merge → no actions", () => {
     expect(
-      plan({
+      decideActions({
         eventName: "pull_request",
         action: "closed",
         baseRef: "dev",
@@ -169,7 +163,7 @@ describe("decideActions", () => {
 
   it("PR merged into a non-target base (main) → no actions", () => {
     expect(
-      plan({
+      decideActions({
         eventName: "pull_request",
         action: "closed",
         baseRef: "main",
@@ -177,5 +171,45 @@ describe("decideActions", () => {
         linkedIssues: [9],
       }),
     ).toEqual([]);
+  });
+
+  it("PR reopened with closing refs → In review for each linked issue", () => {
+    expect(
+      decideActions({
+        eventName: "pull_request",
+        action: "reopened",
+        baseRef: "sandbox",
+        merged: false,
+        linkedIssues: [5],
+      }),
+    ).toEqual([
+      {
+        issue: 5,
+        actions: [
+          { type: "ensureOnBoard" },
+          { type: "setStatus", status: "In review" },
+        ],
+      },
+    ]);
+  });
+
+  it("PR marked ready_for_review with closing refs → In review", () => {
+    expect(
+      decideActions({
+        eventName: "pull_request",
+        action: "ready_for_review",
+        baseRef: "sandbox",
+        merged: false,
+        linkedIssues: [7],
+      }),
+    ).toEqual([
+      {
+        issue: 7,
+        actions: [
+          { type: "ensureOnBoard" },
+          { type: "setStatus", status: "In review" },
+        ],
+      },
+    ]);
   });
 });

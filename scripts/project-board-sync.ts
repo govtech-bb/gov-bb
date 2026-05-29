@@ -14,24 +14,27 @@ export interface IssuePlan {
   actions: Action[];
 }
 
-export interface SyncInput {
-  eventName: "issues" | "pull_request";
-  action: string;
-  // issues.*
-  issueNumber?: number;
-  labelName?: string;
-  // pull_request.*
-  merged?: boolean;
-  baseRef?: string;
-  linkedIssues?: number[]; // closing-keyword references, pre-fetched
-}
+export type SyncInput =
+  | {
+      eventName: "issues";
+      action: string;
+      issueNumber: number;
+      labelName?: string;
+    }
+  | {
+      eventName: "pull_request";
+      action: string;
+      merged?: boolean;
+      baseRef?: string;
+      linkedIssues?: number[];
+    };
 
 const MERGE_TARGETS = new Set(["sandbox", "dev"]);
 
 /** Pure: maps a normalized event to an ordered per-issue action plan. */
 export function decideActions(input: SyncInput): IssuePlan[] {
   if (input.eventName === "issues") {
-    const issue = input.issueNumber!;
+    const issue = input.issueNumber;
     if (input.action === "opened") {
       return [
         {
@@ -77,13 +80,15 @@ export function decideActions(input: SyncInput): IssuePlan[] {
   if (linked.length === 0) return [];
 
   if (["opened", "reopened", "ready_for_review"].includes(input.action)) {
-    return linked.map((issue) => ({
-      issue,
-      actions: [
-        { type: "ensureOnBoard" },
-        { type: "setStatus", status: "In review" },
-      ] as Action[],
-    }));
+    return linked.map(
+      (issue): IssuePlan => ({
+        issue,
+        actions: [
+          { type: "ensureOnBoard" },
+          { type: "setStatus", status: "In review" },
+        ],
+      }),
+    );
   }
 
   if (
@@ -91,15 +96,17 @@ export function decideActions(input: SyncInput): IssuePlan[] {
     input.merged &&
     MERGE_TARGETS.has(input.baseRef ?? "")
   ) {
-    return linked.map((issue) => ({
-      issue,
-      actions: [
-        { type: "ensureOnBoard" },
-        { type: "setStatus", status: "Done" },
-        { type: "removeLabel", label: "progressing" },
-        { type: "closeIssue" },
-      ] as Action[],
-    }));
+    return linked.map(
+      (issue): IssuePlan => ({
+        issue,
+        actions: [
+          { type: "ensureOnBoard" },
+          { type: "setStatus", status: "Done" },
+          { type: "removeLabel", label: "progressing" },
+          { type: "closeIssue" },
+        ],
+      }),
+    );
   }
 
   return [];
