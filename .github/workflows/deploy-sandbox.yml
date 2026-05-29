@@ -221,10 +221,13 @@ jobs:
 
   deploy-cms:
     # gov.bb CMS (Payload 3). Mirrors deploy-api: build → ECR → render task
-    # definition → ECS rolling deploy. Requires the ECR repo gov-bb-cms,
-    # the ECS service cms-sandbox in cluster modular-forms-sandbox, and a
-    # task family cms-sandbox with a container named "cms" to already exist
-    # (provisioned via the infra repo).
+    # definition → ECS rolling deploy. Names below match the alpha-infra
+    # resources provisioned in payload-cms-ecs.tf:
+    #   ECR repo:           gov-bb-payload-cms
+    #   ECS cluster:        modular-forms-sandbox (via env.ECS_CLUSTER)
+    #   ECS service:        payload-cms-sandbox
+    #   Task family:        payload-cms-sandbox
+    #   Container name:     payload-cms
     #
     # Database migrations are NOT run here yet — Payload's migration CLI
     # needs full dependencies that the slim standalone runner image
@@ -256,8 +259,8 @@ jobs:
           REGISTRY: ${{ steps.ecr-login.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          IMAGE_URI="$REGISTRY/gov-bb-cms:$IMAGE_TAG"
-          LATEST_URI="$REGISTRY/gov-bb-cms:latest"
+          IMAGE_URI="$REGISTRY/gov-bb-payload-cms:$IMAGE_TAG"
+          LATEST_URI="$REGISTRY/gov-bb-payload-cms:latest"
 
           docker build --platform linux/amd64 -f apps/cms/Dockerfile -t "$IMAGE_URI" -t "$LATEST_URI" .
           docker push "$IMAGE_URI"
@@ -270,7 +273,7 @@ jobs:
         id: task-def
         run: |
           aws ecs describe-task-definition \
-            --task-definition cms-sandbox \
+            --task-definition payload-cms-sandbox \
             --region $AWS_REGION \
             --query taskDefinition \
             --output json > cms-task-def.json
@@ -281,14 +284,14 @@ jobs:
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
           task-definition: cms-task-def.json
-          container-name: cms
+          container-name: payload-cms
           image: ${{ steps.build.outputs.image }}
 
       - name: Deploy to ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
           task-definition: ${{ steps.new-task-def.outputs.task-definition }}
-          service: cms-sandbox
+          service: payload-cms-sandbox
           cluster: ${{ env.ECS_CLUSTER }}
           wait-for-service-stability: true
 

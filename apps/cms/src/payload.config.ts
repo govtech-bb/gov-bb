@@ -1,6 +1,7 @@
 import { postgresAdapter } from '@payloadcms/db-postgres'
 import { nodemailerAdapter } from '@payloadcms/email-nodemailer'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
+import fs from 'fs'
 import path from 'path'
 import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
@@ -22,10 +23,39 @@ const LANDING_ORIGIN = process.env.LANDING_URL || 'http://localhost:3000'
 
 // Public origin of the admin itself, used for CSRF allowlisting so an attacker
 // site can't post against it. In dev this is localhost; in prod set
-// PAYLOAD_PUBLIC_URL to the deployed admin origin (e.g. https://cms.gov.bb).
-const ADMIN_ORIGIN = process.env.PAYLOAD_PUBLIC_URL || 'http://localhost:8000'
+// PAYLOAD_PUBLIC_URL (or PAYLOAD_PUBLIC_SERVER_URL, the alpha-infra task-def
+// env var) to the deployed admin origin (e.g. https://cms-sandbox.alpha.gov.bb).
+const ADMIN_ORIGIN =
+  process.env.PAYLOAD_PUBLIC_SERVER_URL || process.env.PAYLOAD_PUBLIC_URL || 'http://localhost:8000'
 
 const isProd = process.env.NODE_ENV === 'production'
+
+// DATABASE_URL is preferred (and used by local docker-compose / .env.example).
+// In the alpha-infra sandbox ECS deploy, the task definition injects individual
+// DB_HOST / DB_USERNAME / DB_PASSWORD / DB_NAME / DB_PORT env vars (DB_HOST and
+// credentials come from Secrets Manager; the rest are plain env). Assemble a
+// connection string from those if DATABASE_URL isn't set.
+function resolveDatabaseUrl(): string {
+  if (process.env.DATABASE_URL) return process.env.DATABASE_URL
+  const host = process.env.DB_HOST
+  if (!host) return ''
+  const user = encodeURIComponent(process.env.DB_USERNAME ?? '')
+  const pass = encodeURIComponent(process.env.DB_PASSWORD ?? '')
+  const port = process.env.DB_PORT ?? '5432'
+  const name = process.env.DB_NAME ?? 'payload_cms'
+  return `postgres://${user}:${pass}@${host}:${port}/${name}`
+}
+
+// Optional RDS CA bundle for TLS verification against RDS Postgres. The
+// alpha-infra task definition sets DATABASE_SSL_CA_PATH; the gov-bb production
+// Dockerfile downloads the RDS global CA bundle to that path during the build.
+// In local dev (docker-compose) the env var is unset, the file isn't present,
+// and pg connects without TLS — fine because the local DB doesn't require SSL.
+function resolveSslConfig(): { ca: string; rejectUnauthorized: true } | undefined {
+  const caPath = process.env.DATABASE_SSL_CA_PATH
+  if (!caPath || !fs.existsSync(caPath)) return undefined
+  return { ca: fs.readFileSync(caPath, 'utf8'), rejectUnauthorized: true }
+}
 
 // SES SMTP credentials. Generate these in the SES console (SMTP Settings →
 // Create SMTP credentials) — they are NOT the same as IAM access keys.
@@ -86,7 +116,8 @@ export default buildConfig({
   },
   db: postgresAdapter({
     pool: {
-      connectionString: process.env.DATABASE_URL || '',
+      connectionString: resolveDatabaseUrl(),
+      ssl: resolveSslConfig(),
     },
   }),
   email: sesEmailAdapter(),
