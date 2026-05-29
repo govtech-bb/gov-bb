@@ -71,45 +71,58 @@
     {
       "stepId": "step-3-travel-details",
       "title": "Travel Details",
+      "description": "Add a row for each day of travel.",
       "elements": [
         {
-          "ref": "components/generic/table",
+          "ref": "components/generic-text",
           "overrides": {
-            "label": "Travel Details",
-            "columns": [
-              {
-                "key": "day",
-                "label": "DAY"
-              },
-              {
-                "key": "distanceTravelled",
-                "label": "Distance Travelled"
-              },
-              {
-                "key": "particulars",
-                "label": "PARTICULARS"
-              },
-              {
-                "key": "numPassengers",
-                "label": "No. of Passengers"
-              }
-            ],
-            "fieldId": "travelDetailsTable"
+            "label": "DAY",
+            "fieldId": "day"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Distance Travelled",
+            "fieldId": "distanceTravelled"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "PARTICULARS",
+            "fieldId": "particulars",
+            "multiline": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "No. of Passengers",
+            "fieldId": "numPassengers"
           }
         }
       ],
-      "behaviours": []
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 1,
+          "max": 31
+        }
+      ]
     },
     {
       "stepId": "step-4-travel-rates",
       "title": "Travel Rates & Calculations",
       "elements": [
         {
-          "ref": "components/generic/display",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Travel Rates",
-            "content": "FIRST 320 KM OR LESS: $2.56 PER KM\nREMAINDER OVER 320 KM: $1.03 PER KM\nPASSENGER RATE: # OF PASSENGERS * $0.11 PER KM",
-            "fieldId": "travelRatesInfo"
+            "value": "FIRST 320 KM OR LESS: $2.56 PER KM\nREMAINDER OVER 320 KM: $1.03 PER KM\nPASSENGER RATE: # OF PASSENGERS * $0.11 PER KM",
+            "fieldId": "travelRatesInfo",
+            "multiline": true,
+            "readonly": true
           }
         },
         {
@@ -267,11 +280,13 @@
       "title": "School Distance Reference",
       "elements": [
         {
-          "ref": "components/generic/display",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "School Distances by Parish",
-            "content": "Reference table for distances to various schools by parish - see form pages 3-5 for complete listing",
-            "fieldId": "schoolReferenceInfo"
+            "value": "Reference table for distances to various schools by parish - see form pages 3-5 for complete listing",
+            "fieldId": "schoolReferenceInfo",
+            "multiline": true,
+            "readonly": true
           }
         }
       ],

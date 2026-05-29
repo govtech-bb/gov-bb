@@ -12,7 +12,16 @@
           "overrides": {
             "label": "First Name",
             "fieldId": "firstName",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "First Name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "First Name must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -20,7 +29,16 @@
           "overrides": {
             "label": "Last Name",
             "fieldId": "lastName",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Last Name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Last Name must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -28,7 +46,16 @@
           "overrides": {
             "label": "Gender",
             "fieldId": "gender",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Gender is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Gender must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -36,7 +63,12 @@
           "overrides": {
             "label": "Day",
             "fieldId": "dobDay",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Day is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -44,7 +76,12 @@
           "overrides": {
             "label": "Month",
             "fieldId": "dobMonth",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Month is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -52,7 +89,12 @@
           "overrides": {
             "label": "Year",
             "fieldId": "dobYear",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Year is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -60,7 +102,16 @@
           "overrides": {
             "label": "ID Number",
             "fieldId": "idNumber",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "ID Number is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "ID Number must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -68,7 +119,16 @@
           "overrides": {
             "label": "Address",
             "fieldId": "address",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Address is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Address must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -76,7 +136,16 @@
           "overrides": {
             "label": "Email",
             "fieldId": "email",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Email is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Email must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -84,7 +153,16 @@
           "overrides": {
             "label": "Telephone No",
             "fieldId": "telephoneNo",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Telephone No is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Telephone No must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         }
       ],
@@ -104,39 +182,52 @@
           }
         },
         {
-          "ref": "components/generic/table",
+          "ref": "components/generic-text",
           "overrides": {
-            "rows": 6,
-            "label": "Subject Registration",
-            "columns": [
-              {
-                "type": "text",
-                "label": "SUBJECT(S)",
-                "fieldId": "subject"
+            "label": "SUBJECT(S)",
+            "fieldId": "subject",
+            "validations": {
+              "required": {
+                "error": "SUBJECT(S) is required",
+                "value": true
               },
-              {
-                "type": "checkbox",
-                "label": "ALTERNATIVE",
-                "fieldId": "alternative"
-              },
-              {
-                "type": "checkbox",
-                "label": "RESIT",
-                "fieldId": "resit"
-              },
-              {
-                "type": "text",
-                "label": "PREVIOUS REGISTRATION NUMBER",
-                "fieldId": "previousRegistrationNumber",
-                "conditional": "resit"
+              "minLength": {
+                "error": "SUBJECT(S) must be at least 2 characters",
+                "value": 2
               }
-            ],
-            "fieldId": "subjectsTable",
-            "required": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "ALTERNATIVE",
+            "fieldId": "alternative"
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "RESIT",
+            "fieldId": "resit"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "PREVIOUS REGISTRATION NUMBER",
+            "fieldId": "previousRegistrationNumber",
+            "conditional": "resit"
           }
         }
       ],
-      "behaviours": []
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 1,
+          "max": 6
+        }
+      ]
     },
     {
       "stepId": "step-3-declaration",
@@ -155,7 +246,16 @@
           "overrides": {
             "label": "Signature of Claimant",
             "fieldId": "signatureOfClaimant",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Signature of Claimant is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Signature of Claimant must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -164,7 +264,12 @@
             "type": "date",
             "label": "Date",
             "fieldId": "date",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Date is required",
+                "value": true
+              }
+            }
           }
         }
       ],

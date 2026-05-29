@@ -13,8 +13,17 @@
           "overrides": {
             "label": "Name of School/Institution",
             "fieldId": "school_name",
-            "required": true,
-            "placeholder": "A. DACOSTA EDWARDS PRIMARY"
+            "placeholder": "A. DACOSTA EDWARDS PRIMARY",
+            "validations": {
+              "required": {
+                "error": "Name of School/Institution is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Name of School/Institution must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -22,7 +31,16 @@
           "overrides": {
             "label": "Candidate Full Name",
             "fieldId": "candidate_full_name",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Candidate Full Name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Candidate Full Name must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -30,7 +48,16 @@
           "overrides": {
             "label": "Candidate ID",
             "fieldId": "candidate_id",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Candidate ID is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Candidate ID must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -39,7 +66,12 @@
             "type": "email",
             "label": "Candidate Email",
             "fieldId": "candidate_email",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Candidate Email is required",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -54,7 +86,16 @@
           "overrides": {
             "label": "First Name",
             "fieldId": "parent_first_name",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "First Name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "First Name must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -62,7 +103,16 @@
           "overrides": {
             "label": "Last Name",
             "fieldId": "parent_last_name",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Last Name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Last Name must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -70,7 +120,16 @@
           "overrides": {
             "label": "Address",
             "fieldId": "parent_address",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Address is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Address must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -78,7 +137,16 @@
           "overrides": {
             "label": "Parish",
             "fieldId": "parent_parish",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Parish is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Parish must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -87,7 +155,16 @@
             "type": "tel",
             "label": "Main Phone",
             "fieldId": "parent_main_phone",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Main Phone is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Main Phone must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -103,7 +180,16 @@
           "overrides": {
             "label": "National ID",
             "fieldId": "parent_national_id",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "National ID is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "National ID must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -132,7 +218,16 @@
           "overrides": {
             "label": "Name of Bank",
             "fieldId": "bank_name",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Name of Bank is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Name of Bank must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -140,7 +235,16 @@
           "overrides": {
             "label": "Name on Account",
             "fieldId": "bank_account_name",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Name on Account is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Name on Account must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -148,7 +252,16 @@
           "overrides": {
             "label": "Bank Number",
             "fieldId": "bank_number",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Bank Number is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Bank Number must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -156,7 +269,16 @@
           "overrides": {
             "label": "Bank Account Type",
             "fieldId": "bank_account_type",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Bank Account Type is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Bank Account Type must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -164,7 +286,16 @@
           "overrides": {
             "label": "Branch",
             "fieldId": "bank_branch",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Branch is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Branch must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -172,7 +303,16 @@
           "overrides": {
             "label": "Bank Account No",
             "fieldId": "bank_account_no",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Bank Account No is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Bank Account No must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -180,7 +320,16 @@
           "overrides": {
             "label": "Bank Address",
             "fieldId": "bank_address",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Bank Address is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Bank Address must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -188,7 +337,16 @@
           "overrides": {
             "label": "BIC/SWIFT CODE",
             "fieldId": "bic_swift_code",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "BIC/SWIFT CODE is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "BIC/SWIFT CODE must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         }
       ],
@@ -199,11 +357,20 @@
       "title": "Signature and Date",
       "elements": [
         {
-          "ref": "components/generic/signature",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Signature of Parent/Guardian",
             "fieldId": "parent_guardian_signature",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Signature of Parent/Guardian is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Signature of Parent/Guardian must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -211,7 +378,12 @@
           "overrides": {
             "label": "Date",
             "fieldId": "submission_date",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Date is required",
+                "value": true
+              }
+            }
           }
         }
       ],
