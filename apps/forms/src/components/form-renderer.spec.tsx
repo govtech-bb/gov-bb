@@ -41,11 +41,13 @@ jest.mock("./field-renderer", () => ({
   __esModule: true,
   default: (props: {
     field: { id: string };
+    formVersion?: string;
     insetFieldsByOption?: Map<string, Array<{ field: { id: string } }>>;
   }) => (
     <div
       data-testid="field-renderer"
       data-field-id={props.field.id}
+      data-form-version={props.formVersion}
       data-inset-options={
         props.insetFieldsByOption
           ? JSON.stringify(
@@ -391,6 +393,25 @@ describe("FormRenderer", () => {
     );
     const renderers = screen.getAllByTestId("field-renderer");
     expect(renderers).toHaveLength(2);
+  });
+
+  it("threads formVersion to plain field renderers (needed for file presign, #438)", () => {
+    const fields = [makePlainField("step-1_doc", "doc", "step-1")];
+    const step = makeStep("step-1", fields);
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta({ steps: [step], version: "1.1.0" }) as any}
+        stepId="step-1"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    expect(screen.getByTestId("field-renderer")).toHaveAttribute(
+      "data-form-version",
+      "1.1.0",
+    );
   });
 
   it("builds validators from the field when it is missing from validationProperties (repeat instances, #432)", () => {

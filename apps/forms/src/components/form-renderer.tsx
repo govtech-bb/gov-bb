@@ -451,6 +451,7 @@ export default function FormRenderer({
               field={group.field}
               validationProperties={resolveValidators(group.field)}
               formId={formMeta.formId}
+              formVersion={formMeta.version}
             />
           );
         })}
