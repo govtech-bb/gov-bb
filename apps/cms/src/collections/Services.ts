@@ -76,7 +76,7 @@ export const Services: CollectionConfig = {
               editor: bodyEditor,
               admin: {
                 description:
-                  'The page content. Write normally; use the block menu to insert a Callout, Show / hide, Start now button or Link button.',
+                  'The page content. Write normally; use the block menu to insert a Callout, Show / hide, or Button.',
               },
             },
           ],

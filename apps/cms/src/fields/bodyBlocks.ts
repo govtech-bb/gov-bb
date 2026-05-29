@@ -44,13 +44,17 @@ export const ShowHideBlock: Block = {
 
 export const StartButtonBlock: Block = {
   slug: 'startButton',
-  labels: { singular: 'Start now button', plural: 'Start now buttons' },
+  labels: { singular: 'Button', plural: 'Buttons' },
   fields: [
     {
       name: 'type',
       type: 'select',
       required: true,
       defaultValue: 'form',
+      admin: {
+        description:
+          'Form links to an online form — it adds start analytics and stays hidden until the form is live. Page or External URL is a plain link styled as a button.',
+      },
       options: [
         { label: 'Form', value: 'form' },
         { label: 'Page on this site', value: 'page' },
@@ -82,18 +86,4 @@ export const StartButtonBlock: Block = {
   ],
 }
 
-export const CtaBlock: Block = {
-  slug: 'cta',
-  labels: { singular: 'Link button', plural: 'Link buttons' },
-  fields: [
-    {
-      name: 'href',
-      type: 'text',
-      required: true,
-      admin: { description: 'A site path like /apply-for-a-passport, or a full external URL.' },
-    },
-    { name: 'label', type: 'text', required: true },
-  ],
-}
-
-export const bodyBlocks = [CalloutBlock, ShowHideBlock, StartButtonBlock, CtaBlock]
+export const bodyBlocks = [CalloutBlock, ShowHideBlock, StartButtonBlock]

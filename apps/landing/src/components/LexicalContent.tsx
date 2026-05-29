@@ -182,14 +182,6 @@ const converters: JSXConvertersFunction = ({ defaultConverters }) => {
       startButton: ({ node }) => (
         <StartButtonBlock {...(node.fields as unknown as StartButtonFields)} />
       ),
-      cta: ({ node }) => {
-        const f = node.fields as { href?: string; label?: string }
-        return (
-          <LinkButton className="self-start" href={resolveServiceHref(f.href ?? '#')}>
-            {f.label ?? ''}
-          </LinkButton>
-        )
-      },
     },
   }
   return { ...defaultConverters, ...overrides }

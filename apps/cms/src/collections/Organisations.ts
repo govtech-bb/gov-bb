@@ -251,7 +251,7 @@ export const Organisations: CollectionConfig = {
               editor: bodyEditor,
               admin: {
                 description:
-                  'The page content. Write normally; use the block menu to insert a Callout, Show / hide, Start now button or Link button. For role-to-phone directories (and any other reference table), insert a table from the toolbar — you can have as many tables as the organisation needs.',
+                  'The page content. Write normally; use the block menu to insert a Callout, Show / hide, or Button. For role-to-phone directories (and any other reference table), insert a table from the toolbar — you can have as many tables as the organisation needs.',
               },
             },
           ],

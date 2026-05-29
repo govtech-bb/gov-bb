@@ -153,7 +153,7 @@ export interface Service {
    */
   description?: string | null
   /**
-   * The page content. Write normally; use the block menu to insert a Callout, Show / hide, Start now button or Link button.
+   * The page content. Write normally; use the block menu to insert a Callout, Show / hide, or Button.
    */
   body?: {
     root: {
@@ -435,7 +435,7 @@ export interface Organisation {
       }[]
     | null
   /**
-   * The page content. Write normally; use the block menu to insert a Callout, Show / hide, Start now button or Link button. For role-to-phone directories (and any other reference table), insert a table from the toolbar — you can have as many tables as the organisation needs.
+   * The page content. Write normally; use the block menu to insert a Callout, Show / hide, or Button. For role-to-phone directories (and any other reference table), insert a table from the toolbar — you can have as many tables as the organisation needs.
    */
   body?: {
     root: {
