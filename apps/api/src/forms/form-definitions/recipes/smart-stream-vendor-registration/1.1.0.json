@@ -14,6 +14,13 @@
         "subject": "Your Smart Stream Vendor Registration Form request has been received",
         "recipientField": "basic-info.vendor-email"
       }
+    },
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "testing@govtech.bb",
+        "subject": "Smart Stream Vendor Registration"
+      }
     }
   ],
 
