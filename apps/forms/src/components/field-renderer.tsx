@@ -1,5 +1,9 @@
 import { AnyFieldApi } from "@tanstack/react-form";
-import { ClientPrimitive, FieldValidationProperties } from "@forms/types";
+import {
+  ClientPrimitive,
+  FieldValidationProperties,
+  UploadedFile,
+} from "@forms/types";
 import React, { JSX } from "react";
 import ErrorMessage from "./error-message";
 import { RequiredState, checkConditionalOn } from "@forms/lib";
@@ -19,14 +23,17 @@ export default function FieldRenderer({
   validationProperties,
   insetFieldsByOption,
   formId,
+  formVersion,
 }: {
   form: any;
   field: ClientPrimitive;
   validationProperties: FieldValidationProperties;
   /** Option-value → inset fields that reveal when that option is selected. */
   insetFieldsByOption?: Map<string, InsetFieldEntry[]>;
-  /** Form ID, forwarded to FileUpload for analytics event payload. */
+  /** Form ID, forwarded to FileUpload for analytics + presigned uploads. */
   formId?: string;
+  /** Form version, forwarded to FileUpload for presigned uploads. */
+  formVersion?: string;
 }) {
   if (field.hidden) return null;
 
@@ -547,12 +554,13 @@ export default function FieldRenderer({
               <FileUpload
                 field={field}
                 sharedProps={sharedProps}
-                value={f.state.value as File[] | null | undefined}
+                value={f.state.value as UploadedFile[] | null | undefined}
                 onFileChange={(files) => f.handleChange(files)}
                 errorMessage={errorMessage}
                 errorId={errorId}
                 validationRules={field.validations}
                 formId={formId}
+                formVersion={formVersion}
               />
             );
           case "show-hide": {

@@ -1,7 +1,19 @@
 import React from "react";
-import { FileUploadProps } from "@forms/types";
+import { FileUploadProps, UploadedFile } from "@forms/types";
 import ErrorMessage from "./error-message";
 import { trackEvent } from "../lib/analytics";
+import { uploadFile, FileUploadError } from "../lib/api/files";
+
+/** A file being uploaded, or one whose upload failed. */
+interface PendingUpload {
+  id: number;
+  name: string;
+  status: "uploading" | "error";
+  error?: string;
+}
+
+const formatMb = (bytes: number) =>
+  `${(bytes / (1024 * 1024)).toPrecision(2)} MB`;
 
 export default function FileUpload({
   field,
@@ -12,30 +24,101 @@ export default function FileUpload({
   errorId,
   validationRules,
   formId,
+  formVersion,
 }: FileUploadProps) {
   const files = value ?? [];
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const currentFiles = e.target.files;
-    const picked = currentFiles ? Array.from(currentFiles) : [];
-    picked.forEach((file) => {
-      trackEvent("form-file-select", {
-        form_id: formId,
-        step_id: field.stepId,
-        field_id: field.fieldId,
-        mime: file.type,
-        size_kb: Math.round(file.size / 1024),
-      });
-    });
-    const updatedFiles = [...files, ...picked];
-    onFileChange(updatedFiles.length ? updatedFiles : null);
-    e.target.value = "";
+  // Mirror the confirmed-file list in a ref so concurrent uploads (e.g. two
+  // testimonials selected at once) accumulate instead of racing on the stale
+  // `value` prop captured in each async closure.
+  const confirmedRef = React.useRef<UploadedFile[]>(files);
+  React.useEffect(() => {
+    confirmedRef.current = value ?? [];
+  }, [value]);
+
+  const [pending, setPending] = React.useState<PendingUpload[]>([]);
+  const idRef = React.useRef(0);
+
+  // presign's stepId is slug-validated, so strip any repeatable suffix
+  // ("qualifications~1" → "qualifications") — the base step carries the policy.
+  const presignStepId = field.stepId.split("~")[0];
+  const maxSize = validationRules?.maxSize?.value as number | undefined;
+
+  const appendConfirmed = (uploaded: UploadedFile) => {
+    // Store the reference WITHOUT the expiring preview url (kept in memory only).
+    const { url: _url, ...ref } = uploaded;
+    const next = [...confirmedRef.current, ref];
+    confirmedRef.current = next;
+    onFileChange(next);
   };
 
-  const removeFile = (index: number) => {
-    const next = files.slice();
-    next.splice(index, 1);
-    onFileChange?.(next.length ? next : null);
+  const removeFile = (key: string) => {
+    const next = confirmedRef.current.filter((f) => f.key !== key);
+    confirmedRef.current = next;
+    onFileChange(next.length ? next : null);
+  };
+
+  const dismissPending = (id: number) =>
+    setPending((prev) => prev.filter((p) => p.id !== id));
+
+  const handleInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = e.target.files ? Array.from(e.target.files) : [];
+    e.target.value = "";
+
+    await Promise.all(
+      picked.map(async (file) => {
+        trackEvent("form-file-select", {
+          form_id: formId,
+          step_id: field.stepId,
+          field_id: field.fieldId,
+          mime: file.type,
+          size_kb: Math.round(file.size / 1024),
+        });
+
+        const id = ++idRef.current;
+
+        // Short-circuit oversize files before hitting the network.
+        if (maxSize && file.size > maxSize) {
+          setPending((prev) => [
+            ...prev,
+            {
+              id,
+              name: file.name,
+              status: "error",
+              error: `This file is larger than the ${formatMb(maxSize)} limit.`,
+            },
+          ]);
+          return;
+        }
+
+        setPending((prev) => [
+          ...prev,
+          { id, name: file.name, status: "uploading" },
+        ]);
+
+        try {
+          const confirmed = await uploadFile({
+            file,
+            formId: formId ?? "",
+            formVersion: formVersion ?? "",
+            stepId: presignStepId,
+            fieldId: field.fieldId,
+          });
+          appendConfirmed(confirmed);
+          setPending((prev) => prev.filter((p) => p.id !== id));
+        } catch (err) {
+          const message =
+            err instanceof FileUploadError
+              ? err.message
+              : "Upload failed. Please try again.";
+          setPending((prev) =>
+            prev.map((p) =>
+              p.id === id ? { ...p, status: "error", error: message } : p,
+            ),
+          );
+        }
+      }),
+    );
   };
 
   // Accepts either MIME types ("image/png" → "png") or extension values
@@ -78,28 +161,50 @@ export default function FileUpload({
             Choose file
           </span>
           <span className="govbb-file-upload__max-size">
-            Max Size:{" "}
-            {validationRules?.maxSize?.value
-              ? (validationRules.maxSize.value / (1024 * 1024)).toPrecision(2) +
-                " MB"
-              : "--"}
+            Max Size: {maxSize ? formatMb(maxSize) : "--"}
           </span>
         </div>
       </label>
 
-      {files.length > 0 && (
+      {(files.length > 0 || pending.length > 0) && (
         <ul className="govbb-file-upload__list">
-          {files.map((f, i) => (
-            <li key={i} className="govbb-file-upload__item">
+          {files.map((f) => (
+            <li key={f.key} className="govbb-file-upload__item">
               <span className="govbb-file-upload__name">{f.name}</span>
               <button
                 type="button"
                 className="govbb-btn--destructive-link"
                 aria-label={`Remove ${f.name}`}
-                onClick={() => removeFile(i)}
+                onClick={() => removeFile(f.key)}
               >
                 Remove
               </button>
+            </li>
+          ))}
+
+          {pending.map((p) => (
+            <li
+              key={`pending-${p.id}`}
+              className="govbb-file-upload__item govbb-file-upload__item--pending"
+            >
+              <span className="govbb-file-upload__name">{p.name}</span>
+              {p.status === "uploading" ? (
+                <span className="govbb-file-upload__status" aria-live="polite">
+                  Uploading…
+                </span>
+              ) : (
+                <span className="govbb-file-upload__status govbb-file-upload__status--error">
+                  {p.error}{" "}
+                  <button
+                    type="button"
+                    className="govbb-btn--destructive-link"
+                    aria-label={`Dismiss ${p.name}`}
+                    onClick={() => dismissPending(p.id)}
+                  >
+                    Dismiss
+                  </button>
+                </span>
+              )}
             </li>
           ))}
         </ul>

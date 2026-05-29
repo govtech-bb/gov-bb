@@ -393,6 +393,7 @@ export default function FormRenderer({
                   field={group.toggle}
                   validationProperties={resolveValidators(group.toggle)}
                   formId={formMeta.formId}
+                  formVersion={formMeta.version}
                 />
                 {isOpen && (
                   <div className="form-page__show-hide-content">
@@ -406,6 +407,7 @@ export default function FormRenderer({
                         field={field}
                         validationProperties={resolveValidators(field)}
                         formId={formMeta.formId}
+                        formVersion={formMeta.version}
                       />
                     ))}
                   </div>
@@ -437,6 +439,7 @@ export default function FormRenderer({
                 validationProperties={resolveValidators(group.radio)}
                 insetFieldsByOption={insetFieldsByOption}
                 formId={formMeta.formId}
+                formVersion={formMeta.version}
               />
             );
           }
