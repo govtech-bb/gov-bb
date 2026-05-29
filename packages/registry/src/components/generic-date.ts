@@ -1,7 +1,7 @@
 import type { DatePrimitive } from "@govtech-bb/form-types";
 
-export const RawDate: DatePrimitive = {
-  fieldId: "raw-date",
+export const GenericDateInput: DatePrimitive = {
+  fieldId: "generic-date",
   htmlType: "date",
   label: "Date",
   validations: {
