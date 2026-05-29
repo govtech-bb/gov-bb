@@ -5,6 +5,7 @@ import styles from "../../../styles/builder.module.css";
 interface PublishModalProps {
   draft: RecipeDraft;
   version: string;
+  baseBranch: string;
   isPublishing: boolean;
   publishSuccess: { prUrl: string; prNumber: number } | null;
   publishError: string | null;
@@ -15,6 +16,7 @@ interface PublishModalProps {
 export function PublishModal({
   draft,
   version,
+  baseBranch,
   isPublishing,
   publishSuccess,
   publishError,
@@ -43,7 +45,7 @@ export function PublishModal({
           <div className={styles.validationSuccess}>
             <p>
               PR <strong>#{publishSuccess.prNumber}</strong> opened on{" "}
-              <code>dev</code>.
+              <code>{baseBranch}</code>.
             </p>
             <p>
               <a
@@ -62,7 +64,8 @@ export function PublishModal({
         ) : (
           <div>
             <p style={{ color: "#444", marginTop: 0 }}>
-              This opens a pull request against <code>dev</code> that adds{" "}
+              This opens a pull request against <code>{baseBranch}</code> that
+              adds{" "}
               <code>
                 recipes/{draft.formId}/{version}.json
               </code>

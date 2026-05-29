@@ -3,7 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useReducer, useState, useRef, useEffect, useMemo } from "react";
 import { getCatalogFn } from "../../../server/registry";
 import { submitRecipe, updateRecipe, deleteForm, getRecipe } from "../../../server/forms";
-import { publishRecipe } from "../../../server/publish";
+import { publishRecipe, getPublishBaseBranch } from "../../../server/publish";
 import { validateRecipe, previewRecipe } from "../../../server/registry";
 import { serializeRecipeDraft, findRecipeIdCollisions, formatCollisionIssues, resolveFieldIds } from "@govtech-bb/form-builder";
 import { bumpMinor, bumpPatch } from "../../../lib/version";
@@ -30,19 +30,24 @@ import styles from "../../../styles/builder.module.css";
 
 export const Route = createFileRoute("/builder/ui/")({
   validateSearch: parseBuilderSearch,
-  // Only the catalog is awaited here — it's needed for the first render
-  // (StepEditor, the duplicate-ID memo) and is cheap thanks to its 60s server
-  // cache. The forms list is a slow, uncached GitHub-API waterfall consumed only
-  // by the Open picker, so it's fetched off the critical path via useFormsList.
+  // The catalog is needed for the first render (StepEditor, the duplicate-ID
+  // memo) and is cheap thanks to its 60s server cache. The base branch is a
+  // tiny env-var read resolved server-side (it can't be read from the client
+  // bundle), so it rides along here. The forms list is a slow, uncached
+  // GitHub-API waterfall consumed only by the Open picker, so it stays off the
+  // critical path via useFormsList.
   loader: async () => {
-    const catalog = await getCatalogFn();
-    return { catalog };
+    const [catalog, baseBranch] = await Promise.all([
+      getCatalogFn(),
+      getPublishBaseBranch(),
+    ]);
+    return { catalog, baseBranch };
   },
   component: BuilderPage,
 });
 
 function BuilderPage() {
-  const { catalog } = Route.useLoaderData();
+  const { catalog, baseBranch } = Route.useLoaderData();
   const { forms, loadError: formsLoadError, refetch: refetchForms } = useFormsList();
   const { formId: openFormId } = Route.useSearch();
   const navigate = useNavigate();
@@ -570,6 +575,7 @@ function BuilderPage() {
         <PublishModal
           draft={draft}
           version={deployVersion}
+          baseBranch={baseBranch}
           isPublishing={isPublishing}
           publishSuccess={publishSuccess}
           publishError={publishError}
