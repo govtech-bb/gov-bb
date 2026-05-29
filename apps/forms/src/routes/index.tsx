@@ -12,18 +12,28 @@ function Index() {
 
   return (
     <div>
-      <h3>Welcome GovTech!</h3>
-      <div>
-        <ul>
-          {forms.map(({ formId, title }) => (
-            <li key={formId}>
-              <Link to="/forms/$formId" params={{ formId }}>
+      <h1 className="mb-6">All Forms</h1>
+      <ul className="flex flex-col gap-2">
+        {forms.map(({ formId, title }) => (
+          <li key={formId}>
+            <Link
+              to="/forms/$formId"
+              params={{ formId }}
+              className="group flex items-center justify-between gap-4 rounded-md border border-grey-00 bg-white-00 px-4 py-3 no-underline transition-colors hover:border-teal-00 hover:bg-teal-10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-100"
+            >
+              <span className="font-medium text-teal-00 group-hover:text-teal-100">
                 {title}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </div>
+              </span>
+              <span
+                aria-hidden="true"
+                className="text-teal-00 group-hover:text-teal-100"
+              >
+                &rsaquo;
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

@@ -65,10 +65,10 @@ describe("Index route", () => {
     expect(container).not.toBeEmptyDOMElement();
   });
 
-  it("displays the welcome heading", () => {
+  it("displays the page heading", () => {
     render(<Route.component />);
     expect(
-      screen.getByRole("heading", { name: /welcome govtech/i }),
+      screen.getByRole("heading", { level: 1, name: /all forms/i }),
     ).toBeInTheDocument();
   });
 
@@ -101,11 +101,7 @@ describe("Index route", () => {
 
   it("passes jest-axe accessibility audit", async () => {
     const { container } = render(<Route.component />);
-    // heading-order: h3 without a preceding h1/h2 — pre-existing in the component;
-    // excluded here consistent with the project convention (see submission-confirmation.spec.tsx).
-    const results = await axe(container, {
-      rules: { "heading-order": { enabled: false } },
-    });
+    const results = await axe(container);
     expect(results).toHaveNoViolations();
   });
 });
