@@ -784,6 +784,14 @@
                 "error": "Please upload your two testimonials",
                 "value": true
               },
+              "minItems": {
+                "error": "Upload both of your testimonials (2 files)",
+                "value": 2
+              },
+              "maxItems": {
+                "error": "Upload exactly two testimonials",
+                "value": 2
+              },
               "fileTypes": {
                 "error": "Upload a .pdf, .docx, or .png file",
                 "value": [".pdf", ".docx", ".png"]
