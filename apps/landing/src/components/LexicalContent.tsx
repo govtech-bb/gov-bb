@@ -76,6 +76,7 @@ function StartButtonBlock({ type, formId, url, label }: StartButtonFields) {
     }
     return (
       <LinkButton
+        className="self-start"
         href={`${FORMS_BASE_URL}/forms/${formId}`}
         data-umami-event={`${formId}-start`}
         data-umami-event-from={pathname}
@@ -86,7 +87,11 @@ function StartButtonBlock({ type, formId, url, label }: StartButtonFields) {
   }
 
   if (!url) return null
-  return <LinkButton href={resolveServiceHref(url)}>{text}</LinkButton>
+  return (
+    <LinkButton className="self-start" href={resolveServiceHref(url)}>
+      {text}
+    </LinkButton>
+  )
 }
 
 const converters: JSXConvertersFunction = ({ defaultConverters }) => {
@@ -180,7 +185,9 @@ const converters: JSXConvertersFunction = ({ defaultConverters }) => {
       cta: ({ node }) => {
         const f = node.fields as { href?: string; label?: string }
         return (
-          <LinkButton href={resolveServiceHref(f.href ?? '#')}>{f.label ?? ''}</LinkButton>
+          <LinkButton className="self-start" href={resolveServiceHref(f.href ?? '#')}>
+            {f.label ?? ''}
+          </LinkButton>
         )
       },
     },
