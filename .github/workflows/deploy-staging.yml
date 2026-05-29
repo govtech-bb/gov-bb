@@ -1,21 +1,25 @@
 name: Deploy Staging
 
-# Sibling to deploy-sandbox.yml, retargeted to the staging account (096863132510).
+# Reliability-first staging CD. See docs/plans/staging-cicd-reliability-first.md.
 #
-# Speedup pattern baked in (see docs/plans/cd-tier2-deploy-speedup.md):
-#   - Docker layer caching via docker/build-push-action + GHA cache
-#   - Amplify auto-build gating (no `start-job` calls — apps already auto-build
-#     on push; we just gate on the result by commit SHA)
+# Design:
+#   - All deploy targets run as parallel independent jobs. Each owns its own
+#     end-to-end verification (build → push → roll → smoke test). One failing
+#     job does NOT cancel others — we want full visibility on every layer.
+#   - ECS deploys verify the *deployed* task def matches the *registered* one
+#     (catches silent rollback) and check ALB target health post-deploy.
+#   - Amplify auto-build is OFF on the staging branch; this workflow is the
+#     sole trigger. Each Amplify job runs start-job → monitor → URL smoke
+#     test.
+#   - Roll-forward only: when a container fails to start, the workflow fails
+#     loudly. No silent revert. Fix-forward via a new commit, never via
+#     rollback magic.
 #
-# Prerequisites for this workflow to run green:
-#   1. IAM role assumed via OIDC must exist in staging account 096863132510
-#      with ECR push + ECS update + Amplify read + Lambda invoke permissions.
-#      Wire its ARN into the repo secret AWS_ROLE_ARN_STAGING.
-#   2. The 4 Amplify apps (forms d27gpzyoit5nrf, chat d2kl5gyeq6yv2d,
-#      landing d3u4q4kqt5t6ok, form-builder ds1h02l8ue9hv) must be connected
-#      to govtech-bb/gov-bb / branch `staging` via the Amplify console, with
-#      auto-build ENABLED. Until that wiring is done the Amplify gating jobs
-#      will fail with "no auto-build job found for this commit".
+# Prereqs:
+#   - Repo secret AWS_ROLE_ARN_STAGING set to the gov-bb-github-actions-staging
+#     role ARN (output by alpha-infra's staging stack — see PR #240).
+#   - The 4 staging Amplify apps connected to govtech-bb/gov-bb branch
+#     `staging` in the Amplify console with auto-build set per app IaC.
 
 on:
   push:
@@ -26,7 +30,8 @@ permissions:
   id-token: write
   contents: read
 
-# Queue deploys; never cancel one mid-flight.
+# Queue deploys; never cancel one mid-flight. A half-applied deploy must
+# finish before the next starts.
 concurrency:
   group: deploy-staging-${{ github.ref }}
   cancel-in-progress: false
@@ -36,6 +41,18 @@ env:
   ECR_REPOSITORY: modular-forms-api
   ECS_CLUSTER: simple-service-builder-staging
   ECS_SERVICE: modular-forms-api-staging
+
+  # Smoke test URLs. Currently point at the auto-assigned ALB DNS / Amplify
+  # branch URLs (HTTP-only on ALB until PR-4 swaps the listener to HTTPS,
+  # and amplifyapp.com domains until PR-3 wires *.staging.alpha.gov.bb DNS).
+  # Update to friendly URLs once DNS lands.
+  API_SMOKE_URL: http://modular-forms-api-staging-1076182564.ca-central-1.elb.amazonaws.com/health
+  FORM_BUILDER_API_SMOKE_URL: http://modular-forms-api-staging-1076182564.ca-central-1.elb.amazonaws.com/builder/health
+  AMPLIFY_FORMS_URL: https://staging.d27gpzyoit5nrf.amplifyapp.com
+  AMPLIFY_LANDING_URL: https://staging.d3u4q4kqt5t6ok.amplifyapp.com
+  AMPLIFY_CHAT_URL: https://staging.d2kl5gyeq6yv2d.amplifyapp.com
+  AMPLIFY_CHAT_HEALTH_URL: https://staging.d2kl5gyeq6yv2d.amplifyapp.com/api/health
+  AMPLIFY_FORM_BUILDER_URL: https://staging.ds1h02l8ue9hv.amplifyapp.com
 
 jobs:
   setup:
@@ -97,13 +114,16 @@ jobs:
             echo "amplify-config=false" >> "$GITHUB_OUTPUT"
           fi
 
+  # ---------------------------------------------------------------------------
+  # ECS deploys — each verifies the rollout landed on the registered task def
+  # and the ALB targets are healthy, then hits the service's health endpoint.
+  # ---------------------------------------------------------------------------
+
   deploy-api:
     name: Build, Push & Deploy API
     needs: setup
     if: needs.setup.outputs.api == 'true'
     runs-on: ubuntu-latest
-    outputs:
-      image: ${{ steps.build.outputs.image }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -118,58 +138,44 @@ jobs:
         id: ecr-login
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
       - name: Build and push image
         id: build
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: apps/api/Dockerfile
-          platforms: linux/amd64
-          push: true
-          tags: |
-            ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
-            ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
-          cache-from: type=gha,scope=api-staging
-          cache-to: type=gha,mode=max,scope=api-staging
-
-      - name: Expose image URI as output
         run: |
-          IMAGE_URI="${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}"
+          set -euo pipefail
+          IMAGE_URI="${{ steps.ecr-login.outputs.registry }}/${ECR_REPOSITORY}:${{ github.sha }}"
+          LATEST_URI="${{ steps.ecr-login.outputs.registry }}/${ECR_REPOSITORY}:latest"
+          docker build --platform linux/amd64 -f apps/api/Dockerfile -t "$IMAGE_URI" -t "$LATEST_URI" .
+          docker push "$IMAGE_URI"
+          docker push "$LATEST_URI"
           echo "image=$IMAGE_URI" >> "$GITHUB_OUTPUT"
-          echo "✅ Pushed $IMAGE_URI"
-        id: image-uri
 
       - name: Get current task definition
-        id: task-def
         run: |
           aws ecs describe-task-definition \
             --task-definition modular-forms-api-staging \
             --region $AWS_REGION \
             --query taskDefinition \
             --output json > task-def.json
-          echo "✅ Task definition fetched"
 
-      - name: Update task definition with new image
+      - name: Render task definition with new image
         id: new-task-def
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
           task-definition: task-def.json
           container-name: api
-          image: ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+          image: ${{ steps.build.outputs.image }}
 
       - name: Run database migrations
         if: needs.setup.outputs.migrations == 'true'
         run: |
+          set -euo pipefail
           TASK_DEF_ARN=$(aws ecs register-task-definition \
             --cli-input-json "$(cat ${{ steps.new-task-def.outputs.task-definition }} | \
               jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)')" \
             --region $AWS_REGION \
             --query taskDefinition.taskDefinitionArn \
             --output text)
-          echo "Registered migration task def: $TASK_DEF_ARN"
+          echo "Migration task def: $TASK_DEF_ARN"
 
           TASK_ARN=$(aws ecs run-task \
             --cluster $ECS_CLUSTER \
@@ -180,36 +186,41 @@ jobs:
             --region $AWS_REGION \
             --query tasks[0].taskArn \
             --output text)
-          echo "Migration task started: $TASK_ARN"
+          echo "Migration task: $TASK_ARN"
 
-          echo "Waiting for migration task to complete..."
-          aws ecs wait tasks-stopped \
-            --cluster $ECS_CLUSTER \
-            --tasks "$TASK_ARN" \
-            --region $AWS_REGION
+          aws ecs wait tasks-stopped --cluster $ECS_CLUSTER --tasks "$TASK_ARN" --region $AWS_REGION
 
           EXIT_CODE=$(aws ecs describe-tasks \
-            --cluster $ECS_CLUSTER \
-            --tasks "$TASK_ARN" \
-            --region $AWS_REGION \
-            --query "tasks[0].containers[?name=='api'].exitCode | [0]" \
-            --output text)
-          echo "Migration exit code: $EXIT_CODE"
+            --cluster $ECS_CLUSTER --tasks "$TASK_ARN" --region $AWS_REGION \
+            --query "tasks[0].containers[?name=='api'].exitCode | [0]" --output text)
 
           if [ "$EXIT_CODE" != "0" ]; then
-            echo "❌ Migration failed with exit code $EXIT_CODE"
-            echo "Check logs: aws logs tail /ecs/modular-forms-api-staging --follow"
+            echo "❌ Migration failed (exit $EXIT_CODE). Logs: aws logs tail /ecs/modular-forms-api-staging --follow"
             exit 1
           fi
-          echo "✅ Migrations completed successfully"
+          echo "✅ Migrations succeeded"
 
       - name: Deploy to ECS
+        id: deploy
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
           task-definition: ${{ steps.new-task-def.outputs.task-definition }}
           service: ${{ env.ECS_SERVICE }}
           cluster: ${{ env.ECS_CLUSTER }}
           wait-for-service-stability: true
+
+      - name: Verify ECS deployment landed (catches silent rollback)
+        env:
+          CLUSTER: ${{ env.ECS_CLUSTER }}
+          SERVICE: ${{ env.ECS_SERVICE }}
+          EXPECTED_TASK_DEF: ${{ steps.deploy.outputs.task-definition-arn }}
+        run: bash .github/scripts/verify-ecs-deployment.sh
+
+      - name: Smoke test API /health
+        env:
+          URL: ${{ env.API_SMOKE_URL }}
+          LABEL: api
+        run: bash .github/scripts/smoke-test-url.sh
 
   deploy-form-builder:
     name: Build, Push & Deploy form-builder
@@ -230,58 +241,154 @@ jobs:
         id: ecr-login
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Build and push image
+        id: build
+        run: |
+          set -euo pipefail
+          IMAGE_URI="${{ steps.ecr-login.outputs.registry }}/gov-bb-form-builder:${{ github.sha }}"
+          LATEST_URI="${{ steps.ecr-login.outputs.registry }}/gov-bb-form-builder:latest"
+          docker build --platform linux/amd64 -f apps/form_builder_api/Dockerfile -t "$IMAGE_URI" -t "$LATEST_URI" .
+          docker push "$IMAGE_URI"
+          docker push "$LATEST_URI"
+          echo "image=$IMAGE_URI" >> "$GITHUB_OUTPUT"
 
-      - name: Build and push form-builder image
-        id: build-form-builder
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: apps/form_builder_api/Dockerfile
-          platforms: linux/amd64
-          push: true
-          tags: |
-            ${{ steps.ecr-login.outputs.registry }}/gov-bb-form-builder:${{ github.sha }}
-            ${{ steps.ecr-login.outputs.registry }}/gov-bb-form-builder:latest
-          cache-from: type=gha,scope=form-builder-staging
-          cache-to: type=gha,mode=max,scope=form-builder-staging
-
-      - name: Deploy form-builder to ECS
-        env:
-          NEW_IMAGE: ${{ steps.ecr-login.outputs.registry }}/gov-bb-form-builder:${{ github.sha }}
+      - name: Get current task definition
         run: |
           aws ecs describe-task-definition \
             --task-definition form-builder-staging \
-            --region $AWS_REGION \
-            --query taskDefinition \
-            --output json > fb-task-def.json
+            --region $AWS_REGION --query taskDefinition --output json > fb-task-def.json
 
-          jq --arg img "$NEW_IMAGE" '.containerDefinitions[0].image = $img | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)' fb-task-def.json > fb-task-def-new.json
+      - name: Render task definition with new image
+        id: new-task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: fb-task-def.json
+          container-name: form-builder
+          image: ${{ steps.build.outputs.image }}
 
-          TASK_DEF_ARN=$(aws ecs register-task-definition \
-            --cli-input-json file://fb-task-def-new.json \
-            --region $AWS_REGION \
-            --query taskDefinition.taskDefinitionArn \
-            --output text)
-          echo "Registered form-builder task def: $TASK_DEF_ARN"
+      - name: Deploy to ECS
+        id: deploy
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.new-task-def.outputs.task-definition }}
+          service: form-builder-staging
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
 
-          aws ecs update-service \
-            --cluster $ECS_CLUSTER \
-            --service form-builder-staging \
-            --task-definition "$TASK_DEF_ARN" \
-            --region $AWS_REGION \
-            --query "service.deployments[0].rolloutState" \
-            --output text
-          echo "✅ Form-builder ECS deploy started"
+      - name: Verify ECS deployment landed (catches silent rollback)
+        env:
+          CLUSTER: ${{ env.ECS_CLUSTER }}
+          SERVICE: form-builder-staging
+          EXPECTED_TASK_DEF: ${{ steps.deploy.outputs.task-definition-arn }}
+        run: bash .github/scripts/verify-ecs-deployment.sh
+
+      - name: Smoke test /builder/health
+        env:
+          URL: ${{ env.FORM_BUILDER_API_SMOKE_URL }}
+          LABEL: form-builder
+        run: bash .github/scripts/smoke-test-url.sh
+
+  deploy-payload-cms:
+    # STUB. gov-bb has no apps/payload_cms source — see Part D of
+    # docs/plans/staging-cicd-reliability-first.md.
+    # Fails loudly so the staging pipeline surfaces the gap rather than
+    # silently leaving payload-cms-staging broken (same outage pattern as
+    # payload-cms-sandbox).
+    name: Build, Push & Deploy payload-cms (STUB)
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inform on missing source
+        run: |
+          {
+            echo "## ⚠️ payload-cms not yet deployable from gov-bb"
+            echo ""
+            echo "The staging IaC provisions a payload-cms ECS service, RDS, and"
+            echo "S3 media bucket, but gov-bb has no \`apps/payload_cms\` source."
+            echo "Image \`gov-bb-payload-cms:latest\` has never been pushed →"
+            echo "\`payload-cms-staging\` ECS service stays in CircuitBreaker FAILED."
+            echo ""
+            echo "See docs/plans/staging-cicd-reliability-first.md (Part D) for the"
+            echo "decision required: add \`apps/payload_cms\` to gov-bb monorepo,"
+            echo "use upstream \`payloadcms/payload\` image, or extract to a"
+            echo "separate repo."
+          } >> $GITHUB_STEP_SUMMARY
+          echo "❌ payload-cms source not yet in gov-bb — see workflow summary."
+          exit 1
+
+  deploy-chat-ingest:
+    # Chatbot RAG ingest one-shot Fargate task. Build image, push to staging
+    # ECR, then invoke the indexer Lambda so content changes propagate to
+    # chat-staging immediately instead of waiting for the cron.
+    name: Build, Push & Trigger chat-ingest
+    needs: setup
+    if: needs.setup.outputs.chat == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push chat-ingest image
+        run: |
+          set -euo pipefail
+          INGEST_URI="${{ steps.ecr-login.outputs.registry }}/chatbot-ingest-staging:${{ github.sha }}"
+          INGEST_LATEST="${{ steps.ecr-login.outputs.registry }}/chatbot-ingest-staging:latest"
+          docker build --platform linux/amd64 -f apps/chat/Dockerfile.ingest -t "$INGEST_URI" -t "$INGEST_LATEST" .
+          docker push "$INGEST_URI"
+          docker push "$INGEST_LATEST"
+
+      - name: Invoke RAG indexer
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+          INDEXER: chatbot-rag-indexer-staging
+        run: |
+          set -euo pipefail
+          PAYLOAD=$(printf '{"startedBy":"gh-%.36s"}' "$COMMIT_SHA")
+
+          aws lambda invoke \
+            --function-name "$INDEXER" \
+            --payload "$PAYLOAD" \
+            --cli-binary-format raw-in-base64-out \
+            --region "$AWS_REGION" \
+            /tmp/indexer-out.json > /tmp/invoke-meta.json
+
+          echo "Lambda invocation metadata:"
+          cat /tmp/invoke-meta.json
+          echo
+          echo "Indexer response body:"
+          cat /tmp/indexer-out.json
+          echo
+
+          # Lambda returns 200 even when the function errored — FunctionError
+          # is the protocol-level error signal. statusCode in the body is
+          # the application-level signal.
+          if jq -e '.FunctionError' /tmp/invoke-meta.json >/dev/null 2>&1; then
+            echo "❌ Lambda invocation reported a FunctionError"
+            exit 1
+          fi
+
+          STATUS=$(jq -r '.statusCode // "unknown"' /tmp/indexer-out.json 2>/dev/null || echo "parse-error")
+          if [ "$STATUS" != "200" ]; then
+            echo "❌ Indexer returned statusCode=$STATUS (expected 200)"
+            exit 1
+          fi
+          echo "✅ Indexer reported success — content sync started"
 
   # ---------------------------------------------------------------------------
-  # Amplify gating (cd-tier2 speedup pattern)
-  #
-  # Amplify auto-build is ON for the staging branch in each app, so the push
-  # that triggers this workflow ALSO triggers each app's Amplify build. We do
-  # not call `aws amplify start-job` (that's the double-build pattern); instead
-  # we find the auto-build job by commit SHA and gate the workflow on it.
+  # Amplify deploys — auto-build is OFF on the staging branch (per app IaC),
+  # so this workflow is the sole trigger. Each job runs start-job → monitor →
+  # URL smoke test. The smoke test catches "build succeeded but URL doesn't
+  # serve" (same pattern as sandbox commit ab003dd9).
   # ---------------------------------------------------------------------------
 
   amplify-forms:
@@ -297,14 +404,40 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
           aws-region: ${{ env.AWS_REGION }}
-      - name: Verify Amplify auto-build
+
+      - name: Trigger and monitor Amplify build
         env:
           AMPLIFY_APP_ID: d27gpzyoit5nrf
           AMPLIFY_BRANCH: staging
           APP_LABEL: forms
-          COMMIT_SHA: ${{ github.sha }}
         run: |
-          source .github/scripts/verify-amplify-build.sh
+          set -euo pipefail
+          JOB_ID=$(aws amplify start-job \
+            --app-id "$AMPLIFY_APP_ID" --branch-name "$AMPLIFY_BRANCH" \
+            --job-type RELEASE --region "$AWS_REGION" \
+            --query jobSummary.jobId --output text)
+          echo "Amplify $APP_LABEL job: $JOB_ID"
+
+          for i in $(seq 1 30); do
+            STATUS=$(aws amplify get-job \
+              --app-id "$AMPLIFY_APP_ID" --branch-name "$AMPLIFY_BRANCH" \
+              --job-id "$JOB_ID" --region "$AWS_REGION" \
+              --query job.summary.status --output text)
+            echo "[$i/30] $APP_LABEL: $STATUS"
+            case "$STATUS" in
+              SUCCEED) echo "✅ Amplify $APP_LABEL build succeeded"; exit 0 ;;
+              FAILED|CANCELLED) echo "❌ Amplify $APP_LABEL build $STATUS"; exit 1 ;;
+            esac
+            sleep 30
+          done
+          echo "❌ Amplify $APP_LABEL build did not finish in 15 min"
+          exit 1
+
+      - name: Smoke test forms URL
+        env:
+          URL: ${{ env.AMPLIFY_FORMS_URL }}
+          LABEL: forms
+        run: bash .github/scripts/smoke-test-url.sh
 
   amplify-landing:
     name: Amplify build (landing)
@@ -319,14 +452,40 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
           aws-region: ${{ env.AWS_REGION }}
-      - name: Verify Amplify auto-build
+
+      - name: Trigger and monitor Amplify build
         env:
           AMPLIFY_APP_ID: d3u4q4kqt5t6ok
           AMPLIFY_BRANCH: staging
           APP_LABEL: landing
-          COMMIT_SHA: ${{ github.sha }}
         run: |
-          source .github/scripts/verify-amplify-build.sh
+          set -euo pipefail
+          JOB_ID=$(aws amplify start-job \
+            --app-id "$AMPLIFY_APP_ID" --branch-name "$AMPLIFY_BRANCH" \
+            --job-type RELEASE --region "$AWS_REGION" \
+            --query jobSummary.jobId --output text)
+          echo "Amplify $APP_LABEL job: $JOB_ID"
+
+          for i in $(seq 1 30); do
+            STATUS=$(aws amplify get-job \
+              --app-id "$AMPLIFY_APP_ID" --branch-name "$AMPLIFY_BRANCH" \
+              --job-id "$JOB_ID" --region "$AWS_REGION" \
+              --query job.summary.status --output text)
+            echo "[$i/30] $APP_LABEL: $STATUS"
+            case "$STATUS" in
+              SUCCEED) echo "✅ Amplify $APP_LABEL build succeeded"; exit 0 ;;
+              FAILED|CANCELLED) echo "❌ Amplify $APP_LABEL build $STATUS"; exit 1 ;;
+            esac
+            sleep 30
+          done
+          echo "❌ Amplify $APP_LABEL build did not finish in 15 min"
+          exit 1
+
+      - name: Smoke test landing URL
+        env:
+          URL: ${{ env.AMPLIFY_LANDING_URL }}
+          LABEL: landing
+        run: bash .github/scripts/smoke-test-url.sh
 
   amplify-chat:
     name: Amplify build (chat)
@@ -341,14 +500,42 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
           aws-region: ${{ env.AWS_REGION }}
-      - name: Verify Amplify auto-build
+
+      - name: Trigger and monitor Amplify build
         env:
           AMPLIFY_APP_ID: d2kl5gyeq6yv2d
           AMPLIFY_BRANCH: staging
           APP_LABEL: chat
-          COMMIT_SHA: ${{ github.sha }}
         run: |
-          source .github/scripts/verify-amplify-build.sh
+          set -euo pipefail
+          JOB_ID=$(aws amplify start-job \
+            --app-id "$AMPLIFY_APP_ID" --branch-name "$AMPLIFY_BRANCH" \
+            --job-type RELEASE --region "$AWS_REGION" \
+            --query jobSummary.jobId --output text)
+          echo "Amplify $APP_LABEL job: $JOB_ID"
+
+          for i in $(seq 1 30); do
+            STATUS=$(aws amplify get-job \
+              --app-id "$AMPLIFY_APP_ID" --branch-name "$AMPLIFY_BRANCH" \
+              --job-id "$JOB_ID" --region "$AWS_REGION" \
+              --query job.summary.status --output text)
+            echo "[$i/30] $APP_LABEL: $STATUS"
+            case "$STATUS" in
+              SUCCEED) echo "✅ Amplify $APP_LABEL build succeeded"; exit 0 ;;
+              FAILED|CANCELLED) echo "❌ Amplify $APP_LABEL build $STATUS"; exit 1 ;;
+            esac
+            sleep 30
+          done
+          echo "❌ Amplify $APP_LABEL build did not finish in 15 min"
+          exit 1
+
+      - name: Smoke test chat /api/health (validates db connection)
+        env:
+          URL: ${{ env.AMPLIFY_CHAT_HEALTH_URL }}
+          LABEL: chat
+          EXPECT_JSON_FIELD: .db
+          EXPECT_JSON_VALUE: connected
+        run: bash .github/scripts/smoke-test-url.sh
 
   amplify-form-builder:
     name: Amplify build (form-builder)
@@ -363,102 +550,81 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
           aws-region: ${{ env.AWS_REGION }}
-      - name: Verify Amplify auto-build
+
+      - name: Trigger and monitor Amplify build
         env:
           AMPLIFY_APP_ID: ds1h02l8ue9hv
           AMPLIFY_BRANCH: staging
           APP_LABEL: form-builder
-          COMMIT_SHA: ${{ github.sha }}
         run: |
-          source .github/scripts/verify-amplify-build.sh
+          set -euo pipefail
+          JOB_ID=$(aws amplify start-job \
+            --app-id "$AMPLIFY_APP_ID" --branch-name "$AMPLIFY_BRANCH" \
+            --job-type RELEASE --region "$AWS_REGION" \
+            --query jobSummary.jobId --output text)
+          echo "Amplify $APP_LABEL job: $JOB_ID"
 
-  deploy-chat-ingest:
-    # See deploy-sandbox.yml for the rationale; staging mirrors it with
-    # account 096863132510 and lambda chatbot-rag-indexer-staging.
-    name: Build, Push & Trigger chat-ingest
-    needs: setup
-    if: needs.setup.outputs.chat == 'true'
-    runs-on: ubuntu-latest
-    outputs:
-      image: ${{ steps.build.outputs.image }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
+          for i in $(seq 1 30); do
+            STATUS=$(aws amplify get-job \
+              --app-id "$AMPLIFY_APP_ID" --branch-name "$AMPLIFY_BRANCH" \
+              --job-id "$JOB_ID" --region "$AWS_REGION" \
+              --query job.summary.status --output text)
+            echo "[$i/30] $APP_LABEL: $STATUS"
+            case "$STATUS" in
+              SUCCEED) echo "✅ Amplify $APP_LABEL build succeeded"; exit 0 ;;
+              FAILED|CANCELLED) echo "❌ Amplify $APP_LABEL build $STATUS"; exit 1 ;;
+            esac
+            sleep 30
+          done
+          echo "❌ Amplify $APP_LABEL build did not finish in 15 min"
+          exit 1
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v6
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Login to ECR
-        id: ecr-login
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build and push chat-ingest image
-        id: build
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: apps/chat/Dockerfile.ingest
-          platforms: linux/amd64
-          push: true
-          tags: |
-            ${{ steps.ecr-login.outputs.registry }}/chatbot-ingest-staging:${{ github.sha }}
-            ${{ steps.ecr-login.outputs.registry }}/chatbot-ingest-staging:latest
-          cache-from: type=gha,scope=chat-ingest-staging
-          cache-to: type=gha,mode=max,scope=chat-ingest-staging
-
-      - name: Trigger chatbot RAG ingest
+      - name: Smoke test form-builder URL
         env:
-          COMMIT_SHA: ${{ github.sha }}
-          INDEXER: chatbot-rag-indexer-staging
-        run: |
-          PAYLOAD=$(printf '{"startedBy":"gh-%.36s"}' "$COMMIT_SHA")
-
-          aws lambda invoke \
-            --function-name "$INDEXER" \
-            --payload "$PAYLOAD" \
-            --cli-binary-format raw-in-base64-out \
-            --region "$AWS_REGION" \
-            /tmp/indexer-out.json
-
-          echo "Indexer response:"
-          cat /tmp/indexer-out.json
-          echo
-          echo "✅ Ingest task started — follow with: aws logs tail /ecs/chatbot-ingest-staging --follow"
+          URL: ${{ env.AMPLIFY_FORM_BUILDER_URL }}
+          LABEL: form-builder
+        run: bash .github/scripts/smoke-test-url.sh
 
   summary:
     name: Deployment summary
-    needs: [setup, deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-chat, deploy-chat-ingest, amplify-form-builder]
+    needs: [setup, deploy-api, deploy-form-builder, deploy-payload-cms, deploy-chat-ingest, amplify-forms, amplify-landing, amplify-chat, amplify-form-builder]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Summary
         run: |
-          gate() { [ "$1" = "true" ] && echo "deployed" || echo "skipped (unaffected)"; }
+          row() {
+            local label="$1" result="$2"
+            case "$result" in
+              success) echo "| $label | ✅ deployed |" ;;
+              failure) echo "| $label | ❌ FAILED |" ;;
+              skipped) echo "| $label | ⏭ skipped (unaffected) |" ;;
+              cancelled) echo "| $label | ⚠ cancelled |" ;;
+              *) echo "| $label | $result |" ;;
+            esac
+          }
+
           {
             echo "## Staging Deployment Summary"
             echo ""
-            echo "**Commit:** ${{ github.sha }}"
+            echo "**Commit:** \`${{ github.sha }}\`"
             echo ""
             echo "| Target | Result |"
             echo "|--------|--------|"
-            echo "| API | $(gate '${{ needs.setup.outputs.api }}') |"
-            echo "| API migrations | $(gate '${{ needs.setup.outputs.migrations }}') |"
-            echo "| form-builder API | $(gate '${{ needs.setup.outputs.fb-api }}') |"
-            echo "| Amplify forms | $(gate '${{ needs.setup.outputs.forms }}') |"
-            echo "| Amplify landing | $(gate '${{ needs.setup.outputs.landing }}') |"
-            echo "| Amplify chat | $(gate '${{ needs.setup.outputs.chat }}') |"
-            echo "| Amplify form-builder | $(gate '${{ needs.setup.outputs.fb-app }}') |"
-            echo "| chat-ingest image | $(gate '${{ needs.setup.outputs.chat }}') |"
+            row "API"                  "${{ needs.deploy-api.result }}"
+            row "form-builder API"     "${{ needs.deploy-form-builder.result }}"
+            row "payload-cms"          "${{ needs.deploy-payload-cms.result }}"
+            row "chat-ingest"          "${{ needs.deploy-chat-ingest.result }}"
+            row "Amplify forms"        "${{ needs.amplify-forms.result }}"
+            row "Amplify landing"      "${{ needs.amplify-landing.result }}"
+            row "Amplify chat"         "${{ needs.amplify-chat.result }}"
+            row "Amplify form-builder" "${{ needs.amplify-form-builder.result }}"
             echo ""
-            echo "**API URL:** https://forms.api.staging.alpha.gov.bb"
-            echo "**Landing URL:** https://landing.staging.alpha.gov.bb"
-            echo "**Forms URL:** https://forms.staging.alpha.gov.bb"
-            echo "**Chat URL:** https://chat.staging.alpha.gov.bb"
-            echo "**Form Builder URL:** https://builder.staging.alpha.gov.bb"
+            echo "**URLs (ALB / amplifyapp.com until DNS lands):**"
+            echo "- API: ${{ env.API_SMOKE_URL }}"
+            echo "- form-builder: ${{ env.FORM_BUILDER_API_SMOKE_URL }}"
+            echo "- forms: ${{ env.AMPLIFY_FORMS_URL }}"
+            echo "- landing: ${{ env.AMPLIFY_LANDING_URL }}"
+            echo "- chat: ${{ env.AMPLIFY_CHAT_URL }}"
+            echo "- form-builder app: ${{ env.AMPLIFY_FORM_BUILDER_URL }}"
           } >> "$GITHUB_STEP_SUMMARY"
