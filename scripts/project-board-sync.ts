@@ -1,5 +1,7 @@
 // Board automation for the Alpha² project (#7). See
 // docs/superpowers/specs/2026-05-29-board-label-automation-design.md
+import { readFileSync } from "node:fs";
+
 export type Status = "Backlog" | "Ready" | "In progress" | "In review" | "Done";
 export type ExclusiveLabel = "ready" | "progressing";
 
@@ -110,4 +112,285 @@ export function decideActions(input: SyncInput): IssuePlan[] {
   }
 
   return [];
+}
+
+const API = "https://api.github.com";
+const PROJECT_OWNER = "govtech-bb";
+const PROJECT_NUMBER = 7;
+
+type FetchFn = typeof fetch;
+
+/** Minimal GraphQL client over fetch. Throws on transport or GraphQL errors. */
+export async function gql<T>(
+  query: string,
+  variables: Record<string, unknown>,
+  token: string,
+  f: FetchFn = fetch,
+): Promise<T> {
+  const res = await f(`${API}/graphql`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      "User-Agent": "alpha2-board-bot",
+    },
+    body: JSON.stringify({ query, variables }),
+  });
+  const json = (await res.json()) as {
+    data?: T;
+    errors?: { message: string }[];
+  };
+  if (json.errors?.length)
+    throw new Error(json.errors.map((e) => e.message).join("; "));
+  if (!res.ok || !json.data) throw new Error(`GraphQL HTTP ${res.status}`);
+  return json.data;
+}
+
+interface ProjectMeta {
+  projectId: string;
+  statusFieldId: string;
+  optionIds: Record<Status, string>;
+}
+
+async function resolveProjectMeta(token: string): Promise<ProjectMeta> {
+  const data = await gql<{
+    organization: {
+      projectV2: {
+        id: string;
+        field: { id: string; options: { id: string; name: string }[] };
+      };
+    };
+  }>(
+    `query($org:String!,$num:Int!){
+      organization(login:$org){ projectV2(number:$num){
+        id
+        field(name:"Status"){ ... on ProjectV2SingleSelectField { id options { id name } } }
+      } }
+    }`,
+    { org: PROJECT_OWNER, num: PROJECT_NUMBER },
+    token,
+  );
+  const field = data.organization.projectV2.field;
+  const byName = (name: Status): string => {
+    const opt = field.options.find((o) => o.name === name);
+    if (!opt) throw new Error(`Status option not found on board: "${name}"`);
+    return opt.id;
+  };
+  return {
+    projectId: data.organization.projectV2.id,
+    statusFieldId: field.id,
+    optionIds: {
+      Backlog: byName("Backlog"),
+      Ready: byName("Ready"),
+      "In progress": byName("In progress"),
+      "In review": byName("In review"),
+      Done: byName("Done"),
+    },
+  };
+}
+
+/** Returns the issue's project item id, adding it to the board if missing. */
+async function ensureItem(
+  owner: string,
+  repo: string,
+  issue: number,
+  meta: ProjectMeta,
+  token: string,
+): Promise<string> {
+  const data = await gql<{
+    repository: {
+      issue: {
+        id: string;
+        projectItems: { nodes: { id: string; project: { id: string } }[] };
+      };
+    };
+  }>(
+    `query($owner:String!,$repo:String!,$num:Int!){
+      repository(owner:$owner,name:$repo){ issue(number:$num){
+        id projectItems(first:50){ nodes { id project { id } } }
+      } }
+    }`,
+    { owner, repo, num: issue },
+    token,
+  );
+  const existing = data.repository.issue.projectItems.nodes.find(
+    (n) => n.project.id === meta.projectId,
+  );
+  if (existing) return existing.id;
+  const added = await gql<{ addProjectV2ItemById: { item: { id: string } } }>(
+    `mutation($project:ID!,$content:ID!){ addProjectV2ItemById(input:{projectId:$project,contentId:$content}){ item { id } } }`,
+    { project: meta.projectId, content: data.repository.issue.id },
+    token,
+  );
+  return added.addProjectV2ItemById.item.id;
+}
+
+async function setStatus(
+  itemId: string,
+  status: Status,
+  meta: ProjectMeta,
+  token: string,
+): Promise<void> {
+  await gql(
+    `mutation($project:ID!,$item:ID!,$field:ID!,$opt:String!){
+      updateProjectV2ItemFieldValue(input:{projectId:$project,itemId:$item,fieldId:$field,value:{singleSelectOptionId:$opt}}){ projectV2Item { id } }
+    }`,
+    {
+      project: meta.projectId,
+      item: itemId,
+      field: meta.statusFieldId,
+      opt: meta.optionIds[status],
+    },
+    token,
+  );
+}
+
+async function rest(
+  method: string,
+  path: string,
+  token: string,
+  body?: unknown,
+): Promise<Response> {
+  return fetch(`${API}${path}`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/vnd.github+json",
+      "User-Agent": "alpha2-board-bot",
+      ...(body ? { "Content-Type": "application/json" } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+}
+
+async function removeLabel(
+  owner: string,
+  repo: string,
+  issue: number,
+  label: ExclusiveLabel,
+  token: string,
+): Promise<void> {
+  const res = await rest(
+    "DELETE",
+    `/repos/${owner}/${repo}/issues/${issue}/labels/${label}`,
+    token,
+  );
+  if (!res.ok && res.status !== 404)
+    throw new Error(`removeLabel ${label} on #${issue}: HTTP ${res.status}`);
+}
+
+async function closeIssue(
+  owner: string,
+  repo: string,
+  issue: number,
+  token: string,
+): Promise<void> {
+  const res = await rest(
+    "PATCH",
+    `/repos/${owner}/${repo}/issues/${issue}`,
+    token,
+    { state: "closed" },
+  );
+  if (!res.ok) throw new Error(`closeIssue #${issue}: HTTP ${res.status}`);
+}
+
+/** Executes a per-issue plan in order. */
+async function apply(
+  owner: string,
+  repo: string,
+  plans: IssuePlan[],
+  token: string,
+): Promise<void> {
+  const meta = await resolveProjectMeta(token);
+  for (const plan of plans) {
+    let itemId: string | undefined;
+    for (const action of plan.actions) {
+      switch (action.type) {
+        case "ensureOnBoard":
+          itemId = await ensureItem(owner, repo, plan.issue, meta, token);
+          break;
+        case "setStatus":
+          if (!itemId)
+            itemId = await ensureItem(owner, repo, plan.issue, meta, token);
+          await setStatus(itemId, action.status, meta, token);
+          break;
+        case "removeLabel":
+          await removeLabel(owner, repo, plan.issue, action.label, token);
+          break;
+        case "closeIssue":
+          await closeIssue(owner, repo, plan.issue, token);
+          break;
+      }
+    }
+    console.log(
+      `#${plan.issue}: ${plan.actions.map((a) => a.type).join(", ")}`,
+    );
+  }
+}
+
+/** Reads the closing-keyword issue references for a PR. */
+async function closingIssues(
+  owner: string,
+  repo: string,
+  pr: number,
+  token: string,
+): Promise<number[]> {
+  const data = await gql<{
+    repository: {
+      pullRequest: { closingIssuesReferences: { nodes: { number: number }[] } };
+    };
+  }>(
+    `query($owner:String!,$repo:String!,$num:Int!){
+      repository(owner:$owner,name:$repo){ pullRequest(number:$num){ closingIssuesReferences(first:50){ nodes { number } } } }
+    }`,
+    { owner, repo, num: pr },
+    token,
+  );
+  return data.repository.pullRequest.closingIssuesReferences.nodes.map(
+    (n) => n.number,
+  );
+}
+
+async function main(): Promise<void> {
+  const eventName = process.env.GITHUB_EVENT_NAME as SyncInput["eventName"];
+  const token = process.env.GITHUB_TOKEN!;
+  const [owner, repo] = (process.env.GITHUB_REPOSITORY ?? "/").split("/");
+  const payload = JSON.parse(
+    readFileSync(process.env.GITHUB_EVENT_PATH!, "utf8"),
+  );
+
+  let input: SyncInput;
+  if (eventName === "issues") {
+    input = {
+      eventName,
+      action: payload.action,
+      issueNumber: payload.issue.number,
+      labelName: payload.label?.name,
+    };
+  } else {
+    const pr = payload.pull_request;
+    const linkedIssues = await closingIssues(owner, repo, pr.number, token);
+    input = {
+      eventName,
+      action: payload.action,
+      merged: pr.merged,
+      baseRef: pr.base.ref,
+      linkedIssues,
+    };
+  }
+
+  const plans = decideActions(input);
+  if (plans.length === 0) {
+    console.log(`No board actions for ${eventName}.${input.action}`);
+    return;
+  }
+  await apply(owner, repo, plans, token);
+}
+
+// Only run when executed directly (not when imported by tests).
+if (process.env.GITHUB_EVENT_NAME) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
 }

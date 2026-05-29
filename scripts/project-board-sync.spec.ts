@@ -1,4 +1,4 @@
-import { decideActions } from "./project-board-sync";
+import { decideActions, gql } from "./project-board-sync";
 
 describe("decideActions", () => {
   it("issue opened → ensure on board, set Backlog", () => {
@@ -211,5 +211,46 @@ describe("decideActions", () => {
         ],
       },
     ]);
+  });
+});
+
+describe("gql", () => {
+  const token = "t0ken";
+
+  it("posts the query with the bearer token and returns data", async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ data: { ok: true } }), { status: 200 }),
+      );
+    const data = await gql<{ ok: boolean }>(
+      "query{}",
+      { a: 1 },
+      token,
+      fetchMock as unknown as typeof fetch,
+    );
+    expect(data).toEqual({ ok: true });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("https://api.github.com/graphql");
+    expect((init.headers as Record<string, string>).Authorization).toBe(
+      "Bearer t0ken",
+    );
+    expect(JSON.parse(init.body as string)).toEqual({
+      query: "query{}",
+      variables: { a: 1 },
+    });
+  });
+
+  it("throws when the GraphQL response carries errors", async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ errors: [{ message: "boom" }] }), {
+          status: 200,
+        }),
+      );
+    await expect(
+      gql("query{}", {}, token, fetchMock as unknown as typeof fetch),
+    ).rejects.toThrow("boom");
   });
 });
