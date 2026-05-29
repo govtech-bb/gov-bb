@@ -79,17 +79,6 @@ jest.mock("./applicant-name-display", () => ({
   default: () => <div data-testid="applicant-name-display" />,
 }));
 
-jest.mock("../lib/design-system", () => ({
-  __esModule: true,
-  default: {
-    formRoot: "",
-    formTitle: "",
-    formStep: "",
-    formNavigation: "",
-    formStepDescription: "",
-  },
-}));
-
 jest.mock("@forms/lib", () => ({
   getFullFieldId: (step: string, field: string) => `${step}_${field}`,
   addRepeatableStep: jest.fn(() => []),
@@ -142,6 +131,7 @@ function makePlainField(id: string, fieldId: string, stepId: string) {
 
 const mockForm = {
   store: {},
+  state: { isValid: true, isSubmitting: false, values: {} },
   getFieldValue: jest.fn(),
   validateField: jest.fn().mockResolvedValue([]),
   handleSubmit: jest.fn(),
@@ -163,6 +153,8 @@ beforeEach(() => {
   // `mockForm.getFieldValue.mockReturnValue("yes")` set in one test would
   // silently leak into subsequent tests under `clearAllMocks`.
   jest.resetAllMocks();
+  // resetAllMocks doesn't touch plain object fields, so reset form.state too.
+  mockForm.state = { isValid: true, isSubmitting: false, values: {} };
   mockForm.validateField.mockResolvedValue([]);
   mockUseStepGuard.mockReturnValue({
     navigateToStep: mockNavigateToStep,
@@ -614,8 +606,9 @@ describe("FormRenderer", () => {
     expect(mockCompleteAndContinue).toHaveBeenCalledWith("step-1");
   });
 
-  it("clicking Submit calls form.handleSubmit and completeAndContinue", async () => {
+  it("clicking Submit calls form.handleSubmit and completeAndContinue when valid", async () => {
     const user = userEvent.setup();
+    mockForm.state = { isValid: true, isSubmitting: false, values: {} };
     const step = makeStep("declaration");
     render(
       <FormRenderer
@@ -632,7 +625,33 @@ describe("FormRenderer", () => {
     expect(mockCompleteAndContinue).toHaveBeenCalledWith("declaration");
   });
 
-  it.skip("clicking Continue with validation errors does NOT call completeAndContinue", async () => {
+  // #317: form.handleSubmit() resolves even when validation fails (it just
+  // skips onSubmit). Before the fix, completeAndContinue ran unconditionally
+  // after the await, advancing the user past their own errors. Now it's gated
+  // on form.state.isValid. Run this against the pre-fix handleSubmit and it
+  // fails — completeAndContinue is called despite isValid being false.
+  it("clicking Submit does NOT call completeAndContinue when the form is invalid", async () => {
+    const user = userEvent.setup();
+    mockForm.state = { isValid: false, isSubmitting: false, values: {} };
+    const step = makeStep("declaration");
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="declaration"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /submit/i }));
+    // handleSubmit still ran (and resolved) — proving the premise — but the
+    // invalid form must keep the user on the step.
+    expect(mockForm.handleSubmit).toHaveBeenCalledTimes(1);
+    expect(mockCompleteAndContinue).not.toHaveBeenCalled();
+  });
+
+  it("clicking Continue with validation errors does NOT call completeAndContinue", async () => {
     const user = userEvent.setup();
     Object.defineProperty(window, "scrollTo", {
       value: jest.fn(),

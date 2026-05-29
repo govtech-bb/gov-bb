@@ -4,7 +4,7 @@ import {
 } from "./registry.service";
 import { mergeEntry, hydrateStep, hydrateForm } from "./resolution";
 import { CustomComponent } from "./entities/custom-component.entity";
-import { BUILTIN_REGISTRY } from "./builtins";
+import { BUILTIN_REGISTRY } from "@govtech-bb/registry";
 import type { Block, ServiceContractRecipe } from "@govtech-bb/form-types";
 import type { Primitive } from "@govtech-bb/form-types";
 import { Repository } from "typeorm";
@@ -183,6 +183,13 @@ describe("RegistryService", () => {
     it("returns a built-in block by ref", async () => {
       const result = await makeService().resolve("blocks/personal-information");
       expect((result as any).blockId).toBe("personal-information");
+    });
+
+    it("returns the show-hide builtin by ref", async () => {
+      const result = await makeService().resolve("components/show-hide");
+      expect(result).not.toBeNull();
+      expect((result as any).fieldId).toBe("show-hide");
+      expect((result as any).htmlType).toBe("show-hide");
     });
 
     it("returns null for an unknown ref", async () => {
@@ -365,6 +372,33 @@ describe("RegistryService", () => {
           ],
         }),
       ).rejects.toThrow(UnresolvableComponentError);
+    });
+
+    it("hydrates a show-hide ref and applies field overrides", async () => {
+      const result = await makeService().hydrateForm({
+        ...base,
+        steps: [
+          {
+            stepId: "step-1",
+            title: "Step 1",
+            elements: [
+              {
+                ref: "components/show-hide" as const,
+                overrides: {
+                  label: "Show advanced options",
+                  hint: "Reveals extra fields",
+                  fieldId: "show-advanced",
+                },
+              },
+            ],
+          },
+        ],
+      });
+      const el = result.steps[0].elements[0] as any;
+      expect(el.label).toBe("Show advanced options");
+      expect(el.hint).toBe("Reveals extra fields");
+      expect(el.fieldId).toBe("show-advanced");
+      expect(el.htmlType).toBe("show-hide");
     });
   });
 });

@@ -1,0 +1,357 @@
+{
+  "formId": "barbados-secondary-entrance-exam-choice",
+  "title": "Barbados Secondary School Entrance Examination - Choice of School Form",
+  "version": "1.1.0",
+  "steps": [
+    {
+      "stepId": "step-1-student-information",
+      "title": "Student Information",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "School",
+            "fieldId": "school",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "First Name",
+            "fieldId": "firstName",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Last Name",
+            "fieldId": "lastName",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Middle Name",
+            "fieldId": "middleName",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Gender",
+            "fieldId": "gender",
+            "options": [
+              {
+                "label": "Male",
+                "value": "male"
+              },
+              {
+                "label": "Female",
+                "value": "female"
+              },
+              {
+                "label": "Other",
+                "value": "other"
+              }
+            ],
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "Age",
+            "fieldId": "age",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-date",
+          "overrides": {
+            "label": "Date of Birth (mm/dd/yyyy)",
+            "format": "mm/dd/yyyy",
+            "fieldId": "dateOfBirth",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "email",
+            "label": "Email",
+            "fieldId": "email",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Address",
+            "fieldId": "address",
+            "required": true,
+            "multiline": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Parish",
+            "fieldId": "parish",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "ID Number",
+            "fieldId": "idNumber",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Birth Country",
+            "fieldId": "birthCountry",
+            "required": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "step-2-parent-guardian-information",
+      "title": "Parent/Guardian Information",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Title",
+            "fieldId": "parentTitle",
+            "required": true,
+            "placeholder": "e.g., Mr., Mrs., Ms."
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "First Name",
+            "fieldId": "parentFirstName",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Last Name",
+            "fieldId": "parentLastName",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "ID Number",
+            "fieldId": "parentIdNumber",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "tel",
+            "label": "Phone",
+            "fieldId": "parentPhone",
+            "required": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "step-3-school-choices",
+      "title": "School Choices",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Zone",
+            "fieldId": "zone",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Private School",
+            "fieldId": "private",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "1st Choice (Open Choice from any of the 21 Schools)",
+            "fieldId": "choice1",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "2nd Choice (Open Choice from any of the 21 Schools)",
+            "fieldId": "choice2",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "3rd Choice (Zone Only)",
+            "fieldId": "choice3",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "4th Choice (Zone Only)",
+            "fieldId": "choice4",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "5th Choice (Zone Only)",
+            "fieldId": "choice5",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "6th Choice (Zone Only)",
+            "fieldId": "choice6",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "7th Choice (Zone Only)",
+            "fieldId": "choice7",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "8th Choice (Zone Only)",
+            "fieldId": "choice8",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "9th Choice (Zone Only)",
+            "fieldId": "choice9",
+            "required": false
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "step-4-authorization",
+      "title": "Authorization",
+      "elements": [
+        {
+          "ref": "components/generic/signature",
+          "overrides": {
+            "label": "Signature of Parent/Guardian",
+            "fieldId": "parentSignature",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-date",
+          "overrides": {
+            "label": "Date",
+            "fieldId": "signatureDate",
+            "required": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "step-5-official-use-only",
+      "title": "For Official Use Only",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Centre Code",
+            "fieldId": "centreCode",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Sequence No",
+            "fieldId": "sequenceNo",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic/signature",
+          "overrides": {
+            "label": "Signature of Principal",
+            "fieldId": "principalSignature",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-date",
+          "overrides": {
+            "label": "Date",
+            "fieldId": "principalSignatureDate",
+            "required": false
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Submission Confirmation",
+      "elements": [],
+      "behaviours": []
+    }
+  ],
+  "createdAt": "2026-05-27T20:24:07.446Z",
+  "updatedAt": "2026-05-27T20:24:07.446Z"
+}

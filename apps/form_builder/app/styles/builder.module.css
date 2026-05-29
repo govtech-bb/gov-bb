@@ -83,6 +83,13 @@
   margin-right: auto;
 }
 
+.toolbarHint {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  max-width: 220px;
+  line-height: 1.3;
+}
+
 /* ── Step list ───────────────────────────────────── */
 
 .stepList {
@@ -165,6 +172,61 @@
   overflow-y: auto;
 }
 
+/* ── Field picker search ─────────────────────────── */
+
+.pickerSearch {
+  position: relative;
+  margin-bottom: 12px;
+}
+
+.pickerSearchInput {
+  width: 100%;
+  padding: 8px 28px 8px 10px;
+  font-size: 0.875rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.pickerSearchInput:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.pickerSearchClear {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 0;
+}
+
+.pickerSearchClear:hover {
+  color: var(--color-text);
+}
+
+.pickerHintLink {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: var(--color-accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 /* ── Tabs ────────────────────────────────────────── */
 
 .tabs {
@@ -211,6 +273,11 @@
 
 .fieldRow:hover {
   border-color: var(--color-border-strong);
+}
+
+.fieldRowSecondary {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
 }
 
 /* ── Section title ───────────────────────────────── */
@@ -348,4 +415,128 @@
 .checkRow input[type="checkbox"] {
   margin: 0;
   vertical-align: middle;
+}
+
+/* ── Processors ──────────────────────────────────── */
+
+/* Rail entry for the form-level processors view. */
+.processorsRow {
+  margin-top: 8px;
+  border-top: 1px solid var(--color-border);
+  padding-top: 12px;
+  border-radius: 0;
+}
+
+.processorsEditor {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  background: var(--color-bg);
+}
+
+.processorWarning {
+  margin: 8px 0 16px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+}
+
+.addProcessorRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.addProcessorRow label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.noProcessors {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  padding: 8px 0;
+}
+
+.processorCard {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+  background: var(--color-surface);
+}
+
+.processorCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.processorReadOnly {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.fieldLabel {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+/* ── Key/value editor ────────────────────────────── */
+
+.keyValueEditor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.keyValueRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.keyValueRow input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Options editor ──────────────────────────────── */
+
+.optionsEditor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.optionsRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.optionsRow input[type="text"] {
+  flex: 1;
+  min-width: 0;
+}
+
+.optionsDisabled {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.optionsActions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
 }

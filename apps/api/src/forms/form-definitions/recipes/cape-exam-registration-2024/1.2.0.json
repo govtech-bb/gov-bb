@@ -1,0 +1,221 @@
+{
+  "formId": "cape-exam-registration-2024",
+  "title": "Registration of Private Candidates for May/June CAPE Examination",
+  "version": "1.2.0",
+  "steps": [
+    {
+      "stepId": "student-information",
+      "title": "Student Information",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "First Name",
+            "fieldId": "firstName",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Last Name",
+            "fieldId": "lastName",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Gender",
+            "fieldId": "gender",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "max": 31,
+            "min": 1,
+            "label": "Day",
+            "fieldId": "dobDay",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "max": 12,
+            "min": 1,
+            "label": "Month",
+            "fieldId": "dobMonth",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "Year",
+            "fieldId": "dobYear",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "ID Number",
+            "fieldId": "idNumber",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Address",
+            "fieldId": "address",
+            "required": true,
+            "multiline": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "email",
+            "label": "Email",
+            "fieldId": "email",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Telephone No",
+            "fieldId": "telephoneNo",
+            "required": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "subject-registration",
+      "title": "Subject Registration",
+      "elements": [
+        {
+          "ref": "components/show-hide",
+          "overrides": {
+            "label": "Subject Registration Information",
+            "content": "Please list below the subject(s) for which you are registering. If you are repeating a subject from a previous sitting for which a School Based Assessment (SBA) was required, please select RESIT and type your previous registration number in the relevant field.",
+            "fieldId": "subjectInfo"
+          }
+        },
+        {
+          "ref": "components/generic/table",
+          "overrides": {
+            "label": "Subjects for Registration",
+            "columns": [
+              {
+                "type": "text",
+                "label": "SUBJECT(S)",
+                "fieldId": "subject"
+              },
+              {
+                "type": "text",
+                "label": "UNIT",
+                "fieldId": "unit"
+              },
+              {
+                "type": "text",
+                "label": "ALTERNATIVE",
+                "fieldId": "alternative"
+              },
+              {
+                "type": "checkbox",
+                "label": "RESIT",
+                "fieldId": "resit"
+              },
+              {
+                "type": "text",
+                "label": "PREVIOUS REGISTRATION NUMBER",
+                "fieldId": "previousRegistrationNumber",
+                "conditionalOn": "resit"
+              }
+            ],
+            "fieldId": "subjectsTable",
+            "minRows": 6,
+            "required": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "declarations",
+      "title": "Important Information & Declarations",
+      "elements": [
+        {
+          "ref": "components/show-hide",
+          "overrides": {
+            "label": "Name Change Notice",
+            "content": "Candidates should inform the CXC Local Registrar of any name changes which have occurred since their last examination sitting.",
+            "fieldId": "nameChangeWarning"
+          }
+        },
+        {
+          "ref": "components/show-hide",
+          "overrides": {
+            "label": "Timetable Check",
+            "content": "Candidates should check ALL Timetables before registering so as to avoid any subject clashes with other Examination Boards.",
+            "fieldId": "timetableWarning"
+          }
+        },
+        {
+          "ref": "components/show-hide",
+          "overrides": {
+            "label": "Clash Policy",
+            "content": "ABSOLUTELY NO ALTERNATIVE ARRANGEMENTS WILL BE MADE IN RESPECT OF CLASHES",
+            "fieldId": "clashWarning",
+            "styling": "warning"
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "signature",
+      "title": "Signature & Confirmation",
+      "elements": [
+        {
+          "ref": "components/generic/signature",
+          "overrides": {
+            "label": "Signature of Claimant",
+            "fieldId": "claimantSignature",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-date",
+          "overrides": {
+            "label": "Date",
+            "fieldId": "signatureDate",
+            "required": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Submission Confirmation",
+      "elements": [],
+      "behaviours": []
+    }
+  ],
+  "createdAt": "2026-05-27T20:39:29.964Z",
+  "updatedAt": "2026-05-27T20:39:29.964Z"
+}

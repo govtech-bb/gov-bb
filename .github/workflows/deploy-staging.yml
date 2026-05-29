@@ -1,0 +1,464 @@
+name: Deploy Staging
+
+# Sibling to deploy-sandbox.yml, retargeted to the staging account (096863132510).
+#
+# Speedup pattern baked in (see docs/plans/cd-tier2-deploy-speedup.md):
+#   - Docker layer caching via docker/build-push-action + GHA cache
+#   - Amplify auto-build gating (no `start-job` calls — apps already auto-build
+#     on push; we just gate on the result by commit SHA)
+#
+# Prerequisites for this workflow to run green:
+#   1. IAM role assumed via OIDC must exist in staging account 096863132510
+#      with ECR push + ECS update + Amplify read + Lambda invoke permissions.
+#      Wire its ARN into the repo secret AWS_ROLE_ARN_STAGING.
+#   2. The 4 Amplify apps (forms d27gpzyoit5nrf, chat d2kl5gyeq6yv2d,
+#      landing d3u4q4kqt5t6ok, form-builder ds1h02l8ue9hv) must be connected
+#      to govtech-bb/gov-bb / branch `staging` via the Amplify console, with
+#      auto-build ENABLED. Until that wiring is done the Amplify gating jobs
+#      will fail with "no auto-build job found for this commit".
+
+on:
+  push:
+    branches: [staging]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+# Queue deploys; never cancel one mid-flight.
+concurrency:
+  group: deploy-staging-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ca-central-1
+  ECR_REPOSITORY: modular-forms-api
+  ECS_CLUSTER: simple-service-builder-staging
+  ECS_SERVICE: modular-forms-api-staging
+
+jobs:
+  setup:
+    name: Detect affected targets
+    runs-on: ubuntu-latest
+    outputs:
+      api: ${{ steps.affected.outputs.api }}
+      fb-api: ${{ steps.affected.outputs.fb-api }}
+      forms: ${{ steps.affected.outputs.forms }}
+      landing: ${{ steps.affected.outputs.landing }}
+      chat: ${{ steps.affected.outputs.chat }}
+      fb-app: ${{ steps.affected.outputs.fb-app }}
+      migrations: ${{ steps.affected.outputs.migrations }}
+      amplify-config: ${{ steps.affected.outputs.amplify-config }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+
+      - name: Derive base/head SHAs
+        uses: nrwl/nx-set-shas@v4
+        with:
+          main-branch-name: staging
+          workflow-id: deploy-staging.yml
+
+      - name: Compute affected deploy targets
+        id: affected
+        run: |
+          AFFECTED=$(pnpm exec nx show projects \
+            --affected --base="$NX_BASE" --head="$NX_HEAD" --type app --json 2>/dev/null || echo '[]')
+          echo "Affected apps: $AFFECTED"
+          has() { echo "$AFFECTED" | jq -e --arg p "$1" 'index($p)' >/dev/null && echo true || echo false; }
+
+          echo "api=$(has api)" >> "$GITHUB_OUTPUT"
+          echo "fb-api=$(has form-builder-api)" >> "$GITHUB_OUTPUT"
+          echo "forms=$(has forms)" >> "$GITHUB_OUTPUT"
+          echo "landing=$(has landing)" >> "$GITHUB_OUTPUT"
+          echo "chat=$(has chat)" >> "$GITHUB_OUTPUT"
+          echo "fb-app=$(has form-builder-app)" >> "$GITHUB_OUTPUT"
+
+          if git diff --name-only "$NX_BASE" "$NX_HEAD" | grep -q '^apps/api/src/database/migrations/'; then
+            echo "migrations=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "migrations=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if git diff --name-only "$NX_BASE" "$NX_HEAD" \
+              | grep -qE '^(amplify\.yml|\.github/workflows/deploy-staging\.yml)$'; then
+            echo "amplify-config=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "amplify-config=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  deploy-api:
+    name: Build, Push & Deploy API
+    needs: setup
+    if: needs.setup.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.build.outputs.image }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+            ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+          cache-from: type=gha,scope=api-staging
+          cache-to: type=gha,mode=max,scope=api-staging
+
+      - name: Expose image URI as output
+        run: |
+          IMAGE_URI="${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}"
+          echo "image=$IMAGE_URI" >> "$GITHUB_OUTPUT"
+          echo "✅ Pushed $IMAGE_URI"
+        id: image-uri
+
+      - name: Get current task definition
+        id: task-def
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition modular-forms-api-staging \
+            --region $AWS_REGION \
+            --query taskDefinition \
+            --output json > task-def.json
+          echo "✅ Task definition fetched"
+
+      - name: Update task definition with new image
+        id: new-task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-def.json
+          container-name: api
+          image: ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+
+      - name: Run database migrations
+        if: needs.setup.outputs.migrations == 'true'
+        run: |
+          TASK_DEF_ARN=$(aws ecs register-task-definition \
+            --cli-input-json "$(cat ${{ steps.new-task-def.outputs.task-definition }} | \
+              jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)')" \
+            --region $AWS_REGION \
+            --query taskDefinition.taskDefinitionArn \
+            --output text)
+          echo "Registered migration task def: $TASK_DEF_ARN"
+
+          TASK_ARN=$(aws ecs run-task \
+            --cluster $ECS_CLUSTER \
+            --task-definition "$TASK_DEF_ARN" \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[subnet-0374aa2ad1df7a431,subnet-04e50152fa2b77b88],securityGroups=[sg-0e6b76b9c1c50d397],assignPublicIp=DISABLED}" \
+            --overrides '{"containerOverrides":[{"name":"api","command":["pnpm","migration:run"]}]}' \
+            --region $AWS_REGION \
+            --query tasks[0].taskArn \
+            --output text)
+          echo "Migration task started: $TASK_ARN"
+
+          echo "Waiting for migration task to complete..."
+          aws ecs wait tasks-stopped \
+            --cluster $ECS_CLUSTER \
+            --tasks "$TASK_ARN" \
+            --region $AWS_REGION
+
+          EXIT_CODE=$(aws ecs describe-tasks \
+            --cluster $ECS_CLUSTER \
+            --tasks "$TASK_ARN" \
+            --region $AWS_REGION \
+            --query "tasks[0].containers[?name=='api'].exitCode | [0]" \
+            --output text)
+          echo "Migration exit code: $EXIT_CODE"
+
+          if [ "$EXIT_CODE" != "0" ]; then
+            echo "❌ Migration failed with exit code $EXIT_CODE"
+            echo "Check logs: aws logs tail /ecs/modular-forms-api-staging --follow"
+            exit 1
+          fi
+          echo "✅ Migrations completed successfully"
+
+      - name: Deploy to ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.new-task-def.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
+
+  deploy-form-builder:
+    name: Build, Push & Deploy form-builder
+    needs: setup
+    if: needs.setup.outputs.fb-api == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push form-builder image
+        id: build-form-builder
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/form_builder_api/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ steps.ecr-login.outputs.registry }}/gov-bb-form-builder:${{ github.sha }}
+            ${{ steps.ecr-login.outputs.registry }}/gov-bb-form-builder:latest
+          cache-from: type=gha,scope=form-builder-staging
+          cache-to: type=gha,mode=max,scope=form-builder-staging
+
+      - name: Deploy form-builder to ECS
+        env:
+          NEW_IMAGE: ${{ steps.ecr-login.outputs.registry }}/gov-bb-form-builder:${{ github.sha }}
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition form-builder-staging \
+            --region $AWS_REGION \
+            --query taskDefinition \
+            --output json > fb-task-def.json
+
+          jq --arg img "$NEW_IMAGE" '.containerDefinitions[0].image = $img | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)' fb-task-def.json > fb-task-def-new.json
+
+          TASK_DEF_ARN=$(aws ecs register-task-definition \
+            --cli-input-json file://fb-task-def-new.json \
+            --region $AWS_REGION \
+            --query taskDefinition.taskDefinitionArn \
+            --output text)
+          echo "Registered form-builder task def: $TASK_DEF_ARN"
+
+          aws ecs update-service \
+            --cluster $ECS_CLUSTER \
+            --service form-builder-staging \
+            --task-definition "$TASK_DEF_ARN" \
+            --region $AWS_REGION \
+            --query "service.deployments[0].rolloutState" \
+            --output text
+          echo "✅ Form-builder ECS deploy started"
+
+  # ---------------------------------------------------------------------------
+  # Amplify gating (cd-tier2 speedup pattern)
+  #
+  # Amplify auto-build is ON for the staging branch in each app, so the push
+  # that triggers this workflow ALSO triggers each app's Amplify build. We do
+  # not call `aws amplify start-job` (that's the double-build pattern); instead
+  # we find the auto-build job by commit SHA and gate the workflow on it.
+  # ---------------------------------------------------------------------------
+
+  amplify-forms:
+    name: Amplify build (forms)
+    needs: setup
+    if: needs.setup.outputs.forms == 'true' || needs.setup.outputs.amplify-config == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Verify Amplify auto-build
+        env:
+          AMPLIFY_APP_ID: d27gpzyoit5nrf
+          AMPLIFY_BRANCH: staging
+          APP_LABEL: forms
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          source .github/scripts/verify-amplify-build.sh
+
+  amplify-landing:
+    name: Amplify build (landing)
+    needs: setup
+    if: needs.setup.outputs.landing == 'true' || needs.setup.outputs.amplify-config == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Verify Amplify auto-build
+        env:
+          AMPLIFY_APP_ID: d3u4q4kqt5t6ok
+          AMPLIFY_BRANCH: staging
+          APP_LABEL: landing
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          source .github/scripts/verify-amplify-build.sh
+
+  amplify-chat:
+    name: Amplify build (chat)
+    needs: setup
+    if: needs.setup.outputs.chat == 'true' || needs.setup.outputs.amplify-config == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Verify Amplify auto-build
+        env:
+          AMPLIFY_APP_ID: d2kl5gyeq6yv2d
+          AMPLIFY_BRANCH: staging
+          APP_LABEL: chat
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          source .github/scripts/verify-amplify-build.sh
+
+  amplify-form-builder:
+    name: Amplify build (form-builder)
+    needs: setup
+    if: needs.setup.outputs.fb-app == 'true' || needs.setup.outputs.amplify-config == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Verify Amplify auto-build
+        env:
+          AMPLIFY_APP_ID: ds1h02l8ue9hv
+          AMPLIFY_BRANCH: staging
+          APP_LABEL: form-builder
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          source .github/scripts/verify-amplify-build.sh
+
+  deploy-chat-ingest:
+    # See deploy-sandbox.yml for the rationale; staging mirrors it with
+    # account 096863132510 and lambda chatbot-rag-indexer-staging.
+    name: Build, Push & Trigger chat-ingest
+    needs: setup
+    if: needs.setup.outputs.chat == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.build.outputs.image }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push chat-ingest image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/chat/Dockerfile.ingest
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ steps.ecr-login.outputs.registry }}/chatbot-ingest-staging:${{ github.sha }}
+            ${{ steps.ecr-login.outputs.registry }}/chatbot-ingest-staging:latest
+          cache-from: type=gha,scope=chat-ingest-staging
+          cache-to: type=gha,mode=max,scope=chat-ingest-staging
+
+      - name: Trigger chatbot RAG ingest
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+          INDEXER: chatbot-rag-indexer-staging
+        run: |
+          PAYLOAD=$(printf '{"startedBy":"gh-%.36s"}' "$COMMIT_SHA")
+
+          aws lambda invoke \
+            --function-name "$INDEXER" \
+            --payload "$PAYLOAD" \
+            --cli-binary-format raw-in-base64-out \
+            --region "$AWS_REGION" \
+            /tmp/indexer-out.json
+
+          echo "Indexer response:"
+          cat /tmp/indexer-out.json
+          echo
+          echo "✅ Ingest task started — follow with: aws logs tail /ecs/chatbot-ingest-staging --follow"
+
+  summary:
+    name: Deployment summary
+    needs: [setup, deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-chat, deploy-chat-ingest, amplify-form-builder]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summary
+        run: |
+          gate() { [ "$1" = "true" ] && echo "deployed" || echo "skipped (unaffected)"; }
+          {
+            echo "## Staging Deployment Summary"
+            echo ""
+            echo "**Commit:** ${{ github.sha }}"
+            echo ""
+            echo "| Target | Result |"
+            echo "|--------|--------|"
+            echo "| API | $(gate '${{ needs.setup.outputs.api }}') |"
+            echo "| API migrations | $(gate '${{ needs.setup.outputs.migrations }}') |"
+            echo "| form-builder API | $(gate '${{ needs.setup.outputs.fb-api }}') |"
+            echo "| Amplify forms | $(gate '${{ needs.setup.outputs.forms }}') |"
+            echo "| Amplify landing | $(gate '${{ needs.setup.outputs.landing }}') |"
+            echo "| Amplify chat | $(gate '${{ needs.setup.outputs.chat }}') |"
+            echo "| Amplify form-builder | $(gate '${{ needs.setup.outputs.fb-app }}') |"
+            echo "| chat-ingest image | $(gate '${{ needs.setup.outputs.chat }}') |"
+            echo ""
+            echo "**API URL:** https://forms.api.staging.alpha.gov.bb"
+            echo "**Landing URL:** https://landing.staging.alpha.gov.bb"
+            echo "**Forms URL:** https://forms.staging.alpha.gov.bb"
+            echo "**Chat URL:** https://chat.staging.alpha.gov.bb"
+            echo "**Form Builder URL:** https://builder.staging.alpha.gov.bb"
+          } >> "$GITHUB_STEP_SUMMARY"

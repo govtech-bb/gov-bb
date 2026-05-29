@@ -1,9 +1,6 @@
-import {
-  listPublishedForms,
-  getPublishedRecipe,
-  REPO_OWNER,
-  REPO_NAME,
-} from "./github-recipes";
+import { getPublishedRecipe, REPO_NAME } from "./github-recipes";
+
+const REPO_OWNER = "govtech-bb";
 
 type FetchMock = jest.Mock<
   Promise<Response>,
@@ -28,140 +25,13 @@ describe("github-recipes", () => {
   const TOKEN = "ghu_testtoken";
 
   beforeEach(() => {
+    process.env.GITHUB_ORG = REPO_OWNER;
     fetchMock = jest.fn() as unknown as FetchMock;
     globalThis.fetch = fetchMock as unknown as typeof fetch;
   });
 
   afterEach(() => {
     jest.resetAllMocks();
-  });
-
-  describe("listPublishedForms", () => {
-    it("returns one entry per formId, using the latest version's title", async () => {
-      // 1) list of formId directories under recipes/
-      fetchMock.mockResolvedValueOnce(
-        makeJsonResponse(200, [
-          { name: "passport-renewal", type: "dir" },
-          { name: "drivers-licence", type: "dir" },
-          { name: "README.md", type: "file" }, // ignored
-        ]),
-      );
-      // 2) files inside recipes/passport-renewal
-      fetchMock.mockResolvedValueOnce(
-        makeJsonResponse(200, [
-          { name: "1.0.0.json", type: "file" },
-          { name: "1.1.0.json", type: "file" },
-        ]),
-      );
-      // 3) recipes/passport-renewal/1.1.0.json content
-      fetchMock.mockResolvedValueOnce(
-        makeJsonResponse(200, {
-          name: "1.1.0.json",
-          encoding: "base64",
-          content: Buffer.from(
-            JSON.stringify({
-              formId: "passport-renewal",
-              title: "Passport Renewal",
-              version: "1.1.0",
-            }),
-            "utf8",
-          ).toString("base64"),
-        }),
-      );
-      // 4) files inside recipes/drivers-licence
-      fetchMock.mockResolvedValueOnce(
-        makeJsonResponse(200, [{ name: "1.0.0.json", type: "file" }]),
-      );
-      // 5) recipes/drivers-licence/1.0.0.json content
-      fetchMock.mockResolvedValueOnce(
-        makeJsonResponse(200, {
-          name: "1.0.0.json",
-          encoding: "base64",
-          content: Buffer.from(
-            JSON.stringify({
-              formId: "drivers-licence",
-              title: "Drivers Licence",
-              version: "1.0.0",
-            }),
-            "utf8",
-          ).toString("base64"),
-        }),
-      );
-
-      const result = await listPublishedForms(TOKEN);
-
-      expect(result).toEqual([
-        {
-          formId: "passport-renewal",
-          title: "Passport Renewal",
-          version: "1.1.0",
-        },
-        {
-          formId: "drivers-licence",
-          title: "Drivers Licence",
-          version: "1.0.0",
-        },
-      ]);
-    });
-
-    it("sends Authorization and the GitHub API headers", async () => {
-      fetchMock.mockResolvedValueOnce(makeJsonResponse(200, []));
-
-      await listPublishedForms(TOKEN);
-
-      const { url, init } = lastFetch(fetchMock);
-      expect(url).toBe(
-        `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/recipes`,
-      );
-      const headers = init.headers as Record<string, string>;
-      expect(headers.Authorization).toBe(`Bearer ${TOKEN}`);
-      expect(headers.Accept).toBe("application/vnd.github+json");
-      expect(headers["X-GitHub-Api-Version"]).toBe("2022-11-28");
-    });
-
-    it("returns [] when recipes/ does not exist (404)", async () => {
-      fetchMock.mockResolvedValueOnce(
-        makeJsonResponse(404, { message: "Not Found" }),
-      );
-
-      const result = await listPublishedForms(TOKEN);
-
-      expect(result).toEqual([]);
-    });
-
-    it("throws on a non-2xx non-404 error", async () => {
-      fetchMock.mockResolvedValueOnce(
-        makeJsonResponse(500, { message: "Internal" }),
-      );
-
-      await expect(listPublishedForms(TOKEN)).rejects.toThrow(/500/);
-    });
-
-    it("skips form directories that contain no .json files", async () => {
-      fetchMock.mockResolvedValueOnce(
-        makeJsonResponse(200, [{ name: "empty-form", type: "dir" }]),
-      );
-      fetchMock.mockResolvedValueOnce(makeJsonResponse(200, []));
-
-      const result = await listPublishedForms(TOKEN);
-
-      expect(result).toEqual([]);
-    });
-
-    it("throws when recipes/ resolves to a single file (not a directory)", async () => {
-      fetchMock.mockResolvedValueOnce(
-        makeJsonResponse(200, {
-          name: "recipes",
-          type: "file",
-          content: "",
-          encoding: "base64",
-        }),
-      );
-
-      await expect(listPublishedForms(TOKEN)).rejects.toThrow(
-        /directory listing/i,
-      );
-    });
   });
 
   describe("getPublishedRecipe", () => {
@@ -192,7 +62,7 @@ describe("github-recipes", () => {
       expect(recipe).toEqual(RECIPE);
       const { url, init } = lastFetch(fetchMock);
       expect(url).toBe(
-        `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/recipes/passport-renewal/1.1.0.json`,
+        `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/apps/api/src/forms/form-definitions/recipes/passport-renewal/1.1.0.json`,
       );
       const headers = init.headers as Record<string, string>;
       expect(headers.Authorization).toBe(`Bearer ${TOKEN}`);

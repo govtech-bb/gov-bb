@@ -6,8 +6,8 @@ import {
   publishSession,
   deletePublished,
   extractRecipeFromSession,
-  getSql,
 } from "../../../server/ai-builder/sessions";
+import { formPreviewUrl } from "../../../lib/form-url";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -49,6 +49,7 @@ function AiFormBuilderPage() {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [pdfName, setPdfName] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
+  const [opening, setOpening] = useState(false);
   const [publishResult, setPublishResult] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -93,7 +94,16 @@ function AiFormBuilderPage() {
         loading: false,
       }));
     } catch (err: any) {
-      setSession((s) => ({ ...s, loading: false, error: err.message }));
+      // TanStack Start strips invariant detail in production, so we surface
+      // a useful hint when this fires from a 413 at the Amplify edge — the
+      // most common cause is the request body exceeding the SSR Lambda's
+      // ~6 MB cap (e.g., a large PDF that slipped past the file-size guard).
+      const raw = err?.message ?? "Unknown error";
+      const message =
+        raw === "Invariant failed"
+          ? "Upload failed — the file may be too large or the connection was interrupted. Try a smaller PDF (under 4 MB)."
+          : raw;
+      setSession((s) => ({ ...s, loading: false, error: message }));
     }
   };
 
@@ -108,9 +118,31 @@ function AiFormBuilderPage() {
     }
   };
 
+  // Hard cap matches the Amplify SSR Lambda request-body limit. The PDF is
+  // base64-encoded and wrapped in a JSON server-function body, which inflates
+  // the on-the-wire size by ~1.4× — so a 4 MB raw PDF lands around 5.6 MB,
+  // safely under the ~6 MB cap. Anything larger trips a 413 at the Amplify
+  // edge, which surfaces in production as the cryptic "Invariant failed"
+  // (TanStack Start strips the underlying message). The presigned-S3 upload
+  // flow is on the API side (POST /builder/ai/presigned-upload) but the
+  // browser-side wiring is paused — see project_form_builder_pdf_413_handoff
+  // for the resumption notes.
+  const MAX_PDF_BYTES = 4 * 1024 * 1024;
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > MAX_PDF_BYTES) {
+      const mb = (file.size / 1024 / 1024).toFixed(1);
+      setSession((s) => ({
+        ...s,
+        error: `PDF is ${mb} MB; maximum is 4 MB. Please use a smaller file or split it into separate pages.`,
+      }));
+      // Clear the picker so the same file can be re-selected after the user picks a smaller one.
+      e.target.value = "";
+      return;
+    }
+    setSession((s) => ({ ...s, error: null }));
     setPdfName(file.name);
     setPdfFile(file);
   };
@@ -123,7 +155,7 @@ function AiFormBuilderPage() {
         data: { sessionId: session.sessionId },
       });
       setPublishResult(data.message ?? "Published!");
-      if (data.previewUrl) setPreviewUrl(data.previewUrl);
+      if (data.formId) setPreviewUrl(formPreviewUrl(data.formId));
     } catch (err: any) {
       setPublishResult(`Error: ${err.message}`);
     }
@@ -144,21 +176,21 @@ function AiFormBuilderPage() {
     }
   };
 
-  const handleExportSql = async () => {
-    if (!session.sessionId) return;
+  const handleOpenInBuilder = async () => {
+    if (!session.sessionId || !session.recipe) return;
+    setOpening(true);
+    setPublishResult(null);
     try {
-      const data = await getSql({ data: { sessionId: session.sessionId } });
-      if (data.sql) {
-        const blob = new Blob([data.sql], { type: "text/sql" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `${(session.recipe as any)?.formId ?? "form"}.sql`;
-        a.click();
-        URL.revokeObjectURL(url);
-      }
+      // Publish persists the recipe and returns its formId; the UI builder then
+      // loads that form by id (same path the Open picker uses). publishSession is
+      // idempotent within a session, so this works whether or not Publish was clicked.
+      const data = await publishSession({
+        data: { sessionId: session.sessionId },
+      });
+      navigate({ to: "/builder/ui", search: { formId: data.formId } });
     } catch (err: any) {
-      setSession((s) => ({ ...s, error: err.message }));
+      setPublishResult(`Error: ${err.message}`);
+      setOpening(false);
     }
   };
 
@@ -336,23 +368,8 @@ function AiFormBuilderPage() {
               Extract
             </button>
             <button
-              onClick={handleExportSql}
-              disabled={!session.recipe}
-              style={{
-                padding: "6px 12px",
-                background: session.recipe ? "#ff9800" : "#e0e0e0",
-                color: session.recipe ? "white" : "#999",
-                border: "none",
-                borderRadius: "4px",
-                cursor: session.recipe ? "pointer" : "default",
-                fontSize: "12px",
-              }}
-            >
-              Export SQL
-            </button>
-            <button
               onClick={handlePublish}
-              disabled={!session.recipe || publishing}
+              disabled={!session.recipe || publishing || opening}
               style={{
                 padding: "6px 12px",
                 background: session.recipe ? "#4caf50" : "#e0e0e0",
@@ -364,6 +381,21 @@ function AiFormBuilderPage() {
               }}
             >
               {publishing ? "Publishing..." : "Publish"}
+            </button>
+            <button
+              onClick={handleOpenInBuilder}
+              disabled={!session.recipe || opening || publishing}
+              style={{
+                padding: "6px 12px",
+                background: session.recipe ? "#7c3aed" : "#e0e0e0",
+                color: session.recipe ? "white" : "#999",
+                border: "none",
+                borderRadius: "4px",
+                cursor: session.recipe && !opening ? "pointer" : "default",
+                fontSize: "12px",
+              }}
+            >
+              {opening ? "Opening…" : "Open in builder"}
             </button>
           </div>
         </div>
@@ -410,20 +442,9 @@ function AiFormBuilderPage() {
         )}
         <div style={{ flex: 1, overflow: "auto", padding: "16px" }}>
           {session.recipe ? (
-            <pre
-              style={{
-                fontSize: "11px",
-                background: "#263238",
-                color: "#eeffff",
-                padding: "16px",
-                borderRadius: "8px",
-                overflow: "auto",
-                whiteSpace: "pre-wrap",
-                wordBreak: "break-word",
-              }}
-            >
-              {JSON.stringify(session.recipe, null, 2)}
-            </pre>
+            <div style={{ color: "#2e7d32", textAlign: "center", marginTop: "40px" }}>
+              <p>✓ Recipe ready. Publish it, or open it in the builder to edit.</p>
+            </div>
           ) : (
             <div style={{ color: "#999", textAlign: "center", marginTop: "40px" }}>
               <p>Recipe will appear here once the AI generates it.</p>

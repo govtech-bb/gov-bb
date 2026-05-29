@@ -1,0 +1,619 @@
+name: PR Preview
+
+# Per-PR Amplify previews for the 4 frontend apps. On a non-draft PR
+# (or draft → ready_for_review), nx-affected determines which apps
+# changed; each affected app gets a build on its sandbox Amplify app
+# under a per-PR branch, and a sticky comment with URLs is posted on
+# the PR. On PR close, the per-PR branches are deleted from all 4 apps.
+#
+# Design notes in docs/plans/amplify-pr-previews.md.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, closed]
+
+permissions:
+  id-token: write       # OIDC for the AWS role
+  contents: read        # checkout
+  pull-requests: write  # sticky comment
+
+# Per-PR concurrency; cancel in-flight runs on new push. Mirrors
+# Vercel-style "latest commit wins" for ephemeral previews.
+# (deploy-sandbox.yml does the opposite — `cancel-in-progress: false`
+# is correct there because half-applied real deploys are dangerous.)
+concurrency:
+  group: pr-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: ca-central-1
+
+jobs:
+  # Determine which of the 4 frontend apps the PR actually touches, so
+  # unchanged apps are skipped. Mirrors the `setup` job in
+  # .github/workflows/deploy-sandbox.yml, but uses
+  # `--base=origin/<target>` instead of nx-set-shas — for pull_request
+  # events the right base is the PR target branch, not the last
+  # successful deploy.
+  setup:
+    name: Detect affected apps
+    if: github.event.action != 'closed' && github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    outputs:
+      forms: ${{ steps.affected.outputs.forms }}
+      landing: ${{ steps.affected.outputs.landing }}
+      chat: ${{ steps.affected.outputs.chat }}
+      fb-app: ${{ steps.affected.outputs.fb-app }}
+      amplify-config: ${{ steps.affected.outputs.amplify-config }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          # Full history so nx affected and the path-diff for
+          # amplify-config can compare against the PR's target branch.
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+
+      - name: Compute affected apps
+        id: affected
+        env:
+          NX_BASE: origin/${{ github.base_ref }}
+          NX_HEAD: HEAD
+        run: |
+          AFFECTED=$(pnpm exec nx show projects \
+            --affected --base="$NX_BASE" --head="$NX_HEAD" --type app --json 2>/dev/null || echo '[]')
+          echo "Affected apps: $AFFECTED"
+          has() { echo "$AFFECTED" | jq -e --arg p "$1" 'index($p)' >/dev/null && echo true || echo false; }
+
+          echo "forms=$(has forms)" >> "$GITHUB_OUTPUT"
+          echo "landing=$(has landing)" >> "$GITHUB_OUTPUT"
+          echo "chat=$(has chat)" >> "$GITHUB_OUTPUT"
+          echo "fb-app=$(has form-builder-app)" >> "$GITHUB_OUTPUT"
+
+          # amplify.yml is a workspace-root file nx can't attribute to
+          # any app. Force all 4 frontend gates when it or this
+          # workflow itself changes (same escape hatch as
+          # deploy-sandbox.yml).
+          if git diff --name-only "$NX_BASE" "$NX_HEAD" \
+              | grep -qE '^(amplify\.yml|\.github/workflows/pr-preview\.yml)$'; then
+            echo "amplify-config=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "amplify-config=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  preview-forms:
+    name: Preview (forms)
+    needs: setup
+    if: needs.setup.outputs.forms == 'true' || needs.setup.outputs.amplify-config == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      status: ${{ steps.build.outputs.status }}
+      url: ${{ steps.build.outputs.url }}
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Create branch and trigger preview build
+        id: build
+        env:
+          # Forms homepage at forms.sandbox.alpha.gov.bb.
+          # NOT d1yjf5g5ckxcxg — that is the archived legacy monorepo app.
+          AMPLIFY_APP_ID: d1j7z1k0h7u5nb
+          APP_LABEL: forms
+          BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
+        run: |
+          # Idempotent branch creation: only call create-branch if
+          # get-branch shows the branch doesn't already exist on this
+          # Amplify app. This works across PR open + subsequent pushes.
+          if ! aws amplify get-branch \
+                --app-id "$AMPLIFY_APP_ID" \
+                --branch-name "$BRANCH_NAME" \
+                --region "$AWS_REGION" >/dev/null 2>&1; then
+            echo "Creating Amplify branch $BRANCH_NAME on $AMPLIFY_APP_ID"
+            aws amplify create-branch \
+              --app-id "$AMPLIFY_APP_ID" \
+              --branch-name "$BRANCH_NAME" \
+              --region "$AWS_REGION" >/dev/null
+          else
+            echo "Amplify branch $BRANCH_NAME already exists on $AMPLIFY_APP_ID"
+          fi
+
+          # Subdomain replaces `/` with `-`.
+          SUBDOMAIN="${BRANCH_NAME//\//-}"
+          URL="https://${SUBDOMAIN}.${AMPLIFY_APP_ID}.amplifyapp.com"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "Preview URL: $URL"
+
+          # Cancel any in-flight Amplify jobs on this branch before
+          # queueing a new one. start-job fails with
+          # LimitExceededException if a non-terminal job already exists
+          # for the branch — our latest-commit-wins concurrency model
+          # means we want the older build dropped. Scoped per branch:
+          # list-jobs and stop-job both require --branch-name, so this
+          # cannot touch sandbox/staging/prod or other PR branches.
+          IN_FLIGHT=$(aws amplify list-jobs \
+            --app-id "$AMPLIFY_APP_ID" \
+            --branch-name "$BRANCH_NAME" \
+            --region "$AWS_REGION" \
+            --query "jobSummaries[?status=='CREATED' || status=='PENDING' || status=='PROVISIONING' || status=='RUNNING'].jobId" \
+            --output text)
+          for J in $IN_FLIGHT; do
+            echo "Cancelling in-flight Amplify $APP_LABEL job $J"
+            aws amplify stop-job \
+              --app-id "$AMPLIFY_APP_ID" \
+              --branch-name "$BRANCH_NAME" \
+              --job-id "$J" \
+              --region "$AWS_REGION" >/dev/null \
+              || echo "stop-job failed for $J (continuing)"
+          done
+          # Brief wait so the cancellation registers before start-job.
+          [ -n "$IN_FLIGHT" ] && sleep 5
+
+          JOB_ID=$(aws amplify start-job \
+            --app-id "$AMPLIFY_APP_ID" \
+            --branch-name "$BRANCH_NAME" \
+            --job-type RELEASE \
+            --region "$AWS_REGION" \
+            --query jobSummary.jobId \
+            --output text 2>&1) || {
+            echo "❌ Amplify $APP_LABEL start-job failed: $JOB_ID"
+            echo "status=START_FAILED" >> "$GITHUB_OUTPUT"
+            exit 1
+          }
+          echo "Amplify $APP_LABEL job started: $JOB_ID"
+
+          for i in $(seq 1 30); do
+            STATUS=$(aws amplify get-job \
+              --app-id "$AMPLIFY_APP_ID" \
+              --branch-name "$BRANCH_NAME" \
+              --job-id "$JOB_ID" \
+              --region "$AWS_REGION" \
+              --query job.summary.status \
+              --output text)
+            echo "[$i/30] Amplify $APP_LABEL status: $STATUS"
+            if [ "$STATUS" = "SUCCEED" ]; then
+              echo "✅ Amplify $APP_LABEL build succeeded"
+              echo "status=SUCCEED" >> "$GITHUB_OUTPUT"
+              exit 0
+            elif [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "CANCELLED" ]; then
+              echo "❌ Amplify $APP_LABEL build $STATUS"
+              echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+              exit 1
+            fi
+            sleep 30
+          done
+          echo "❌ Amplify $APP_LABEL build did not finish within 15 minutes"
+          echo "status=TIMED_OUT" >> "$GITHUB_OUTPUT"
+          exit 1
+
+  preview-landing:
+    name: Preview (landing)
+    needs: setup
+    if: needs.setup.outputs.landing == 'true' || needs.setup.outputs.amplify-config == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      status: ${{ steps.build.outputs.status }}
+      url: ${{ steps.build.outputs.url }}
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Create branch and trigger preview build
+        id: build
+        env:
+          AMPLIFY_APP_ID: d3kbl8o0ovutw4
+          APP_LABEL: landing
+          BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
+        run: |
+          if ! aws amplify get-branch \
+                --app-id "$AMPLIFY_APP_ID" \
+                --branch-name "$BRANCH_NAME" \
+                --region "$AWS_REGION" >/dev/null 2>&1; then
+            echo "Creating Amplify branch $BRANCH_NAME on $AMPLIFY_APP_ID"
+            aws amplify create-branch \
+              --app-id "$AMPLIFY_APP_ID" \
+              --branch-name "$BRANCH_NAME" \
+              --region "$AWS_REGION" >/dev/null
+          else
+            echo "Amplify branch $BRANCH_NAME already exists on $AMPLIFY_APP_ID"
+          fi
+
+          SUBDOMAIN="${BRANCH_NAME//\//-}"
+          URL="https://${SUBDOMAIN}.${AMPLIFY_APP_ID}.amplifyapp.com"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "Preview URL: $URL"
+
+          # Cancel any in-flight Amplify jobs on this branch before
+          # queueing a new one. start-job fails with
+          # LimitExceededException if a non-terminal job already exists
+          # for the branch — our latest-commit-wins concurrency model
+          # means we want the older build dropped. Scoped per branch:
+          # list-jobs and stop-job both require --branch-name, so this
+          # cannot touch sandbox/staging/prod or other PR branches.
+          IN_FLIGHT=$(aws amplify list-jobs \
+            --app-id "$AMPLIFY_APP_ID" \
+            --branch-name "$BRANCH_NAME" \
+            --region "$AWS_REGION" \
+            --query "jobSummaries[?status=='CREATED' || status=='PENDING' || status=='PROVISIONING' || status=='RUNNING'].jobId" \
+            --output text)
+          for J in $IN_FLIGHT; do
+            echo "Cancelling in-flight Amplify $APP_LABEL job $J"
+            aws amplify stop-job \
+              --app-id "$AMPLIFY_APP_ID" \
+              --branch-name "$BRANCH_NAME" \
+              --job-id "$J" \
+              --region "$AWS_REGION" >/dev/null \
+              || echo "stop-job failed for $J (continuing)"
+          done
+          # Brief wait so the cancellation registers before start-job.
+          [ -n "$IN_FLIGHT" ] && sleep 5
+
+          JOB_ID=$(aws amplify start-job \
+            --app-id "$AMPLIFY_APP_ID" \
+            --branch-name "$BRANCH_NAME" \
+            --job-type RELEASE \
+            --region "$AWS_REGION" \
+            --query jobSummary.jobId \
+            --output text 2>&1) || {
+            echo "❌ Amplify $APP_LABEL start-job failed: $JOB_ID"
+            echo "status=START_FAILED" >> "$GITHUB_OUTPUT"
+            exit 1
+          }
+          echo "Amplify $APP_LABEL job started: $JOB_ID"
+
+          for i in $(seq 1 30); do
+            STATUS=$(aws amplify get-job \
+              --app-id "$AMPLIFY_APP_ID" \
+              --branch-name "$BRANCH_NAME" \
+              --job-id "$JOB_ID" \
+              --region "$AWS_REGION" \
+              --query job.summary.status \
+              --output text)
+            echo "[$i/30] Amplify $APP_LABEL status: $STATUS"
+            if [ "$STATUS" = "SUCCEED" ]; then
+              echo "✅ Amplify $APP_LABEL build succeeded"
+              echo "status=SUCCEED" >> "$GITHUB_OUTPUT"
+              exit 0
+            elif [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "CANCELLED" ]; then
+              echo "❌ Amplify $APP_LABEL build $STATUS"
+              echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+              exit 1
+            fi
+            sleep 30
+          done
+          echo "❌ Amplify $APP_LABEL build did not finish within 15 minutes"
+          echo "status=TIMED_OUT" >> "$GITHUB_OUTPUT"
+          exit 1
+
+  preview-chat:
+    name: Preview (chat)
+    needs: setup
+    if: needs.setup.outputs.chat == 'true' || needs.setup.outputs.amplify-config == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      status: ${{ steps.build.outputs.status }}
+      url: ${{ steps.build.outputs.url }}
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Create branch and trigger preview build
+        id: build
+        env:
+          AMPLIFY_APP_ID: d3snq1f0c10466
+          APP_LABEL: chat
+          BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
+        run: |
+          if ! aws amplify get-branch \
+                --app-id "$AMPLIFY_APP_ID" \
+                --branch-name "$BRANCH_NAME" \
+                --region "$AWS_REGION" >/dev/null 2>&1; then
+            echo "Creating Amplify branch $BRANCH_NAME on $AMPLIFY_APP_ID"
+            aws amplify create-branch \
+              --app-id "$AMPLIFY_APP_ID" \
+              --branch-name "$BRANCH_NAME" \
+              --region "$AWS_REGION" >/dev/null
+          else
+            echo "Amplify branch $BRANCH_NAME already exists on $AMPLIFY_APP_ID"
+          fi
+
+          SUBDOMAIN="${BRANCH_NAME//\//-}"
+          URL="https://${SUBDOMAIN}.${AMPLIFY_APP_ID}.amplifyapp.com"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "Preview URL: $URL"
+
+          # Cancel any in-flight Amplify jobs on this branch before
+          # queueing a new one. start-job fails with
+          # LimitExceededException if a non-terminal job already exists
+          # for the branch — our latest-commit-wins concurrency model
+          # means we want the older build dropped. Scoped per branch:
+          # list-jobs and stop-job both require --branch-name, so this
+          # cannot touch sandbox/staging/prod or other PR branches.
+          IN_FLIGHT=$(aws amplify list-jobs \
+            --app-id "$AMPLIFY_APP_ID" \
+            --branch-name "$BRANCH_NAME" \
+            --region "$AWS_REGION" \
+            --query "jobSummaries[?status=='CREATED' || status=='PENDING' || status=='PROVISIONING' || status=='RUNNING'].jobId" \
+            --output text)
+          for J in $IN_FLIGHT; do
+            echo "Cancelling in-flight Amplify $APP_LABEL job $J"
+            aws amplify stop-job \
+              --app-id "$AMPLIFY_APP_ID" \
+              --branch-name "$BRANCH_NAME" \
+              --job-id "$J" \
+              --region "$AWS_REGION" >/dev/null \
+              || echo "stop-job failed for $J (continuing)"
+          done
+          # Brief wait so the cancellation registers before start-job.
+          [ -n "$IN_FLIGHT" ] && sleep 5
+
+          JOB_ID=$(aws amplify start-job \
+            --app-id "$AMPLIFY_APP_ID" \
+            --branch-name "$BRANCH_NAME" \
+            --job-type RELEASE \
+            --region "$AWS_REGION" \
+            --query jobSummary.jobId \
+            --output text 2>&1) || {
+            echo "❌ Amplify $APP_LABEL start-job failed: $JOB_ID"
+            echo "status=START_FAILED" >> "$GITHUB_OUTPUT"
+            exit 1
+          }
+          echo "Amplify $APP_LABEL job started: $JOB_ID"
+
+          for i in $(seq 1 30); do
+            STATUS=$(aws amplify get-job \
+              --app-id "$AMPLIFY_APP_ID" \
+              --branch-name "$BRANCH_NAME" \
+              --job-id "$JOB_ID" \
+              --region "$AWS_REGION" \
+              --query job.summary.status \
+              --output text)
+            echo "[$i/30] Amplify $APP_LABEL status: $STATUS"
+            if [ "$STATUS" = "SUCCEED" ]; then
+              echo "✅ Amplify $APP_LABEL build succeeded"
+              echo "status=SUCCEED" >> "$GITHUB_OUTPUT"
+              exit 0
+            elif [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "CANCELLED" ]; then
+              echo "❌ Amplify $APP_LABEL build $STATUS"
+              echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+              exit 1
+            fi
+            sleep 30
+          done
+          echo "❌ Amplify $APP_LABEL build did not finish within 15 minutes"
+          echo "status=TIMED_OUT" >> "$GITHUB_OUTPUT"
+          exit 1
+
+  preview-form-builder:
+    name: Preview (form-builder)
+    needs: setup
+    if: needs.setup.outputs.fb-app == 'true' || needs.setup.outputs.amplify-config == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      status: ${{ steps.build.outputs.status }}
+      url: ${{ steps.build.outputs.url }}
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Create branch and trigger preview build
+        id: build
+        env:
+          AMPLIFY_APP_ID: d16oo4n0w76zwn
+          APP_LABEL: form-builder
+          BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
+        run: |
+          if ! aws amplify get-branch \
+                --app-id "$AMPLIFY_APP_ID" \
+                --branch-name "$BRANCH_NAME" \
+                --region "$AWS_REGION" >/dev/null 2>&1; then
+            echo "Creating Amplify branch $BRANCH_NAME on $AMPLIFY_APP_ID"
+            aws amplify create-branch \
+              --app-id "$AMPLIFY_APP_ID" \
+              --branch-name "$BRANCH_NAME" \
+              --region "$AWS_REGION" >/dev/null
+          else
+            echo "Amplify branch $BRANCH_NAME already exists on $AMPLIFY_APP_ID"
+          fi
+
+          SUBDOMAIN="${BRANCH_NAME//\//-}"
+          URL="https://${SUBDOMAIN}.${AMPLIFY_APP_ID}.amplifyapp.com"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "Preview URL: $URL"
+
+          # Cancel any in-flight Amplify jobs on this branch before
+          # queueing a new one. start-job fails with
+          # LimitExceededException if a non-terminal job already exists
+          # for the branch — our latest-commit-wins concurrency model
+          # means we want the older build dropped. Scoped per branch:
+          # list-jobs and stop-job both require --branch-name, so this
+          # cannot touch sandbox/staging/prod or other PR branches.
+          IN_FLIGHT=$(aws amplify list-jobs \
+            --app-id "$AMPLIFY_APP_ID" \
+            --branch-name "$BRANCH_NAME" \
+            --region "$AWS_REGION" \
+            --query "jobSummaries[?status=='CREATED' || status=='PENDING' || status=='PROVISIONING' || status=='RUNNING'].jobId" \
+            --output text)
+          for J in $IN_FLIGHT; do
+            echo "Cancelling in-flight Amplify $APP_LABEL job $J"
+            aws amplify stop-job \
+              --app-id "$AMPLIFY_APP_ID" \
+              --branch-name "$BRANCH_NAME" \
+              --job-id "$J" \
+              --region "$AWS_REGION" >/dev/null \
+              || echo "stop-job failed for $J (continuing)"
+          done
+          # Brief wait so the cancellation registers before start-job.
+          [ -n "$IN_FLIGHT" ] && sleep 5
+
+          JOB_ID=$(aws amplify start-job \
+            --app-id "$AMPLIFY_APP_ID" \
+            --branch-name "$BRANCH_NAME" \
+            --job-type RELEASE \
+            --region "$AWS_REGION" \
+            --query jobSummary.jobId \
+            --output text 2>&1) || {
+            echo "❌ Amplify $APP_LABEL start-job failed: $JOB_ID"
+            echo "status=START_FAILED" >> "$GITHUB_OUTPUT"
+            exit 1
+          }
+          echo "Amplify $APP_LABEL job started: $JOB_ID"
+
+          for i in $(seq 1 30); do
+            STATUS=$(aws amplify get-job \
+              --app-id "$AMPLIFY_APP_ID" \
+              --branch-name "$BRANCH_NAME" \
+              --job-id "$JOB_ID" \
+              --region "$AWS_REGION" \
+              --query job.summary.status \
+              --output text)
+            echo "[$i/30] Amplify $APP_LABEL status: $STATUS"
+            if [ "$STATUS" = "SUCCEED" ]; then
+              echo "✅ Amplify $APP_LABEL build succeeded"
+              echo "status=SUCCEED" >> "$GITHUB_OUTPUT"
+              exit 0
+            elif [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "CANCELLED" ]; then
+              echo "❌ Amplify $APP_LABEL build $STATUS"
+              echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+              exit 1
+            fi
+            sleep 30
+          done
+          echo "❌ Amplify $APP_LABEL build did not finish within 15 minutes"
+          echo "status=TIMED_OUT" >> "$GITHUB_OUTPUT"
+          exit 1
+
+  # Post or edit a single sticky comment on the PR listing the preview
+  # URLs and their statuses. Runs after the 4 preview jobs reach any
+  # terminal state (success, failure, or skip).
+  comment:
+    name: Post preview comment
+    needs: [setup, preview-forms, preview-landing, preview-chat, preview-form-builder]
+    if: |
+      always()
+      && github.event.action != 'closed'
+      && github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Render comment body
+        id: render
+        env:
+          FORMS_RESULT: ${{ needs.preview-forms.result }}
+          FORMS_STATUS: ${{ needs.preview-forms.outputs.status }}
+          FORMS_URL: ${{ needs.preview-forms.outputs.url }}
+          LANDING_RESULT: ${{ needs.preview-landing.result }}
+          LANDING_STATUS: ${{ needs.preview-landing.outputs.status }}
+          LANDING_URL: ${{ needs.preview-landing.outputs.url }}
+          CHAT_RESULT: ${{ needs.preview-chat.result }}
+          CHAT_STATUS: ${{ needs.preview-chat.outputs.status }}
+          CHAT_URL: ${{ needs.preview-chat.outputs.url }}
+          FB_RESULT: ${{ needs.preview-form-builder.result }}
+          FB_STATUS: ${{ needs.preview-form-builder.outputs.status }}
+          FB_URL: ${{ needs.preview-form-builder.outputs.url }}
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # Render one row per app. `result` is the GHA job result
+          # ('success' / 'failure' / 'cancelled' / 'skipped'). When
+          # skipped, the app wasn't affected — show a dash row.
+          row() {
+            local label="$1" result="$2" status="$3" url="$4"
+            case "$result" in
+              success)
+                echo "| $label | ✅ Ready | [$url]($url) |"
+                ;;
+              failure)
+                if [ "$status" = "START_FAILED" ]; then
+                  # start-job itself was rejected (e.g. IAM, throttling,
+                  # a transient AWS error past stop-job's window). No
+                  # Amplify build was ever queued, so no preview URL
+                  # exists — point at the workflow logs via the check
+                  # link on the PR instead.
+                  echo "| $label | ❌ Failed to queue build | — |"
+                elif [ -n "$url" ]; then
+                  echo "| $label | ❌ Failed ($status) | [build logs]($url) |"
+                else
+                  echo "| $label | ❌ Failed | — |"
+                fi
+                ;;
+              cancelled)
+                echo "| $label | ⏹ Cancelled | — |"
+                ;;
+              skipped|*)
+                echo "| $label | ⏭ Not affected | — |"
+                ;;
+            esac
+          }
+
+          {
+            echo "## Amplify PR previews"
+            echo ""
+            echo "| App | Status | URL |"
+            echo "|---|---|---|"
+            row "forms"        "$FORMS_RESULT"   "$FORMS_STATUS"   "$FORMS_URL"
+            row "landing"      "$LANDING_RESULT" "$LANDING_STATUS" "$LANDING_URL"
+            row "chat"         "$CHAT_RESULT"    "$CHAT_STATUS"    "$CHAT_URL"
+            row "form-builder" "$FB_RESULT"      "$FB_STATUS"      "$FB_URL"
+            echo ""
+            echo "_Commit: \`${COMMIT_SHA:0:7}\`_  ·  _Branches auto-delete when this PR closes._"
+          } > comment.md
+
+          # Hand the file path to the next step.
+          echo "path=comment.md" >> "$GITHUB_OUTPUT"
+
+      - name: Post or update sticky comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: amplify-pr-preview
+          path: comment.md
+
+  # On PR close, delete the per-PR Amplify branch from all 4 apps.
+  # The branch only exists on apps that were affected at some point in
+  # this PR's life, so "not found" errors are swallowed.
+  teardown:
+    name: Delete preview branches
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Delete branches on all 4 sandbox Amplify apps
+        env:
+          BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
+        run: |
+          for entry in \
+              "forms:d1j7z1k0h7u5nb" \
+              "landing:d3kbl8o0ovutw4" \
+              "chat:d3snq1f0c10466" \
+              "form-builder:d16oo4n0w76zwn"; do
+            label="${entry%%:*}"
+            app_id="${entry##*:}"
+            if aws amplify get-branch \
+                  --app-id "$app_id" \
+                  --branch-name "$BRANCH_NAME" \
+                  --region "$AWS_REGION" >/dev/null 2>&1; then
+              aws amplify delete-branch \
+                --app-id "$app_id" \
+                --branch-name "$BRANCH_NAME" \
+                --region "$AWS_REGION" >/dev/null
+              echo "🗑  Deleted $label branch $BRANCH_NAME ($app_id)"
+            else
+              echo "↷  No $label branch $BRANCH_NAME on $app_id (skipping)"
+            fi
+          done

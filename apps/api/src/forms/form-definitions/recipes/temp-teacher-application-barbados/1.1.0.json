@@ -1,0 +1,436 @@
+{
+  "formId": "temp-teacher-application-barbados",
+  "title": "Application for the Post of Temporary Teacher",
+  "version": "1.1.0",
+  "steps": [
+    {
+      "stepId": "step-1-personal-data",
+      "title": "Personal Data",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "First Name",
+            "fieldId": "firstName",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Last Name",
+            "fieldId": "lastName",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Other Names",
+            "fieldId": "otherNames"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "ID Number",
+            "fieldId": "idNumber",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-date",
+          "overrides": {
+            "label": "Date of birth",
+            "fieldId": "dateOfBirth",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Gender",
+            "fieldId": "gender",
+            "options": [
+              {
+                "label": "Male",
+                "value": "male"
+              },
+              {
+                "label": "Female",
+                "value": "female"
+              },
+              {
+                "label": "Other",
+                "value": "other"
+              }
+            ],
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "NIS No",
+            "fieldId": "nisNumber"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Address",
+            "fieldId": "address",
+            "required": true,
+            "multiline": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Parish",
+            "value": "Christ Church",
+            "fieldId": "parish",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "email",
+            "label": "Email",
+            "fieldId": "email",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Tel Home",
+            "fieldId": "telHome"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Tel Cell",
+            "fieldId": "telCell",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Place of birth",
+            "fieldId": "placeOfBirth"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Marital Status",
+            "fieldId": "maritalStatus"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Citizenship",
+            "fieldId": "citizenship",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Period Residing in Barbados",
+            "fieldId": "periodResidingBarbados"
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "step-2-educational-record",
+      "title": "Educational Record",
+      "elements": [
+        {
+          "ref": "components/generic/table",
+          "overrides": {
+            "rows": 6,
+            "label": "Details of institutions at which you have received your Academic/Technical/Professional Education",
+            "columns": [
+              {
+                "key": "institution",
+                "label": "Name of Institution"
+              },
+              {
+                "key": "country",
+                "label": "Country"
+              },
+              {
+                "key": "dates",
+                "label": "Dates"
+              }
+            ],
+            "fieldId": "educationalInstitutions",
+            "required": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "step-3-qualifications",
+      "title": "Qualifications",
+      "elements": [
+        {
+          "ref": "components/generic/table",
+          "overrides": {
+            "rows": 10,
+            "label": "Qualifications",
+            "columns": [
+              {
+                "key": "subject",
+                "label": "Subject Passed: Academic/Technical/Professional"
+              },
+              {
+                "key": "examiningBody",
+                "label": "Examining Body"
+              },
+              {
+                "key": "dates",
+                "label": "Dates"
+              },
+              {
+                "key": "level",
+                "label": "Level/Grade at which passed"
+              }
+            ],
+            "fieldId": "qualifications",
+            "required": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "step-4-work-experience",
+      "title": "Work Experience",
+      "elements": [
+        {
+          "ref": "components/generic/table",
+          "overrides": {
+            "rows": 6,
+            "label": "Work Experience",
+            "columns": [
+              {
+                "key": "employer",
+                "label": "Name of Employer"
+              },
+              {
+                "key": "from",
+                "label": "From"
+              },
+              {
+                "key": "to",
+                "label": "To"
+              },
+              {
+                "key": "position",
+                "label": "Position Held"
+              },
+              {
+                "key": "duties",
+                "label": "Brief Description of duties"
+              }
+            ],
+            "fieldId": "workExperience",
+            "required": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "step-5-other-related-information",
+      "title": "Other Related Information",
+      "elements": [
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "label": "Skills possessed in athletics/games/crafts/etc. (Please specify)",
+            "fieldId": "skillsAthletics",
+            "multiline": true
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "label": "Experience in Youth/Community Organisations (Specify indicating any positions of responsibility held)",
+            "fieldId": "youthCommunityExperience",
+            "multiline": true
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "label": "Positions of responsibility held at School/College/University (Specify indicating any positions of responsibility held)",
+            "fieldId": "positionsResponsibility",
+            "multiline": true
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "label": "Any other relevant information not covered by the foregoing",
+            "fieldId": "otherRelevantInfo",
+            "multiline": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "step-6-references",
+      "title": "References",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Reference 1 - Name",
+            "fieldId": "ref1Name",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Reference 1 - Address",
+            "fieldId": "ref1Address",
+            "required": true,
+            "multiline": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Reference 1 - Occupation/Profession",
+            "fieldId": "ref1Occupation",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Reference 1 - Contact No",
+            "fieldId": "ref1Contact",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "email",
+            "label": "Reference 1 - Email",
+            "fieldId": "ref1Email"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Reference 2 - Name",
+            "fieldId": "ref2Name",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Reference 2 - Address",
+            "fieldId": "ref2Address",
+            "required": true,
+            "multiline": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Reference 2 - Occupation/Profession",
+            "fieldId": "ref2Occupation",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Reference 2 - Contact No",
+            "fieldId": "ref2Contact",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "email",
+            "label": "Reference 2 - Email",
+            "fieldId": "ref2Email"
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "step-7-submission",
+      "title": "Document Submission & Signature",
+      "elements": [
+        {
+          "ref": "components/generic/info-box",
+          "overrides": {
+            "content": "PLEASE NOTE: When submitting this form, you will be asked to upload a zipped folder containing the following documents:\n1. A copy of your Certificates/Diplomas and/or Transcripts from College/University\n2. A copy of two (2) Testimonials",
+            "fieldId": "submissionNote"
+          }
+        },
+        {
+          "ref": "components/generic-file",
+          "overrides": {
+            "label": "Upload Supporting Documents (Zipped Folder)",
+            "accept": ".zip",
+            "fieldId": "documentUpload",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/signature",
+          "overrides": {
+            "label": "Applicant Signature",
+            "fieldId": "applicantSignature",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-date",
+          "overrides": {
+            "label": "Date Signed",
+            "fieldId": "dateSigned",
+            "required": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Submission Confirmation",
+      "elements": [],
+      "behaviours": []
+    }
+  ],
+  "createdAt": "2026-05-27T20:02:17.865Z",
+  "updatedAt": "2026-05-27T20:02:17.865Z"
+}

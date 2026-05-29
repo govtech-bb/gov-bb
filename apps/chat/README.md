@@ -5,8 +5,8 @@ Welcome to your new TanStack Start app!
 To run this application:
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
 # Building For Production
@@ -14,7 +14,7 @@ npm run dev
 To build this application for production:
 
 ```bash
-npm run build
+pnpm build
 ```
 
 ## Testing
@@ -22,7 +22,7 @@ npm run build
 This project uses [Vitest](https://vitest.dev/) for testing. You can run the tests with:
 
 ```bash
-npm run test
+pnpm test
 ```
 
 ## Styling
@@ -36,7 +36,7 @@ If you prefer not to use Tailwind CSS:
 1. Remove the demo pages in `src/routes/demo/`
 2. Replace the Tailwind import in `src/styles.css` with your own styles
 3. Remove `tailwindcss()` from the plugins array in `vite.config.ts`
-4. Uninstall the packages: `npm install @tailwindcss/vite tailwindcss -D`
+4. Uninstall the packages: `pnpm remove @tailwindcss/vite tailwindcss`
 
 
 # TanStack Chat Application
@@ -56,6 +56,25 @@ Bedrock requires `bedrock:InvokeModel` and `bedrock:InvokeModelWithResponseStrea
 on the inference-profile ARN for the model you select. The adapter falls back
 to non-streaming `Converse` if `InvokeModelWithResponseStream` is denied, so
 streaming permission is recommended but not strictly required.
+
+## Production env vars (Amplify Console)
+
+Env vars are read at request time from `process.env`. Set them in
+Amplify Console → your app → App settings → Environment variables.
+No build-time baking, no `.env.production` generation — Amplify injects
+them into the SSR Lambda's runtime environment.
+
+Required:
+
+- `RAG_URL` — usually `https://<your-chat-domain>/api`
+- `DATABASE_URL` — Postgres (pgvector RDS)
+- `FORM_API_URL` — forms submission API base URL
+
+Optional (have defaults):
+
+- `BEDROCK_REGION` — defaults to `AWS_REGION`, else `ca-central-1`
+- `LLM_MODEL` — defaults to `claude-haiku-4-5`
+- `REWRITE_MODEL` — defaults to `claude-haiku-4-5`
 
 ## Re-ingest after chunker changes
 

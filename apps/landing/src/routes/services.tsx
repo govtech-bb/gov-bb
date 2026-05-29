@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { Heading, Link, Search, Text } from '@govtech-bb/react'
 import { HelpfulBox } from '../components/HelpfulBox'
-import { PAGES } from '../content/registry'
+import { isVisible, PAGES } from '../content/registry'
 import { trackEvent } from '../lib/analytics'
 
 export const Route = createFileRoute('/services')({
@@ -19,11 +19,15 @@ export const Route = createFileRoute('/services')({
 })
 
 function ServicesPage() {
+  const { preview } = Route.useRouteContext()
   const startSlugs = new Set(
     PAGES.filter((p) => p.slug.endsWith('/start')).map((p) => p.slug),
   )
   const items = PAGES.filter(
-    (p) => p.frontmatter.stage === 'alpha' && !p.slug.endsWith('/start'),
+    (p) =>
+      p.frontmatter.stage === 'alpha' &&
+      !p.slug.endsWith('/start') &&
+      isVisible(p, preview),
   )
     .map((p) => ({
       title: p.frontmatter.title,

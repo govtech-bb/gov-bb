@@ -3,7 +3,7 @@ import type { UIMessage } from "@tanstack/ai";
 import { bedrockText } from "@govtech-bb/ai-bedrock";
 import { z } from "zod";
 import { childController } from "#/lib/abort";
-import { env } from "#/lib/env";
+import { getServerEnv } from "#/config/env";
 import { extractText, lastUserText } from "./messages";
 
 const PROMPT = `You rewrite the user's latest message into a single self-contained search query for a retrieval system over Barbados government services.
@@ -45,10 +45,13 @@ export async function rewriteRetrievalQuery(
     latest,
   );
 
+  const env = getServerEnv();
   // Fall back to raw input if the rewrite call fails — never block a turn.
   try {
     const result = await chat({
-      adapter: bedrockText(env.REWRITE_MODEL, { region: env.BEDROCK_REGION }),
+      adapter: bedrockText(env.REWRITE_MODEL, {
+        region: env.BEDROCK_REGION,
+      }),
       messages: [{ role: "user", content: prompt }],
       outputSchema: Schema,
       maxTokens: 100,

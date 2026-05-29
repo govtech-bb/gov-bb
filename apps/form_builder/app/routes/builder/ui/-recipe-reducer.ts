@@ -2,7 +2,10 @@ import type {
   RecipeDraft,
   RecipeStepDraft,
   RecipeFieldDraft,
+  RecipeProcessorDraft,
+  AuthorableProcessorType,
 } from "@govtech-bb/form-builder";
+import { makeDefaultProcessor } from "@govtech-bb/form-builder";
 import type { Behaviour, FieldOverrides } from "@govtech-bb/form-types";
 
 export const REQUIRED_STEP_IDS = [
@@ -43,12 +46,19 @@ export type RecipeAction =
       meta: Partial<Pick<RecipeStepDraft, "stepId" | "title" | "description">>;
     }
   | { type: "SET_STEP_BEHAVIOURS"; stepId: string; behaviours: Behaviour[] }
-  | { type: "ADD_FIELD"; stepId: string; field: RecipeFieldDraft }
-  | { type: "REMOVE_FIELD"; stepId: string; fieldRef: string }
+  | {
+      type: "ADD_FIELD";
+      stepId: string;
+      // Callers pass a draft without `id`; the reducer mints one. Keeps
+      // FieldPicker call sites simple and ensures every step-resident field
+      // has a unique editor id.
+      field: Omit<RecipeFieldDraft, "id">;
+    }
+  | { type: "REMOVE_FIELD"; stepId: string; fieldId: string }
   | {
       type: "UPDATE_FIELD_OVERRIDES";
       stepId: string;
-      fieldRef: string;
+      fieldId: string;
       overrides: FieldOverrides;
       childOverrides?: Record<string, FieldOverrides>;
     }
@@ -58,6 +68,19 @@ export type RecipeAction =
       stepId: string;
       fromIndex: number;
       toIndex: number;
+    }
+  | { type: "ADD_PROCESSOR"; processorType: AuthorableProcessorType }
+  | { type: "REMOVE_PROCESSOR"; id: string }
+  | {
+      type: "UPDATE_PROCESSOR_CONFIG";
+      id: string;
+      // The full replacement config. Typed loosely because the action can't know
+      // the matched processor's variant; the config form supplies a
+      // correctly-shaped config and the server Validate flow enforces the schema.
+      // Replace (not merge) so key-value editors can remove keys; the form is
+      // responsible for spreading existing config to keep unrendered keys (e.g.
+      // webhook `secret`).
+      config: Record<string, unknown>;
     }
   | { type: "LOAD_DRAFT"; draft: RecipeDraft }
   | { type: "RESET" }
@@ -138,11 +161,16 @@ export function recipeReducer(
     }
 
     case "ADD_FIELD": {
+      // Mint id here so callers can pass plain drafts.
+      const fieldWithId: RecipeFieldDraft = {
+        ...action.field,
+        id: crypto.randomUUID(),
+      };
       return {
         ...state,
         steps: state.steps.map((s) =>
           s.stepId === action.stepId
-            ? { ...s, fields: [...s.fields, action.field] }
+            ? { ...s, fields: [...s.fields, fieldWithId] }
             : s,
         ),
       };
@@ -155,7 +183,7 @@ export function recipeReducer(
           s.stepId === action.stepId
             ? {
                 ...s,
-                fields: s.fields.filter((f) => f.ref !== action.fieldRef),
+                fields: s.fields.filter((f) => f.id !== action.fieldId),
               }
             : s,
         ),
@@ -170,7 +198,7 @@ export function recipeReducer(
             ? {
                 ...s,
                 fields: s.fields.map((f) =>
-                  f.ref === action.fieldRef
+                  f.id === action.fieldId
                     ? {
                         ...f,
                         overrides: action.overrides,
@@ -246,6 +274,50 @@ export function recipeReducer(
         ...(action.description !== undefined
           ? { description: action.description }
           : {}),
+      };
+    }
+
+    case "ADD_PROCESSOR": {
+      // Spreading the union value from makeDefaultProcessor and adding the id
+      // distributes over the discriminated union, so the result stays a valid
+      // RecipeProcessorDraft with its type↔config correlation intact.
+      const newProcessor: RecipeProcessorDraft = {
+        ...makeDefaultProcessor(action.processorType),
+        id: crypto.randomUUID(),
+      };
+      return {
+        ...state,
+        processors: [...(state.processors ?? []), newProcessor],
+      };
+    }
+
+    case "REMOVE_PROCESSOR": {
+      // No-op (and don't introduce an empty array) when none exist, so the
+      // absent-vs-empty distinction the serializer relies on is preserved.
+      if (!state.processors) return state;
+      const remaining = state.processors.filter((p) => p.id !== action.id);
+      // Collapse the empty case back to undefined for the same reason — removing
+      // the last processor must not leave a `[]` behind.
+      return {
+        ...state,
+        processors: remaining.length > 0 ? remaining : undefined,
+      };
+    }
+
+    case "UPDATE_PROCESSOR_CONFIG": {
+      if (!state.processors) return state;
+      return {
+        ...state,
+        processors: state.processors.map((p) =>
+          p.id === action.id
+            ? // Replace the config wholesale so key-value editors can remove
+              // keys. The form spreads the existing config first, which is what
+              // keeps unrendered keys (e.g. webhook `secret`) alive. The cast is
+              // needed because the new config can't be statically tied to p's
+              // variant.
+              ({ ...p, config: action.config } as RecipeProcessorDraft)
+            : p,
+        ),
       };
     }
 

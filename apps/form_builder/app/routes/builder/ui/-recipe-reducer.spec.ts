@@ -1,4 +1,5 @@
 import type {
+  RecipeDraft,
   RecipeFieldDraft,
   RecipeStepDraft,
 } from "@govtech-bb/form-builder";
@@ -330,6 +331,96 @@ describe("LOAD_DRAFT", () => {
   });
 });
 
+// ── Per-instance field overrides (regression: issue #194) ──────────────────
+// Pins id-keyed lookups so overrides on one instance don't cascade to siblings.
+
+describe("per-instance field overrides (id-keyed)", () => {
+  function fieldWithId(
+    id: string,
+    ref: string,
+    overrides: Record<string, unknown> = {},
+  ): RecipeFieldDraft {
+    return {
+      id,
+      kind: "component",
+      ref,
+      overrides: overrides as RecipeFieldDraft["overrides"],
+    };
+  }
+
+  describe("ADD_FIELD", () => {
+    it("mints a fresh id on each ADD_FIELD so two instances of the same ref are distinguishable", () => {
+      const state = {
+        ...baseDraft(),
+        steps: [editableStep("step-1"), ...EMPTY_DRAFT.steps],
+      };
+      const after1 = recipeReducer(state, {
+        type: "ADD_FIELD",
+        stepId: "step-1",
+        field: { kind: "component", ref: "components/text", overrides: {} },
+      });
+      const after2 = recipeReducer(after1, {
+        type: "ADD_FIELD",
+        stepId: "step-1",
+        field: { kind: "component", ref: "components/text", overrides: {} },
+      });
+
+      const fields = after2.steps[0].fields;
+      expect(fields).toHaveLength(2);
+      expect(typeof fields[0].id).toBe("string");
+      expect(typeof fields[1].id).toBe("string");
+      expect(fields[0].id).not.toBe(fields[1].id);
+      expect(fields[0].ref).toBe(fields[1].ref);
+    });
+  });
+
+  describe("UPDATE_FIELD_OVERRIDES", () => {
+    it("updates only the targeted instance when two fields share a ref", () => {
+      const a = fieldWithId("id-a", "components/text", {});
+      const b = fieldWithId("id-b", "components/text", {});
+      const state = {
+        ...baseDraft(),
+        steps: [editableStep("step-1", [a, b]), ...EMPTY_DRAFT.steps],
+      };
+
+      const result = recipeReducer(state, {
+        type: "UPDATE_FIELD_OVERRIDES",
+        stepId: "step-1",
+        fieldId: "id-a",
+        overrides: { label: "Only A" },
+      });
+
+      const [resA, resB] = result.steps[0].fields;
+      expect(resA.id).toBe("id-a");
+      expect(resA.overrides).toEqual({ label: "Only A" });
+      expect(resB.id).toBe("id-b");
+      expect(resB.overrides).toEqual({});
+    });
+  });
+
+  describe("REMOVE_FIELD", () => {
+    it("removes only the targeted instance when two fields share a ref", () => {
+      const a = fieldWithId("id-a", "components/text", { label: "A" });
+      const b = fieldWithId("id-b", "components/text", { label: "B" });
+      const state = {
+        ...baseDraft(),
+        steps: [editableStep("step-1", [a, b]), ...EMPTY_DRAFT.steps],
+      };
+
+      const result = recipeReducer(state, {
+        type: "REMOVE_FIELD",
+        stepId: "step-1",
+        fieldId: "id-a",
+      });
+
+      const remaining = result.steps[0].fields;
+      expect(remaining).toHaveLength(1);
+      expect(remaining[0].id).toBe("id-b");
+      expect(remaining[0].overrides).toEqual({ label: "B" });
+    });
+  });
+});
+
 // ── nextStepId (integration) ─────────────────────────────────────────────────
 
 describe("nextStepId", () => {
@@ -351,5 +442,173 @@ describe("nextStepId", () => {
     // step-1 and step-3 exist; should return step-4 (max is 3)
     const steps = [editableStep("step-1"), editableStep("step-3")];
     expect(nextStepId(steps)).toBe("step-4");
+  });
+});
+
+// ── ADD_PROCESSOR ────────────────────────────────────────────────────────────
+
+describe("ADD_PROCESSOR", () => {
+  it("appends a default processor of the given type with a minted id", () => {
+    const next = recipeReducer(baseDraft(), {
+      type: "ADD_PROCESSOR",
+      processorType: "email",
+    });
+    expect(next.processors).toHaveLength(1);
+    expect(next.processors![0].type).toBe("email");
+    expect(next.processors![0].config).toEqual({ recipientField: "" });
+    expect(typeof next.processors![0].id).toBe("string");
+    expect(next.processors![0].id).not.toBe("");
+  });
+
+  it("initialises the processors array when it is absent", () => {
+    const state: RecipeDraft = baseDraft();
+    expect(state.processors).toBeUndefined();
+    const next = recipeReducer(state, {
+      type: "ADD_PROCESSOR",
+      processorType: "webhook",
+    });
+    expect(next.processors).toHaveLength(1);
+    expect(next.processors![0].type).toBe("webhook");
+  });
+
+  it("appends to existing processors with a fresh unique id", () => {
+    const a = recipeReducer(baseDraft(), {
+      type: "ADD_PROCESSOR",
+      processorType: "email",
+    });
+    const b = recipeReducer(a, {
+      type: "ADD_PROCESSOR",
+      processorType: "webhook",
+    });
+    expect(b.processors!.map((p) => p.type)).toEqual(["email", "webhook"]);
+    expect(b.processors![0].id).not.toBe(b.processors![1].id);
+  });
+});
+
+// ── REMOVE_PROCESSOR ─────────────────────────────────────────────────────────
+
+describe("REMOVE_PROCESSOR", () => {
+  it("removes only the processor with the matching id", () => {
+    const a = recipeReducer(baseDraft(), {
+      type: "ADD_PROCESSOR",
+      processorType: "email",
+    });
+    const b = recipeReducer(a, {
+      type: "ADD_PROCESSOR",
+      processorType: "webhook",
+    });
+    const next = recipeReducer(b, {
+      type: "REMOVE_PROCESSOR",
+      id: b.processors![0].id,
+    });
+    expect(next.processors!.map((p) => p.type)).toEqual(["webhook"]);
+  });
+
+  it("is a no-op when the array is absent", () => {
+    const next = recipeReducer(baseDraft(), {
+      type: "REMOVE_PROCESSOR",
+      id: "nope",
+    });
+    expect(next.processors).toBeUndefined();
+  });
+
+  it("collapses to undefined when the last processor is removed (#333)", () => {
+    const a = recipeReducer(baseDraft(), {
+      type: "ADD_PROCESSOR",
+      processorType: "email",
+    });
+    const next = recipeReducer(a, {
+      type: "REMOVE_PROCESSOR",
+      id: a.processors![0].id,
+    });
+    expect(next.processors).toBeUndefined();
+  });
+});
+
+// ── UPDATE_PROCESSOR_CONFIG ──────────────────────────────────────────────────
+
+describe("UPDATE_PROCESSOR_CONFIG", () => {
+  it("replaces the matched processor's config with the provided config", () => {
+    const a = recipeReducer(baseDraft(), {
+      type: "ADD_PROCESSOR",
+      processorType: "email",
+    });
+    const id = a.processors![0].id;
+    const next = recipeReducer(a, {
+      type: "UPDATE_PROCESSOR_CONFIG",
+      id,
+      config: { recipientField: "applicant.email", subject: "Hello" },
+    });
+    expect(next.processors![0].config).toEqual({
+      recipientField: "applicant.email",
+      subject: "Hello",
+    });
+  });
+
+  it("stores the config exactly as given, so a caller-spread webhook secret survives", () => {
+    // A webhook loaded from an existing recipe carries a `secret` the builder
+    // never renders. The config form spreads the existing config (carrying the
+    // secret) and overrides only the url; the reducer stores that verbatim.
+    const start: RecipeDraft = {
+      ...baseDraft(),
+      processors: [
+        {
+          id: "wh-1",
+          type: "webhook",
+          config: {
+            url: "https://old.example.gov.bb/hook",
+            method: "POST",
+            secret: "supersecretkey1234",
+            signatureHeader: "X-Webhook-Signature",
+            timeoutMs: 10000,
+          },
+        },
+      ],
+    };
+    const merged = {
+      ...start.processors![0].config,
+      url: "https://new.example.gov.bb/hook",
+    };
+    const next = recipeReducer(start, {
+      type: "UPDATE_PROCESSOR_CONFIG",
+      id: "wh-1",
+      config: merged,
+    });
+    const cfg = next.processors![0].config as {
+      url: string;
+      secret?: string;
+    };
+    expect(cfg.url).toBe("https://new.example.gov.bb/hook");
+    expect(cfg.secret).toBe("supersecretkey1234");
+  });
+
+  it("replaces rather than merges, so a key-value editor can drop a key", () => {
+    // spreadsheet/opencrvs configs ARE the record: removing a row must remove
+    // the key. The editor emits the full remaining record; replace honours it.
+    const start: RecipeDraft = {
+      ...baseDraft(),
+      processors: [
+        { id: "sp-1", type: "spreadsheet", config: { a: "1", b: "2" } },
+      ],
+    };
+    const next = recipeReducer(start, {
+      type: "UPDATE_PROCESSOR_CONFIG",
+      id: "sp-1",
+      config: { a: "1" },
+    });
+    expect(next.processors![0].config).toEqual({ a: "1" });
+  });
+
+  it("leaves processors untouched when no id matches", () => {
+    const a = recipeReducer(baseDraft(), {
+      type: "ADD_PROCESSOR",
+      processorType: "email",
+    });
+    const next = recipeReducer(a, {
+      type: "UPDATE_PROCESSOR_CONFIG",
+      id: "does-not-exist",
+      config: { recipientField: "x" },
+    });
+    expect(next.processors![0].config).toEqual({ recipientField: "" });
   });
 });

@@ -45,7 +45,7 @@ function renderComponent(overrides: Partial<FileUploadProps> = {}) {
     onFileChange,
     get fileInput() {
       return result.container.querySelector(
-        "[data-file-upload-input]",
+        ".govbb-file-upload__input",
       ) as HTMLInputElement;
     },
   };
@@ -58,9 +58,7 @@ describe("FileUpload", () => {
     const { fileInput } = renderComponent({
       sharedProps: { ...baseSharedProps, accept: "image/png,image/jpeg" },
     });
-    expect(
-      screen.getByRole("button", { name: /choose file/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/choose file/i)).toBeInTheDocument();
     // The hidden file input carries the accept attribute
     expect(fileInput).not.toBeNull();
     expect(fileInput.accept).toBe("image/png,image/jpeg");

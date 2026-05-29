@@ -1,0 +1,282 @@
+{
+  "formId": "textbook-grant-application",
+  "title": "Application for $100 Textbook Grant",
+  "version": "1.1.0",
+  "steps": [
+    {
+      "stepId": "step-1-parent-guardian",
+      "title": "Parent/Guardian Information",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Title",
+            "fieldId": "title",
+            "required": true,
+            "placeholder": "---"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "First Name",
+            "fieldId": "firstName",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Last Name",
+            "fieldId": "lastName",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Other Names",
+            "fieldId": "otherNames"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "ID Number",
+            "fieldId": "idNumber",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Home Phone",
+            "fieldId": "homePhone"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Cell Phone",
+            "fieldId": "cellPhone",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Work Phone",
+            "fieldId": "workPhone"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "email",
+            "label": "Email",
+            "fieldId": "email",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Address",
+            "fieldId": "address",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Parish",
+            "fieldId": "parish",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Tamis No",
+            "fieldId": "tamisNo"
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "step-2-banking",
+      "title": "Banking Information",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Bank/Branch",
+            "fieldId": "bankBranch",
+            "required": true,
+            "helperText": "In order to receive the $100 Grant, please provide accurate and current banking information to prevent delays in processing this application."
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Account No",
+            "fieldId": "accountNo",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Account Type",
+            "fieldId": "accountType",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Name on Acct",
+            "fieldId": "nameOnAcct",
+            "required": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "step-3-student-info",
+      "title": "Student Information",
+      "elements": [
+        {
+          "ref": "components/generic/table",
+          "overrides": {
+            "rows": 5,
+            "label": "Student Information",
+            "columns": [
+              {
+                "key": "name",
+                "type": "text",
+                "label": "Name"
+              },
+              {
+                "key": "idNumber",
+                "type": "text",
+                "label": "ID Number"
+              },
+              {
+                "key": "gender",
+                "type": "select",
+                "label": "Gender",
+                "options": [
+                  {
+                    "label": "Male",
+                    "value": "M"
+                  },
+                  {
+                    "label": "Female",
+                    "value": "F"
+                  },
+                  {
+                    "label": "Other",
+                    "value": "O"
+                  }
+                ]
+              },
+              {
+                "key": "class",
+                "type": "text",
+                "label": "Class"
+              },
+              {
+                "key": "relation",
+                "type": "text",
+                "label": "Relation"
+              }
+            ],
+            "fieldId": "studentTable",
+            "required": true,
+            "helperText": "This form allows a parent/guardian to claim for up to 5 children. If necessary, another claim can be submitted if there are additional children in the household. Please ensure that multiple claims are not submitted for the same child."
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "step-4-declaration",
+      "title": "Declaration and Signature",
+      "elements": [
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "label": "I, hereby submit a claim for",
+            "fieldId": "declaration",
+            "required": true,
+            "placeholder": "child/children"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Signature of Parent/Guardian",
+            "fieldId": "parentSignature",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "date",
+            "label": "Date",
+            "fieldId": "parentDate",
+            "required": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "step-5-official-use",
+      "title": "For Official Use Only",
+      "elements": [
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "label": "Comments",
+            "fieldId": "comments"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Signature of Principal",
+            "fieldId": "principalSignature"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "date",
+            "label": "Date",
+            "fieldId": "principalDate"
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Submission Confirmation",
+      "elements": [],
+      "behaviours": []
+    }
+  ],
+  "createdAt": "2026-05-27T19:56:41.077Z",
+  "updatedAt": "2026-05-27T19:56:41.077Z"
+}

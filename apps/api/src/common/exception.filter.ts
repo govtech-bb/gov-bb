@@ -15,14 +15,48 @@ interface ParsedError {
   statusCode: number;
   message: string;
   errors?: unknown;
+  // Populated only for non-HttpException Errors when NODE_ENV !== "production",
+  // so operators can see the real failure in dev/staging without it leaking
+  // through to prod responses.
+  errorInfo?: { name: string; message: string };
 }
 
 function parseException(exception: unknown): ParsedError {
   if (!(exception instanceof HttpException)) {
-    return {
+    // Express/body-parser throw plain Errors carrying a client status (e.g.
+    // PayloadTooLargeError with .status 413). Honour a 4xx status so the client
+    // sees the real cause instead of a misleading 500.
+    const rawStatus = (exception as { status?: unknown; statusCode?: unknown })
+      ?.status;
+    const rawStatusCode = (
+      exception as { status?: unknown; statusCode?: unknown }
+    )?.statusCode;
+    const clientStatus =
+      typeof rawStatus === "number"
+        ? rawStatus
+        : typeof rawStatusCode === "number"
+          ? rawStatusCode
+          : null;
+    if (
+      exception instanceof Error &&
+      clientStatus !== null &&
+      clientStatus >= 400 &&
+      clientStatus < 500
+    ) {
+      return { statusCode: clientStatus, message: exception.message };
+    }
+
+    const base = {
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
       message: "An unexpected error occurred",
     };
+    if (exception instanceof Error && process.env.NODE_ENV !== "production") {
+      return {
+        ...base,
+        errorInfo: { name: exception.name, message: exception.message },
+      };
+    }
+    return base;
   }
 
   const statusCode = exception.getStatus();
@@ -64,8 +98,12 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const res = ctx.getResponse<Response>();
     const req = ctx.getRequest<Request>();
 
-    const { statusCode, message, errors } = parseException(exception);
-    const meta = errors !== undefined ? { errors } : undefined;
+    const { statusCode, message, errors, errorInfo } =
+      parseException(exception);
+    const metaParts: Record<string, unknown> = {};
+    if (errors !== undefined) metaParts.errors = errors;
+    if (errorInfo) metaParts.error = errorInfo;
+    const meta = Object.keys(metaParts).length > 0 ? metaParts : undefined;
 
     this.logger.error(`${req.method} ${req.url} ${statusCode} — ${message}`);
     if (errors) {

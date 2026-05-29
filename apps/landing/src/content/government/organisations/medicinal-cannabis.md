@@ -12,7 +12,7 @@ contact:
     value:
       - Warrens House
       - Warrens
-      - St Michael BB 22026
+      - St. Michael BB 22026
   - label: Telephone
     type: phone
     value: (246) 421-4141

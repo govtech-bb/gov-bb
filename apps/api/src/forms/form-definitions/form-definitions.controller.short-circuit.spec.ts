@@ -12,14 +12,22 @@ const mockDisabledOverridesService = {
   enable: jest.fn(),
 };
 
+const mockConfigService = {
+  get: jest.fn().mockReturnValue(""),
+};
+
 describe("FormDefinitionsController — kill switch short-circuit", () => {
   let controller: FormDefinitionsController;
+  let res: { setHeader: jest.Mock };
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockConfigService.get.mockReturnValue("");
+    res = { setHeader: jest.fn() };
     controller = new FormDefinitionsController(
       mockFormDefinitionsService as never,
       mockDisabledOverridesService as never,
+      mockConfigService as never,
     );
   });
 
@@ -28,7 +36,12 @@ describe("FormDefinitionsController — kill switch short-circuit", () => {
     const contract = { formId: "passport-renewal", title: "Passport Renewal" };
     mockFormDefinitionsService.findByFormId.mockResolvedValue(contract);
 
-    const result = await controller.get("passport-renewal");
+    const result = await controller.get(
+      "passport-renewal",
+      undefined,
+      undefined,
+      res as never,
+    );
 
     expect(mockDisabledOverridesService.find).toHaveBeenCalledWith(
       "passport-renewal",
@@ -36,6 +49,7 @@ describe("FormDefinitionsController — kill switch short-circuit", () => {
     expect(mockFormDefinitionsService.findByFormId).toHaveBeenCalledWith({
       formId: "passport-renewal",
       version: undefined,
+      preview: false,
     });
     expect(result).toMatchObject({ status: "success", data: contract });
   });
@@ -48,7 +62,9 @@ describe("FormDefinitionsController — kill switch short-circuit", () => {
       disabledAt: new Date("2026-05-22T09:00:00.000Z"),
     });
 
-    await expect(controller.get("passport-renewal")).rejects.toMatchObject({
+    await expect(
+      controller.get("passport-renewal", undefined, undefined, res as never),
+    ).rejects.toMatchObject({
       status: HttpStatus.GONE,
       response: { disabled: true, reason: "Step 3 is broken" },
     });
@@ -65,7 +81,7 @@ describe("FormDefinitionsController — kill switch short-circuit", () => {
     });
 
     await expect(
-      controller.get("passport-renewal", "1.0.0"),
+      controller.get("passport-renewal", "1.0.0", undefined, res as never),
     ).rejects.toBeInstanceOf(HttpException);
 
     expect(mockFormDefinitionsService.findByFormId).not.toHaveBeenCalled();

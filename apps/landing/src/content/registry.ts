@@ -109,9 +109,130 @@ export const PAGES: Array<ContentPage> = Object.entries(modules).map(
 )
 
 const BY_URL = new Map(PAGES.map((p) => [p.url, p]))
+const BY_SLUG = new Map(PAGES.map((p) => [p.slug, p]))
 
 export function findPage(urlPath: string): ContentPage | undefined {
   return BY_URL.get(urlPath.replace(/^\/+|\/+$/g, ''))
+}
+
+/**
+ * A page is a sub-page when its parent *slug* is itself a page — e.g. the
+ * `calculate-severance-pay/start` step lives in the same directory as the
+ * service page `calculate-severance-pay` (its `index.md`). Sub-pages are
+ * reached from their parent's detail page, so they are excluded from
+ * category/subcategory listings to avoid duplicate entries.
+ *
+ * Keyed on slug, not URL: the slug mirrors the on-disk directory structure
+ * and is independent of categories, so this stays correct when a service
+ * lives in more than one category (the URL only carries the primary one).
+ * Pages nested only under a category/subcategory directory — with no parent
+ * page — are not sub-pages and stay listed.
+ */
+export function isSubPage(page: ContentPage): boolean {
+  const i = page.slug.lastIndexOf('/')
+  if (i < 0) return false
+  return BY_SLUG.has(page.slug.slice(0, i))
+}
+
+/**
+ * A page is *effectively preview* if its own `visibility` is `preview` or any
+ * ancestor page is. Walking ancestors by slug means flagging a service's
+ * `index.md` automatically hides its `/start` (and other) sub-pages, which sit
+ * at `<service>/<leaf>`. Slug-keyed (not URL) so it is independent of the
+ * category prefix — sub-pages frequently omit a category and resolve at a bare
+ * URL, but their slug is always `<parentSlug>/<leaf>`.
+ */
+export function isPreview(page: ContentPage): boolean {
+  return resolveIsPreview(
+    page.slug,
+    (slug) => BY_SLUG.get(slug)?.frontmatter.visibility,
+  )
+}
+
+/**
+ * Pure core of {@link isPreview}, decoupled from module state for testing:
+ * walk `slug` and each ancestor slug, returning true if any is `preview`.
+ * `visibilityOf` returns the *own* visibility of a slug, or undefined if no
+ * page sits at that slug (intermediate directory).
+ */
+export function resolveIsPreview(
+  slug: string,
+  visibilityOf: (slug: string) => 'public' | 'preview' | undefined,
+): boolean {
+  let current: string | undefined = slug
+  while (current) {
+    if (visibilityOf(current) === 'preview') return true
+    const i = current.lastIndexOf('/')
+    current = i < 0 ? undefined : current.slice(0, i)
+  }
+  return false
+}
+
+/** A page is visible when in preview mode, or when it isn't effectively preview. */
+export function isVisible(page: ContentPage, inPreview: boolean): boolean {
+  return inPreview || !isPreview(page)
+}
+
+/**
+ * Whether the page at `url` is effectively preview. Used by the static
+ * `<service>/form` routes to gate themselves on their owning service page.
+ * Unknown URLs are treated as not-preview (fail-open: a missing page already
+ * 404s through its own route).
+ */
+export function isUrlPreview(url: string): boolean {
+  const page = findPage(url)
+  return page ? isPreview(page) : false
+}
+
+/**
+ * Whether this page's `<slug>/start` sub-page exists and is effectively
+ * preview. Drives hiding the online-application method on a still-public parent
+ * page (see rehype-hide-start-links). Pages with no `/start` sub-page return
+ * false and keep their existing manifest-gated behaviour.
+ */
+export function startSubPageInPreview(page: ContentPage): boolean {
+  const start = BY_SLUG.get(`${page.slug}/start`)
+  return start ? isPreview(start) : false
+}
+
+/**
+ * Canonical URL keyed by a page's leaf slug (last path segment). Used to
+ * rewrite the bare-slug links authored in organisation content — e.g. a
+ * ministry listing `/apply-for-a-passport` — to the category-prefixed route
+ * that actually resolves (`/travel-id-citizenship/apply-for-a-passport`).
+ * Leaves shared by multiple pages (e.g. step pages named `start`) are
+ * ambiguous and dropped so they never resolve to the wrong page.
+ */
+const URL_BY_LEAF = (() => {
+  const byLeaf = new Map<string, string>()
+  const ambiguous = new Set<string>()
+  for (const p of PAGES) {
+    const leaf = p.url.split('/').pop()
+    if (!leaf) continue
+    if (byLeaf.has(leaf)) ambiguous.add(leaf)
+    else byLeaf.set(leaf, p.url)
+  }
+  for (const leaf of ambiguous) byLeaf.delete(leaf)
+  return byLeaf
+})()
+
+/**
+ * Resolve an authored service link to the canonical site path. Handles an
+ * already-correct path (unchanged) and a bare service slug (rewritten to its
+ * category-prefixed URL). Anything else — external/mailto/tel links, org
+ * paths, or an unknown slug — is returned unchanged so a link is never
+ * silently broken or mis-pointed.
+ */
+export function resolveServiceHref(href: string): string {
+  if (!href.startsWith('/')) return href
+  const key = href.replace(/^\/+|\/+$/g, '')
+  if (!key) return href
+  if (BY_URL.has(key)) return `/${key}`
+  if (!key.includes('/')) {
+    const url = URL_BY_LEAF.get(key)
+    if (url) return `/${url}`
+  }
+  return href
 }
 
 export { CATEGORIES, CATEGORY_BY_SLUG }

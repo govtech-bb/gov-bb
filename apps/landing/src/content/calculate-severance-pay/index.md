@@ -4,7 +4,9 @@ description: "Estimate the severance payment you may be owed under the Severance
 stage: "alpha"
 featured: false
 publish_date: 2026-05-12
-category: money-financial-support
+categories:
+  - money-financial-support
+  - work-employment
 ---
 
 If you were sent home from your job, your employer may owe you severance payment. This tool gives you an estimate based on the [Severance Payments Act (Cap. 355A)](https://www.nis.gov.bb/severance/) — it is not legal advice.

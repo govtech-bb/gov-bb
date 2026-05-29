@@ -1,7 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import type { UIMessage } from "@tanstack/ai";
 import { fetchServerSentEvents, useChat } from "@tanstack/ai-react";
-import { BackButton, Button, Input, Logo, Text } from "@govtech-bb/react";
+import {
+  Button,
+  cn,
+  Input,
+  Link as GovLink,
+  linkVariants,
+  Logo,
+  Text,
+} from "@govtech-bb/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Bubble } from "#/components/chat/bubble";
 import { TridentAvatar } from "#/components/trident-avatar";
@@ -11,8 +19,14 @@ import { presentChoicesDef, submitFormDef } from "#/lib/chat-tools";
 
 export const Route = createFileRoute("/")({ component: ChatPage });
 
+const MAX_QUERY_LENGTH = 2000;
+
+const LANDING_URL =
+  import.meta.env.VITE_LANDING_URL || "https://landing.sandbox.alpha.gov.bb";
+
 function ChatPage() {
   const [input, setInput] = useState("");
+  const [pendingQuery, setPendingQuery] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   // Citations keyed by assistant messageId. Populated from the `citations`
   // custom event the server emits right after TEXT_MESSAGE_START.
@@ -22,7 +36,7 @@ function ChatPage() {
 
   const connection = useMemo(() => fetchServerSentEvents("/api/chat"), []);
 
-  const { messages, sendMessage, status, error, stop, addToolApprovalResponse } =
+  const { messages, sendMessage, status, error, stop, clear, addToolApprovalResponse } =
     useChat({
       connection,
       onCustomEvent: (eventType, data) => {
@@ -43,9 +57,28 @@ function ChatPage() {
 
   const isStreaming = status === "submitted" || status === "streaming";
 
+  const autoSentRef = useRef(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot mount effect; sendMessage identity is irrelevant, autoSentRef guards re-entry.
+  useEffect(() => {
+    if (autoSentRef.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get("q")?.trim().slice(0, MAX_QUERY_LENGTH);
+    if (!q) return;
+    autoSentRef.current = true;
+    const url = new URL(window.location.href);
+    url.searchParams.delete("q");
+    window.history.replaceState({}, "", url.toString());
+    setPendingQuery(q);
+    sendMessage(q);
+  }, []);
+
+  useEffect(() => {
+    if (messages.length > 0) setPendingQuery(null);
+  }, [messages.length]);
+
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
-  }, [messages.length]);
+  }, [messages.length, pendingQuery]);
 
   const pickChoice = useCallback(
     (choice: string) => {
@@ -64,6 +97,14 @@ function ChatPage() {
   const handleStop = useCallback(() => {
     stop();
   }, [stop]);
+
+  const handleStartAgain = useCallback(() => {
+    stop();
+    clear();
+    setCitationsByMessageId({});
+    setPendingQuery(null);
+    setInput("");
+  }, [stop, clear]);
 
   function submit(text: string) {
     const trimmed = text.trim();
@@ -86,11 +127,24 @@ function ChatPage() {
   return (
     <div className="flex h-dvh flex-col bg-white-00">
       <SiteHeader />
-      <ChatHeader />
+      <ChatHeader onStartAgain={handleStartAgain} />
 
-      <main className="flex-1 overflow-y-auto px-s pb-s" ref={scrollRef}>
-        <div className="mx-auto max-w-2xl space-y-s py-s">
+      {/* Not a <main> — the root layout already provides the single main
+          landmark. role="log" + aria-live announces streamed replies. */}
+      <div className="flex-1 overflow-y-auto px-s pb-s" ref={scrollRef}>
+        <div
+          aria-label="Chat messages"
+          aria-live="polite"
+          className="mx-auto max-w-2xl space-y-s py-s"
+          role="log"
+        >
           <WelcomeBubble />
+          {pendingQuery && messages.length === 0 && (
+            <>
+              <OptimisticUserBubble text={pendingQuery} />
+              <ThinkingIndicator />
+            </>
+          )}
           {messages.map((m, i) => (
             <Bubble
               key={m.id}
@@ -101,14 +155,14 @@ function ChatPage() {
               citations={citationsByMessageId[m.id]}
             />
           ))}
-          {shouldShowThinking(messages) && <ThinkingIndicator />}
+          {messages.length > 0 && shouldShowThinking(messages) && <ThinkingIndicator />}
           {error && (
             <div className="rounded-md bg-red-10 px-3 py-2 text-red-00 text-sm">
               {error.message}
             </div>
           )}
         </div>
-      </main>
+      </div>
 
       <Composer
         input={input}
@@ -154,14 +208,37 @@ function SiteHeader() {
   );
 }
 
-function ChatHeader() {
+function ChatHeader({ onStartAgain }: { onStartAgain: () => void }) {
   return (
     <header className="bg-white-00">
-      <div className="container flex items-center justify-between gap-s py-xm">
-        <BackButton href="/">Back</BackButton>
+      <div className="container flex items-center gap-s py-xm">
+        <div className="flex-1">
+          <GovLink href={LANDING_URL} external>
+            Close
+          </GovLink>
+        </div>
         <TridentAvatar size="sm" tone="filled" />
+        <div className="flex flex-1 justify-end">
+          <button
+            type="button"
+            onClick={onStartAgain}
+            className={cn(linkVariants())}
+          >
+            Start again
+          </button>
+        </div>
       </div>
     </header>
+  );
+}
+
+function OptimisticUserBubble({ text }: { text: string }) {
+  return (
+    <div className="flex justify-end">
+      <div className="text-bubble max-w-[75%] rounded-[16px_16px_4px_16px] bg-blue-100 px-4 py-2.5 text-white-00">
+        {text}
+      </div>
+    </div>
   );
 }
 
@@ -170,10 +247,7 @@ function WelcomeBubble() {
     <div className="flex max-w-[92%] items-start gap-2.5">
       <TridentAvatar size="sm" tone="filled" />
       <div className="text-bubble rounded-[16px_16px_16px_4px] bg-blue-10 px-4 py-3 text-black-00 sm:px-5 sm:py-3.5">
-        Welcome to <strong className="font-bold">alpha.gov.bb.</strong> I can
-        help you find the right government service, understand what you need to
-        apply, or point you to the right organisation. What would you like help
-        with today?
+       Welcome to <strong>alpha.gov.bb.</strong> What would you like help with today?
       </div>
     </div>
   );

@@ -3,6 +3,7 @@ import { FormDefinitionsController } from "./forms/form-definitions/form-definit
 import { FormDraftsController } from "./forms/form-drafts/form-drafts.controller";
 import { SubmissionsController } from "./forms/submissions/submissions.controller";
 import { PaymentWebhookController } from "./payments/payment-webhook.controller";
+import { FilesController } from "./files/files.controller";
 
 // Pins the per-route throttler policy in place. If someone removes a
 // decorator, this catches it before the change ships.
@@ -45,5 +46,38 @@ describe("throttler configuration", () => {
     expect(hasThrottleMetadata(SubmissionsController.prototype.create)).toBe(
       true,
     );
+  });
+
+  // #295: the routes must override a registered bucket ("medium"), not an
+  // unknown "default" name (which @nestjs/throttler treats as a 4th ad-hoc
+  // throttler stacked on the globals rather than an override).
+  it("FilesController.presignUpload overrides the registered 'medium' bucket, not 'default'", () => {
+    expect(
+      hasMetadataWithPrefix(
+        FilesController.prototype.presignUpload,
+        "THROTTLER:LIMITmedium",
+      ),
+    ).toBe(true);
+    expect(
+      hasMetadataWithPrefix(
+        FilesController.prototype.presignUpload,
+        "THROTTLER:LIMITdefault",
+      ),
+    ).toBe(false);
+  });
+
+  it("FilesController.confirmUpload overrides the registered 'medium' bucket, not 'default'", () => {
+    expect(
+      hasMetadataWithPrefix(
+        FilesController.prototype.confirmUpload,
+        "THROTTLER:LIMITmedium",
+      ),
+    ).toBe(true);
+    expect(
+      hasMetadataWithPrefix(
+        FilesController.prototype.confirmUpload,
+        "THROTTLER:LIMITdefault",
+      ),
+    ).toBe(false);
   });
 });

@@ -126,6 +126,6 @@ Go to the District E Magistrate’s Court, Holetown, St. James
 
 #### Born in St. Joseph or St. Andrew
 
-Go to the District F Magistrate’s Court, Eric Holder Municipal Complex, Blackmans, Saint Joseph
+Go to the District F Magistrate’s Court, Eric Holder Municipal Complex, Blackmans, St. Joseph
 
 If you are unsure of your district please contact the Registration Department at the Supreme Court.

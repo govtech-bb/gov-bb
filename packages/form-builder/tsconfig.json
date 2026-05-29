@@ -10,5 +10,5 @@
     "types": ["jest", "node"]
   },
   "include": ["src/**/*"],
-  "references": [{ "path": "../form-types" }]
+  "references": [{ "path": "../form-types" }, { "path": "../registry" }]
 }

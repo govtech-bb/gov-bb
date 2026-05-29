@@ -12,6 +12,15 @@ export const FrontmatterSchema = z.object({
   publish_date: z.coerce.date().optional(),
   source_url: z.url().optional(),
   stage: z.enum(['alpha']).optional(),
+  /**
+   * Rollout gate. `public` (the default) is live for everyone. `preview` hides
+   * the page from the public — it 404s, is dropped from listings and the search
+   * index, and is reachable only by a reviewer holding the preview token (see
+   * src/lib/preview.ts). On a sub-page (e.g. `<service>/start`) this also makes
+   * the still-public parent strip its online-application method and rewrite the
+   * "N ways" count for the public. See docs/plans/content-feature-flagging.md.
+   */
+  visibility: z.enum(['public', 'preview']).optional().default('public'),
   featured: z.boolean().optional(),
   section: z.string().optional(),
   service_type: z.enum(['digital', 'information']).optional(),

@@ -192,29 +192,32 @@ describe("SpreadsheetProcessor", () => {
       expect((proc as any).exportDir).toBe(join(process.cwd(), "exports"));
     });
 
-    it.skip("uses empty object as config when no spreadsheet processor entry is present", async () => {
-      // Branch: `payload.processors.find(...) ?? {}`
-      const { sheet } = buildWorkbookMock();
-      const workbook = {
-        getWorksheet: jest.fn().mockReturnValue(undefined),
-        addWorksheet: jest.fn().mockReturnValue(sheet),
-        xlsx: {
-          readFile: jest.fn().mockRejectedValue(new Error("ENOENT")),
-          writeFile: jest.fn().mockResolvedValue(undefined),
-        },
-      };
-      (ExcelJS.Workbook as jest.Mock).mockImplementation(() => workbook);
-
+    it("returns early without writing when payload has no spreadsheet processor entries", async () => {
+      // Branch: `if (entries.length === 0) return { kind: "completed" };`
+      const { workbook } = buildWorkbookMock();
       const payload = makePayload();
-      // Remove all processors so find() returns undefined → config = {}
       payload.processors = [];
 
-      await processor.process(payload);
+      const result = await processor.process(payload);
 
-      // filename falls back to formId
-      expect(workbook.xlsx.writeFile).toHaveBeenCalledWith(
-        expect.stringContaining("passport-renewal.xlsx"),
+      expect(result).toEqual({ kind: "completed" });
+      expect(workbook.xlsx.writeFile).not.toHaveBeenCalled();
+      expect(workbook.addWorksheet).not.toHaveBeenCalled();
+    });
+
+    it("strips path-traversal segments from a recipe-supplied filename (#297)", async () => {
+      const { workbook } = buildWorkbookMock();
+
+      await processor.process(
+        makePayload("sub-003", { filename: "../../etc/passwd" }),
       );
+
+      expect(workbook.xlsx.writeFile).toHaveBeenCalledWith(
+        join("/tmp/test-exports", "passwd.xlsx"),
+      );
+      const writtenPath = (workbook.xlsx.writeFile as jest.Mock).mock
+        .calls[0][0] as string;
+      expect(writtenPath).not.toContain("..");
     });
 
     it("skips repeatable/array-valued steps when flattening values", async () => {

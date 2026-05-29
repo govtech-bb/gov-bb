@@ -9,24 +9,19 @@ import { getRegistryItem } from "@govtech-bb/form-builder";
 import type { Behaviour } from "@govtech-bb/form-types";
 import type { RecipeAction } from "./-recipe-reducer";
 import { isRequiredStep } from "./-recipe-reducer";
+import { KEBAB_ID_PATTERN, kebabize } from "./-id-validation";
 import { getFieldRefs, getStepRefs } from "./-recipe-refs";
 import { BehavioursEditor } from "./-behaviours-editor";
 import { FieldPicker } from "./-field-picker";
 import { FieldEditPanel } from "./-field-edit-panel";
+import { resolveFieldLabel } from "./-field-label";
 import styles from "../../../styles/builder.module.css";
 
-const STEP_ID_PATTERN = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
 const STEP_ID_ERROR =
   "Use lowercase letters, digits, and hyphens only. Must start with a letter (e.g. my-step, step-1).";
+const STEP_ID_DUPLICATE_ERROR =
+  "This Step ID is already used by another step. Step IDs must be unique within a form.";
 const STEP_ID_DEFAULT_PATTERN = /^step-\d+$/;
-
-function kebabize(input: string): string {
-  return input
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
 
 interface StepEditorProps {
   step: RecipeStepDraft;
@@ -45,27 +40,35 @@ export function StepEditor({
 }: StepEditorProps) {
   const [localStepId, setLocalStepId] = useState(step.stepId);
   const [stepIdError, setStepIdError] = useState("");
-  const [editingFieldRef, setEditingFieldRef] = useState<string | null>(null);
+  const [editingFieldId, setEditingFieldId] = useState<string | null>(null);
 
   // Keep localStepId in sync when a different step is selected from the sidebar.
   useEffect(() => {
     setLocalStepId(step.stepId);
     setStepIdError("");
-    setEditingFieldRef(null);
+    setEditingFieldId(null);
   }, [step.stepId]);
 
   const fieldRefs = useMemo(() => getFieldRefs(draft, catalog), [draft, catalog]);
   const stepRefs = useMemo(() => getStepRefs(draft), [draft]);
 
   const editingField =
-    editingFieldRef !== null
-      ? (step.fields.find((f) => f.ref === editingFieldRef) ?? null)
+    editingFieldId !== null
+      ? (step.fields.find((f) => f.id === editingFieldId) ?? null)
       : null;
 
   function handleStepIdChange(newId: string) {
     setLocalStepId(newId);
-    if (!STEP_ID_PATTERN.test(newId)) {
+    if (!KEBAB_ID_PATTERN.test(newId)) {
       setStepIdError(STEP_ID_ERROR);
+      return;
+    }
+    // Reject a stepId that collides with another step (recipe-wide uniqueness).
+    const duplicate = draft.steps.some(
+      (s) => s.stepId !== step.stepId && s.stepId === newId,
+    );
+    if (duplicate) {
+      setStepIdError(STEP_ID_DUPLICATE_ERROR);
       return;
     }
     setStepIdError("");
@@ -77,14 +80,14 @@ export function StepEditor({
     onStepIdChange(step.stepId, newId);
   }
 
-  function handleAddField(field: RecipeFieldDraft) {
+  function handleAddField(field: Omit<RecipeFieldDraft, "id">) {
     dispatch({ type: "ADD_FIELD", stepId: step.stepId, field });
   }
 
-  function handleRemoveField(fieldRef: string) {
+  function handleRemoveField(fieldId: string) {
     if (!window.confirm("Remove this field?")) return;
-    dispatch({ type: "REMOVE_FIELD", stepId: step.stepId, fieldRef });
-    if (editingFieldRef === fieldRef) setEditingFieldRef(null);
+    dispatch({ type: "REMOVE_FIELD", stepId: step.stepId, fieldId });
+    if (editingFieldId === fieldId) setEditingFieldId(null);
   }
 
   function handleMoveFieldUp(index: number) {
@@ -185,16 +188,23 @@ export function StepEditor({
       <div className={styles.sectionTitle}>Fields ({step.fields.length})</div>
       {step.fields.map((field, idx) => {
         const item = getRegistryItem(field.ref, catalog);
+        const label = resolveFieldLabel(field, item);
         const displayName = item?.displayName ?? field.ref;
+        const showSecondary = displayName !== label;
         const hasOverrides =
           Object.keys(field.overrides ?? {}).length > 0 ||
           (field.kind === "block" && Object.keys(field.childOverrides ?? {}).length > 0);
         return (
-          <div key={field.ref} className={styles.fieldRow}>
-            <span style={{ flex: 1 }}>
-              {hasOverrides && <span className={styles.overrideDot} title="Has overrides" />}
-              {displayName}
-            </span>
+          <div key={field.id} className={styles.fieldRow}>
+            <div style={{ flex: 1 }}>
+              <div>
+                {hasOverrides && <span className={styles.overrideDot} title="Has overrides" />}
+                {label}
+              </div>
+              {showSecondary && (
+                <div className={styles.fieldRowSecondary}>{displayName}</div>
+              )}
+            </div>
             <span className={styles.badge}>{field.kind}</span>
             <button
               type="button"
@@ -212,10 +222,10 @@ export function StepEditor({
             >
               ▼
             </button>
-            <button type="button" onClick={() => setEditingFieldRef(field.ref)}>
+            <button type="button" onClick={() => setEditingFieldId(field.id)}>
               Edit
             </button>
-            <button type="button" onClick={() => handleRemoveField(field.ref)}>
+            <button type="button" onClick={() => handleRemoveField(field.id)}>
               ×
             </button>
           </div>
@@ -227,14 +237,14 @@ export function StepEditor({
       <FieldPicker catalog={catalog} onAddField={handleAddField} />
 
       {/* Inline field edit panel */}
-      {editingField !== null && editingFieldRef !== null && (
+      {editingField !== null && editingFieldId !== null && (
         <FieldEditPanel
           field={editingField}
           catalog={catalog}
           draft={draft}
           stepId={step.stepId}
           dispatch={dispatch}
-          onClose={() => setEditingFieldRef(null)}
+          onClose={() => setEditingFieldId(null)}
         />
       )}
 

@@ -27,13 +27,13 @@ St. Michael
 
 Whitepark Road  
 Bridgetown  
-Saint Michael
+St. Michael
 
 #### Intellectual Property Office
 
 Baobab Tower  
 Highway 2  
-Saint Michael
+St. Michael
 
 ### What to take
 

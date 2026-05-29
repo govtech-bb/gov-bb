@@ -9,6 +9,7 @@ export default function FileUpload({
   onFileChange,
   value,
   errorMessage,
+  errorId,
   validationRules,
   formId,
 }: FileUploadProps) {
@@ -31,13 +32,6 @@ export default function FileUpload({
     e.target.value = "";
   };
 
-  const handleChooseClick = () => {
-    const input = document.querySelector(
-      `input[type="file"][name="${sharedProps.name}"]`,
-    ) as HTMLInputElement | null;
-    input?.click();
-  };
-
   const removeFile = (index: number) => {
     const next = files.slice();
     next.splice(index, 1);
@@ -54,12 +48,14 @@ export default function FileUpload({
   });
 
   return (
-    <div data-file-upload>
-      {errorMessage && <ErrorMessage message={errorMessage} />}
-      <label data-file-upload-label>
-        <div data-file-upload-instructions>
-          <span data-file-upload-title>{field.label ?? "Upload a file"}</span>
-          <span data-file-upload-description>
+    <div className="govbb-file-upload">
+      {errorMessage && <ErrorMessage id={errorId} message={errorMessage} />}
+      <label className="govbb-file-upload__dropzone" htmlFor={field.id}>
+        <div className="govbb-file-upload__info">
+          <span className="govbb-file-upload__title">
+            {field.label ?? "Upload a file"}
+          </span>
+          <span className="govbb-file-upload__subtitle">
             {field.validations?.fileTypes?.value
               ? `Attach a ${fileTypeFormatter.format(readableFileTypes.split(", "))} file`
               : "No file type restrictions"}
@@ -69,19 +65,16 @@ export default function FileUpload({
         <input
           {...sharedProps}
           type="file"
-          data-file-upload-input
+          className="govbb-file-upload__input"
+          aria-invalid={errorMessage ? true : undefined}
           onChange={handleInputChange}
         />
 
-        <div data-file-upload-information>
-          <button
-            type="button"
-            data-file-upload-button
-            onClick={handleChooseClick}
-          >
+        <div className="govbb-file-upload__action">
+          <span className="govbb-btn--tertiary" aria-hidden="true">
             Choose file
-          </button>
-          <span data-file-upload-limit>
+          </span>
+          <span className="govbb-file-upload__max-size">
             Max Size:{" "}
             {validationRules?.maxSize?.value
               ? (validationRules.maxSize.value / (1024 * 1024)).toPrecision(2) +
@@ -92,20 +85,21 @@ export default function FileUpload({
       </label>
 
       {files.length > 0 && (
-        <div data-file-upload-list>
+        <ul className="govbb-file-upload__list">
           {files.map((f, i) => (
-            <div key={i} data-file-upload-item>
-              <span data-file-upload-item-name>{f.name}</span>
+            <li key={i} className="govbb-file-upload__item">
+              <span className="govbb-file-upload__name">{f.name}</span>
               <button
                 type="button"
-                data-file-upload-remove
+                className="govbb-btn--destructive-link"
+                aria-label={`Remove ${f.name}`}
                 onClick={() => removeFile(i)}
               >
                 Remove
               </button>
-            </div>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
     </div>
   );

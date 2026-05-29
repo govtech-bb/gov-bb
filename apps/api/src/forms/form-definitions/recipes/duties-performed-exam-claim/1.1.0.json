@@ -1,0 +1,399 @@
+{
+  "formId": "duties-performed-exam-claim",
+  "title": "Claim Form for Duties Performed During Examinations",
+  "version": "1.1.0",
+  "steps": [
+    {
+      "stepId": "section-a",
+      "title": "Section A: Claimant Details",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "First Name",
+            "fieldId": "firstName"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Last Name",
+            "fieldId": "lastName"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Other Names",
+            "fieldId": "otherNames"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "ID Number",
+            "fieldId": "idNumber"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Address",
+            "fieldId": "address",
+            "multiline": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Parish",
+            "fieldId": "parish"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Email",
+            "fieldId": "email"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Telephone",
+            "fieldId": "telephone"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Tamis No",
+            "fieldId": "tamisNo"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Supervisor",
+            "fieldId": "supervisor"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "NIS No",
+            "fieldId": "nisNo"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Exam Period",
+            "fieldId": "examPeriod"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Claim Period From",
+            "fieldId": "claimPeriodFrom"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Claim Period To",
+            "fieldId": "claimPeriodTo"
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "section-b",
+      "title": "Section B: Duties Performed (Invigilators, Supervisors, Examination Assessors)",
+      "elements": [
+        {
+          "ref": "components/generic/table",
+          "overrides": {
+            "rows": 25,
+            "label": "Duties Record",
+            "columns": [
+              {
+                "id": "#",
+                "label": "#"
+              },
+              {
+                "id": "date",
+                "label": "Date"
+              },
+              {
+                "id": "centre",
+                "label": "Centre"
+              },
+              {
+                "id": "role",
+                "label": "Role"
+              },
+              {
+                "id": "rate",
+                "label": "Rate"
+              },
+              {
+                "id": "overtimeHrs",
+                "label": "Overtime (Hrs)"
+              },
+              {
+                "id": "subtotal",
+                "label": "Subtotal"
+              }
+            ],
+            "fieldId": "dutyTable"
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "Section B Total",
+            "fieldId": "sectionBTotal",
+            "readonly": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "section-c",
+      "title": "Section C: Practical Examination Setup",
+      "elements": [
+        {
+          "ref": "components/generic/table",
+          "overrides": {
+            "rows": 7,
+            "label": "Practical Examination Setup Record",
+            "columns": [
+              {
+                "id": "date",
+                "label": "Date"
+              },
+              {
+                "id": "centre",
+                "label": "Centre"
+              },
+              {
+                "id": "subject",
+                "label": "Subject"
+              },
+              {
+                "id": "totalCandidates",
+                "label": "Total Candidates"
+              },
+              {
+                "id": "totalPersonnel",
+                "label": "Total Personnel"
+              },
+              {
+                "id": "subtotal",
+                "label": "Subtotal"
+              }
+            ],
+            "fieldId": "practicalExamTable"
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "Section C Total",
+            "fieldId": "sectionCTotal",
+            "readonly": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "section-d",
+      "title": "Section D: Reader, Writer, Interpreter, Model, Moderator or Dictator Duties",
+      "elements": [
+        {
+          "ref": "components/generic/table",
+          "overrides": {
+            "rows": 10,
+            "label": "Special Duties Record",
+            "columns": [
+              {
+                "id": "date",
+                "label": "Date"
+              },
+              {
+                "id": "centre",
+                "label": "Centre"
+              },
+              {
+                "id": "subject",
+                "label": "Subject"
+              },
+              {
+                "id": "duties",
+                "label": "Duties"
+              },
+              {
+                "id": "noHoursPassages",
+                "label": "No of Hours / Passages"
+              },
+              {
+                "id": "subtotal",
+                "label": "Subtotal"
+              }
+            ],
+            "fieldId": "specialDutiesTable"
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "Section D Total",
+            "fieldId": "sectionDTotal",
+            "readonly": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "section-e",
+      "title": "Section E: Payee Information",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Bank/Branch",
+            "fieldId": "bankBranch"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Name on Account",
+            "fieldId": "nameOnAccount"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Account No",
+            "fieldId": "accountNo"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "BIC/Swift No",
+            "fieldId": "bicSwiftNo"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Account Type",
+            "fieldId": "accountType"
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "section-f",
+      "title": "Section F: Payment Declaration",
+      "elements": [
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "I hereby claim the sum of",
+            "prefix": "$",
+            "fieldId": "claimAmount",
+            "readonly": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Signature of Claimant",
+            "fieldId": "claimantSignature"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Date",
+            "fieldId": "claimantDate"
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "section-official",
+      "title": "For Official Use Only",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Signature of Supervisor",
+            "fieldId": "supervisorSignature"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Date",
+            "fieldId": "supervisorDate"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Examination Verifier Signature",
+            "fieldId": "examVerifierSignature"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Date",
+            "fieldId": "examVerifierDate"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Accounting Officer Signature",
+            "fieldId": "accountingOfficerSignature"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Date",
+            "fieldId": "accountingOfficerDate"
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Submission Confirmation",
+      "elements": [],
+      "behaviours": []
+    }
+  ],
+  "createdAt": "2026-05-27T20:25:58.965Z",
+  "updatedAt": "2026-05-27T20:25:58.965Z"
+}

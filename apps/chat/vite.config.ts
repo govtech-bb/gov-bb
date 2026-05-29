@@ -1,38 +1,33 @@
 import { defineConfig, loadEnv } from "vite";
 import { devtools } from "@tanstack/devtools-vite";
-
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
-
 import viteReact from "@vitejs/plugin-react";
 import { nitro } from "nitro/vite";
 import tailwindcss from "@tailwindcss/vite";
 
+// Amplify Hosting Compute doesn't pass Console env vars to the SSR Lambda
+// at runtime, so we bake them into the bundle at build time via Vite's
+// `define`. In dev, Vite's `loadEnv` reads `.env.local` directly into
+// `process.env`, so the same `process.env.X` reads work without baking.
 export default defineConfig(({ mode }) => {
-  // Load env vars from .env.production (written by amplify.yml) and process.env
   const env = loadEnv(mode, process.cwd(), "");
+  const pick = (key: string, fallback = ""): string =>
+    env[key] || process.env[key] || fallback;
 
   return {
     resolve: { tsconfigPaths: true },
     define: {
-      // Bake server env vars into the bundle so they're available at Lambda runtime.
-      // Amplify WEB_COMPUTE doesn't pass env vars to the Lambda — only to the build.
-      "process.env.LLM_MODEL": JSON.stringify(
-        env.LLM_MODEL || process.env.LLM_MODEL || "claude-haiku-4-5",
-      ),
+      "process.env.RAG_URL": JSON.stringify(pick("RAG_URL")),
+      "process.env.DATABASE_URL": JSON.stringify(pick("DATABASE_URL")),
+      "process.env.FORM_API_URL": JSON.stringify(pick("FORM_API_URL")),
       "process.env.BEDROCK_REGION": JSON.stringify(
-        env.BEDROCK_REGION || process.env.BEDROCK_REGION || "ca-central-1",
+        pick("BEDROCK_REGION", "ca-central-1"),
       ),
-      "process.env.FORM_API_URL": JSON.stringify(
-        env.FORM_API_URL || process.env.FORM_API_URL || "",
+      "process.env.LLM_MODEL": JSON.stringify(
+        pick("LLM_MODEL", "claude-haiku-4-5"),
       ),
-      "process.env.DATABASE_URL": JSON.stringify(
-        env.DATABASE_URL || process.env.DATABASE_URL || "",
-      ),
-      "process.env.DB_SSL": JSON.stringify(
-        env.DB_SSL || process.env.DB_SSL || "",
-      ),
-      "process.env.RAG_URL": JSON.stringify(
-        env.RAG_URL || process.env.RAG_URL || "",
+      "process.env.REWRITE_MODEL": JSON.stringify(
+        pick("REWRITE_MODEL", "claude-haiku-4-5"),
       ),
     },
     plugins: [
@@ -40,7 +35,10 @@ export default defineConfig(({ mode }) => {
       devtools(),
       nitro({
         preset: "aws_amplify",
-        awsAmplify: { runtime: "nodejs22.x" },
+        awsAmplify: {
+          // @ts-ignore — Lambda supports nodejs24.x; nitro types lag.
+          runtime: "nodejs24.x",
+        },
       }),
       tanstackStart(),
       viteReact(),

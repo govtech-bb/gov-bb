@@ -8,6 +8,12 @@ on:
 permissions:
   contents: read
 
+# Latest push to a PR wins — cancel superseded in-progress runs. Safe because
+# CI has no side effects (pull_request / workflow_dispatch only, no deploys).
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   typecheck:
     name: Type Check
@@ -421,6 +427,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          # Full history so nx-set-shas can find the last successful CI run on
+          # the PR's base branch and nx affected can diff against it.
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v5
         with:
@@ -428,10 +438,26 @@ jobs:
           cache: "pnpm"
       - run: pnpm install --frozen-lockfile
 
-      - name: Run tests
+      - name: Restore nx cache
+        uses: actions/cache@v4
+        with:
+          path: .nx/cache
+          # Job-specific key so the test and build jobs don't collide on save
+          # (shared key → second job's save is a no-op → lost cache next run).
+          key: nx-${{ runner.os }}-test-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
+          restore-keys: |
+            nx-${{ runner.os }}-test-${{ hashFiles('pnpm-lock.yaml') }}-
+            nx-${{ runner.os }}-test-
+
+      - name: Derive affected base/head
+        uses: nrwl/nx-set-shas@v4
+        with:
+          main-branch-name: ${{ github.base_ref }}
+
+      - name: Run affected tests
         id: test
         run: |
-          pnpm exec nx run-many -t test --nxBail=false 2>&1 | tee test-output.txt
+          pnpm exec nx affected -t test --nxBail=false 2>&1 | tee test-output.txt
           exit ${PIPESTATUS[0]}
         continue-on-error: true
 
@@ -449,16 +475,19 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Fix it locally:**" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "pnpm exec nx run-many -t test" >> $GITHUB_STEP_SUMMARY
+          echo "pnpm exec nx affected -t test" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           exit 1
 
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [typecheck, test, secrets-scan, security]
+    # Decoupled from typecheck/test/security: runs in parallel as its own
+    # required check. CodeQL no longer gates here — it runs nightly (codeql.yml).
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v5
         with:
@@ -466,10 +495,26 @@ jobs:
           cache: "pnpm"
       - run: pnpm install --frozen-lockfile
 
-      - name: Build all packages
+      - name: Restore nx cache
+        uses: actions/cache@v4
+        with:
+          path: .nx/cache
+          # Job-specific key so the test and build jobs don't collide on save
+          # (shared key → second job's save is a no-op → lost cache next run).
+          key: nx-${{ runner.os }}-build-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
+          restore-keys: |
+            nx-${{ runner.os }}-build-${{ hashFiles('pnpm-lock.yaml') }}-
+            nx-${{ runner.os }}-build-
+
+      - name: Derive affected base/head
+        uses: nrwl/nx-set-shas@v4
+        with:
+          main-branch-name: ${{ github.base_ref }}
+
+      - name: Build affected packages
         id: build
         run: |
-          pnpm exec nx run-many -t build --nxBail=false 2>&1 | tee build-output.txt
+          pnpm exec nx affected -t build --nxBail=false 2>&1 | tee build-output.txt
           exit ${PIPESTATUS[0]}
         continue-on-error: true
 
@@ -487,7 +532,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Fix it locally:**" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "pnpm exec nx run-many -t build" >> $GITHUB_STEP_SUMMARY
+          echo "pnpm exec nx affected -t build" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           exit 1
 

@@ -1,76 +1,28 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestHeaders } from "@tanstack/react-start/server";
 import { z } from "zod";
-import { FormDefinitionEntity } from "@govtech-bb/database";
 import {
   serviceContractRecipeSchema,
   type ServiceContractRecipe,
 } from "@govtech-bb/form-types";
-import { getDataSource } from "./db";
-import { getSession } from "./session-cipher.server";
-import { listPublishedForms, getPublishedRecipe } from "./github-recipes";
-import { bumpMinor, compare as compareSemver } from "../lib/version";
+import { api, ApiError } from "./api-client";
+import { getPublishedRecipe } from "./github-recipes";
+import { compare as compareSemver } from "../lib/version";
 import type { FormDefinitionSummary } from "../types/index";
-import { requireAdminToken } from "./auth/admin-token-middleware";
-
-type FormDefinitionRow = {
-  id: string;
-  version: string;
-  schema: ServiceContractRecipe;
-  published_at: Date | null;
-};
-
-type LatestDraftRow = {
-  id: string;
-  form_id: string;
-  title: string | null;
-  version: string;
-  schema: ServiceContractRecipe;
-};
-
-// Latest version per formId from the drafts table. Mirrors the pre-GitHub query.
-async function listLatestDraftsByForm(): Promise<LatestDraftRow[]> {
-  const ds = await getDataSource();
-  return ds.query<LatestDraftRow[]>(`
-    SELECT DISTINCT ON (form_id)
-      id, form_id, schema->>'title' AS title, version, schema
-    FROM form_definitions
-    ORDER BY form_id, string_to_array(version, '.')::int[] DESC
-  `);
-}
-
-function requireToken(): string {
-  const headers = getRequestHeaders();
-  const cookie =
-    (headers as { get?: (k: string) => string | null }).get?.("cookie") ??
-    (headers as { cookie?: string }).cookie ??
-    null;
-  const secret = process.env.SESSION_SECRET;
-  if (!secret) throw new Error("SESSION_SECRET is not set");
-  const session = getSession(cookie, secret);
-  if (!session) throw new Error("Not authenticated");
-  return session.accessToken;
-}
+import { requireSession } from "./auth/require-session";
 
 export const listForms = createServerFn({ method: "GET" })
-  .middleware([requireAdminToken])
+  .middleware([requireSession])
   .handler(async (): Promise<FormDefinitionSummary[]> => {
-    const token = requireToken();
-    const [drafts, published] = await Promise.all([
-      listLatestDraftsByForm(),
-      listPublishedForms(token),
+    const [drafts, published, disabled] = await Promise.all([
+      api.get<FormDefinitionSummary[]>("/builder/forms"),
+      api.get<{ formId: string; title: string; version: string }[]>(
+        "/builder/forms/published",
+      ),
+      api.get<string[]>("/builder/forms/disabled"),
     ]);
 
     const byFormId = new Map<string, FormDefinitionSummary>();
-    for (const d of drafts) {
-      byFormId.set(d.form_id, {
-        id: d.id,
-        formId: d.form_id,
-        title: d.title ?? d.form_id,
-        version: d.version,
-        isPublished: false,
-      });
-    }
+    for (const d of drafts) byFormId.set(d.formId, d);
     for (const p of published) {
       const existing = byFormId.get(p.formId);
       if (existing && compareSemver(existing.version, p.version) > 0) continue;
@@ -82,25 +34,29 @@ export const listForms = createServerFn({ method: "GET" })
         isPublished: true,
       });
     }
-    return Array.from(byFormId.values());
+
+    // Drop tombstoned forms: a deleted form's drafts are already gone, but a
+    // GitHub-published entry survives the delete and must be hidden here.
+    const disabledIds = new Set(disabled);
+    return Array.from(byFormId.values()).filter(
+      (f) => !disabledIds.has(f.formId),
+    );
   });
 
 export const getRecipe = createServerFn({ method: "GET", strict: false })
-  .middleware([requireAdminToken])
+  .middleware([requireSession])
   .inputValidator(z.object({ formId: z.string() }))
-  .handler(async ({ data }): Promise<ServiceContractRecipe> => {
-    const token = requireToken();
-    const ds = await getDataSource();
+  .handler(async ({ data, context }): Promise<ServiceContractRecipe> => {
+    const token = context.session.accessToken;
 
-    const draftRows = await ds.query<FormDefinitionRow[]>(
-      `SELECT id, version, schema, published_at
-       FROM form_definitions
-       WHERE form_id = $1
-       ORDER BY string_to_array(version, '.')::int[] DESC
-       LIMIT 1`,
-      [data.formId],
-    );
-    const draft = draftRows[0];
+    let draft: ServiceContractRecipe | null = null;
+    try {
+      draft = await api.get<ServiceContractRecipe>(
+        `/builder/forms/${encodeURIComponent(data.formId)}`,
+      );
+    } catch (err) {
+      if (!(err instanceof ApiError) || err.status !== 404) throw err;
+    }
 
     let published: { version: string; recipe: unknown } | null = null;
     try {
@@ -118,7 +74,7 @@ export const getRecipe = createServerFn({ method: "GET", strict: false })
       draft &&
       (!published || compareSemver(draft.version, published.version) >= 0)
     ) {
-      return draft.schema;
+      return draft;
     }
     if (published) {
       return serviceContractRecipeSchema.parse(published.recipe);
@@ -127,37 +83,14 @@ export const getRecipe = createServerFn({ method: "GET", strict: false })
   });
 
 export const submitRecipe = createServerFn({ method: "POST" })
-  .middleware([requireAdminToken])
-  .inputValidator(
-    z.object({
-      recipe: z.unknown(),
-    }),
-  )
+  .middleware([requireSession])
+  .inputValidator(z.object({ recipe: z.unknown() }))
   .handler(async ({ data }): Promise<void> => {
-    const recipe = data.recipe as ServiceContractRecipe;
-    const ds = await getDataSource();
-    const repo = ds.getRepository(FormDefinitionEntity);
-
-    const existing = await repo.findOne({
-      where: { formId: recipe.formId, version: recipe.version },
-    });
-    if (existing) {
-      throw new Error(
-        `Recipe with formId "${recipe.formId}" and version "${recipe.version}" already exists`,
-      );
-    }
-
-    const entity = repo.create({
-      formId: recipe.formId,
-      version: recipe.version,
-      schema: recipe,
-      publishedAt: null,
-    });
-    await repo.save(entity);
+    await api.post("/builder/forms", { recipe: data.recipe });
   });
 
 export const updateRecipe = createServerFn({ method: "POST" })
-  .middleware([requireAdminToken])
+  .middleware([requireSession])
   .inputValidator(
     z.object({
       formId: z.string(),
@@ -165,61 +98,42 @@ export const updateRecipe = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }): Promise<void> => {
-    const recipe = data.recipe as ServiceContractRecipe;
-    const ds = await getDataSource();
-
-    const rows = await ds.query<FormDefinitionRow[]>(
-      `SELECT id, version, schema, published_at
-       FROM form_definitions
-       WHERE form_id = $1
-       ORDER BY string_to_array(version, '.')::int[] DESC
-       LIMIT 1`,
-      [data.formId],
-    );
-    if (!rows.length) {
-      throw new Error(`No recipe found for formId: ${data.formId}`);
-    }
-    const row = rows[0];
-    if (row.published_at !== null) {
-      throw new Error("Cannot update a published recipe");
-    }
-    if (recipe.version !== row.version) {
-      throw new Error(
-        `Version mismatch: stored version is ${row.version}, recipe version is ${recipe.version}`,
-      );
-    }
-
-    await ds.query(`UPDATE form_definitions SET schema = $1 WHERE id = $2`, [
-      recipe,
-      row.id,
-    ]);
+    await api.put(`/builder/forms/${encodeURIComponent(data.formId)}`, {
+      recipe: data.recipe,
+    });
   });
 
-export const nextVersion = createServerFn({ method: "GET" })
-  .middleware([requireAdminToken])
-  .inputValidator(z.object({ formId: z.string() }))
-  .handler(
-    async ({
-      data,
-    }): Promise<{ currentVersion: string | null; nextVersion: string }> => {
-      const ds = await getDataSource();
+// Permanently delete a form: the API hard-removes every version and writes a
+// tombstone (public fetch -> 410). `deletedBy` is the GitHub login from the
+// session — form_builder_api only sees the shared admin token.
+export const deleteForm = createServerFn({ method: "POST" })
+  .middleware([requireSession])
+  .inputValidator(
+    z.object({
+      formId: z.string().min(1),
+      reason: z.string().min(1).max(2000),
+    }),
+  )
+  .handler(async ({ data, context }): Promise<void> => {
+    await api.del(`/builder/forms/${encodeURIComponent(data.formId)}`, {
+      reason: data.reason,
+      deletedBy: context.session.login,
+    });
+  });
 
-      const rows = await ds.query<FormDefinitionRow[]>(
-        `SELECT id, version, schema, published_at
-         FROM form_definitions
-         WHERE form_id = $1
-         ORDER BY string_to_array(version, '.')::int[] DESC
-         LIMIT 1`,
-        [data.formId],
-      );
-
-      if (!rows.length) {
-        return { currentVersion: null, nextVersion: "1.0.0" };
-      }
-
-      return {
-        currentVersion: rows[0].version,
-        nextVersion: bumpMinor(rows[0].version),
-      };
-    },
-  );
+// Delete a single version row of a form. Unlike deleteForm, this leaves no
+// tombstone and only removes the one matching row — for pruning a superseded
+// draft. The API returns 404 if no such row and 400 if it's published.
+export const deleteFormVersion = createServerFn({ method: "POST" })
+  .middleware([requireSession])
+  .inputValidator(
+    z.object({
+      formId: z.string().min(1),
+      version: z.string().min(1),
+    }),
+  )
+  .handler(async ({ data }): Promise<void> => {
+    await api.del(
+      `/builder/forms/${encodeURIComponent(data.formId)}/versions/${encodeURIComponent(data.version)}`,
+    );
+  });

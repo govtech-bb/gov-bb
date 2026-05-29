@@ -191,6 +191,23 @@ describe("fetchFormDefinition", () => {
     const calledUrl = mockFetch.mock.calls[0][0] as string;
     expect(calledUrl).toContain("my%20form%2Fid");
   });
+
+  it("sends X-Recipe-Preview header when preview token is provided", async () => {
+    mockFetch.mockResolvedValue(makeOkResponse(minimalServiceContract));
+    await fetchFormDefinition("passport-renewal", "s3cret");
+    const fetchOptions = mockFetch.mock.calls[0][1] as RequestInit;
+    expect(
+      (fetchOptions.headers as Record<string, string>)["X-Recipe-Preview"],
+    ).toBe("s3cret");
+  });
+
+  it("does NOT send X-Recipe-Preview header when no preview token is provided", async () => {
+    mockFetch.mockResolvedValue(makeOkResponse(minimalServiceContract));
+    await fetchFormDefinition("passport-renewal");
+    const fetchOptions = mockFetch.mock.calls[0][1] as RequestInit;
+    const headers = fetchOptions?.headers as Record<string, string> | undefined;
+    expect(headers?.["X-Recipe-Preview"]).toBeUndefined();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -539,13 +556,21 @@ describe("formatDataForSubmission", () => {
       expect(result.step1).toBeUndefined();
     });
 
-    // Currently RED: validation-methods.ts:23 `if (!value) return true;` makes
-    // valueIsEmpty(false) and valueIsEmpty(0) both return true, so
-    // formatDataForSubmission silently drops user-entered `false` (checkboxes)
-    // and `0` (numeric inputs). These tests pin the correct post-fix behaviour:
-    // only `undefined`/`null`/empty-string/empty-array should be considered
-    // empty. Source fix tracked separately.
-    it.skip("keeps fields with boolean false values (do not treat false as empty)", () => {
+    it("keeps fields with numeric 0 values (do not treat 0 as empty)", () => {
+      const values: FormValues = {
+        step1_dependents: 0 as unknown as string,
+      };
+
+      const result = formatDataForSubmission(
+        values,
+        emptyRepeatableSettings,
+        [],
+      );
+
+      expect((result.step1 as FormValues).dependents).toBe(0);
+    });
+
+    it("keeps fields with boolean false values (do not treat false as empty)", () => {
       const values: FormValues = {
         step1_accepted: false as unknown as string,
         step1_name: "Bob",
@@ -559,20 +584,6 @@ describe("formatDataForSubmission", () => {
 
       expect((result.step1 as FormValues).accepted).toBe(false);
       expect((result.step1 as FormValues).name).toBe("Bob");
-    });
-
-    it.skip("keeps fields with numeric 0 values (do not treat 0 as empty)", () => {
-      const values: FormValues = {
-        step1_dependents: 0 as unknown as string,
-      };
-
-      const result = formatDataForSubmission(
-        values,
-        emptyRepeatableSettings,
-        [],
-      );
-
-      expect((result.step1 as FormValues).dependents).toBe(0);
     });
 
     it("keeps fields with boolean true values", () => {

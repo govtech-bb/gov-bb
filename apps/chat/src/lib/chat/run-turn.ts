@@ -2,7 +2,7 @@ import type { StreamChunk, SystemPrompt, UIMessage } from "@tanstack/ai";
 import { chat } from "@tanstack/ai";
 import { bedrockText } from "@govtech-bb/ai-bedrock";
 import { childController } from "#/lib/abort";
-import { env } from "#/lib/env";
+import { getServerEnv } from "#/config/env";
 import {
   buildFormTools,
   getOrCreateSession,
@@ -110,6 +110,7 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
 
   const abortController = childController(signal);
 
+  const env = getServerEnv();
   const llmStream = chat({
     adapter: bedrockText(model, { region: env.BEDROCK_REGION }),
     messages,

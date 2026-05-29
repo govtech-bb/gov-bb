@@ -89,10 +89,14 @@ const makeFetch = async <T extends ApiResponse>(
 
 export const fetchFormDefinition = async (
   contractId: string,
+  preview?: string,
 ): Promise<ServiceContract> => {
   const { body } = await makeFetch<FormDefinitionResponse>(
     `/form-definitions/${encodeURIComponent(contractId)}`,
     { not_found: `The form "${contractId}" could not be found.` },
+    preview
+      ? { method: "GET", headers: { "X-Recipe-Preview": preview } }
+      : undefined,
   );
 
   try {
@@ -257,10 +261,14 @@ export const formatDataForSubmission = (
   for (const field of hiddenFields) delete values[field.id];
 
   // Any field values that are undefined or empty, should be stripped out.
+  // `false` is a real user-provided answer (unchecked optional checkbox) and
+  // must survive submission — valueIsEmpty treats it as empty for required-
+  // field validation, so whitelist it explicitly here.
   values = Object.fromEntries(
     Object.entries(values).filter(
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      ([_key, value]) => value !== undefined && !valueIsEmpty(value),
+      ([_key, value]) =>
+        value !== undefined && (value === false || !valueIsEmpty(value)),
     ),
   );
 

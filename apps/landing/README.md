@@ -1,12 +1,16 @@
-Welcome to your new TanStack Start app!
+# alpha.gov.bb — Landing app
+
+The public-facing landing site for the Government of Barbados service portal, built with TanStack Start.
+
+Sandbox: https://landing.sandbox.alpha.gov.bb
 
 # Getting Started
 
 To run this application:
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
 # Building For Production
@@ -14,7 +18,7 @@ npm run dev
 To build this application for production:
 
 ```bash
-npm run build
+pnpm build
 ```
 
 ## Testing
@@ -22,7 +26,7 @@ npm run build
 This project uses [Vitest](https://vitest.dev/) for testing. You can run the tests with:
 
 ```bash
-npm run test
+pnpm test
 ```
 
 ## Styling
@@ -36,16 +40,16 @@ If you prefer not to use Tailwind CSS:
 1. Remove the demo pages in `src/routes/demo/`
 2. Replace the Tailwind import in `src/styles.css` with your own styles
 3. Remove `tailwindcss()` from the plugins array in `vite.config.ts`
-4. Uninstall the packages: `npm install @tailwindcss/vite tailwindcss -D`
+4. Uninstall the packages: `pnpm remove @tailwindcss/vite tailwindcss`
 
 ## Linting & Formatting
 
 This project uses [eslint](https://eslint.org/) and [prettier](https://prettier.io/) for linting and formatting. Eslint is configured using [tanstack/eslint-config](https://tanstack.com/config/latest/docs/eslint). The following scripts are available:
 
 ```bash
-npm run lint
-npm run format
-npm run check
+pnpm lint
+pnpm format
+pnpm check
 ```
 
 ## Routing
@@ -291,7 +295,7 @@ sandbox at the sandbox API and prod at the prod API.
 2. Add `form_id: <that-id>` to the page's frontmatter.
 3. Drop `<a data-start-link>Start now</a>` (or `Apply online`, etc.)
    wherever it should appear in the body.
-4. Restart `npm run dev` (or rely on `predev` to regenerate the
+4. Restart `pnpm dev` (or rely on `predev` to regenerate the
    manifest); the button should render.
 
 ### Removing or renaming a form on the API side
@@ -301,6 +305,42 @@ either drop the form from the manifest (in which case the Start now
 button silently disappears) or pick up the new ID (in which case any
 content still pointing at the old ID also silently disappears, with a
 dev warning).
+
+## Chat handoff (ChatAssistant)
+
+The `ChatAssistant` component on the homepage probes the chat app's
+`/api/health/public` for the live Online badge and, on submit, redirects
+to the chat app with the user's question prefilled via `?q=` so chat
+auto-sends on mount.
+
+### Environment variable
+
+| Variable        | When used   | Purpose                                                                                  |
+| --------------- | ----------- | ---------------------------------------------------------------------------------------- |
+| `VITE_CHAT_URL` | build time  | Base URL of the deployed chat app. Used for both the health probe and the submit handoff. |
+
+`ChatAssistant` defaults to `https://chat.sandbox.alpha.gov.bb` in code
+when `VITE_CHAT_URL` is unset, so deploys work with no Amplify Console
+config.
+
+To override (e.g. run landing locally against a localhost chat instance,
+or point a build at a different chat deploy), set `VITE_CHAT_URL`
+explicitly:
+
+- **Local**: add `VITE_CHAT_URL=http://localhost:3001` to
+  `apps/landing/.env.local`.
+- **Amplify**: App settings → Environment variables → add
+  `VITE_CHAT_URL=<url>`. **Then trigger a rebuild** — the value is baked
+  at build time, not read at runtime (Amplify Hosting Compute doesn't
+  reliably pass env to the SSR Lambda at runtime, so the whole repo bakes
+  config at build).
+
+### Why build-time, not runtime
+
+The SSR bundle runs in a Lambda where `process.env.*` reads are not
+reliably populated by Amplify. `apps/chat/src/config/env.ts` documents
+the same constraint. Treat changing this URL as a deploy: set the var,
+rebuild, ship.
 
 # Demo files
 

@@ -26,6 +26,7 @@ COPY --chown=app:app packages/expressions/package.json packages/expressions/
 COPY --chown=app:app packages/form-conditions/package.json packages/form-conditions/
 COPY --chown=app:app packages/form-types/package.json packages/form-types/
 COPY --chown=app:app packages/form-validation/package.json packages/form-validation/
+COPY --chown=app:app packages/registry/package.json packages/registry/
 
 # BuildKit cache mount keeps the pnpm content-addressable store across builds,
 # so a cache-invalidating change to the lockfile or any package.json re-installs
@@ -35,10 +36,11 @@ COPY --chown=app:app packages/form-validation/package.json packages/form-validat
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,uid=1001,gid=1001 \
     pnpm install --store-dir=/pnpm/store --frozen-lockfile --ignore-scripts
 
-# Source — copy only what's needed to build `api`.
+# Source — copy only what's needed to build `api`. Recipes live under
+# apps/api/src/forms/form-definitions/recipes/ and arrive with the apps/api/
+# copy above.
 COPY --chown=app:app apps/api/ apps/api/
 COPY --chown=app:app packages/ packages/
-COPY --chown=app:app recipes/ recipes/
 
 RUN pnpm exec nx build api
 
@@ -85,11 +87,19 @@ COPY --from=builder --chown=app:app /app/node_modules/ ./node_modules/
 # entry is /app/dist/src/main.js, and Node's module-lookup walks up from
 # there — it never enters apps/api/. Expose the workspace packages at the
 # root so `require("@govtech-bb/form-types")` resolves.
+#
+# Symlinks are generated from whatever's actually in packages/ rather than
+# from a hand-maintained list. The previous hard-coded list silently broke
+# (#412) when `registry` was added without updating the Dockerfile — the
+# API crash-looped on MODULE_NOT_FOUND and ECS's circuit breaker rolled
+# back to the prior image, masking the failure as a "successful" deploy.
 RUN mkdir -p node_modules/@govtech-bb && \
-    ln -sfn ../../packages/expressions node_modules/@govtech-bb/expressions && \
-    ln -sfn ../../packages/form-conditions node_modules/@govtech-bb/form-conditions && \
-    ln -sfn ../../packages/form-types node_modules/@govtech-bb/form-types && \
-    ln -sfn ../../packages/form-validation node_modules/@govtech-bb/form-validation
+    for pkg_dir in packages/*/; do \
+      pkg_name=$(basename "$pkg_dir"); \
+      [ -f "$pkg_dir/package.json" ] || continue; \
+      ln -sfn "../../packages/$pkg_name" "node_modules/@govtech-bb/$pkg_name"; \
+      echo "  symlinked @govtech-bb/$pkg_name"; \
+    done
 COPY --from=builder --chown=app:app /app/package.json ./
 COPY --from=builder --chown=app:app /app/pnpm-lock.yaml ./
 COPY --from=builder --chown=app:app /app/pnpm-workspace.yaml ./
@@ -99,8 +109,10 @@ COPY --from=builder --chown=app:app /app/apps/api/package.json ./apps/api/
 COPY --from=builder --chown=app:app /app/apps/api/tsconfig.json ./apps/api/
 COPY --from=builder --chown=app:app /app/apps/api/typeorm.config.ts ./apps/api/
 COPY --from=builder --chown=app:app /app/apps/api/src/database/ ./apps/api/src/database/
-# Recipe files — read by RecipeFileLoaderService when RECIPE_SOURCE=files.
-COPY --from=builder --chown=app:app /app/recipes/ ./recipes/
+# Recipe files (.json) — read by RecipeFileLoaderService. tsc/nx don't bundle
+# non-`.ts` assets into dist/, so we copy them alongside the compiled output
+# (mirrors the email-templates COPY below).
+COPY --from=builder --chown=app:app /app/apps/api/src/forms/form-definitions/recipes/ ./dist/src/forms/form-definitions/recipes/
 # Email templates (.hbs files not copied by tsc build)
 COPY --from=builder --chown=app:app /app/apps/api/src/email/templates/ ./dist/src/email/templates/
 

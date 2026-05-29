@@ -14,6 +14,7 @@ import { render, screen } from "@testing-library/react";
 jest.mock("@tanstack/react-router", () => ({
   createRootRouteWithContext: () => (routeConfig: any) => routeConfig,
   Outlet: () => <div data-testid="outlet" />,
+  HeadContent: () => <div data-testid="head-content" />,
 }));
 
 jest.mock("@tanstack/react-router-devtools", () => ({
@@ -62,6 +63,7 @@ describe("__root Route", () => {
 
     it("renders the official banner, site header, outlet, and footer", () => {
       render(<Route.component />);
+      expect(screen.getByTestId("head-content")).toBeInTheDocument();
       expect(screen.getByTestId("official-banner")).toBeInTheDocument();
       expect(screen.getByTestId("site-header")).toBeInTheDocument();
       expect(screen.getByTestId("outlet")).toBeInTheDocument();

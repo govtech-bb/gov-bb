@@ -9,7 +9,6 @@
 
 const GITHUB_TOKEN_URL = "https://github.com/login/oauth/access_token";
 const GITHUB_USER_URL = "https://api.github.com/user";
-const REPO_OWNER = "govtech-bb";
 const REPO_NAME = "gov-bb";
 
 /**
@@ -75,15 +74,16 @@ export async function fetchGitHubLogin(accessToken: string): Promise<string> {
 }
 
 /**
- * Check whether a GitHub user has write or admin access to govtech-bb/gov-bb.
+ * Check whether a GitHub user has write or admin access to {org}/gov-bb.
  * Returns true if write/admin, false if not a collaborator or insufficient
  * permission. Throws only on unexpected (non-403/404) failures.
  */
 export async function userHasRepoWriteAccess(args: {
   accessToken: string;
+  org: string;
   login: string;
 }): Promise<boolean> {
-  const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/collaborators/${encodeURIComponent(args.login)}/permission`;
+  const url = `https://api.github.com/repos/${encodeURIComponent(args.org)}/${REPO_NAME}/collaborators/${encodeURIComponent(args.login)}/permission`;
   const res = await fetch(url, {
     headers: {
       Authorization: `Bearer ${args.accessToken}`,
@@ -101,4 +101,36 @@ export async function userHasRepoWriteAccess(args: {
   }
   const perm = (await res.json()) as { permission?: string };
   return perm.permission === "write" || perm.permission === "admin";
+}
+
+/**
+ * Check whether a GitHub user is an active member of {org}/{teamSlug}.
+ * Returns true only when the membership state is "active" (a "pending"
+ * invitation does NOT grant access), false if not a member or the token
+ * can't see the org/team. Throws only on unexpected (non-403/404) failures.
+ */
+export async function userIsTeamMember(args: {
+  accessToken: string;
+  org: string;
+  teamSlug: string;
+  login: string;
+}): Promise<boolean> {
+  const url = `https://api.github.com/orgs/${encodeURIComponent(args.org)}/teams/${encodeURIComponent(args.teamSlug)}/memberships/${encodeURIComponent(args.login)}`;
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${args.accessToken}`,
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+      "User-Agent": "gov-bb-form-builder",
+    },
+  });
+  // 404 = not a member; 403 = token can't see the org/team.
+  if (res.status === 404 || res.status === 403) {
+    return false;
+  }
+  if (!res.ok) {
+    throw new Error(`Team membership check failed: ${res.status}`);
+  }
+  const body = (await res.json()) as { state?: string };
+  return body.state === "active";
 }

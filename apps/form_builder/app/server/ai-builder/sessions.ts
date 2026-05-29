@@ -1,52 +1,33 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { CustomComponent, FormDefinitionEntity } from "@govtech-bb/database";
-import { getDataSource } from "../db";
-import {
-  buildSystemPromptFor,
-  chat,
-  ensureInitialised,
-  isAvailable,
-} from "./ai-client";
-import { extractRecipe } from "./recipe-extractor";
-import { buildSql } from "./sql-builder";
-import { create, get, getOrThrow } from "./session-store";
+import { api } from "../api-client";
 import type { PublishResponse, SessionResponse } from "./types";
-import { requireAdminToken } from "../auth/admin-token-middleware";
+import { requireSession } from "../auth/require-session";
 
 const sessionIdSchema = z.object({ sessionId: z.string() });
 
 export const getAiStatus = createServerFn({ method: "GET" })
-  .middleware([requireAdminToken])
-  .handler(async () => {
-    const available = await isAvailable();
-    return {
-      available,
-      message: available
-        ? "AI service is ready"
-        : "AI service not configured. Set ANTHROPIC_API_KEY in environment.",
-    };
+  .middleware([requireSession])
+  .handler(async (): Promise<{ available: boolean; message: string }> => {
+    return api.get("/builder/ai/status");
   });
 
 export const createSession = createServerFn({ method: "POST" })
-  .middleware([requireAdminToken])
+  .middleware([requireSession])
   .inputValidator(z.object({ name: z.string().optional() }))
   .handler(async ({ data }): Promise<SessionResponse> => {
-    const session = create(data?.name);
-    const ds = await getDataSource();
-    const customs = await ds.getRepository(CustomComponent).find();
-    const componentList = customs
-      .map((c) => {
-        const def = c.definition as Record<string, unknown>;
-        return `- \`components/${c.namespace}/${c.type}\` — ${def?.htmlType ?? "unknown"} (${def?.label ?? "no label"})`;
-      })
-      .join("\n");
-    session.systemPrompt = await buildSystemPromptFor(componentList);
-    return { sessionId: session.id, messages: [], recipe: null };
+    return api.post<SessionResponse>("/builder/ai/sessions", {
+      name: data?.name,
+    });
   });
 
+// PDF is sent inline as base64 in the server-fn body. The Amplify SSR Lambda
+// caps requests at ~6 MB, so the route guards uploads at 4 MB client-side.
+// A presigned-S3 path (getPdfUploadUrl + s3Key) lives in form_builder_api
+// and is dormant — see `project_form_builder_pdf_413_handoff.md` for the
+// resumption notes when we revisit lifting the size cap.
 export const sendMessage = createServerFn({ method: "POST" })
-  .middleware([requireAdminToken])
+  .middleware([requireSession])
   .inputValidator(
     z.object({
       sessionId: z.string(),
@@ -55,178 +36,58 @@ export const sendMessage = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }): Promise<SessionResponse> => {
-    if (!(await isAvailable())) {
-      throw new Error("AI service not configured. Set ANTHROPIC_API_KEY.");
-    }
-    const session = getOrThrow(data.sessionId);
-    if (data.pdfBase64 && !session.pdfPages) {
-      session.pdfPages = [data.pdfBase64];
-    }
-    session.messages.push({ role: "user", content: data.message });
-    const assistantText = await chat(
-      session.systemPrompt,
-      session.messages,
-      session.pdfPages,
+    return api.post<SessionResponse>(
+      `/builder/ai/sessions/${encodeURIComponent(data.sessionId)}/message`,
+      { message: data.message, pdfBase64: data.pdfBase64 },
     );
-    session.messages.push({ role: "assistant", content: assistantText });
-
-    let recipe = extractRecipe(assistantText);
-    if (!recipe) {
-      for (let i = session.messages.length - 1; i >= 0; i--) {
-        if (session.messages[i].role === "assistant") {
-          recipe = extractRecipe(session.messages[i].content);
-          if (recipe) break;
-        }
-      }
-    }
-    if (recipe) session.recipe = recipe;
-
-    return {
-      sessionId: session.id,
-      messages: session.messages,
-      recipe: session.recipe,
-    };
   });
 
 export const getSession = createServerFn({ method: "GET" })
-  .middleware([requireAdminToken])
+  .middleware([requireSession])
   .inputValidator(sessionIdSchema)
   .handler(async ({ data }): Promise<SessionResponse> => {
-    const session = get(data.sessionId);
-    if (!session) throw new Error("Session not found");
-    return {
-      sessionId: session.id,
-      messages: session.messages,
-      recipe: session.recipe,
-    };
-  });
-
-export const getRecipe = createServerFn({ method: "GET" })
-  .middleware([requireAdminToken])
-  .inputValidator(sessionIdSchema)
-  .handler(async ({ data }) => {
-    const session = get(data.sessionId);
-    if (!session?.recipe) throw new Error("No recipe generated yet");
-    return { recipe: session.recipe };
-  });
-
-export const extractRecipeFromSession = createServerFn({ method: "POST" })
-  .middleware([requireAdminToken])
-  .inputValidator(sessionIdSchema)
-  .handler(async ({ data }) => {
-    const session = getOrThrow(data.sessionId);
-    for (let i = session.messages.length - 1; i >= 0; i--) {
-      if (session.messages[i].role === "assistant") {
-        const recipe = extractRecipe(session.messages[i].content);
-        if (recipe) {
-          session.recipe = recipe;
-          return { recipe };
-        }
-      }
-    }
-    throw new Error(
-      "Could not find a valid recipe in the conversation. The AI must output JSON with formId and steps fields.",
+    return api.get<SessionResponse>(
+      `/builder/ai/sessions/${encodeURIComponent(data.sessionId)}`,
     );
   });
 
-export const getSql = createServerFn({ method: "GET" })
-  .middleware([requireAdminToken])
+export const getRecipe = createServerFn({ method: "GET" })
+  .middleware([requireSession])
   .inputValidator(sessionIdSchema)
-  .handler(async ({ data }) => {
-    const session = get(data.sessionId);
-    if (!session?.recipe) throw new Error("No recipe generated yet");
-    const recipe = session.recipe as Record<string, any> & { formId?: string };
-    const formId = recipe.formId ?? "unnamed-form";
-    return { sql: buildSql(formId, recipe) };
+  .handler(async ({ data }): Promise<{ recipe: Record<string, unknown> }> => {
+    return api.get(
+      `/builder/ai/sessions/${encodeURIComponent(data.sessionId)}/recipe`,
+    );
+  });
+
+export const extractRecipeFromSession = createServerFn({ method: "POST" })
+  .middleware([requireSession])
+  .inputValidator(sessionIdSchema)
+  .handler(async ({ data }): Promise<{ recipe: Record<string, unknown> }> => {
+    return api.post(
+      `/builder/ai/sessions/${encodeURIComponent(data.sessionId)}/extract`,
+      {},
+    );
   });
 
 export const publishSession = createServerFn({ method: "POST" })
-  .middleware([requireAdminToken])
+  .middleware([requireSession])
   .inputValidator(
     z.object({ sessionId: z.string(), formId: z.string().optional() }),
   )
   .handler(async ({ data }): Promise<PublishResponse> => {
-    const session = getOrThrow(data.sessionId);
-    if (!session.recipe) {
-      throw new Error("No recipe generated yet. Continue the conversation.");
-    }
-    const recipe = session.recipe as any;
-    const formId = data.formId ?? recipe.formId;
-    if (!formId) {
-      throw new Error("Recipe has no formId. Provide one via the request.");
-    }
-    if (!recipe.formId || !recipe.steps || !Array.isArray(recipe.steps)) {
-      throw new Error("Recipe must have formId and steps array.");
-    }
-    for (let i = 0; i < recipe.steps.length; i++) {
-      const step = recipe.steps[i];
-      if (
-        !step.stepId ||
-        !step.title ||
-        !step.elements ||
-        !Array.isArray(step.elements)
-      ) {
-        throw new Error(
-          `Step ${i} must have stepId, title, and elements array.`,
-        );
-      }
-      for (let j = 0; j < step.elements.length; j++) {
-        const el = step.elements[j];
-        if (
-          !el.ref ||
-          (!el.ref.startsWith("components/") && !el.ref.startsWith("blocks/"))
-        ) {
-          throw new Error(
-            `Step "${step.stepId}" element ${j}: ref must start with "components/" or "blocks/" (got "${el.ref}").`,
-          );
-        }
-        if (el.ref.startsWith("components/") && !el.overrides?.fieldId) {
-          throw new Error(
-            `Step "${step.stepId}" element ${j} (ref: ${el.ref}): missing fieldId in overrides.`,
-          );
-        }
-      }
-    }
-    if (!recipe.createdAt || !recipe.updatedAt || !recipe.version) {
-      throw new Error(
-        "Recipe must have createdAt, updatedAt, and version fields.",
-      );
-    }
-    const sql = buildSql(formId, recipe);
-    const ds = await getDataSource();
-    const repo = ds.getRepository(FormDefinitionEntity);
-    if (session.publishedFormId) {
-      await repo.delete({ formId: session.publishedFormId });
-    }
-    const entity = repo.create({
-      formId,
-      version: recipe.version ?? "1.0.0",
-      schema: recipe,
-      publishedAt: new Date(),
-    });
-    await repo.save(entity);
-    session.publishedFormId = formId;
-    return {
-      formId,
-      message: `Form "${formId}" published successfully.`,
-      sql,
-      previewUrl: `https://app-sandbox.alpha.gov.bb/forms/${formId}`,
-    };
+    return api.post<PublishResponse>(
+      `/builder/ai/sessions/${encodeURIComponent(data.sessionId)}/publish`,
+      { formId: data.formId },
+    );
   });
 
 export const deletePublished = createServerFn({ method: "POST" })
-  .middleware([requireAdminToken])
+  .middleware([requireSession])
   .inputValidator(sessionIdSchema)
-  .handler(async ({ data }) => {
-    const session = getOrThrow(data.sessionId);
-    if (!session.publishedFormId) {
-      throw new Error("No form has been published in this session.");
-    }
-    const ds = await getDataSource();
-    await ds
-      .getRepository(FormDefinitionEntity)
-      .delete({ formId: session.publishedFormId });
-    const deletedFormId = session.publishedFormId;
-    session.publishedFormId = undefined;
-    return { message: `Form "${deletedFormId}" deleted successfully.` };
+  .handler(async ({ data }): Promise<{ message: string }> => {
+    return api.post(
+      `/builder/ai/sessions/${encodeURIComponent(data.sessionId)}/delete`,
+      {},
+    );
   });

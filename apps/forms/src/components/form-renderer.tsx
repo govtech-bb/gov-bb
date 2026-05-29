@@ -5,7 +5,6 @@ import {
   FormValues,
 } from "@forms/types";
 import FieldRenderer from "./field-renderer";
-import designSystem from "../lib/design-system";
 import React from "react";
 import ErrorSummary from "./error-summary";
 import { useStore } from "@tanstack/react-form";
@@ -226,7 +225,7 @@ export default function FormRenderer({
         });
       });
       scrollToTop();
-      if (!import.meta.env.DEV) return;
+      return;
     }
 
     // Handle navigation to repeatable step.
@@ -276,10 +275,14 @@ export default function FormRenderer({
     completeAndContinue(currentStep.stepId);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     trackEvent("form-submit", { form_id: formMeta.formId });
-    form.handleSubmit();
-    completeAndContinue(currentStep.stepId);
+    await form.handleSubmit();
+    // handleSubmit resolves even when validation fails, so only advance when the
+    // form is valid — otherwise the user would be moved past their own errors.
+    if (form.state.isValid) {
+      completeAndContinue(currentStep.stepId);
+    }
   };
 
   const errors = useStore(form.store, (state) => {
@@ -291,6 +294,8 @@ export default function FormRenderer({
     }
     return fieldValidationErrors;
   });
+
+  const isSubmitting = useStore(form.store, (state) => state.isSubmitting);
 
   const isSubmissionConfirmation =
     currentStep.stepId === "submission-confirmation";
@@ -313,20 +318,20 @@ export default function FormRenderer({
   });
 
   return (
-    <div className={designSystem.formRoot}>
+    <div className="form-page">
       {!isSubmissionConfirmation && (
-        <p className={designSystem.formTitle}> {formMeta.formTitle} </p>
+        <p className="form-page__service-title"> {formMeta.formTitle} </p>
       )}
 
-      {!isSubmissionConfirmation && <h1>{currentStep.title}</h1>}
+      {!isSubmissionConfirmation && (
+        <h1 className="govbb-text-h1">{currentStep.title}</h1>
+      )}
       {!isSubmissionConfirmation && currentStep.description && (
-        <p className={designSystem.formStepDescription}>
-          {currentStep.description}
-        </p>
+        <p className="form-page__step-description">{currentStep.description}</p>
       )}
       <ErrorSummary errors={errors} />
 
-      <div className={designSystem.formStep}>
+      <div className="form-page__step">
         {currentStep.stepId === "check-your-answers" && (
           <Review
             key={"review-step"}
@@ -368,8 +373,10 @@ export default function FormRenderer({
                   formId={formMeta.formId}
                 />
                 {isOpen && (
-                  <div data-show-hide-content>
-                    {group.toggle.hint && <p data-hint>{group.toggle.hint}</p>}
+                  <div className="form-page__show-hide-content">
+                    {group.toggle.hint && (
+                      <p className="govbb-hint">{group.toggle.hint}</p>
+                    )}
                     {group.controlled.map((field) => (
                       <FieldRenderer
                         key={field.id}
@@ -430,10 +437,10 @@ export default function FormRenderer({
         })}
 
         {currentStep.stepId !== "submission-confirmation" && (
-          <div className={designSystem.formNavigation}>
+          <div className="govbb-btn-group">
             {!hidePrevious && (
               <button
-                data-variant="secondary"
+                className="govbb-btn--secondary"
                 type="button"
                 onClick={handlePrevious}
               >
@@ -441,11 +448,16 @@ export default function FormRenderer({
               </button>
             )}
             <button
-              data-variant="primary"
+              className="govbb-btn"
               type="button"
+              disabled={isLastFormStep && isSubmitting}
               onClick={isLastFormStep ? handleSubmit : handleContinue}
             >
-              {isLastFormStep ? "Submit" : "Continue"}
+              {isLastFormStep && isSubmitting
+                ? "Submitting…"
+                : isLastFormStep
+                  ? "Submit"
+                  : "Continue"}
             </button>
           </div>
         )}

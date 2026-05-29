@@ -31,9 +31,9 @@ function Home() {
 
   return (
     <>
-      <section className="border-b-4 border-yellow-00 bg-blue-00 text-white-00">
+      <section className="border-b-4 border-yellow-100 bg-blue-00 text-white-00">
         <div className="container">
-          <div className="space-y-m py-m lg:py-l">
+          <div className="space-y-m py-[clamp(var(--spacing-m),5vw,var(--spacing-l))]">
             <div className="max-w-210 space-y-s">
               <Heading as="h1" className="text-balance">
                 Find and use Barbados government services
@@ -51,7 +51,7 @@ function Home() {
       <section className="border-b-4 border-teal-100 bg-green-10">
         <div className="container">
           <div className="space-y-m py-m">
-            <Heading as="h3">Or search all government services directly</Heading>
+            <Heading as="h4">Or search all government services directly</Heading>
             <Search
               action="/search-results"
               name="q"
@@ -66,7 +66,7 @@ function Home() {
       <section>
         <div className="container">
           <div className="space-y-m py-m lg:py-l">
-            <Heading as="h1" className="text-balance">All government services</Heading>
+            <Heading as="h2" className="text-balance">All government services</Heading>
             <ul className="m-0 flex list-none flex-col p-0">
               {CATEGORIES.map((cat) => (
                 <li
@@ -75,7 +75,7 @@ function Home() {
                 >
                   <a
                     href={`/${cat.slug}`}
-                    className={`${linkVariants()} text-[20px] leading-normal font-bold lg:text-3xl`}
+                    className={`${linkVariants()} text-[clamp(1.25rem,2.5vw,2rem)] leading-normal font-bold text-green-00`}
                   >
                     {cat.title}
                   </a>
