@@ -32,16 +32,36 @@ async function buildTempRecipesRoot(
   return root;
 }
 
+/** Poll `predicate` until it returns true or `timeoutMs` elapses. */
+async function waitFor(
+  predicate: () => boolean,
+  timeoutMs = 3000,
+  intervalMs = 25,
+): Promise<void> {
+  const start = Date.now();
+  while (!predicate()) {
+    if (Date.now() - start > timeoutMs) {
+      throw new Error("waitFor timed out");
+    }
+    await new Promise((r) => setTimeout(r, intervalMs));
+  }
+}
+
 describe("RecipeFileLoaderService", () => {
   let tempRoots: string[];
+  let loaders: RecipeFileLoaderService[];
   let errorSpy: jest.SpyInstance;
 
   beforeEach(() => {
     tempRoots = [];
+    loaders = [];
     errorSpy = jest.spyOn(Logger.prototype, "error").mockImplementation();
   });
 
   afterEach(async () => {
+    // Tear down any watchers started via onModuleInit so they don't leak
+    // between tests.
+    for (const l of loaders) l.onModuleDestroy();
     errorSpy.mockRestore();
     for (const r of tempRoots) {
       await fs.rm(r, { recursive: true, force: true });
@@ -280,6 +300,109 @@ describe("RecipeFileLoaderService", () => {
       expect(
         loader.findByFormId({ formId: "passport-renewal", version: "9.9.9" }),
       ).toBeNull();
+    });
+  });
+
+  describe("dev hot-reload watching", () => {
+    const ORIGINAL_NODE_ENV = process.env.NODE_ENV;
+
+    afterEach(() => {
+      process.env.NODE_ENV = ORIGINAL_NODE_ENV;
+    });
+
+    function watcherOf(loader: RecipeFileLoaderService): unknown {
+      return (loader as unknown as { watcher: unknown }).watcher;
+    }
+
+    it("starts a watcher and reloads when a recipe changes (development)", async () => {
+      process.env.NODE_ENV = "development";
+      const root = await newRoot({
+        "passport-renewal": ["valid-recipe.json"],
+      });
+      const loader = new RecipeFileLoaderService(root);
+      loaders.push(loader);
+
+      await loader.onModuleInit();
+      expect(watcherOf(loader)).toBeDefined();
+      expect(loader.findByFormId({ formId: "passport-renewal" })?.version).toBe(
+        "1.0.0",
+      );
+
+      // Drop a newer version into the watched tree; the watcher should pick it
+      // up and reload without another explicit loadAll() call.
+      const v2 = JSON.parse(
+        await fs.readFile(
+          path.join(FIXTURES_ROOT, "valid-recipe-v2.json"),
+          "utf8",
+        ),
+      );
+      await fs.writeFile(
+        path.join(root, "passport-renewal", `${v2.version}.json`),
+        JSON.stringify(v2, null, 2) + "\n",
+      );
+
+      await waitFor(
+        () =>
+          loader.findByFormId({ formId: "passport-renewal" })?.version ===
+          "1.1.0",
+      );
+      expect(loader.findByFormId({ formId: "passport-renewal" })?.version).toBe(
+        "1.1.0",
+      );
+    });
+
+    it("does not start a watcher outside development", async () => {
+      process.env.NODE_ENV = "test";
+      const root = await newRoot({
+        "passport-renewal": ["valid-recipe.json"],
+      });
+      const loader = new RecipeFileLoaderService(root);
+      loaders.push(loader);
+
+      await loader.onModuleInit();
+
+      expect(watcherOf(loader)).toBeUndefined();
+    });
+
+    it("warns and does not throw when the recipes dir cannot be watched", async () => {
+      process.env.NODE_ENV = "development";
+      const warnSpy = jest.spyOn(Logger.prototype, "warn").mockImplementation();
+      const loader = new RecipeFileLoaderService(
+        path.join(os.tmpdir(), "recipes-does-not-exist-xyz"),
+      );
+      loaders.push(loader);
+
+      await expect(loader.onModuleInit()).resolves.not.toThrow();
+      expect(watcherOf(loader)).toBeUndefined();
+      expect(warnSpy).toHaveBeenCalled();
+      warnSpy.mockRestore();
+    });
+
+    it("onModuleDestroy is safe when no watcher was started", () => {
+      const loader = new RecipeFileLoaderService("/unused");
+      expect(() => loader.onModuleDestroy()).not.toThrow();
+    });
+
+    it("ignores non-.json change events", () => {
+      const root = "/unused";
+      const loader = new RecipeFileLoaderService(root);
+      const scheduleSpy = jest.spyOn(
+        loader as unknown as { scheduleReload: () => void },
+        "scheduleReload",
+      );
+
+      const handle = (
+        loader as unknown as {
+          handleWatchEvent: (f: string | null) => void;
+        }
+      ).handleWatchEvent.bind(loader);
+
+      handle("notes.txt");
+      expect(scheduleSpy).not.toHaveBeenCalled();
+
+      handle("passport-renewal/1.0.0.json");
+      handle(null);
+      expect(scheduleSpy).toHaveBeenCalledTimes(2);
     });
   });
 
