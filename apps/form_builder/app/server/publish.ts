@@ -6,8 +6,20 @@ import { getSession } from "./session-cipher.server";
 import type { ServiceContractRecipe } from "@govtech-bb/form-types";
 
 const REPO_NAME = "gov-bb";
-const BASE_BRANCH = "dev";
+const DEFAULT_BASE_BRANCH = "dev";
 const GH_API = "https://api.github.com";
+
+/**
+ * The branch the Deploy PR is opened against. Read from `PUBLISH_BASE_BRANCH`
+ * at runtime (server-side) so the deploy target can move — e.g. to `sandbox` or
+ * a release branch — by changing an env var, with no code change or rebuild.
+ * Falls back to `dev`, preserving the original hardcoded behaviour. This is the
+ * single source of truth; both `publishRecipe` and `getPublishBaseBranch` use
+ * it, so the value the modal shows can never diverge from the PR's actual base.
+ */
+function resolveBaseBranch(): string {
+  return process.env.PUBLISH_BASE_BRANCH?.trim() || DEFAULT_BASE_BRANCH;
+}
 
 function repoOwner(): string {
   const v = process.env.GITHUB_ORG;
@@ -112,13 +124,14 @@ export const publishRecipe = createServerFn({ method: "POST" })
     const description = data.description ?? "";
     const session = requireSession();
     const token = session.accessToken;
+    const baseBranch = resolveBaseBranch();
 
-    // Step 1: get dev tip SHA
-    const refRes = await fetch(repoUrl(`/git/ref/heads/${BASE_BRANCH}`), {
+    // Step 1: get base branch tip SHA
+    const refRes = await fetch(repoUrl(`/git/ref/heads/${baseBranch}`), {
       headers: authHeaders(token),
     });
     if (!refRes.ok) {
-      throw await ghError("Failed to read dev branch", refRes);
+      throw await ghError(`Failed to read ${baseBranch} branch`, refRes);
     }
     const refJson = (await refRes.json()) as { object: { sha: string } };
     const baseSha = refJson.object.sha;
@@ -140,8 +153,8 @@ export const publishRecipe = createServerFn({ method: "POST" })
     // From here on, any failure must attempt to delete `branch`.
     try {
       // Step 3: check the file doesn't already exist on the new branch.
-      // (Checking on `dev` would be equivalent because the branch was just
-      // created from dev; we use the new branch so the URL pattern matches
+      // (Checking on the base branch would be equivalent because the branch was
+      // just created from it; we use the new branch so the URL pattern matches
       // step 4.)
       const contentsPath = `/contents/apps/api/src/forms/form-definitions/recipes/${recipe.formId}/${recipe.version}.json`;
       const checkRes = await fetch(
@@ -150,7 +163,7 @@ export const publishRecipe = createServerFn({ method: "POST" })
       );
       if (checkRes.status === 200) {
         throw new Error(
-          `Version ${recipe.version} already exists in dev. Bump the version and try again.`,
+          `Version ${recipe.version} already exists on ${baseBranch}. Bump the version and try again.`,
         );
       }
       if (checkRes.status !== 404) {
@@ -183,7 +196,7 @@ export const publishRecipe = createServerFn({ method: "POST" })
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          base: BASE_BRANCH,
+          base: baseBranch,
           head: branch,
           title: `Publish form: ${recipe.title} v${recipe.version}`,
           body: renderPrBody({
@@ -206,3 +219,14 @@ export const publishRecipe = createServerFn({ method: "POST" })
       throw err;
     }
   });
+
+/**
+ * Exposes the runtime-resolved Deploy base branch to the client. The builder
+ * route's loader awaits this so the Deploy modal can show the actual branch
+ * name. It's a `createServerFn` (not a plain loader read of `process.env`)
+ * because the loader also runs in the browser on client-side navigation, where
+ * `process.env.PUBLISH_BASE_BRANCH` would be `undefined`.
+ */
+export const getPublishBaseBranch = createServerFn({ method: "GET" }).handler(
+  async (): Promise<string> => resolveBaseBranch(),
+);
