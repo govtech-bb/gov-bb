@@ -132,13 +132,42 @@ jobs:
           echo "url=$URL" >> "$GITHUB_OUTPUT"
           echo "Preview URL: $URL"
 
+          # Cancel any in-flight Amplify jobs on this branch before
+          # queueing a new one. start-job fails with
+          # LimitExceededException if a non-terminal job already exists
+          # for the branch — our latest-commit-wins concurrency model
+          # means we want the older build dropped. Scoped per branch:
+          # list-jobs and stop-job both require --branch-name, so this
+          # cannot touch sandbox/staging/prod or other PR branches.
+          IN_FLIGHT=$(aws amplify list-jobs \
+            --app-id "$AMPLIFY_APP_ID" \
+            --branch-name "$BRANCH_NAME" \
+            --region "$AWS_REGION" \
+            --query "jobSummaries[?status=='CREATED' || status=='PENDING' || status=='PROVISIONING' || status=='RUNNING'].jobId" \
+            --output text)
+          for J in $IN_FLIGHT; do
+            echo "Cancelling in-flight Amplify $APP_LABEL job $J"
+            aws amplify stop-job \
+              --app-id "$AMPLIFY_APP_ID" \
+              --branch-name "$BRANCH_NAME" \
+              --job-id "$J" \
+              --region "$AWS_REGION" >/dev/null \
+              || echo "stop-job failed for $J (continuing)"
+          done
+          # Brief wait so the cancellation registers before start-job.
+          [ -n "$IN_FLIGHT" ] && sleep 5
+
           JOB_ID=$(aws amplify start-job \
             --app-id "$AMPLIFY_APP_ID" \
             --branch-name "$BRANCH_NAME" \
             --job-type RELEASE \
             --region "$AWS_REGION" \
             --query jobSummary.jobId \
-            --output text)
+            --output text 2>&1) || {
+            echo "❌ Amplify $APP_LABEL start-job failed: $JOB_ID"
+            echo "status=START_FAILED" >> "$GITHUB_OUTPUT"
+            exit 1
+          }
           echo "Amplify $APP_LABEL job started: $JOB_ID"
 
           for i in $(seq 1 30); do
@@ -204,13 +233,42 @@ jobs:
           echo "url=$URL" >> "$GITHUB_OUTPUT"
           echo "Preview URL: $URL"
 
+          # Cancel any in-flight Amplify jobs on this branch before
+          # queueing a new one. start-job fails with
+          # LimitExceededException if a non-terminal job already exists
+          # for the branch — our latest-commit-wins concurrency model
+          # means we want the older build dropped. Scoped per branch:
+          # list-jobs and stop-job both require --branch-name, so this
+          # cannot touch sandbox/staging/prod or other PR branches.
+          IN_FLIGHT=$(aws amplify list-jobs \
+            --app-id "$AMPLIFY_APP_ID" \
+            --branch-name "$BRANCH_NAME" \
+            --region "$AWS_REGION" \
+            --query "jobSummaries[?status=='CREATED' || status=='PENDING' || status=='PROVISIONING' || status=='RUNNING'].jobId" \
+            --output text)
+          for J in $IN_FLIGHT; do
+            echo "Cancelling in-flight Amplify $APP_LABEL job $J"
+            aws amplify stop-job \
+              --app-id "$AMPLIFY_APP_ID" \
+              --branch-name "$BRANCH_NAME" \
+              --job-id "$J" \
+              --region "$AWS_REGION" >/dev/null \
+              || echo "stop-job failed for $J (continuing)"
+          done
+          # Brief wait so the cancellation registers before start-job.
+          [ -n "$IN_FLIGHT" ] && sleep 5
+
           JOB_ID=$(aws amplify start-job \
             --app-id "$AMPLIFY_APP_ID" \
             --branch-name "$BRANCH_NAME" \
             --job-type RELEASE \
             --region "$AWS_REGION" \
             --query jobSummary.jobId \
-            --output text)
+            --output text 2>&1) || {
+            echo "❌ Amplify $APP_LABEL start-job failed: $JOB_ID"
+            echo "status=START_FAILED" >> "$GITHUB_OUTPUT"
+            exit 1
+          }
           echo "Amplify $APP_LABEL job started: $JOB_ID"
 
           for i in $(seq 1 30); do
@@ -276,13 +334,42 @@ jobs:
           echo "url=$URL" >> "$GITHUB_OUTPUT"
           echo "Preview URL: $URL"
 
+          # Cancel any in-flight Amplify jobs on this branch before
+          # queueing a new one. start-job fails with
+          # LimitExceededException if a non-terminal job already exists
+          # for the branch — our latest-commit-wins concurrency model
+          # means we want the older build dropped. Scoped per branch:
+          # list-jobs and stop-job both require --branch-name, so this
+          # cannot touch sandbox/staging/prod or other PR branches.
+          IN_FLIGHT=$(aws amplify list-jobs \
+            --app-id "$AMPLIFY_APP_ID" \
+            --branch-name "$BRANCH_NAME" \
+            --region "$AWS_REGION" \
+            --query "jobSummaries[?status=='CREATED' || status=='PENDING' || status=='PROVISIONING' || status=='RUNNING'].jobId" \
+            --output text)
+          for J in $IN_FLIGHT; do
+            echo "Cancelling in-flight Amplify $APP_LABEL job $J"
+            aws amplify stop-job \
+              --app-id "$AMPLIFY_APP_ID" \
+              --branch-name "$BRANCH_NAME" \
+              --job-id "$J" \
+              --region "$AWS_REGION" >/dev/null \
+              || echo "stop-job failed for $J (continuing)"
+          done
+          # Brief wait so the cancellation registers before start-job.
+          [ -n "$IN_FLIGHT" ] && sleep 5
+
           JOB_ID=$(aws amplify start-job \
             --app-id "$AMPLIFY_APP_ID" \
             --branch-name "$BRANCH_NAME" \
             --job-type RELEASE \
             --region "$AWS_REGION" \
             --query jobSummary.jobId \
-            --output text)
+            --output text 2>&1) || {
+            echo "❌ Amplify $APP_LABEL start-job failed: $JOB_ID"
+            echo "status=START_FAILED" >> "$GITHUB_OUTPUT"
+            exit 1
+          }
           echo "Amplify $APP_LABEL job started: $JOB_ID"
 
           for i in $(seq 1 30); do
@@ -348,13 +435,42 @@ jobs:
           echo "url=$URL" >> "$GITHUB_OUTPUT"
           echo "Preview URL: $URL"
 
+          # Cancel any in-flight Amplify jobs on this branch before
+          # queueing a new one. start-job fails with
+          # LimitExceededException if a non-terminal job already exists
+          # for the branch — our latest-commit-wins concurrency model
+          # means we want the older build dropped. Scoped per branch:
+          # list-jobs and stop-job both require --branch-name, so this
+          # cannot touch sandbox/staging/prod or other PR branches.
+          IN_FLIGHT=$(aws amplify list-jobs \
+            --app-id "$AMPLIFY_APP_ID" \
+            --branch-name "$BRANCH_NAME" \
+            --region "$AWS_REGION" \
+            --query "jobSummaries[?status=='CREATED' || status=='PENDING' || status=='PROVISIONING' || status=='RUNNING'].jobId" \
+            --output text)
+          for J in $IN_FLIGHT; do
+            echo "Cancelling in-flight Amplify $APP_LABEL job $J"
+            aws amplify stop-job \
+              --app-id "$AMPLIFY_APP_ID" \
+              --branch-name "$BRANCH_NAME" \
+              --job-id "$J" \
+              --region "$AWS_REGION" >/dev/null \
+              || echo "stop-job failed for $J (continuing)"
+          done
+          # Brief wait so the cancellation registers before start-job.
+          [ -n "$IN_FLIGHT" ] && sleep 5
+
           JOB_ID=$(aws amplify start-job \
             --app-id "$AMPLIFY_APP_ID" \
             --branch-name "$BRANCH_NAME" \
             --job-type RELEASE \
             --region "$AWS_REGION" \
             --query jobSummary.jobId \
-            --output text)
+            --output text 2>&1) || {
+            echo "❌ Amplify $APP_LABEL start-job failed: $JOB_ID"
+            echo "status=START_FAILED" >> "$GITHUB_OUTPUT"
+            exit 1
+          }
           echo "Amplify $APP_LABEL job started: $JOB_ID"
 
           for i in $(seq 1 30); do
@@ -420,7 +536,14 @@ jobs:
                 echo "| $label | ✅ Ready | [$url]($url) |"
                 ;;
               failure)
-                if [ -n "$url" ]; then
+                if [ "$status" = "START_FAILED" ]; then
+                  # start-job itself was rejected (e.g. IAM, throttling,
+                  # a transient AWS error past stop-job's window). No
+                  # Amplify build was ever queued, so no preview URL
+                  # exists — point at the workflow logs via the check
+                  # link on the PR instead.
+                  echo "| $label | ❌ Failed to queue build | — |"
+                elif [ -n "$url" ]; then
                   echo "| $label | ❌ Failed ($status) | [build logs]($url) |"
                 else
                   echo "| $label | ❌ Failed | — |"
