@@ -38,9 +38,12 @@ export default function FileUpload({
     onFileChange?.(next.length ? next : null);
   };
 
-  const readableFileTypes = field.validations?.fileTypes?.value
-    .map((type: string) => type.split("/")[1]) // "image/png" → "png"
-    .join(", ");
+  // Accepts either MIME types ("image/png" → "png") or extension values
+  // (".pdf" → ".pdf"), so a recipe can list user-friendly extensions and have
+  // them shown verbatim (e.g. "Attach a .pdf, .docx, or .png file").
+  const readableFileTypes: string[] = (
+    field.validations?.fileTypes?.value ?? []
+  ).map((type: string) => (type.includes("/") ? type.split("/")[1] : type));
 
   const fileTypeFormatter = new Intl.ListFormat("en", {
     style: "long",
@@ -56,8 +59,8 @@ export default function FileUpload({
             {field.label ?? "Upload a file"}
           </span>
           <span className="govbb-file-upload__subtitle">
-            {field.validations?.fileTypes?.value
-              ? `Attach a ${fileTypeFormatter.format(readableFileTypes.split(", "))} file`
+            {readableFileTypes.length
+              ? `Attach a ${fileTypeFormatter.format(readableFileTypes)} file`
               : "No file type restrictions"}
           </span>
         </div>

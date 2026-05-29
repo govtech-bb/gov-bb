@@ -191,6 +191,20 @@ describe("FileUpload", () => {
     expect(screen.getByText(/attach a png or jpeg file/i)).toBeInTheDocument();
   });
 
+  it("renders extension-style file types verbatim (with leading dots)", () => {
+    renderComponent({
+      field: {
+        ...baseField,
+        validations: {
+          fileTypes: { value: [".pdf", ".docx", ".png"] },
+        },
+      },
+    });
+    expect(
+      screen.getByText(/attach a \.pdf, \.docx, or \.png file/i),
+    ).toBeInTheDocument();
+  });
+
   it("renders fallback description when no fileTypes validation is set", () => {
     renderComponent();
     expect(screen.getByText(/no file type restrictions/i)).toBeInTheDocument();
