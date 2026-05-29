@@ -82,9 +82,6 @@ COPY --from=builder --chown=app:app /app/tsconfig.base.json ./
 COPY --from=builder --chown=app:app /app/apps/form_builder_api/package.json ./apps/form_builder_api/
 COPY --from=builder --chown=app:app /app/apps/form_builder_api/tsconfig.json ./apps/form_builder_api/
 
-# AI system prompt
-COPY --from=builder --chown=app:app /app/apps/form_builder/app/server/ai-builder/prompts/ ./prompts/
-
 ENV NODE_ENV=production
 ENV NODE_EXTRA_CA_CERTS=/app/rds-ca-bundle.pem
 ENV PORT=3003
