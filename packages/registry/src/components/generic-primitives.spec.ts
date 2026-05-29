@@ -1,25 +1,25 @@
 import { primitiveSchema } from "@govtech-bb/form-types";
 import { REGISTRY_COMPONENTS, REGISTRY_PRIMITIVES } from "./index";
 
-const EXPECTED_RAW_FIELD_IDS = [
-  "raw-text",
-  "raw-textarea",
-  "raw-number",
-  "raw-date",
-  "raw-tel",
-  "raw-email",
-  "raw-checkbox",
-  "raw-radio",
-  "raw-file",
-  "raw-select",
+const EXPECTED_GENERIC_FIELD_IDS = [
+  "generic-text",
+  "generic-textarea",
+  "generic-number",
+  "generic-date",
+  "generic-tel",
+  "generic-email",
+  "generic-checkbox",
+  "generic-radio",
+  "generic-file",
+  "generic-select",
 ] as const;
 
-describe("raw primitives", () => {
+describe("generic primitives", () => {
   it("exposes exactly 10 entries via REGISTRY_PRIMITIVES", () => {
     expect(Object.keys(REGISTRY_PRIMITIVES)).toHaveLength(10);
   });
 
-  it.each(EXPECTED_RAW_FIELD_IDS)(
+  it.each(EXPECTED_GENERIC_FIELD_IDS)(
     "registers components/%s in both REGISTRY_PRIMITIVES and REGISTRY_COMPONENTS",
     (fieldId) => {
       const ref = `components/${fieldId}` as const;
@@ -29,7 +29,7 @@ describe("raw primitives", () => {
     },
   );
 
-  it("each raw primitive parses cleanly under the Primitive discriminated union", () => {
+  it("each generic primitive parses cleanly under the Primitive discriminated union", () => {
     for (const primitive of Object.values(REGISTRY_PRIMITIVES)) {
       const parsed = primitiveSchema.safeParse(primitive);
       expect(parsed.success).toBe(true);

@@ -1,7 +1,7 @@
 import type { EmailPrimitive } from "@govtech-bb/form-types";
 
-export const RawEmail: EmailPrimitive = {
-  fieldId: "raw-email",
+export const GenericEmail: EmailPrimitive = {
+  fieldId: "generic-email",
   htmlType: "email",
   label: "Email",
   validations: {
