@@ -17,41 +17,66 @@
  *   pnpm --filter @govtech-bb/forms test:smoke
  *   SMOKE_BASE_URL=https://forms.alpha.gov.bb pnpm --filter @govtech-bb/forms test:smoke
  *
- * Notes from the as-built local walkthrough (against the same renderer):
- *  - DOM field IDs follow `${stepId}_${fieldId}`.
- *  - Step order: basic-info → classification → identification → contact-address
- *    → bank-details → check-your-answers (auto-injected) → declaration →
- *    submission-confirmation.
+ * Scheme-agnostic step IDs: the deployed sandbox form numbers its data steps
+ * (`step-1-basic-info`, `step-2-classification`, …) while the local recipe JSON
+ * uses bare IDs (`basic-info`, `classification`, …). The field-ID *suffixes*
+ * (`min-dept`, `vendor-name`, …) and the trailing steps (`check-your-answers`,
+ * `declaration`, `submission-confirmation`) are identical in both. So rather
+ * than hard-code either scheme, the spec reads the current step ID from the URL
+ * at each step, matches it by substring, and builds field IDs from it
+ * (`${stepId}_${suffix}`). It works against both deployments.
+ *
+ * Other notes from the live walkthrough:
  *  - The masked NRN field must be typed character-by-character (fill() bypasses
  *    Maskito), so we use pressSequentially and assert the YYMMDD-NNNN shape.
- *  - account-type / vendor-classification radios have per-option IDs, so we
- *    select them by visible label via getByRole rather than FormPage.clickRadio
- *    (which assumes a shared radio ID).
- *  - declaration-date is isHidden and auto-populated — it is not interacted with
- *    and does not block submission.
+ *  - vendor-classification / account-type radios have per-option IDs, so we
+ *    select them by visible label via getByRole.
+ *  - declaration-date is isHidden and auto-populated — not interacted with.
  */
 import { faker } from "@faker-js/faker";
 import { test, expect, type Page } from "@playwright/test";
 
 const FORM_ID = "smart-stream-vendor-registration";
-
-/** Field IDs in the DOM follow the pattern `${stepId}_${fieldId}`. */
-const fid = (stepId: string, fieldId: string) => `${stepId}_${fieldId}`;
+const STEP_TIMEOUT = 15_000;
 
 /** The primary (Continue / Submit) button is shared across every step. */
 const primaryButton = (page: Page) =>
   page.locator('button[data-variant="primary"]');
 
-/** Wait until the URL `?step=` param equals the given step ID. */
-async function waitForStep(page: Page, stepId: string): Promise<void> {
-  await page.waitForURL((url) => url.searchParams.get("step") === stepId, {
-    timeout: 15_000,
+/** Read the current `?step=` param. */
+function currentStep(page: Page): string {
+  return new URL(page.url()).searchParams.get("step") ?? "";
+}
+
+/** Assert we're on the expected step (matched by substring) and return its ID. */
+function expectStep(page: Page, substring: string): string {
+  const step = currentStep(page);
+  expect(step, `expected to be on a step containing "${substring}"`).toContain(
+    substring,
+  );
+  return step;
+}
+
+/** Fill a text input addressed as `${stepId}_${suffix}`. */
+async function fillField(
+  page: Page,
+  stepId: string,
+  suffix: string,
+  value: string,
+): Promise<void> {
+  await page.locator(`input[id="${stepId}_${suffix}"]`).fill(value);
+}
+
+/** Click Continue and wait until the `?step=` param changes. */
+async function advance(page: Page, fromStep: string): Promise<void> {
+  await primaryButton(page).click();
+  await page.waitForURL((url) => url.searchParams.get("step") !== fromStep, {
+    timeout: STEP_TIMEOUT,
   });
 }
 
 /**
  * Build a complete, valid set of vendor-registration answers from faker.
- * Every value satisfies the validation rules in the 1.1.0 form definition.
  * The vendor name carries a timestamp so the real submission is traceable in
  * the target environment.
  */
@@ -103,87 +128,63 @@ test.describe("Smart Stream Vendor Registration — Live Smoke", () => {
   }) => {
     const data = buildVendorData();
 
-    // ─── Step 1: Basic Information ───────────────────────────────────────────
-    await page.goto(`/forms/${FORM_ID}?step=basic-info`);
-    await waitForStep(page, "basic-info");
-    await expect(page.locator("h1")).toContainText("Basic Information");
+    // Land on step 1 — the step guard redirects a fresh session to the first
+    // step, whatever its (possibly numbered) ID is.
+    await page.goto(`/forms/${FORM_ID}`);
+    await page.waitForURL((url) => !!url.searchParams.get("step"), {
+      timeout: STEP_TIMEOUT,
+    });
 
-    await page
-      .locator(`input[id="${fid("basic-info", "min-dept")}"]`)
-      .fill(data.minDept);
-    await page
-      .locator(`input[id="${fid("basic-info", "vendor-name")}"]`)
-      .fill(data.vendorName);
-    await primaryButton(page).click();
+    // ─── Step 1: Basic Information ───────────────────────────────────────────
+    let step = expectStep(page, "basic-info");
+    await expect(page.locator("h1")).toContainText("Basic Information");
+    await fillField(page, step, "min-dept", data.minDept);
+    await fillField(page, step, "vendor-name", data.vendorName);
+    await advance(page, step);
 
     // ─── Step 2: Vendor Classification ───────────────────────────────────────
-    await waitForStep(page, "classification");
+    step = expectStep(page, "classification");
     await page.getByRole("radio", { name: data.classification }).check();
-    await primaryButton(page).click();
+    await advance(page, step);
 
     // ─── Step 3: Identification Numbers ──────────────────────────────────────
-    await waitForStep(page, "identification");
-    await page
-      .locator(`input[id="${fid("identification", "tamis-number")}"]`)
-      .fill(data.tamisNumber);
-    await page
-      .locator(`input[id="${fid("identification", "company-reg-number")}"]`)
-      .fill(data.companyRegNumber);
-    await page
-      .locator(`input[id="${fid("identification", "sba-number")}"]`)
-      .fill(data.sbaNumber);
+    step = expectStep(page, "identification");
+    await fillField(page, step, "tamis-number", data.tamisNumber);
+    await fillField(page, step, "company-reg-number", data.companyRegNumber);
+    await fillField(page, step, "sba-number", data.sbaNumber);
     // Masked field: type the raw digits so Maskito formats to YYMMDD-NNNN.
-    const nrn = page.locator(`input[id="${fid("identification", "nrn")}"]`);
+    const nrn = page.locator(`input[id="${step}_nrn"]`);
     await nrn.pressSequentially(data.nrnDigits);
     await expect(nrn).toHaveValue(/^\d{6}-\d{4}$/);
-    await primaryButton(page).click();
+    await advance(page, step);
 
     // ─── Step 4: Contact and Address Information ─────────────────────────────
-    await waitForStep(page, "contact-address");
-    await page
-      .locator(`input[id="${fid("contact-address", "vendor-address-line-1")}"]`)
-      .fill(data.addressLine1);
-    await page
-      .locator(`input[id="${fid("contact-address", "vendor-address-line-2")}"]`)
-      .fill(data.addressLine2);
-    await page
-      .locator(`input[id="${fid("contact-address", "vendor-email")}"]`)
-      .fill(data.vendorEmail);
-    await primaryButton(page).click();
+    step = expectStep(page, "contact-address");
+    await fillField(page, step, "vendor-address-line-1", data.addressLine1);
+    await fillField(page, step, "vendor-address-line-2", data.addressLine2);
+    await fillField(page, step, "vendor-email", data.vendorEmail);
+    await advance(page, step);
 
     // ─── Step 5: Bank Account Details ────────────────────────────────────────
-    await waitForStep(page, "bank-details");
-    await page
-      .locator(`input[id="${fid("bank-details", "bank-name")}"]`)
-      .fill(data.bankName);
-    await page
-      .locator(`input[id="${fid("bank-details", "bank-account-number")}"]`)
-      .fill(data.bankAccountNumber);
-    await page
-      .locator(`input[id="${fid("bank-details", "branch-name")}"]`)
-      .fill(data.branchName);
-    await page
-      .locator(`input[id="${fid("bank-details", "name-on-account")}"]`)
-      .fill(data.nameOnAccount);
+    step = expectStep(page, "bank-details");
+    await fillField(page, step, "bank-name", data.bankName);
+    await fillField(page, step, "bank-account-number", data.bankAccountNumber);
+    await fillField(page, step, "branch-name", data.branchName);
+    await fillField(page, step, "name-on-account", data.nameOnAccount);
     await page.getByRole("radio", { name: data.accountType }).check();
-    await page
-      .locator(`input[id="${fid("bank-details", "bic-swift")}"]`)
-      .fill(data.bicSwift);
-    await page
-      .locator(`input[id="${fid("bank-details", "bank-address")}"]`)
-      .fill(data.bankAddress);
-    await primaryButton(page).click();
+    await fillField(page, step, "bic-swift", data.bicSwift);
+    await fillField(page, step, "bank-address", data.bankAddress);
+    await advance(page, step);
 
     // ─── Check Your Answers (auto-injected) ──────────────────────────────────
-    await waitForStep(page, "check-your-answers");
+    step = expectStep(page, "check-your-answers");
     await expect(page.locator("h1")).toContainText("Check your answers");
-    // The summary should reflect what we entered.
     await expect(page.getByText(data.vendorName).first()).toBeVisible();
     await expect(page.getByText(data.vendorEmail)).toBeVisible();
-    await primaryButton(page).click();
+    await advance(page, step);
 
-    // ─── Step 6: Declaration ─────────────────────────────────────────────────
-    await waitForStep(page, "declaration");
+    // ─── Declaration ─────────────────────────────────────────────────────────
+    expectStep(page, "declaration");
     await page
       .getByRole("checkbox", { name: /I confirm that my information/ })
       .check();
@@ -202,14 +203,17 @@ test.describe("Smart Stream Vendor Registration — Live Smoke", () => {
     ).toBe(true);
 
     // ─── Submission Confirmation ─────────────────────────────────────────────
-    await waitForStep(page, "submission-confirmation");
+    await page.waitForURL(
+      (url) => url.searchParams.get("step") === "submission-confirmation",
+      { timeout: STEP_TIMEOUT },
+    );
     await expect(page.locator("h1")).toContainText("Application Submitted");
     await expect(
       page.getByText("Your submission has been saved"),
     ).toBeVisible();
     await expect(page.getByText("Reference Number")).toBeVisible();
 
-    // The API returns the reference as a UUID — assert one is rendered.
+    // The API returns the reference as a UUID — assert it is rendered.
     const body = await response.json();
     const referenceId = body?.data?.id ?? body?.id;
     expect(
