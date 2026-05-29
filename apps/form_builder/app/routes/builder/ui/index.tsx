@@ -201,13 +201,24 @@ function BuilderPage() {
   // modal only if it's valid. One click, not two — and because every click
   // re-validates the live draft, a stale validateResult can never green-light a
   // bad save.
+  //
+  // Save draft is the exception: an invalid draft can still be saved once the
+  // user confirms, so an in-progress form can be shared for review. The errors
+  // stay lit in the validation panel either way; the SubmitModal still collects
+  // (and semver-validates) the version. Deploy stays hard-gated on validity.
   const handleSaveDraftClick = async () => {
     const result = await runValidation();
-    if (result.valid) {
-      setSubmitSuccess(false);
-      setSubmitError(null);
-      setIsSubmitOpen(true);
+    if (
+      !result.valid &&
+      !window.confirm(
+        "This form has validation errors. Save it as a draft anyway so others can review it?",
+      )
+    ) {
+      return;
     }
+    setSubmitSuccess(false);
+    setSubmitError(null);
+    setIsSubmitOpen(true);
   };
 
   const handleDeployClick = async () => {
