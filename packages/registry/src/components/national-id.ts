@@ -7,6 +7,10 @@ export const NationalIdNumber: TextPrimitive = {
   ui: {
     width: "short",
   },
+  // Hard mask: 9 = digit, literal `-` auto-inserted. Limits input to ten
+  // digits in the National ID shape (e.g. 850101-0001), blocking overflow
+  // typing/paste and non-numeric characters. Mirrors the `pattern` below.
+  mask: "999999-9999",
   validations: {
     pattern: {
       value: "^\\d{6}-\\d{4}$",
