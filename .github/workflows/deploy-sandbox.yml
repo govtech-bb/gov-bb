@@ -332,6 +332,42 @@ jobs:
             --output text
           echo "✅ Form-builder ECS deploy started"
 
+      # Wait for the rollout to stabilize, then verify the running image
+      # matches what we built. Same pattern as deploy-api — catches silent
+      # circuit-breaker rollbacks (the bug class from #412).
+      - name: Wait + verify form-builder image
+        env:
+          EXPECTED_IMAGE: ${{ steps.build-form-builder.outputs.image }}
+        run: |
+          echo "Waiting for form-builder-sandbox service to stabilize..."
+          aws ecs wait services-stable \
+            --cluster "$ECS_CLUSTER" \
+            --services form-builder-sandbox \
+            --region "$AWS_REGION"
+
+          RUNNING_TASK_DEF=$(aws ecs describe-services \
+            --cluster "$ECS_CLUSTER" \
+            --services form-builder-sandbox \
+            --region "$AWS_REGION" \
+            --query 'services[0].deployments[?status==`PRIMARY`].taskDefinition | [0]' \
+            --output text)
+
+          RUNNING_IMAGE=$(aws ecs describe-task-definition \
+            --task-definition "$RUNNING_TASK_DEF" \
+            --region "$AWS_REGION" \
+            --query 'taskDefinition.containerDefinitions[0].image' \
+            --output text)
+
+          echo "Expected image: $EXPECTED_IMAGE"
+          echo "Running image:  $RUNNING_IMAGE"
+
+          if [ "$RUNNING_IMAGE" != "$EXPECTED_IMAGE" ]; then
+            echo "❌ Image mismatch — ECS circuit breaker rolled back to a prior revision."
+            echo "Check CloudWatch: aws logs tail /ecs/form-builder-sandbox --filter-pattern ERROR --since 10m"
+            exit 1
+          fi
+          echo "✅ Running image matches the build output"
+
   amplify-forms:
     name: Amplify build (forms)
     needs: setup
@@ -350,6 +386,7 @@ jobs:
           AMPLIFY_APP_ID: d1j7z1k0h7u5nb
           AMPLIFY_BRANCH: sandbox
           APP_LABEL: forms
+          APP_URL: https://forms.sandbox.alpha.gov.bb
         run: |
           JOB_ID=$(aws amplify start-job \
             --app-id "$AMPLIFY_APP_ID" \
@@ -370,8 +407,20 @@ jobs:
               --output text)
             echo "[$i/30] Amplify $APP_LABEL status: $STATUS"
             if [ "$STATUS" = "SUCCEED" ]; then
-              echo "✅ Amplify $APP_LABEL build succeeded"
-              exit 0
+              echo "✅ Amplify $APP_LABEL build succeeded — running smoke test on $APP_URL"
+              # Amplify's CloudFront cache flips to the new build after SUCCEED
+              # but the edge can serve stale for a few seconds; retry briefly.
+              for j in 1 2 3 4 5; do
+                CODE=$(curl -fsS -o /dev/null -w "%{http_code}" --max-time 10 "$APP_URL" 2>/dev/null || echo "000")
+                if [ "$CODE" = "200" ]; then
+                  echo "✅ $APP_LABEL smoke test passed (HTTP 200)"
+                  exit 0
+                fi
+                echo "[$j/5] smoke test got HTTP $CODE, retrying in 5s..."
+                sleep 5
+              done
+              echo "❌ $APP_LABEL smoke test failed — $APP_URL not responding 200 after deploy"
+              exit 1
             elif [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "CANCELLED" ]; then
               echo "❌ Amplify $APP_LABEL build $STATUS"
               exit 1
@@ -397,6 +446,7 @@ jobs:
           AMPLIFY_APP_ID: d3kbl8o0ovutw4
           AMPLIFY_BRANCH: sandbox
           APP_LABEL: landing
+          APP_URL: https://landing.sandbox.alpha.gov.bb
         run: |
           JOB_ID=$(aws amplify start-job \
             --app-id "$AMPLIFY_APP_ID" \
@@ -417,8 +467,18 @@ jobs:
               --output text)
             echo "[$i/30] Amplify $APP_LABEL status: $STATUS"
             if [ "$STATUS" = "SUCCEED" ]; then
-              echo "✅ Amplify $APP_LABEL build succeeded"
-              exit 0
+              echo "✅ Amplify $APP_LABEL build succeeded — running smoke test on $APP_URL"
+              for j in 1 2 3 4 5; do
+                CODE=$(curl -fsS -o /dev/null -w "%{http_code}" --max-time 10 "$APP_URL" 2>/dev/null || echo "000")
+                if [ "$CODE" = "200" ]; then
+                  echo "✅ $APP_LABEL smoke test passed (HTTP 200)"
+                  exit 0
+                fi
+                echo "[$j/5] smoke test got HTTP $CODE, retrying in 5s..."
+                sleep 5
+              done
+              echo "❌ $APP_LABEL smoke test failed — $APP_URL not responding 200 after deploy"
+              exit 1
             elif [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "CANCELLED" ]; then
               echo "❌ Amplify $APP_LABEL build $STATUS"
               exit 1
@@ -444,6 +504,11 @@ jobs:
           AMPLIFY_APP_ID: d3snq1f0c10466
           AMPLIFY_BRANCH: sandbox
           APP_LABEL: chat
+          # /api/health is SSR-rendered (not the static fallback) and reports
+          # db connectivity + indexed doc count — catches more than a root
+          # 200 would. We assert docCount > 0 to surface "ingest is broken"
+          # at deploy time rather than via user reports of empty answers.
+          HEALTH_URL: https://chat.sandbox.alpha.gov.bb/api/health
         run: |
           JOB_ID=$(aws amplify start-job \
             --app-id "$AMPLIFY_APP_ID" \
@@ -464,8 +529,18 @@ jobs:
               --output text)
             echo "[$i/30] Amplify $APP_LABEL status: $STATUS"
             if [ "$STATUS" = "SUCCEED" ]; then
-              echo "✅ Amplify $APP_LABEL build succeeded"
-              exit 0
+              echo "✅ Amplify $APP_LABEL build succeeded — running smoke test on $HEALTH_URL"
+              for j in 1 2 3 4 5; do
+                BODY=$(curl -fsS --max-time 10 "$HEALTH_URL" 2>/dev/null || echo "")
+                if [ -n "$BODY" ] && echo "$BODY" | jq -e '.ok == true and .db == "connected" and .docCount > 0' >/dev/null 2>&1; then
+                  echo "✅ $APP_LABEL smoke test passed: $(echo "$BODY" | jq -c '{db, docCount, chunkCount}')"
+                  exit 0
+                fi
+                echo "[$j/5] smoke test pending — body: $(echo "$BODY" | head -c 200), retrying in 5s..."
+                sleep 5
+              done
+              echo "❌ $APP_LABEL smoke test failed — /api/health did not return ok:true,db:connected,docCount>0"
+              exit 1
             elif [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "CANCELLED" ]; then
               echo "❌ Amplify $APP_LABEL build $STATUS"
               exit 1
