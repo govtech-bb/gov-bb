@@ -1,4 +1,9 @@
-import { decideActions, gql } from "./project-board-sync";
+import {
+  decideActions,
+  gql,
+  resolveProjectMeta,
+  removeLabel,
+} from "./project-board-sync";
 
 describe("decideActions", () => {
   it("issue opened → ensure on board, set Backlog", () => {
@@ -242,15 +247,77 @@ describe("gql", () => {
   });
 
   it("throws when the GraphQL response carries errors", async () => {
-    const fetchMock = jest
-      .fn()
-      .mockResolvedValue(
-        new Response(JSON.stringify({ errors: [{ message: "boom" }] }), {
-          status: 200,
-        }),
-      );
+    const fetchMock = jest.fn().mockResolvedValue(
+      new Response(JSON.stringify({ errors: [{ message: "boom" }] }), {
+        status: 200,
+      }),
+    );
     await expect(
       gql("query{}", {}, token, fetchMock as unknown as typeof fetch),
     ).rejects.toThrow("boom");
+  });
+});
+
+describe("resolveProjectMeta", () => {
+  it("throws when a Status option is missing from the board", async () => {
+    const body = {
+      data: {
+        organization: {
+          projectV2: {
+            id: "P",
+            field: {
+              id: "F",
+              options: [
+                { id: "1", name: "Backlog" },
+                { id: "2", name: "Ready" },
+                { id: "3", name: "In progress" },
+                { id: "4", name: "In review" },
+                // "Done" intentionally missing
+              ],
+            },
+          },
+        },
+      },
+    };
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify(body), { status: 200 }));
+    await expect(
+      resolveProjectMeta("tok", fetchMock as unknown as typeof fetch),
+    ).rejects.toThrow('Status option not found on board: "Done"');
+  });
+});
+
+describe("removeLabel", () => {
+  it("swallows a 404 when the label is already absent", async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValue(new Response(null, { status: 404 }));
+    await expect(
+      removeLabel(
+        "o",
+        "r",
+        5,
+        "progressing",
+        "tok",
+        fetchMock as unknown as typeof fetch,
+      ),
+    ).resolves.toBeUndefined();
+  });
+
+  it("throws on a non-404 error status", async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValue(new Response(null, { status: 500 }));
+    await expect(
+      removeLabel(
+        "o",
+        "r",
+        5,
+        "progressing",
+        "tok",
+        fetchMock as unknown as typeof fetch,
+      ),
+    ).rejects.toThrow("HTTP 500");
   });
 });

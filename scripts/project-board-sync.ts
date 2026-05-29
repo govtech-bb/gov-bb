@@ -136,10 +136,12 @@ export async function gql<T>(
     },
     body: JSON.stringify({ query, variables }),
   });
-  const json = (await res.json()) as {
-    data?: T;
-    errors?: { message: string }[];
-  };
+  let json: { data?: T; errors?: { message: string }[] };
+  try {
+    json = (await res.json()) as { data?: T; errors?: { message: string }[] };
+  } catch {
+    throw new Error(`GraphQL HTTP ${res.status} (response body was not JSON)`);
+  }
   if (json.errors?.length)
     throw new Error(json.errors.map((e) => e.message).join("; "));
   if (!res.ok || !json.data) throw new Error(`GraphQL HTTP ${res.status}`);
@@ -152,7 +154,10 @@ interface ProjectMeta {
   optionIds: Record<Status, string>;
 }
 
-async function resolveProjectMeta(token: string): Promise<ProjectMeta> {
+export async function resolveProjectMeta(
+  token: string,
+  f: FetchFn = fetch,
+): Promise<ProjectMeta> {
   const data = await gql<{
     organization: {
       projectV2: {
@@ -169,6 +174,7 @@ async function resolveProjectMeta(token: string): Promise<ProjectMeta> {
     }`,
     { org: PROJECT_OWNER, num: PROJECT_NUMBER },
     token,
+    f,
   );
   const field = data.organization.projectV2.field;
   const byName = (name: Status): string => {
@@ -196,6 +202,7 @@ async function ensureItem(
   issue: number,
   meta: ProjectMeta,
   token: string,
+  f: FetchFn = fetch,
 ): Promise<string> {
   const data = await gql<{
     repository: {
@@ -212,6 +219,7 @@ async function ensureItem(
     }`,
     { owner, repo, num: issue },
     token,
+    f,
   );
   const existing = data.repository.issue.projectItems.nodes.find(
     (n) => n.project.id === meta.projectId,
@@ -221,6 +229,7 @@ async function ensureItem(
     `mutation($project:ID!,$content:ID!){ addProjectV2ItemById(input:{projectId:$project,contentId:$content}){ item { id } } }`,
     { project: meta.projectId, content: data.repository.issue.id },
     token,
+    f,
   );
   return added.addProjectV2ItemById.item.id;
 }
@@ -230,6 +239,7 @@ async function setStatus(
   status: Status,
   meta: ProjectMeta,
   token: string,
+  f: FetchFn = fetch,
 ): Promise<void> {
   await gql(
     `mutation($project:ID!,$item:ID!,$field:ID!,$opt:String!){
@@ -242,6 +252,7 @@ async function setStatus(
       opt: meta.optionIds[status],
     },
     token,
+    f,
   );
 }
 
@@ -250,8 +261,9 @@ async function rest(
   path: string,
   token: string,
   body?: unknown,
+  f: FetchFn = fetch,
 ): Promise<Response> {
-  return fetch(`${API}${path}`, {
+  return f(`${API}${path}`, {
     method,
     headers: {
       Authorization: `Bearer ${token}`,
@@ -263,17 +275,20 @@ async function rest(
   });
 }
 
-async function removeLabel(
+export async function removeLabel(
   owner: string,
   repo: string,
   issue: number,
   label: ExclusiveLabel,
   token: string,
+  f: FetchFn = fetch,
 ): Promise<void> {
   const res = await rest(
     "DELETE",
     `/repos/${owner}/${repo}/issues/${issue}/labels/${label}`,
     token,
+    undefined,
+    f,
   );
   if (!res.ok && res.status !== 404)
     throw new Error(`removeLabel ${label} on #${issue}: HTTP ${res.status}`);
@@ -284,12 +299,14 @@ async function closeIssue(
   repo: string,
   issue: number,
   token: string,
+  f: FetchFn = fetch,
 ): Promise<void> {
   const res = await rest(
     "PATCH",
     `/repos/${owner}/${repo}/issues/${issue}`,
     token,
     { state: "closed" },
+    f,
   );
   if (!res.ok) throw new Error(`closeIssue #${issue}: HTTP ${res.status}`);
 }
@@ -300,25 +317,26 @@ async function apply(
   repo: string,
   plans: IssuePlan[],
   token: string,
+  f: FetchFn = fetch,
 ): Promise<void> {
-  const meta = await resolveProjectMeta(token);
+  const meta = await resolveProjectMeta(token, f);
   for (const plan of plans) {
     let itemId: string | undefined;
     for (const action of plan.actions) {
       switch (action.type) {
         case "ensureOnBoard":
-          itemId = await ensureItem(owner, repo, plan.issue, meta, token);
+          itemId = await ensureItem(owner, repo, plan.issue, meta, token, f);
           break;
         case "setStatus":
           if (!itemId)
-            itemId = await ensureItem(owner, repo, plan.issue, meta, token);
-          await setStatus(itemId, action.status, meta, token);
+            itemId = await ensureItem(owner, repo, plan.issue, meta, token, f);
+          await setStatus(itemId, action.status, meta, token, f);
           break;
         case "removeLabel":
-          await removeLabel(owner, repo, plan.issue, action.label, token);
+          await removeLabel(owner, repo, plan.issue, action.label, token, f);
           break;
         case "closeIssue":
-          await closeIssue(owner, repo, plan.issue, token);
+          await closeIssue(owner, repo, plan.issue, token, f);
           break;
       }
     }
@@ -334,6 +352,7 @@ async function closingIssues(
   repo: string,
   pr: number,
   token: string,
+  f: FetchFn = fetch,
 ): Promise<number[]> {
   const data = await gql<{
     repository: {
@@ -345,6 +364,7 @@ async function closingIssues(
     }`,
     { owner, repo, num: pr },
     token,
+    f,
   );
   return data.repository.pullRequest.closingIssuesReferences.nodes.map(
     (n) => n.number,
@@ -352,12 +372,22 @@ async function closingIssues(
 }
 
 async function main(): Promise<void> {
-  const eventName = process.env.GITHUB_EVENT_NAME as SyncInput["eventName"];
-  const token = process.env.GITHUB_TOKEN!;
-  const [owner, repo] = (process.env.GITHUB_REPOSITORY ?? "/").split("/");
-  const payload = JSON.parse(
-    readFileSync(process.env.GITHUB_EVENT_PATH!, "utf8"),
-  );
+  const eventName = process.env.GITHUB_EVENT_NAME;
+  const token = process.env.GITHUB_TOKEN;
+  const repository = process.env.GITHUB_REPOSITORY;
+  const eventPath = process.env.GITHUB_EVENT_PATH;
+  if (!token || !repository || !eventPath || !eventName) {
+    console.error(
+      "Missing required env: GITHUB_TOKEN, GITHUB_REPOSITORY, GITHUB_EVENT_PATH, GITHUB_EVENT_NAME",
+    );
+    process.exit(1);
+  }
+  if (eventName !== "issues" && eventName !== "pull_request") {
+    console.log(`Unhandled event "${eventName}"; skipping.`);
+    return;
+  }
+  const [owner, repo] = repository.split("/");
+  const payload = JSON.parse(readFileSync(eventPath, "utf8"));
 
   let input: SyncInput;
   if (eventName === "issues") {
@@ -387,7 +417,8 @@ async function main(): Promise<void> {
   await apply(owner, repo, plans, token);
 }
 
-// Only run when executed directly (not when imported by tests).
+// Only execute under GitHub Actions (where GITHUB_EVENT_NAME is set);
+// importing this module in tests must not trigger a run.
 if (process.env.GITHUB_EVENT_NAME) {
   main().catch((err) => {
     console.error(err);
