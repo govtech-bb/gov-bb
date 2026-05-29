@@ -8,35 +8,35 @@
       "title": "Section A: Claimant Details",
       "elements": [
         {
-          "ref": "components/generic/text-field",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "First Name",
             "fieldId": "firstName"
           }
         },
         {
-          "ref": "components/generic/text-field",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Last Name",
             "fieldId": "lastName"
           }
         },
         {
-          "ref": "components/generic/text-field",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Other Names",
             "fieldId": "otherNames"
           }
         },
         {
-          "ref": "components/generic/text-field",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "ID Number",
             "fieldId": "idNumber"
           }
         },
         {
-          "ref": "components/generic/text-field",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Address",
             "fieldId": "address",
@@ -44,63 +44,63 @@
           }
         },
         {
-          "ref": "components/generic/text-field",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Parish",
             "fieldId": "parish"
           }
         },
         {
-          "ref": "components/generic/text-field",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Email",
             "fieldId": "email"
           }
         },
         {
-          "ref": "components/generic/text-field",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Telephone",
             "fieldId": "telephone"
           }
         },
         {
-          "ref": "components/generic/text-field",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Tamis No",
             "fieldId": "tamisNo"
           }
         },
         {
-          "ref": "components/generic/text-field",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Supervisor",
             "fieldId": "supervisor"
           }
         },
         {
-          "ref": "components/generic/text-field",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "NIS No",
             "fieldId": "nisNo"
           }
         },
         {
-          "ref": "components/generic/text-field",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Exam Period",
             "fieldId": "examPeriod"
           }
         },
         {
-          "ref": "components/generic/text-field",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Claim Period From",
             "fieldId": "claimPeriodFrom"
           }
         },
         {
-          "ref": "components/generic/text-field",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Claim Period To",
             "fieldId": "claimPeriodTo"
@@ -152,7 +152,7 @@
           }
         },
         {
-          "ref": "components/generic/number",
+          "ref": "components/generic-number",
           "overrides": {
             "label": "Section B Total",
             "fieldId": "sectionBTotal",
@@ -201,7 +201,7 @@
           }
         },
         {
-          "ref": "components/generic/number",
+          "ref": "components/generic-number",
           "overrides": {
             "label": "Section C Total",
             "fieldId": "sectionCTotal",
@@ -250,7 +250,7 @@
           }
         },
         {
-          "ref": "components/generic/number",
+          "ref": "components/generic-number",
           "overrides": {
             "label": "Section D Total",
             "fieldId": "sectionDTotal",
@@ -265,35 +265,35 @@
       "title": "Section E: Payee Information",
       "elements": [
         {
-          "ref": "components/generic/text-field",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Bank/Branch",
             "fieldId": "bankBranch"
           }
         },
         {
-          "ref": "components/generic/text-field",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Name on Account",
             "fieldId": "nameOnAccount"
           }
         },
         {
-          "ref": "components/generic/text-field",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Account No",
             "fieldId": "accountNo"
           }
         },
         {
-          "ref": "components/generic/text-field",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "BIC/Swift No",
             "fieldId": "bicSwiftNo"
           }
         },
         {
-          "ref": "components/generic/text-field",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Account Type",
             "fieldId": "accountType"
@@ -307,7 +307,7 @@
       "title": "Section F: Payment Declaration",
       "elements": [
         {
-          "ref": "components/generic/number",
+          "ref": "components/generic-number",
           "overrides": {
             "label": "I hereby claim the sum of",
             "prefix": "$",
@@ -316,14 +316,14 @@
           }
         },
         {
-          "ref": "components/generic/text-field",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Signature of Claimant",
             "fieldId": "claimantSignature"
           }
         },
         {
-          "ref": "components/generic/text-field",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Date",
             "fieldId": "claimantDate"
@@ -337,42 +337,42 @@
       "title": "For Official Use Only",
       "elements": [
         {
-          "ref": "components/generic/text-field",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Signature of Supervisor",
             "fieldId": "supervisorSignature"
           }
         },
         {
-          "ref": "components/generic/text-field",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Date",
             "fieldId": "supervisorDate"
           }
         },
         {
-          "ref": "components/generic/text-field",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Examination Verifier Signature",
             "fieldId": "examVerifierSignature"
           }
         },
         {
-          "ref": "components/generic/text-field",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Date",
             "fieldId": "examVerifierDate"
           }
         },
         {
-          "ref": "components/generic/text-field",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Accounting Officer Signature",
             "fieldId": "accountingOfficerSignature"
           }
         },
         {
-          "ref": "components/generic/text-field",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Date",
             "fieldId": "accountingOfficerDate"

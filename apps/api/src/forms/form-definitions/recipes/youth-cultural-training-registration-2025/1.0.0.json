@@ -548,7 +548,7 @@
           }
         },
         {
-          "ref": "components/generic/number",
+          "ref": "components/generic-number",
           "overrides": {
             "ui": {
               "width": "short"
@@ -1159,7 +1159,7 @@
       "stepId": "current-status",
       "elements": [
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "hint": "Please select the option that best describes your current situation",
             "label": "Current Status",
@@ -1349,7 +1349,7 @@
       "stepId": "experience",
       "elements": [
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Do you have any experience in the discipline(s) you have selected?",
             "fieldId": "has-experience",
@@ -1372,7 +1372,7 @@
           }
         },
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Indicate your level of experience",
             "fieldId": "experience-level",
@@ -1409,7 +1409,7 @@
           }
         },
         {
-          "ref": "components/generic/number",
+          "ref": "components/generic-number",
           "overrides": {
             "ui": {
               "width": "short"
@@ -1552,7 +1552,7 @@
           }
         },
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Do you belong to any clubs, groups or organisations?",
             "fieldId": "belongs-to-clubs",

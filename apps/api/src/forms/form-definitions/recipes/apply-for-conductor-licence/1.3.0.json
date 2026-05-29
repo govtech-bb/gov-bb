@@ -240,7 +240,7 @@
       "stepId": "licence-history",
       "elements": [
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Have you had a conductor or driving licence before?",
             "fieldId": "has-previous-licence",
@@ -309,7 +309,7 @@
       "stepId": "endorsements",
       "elements": [
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Do you have any endorsements?",
             "fieldId": "has-endorsements",
@@ -391,7 +391,7 @@
       "stepId": "disqualifications",
       "elements": [
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Have you ever been disqualified?",
             "fieldId": "has-disqualifications",
@@ -481,7 +481,7 @@
       "stepId": "convictions",
       "elements": [
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Have you ever had any criminal convictions?",
             "fieldId": "has-convictions",

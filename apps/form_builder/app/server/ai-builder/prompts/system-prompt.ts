@@ -46,7 +46,7 @@ These rules define how to select components deterministically. Apply them all si
 
 | Trigger | Action |
 |---------|--------|
-| Exactly 2 mutually exclusive options (yes/no, true/false, male/female, agree/disagree) | Use \`components/generic/radio\` with 2 options |
+| Exactly 2 mutually exclusive options (yes/no, true/false, male/female, agree/disagree) | Use \`components/generic-radio\` with 2 options |
 | 3 or more options (dropdown selection) | Use select component with options array |
 | Single confirmation/agreement/declaration checkbox | Use \`components/confirmation\` with single option |
 | Multiple independent selections ("select all that apply", "prefer", "interested in") | Use multiple \`components/confirmation\` elements (one per option) |
@@ -62,7 +62,7 @@ These rules define how to select components deterministically. Apply them all si
 | "date" followed by temporal context (e.g. "date of declaration", "start date", "expiry date") | Use \`components/date-of-birth\` with fieldId + label override |
 | "upload", "document", "file", "attach", "supporting document" | Use \`components/upload-document\` |
 | "confirm", "agree", "declare", "consent", "accept terms" | Use \`components/confirmation\` |
-| "age", "quantity", "amount", "how many", "number of", "price", "cost", "total", "sum", "count" | Use \`components/generic/number\` |
+| "age", "quantity", "amount", "how many", "number of", "price", "cost", "total", "sum", "count" | Use \`components/generic-number\` |
 | "website", "url", "web address" | Use \`components/name\` with URL pattern validation |
 | "national id", "ID number", "registration number", "NIS", "TAMIS", "passport", "licence number", "permit number", "reference number" | Use TEXT input (\`components/national-id-number\`, \`components/tamis-number\`, \`components/passport-number\`, or \`components/name\`) — NEVER use number input for identification numbers (spinner arrows cause accidental changes) |
 
@@ -165,14 +165,14 @@ Never rely on the component default. Every element needs an explicit fieldId in 
 - components/upload-document (NOT components/file-upload)
 - components/additional-details (NOT components/textarea)
 - components/date-of-birth (NOT components/dob) — use for ALL date fields, override fieldId + label
-- components/generic/radio (NOT components/radio) — custom DB component, MUST provide options
-- components/generic/number (NOT components/number) — custom DB component
+- components/generic-radio (NOT components/radio) — registry primitive, MUST provide options
+- components/generic-number (NOT components/number) — registry primitive
 
 ### Rule 3: Select components with EMPTY options MUST have options provided
 - components/parish — MUST provide Barbados parish list (11 parishes)
 - components/nationality — MUST provide options
 - components/country — MUST provide options
-- components/generic/radio — MUST provide options for every use
+- components/generic-radio — MUST provide options for every use
 
 ### Rule 4: components/relationship is a SELECT, not free text
 Use components/name with a label override for free-text relationship fields.
@@ -205,12 +205,12 @@ The frontend requires a step with stepId "submission-confirmation" as the LAST s
 A hidden field cannot be filled in by the user. If you set "isHidden": true AND "validations": {"required": ...} on the same element, the form becomes IMPOSSIBLE to submit.
 
 ### Rule 8: Radio buttons for exactly 2 options, Select/Dropdown for everything else
-- Use \`components/generic/radio\` ONLY when there are exactly 2 options
+- Use \`components/generic-radio\` ONLY when there are exactly 2 options
 - Use select dropdown for 3 or more options
 - NEVER use radio for lists with more than 2 items
 
 ### Rule 9: Use number input for age/quantity, not radio or select
-Age and quantity fields must use \`components/generic/number\`.
+Age and quantity fields must use \`components/generic-number\`.
 
 ### Rule 9b: NEVER use number input for identification numbers
 National ID, TAMIS, NIS, passport numbers, licence numbers, permit numbers, and any reference/registration numbers must use TEXT inputs (e.g. \`components/national-id-number\`, \`components/tamis-number\`, \`components/passport-number\`, or \`components/name\`). Number inputs have spinner arrows that cause accidental value changes — unacceptable for ID fields.
@@ -268,7 +268,7 @@ The frontend injects this automatically on repeatable steps.
 
 ### Radio/Choice Components
 - components/sex — radio (HAS options: Male/Female)
-- components/generic/radio — radio (EMPTY — MUST override with options for every use)
+- components/generic-radio — radio (EMPTY — MUST override with options for every use)
 
 ### Date Components
 - components/date-of-birth — date (use for ALL dates, override fieldId + label)
@@ -277,7 +277,7 @@ The frontend injects this automatically on repeatable steps.
 - components/confirmation — checkbox (declaration/confirmation)
 - components/upload-document — file upload
 - components/additional-details — textarea (multi-line text)
-- components/generic/number — number input
+- components/generic-number — number input
 
 ### Block References
 - blocks/personal-information — title, first-name, middle-name, last-name, date-of-birth, sex, nationality, national-id-number

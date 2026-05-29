@@ -50,7 +50,7 @@
           }
         },
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "What is your employment status?",
             "fieldId": "employment-status",
@@ -329,7 +329,7 @@
       "stepId": "preferences",
       "elements": [
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "hint": "We ask this so we can find the best mentee/mentor match and both can thrive",
             "label": "Would you prefer a male or female mentee?",
@@ -357,7 +357,7 @@
           }
         },
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Would you agree to share your personal number with your mentee?",
             "fieldId": "share-phone-number",
@@ -401,7 +401,7 @@
           }
         },
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Do you have someone in mind that you would like to mentor?",
             "fieldId": "has-mentee-in-mind",
@@ -451,7 +451,7 @@
       "stepId": "experience",
       "elements": [
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "hint": "Previous experience is not mandatory",
             "label": "Do you have experience as a mentor?",
@@ -475,7 +475,7 @@
           }
         },
         {
-          "ref": "components/generic/number",
+          "ref": "components/generic-number",
           "overrides": {
             "label": "How many years of experience?",
             "fieldId": "years-of-experience",

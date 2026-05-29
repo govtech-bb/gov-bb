@@ -8,7 +8,7 @@
       "title": "Applicant Information",
       "elements": [
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Name of Applicant",
             "fieldId": "applicant_name",
@@ -17,7 +17,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Address",
             "fieldId": "applicant_address",
@@ -26,7 +26,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Contact Number(s)",
             "fieldId": "contact_numbers",
@@ -35,7 +35,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "type": "email",
             "label": "Email Address",
@@ -45,7 +45,7 @@
           }
         },
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Status Resident",
             "fieldId": "resident_status",
@@ -93,7 +93,7 @@
           }
         },
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Was the student(s) previously in school?",
             "fieldId": "previously_in_school",
@@ -111,7 +111,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "If Yes, Name and Address of the School",
             "fieldId": "previous_school_info",
@@ -162,23 +162,17 @@
       "title": "Curriculum and Attachments",
       "elements": [
         {
-          "ref": "components/generic/file-upload",
+          "ref": "components/generic-file",
           "overrides": {
             "label": "Timetable (detailing subjects and times)",
             "fieldId": "timetable_attachment",
             "required": true,
             "helperText": "The timetable should include three (3) core subjects: English, Mathematics, Science and Social Studies and a session of Physical Activity",
-            "acceptedFormats": [
-              ".pdf",
-              ".doc",
-              ".docx",
-              ".xls",
-              ".xlsx"
-            ]
+            "acceptedFormats": [".pdf", ".doc", ".docx", ".xls", ".xlsx"]
           }
         },
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Are you following the National Curriculum?",
             "fieldId": "following_national_curriculum",
@@ -196,7 +190,7 @@
           }
         },
         {
-          "ref": "components/generic/file-upload",
+          "ref": "components/generic-file",
           "overrides": {
             "label": "Curriculum (if not following National Curriculum)",
             "fieldId": "curriculum_attachment",
@@ -207,38 +201,26 @@
               "fieldId": "following_national_curriculum",
               "operator": "equals"
             },
-            "acceptedFormats": [
-              ".pdf",
-              ".doc",
-              ".docx"
-            ]
+            "acceptedFormats": [".pdf", ".doc", ".docx"]
           }
         },
         {
-          "ref": "components/generic/file-upload",
+          "ref": "components/generic-file",
           "overrides": {
             "label": "Certified Copies of Tutor Qualifications",
             "fieldId": "tutor_qualifications_attachment",
             "required": true,
             "helperText": "Please attach certified copies of qualifications of persons who will be teaching",
-            "acceptedFormats": [
-              ".pdf",
-              ".doc",
-              ".docx"
-            ]
+            "acceptedFormats": [".pdf", ".doc", ".docx"]
           }
         },
         {
-          "ref": "components/generic/file-upload",
+          "ref": "components/generic-file",
           "overrides": {
             "label": "Previous Progress Report (Report Card)",
             "fieldId": "progress_report_attachment",
             "required": false,
-            "acceptedFormats": [
-              ".pdf",
-              ".doc",
-              ".docx"
-            ]
+            "acceptedFormats": [".pdf", ".doc", ".docx"]
           }
         }
       ],
@@ -249,7 +231,7 @@
       "title": "Declaration and Signature",
       "elements": [
         {
-          "ref": "components/generic/show-hide",
+          "ref": "components/show-hide",
           "overrides": {
             "label": "Requirements for Home Schooling",
             "content": "1. A letter addressed to the Permanent Secretary must be written seeking permission from the Ministry of Education Transformation for home schooling. The reason must also be given.\n2. Please include the child's name, date of birth and any previous school(s) attended by the child.\n3. The curriculum being used must be provided for perusal by the Ministry.\n4. The qualifications and names of the tutor(s) must be provided.\n5. A timetable must be submitted.\n6. Previous Progress Report (Report Card)\n7. The Ministry of Education Transformation will then arrange an interview with the parent before written permission is given.\n8. For further details please contact the Administrative Officer in the Nursery and Primary Section at 535-0760.",
@@ -257,7 +239,7 @@
           }
         },
         {
-          "ref": "components/generic/checkbox",
+          "ref": "components/generic-checkbox",
           "overrides": {
             "label": "I acknowledge that I have read and understand the requirements for home schooling",
             "fieldId": "acknowledge_requirements",
@@ -273,7 +255,7 @@
           }
         },
         {
-          "ref": "components/generic/date-input",
+          "ref": "components/generic-date",
           "overrides": {
             "label": "Date",
             "fieldId": "signature_date",
