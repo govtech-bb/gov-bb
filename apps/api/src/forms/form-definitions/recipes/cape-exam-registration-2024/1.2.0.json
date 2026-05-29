@@ -8,7 +8,7 @@
       "title": "Student Information",
       "elements": [
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "First Name",
             "fieldId": "firstName",
@@ -16,7 +16,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Last Name",
             "fieldId": "lastName",
@@ -24,7 +24,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Gender",
             "fieldId": "gender",
@@ -32,7 +32,7 @@
           }
         },
         {
-          "ref": "components/generic/number",
+          "ref": "components/generic-number",
           "overrides": {
             "max": 31,
             "min": 1,
@@ -42,7 +42,7 @@
           }
         },
         {
-          "ref": "components/generic/number",
+          "ref": "components/generic-number",
           "overrides": {
             "max": 12,
             "min": 1,
@@ -52,7 +52,7 @@
           }
         },
         {
-          "ref": "components/generic/number",
+          "ref": "components/generic-number",
           "overrides": {
             "label": "Year",
             "fieldId": "dobYear",
@@ -60,7 +60,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "ID Number",
             "fieldId": "idNumber",
@@ -68,7 +68,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Address",
             "fieldId": "address",
@@ -77,7 +77,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "type": "email",
             "label": "Email",
@@ -86,7 +86,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Telephone No",
             "fieldId": "telephoneNo",
@@ -193,7 +193,7 @@
           }
         },
         {
-          "ref": "components/generic/date-input",
+          "ref": "components/generic-date",
           "overrides": {
             "label": "Date",
             "fieldId": "signatureDate",

@@ -220,7 +220,7 @@
       "stepId": "applying-for-yourself",
       "elements": [
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Are you applying for your own birth certificate?",
             "fieldId": "applying-for-yourself",
@@ -249,7 +249,7 @@
       "stepId": "relationship-to-person",
       "elements": [
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "What is your relationship to the person?",
             "fieldId": "relationship-to-person",
@@ -395,7 +395,7 @@
           }
         },
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Do they have a National Insurance (NIS) number?",
             "fieldId": "person-has-nis",
@@ -564,7 +564,7 @@
       "stepId": "order-details",
       "elements": [
         {
-          "ref": "components/generic/number",
+          "ref": "components/generic-number",
           "overrides": {
             "label": "Number of copies",
             "fieldId": "number-of-copies",

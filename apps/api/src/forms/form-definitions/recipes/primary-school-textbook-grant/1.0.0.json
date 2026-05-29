@@ -50,7 +50,7 @@
           }
         },
         {
-          "ref": "components/generic/show-hide",
+          "ref": "components/show-hide",
           "overrides": {
             "hint": "If you don't have a National ID number, you can use your passport number instead.",
             "label": "Use passport number instead",
@@ -135,7 +135,7 @@
           }
         },
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Are you the parent or guardian?",
             "fieldId": "is-parent-or-guardian",
@@ -344,7 +344,7 @@
           }
         },
         {
-          "ref": "components/generic/show-hide",
+          "ref": "components/show-hide",
           "overrides": {
             "hint": "If you don't have a National ID number, you can use your passport number instead.",
             "label": "Use passport number instead",
@@ -491,7 +491,7 @@
           }
         },
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Account type",
             "fieldId": "bank-account-type",

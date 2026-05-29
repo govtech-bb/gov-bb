@@ -135,7 +135,7 @@
           }
         },
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Are you the parent or guardian?",
             "fieldId": "is-parent-or-guardian",
@@ -491,7 +491,7 @@
           }
         },
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Account type",
             "fieldId": "bank-account-type",

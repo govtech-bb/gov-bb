@@ -8,7 +8,7 @@
       "title": "Student Information",
       "elements": [
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "ID Number",
             "fieldId": "id_number",
@@ -16,7 +16,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "type": "date",
             "label": "DOB",
@@ -25,7 +25,7 @@
           }
         },
         {
-          "ref": "components/generic/number",
+          "ref": "components/generic-number",
           "overrides": {
             "label": "AGE",
             "fieldId": "age",
@@ -33,7 +33,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "GENDER",
             "fieldId": "gender",
@@ -41,7 +41,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Surname",
             "fieldId": "surname",
@@ -49,7 +49,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "First Name and Middle Name",
             "fieldId": "first_middle_name",
@@ -57,7 +57,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Address",
             "fieldId": "address",
@@ -73,7 +73,7 @@
       "title": "Parent/Guardian Information",
       "elements": [
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Mother",
             "fieldId": "mother_name",
@@ -81,7 +81,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Father",
             "fieldId": "father_name",
@@ -89,7 +89,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Guardian",
             "fieldId": "guardian_name",
@@ -97,7 +97,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "ADDRESS OF PARENT/GUARDIAN (If different from above)",
             "fieldId": "parent_guardian_address",
@@ -106,7 +106,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "type": "tel",
             "label": "TELEPHONE: Mother (H)",
@@ -115,7 +115,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "type": "tel",
             "label": "TELEPHONE: Mother (W)",
@@ -124,7 +124,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "type": "tel",
             "label": "TELEPHONE: Mother (C)",
@@ -133,7 +133,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "type": "tel",
             "label": "TELEPHONE: Father (H)",
@@ -142,7 +142,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "type": "tel",
             "label": "TELEPHONE: Father (W)",
@@ -151,7 +151,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "type": "tel",
             "label": "TELEPHONE: Father (C)",
@@ -160,7 +160,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "type": "tel",
             "label": "TELEPHONE: Guardian (H)",
@@ -169,7 +169,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "type": "tel",
             "label": "TELEPHONE: Guardian (W)",
@@ -178,7 +178,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "type": "tel",
             "label": "TELEPHONE: Guardian (C)",
@@ -187,7 +187,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Please Indicate with whom the child resides",
             "fieldId": "child_resides_with",
@@ -202,7 +202,7 @@
       "title": "School Information",
       "elements": [
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "SCHOOL",
             "fieldId": "school_name",
@@ -210,7 +210,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "CLASS/FORM",
             "fieldId": "class_form",
@@ -218,7 +218,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "type": "tel",
             "label": "SCHOOL TELEPHONE",
@@ -234,7 +234,7 @@
       "title": "Student Challenges",
       "elements": [
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "STUDENT'S CHALLENGES (Please be specific)",
             "fieldId": "student_challenges",
@@ -250,7 +250,7 @@
       "title": "Additional Difficulties/Challenges",
       "elements": [
         {
-          "ref": "components/generic/checkbox",
+          "ref": "components/generic-checkbox",
           "overrides": {
             "label": "Hearing",
             "fieldId": "difficulty_hearing",
@@ -258,7 +258,7 @@
           }
         },
         {
-          "ref": "components/generic/checkbox",
+          "ref": "components/generic-checkbox",
           "overrides": {
             "label": "Vision",
             "fieldId": "difficulty_vision",
@@ -266,7 +266,7 @@
           }
         },
         {
-          "ref": "components/generic/checkbox",
+          "ref": "components/generic-checkbox",
           "overrides": {
             "label": "Physical",
             "fieldId": "difficulty_physical",
@@ -274,7 +274,7 @@
           }
         },
         {
-          "ref": "components/generic/checkbox",
+          "ref": "components/generic-checkbox",
           "overrides": {
             "label": "Behavioural",
             "fieldId": "difficulty_behavioural",
@@ -282,7 +282,7 @@
           }
         },
         {
-          "ref": "components/generic/checkbox",
+          "ref": "components/generic-checkbox",
           "overrides": {
             "label": "Social/Emotional Difficulties",
             "fieldId": "difficulty_social_emotional",
@@ -290,7 +290,7 @@
           }
         },
         {
-          "ref": "components/generic/checkbox",
+          "ref": "components/generic-checkbox",
           "overrides": {
             "label": "Speech and Language Difficulties",
             "fieldId": "difficulty_speech_language",
@@ -298,7 +298,7 @@
           }
         },
         {
-          "ref": "components/generic/checkbox",
+          "ref": "components/generic-checkbox",
           "overrides": {
             "label": "Learning Difficulties",
             "fieldId": "difficulty_learning",
@@ -313,7 +313,7 @@
       "title": "School Attendance",
       "elements": [
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "SCHOOL ATTENDANCE",
             "fieldId": "school_attendance",
@@ -342,7 +342,7 @@
       "title": "Involvement with Outside Agencies",
       "elements": [
         {
-          "ref": "components/generic/checkbox",
+          "ref": "components/generic-checkbox",
           "overrides": {
             "label": "Children's Development Centre",
             "fieldId": "agency_childrens_dev_centre",
@@ -350,7 +350,7 @@
           }
         },
         {
-          "ref": "components/generic/checkbox",
+          "ref": "components/generic-checkbox",
           "overrides": {
             "label": "Probation Department",
             "fieldId": "agency_probation_dept",
@@ -358,7 +358,7 @@
           }
         },
         {
-          "ref": "components/generic/checkbox",
+          "ref": "components/generic-checkbox",
           "overrides": {
             "label": "Juvenile Liaison Scheme",
             "fieldId": "agency_juvenile_liaison",
@@ -366,7 +366,7 @@
           }
         },
         {
-          "ref": "components/generic/checkbox",
+          "ref": "components/generic-checkbox",
           "overrides": {
             "label": "Child Care Board",
             "fieldId": "agency_child_care_board",
@@ -374,7 +374,7 @@
           }
         },
         {
-          "ref": "components/generic/checkbox",
+          "ref": "components/generic-checkbox",
           "overrides": {
             "label": "Child Guidance Clinic",
             "fieldId": "agency_child_guidance",
@@ -382,7 +382,7 @@
           }
         },
         {
-          "ref": "components/generic/checkbox",
+          "ref": "components/generic-checkbox",
           "overrides": {
             "label": "Private Support Services",
             "fieldId": "agency_private_support",
@@ -390,7 +390,7 @@
           }
         },
         {
-          "ref": "components/generic/checkbox",
+          "ref": "components/generic-checkbox",
           "overrides": {
             "label": "Edna Nicholls Centre",
             "fieldId": "agency_edna_nicholls",
@@ -398,7 +398,7 @@
           }
         },
         {
-          "ref": "components/generic/checkbox",
+          "ref": "components/generic-checkbox",
           "overrides": {
             "label": "Welfare Department",
             "fieldId": "agency_welfare_dept",
@@ -406,7 +406,7 @@
           }
         },
         {
-          "ref": "components/generic/checkbox",
+          "ref": "components/generic-checkbox",
           "overrides": {
             "label": "Government Industrial School",
             "fieldId": "agency_gov_industrial_school",
@@ -414,7 +414,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Other (Specify)",
             "fieldId": "agency_other",
@@ -429,7 +429,7 @@
       "title": "Intervention Strategies",
       "elements": [
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Intervention Strategies used at the school to date (Please be specific)",
             "fieldId": "intervention_strategies",
@@ -445,7 +445,7 @@
       "title": "Referral Details",
       "elements": [
         {
-          "ref": "components/generic/checkbox",
+          "ref": "components/generic-checkbox",
           "overrides": {
             "label": "Parent consulted",
             "fieldId": "parent_consulted",
@@ -453,7 +453,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "type": "date",
             "label": "Date",
@@ -462,7 +462,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Referral Initiated By",
             "fieldId": "referral_initiated_by",
@@ -470,7 +470,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "type": "date",
             "label": "Date",
@@ -479,7 +479,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Principal's Signature",
             "fieldId": "principal_signature",
@@ -487,7 +487,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "type": "date",
             "label": "Date",
@@ -503,7 +503,7 @@
       "title": "For Official Use Only",
       "elements": [
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Case Assigned To",
             "fieldId": "case_assigned_to",
@@ -511,7 +511,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Classification",
             "fieldId": "classification",
@@ -519,7 +519,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "type": "date",
             "label": "Date",
@@ -528,7 +528,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "By",
             "fieldId": "official_by",

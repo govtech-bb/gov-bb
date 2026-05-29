@@ -8,7 +8,7 @@
       "title": "Parent/Guardian Information",
       "elements": [
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Title",
             "fieldId": "title",
@@ -17,7 +17,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "First Name",
             "fieldId": "firstName",
@@ -25,7 +25,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Last Name",
             "fieldId": "lastName",
@@ -33,14 +33,14 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Other Names",
             "fieldId": "otherNames"
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "ID Number",
             "fieldId": "idNumber",
@@ -48,14 +48,14 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Home Phone",
             "fieldId": "homePhone"
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Cell Phone",
             "fieldId": "cellPhone",
@@ -63,14 +63,14 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Work Phone",
             "fieldId": "workPhone"
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "type": "email",
             "label": "Email",
@@ -79,7 +79,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Address",
             "fieldId": "address",
@@ -87,7 +87,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Parish",
             "fieldId": "parish",
@@ -95,7 +95,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Tamis No",
             "fieldId": "tamisNo"
@@ -109,7 +109,7 @@
       "title": "Banking Information",
       "elements": [
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Bank/Branch",
             "fieldId": "bankBranch",
@@ -118,7 +118,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Account No",
             "fieldId": "accountNo",
@@ -126,7 +126,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Account Type",
             "fieldId": "accountType",
@@ -134,7 +134,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Name on Acct",
             "fieldId": "nameOnAcct",
@@ -207,7 +207,7 @@
       "title": "Declaration and Signature",
       "elements": [
         {
-          "ref": "components/generic/textarea",
+          "ref": "components/generic-textarea",
           "overrides": {
             "label": "I, hereby submit a claim for",
             "fieldId": "declaration",
@@ -216,7 +216,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Signature of Parent/Guardian",
             "fieldId": "parentSignature",
@@ -224,7 +224,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "type": "date",
             "label": "Date",
@@ -240,21 +240,21 @@
       "title": "For Official Use Only",
       "elements": [
         {
-          "ref": "components/generic/textarea",
+          "ref": "components/generic-textarea",
           "overrides": {
             "label": "Comments",
             "fieldId": "comments"
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Signature of Principal",
             "fieldId": "principalSignature"
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "type": "date",
             "label": "Date",
