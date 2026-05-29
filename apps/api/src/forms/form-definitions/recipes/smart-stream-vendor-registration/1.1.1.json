@@ -30,7 +30,7 @@
       "title": "Basic Information",
       "elements": [
         {
-          "ref": "components/generic-text",
+          "ref": "components/raw-text",
           "overrides": {
             "fieldId": "min-dept",
             "label": "Min/Dept.",
@@ -47,7 +47,7 @@
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/raw-text",
           "overrides": {
             "fieldId": "vendor-name",
             "label": "Vendor Name",
@@ -70,7 +70,7 @@
       "title": "Vendor Classification",
       "elements": [
         {
-          "ref": "components/generic-radio",
+          "ref": "components/raw-radio",
           "overrides": {
             "fieldId": "vendor-classification",
             "label": "Vendor Classification - Please tick appropriate box",
@@ -111,7 +111,7 @@
       "title": "Identification Numbers",
       "elements": [
         {
-          "ref": "components/generic-text",
+          "ref": "components/raw-text",
           "overrides": {
             "fieldId": "tamis-number",
             "label": "TAMIS Number",
@@ -128,7 +128,7 @@
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/raw-text",
           "overrides": {
             "fieldId": "company-reg-number",
             "label": "Company Registration No.",
@@ -140,7 +140,7 @@
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/raw-text",
           "overrides": {
             "fieldId": "sba-number",
             "label": "Small Business Association No.",
@@ -152,7 +152,7 @@
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/raw-text",
           "overrides": {
             "fieldId": "nrn",
             "label": "NRN",
@@ -176,7 +176,7 @@
       "title": "Contact and Address Information",
       "elements": [
         {
-          "ref": "components/generic-text",
+          "ref": "components/raw-text",
           "overrides": {
             "fieldId": "vendor-address-line-1",
             "label": "Vendor Address",
@@ -193,7 +193,7 @@
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/raw-text",
           "overrides": {
             "fieldId": "vendor-address-line-2",
             "label": "Vendor Address (continued)",
@@ -205,7 +205,7 @@
           }
         },
         {
-          "ref": "components/generic-email",
+          "ref": "components/raw-email",
           "overrides": {
             "fieldId": "vendor-email",
             "label": "Vendor Email Address",
@@ -228,7 +228,7 @@
       "title": "Bank Account Details",
       "elements": [
         {
-          "ref": "components/generic-text",
+          "ref": "components/raw-text",
           "overrides": {
             "fieldId": "bank-name",
             "label": "Bank Name",
@@ -245,7 +245,7 @@
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/raw-text",
           "overrides": {
             "fieldId": "bank-account-number",
             "label": "Bank Account Number",
@@ -262,7 +262,7 @@
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/raw-text",
           "overrides": {
             "fieldId": "branch-name",
             "label": "Branch Name",
@@ -279,7 +279,7 @@
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/raw-text",
           "overrides": {
             "fieldId": "name-on-account",
             "label": "Name on Account",
@@ -296,7 +296,7 @@
           }
         },
         {
-          "ref": "components/generic-radio",
+          "ref": "components/raw-radio",
           "overrides": {
             "fieldId": "account-type",
             "label": "Account Type",
@@ -319,7 +319,7 @@
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/raw-text",
           "overrides": {
             "fieldId": "bic-swift",
             "label": "BIC/ Swift",
@@ -331,7 +331,7 @@
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/raw-text",
           "overrides": {
             "fieldId": "bank-address",
             "label": "Bank Address",
