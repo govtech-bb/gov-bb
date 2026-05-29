@@ -2,9 +2,18 @@
   "formId": "statement-of-travelling-form",
   "title": "Statement of Travelling Form",
   "version": "1.1.0",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "subject": "Your Statement of Travelling submission has been received",
+        "recipientField": "applicant-info.email"
+      }
+    }
+  ],
   "steps": [
     {
-      "stepId": "step-1-personal-information",
+      "stepId": "applicant-info",
       "title": "Personal Information",
       "elements": [
         {
@@ -39,7 +48,7 @@
       "behaviours": []
     },
     {
-      "stepId": "step-2-travel-certification",
+      "stepId": "travel-certification",
       "title": "Travel Certification",
       "elements": [
         {
@@ -69,7 +78,7 @@
       "behaviours": []
     },
     {
-      "stepId": "step-3-travel-details",
+      "stepId": "travel-details",
       "title": "Travel Details",
       "description": "Add a row for each day of travel.",
       "elements": [
@@ -112,7 +121,7 @@
       ]
     },
     {
-      "stepId": "step-4-travel-rates",
+      "stepId": "travel-rates",
       "title": "Travel Rates & Calculations",
       "elements": [
         {
@@ -169,7 +178,7 @@
       "behaviours": []
     },
     {
-      "stepId": "step-5-certifications",
+      "stepId": "certifications",
       "title": "Certifications",
       "elements": [
         {
@@ -199,7 +208,7 @@
       "behaviours": []
     },
     {
-      "stepId": "step-6-official-examination",
+      "stepId": "official-examination",
       "title": "Official Use - Examination Section",
       "elements": [
         {
@@ -230,7 +239,7 @@
       "behaviours": []
     },
     {
-      "stepId": "step-7-dps-approval",
+      "stepId": "dps-approval",
       "title": "DPS Approval",
       "elements": [
         {
@@ -253,7 +262,7 @@
       "behaviours": []
     },
     {
-      "stepId": "step-8-processing-officer",
+      "stepId": "processing-officer",
       "title": "Processing Officer",
       "elements": [
         {
@@ -276,7 +285,7 @@
       "behaviours": []
     },
     {
-      "stepId": "step-9-school-reference",
+      "stepId": "school-reference",
       "title": "School Distance Reference",
       "elements": [
         {

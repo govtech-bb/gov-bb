@@ -2,9 +2,18 @@
   "formId": "csec-private-candidate-registration",
   "title": "Registration of Private Candidates - CSEC Examination",
   "version": "1.2.0",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "subject": "Your CSEC Private Candidate registration has been received",
+        "recipientField": "applicant-info.email"
+      }
+    }
+  ],
   "steps": [
     {
-      "stepId": "step-1-student-info",
+      "stepId": "applicant-info",
       "title": "Student Information",
       "elements": [
         {
@@ -169,7 +178,7 @@
       "behaviours": []
     },
     {
-      "stepId": "step-2-subject-selection",
+      "stepId": "subject-selection",
       "title": "Subject Selection",
       "elements": [
         {
@@ -230,7 +239,7 @@
       ]
     },
     {
-      "stepId": "step-3-declaration",
+      "stepId": "declaration-signature",
       "title": "Declaration & Signature",
       "elements": [
         {

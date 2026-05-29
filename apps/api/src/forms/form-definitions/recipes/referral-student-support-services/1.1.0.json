@@ -4,7 +4,7 @@
   "version": "1.1.0",
   "steps": [
     {
-      "stepId": "step-1-student-information",
+      "stepId": "student-information",
       "title": "Student Information",
       "elements": [
         {
@@ -69,7 +69,7 @@
       "behaviours": []
     },
     {
-      "stepId": "step-2-parent-guardian-information",
+      "stepId": "parent-guardian-information",
       "title": "Parent/Guardian Information",
       "elements": [
         {
@@ -198,7 +198,7 @@
       "behaviours": []
     },
     {
-      "stepId": "step-3-school-information",
+      "stepId": "school-information",
       "title": "School Information",
       "elements": [
         {
@@ -230,7 +230,7 @@
       "behaviours": []
     },
     {
-      "stepId": "step-4-student-challenges",
+      "stepId": "student-challenges",
       "title": "Student Challenges",
       "elements": [
         {
@@ -246,7 +246,7 @@
       "behaviours": []
     },
     {
-      "stepId": "step-5-difficulties-challenges",
+      "stepId": "additional-difficulties-challenges",
       "title": "Additional Difficulties/Challenges",
       "elements": [
         {
@@ -309,7 +309,7 @@
       "behaviours": []
     },
     {
-      "stepId": "step-6-school-attendance",
+      "stepId": "school-attendance",
       "title": "School Attendance",
       "elements": [
         {
@@ -338,7 +338,7 @@
       "behaviours": []
     },
     {
-      "stepId": "step-7-outside-agencies",
+      "stepId": "involvement-with-outside-agencies",
       "title": "Involvement with Outside Agencies",
       "elements": [
         {
@@ -425,7 +425,7 @@
       "behaviours": []
     },
     {
-      "stepId": "step-8-intervention-strategies",
+      "stepId": "intervention-strategies",
       "title": "Intervention Strategies",
       "elements": [
         {
@@ -441,7 +441,7 @@
       "behaviours": []
     },
     {
-      "stepId": "step-9-referral-details",
+      "stepId": "referral-details",
       "title": "Referral Details",
       "elements": [
         {
@@ -499,7 +499,7 @@
       "behaviours": []
     },
     {
-      "stepId": "step-10-official-use",
+      "stepId": "for-official-use-only",
       "title": "For Official Use Only",
       "elements": [
         {

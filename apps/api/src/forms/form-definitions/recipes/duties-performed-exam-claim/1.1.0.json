@@ -2,9 +2,18 @@
   "formId": "duties-performed-exam-claim",
   "title": "Claim Form for Duties Performed During Examinations",
   "version": "1.1.0",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "subject": "Your Duties Performed Examination claim has been received",
+        "recipientField": "applicant-info.email"
+      }
+    }
+  ],
   "steps": [
     {
-      "stepId": "section-a",
+      "stepId": "applicant-info",
       "title": "Section A: Claimant Details",
       "elements": [
         {

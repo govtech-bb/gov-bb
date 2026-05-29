@@ -2,9 +2,18 @@
   "formId": "cape-exam-registration-2024",
   "title": "Registration of Private Candidates for May/June CAPE Examination",
   "version": "1.2.0",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "subject": "Your CAPE Examination registration has been received",
+        "recipientField": "applicant-info.email"
+      }
+    }
+  ],
   "steps": [
     {
-      "stepId": "student-information",
+      "stepId": "applicant-info",
       "title": "Student Information",
       "elements": [
         {

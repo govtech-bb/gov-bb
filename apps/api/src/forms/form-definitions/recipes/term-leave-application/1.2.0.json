@@ -2,6 +2,15 @@
   "formId": "term-leave-application",
   "title": "Application for Term's Leave",
   "version": "1.2.0",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "subject": "Your Term Leave Application has been received",
+        "recipientField": "applicant-info.email"
+      }
+    }
+  ],
   "steps": [
     {
       "stepId": "applicant-info",

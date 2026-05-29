@@ -2,9 +2,18 @@
   "formId": "homeschooling-application-2024",
   "title": "Ministry of Education Transformation - Homeschooling Application Form",
   "version": "1.2.0",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "subject": "Your Homeschooling Application has been received",
+        "recipientField": "applicant-info.email_address"
+      }
+    }
+  ],
   "steps": [
     {
-      "stepId": "step-1-applicant-info",
+      "stepId": "applicant-info",
       "title": "Applicant Information",
       "elements": [
         {
@@ -103,7 +112,7 @@
       "behaviours": []
     },
     {
-      "stepId": "step-2-student-info",
+      "stepId": "student-info",
       "title": "Student Information",
       "description": "Name and Date of Birth of Student(s) to be Homeschooled",
       "elements": [
@@ -148,7 +157,7 @@
       ]
     },
     {
-      "stepId": "step-2b-previous-schooling",
+      "stepId": "previous-schooling",
       "title": "Previous Schooling",
       "elements": [
         {
@@ -196,7 +205,7 @@
       "behaviours": []
     },
     {
-      "stepId": "step-3-instructor-info",
+      "stepId": "instructor-info",
       "title": "Instructor/Tutor Information",
       "description": "Names of Instructors/Tutors (Please provide certified copies of qualifications)",
       "elements": [
@@ -244,7 +253,7 @@
       ]
     },
     {
-      "stepId": "step-4-curriculum-attachments",
+      "stepId": "curriculum-attachments",
       "title": "Curriculum and Attachments",
       "elements": [
         {
@@ -336,7 +345,7 @@
       "behaviours": []
     },
     {
-      "stepId": "step-5-declaration",
+      "stepId": "declaration-and-signature",
       "title": "Declaration and Signature",
       "elements": [
         {

@@ -2,9 +2,18 @@
   "formId": "textbook-grant-application",
   "title": "Application for $100 Textbook Grant",
   "version": "1.1.0",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "subject": "Your $100 Textbook Grant application has been received",
+        "recipientField": "applicant-info.email"
+      }
+    }
+  ],
   "steps": [
     {
-      "stepId": "step-1-parent-guardian",
+      "stepId": "applicant-info",
       "title": "Parent/Guardian Information",
       "elements": [
         {
@@ -173,7 +182,7 @@
       "behaviours": []
     },
     {
-      "stepId": "step-2-banking",
+      "stepId": "banking-information",
       "title": "Banking Information",
       "elements": [
         {
@@ -249,7 +258,7 @@
       "behaviours": []
     },
     {
-      "stepId": "step-3-student-info",
+      "stepId": "student-information",
       "title": "Student Information",
       "description": "This form allows a parent/guardian to claim for up to 5 children. If necessary, another claim can be submitted if there are additional children in the household. Please ensure that multiple claims are not submitted for the same child.",
       "elements": [
@@ -358,7 +367,7 @@
       ]
     },
     {
-      "stepId": "step-4-declaration",
+      "stepId": "declaration-and-signature",
       "title": "Declaration and Signature",
       "elements": [
         {
@@ -414,7 +423,7 @@
       "behaviours": []
     },
     {
-      "stepId": "step-5-official-use",
+      "stepId": "official-use",
       "title": "For Official Use Only",
       "elements": [
         {

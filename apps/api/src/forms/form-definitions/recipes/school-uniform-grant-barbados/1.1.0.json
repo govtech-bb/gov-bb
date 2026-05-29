@@ -3,9 +3,18 @@
   "title": "School Uniform Grant",
   "description": "Application form for $100.00 uniform grant from the Ministry of Educational Transformation, Barbados",
   "version": "1.1.0",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "subject": "Your School Uniform Grant application has been received",
+        "recipientField": "applicant-info.candidate_email"
+      }
+    }
+  ],
   "steps": [
     {
-      "stepId": "step-1",
+      "stepId": "applicant-info",
       "title": "Candidate Information",
       "elements": [
         {
@@ -78,7 +87,7 @@
       "behaviours": []
     },
     {
-      "stepId": "step-2",
+      "stepId": "parent-guardian-information",
       "title": "Parent/Guardian Information",
       "elements": [
         {
@@ -210,7 +219,7 @@
       "behaviours": []
     },
     {
-      "stepId": "step-3",
+      "stepId": "banking-information",
       "title": "Banking Information",
       "elements": [
         {
@@ -353,7 +362,7 @@
       "behaviours": []
     },
     {
-      "stepId": "step-4",
+      "stepId": "signature-and-date",
       "title": "Signature and Date",
       "elements": [
         {

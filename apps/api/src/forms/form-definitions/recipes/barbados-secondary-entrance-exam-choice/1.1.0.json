@@ -2,9 +2,18 @@
   "formId": "barbados-secondary-entrance-exam-choice",
   "title": "Barbados Secondary School Entrance Examination - Choice of School Form",
   "version": "1.1.0",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "subject": "Your Barbados Secondary Entrance Exam choice submission has been received",
+        "recipientField": "applicant-info.email"
+      }
+    }
+  ],
   "steps": [
     {
-      "stepId": "step-1-student-information",
+      "stepId": "applicant-info",
       "title": "Student Information",
       "elements": [
         {
@@ -206,7 +215,7 @@
       "behaviours": []
     },
     {
-      "stepId": "step-2-parent-guardian-information",
+      "stepId": "parent-guardian-information",
       "title": "Parent/Guardian Information",
       "elements": [
         {
@@ -300,7 +309,7 @@
       "behaviours": []
     },
     {
-      "stepId": "step-3-school-choices",
+      "stepId": "school-choices",
       "title": "School Choices",
       "elements": [
         {
@@ -459,7 +468,7 @@
       "behaviours": []
     },
     {
-      "stepId": "step-4-authorization",
+      "stepId": "authorization",
       "title": "Authorization",
       "elements": [
         {
@@ -496,7 +505,7 @@
       "behaviours": []
     },
     {
-      "stepId": "step-5-official-use-only",
+      "stepId": "official-use-only",
       "title": "For Official Use Only",
       "elements": [
         {
