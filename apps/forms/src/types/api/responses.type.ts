@@ -20,6 +20,13 @@ export interface ApiResponse {
 export interface FormDefinitionSummary {
   formId: string;
   title: string;
+  /**
+   * Grouping category for the landing page — sourced from the form's
+   * contactDetails.title (e.g. the owning ministry/department). Omitted by
+   * the API when the recipe has no contactDetails; the landing page buckets
+   * those under "Unknown".
+   */
+  category?: string;
 }
 
 export interface FormDefinitionResponse extends ApiResponse {
