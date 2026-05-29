@@ -385,6 +385,8 @@ jobs:
           # NOT d1yjf5g5ckxcxg — that is the archived legacy monorepo app.
           AMPLIFY_APP_ID: d1j7z1k0h7u5nb
           AMPLIFY_BRANCH: sandbox
+          # Needed for the CANCELLED→superseded check below to call gh api.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APP_LABEL: forms
           APP_URL: https://forms.sandbox.alpha.gov.bb
         run: |
@@ -421,8 +423,21 @@ jobs:
               done
               echo "❌ $APP_LABEL smoke test failed — $APP_URL not responding 200 after deploy"
               exit 1
-            elif [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "CANCELLED" ]; then
-              echo "❌ Amplify $APP_LABEL build $STATUS"
+            elif [ "$STATUS" = "FAILED" ]; then
+              echo "❌ Amplify $APP_LABEL build FAILED"
+              exit 1
+            elif [ "$STATUS" = "CANCELLED" ]; then
+              # Amplify cancels in-flight builds when a newer commit lands on
+              # the same branch (configured in #441). If sandbox HEAD has
+              # advanced past us, the cancellation is correct — exit clean so
+              # rapid-fire merges don't spam this workflow with red runs that
+              # mean nothing.
+              CURRENT_HEAD=$(gh api "repos/${{ github.repository }}/commits/sandbox" --jq '.sha' 2>/dev/null || echo "")
+              if [ -n "$CURRENT_HEAD" ] && [ "$CURRENT_HEAD" != "${{ github.sha }}" ]; then
+                echo "✅ Amplify $APP_LABEL build CANCELLED — superseded by ${CURRENT_HEAD:0:7}; not failing"
+                exit 0
+              fi
+              echo "❌ Amplify $APP_LABEL build CANCELLED (no newer commit on sandbox — likely manual cancel or Amplify infra issue)"
               exit 1
             fi
             sleep 30
@@ -445,6 +460,8 @@ jobs:
         env:
           AMPLIFY_APP_ID: d3kbl8o0ovutw4
           AMPLIFY_BRANCH: sandbox
+          # Needed for the CANCELLED→superseded check below to call gh api.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APP_LABEL: landing
           APP_URL: https://landing.sandbox.alpha.gov.bb
         run: |
@@ -479,8 +496,21 @@ jobs:
               done
               echo "❌ $APP_LABEL smoke test failed — $APP_URL not responding 200 after deploy"
               exit 1
-            elif [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "CANCELLED" ]; then
-              echo "❌ Amplify $APP_LABEL build $STATUS"
+            elif [ "$STATUS" = "FAILED" ]; then
+              echo "❌ Amplify $APP_LABEL build FAILED"
+              exit 1
+            elif [ "$STATUS" = "CANCELLED" ]; then
+              # Amplify cancels in-flight builds when a newer commit lands on
+              # the same branch (configured in #441). If sandbox HEAD has
+              # advanced past us, the cancellation is correct — exit clean so
+              # rapid-fire merges don't spam this workflow with red runs that
+              # mean nothing.
+              CURRENT_HEAD=$(gh api "repos/${{ github.repository }}/commits/sandbox" --jq '.sha' 2>/dev/null || echo "")
+              if [ -n "$CURRENT_HEAD" ] && [ "$CURRENT_HEAD" != "${{ github.sha }}" ]; then
+                echo "✅ Amplify $APP_LABEL build CANCELLED — superseded by ${CURRENT_HEAD:0:7}; not failing"
+                exit 0
+              fi
+              echo "❌ Amplify $APP_LABEL build CANCELLED (no newer commit on sandbox — likely manual cancel or Amplify infra issue)"
               exit 1
             fi
             sleep 30
@@ -503,6 +533,8 @@ jobs:
         env:
           AMPLIFY_APP_ID: d3snq1f0c10466
           AMPLIFY_BRANCH: sandbox
+          # Needed for the CANCELLED→superseded check below to call gh api.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APP_LABEL: chat
           # /api/health is SSR-rendered (not the static fallback) and reports
           # db connectivity + indexed doc count — catches more than a root
@@ -541,8 +573,21 @@ jobs:
               done
               echo "❌ $APP_LABEL smoke test failed — /api/health did not return ok:true,db:connected,docCount>0"
               exit 1
-            elif [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "CANCELLED" ]; then
-              echo "❌ Amplify $APP_LABEL build $STATUS"
+            elif [ "$STATUS" = "FAILED" ]; then
+              echo "❌ Amplify $APP_LABEL build FAILED"
+              exit 1
+            elif [ "$STATUS" = "CANCELLED" ]; then
+              # Amplify cancels in-flight builds when a newer commit lands on
+              # the same branch (configured in #441). If sandbox HEAD has
+              # advanced past us, the cancellation is correct — exit clean so
+              # rapid-fire merges don't spam this workflow with red runs that
+              # mean nothing.
+              CURRENT_HEAD=$(gh api "repos/${{ github.repository }}/commits/sandbox" --jq '.sha' 2>/dev/null || echo "")
+              if [ -n "$CURRENT_HEAD" ] && [ "$CURRENT_HEAD" != "${{ github.sha }}" ]; then
+                echo "✅ Amplify $APP_LABEL build CANCELLED — superseded by ${CURRENT_HEAD:0:7}; not failing"
+                exit 0
+              fi
+              echo "❌ Amplify $APP_LABEL build CANCELLED (no newer commit on sandbox — likely manual cancel or Amplify infra issue)"
               exit 1
             fi
             sleep 30
@@ -637,6 +682,8 @@ jobs:
         env:
           AMPLIFY_APP_ID: d16oo4n0w76zwn
           AMPLIFY_BRANCH: sandbox
+          # Needed for the CANCELLED→superseded check below to call gh api.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APP_LABEL: form-builder
         run: |
           JOB_ID=$(aws amplify start-job \
@@ -660,8 +707,21 @@ jobs:
             if [ "$STATUS" = "SUCCEED" ]; then
               echo "✅ Amplify $APP_LABEL build succeeded"
               exit 0
-            elif [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "CANCELLED" ]; then
-              echo "❌ Amplify $APP_LABEL build $STATUS"
+            elif [ "$STATUS" = "FAILED" ]; then
+              echo "❌ Amplify $APP_LABEL build FAILED"
+              exit 1
+            elif [ "$STATUS" = "CANCELLED" ]; then
+              # Amplify cancels in-flight builds when a newer commit lands on
+              # the same branch (configured in #441). If sandbox HEAD has
+              # advanced past us, the cancellation is correct — exit clean so
+              # rapid-fire merges don't spam this workflow with red runs that
+              # mean nothing.
+              CURRENT_HEAD=$(gh api "repos/${{ github.repository }}/commits/sandbox" --jq '.sha' 2>/dev/null || echo "")
+              if [ -n "$CURRENT_HEAD" ] && [ "$CURRENT_HEAD" != "${{ github.sha }}" ]; then
+                echo "✅ Amplify $APP_LABEL build CANCELLED — superseded by ${CURRENT_HEAD:0:7}; not failing"
+                exit 0
+              fi
+              echo "❌ Amplify $APP_LABEL build CANCELLED (no newer commit on sandbox — likely manual cancel or Amplify infra issue)"
               exit 1
             fi
             sleep 30
