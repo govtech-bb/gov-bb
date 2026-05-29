@@ -2,7 +2,7 @@ name: CI
 
 on:
   pull_request:
-    branches: [sandbox, dev]
+    branches: [sandbox, dev, staging]
   workflow_dispatch:
 
 permissions:
@@ -208,6 +208,9 @@ jobs:
 
   security:
     name: Security Scan
+    # Skip CodeQL on staging-bound PRs: same code already scanned on the
+    # upstream sandbox PR. Staging is a promotion gate, not a new-code gate.
+    if: github.base_ref != 'staging'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -538,6 +541,10 @@ jobs:
 
   validate-recipes:
     name: Validate Recipes
+    # Skip recipe validation on staging-bound PRs: recipes don't change in
+    # promotion-only flow. Sandbox/dev PRs (where recipes are actually edited)
+    # remain gated.
+    if: github.base_ref != 'staging'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -550,3 +557,41 @@ jobs:
 
       - name: Validate recipe files
         run: pnpm validate-recipes
+
+  docker-build:
+    # Build every Dockerfile in the repo on every PR. Catches refactors that
+    # orphan a `COPY` path (the class of bug that broke sandbox CD after
+    # commit a8d25528 deleted apps/form_builder/app/server/ai-builder/prompts
+    # while the form_builder_api Dockerfile still referenced it).
+    #
+    # `push: false` — no ECR push, just validate the build context. Faster
+    # than full deploy since we don't run the image, just compile it.
+    # GHA layer cache scoped per Dockerfile so a change to one doesn't bust
+    # the others.
+    name: Docker Build (${{ matrix.label }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: api
+            dockerfile: apps/api/Dockerfile
+          - label: form-builder-api
+            dockerfile: apps/form_builder_api/Dockerfile
+          - label: chat-ingest
+            dockerfile: apps/chat/Dockerfile.ingest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build ${{ matrix.label }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          push: false
+          cache-from: type=gha,scope=ci-${{ matrix.label }}
+          cache-to: type=gha,mode=max,scope=ci-${{ matrix.label }}
