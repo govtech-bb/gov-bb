@@ -39,8 +39,8 @@ would otherwise sweep up the new spec and run it against localhost (or in CI).
   `testIgnore: "**/smoke/**"` so the local/CI suite never runs the smoke spec.
 - **Data via `@faker-js/faker`** (added as a dev dependency). The `vendor-name`
   is prefixed `Smoke Test … <ISO timestamp>` so the real submission is traceable
-  in the target environment. The confirmation email goes to a reserved
-  `example.com` address so it never reaches a real inbox.
+  in the target environment. The confirmation email is sent to the monitored
+  `testing@govtech.bb` inbox so a real run can be verified end-to-end.
 
 > **Deviation from the original draft:** the draft suggested reusing the existing
 > `FormPage` POM (`e2e/helpers/form-page.ts`). The spec is instead self-contained

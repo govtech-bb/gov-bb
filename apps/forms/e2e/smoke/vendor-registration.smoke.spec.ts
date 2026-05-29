@@ -39,9 +39,14 @@ import { test, expect, type Page } from "@playwright/test";
 const FORM_ID = "smart-stream-vendor-registration";
 const STEP_TIMEOUT = 15_000;
 
-/** The primary (Continue / Submit) button is shared across every step. */
+/**
+ * The primary action button advances the form ("Continue" on every step,
+ * "Submit" on the declaration). Matched by role + accessible name so it stays
+ * robust to design-system styling changes (e.g. the button markup dropping its
+ * data-variant attribute), and so "Previous" is never matched.
+ */
 const primaryButton = (page: Page) =>
-  page.locator('button[data-variant="primary"]');
+  page.getByRole("button", { name: /^(Continue|Submit)$/ });
 
 /** Read the current `?step=` param. */
 function currentStep(page: Page): string {
@@ -109,9 +114,9 @@ function buildVendorData() {
     nrnDigits,
     addressLine1: faker.location.streetAddress(),
     addressLine2: `${faker.location.city()}, ${faker.location.county()}`,
-    // Use the reserved example.com domain so the confirmation email never
-    // reaches a real inbox.
-    vendorEmail: faker.internet.email({ provider: "example.com" }),
+    // Send the confirmation email to the monitored test inbox rather than a
+    // fake address, so a real run can be verified end-to-end (incl. email).
+    vendorEmail: "testing@govtech.bb",
     bankName: `${faker.company.name()} Bank`,
     bankAccountNumber: faker.finance.accountNumber(10),
     branchName: `${faker.location.street()} Branch`,

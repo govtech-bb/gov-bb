@@ -18,11 +18,8 @@ export default defineConfig({
   testDir: "./e2e/smoke",
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  /* Locally: no retries so a genuine failure is obvious. In CI we run against a
-   * freshly-built ephemeral preview, so allow one retry to absorb cold-start /
-   * CDN-propagation flakiness (a retry re-runs the whole flow → one extra real
-   * submission only on a first-attempt failure). */
-  retries: process.env.CI ? 1 : 0,
+  /* A real deployed environment — no retries so a genuine failure is obvious. */
+  retries: 0,
   workers: 1,
   reporter: [["line"]],
   use: {
