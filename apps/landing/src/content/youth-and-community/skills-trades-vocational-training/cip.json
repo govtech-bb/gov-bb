@@ -3,8 +3,6 @@
   "description": "Short, hands-on training courses in trades, creative work and wellness, run two sessions a week at community centres across Barbados.",
   "categories": ["youth-and-community"],
   "subcategory": "skills-trades-vocational-training",
-  "service_type": "information",
-  "page_role": "entry",
   "stage": "alpha",
   "updated_at": "2026-05-28",
   "body": {

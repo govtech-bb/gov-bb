@@ -51,7 +51,14 @@ function cmsToRenderable(svc: CmsService): RenderablePage {
       updated_at: svc.updatedAt ? new Date(svc.updatedAt) : undefined,
       source_url: svc.sourceUrl,
       stage: svc.stage,
-      service_type: svc.serviceType,
+      start_type: svc.startType,
+      form_id: svc.formId,
+      start_url: svc.startUrl,
+      is_start_page: svc.isStartPage,
+      // Entry page that has a start page → its Start now button links to
+      // <current path>/start; otherwise (the start page itself, or a digital
+      // service with no start content) the button goes straight to the action.
+      has_start_page: !svc.isStartPage && svc.hasStartPage ? true : undefined,
     },
     body: svc.body,
   }

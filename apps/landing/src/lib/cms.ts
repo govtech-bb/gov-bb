@@ -33,8 +33,8 @@ export interface CmsServiceListItem {
   title: string
   description?: string
   stage?: 'alpha' | 'beta' | 'migrated'
-  serviceType?: 'digital' | 'information'
-  pageRole?: 'entry' | 'start'
+  /** Derived: the service has a start action (a form or a link). */
+  digital?: boolean
   flag?: 'live' | 'flagged'
   categories: string[]
   subcategory?: string
@@ -44,6 +44,16 @@ export interface CmsService extends CmsServiceListItem {
   body: SerializedEditorState
   updatedAt: string
   sourceUrl?: string
+  /** How the service starts: 'form' (Form Builder) or 'link' (calculator/external). */
+  startType?: 'form' | 'link'
+  /** Form Builder form ID, when startType is 'form'. */
+  formId?: string
+  /** Link target, when startType is 'link'. */
+  startUrl?: string
+  /** True when this resolved a `<slug>/start` URL (body is the start-page content). */
+  isStartPage?: boolean
+  /** True when the service has start-page content to link to from its entry page. */
+  hasStartPage?: boolean
 }
 
 interface PayloadList<T> {
@@ -72,12 +82,14 @@ interface PayloadServiceDoc {
   title: string
   description?: string | null
   stage?: 'alpha' | 'beta' | 'migrated' | null
-  serviceType?: 'digital' | 'information' | null
-  pageRole?: 'entry' | 'start' | null
+  startType?: 'form' | 'link' | null
   flag?: 'live' | 'flagged' | null
   categories?: Array<PayloadRelationship | string | number> | null
   subcategory?: PayloadRelationship | string | number | null
   body?: SerializedEditorState | null
+  startBody?: SerializedEditorState | null
+  formId?: string | null
+  startUrl?: string | null
   updatedAt?: string | null
   sourceUrl?: string | null
 }
@@ -133,8 +145,7 @@ function normaliseService(doc: PayloadServiceDoc): CmsServiceListItem {
     title: doc.title,
     description: doc.description ?? undefined,
     stage: doc.stage ?? undefined,
-    serviceType: doc.serviceType ?? undefined,
-    pageRole: doc.pageRole ?? undefined,
+    digital: Boolean(doc.startType),
     flag: doc.flag ?? undefined,
     categories,
     subcategory,
@@ -182,7 +193,7 @@ export async function fetchServicesByCategory(
   const res = await cmsFetch<PayloadServiceDoc>(
     `/api/services?${PUBLISHED}${flagWhere(flag)}&where[categories.slug][in]=${encodeURIComponent(categorySlug)}&depth=1&sort=title&limit=200`,
   )
-  return res.docs.map(normaliseService).filter((s) => s.pageRole !== 'start')
+  return res.docs.map(normaliseService)
 }
 
 export async function fetchServicesBySubcategory(
@@ -196,22 +207,28 @@ export async function fetchServicesBySubcategory(
       `&where[subcategory.slug][equals]=${encodeURIComponent(subcategorySlug)}` +
       `&depth=1&sort=title&limit=200`,
   )
-  return res.docs.map(normaliseService).filter((s) => s.pageRole !== 'start')
+  return res.docs.map(normaliseService)
 }
 
 /**
  * Resolve a service by URL splat. A flat service ("apply-for-a-passport")
  * stores its slug bare and lives at "<category>/<slug>" on the site; a nested
- * service stores its slug as the full path and lives at the same path. So
- * the URL splat itself OR the splat with the leading category stripped is
- * what we look up.
+ * service stores its slug as the full path. The splat itself OR the splat with
+ * the leading category stripped is what we look up.
+ *
+ * A `<slug>/start` URL is the digital service's start page: it resolves the SAME
+ * service document and returns its `startBody` instead of `body`.
  */
 export async function fetchServiceByUrl(
   splat: string,
   flag: boolean,
 ): Promise<CmsService | null> {
-  const segments = splat.split('/').filter(Boolean)
-  const candidates = [splat]
+  const isStartPage = splat.endsWith('/start')
+  const lookup = isStartPage
+    ? splat.slice(0, -'/start'.length).replace(/\/+$/, '')
+    : splat
+  const segments = lookup.split('/').filter(Boolean)
+  const candidates = [lookup]
   if (segments.length > 1) candidates.push(segments.slice(1).join('/'))
   const where = candidates
     .map((c, i) => `&where[slug][in][${i}]=${encodeURIComponent(c)}`)
@@ -221,13 +238,33 @@ export async function fetchServiceByUrl(
   )
   const doc = res.docs[0]
   if (!doc) return null
+  const hasStartPage = hasContent(doc.startBody)
+  // A /start URL only resolves when the service actually has start-page content.
+  if (isStartPage && !hasStartPage) return null
   const listing = normaliseService(doc)
   return {
     ...listing,
-    body: doc.body ?? EMPTY_BODY,
+    body: (isStartPage ? doc.startBody : doc.body) ?? EMPTY_BODY,
+    startType: doc.startType ?? undefined,
+    formId: doc.formId ?? undefined,
+    startUrl: doc.startUrl ?? undefined,
+    isStartPage,
+    hasStartPage,
     updatedAt: doc.updatedAt ?? '',
     sourceUrl: doc.sourceUrl ?? undefined,
   }
+}
+
+// A Lexical state has content if it holds anything beyond a single empty
+// paragraph (Payload's empty-editor default).
+function hasContent(state: SerializedEditorState | null | undefined): boolean {
+  const children = state?.root?.children as
+    | Array<{ type?: string; children?: unknown[] }>
+    | undefined
+  if (!children?.length) return false
+  return children.some(
+    (c) => c.type !== 'paragraph' || (c.children?.length ?? 0) > 0,
+  )
 }
 
 const EMPTY_BODY: SerializedEditorState = {
@@ -247,7 +284,7 @@ export async function fetchAllServices(
   const res = await cmsFetch<PayloadServiceDoc>(
     `/api/services?${PUBLISHED}${flagWhere(flag)}&depth=1&sort=title&limit=500`,
   )
-  return res.docs.map(normaliseService).filter((s) => s.pageRole !== 'start')
+  return res.docs.map(normaliseService)
 }
 
 // Query options — passed to `queryClient.ensureQueryData` in loaders and to

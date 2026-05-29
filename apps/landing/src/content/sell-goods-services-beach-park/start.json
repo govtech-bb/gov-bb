@@ -1,9 +1,9 @@
 {
   "title": "Apply for a licence to sell goods or services at a beach or park",
-  "service_type": "digital",
-  "page_role": "start",
-  "stage": "alpha",
-  "updated_at": "2026-05-29",
+  "is_start_page": true,
+  "categories": ["business-trade"],
+  "start_type": "form",
+  "form_id": "sell-goods-services-beach-park",
   "body": {
     "root": {
       "type": "root",
@@ -252,23 +252,10 @@
           ],
           "listType": "bullet",
           "direction": null
-        },
-        {
-          "type": "block",
-          "fields": {
-            "id": "eba2810b925de949f50bd51b",
-            "type": "form",
-            "label": "",
-            "formId": "sell-goods-services-beach-park",
-            "blockName": "",
-            "blockType": "startButton"
-          },
-          "format": "",
-          "version": 2
         }
       ],
       "direction": null
     }
   },
-  "bodyText": "You should complete your application in one go. At the moment, it is not possible to save your answers and come back to them later.\n\n## How long does it take?\n\nIt should not take more than 10 minutes.\n\n## What you will need\n\nAs well as your contact details, the application form asks you to give:\n\n1. The name and contact details of 2 referees (one professional and one you know in a personal capacity). They will be asked to provide references if your application is successful.\n2. 2 testimonials from people who can vouch for you. They must not be from the same 2 people you have named as referees.\n\nYou will also be asked to upload:\n\n- a [Police Certificate of Character](https://forms.gov.bb/CertificateOfCharacter)\n- 2 passport-sized photos of yourself\n\nBlock Field"
+  "bodyText": "You should complete your application in one go. At the moment, it is not possible to save your answers and come back to them later.\n\n## How long does it take?\n\nIt should not take more than 10 minutes.\n\n## What you will need\n\nAs well as your contact details, the application form asks you to give:\n\n1. The name and contact details of 2 referees (one professional and one you know in a personal capacity). They will be asked to provide references if your application is successful.\n2. 2 testimonials from people who can vouch for you. They must not be from the same 2 people you have named as referees.\n\nYou will also be asked to upload:\n\n- a [Police Certificate of Character](https://forms.gov.bb/CertificateOfCharacter)\n- 2 passport-sized photos of yourself"
 }

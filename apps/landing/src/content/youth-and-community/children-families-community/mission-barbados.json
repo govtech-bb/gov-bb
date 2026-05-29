@@ -3,8 +3,6 @@
   "description": "A national initiative inviting individuals and organisations to take part in six 2030 missions, from sustainability to digital transformation.",
   "categories": ["youth-and-community"],
   "subcategory": "children-families-community",
-  "service_type": "information",
-  "page_role": "entry",
   "stage": "alpha",
   "updated_at": "2026-05-28",
   "body": {

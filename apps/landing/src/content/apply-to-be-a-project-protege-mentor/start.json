@@ -1,9 +1,9 @@
 {
   "title": "Apply to be a Project Protégé mentor",
-  "service_type": "digital",
-  "page_role": "start",
-  "stage": "alpha",
-  "updated_at": "2026-05-29",
+  "is_start_page": true,
+  "categories": ["work-employment"],
+  "start_type": "form",
+  "form_id": "project-protege-mentor",
   "body": {
     "root": {
       "type": "root",
@@ -69,19 +69,6 @@
           "direction": null,
           "textStyle": "",
           "textFormat": 0
-        },
-        {
-          "type": "block",
-          "fields": {
-            "id": "61aa56e5b6af70592e36f2a0",
-            "type": "form",
-            "label": "",
-            "formId": "project-protege-mentor",
-            "blockName": "",
-            "blockType": "startButton"
-          },
-          "format": "",
-          "version": 2
         },
         {
           "tag": "h2",
@@ -290,5 +277,5 @@
       "direction": null
     }
   },
-  "bodyText": "You should complete your application in one go. At the moment, it is not possible to save your answers and come back to them later.\n\n## How long the applications takes\n\nIt should not take more than 30 minutes.\n\nBlock Field\n\n## Information you will need to apply to online\n\nAs well as your contact details, the application form asks about:\n\n- the names and contact details of 2 references: 1 personal, 1 professional\n- your qualifications, skills and interests\n- your previous experience of mentoring\n- your current and past employment\n- your reasons for applying\n- your strengths (your knowledge, skills and abilities)\n- what you think a mentee could learn from you\n- your preference of mentoring a male or female"
+  "bodyText": "You should complete your application in one go. At the moment, it is not possible to save your answers and come back to them later.\n\n## How long the applications takes\n\nIt should not take more than 30 minutes.\n\n## Information you will need to apply to online\n\nAs well as your contact details, the application form asks about:\n\n- the names and contact details of 2 references: 1 personal, 1 professional\n- your qualifications, skills and interests\n- your previous experience of mentoring\n- your current and past employment\n- your reasons for applying\n- your strengths (your knowledge, skills and abilities)\n- what you think a mentee could learn from you\n- your preference of mentoring a male or female"
 }

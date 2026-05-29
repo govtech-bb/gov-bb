@@ -58,8 +58,10 @@ export interface ServiceDoc {
   body?: SerializedEditorState | null;
   categories?: Ref[] | null;
   subcategory?: Ref | null;
-  serviceType?: "digital" | "information" | null;
-  pageRole?: "entry" | "start" | null;
+  startType?: "form" | "link" | null;
+  startBody?: SerializedEditorState | null;
+  formId?: string | null;
+  startUrl?: string | null;
   stage?: "alpha" | "beta" | "migrated" | null;
   sourceUrl?: string | null;
   updatedAt?: string | null;
@@ -77,8 +79,9 @@ export function serviceDocToFrontmatter(doc: ServiceDoc): MappedFile {
   const subcategory = slugOf(doc.subcategory);
   if (subcategory) data.subcategory = subcategory;
 
-  if (doc.serviceType) data.service_type = doc.serviceType;
-  if (doc.pageRole) data.page_role = doc.pageRole;
+  if (doc.startType) data.start_type = doc.startType;
+  if (doc.formId) data.form_id = doc.formId;
+  if (doc.startUrl) data.start_url = doc.startUrl;
   if (doc.stage) data.stage = doc.stage;
   if (doc.sourceUrl) data.source_url = doc.sourceUrl;
   const updatedAt = isoDate(doc.updatedAt);

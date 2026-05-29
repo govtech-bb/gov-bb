@@ -3,8 +3,6 @@
   "description": "An educational project for young people aged 9 to 29, run under the Youth Development Programme.",
   "categories": ["youth-and-community"],
   "subcategory": "youth-development-leadership",
-  "service_type": "information",
-  "page_role": "entry",
   "stage": "alpha",
   "updated_at": "2026-05-28",
   "body": {

@@ -3,8 +3,6 @@
   "description": "Free vocational training in over 20 trades — from motor vehicle engineering and cookery to construction and healthcare — through Project Dawn.",
   "categories": ["youth-and-community"],
   "subcategory": "skills-trades-vocational-training",
-  "service_type": "information",
-  "page_role": "entry",
   "stage": "alpha",
   "updated_at": "2026-05-28",
   "body": {

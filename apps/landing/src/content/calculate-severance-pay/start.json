@@ -1,10 +1,9 @@
 {
   "title": "Find out how much severance payment you are owed",
-  "categories": ["money-financial-support"],
-  "service_type": "information",
-  "page_role": "start",
-  "stage": "alpha",
-  "updated_at": "2026-05-29",
+  "is_start_page": true,
+  "categories": ["money-financial-support", "work-employment"],
+  "start_type": "link",
+  "start_url": "/money-financial-support/calculate-severance-pay/form",
   "body": {
     "root": {
       "type": "root",

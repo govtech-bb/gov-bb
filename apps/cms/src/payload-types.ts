@@ -128,7 +128,7 @@ export interface UserAuthOperations {
   }
 }
 /**
- * Service and guide pages shown to the public. An Entry page describes a service and appears in listings; a digital service has a Start now button in its body pointing at the online form. A Start page (set Page role to “Start”, slug ending /start) is a sub-page of an entry page holding form-start content — it is excluded from listings automatically.
+ * Service and guide pages shown to the public. One document per service: the Content tab is the page itself; the Start page tab makes it a digital service (a Start now button to a form, calculator or other site). The buttons are generated automatically.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "services".
@@ -143,10 +143,6 @@ export interface Service {
    * Set to “Flagged” while preparing — the page is hidden from the public and only visible to reviewers with the feature-flag cookie. Switch to “Live” when ready to release.
    */
   flag: 'live' | 'flagged'
-  /**
-   * Entry pages appear in category and service listings. Start pages are sub-pages reached from an entry page (slug ending /start) and are excluded from listings.
-   */
-  pageRole: 'entry' | 'start'
   title: string
   /**
    * A one-sentence summary, shown in search results and listings. Aim for under 160 characters — that’s roughly what search engines show in results.
@@ -171,6 +167,36 @@ export interface Service {
     [k: string]: unknown
   } | null
   /**
+   * How the service starts. Leave blank for an information-only page (no Start now button).
+   */
+  startType?: ('form' | 'link') | null
+  /**
+   * The form’s ID from Form Builder. The Start now button links to it.
+   */
+  formId?: string | null
+  /**
+   * Where Start now links — a path on this site (e.g. /money-financial-support/calculate-severance-pay/form) or a full external URL.
+   */
+  startUrl?: string | null
+  /**
+   * Optional “before you start” content (what you’ll need, how long it takes), shown at <slug>/start above the Start now button.
+   */
+  startBody?: {
+    root: {
+      type: string
+      children: {
+        type: any
+        version: number
+        [k: string]: unknown
+      }[]
+      direction: ('ltr' | 'rtl') | null
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | ''
+      indent: number
+      version: number
+    }
+    [k: string]: unknown
+  } | null
+  /**
    * Which categories this page is listed under.
    */
   categories?: (number | Category)[] | null
@@ -178,10 +204,6 @@ export interface Service {
    * Optional. Choose categories first — only subcategories of those categories are offered.
    */
   subcategory?: (number | null) | Subcategory
-  /**
-   * Choose “Digital” if the service has an online form authors can link to from a Start now button; otherwise leave as “Information only”.
-   */
-  serviceType: 'digital' | 'information'
   /**
    * How finished this page is. New pages start at Alpha. Use “Migrated” only for content carried over from the old gov.bb site.
    */
@@ -616,13 +638,15 @@ export interface PayloadMigration {
 export interface ServicesSelect<T extends boolean = true> {
   slug?: T
   flag?: T
-  pageRole?: T
   title?: T
   description?: T
   body?: T
+  startType?: T
+  formId?: T
+  startUrl?: T
+  startBody?: T
   categories?: T
   subcategory?: T
-  serviceType?: T
   stage?: T
   sourceUrl?: T
   updatedAt?: T

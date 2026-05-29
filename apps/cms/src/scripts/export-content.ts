@@ -31,6 +31,16 @@ function toBodyText(
   return convertLexicalToMarkdown({ data: body, editorConfig })
 }
 
+// A Lexical state has content if it holds anything beyond a single empty
+// paragraph (Payload's empty-editor default).
+function hasContent(state: import('lexical').SerializedEditorState | null | undefined): boolean {
+  const children = state?.root?.children as
+    | Array<{ type?: string; children?: unknown[] }>
+    | undefined
+  if (!children?.length) return false
+  return children.some((c) => c.type !== 'paragraph' || (c.children?.length ?? 0) > 0)
+}
+
 async function isDirectory(p: string): Promise<boolean> {
   try {
     return (await fs.stat(p)).isDirectory()
@@ -79,14 +89,44 @@ async function run(): Promise<void> {
 
   let services = 0
   for await (const doc of allDocs(payload, 'services')) {
-    const { data, body } = serviceDocToFrontmatter(doc as unknown as ServiceDoc & { slug: string })
+    const svc = doc as unknown as ServiceDoc & {
+      slug: string
+      startBody?: import('lexical').SerializedEditorState | null
+      startType?: 'form' | 'link' | null
+      formId?: string | null
+      startUrl?: string | null
+    }
+    const { data, body } = serviceDocToFrontmatter(svc)
     const bodyText = toBodyText(body, editorConfig)
-    await writeJson(await servicePath(CONTENT_DIR, (doc as { slug: string }).slug), {
+    const hasStart = hasContent(svc.startBody)
+    // Entry page. A digital/intro service links its Start now button to the
+    // start page; otherwise the button (if any) goes straight to the form.
+    await writeJson(await servicePath(CONTENT_DIR, svc.slug), {
       ...data,
+      ...(hasStart ? { has_start_page: true } : {}),
       body,
       bodyText,
     })
     services += 1
+    // Start page: the one-document model holds it in `startBody`; the landing
+    // still serves it as a separate `<slug>/start` page.
+    if (hasStart) {
+      const startBody = svc.startBody as import('lexical').SerializedEditorState
+      await writeJson(await servicePath(CONTENT_DIR, `${svc.slug}/start`), {
+        title: data.title,
+        is_start_page: true,
+        // Same categories/subcategory as the entry so the start page resolves at
+        // <entry-url>/start; isSubPage keeps it out of listings.
+        ...(data.categories ? { categories: data.categories } : {}),
+        ...(data.subcategory ? { subcategory: data.subcategory } : {}),
+        ...(svc.startType ? { start_type: svc.startType } : {}),
+        ...(svc.formId ? { form_id: svc.formId } : {}),
+        ...(svc.startUrl ? { start_url: svc.startUrl } : {}),
+        body: startBody,
+        bodyText: toBodyText(startBody, editorConfig),
+      })
+      services += 1
+    }
   }
 
   let orgs = 0

@@ -3,8 +3,6 @@
   "description": "Donate new or lightly used children's books at participating Massy Stores and Farm and Garden to stock free little libraries across the island.",
   "categories": ["youth-and-community"],
   "subcategory": "children-families-community",
-  "service_type": "information",
-  "page_role": "entry",
   "stage": "alpha",
   "updated_at": "2026-05-28",
   "body": {

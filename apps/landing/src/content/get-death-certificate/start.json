@@ -1,9 +1,9 @@
 {
   "title": "Get a copy of a death certificate",
-  "service_type": "information",
-  "page_role": "start",
-  "stage": "alpha",
-  "updated_at": "2026-05-29",
+  "is_start_page": true,
+  "categories": ["family-birth-relationships"],
+  "start_type": "form",
+  "form_id": "get-death-certificate",
   "body": {
     "root": {
       "type": "root",
@@ -277,23 +277,10 @@
           ],
           "listType": "bullet",
           "direction": null
-        },
-        {
-          "type": "block",
-          "fields": {
-            "id": "a469780f965ebd06bf1cc87f",
-            "type": "form",
-            "label": "",
-            "formId": "get-death-certificate",
-            "blockName": "",
-            "blockType": "startButton"
-          },
-          "format": "",
-          "version": 2
         }
       ],
       "direction": null
     }
   },
-  "bodyText": "<!-- # Get a copy of a death certificate -->\n\nYou should complete your application in one go. At the moment, it is not possible to save your answers and come back to them later.\n\nYou cannot use the online service if you would like the certificate to be sent overseas. Instead, contact the Registration Department.\n\nYou cannot apply online for a certificate of cause of death. You must go to the Registration Department and fill out a paper form.\n\n## How long does it take?\n\nIt shouldn’t take longer than 20 minutes.\n\n## What you will need\n\nYou will need a debit or credit card, and you will need to have (or create) an EZPay+ account.\n\nEach certified copy costs $5 BBD.\n\nThe form asks for:\n\n- the applicant’s name, address and National ID number\n- the deceased’s full name, date of death, place of death and National ID number\n- the cause of death\n\nBlock Field"
+  "bodyText": "<!-- # Get a copy of a death certificate -->\n\nYou should complete your application in one go. At the moment, it is not possible to save your answers and come back to them later.\n\nYou cannot use the online service if you would like the certificate to be sent overseas. Instead, contact the Registration Department.\n\nYou cannot apply online for a certificate of cause of death. You must go to the Registration Department and fill out a paper form.\n\n## How long does it take?\n\nIt shouldn’t take longer than 20 minutes.\n\n## What you will need\n\nYou will need a debit or credit card, and you will need to have (or create) an EZPay+ account.\n\nEach certified copy costs $5 BBD.\n\nThe form asks for:\n\n- the applicant’s name, address and National ID number\n- the deceased’s full name, date of death, place of death and National ID number\n- the cause of death"
 }

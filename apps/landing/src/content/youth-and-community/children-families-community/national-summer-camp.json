@@ -3,8 +3,6 @@
   "description": "Summer camps for children aged 5 to 16, hosted in 46 locations across Barbados.",
   "categories": ["youth-and-community"],
   "subcategory": "children-families-community",
-  "service_type": "information",
-  "page_role": "entry",
   "stage": "alpha",
   "updated_at": "2026-05-28",
   "body": {

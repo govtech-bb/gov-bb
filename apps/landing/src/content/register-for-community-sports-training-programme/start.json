@@ -1,9 +1,9 @@
 {
-  "title": "Register for a Youth Development Programme (YDP) Community Sports Training Programme",
-  "service_type": "digital",
-  "page_role": "start",
-  "stage": "alpha",
-  "updated_at": "2026-05-29",
+  "title": "Register for a Youth Development Programme (YDP) Community Sports Training programme",
+  "is_start_page": true,
+  "categories": ["work-employment"],
+  "start_type": "form",
+  "form_id": "community-sports-training",
   "body": {
     "root": {
       "type": "root",
@@ -196,23 +196,10 @@
           ],
           "listType": "number",
           "direction": null
-        },
-        {
-          "type": "block",
-          "fields": {
-            "id": "c20e6dc40c6f5fcb95d1b6c3",
-            "type": "form",
-            "label": "",
-            "formId": "community-sports-training",
-            "blockName": "",
-            "blockType": "startButton"
-          },
-          "format": "",
-          "version": 2
         }
       ],
       "direction": null
     }
   },
-  "bodyText": "You should complete your application in one go. At the moment, it is not possible to save your answers and come back to them later.\n\n## How long does it take?\n\nIt should not take more than 10 minutes.\n\n## What you will need\n\nAs well as your contact details and depending on what you’re registering for, you will also be asked to share:\n\n1. Your level of skill and previous experience in your area of interest.\n2. The names of any sport, social, youth or community groups you are part of.\n3. Your employment status to help with scheduling.\n4. The address and phone number for an emergency contact.\n\nBlock Field"
+  "bodyText": "You should complete your application in one go. At the moment, it is not possible to save your answers and come back to them later.\n\n## How long does it take?\n\nIt should not take more than 10 minutes.\n\n## What you will need\n\nAs well as your contact details and depending on what you’re registering for, you will also be asked to share:\n\n1. Your level of skill and previous experience in your area of interest.\n2. The names of any sport, social, youth or community groups you are part of.\n3. Your employment status to help with scheduling.\n4. The address and phone number for an emergency contact."
 }

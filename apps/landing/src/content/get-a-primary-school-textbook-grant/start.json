@@ -1,9 +1,7 @@
 {
   "title": "Get a Primary School Textbook Grant",
-  "service_type": "information",
-  "page_role": "start",
-  "stage": "alpha",
-  "updated_at": "2026-05-29",
+  "is_start_page": true,
+  "categories": ["money-financial-support"],
   "body": {
     "root": {
       "type": "root",

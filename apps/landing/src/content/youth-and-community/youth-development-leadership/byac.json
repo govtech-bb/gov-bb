@@ -3,8 +3,6 @@
   "description": "A two-year programme for young people aged 16 to 20, combining residential vocational training with job attachments and community service.",
   "categories": ["youth-and-community"],
   "subcategory": "youth-development-leadership",
-  "service_type": "information",
-  "page_role": "entry",
   "stage": "alpha",
   "updated_at": "2026-05-28",
   "body": {
