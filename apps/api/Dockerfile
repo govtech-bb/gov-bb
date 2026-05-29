@@ -26,6 +26,7 @@ COPY --chown=app:app packages/expressions/package.json packages/expressions/
 COPY --chown=app:app packages/form-conditions/package.json packages/form-conditions/
 COPY --chown=app:app packages/form-types/package.json packages/form-types/
 COPY --chown=app:app packages/form-validation/package.json packages/form-validation/
+COPY --chown=app:app packages/registry/package.json packages/registry/
 
 # BuildKit cache mount keeps the pnpm content-addressable store across builds,
 # so a cache-invalidating change to the lockfile or any package.json re-installs
@@ -90,7 +91,8 @@ RUN mkdir -p node_modules/@govtech-bb && \
     ln -sfn ../../packages/expressions node_modules/@govtech-bb/expressions && \
     ln -sfn ../../packages/form-conditions node_modules/@govtech-bb/form-conditions && \
     ln -sfn ../../packages/form-types node_modules/@govtech-bb/form-types && \
-    ln -sfn ../../packages/form-validation node_modules/@govtech-bb/form-validation
+    ln -sfn ../../packages/form-validation node_modules/@govtech-bb/form-validation && \
+    ln -sfn ../../packages/registry node_modules/@govtech-bb/registry
 COPY --from=builder --chown=app:app /app/package.json ./
 COPY --from=builder --chown=app:app /app/pnpm-lock.yaml ./
 COPY --from=builder --chown=app:app /app/pnpm-workspace.yaml ./
