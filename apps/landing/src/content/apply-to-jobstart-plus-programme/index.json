@@ -2,9 +2,10 @@
   "title": "Register for Job Start Plus",
   "description": "Register for the Job Start Plus training programme in Barbados — a government initiative offering career guidance, skills training, and workplace placements for young people.",
   "categories": ["work-employment"],
-  "service_type": "information",
+  "service_type": "digital",
+  "page_role": "entry",
   "stage": "alpha",
-  "updated_at": "2026-05-28",
+  "updated_at": "2026-05-29",
   "body": {
     "root": {
       "type": "root",
@@ -536,24 +537,17 @@
           "direction": null
         },
         {
-          "type": "paragraph",
+          "type": "block",
+          "fields": {
+            "id": "33c90c14d5efbfad8cb28ca9",
+            "type": "form",
+            "label": "",
+            "formId": "jobstart-plus-programme",
+            "blockName": "",
+            "blockType": "startButton"
+          },
           "format": "",
-          "indent": 0,
-          "version": 1,
-          "children": [
-            {
-              "mode": "normal",
-              "text": "   <a data-start-link href=\"/work-employment/apply-to-jobstart-plus-programme/start\">Register now</a>",
-              "type": "text",
-              "style": "",
-              "detail": 0,
-              "format": 0,
-              "version": 1
-            }
-          ],
-          "direction": null,
-          "textStyle": "",
-          "textFormat": 0
+          "version": 2
         },
         {
           "tag": "ol",
@@ -778,5 +772,5 @@
       "direction": null
     }
   },
-  "bodyText": "[Job Start Plus](https://labour.gov.bb/jobstartplus/) is a training programme for young people aimed at preparing them for the workplace. It offers career guidance and tailored training to develop relevant skills and build confidence. There’s also the opportunity to be placed in a place of work.\n\n## Eligibility\n\nYou are eligible to sign up if you meet both of the 2 criteria:\n\n1. You are 16 to 24 years old (or between 16 and 34 if you are a person with a disability).\n2. You are not currently employed or enrolled in a training institution.\n\n## About the training\n\n‘World of Work’ training workshops are held in person over 3 weeks at a central location. Over those 3 weeks, job starters should be available between 8.45am and 4.30pm for 5 days a week.\n\nThe workshops focus on workforce preparation and core development skills such as:\n\n- resume writing\n- job search strategies\n- interview techniques\n- effective communication\n- teamwork\n- conflict resolution\n- anger management\n- time management\n- work ethics\n\nJob starters are given a stipend to cover lunch and travel expenses.\n\n## When to register\n\nRegistration is open throughout the year.\n\n## How to register\n\n### Complete the form\n\nThere are 2 ways to register. You can:\n\n1. #### Complete the online form\n\n   <a data-start-link href=\"/work-employment/apply-to-jobstart-plus-programme/start\">Register now</a>\n\n2. #### Get a paper form from the Ministry of Labour, Social Security and Third Sector\n\n   You must complete it by hand and return it to the department.\n\n   Ministry of Labour, Social Security and Third Sector,   3rd Floor West, Warrens Office Complex, Warrens Close, St. Michael\n\n## After you have registered\n\nOnce your registration has been processed, you will be invited to an assessment. Organisers will evaluate:\n\n- your readiness to work\n- your suitablity for the programme\n- any additional support you need\n\nYou will then receive the schedule for the World of Work trainingg and what you will need to bring.\n\nThe initiative is owned by the Ministry of Labour, Social Security and Third Sector."
+  "bodyText": "[Job Start Plus](https://labour.gov.bb/jobstartplus/) is a training programme for young people aimed at preparing them for the workplace. It offers career guidance and tailored training to develop relevant skills and build confidence. There’s also the opportunity to be placed in a place of work.\n\n## Eligibility\n\nYou are eligible to sign up if you meet both of the 2 criteria:\n\n1. You are 16 to 24 years old (or between 16 and 34 if you are a person with a disability).\n2. You are not currently employed or enrolled in a training institution.\n\n## About the training\n\n‘World of Work’ training workshops are held in person over 3 weeks at a central location. Over those 3 weeks, job starters should be available between 8.45am and 4.30pm for 5 days a week.\n\nThe workshops focus on workforce preparation and core development skills such as:\n\n- resume writing\n- job search strategies\n- interview techniques\n- effective communication\n- teamwork\n- conflict resolution\n- anger management\n- time management\n- work ethics\n\nJob starters are given a stipend to cover lunch and travel expenses.\n\n## When to register\n\nRegistration is open throughout the year.\n\n## How to register\n\n### Complete the form\n\nThere are 2 ways to register. You can:\n\n1. #### Complete the online form\n\nBlock Field\n\n2. #### Get a paper form from the Ministry of Labour, Social Security and Third Sector\n\n   You must complete it by hand and return it to the department.\n\n   Ministry of Labour, Social Security and Third Sector,   3rd Floor West, Warrens Office Complex, Warrens Close, St. Michael\n\n## After you have registered\n\nOnce your registration has been processed, you will be invited to an assessment. Organisers will evaluate:\n\n- your readiness to work\n- your suitablity for the programme\n- any additional support you need\n\nYou will then receive the schedule for the World of Work trainingg and what you will need to bring.\n\nThe initiative is owned by the Ministry of Labour, Social Security and Third Sector."
 }

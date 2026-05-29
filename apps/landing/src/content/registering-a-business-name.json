@@ -3,6 +3,7 @@
   "description": "An overview of the simple requirements and procedures for registering a business name in Barbados, with a link to the CAIPO website for more information.",
   "categories": ["business-trade"],
   "service_type": "information",
+  "page_role": "entry",
   "stage": "alpha",
   "source_url": "https://www.gov.bb/Business/registering-business-name",
   "updated_at": "2026-05-28",

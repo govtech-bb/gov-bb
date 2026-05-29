@@ -2,9 +2,10 @@
   "title": "Register for a summer camp",
   "description": "Register your child for a free government summer camp in Barbados, available for children aged 4 to 15. Camps cover sports, arts, culture, entrepreneurship, and special needs.",
   "categories": ["work-employment"],
-  "service_type": "information",
+  "service_type": "digital",
+  "page_role": "entry",
   "stage": "alpha",
-  "updated_at": "2026-05-28",
+  "updated_at": "2026-05-29",
   "body": {
     "root": {
       "type": "root",
@@ -136,24 +137,17 @@
           "textFormat": 0
         },
         {
-          "type": "paragraph",
+          "type": "block",
+          "fields": {
+            "id": "72c21688d63465c6297f331b",
+            "type": "form",
+            "label": "",
+            "formId": "national-summer-camp-2025-registration",
+            "blockName": "",
+            "blockType": "startButton"
+          },
           "format": "",
-          "indent": 0,
-          "version": 1,
-          "children": [
-            {
-              "mode": "normal",
-              "text": "<a data-start-link>Start now</a>",
-              "type": "text",
-              "style": "",
-              "detail": 0,
-              "format": 0,
-              "version": 1
-            }
-          ],
-          "direction": null,
-          "textStyle": "",
-          "textFormat": 0
+          "version": 2
         },
         {
           "type": "paragraph",
@@ -371,5 +365,5 @@
       "direction": null
     }
   },
-  "bodyText": "Children between the ages of 4 and 15 years old are eligible to go to a summer camp. Around 45 summer camps are held across Barbados each year which are free to attend. Some cater for special interests such as cultural arts, sports and entrepreneurship. There is also a summer camp for children who have special needs.\n\nThe deadline to register for a place is approximately 2 weeks before the start of the camp.\n\n**Registration opens in May 2026.**\n\n---\n\n## How to register\n\nParents and guardians can register for a summer camp on behalf of a child/ward online.\n\nIf you do not have access to the internet or a smart device, colleagues at any community centre can help you register.\n\n<a data-start-link>Start now</a>\n\nYou will be asked to choose a first, second and third choice camp in case your first choice is full, or, in case of unforeseen circumstances at a location.\n\n---\n\n## After you register\n\nYou'll receive an email confirming which camp you have been given a place at 3 to 5 days before the camp begins. If your first choice is unavailable, you will be given a place at your second or third choice camp.\n\n---\n\n## Special needs and accessibility\n\nWhen you register for a summer camp, you will be asked about a child's health and whether they have any special needs or accessibility needs. This information is used to help place the child in a camp that can meet their specific needs.\n\n---\n\n## Volunteer at a summer camp\n\nIf you’re 16 years old or over and would like to volunteer as a camp assistant or camp director.\n\nYou can apply all year round but recruitment usually begins around April, and applicants can expect to hear if they were successful by mid-June. Volunteers need to be free to complete training in June.\n\n---\n\n## How to give feedback or make a complaint\n\nShortly after the camp, you'll receive a survey online or on paper from your camp. The Research Department uses your anonymous responses to gather information that will help improve future camps."
+  "bodyText": "Children between the ages of 4 and 15 years old are eligible to go to a summer camp. Around 45 summer camps are held across Barbados each year which are free to attend. Some cater for special interests such as cultural arts, sports and entrepreneurship. There is also a summer camp for children who have special needs.\n\nThe deadline to register for a place is approximately 2 weeks before the start of the camp.\n\n**Registration opens in May 2026.**\n\n---\n\n## How to register\n\nParents and guardians can register for a summer camp on behalf of a child/ward online.\n\nIf you do not have access to the internet or a smart device, colleagues at any community centre can help you register.\n\nBlock Field\n\nYou will be asked to choose a first, second and third choice camp in case your first choice is full, or, in case of unforeseen circumstances at a location.\n\n---\n\n## After you register\n\nYou'll receive an email confirming which camp you have been given a place at 3 to 5 days before the camp begins. If your first choice is unavailable, you will be given a place at your second or third choice camp.\n\n---\n\n## Special needs and accessibility\n\nWhen you register for a summer camp, you will be asked about a child's health and whether they have any special needs or accessibility needs. This information is used to help place the child in a camp that can meet their specific needs.\n\n---\n\n## Volunteer at a summer camp\n\nIf you’re 16 years old or over and would like to volunteer as a camp assistant or camp director.\n\nYou can apply all year round but recruitment usually begins around April, and applicants can expect to hear if they were successful by mid-June. Volunteers need to be free to complete training in June.\n\n---\n\n## How to give feedback or make a complaint\n\nShortly after the camp, you'll receive a survey online or on paper from your camp. The Research Department uses your anonymous responses to gather information that will help improve future camps."
 }

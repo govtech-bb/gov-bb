@@ -2,6 +2,7 @@
   "title": "What we mean by alpha",
   "description": "We’re testing ideas and learning what works before building the full service.",
   "service_type": "information",
+  "page_role": "entry",
   "stage": "alpha",
   "updated_at": "2026-05-28",
   "body": {

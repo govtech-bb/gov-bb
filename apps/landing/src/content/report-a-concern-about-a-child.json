@@ -3,6 +3,7 @@
   "description": "Find out how to report a concern about a child's welfare in Barbados, including who to contact and what information you will need.",
   "categories": ["public-safety"],
   "service_type": "information",
+  "page_role": "entry",
   "stage": "alpha",
   "updated_at": "2026-05-28",
   "body": {

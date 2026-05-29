@@ -2,6 +2,7 @@
   "title": "Terms & Conditions",
   "description": "The terms and conditions for using the alpha.gov.bb website.",
   "service_type": "information",
+  "page_role": "entry",
   "stage": "alpha",
   "source_url": "https://www.gov.bb/terms-conditions",
   "updated_at": "2026-05-28",

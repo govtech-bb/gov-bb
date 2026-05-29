@@ -2,9 +2,10 @@
   "title": "Register for a Youth Development Programme (YDP) Community Sports Training programme",
   "description": "Register for a government-run Youth Development Programme (YDP) community sports training programme in Barbados. Open to residents aged 30 and under.",
   "categories": ["work-employment"],
-  "service_type": "information",
+  "service_type": "digital",
+  "page_role": "entry",
   "stage": "alpha",
-  "updated_at": "2026-05-28",
+  "updated_at": "2026-05-29",
   "body": {
     "root": {
       "type": "root",
@@ -142,24 +143,17 @@
           "direction": null
         },
         {
-          "type": "paragraph",
+          "type": "block",
+          "fields": {
+            "id": "ab01772ecfee052065f3cafd",
+            "type": "form",
+            "label": "",
+            "formId": "community-sports-training",
+            "blockName": "",
+            "blockType": "startButton"
+          },
           "format": "",
-          "indent": 0,
-          "version": 1,
-          "children": [
-            {
-              "mode": "normal",
-              "text": "   <a data-start-link href=\"/work-employment/register-for-community-sports-training-programme/start\">Register now</a>",
-              "type": "text",
-              "style": "",
-              "detail": 0,
-              "format": 0,
-              "version": 1
-            }
-          ],
-          "direction": null,
-          "textStyle": "",
-          "textFormat": 0
+          "version": 2
         },
         {
           "tag": "ol",
@@ -486,5 +480,5 @@
       "direction": null
     }
   },
-  "bodyText": "Anyone living in Barbados, aged 30 and under, can register for a place on government-run community sports programmes.\n\nNew programmes begin throughout the year.\n\n## How to register\n\n### Complete the form\n\nThere are 2 ways to complete the form. You can:\n\n1. #### Complete the online form\n\n   <a data-start-link href=\"/work-employment/register-for-community-sports-training-programme/start\">Register now</a>\n\n2. #### Collect a paper form\n\n   You can get one from your local youth commissioner or from:\n\n   Ministry of Youth, Sports and Community Empowerment   Sky Mall Haggatt Hall St. Michael\n\n   If you complete a paper form, submit it by taking it to:\n\n- your local youth commissioner or coach\n- the ministry office\n\n## After you register\n\nThe Youth Commissioner will be in touch to confirm:\n\n- the location of the programme\n- the start date and times\n- what you will need to bring\n\n## When to register\n\nWhen to register depends on what you would like to register for. You can see a list of current programmes at the [Youth Development Programme page](https://youthaffairs.gov.bb/programme-channels/youth-development-programme/) or contact the Ministry at (246) 535-3835 and ask to be redirected to the Youth Commissioner or the Principal Youth Development Officer."
+  "bodyText": "Anyone living in Barbados, aged 30 and under, can register for a place on government-run community sports programmes.\n\nNew programmes begin throughout the year.\n\n## How to register\n\n### Complete the form\n\nThere are 2 ways to complete the form. You can:\n\n1. #### Complete the online form\n\nBlock Field\n\n2. #### Collect a paper form\n\n   You can get one from your local youth commissioner or from:\n\n   Ministry of Youth, Sports and Community Empowerment   Sky Mall Haggatt Hall St. Michael\n\n   If you complete a paper form, submit it by taking it to:\n\n- your local youth commissioner or coach\n- the ministry office\n\n## After you register\n\nThe Youth Commissioner will be in touch to confirm:\n\n- the location of the programme\n- the start date and times\n- what you will need to bring\n\n## When to register\n\nWhen to register depends on what you would like to register for. You can see a list of current programmes at the [Youth Development Programme page](https://youthaffairs.gov.bb/programme-channels/youth-development-programme/) or contact the Ministry at (246) 535-3835 and ask to be redirected to the Youth Commissioner or the Principal Youth Development Officer."
 }

@@ -1,8 +1,9 @@
 {
   "title": "Register for a Youth Development Programme (YDP) Community Sports Training Programme",
-  "service_type": "information",
+  "service_type": "digital",
+  "page_role": "start",
   "stage": "alpha",
-  "updated_at": "2026-05-28",
+  "updated_at": "2026-05-29",
   "body": {
     "root": {
       "type": "root",
@@ -197,28 +198,21 @@
           "direction": null
         },
         {
-          "type": "paragraph",
+          "type": "block",
+          "fields": {
+            "id": "c20e6dc40c6f5fcb95d1b6c3",
+            "type": "form",
+            "label": "",
+            "formId": "community-sports-training",
+            "blockName": "",
+            "blockType": "startButton"
+          },
           "format": "",
-          "indent": 0,
-          "version": 1,
-          "children": [
-            {
-              "mode": "normal",
-              "text": "<a data-start-link>Start now</a>",
-              "type": "text",
-              "style": "",
-              "detail": 0,
-              "format": 0,
-              "version": 1
-            }
-          ],
-          "direction": null,
-          "textStyle": "",
-          "textFormat": 0
+          "version": 2
         }
       ],
       "direction": null
     }
   },
-  "bodyText": "You should complete your application in one go. At the moment, it is not possible to save your answers and come back to them later.\n\n## How long does it take?\n\nIt should not take more than 10 minutes.\n\n## What you will need\n\nAs well as your contact details and depending on what you’re registering for, you will also be asked to share:\n\n1. Your level of skill and previous experience in your area of interest.\n2. The names of any sport, social, youth or community groups you are part of.\n3. Your employment status to help with scheduling.\n4. The address and phone number for an emergency contact.\n\n<a data-start-link>Start now</a>"
+  "bodyText": "You should complete your application in one go. At the moment, it is not possible to save your answers and come back to them later.\n\n## How long does it take?\n\nIt should not take more than 10 minutes.\n\n## What you will need\n\nAs well as your contact details and depending on what you’re registering for, you will also be asked to share:\n\n1. Your level of skill and previous experience in your area of interest.\n2. The names of any sport, social, youth or community groups you are part of.\n3. Your employment status to help with scheduling.\n4. The address and phone number for an emergency contact.\n\nBlock Field"
 }

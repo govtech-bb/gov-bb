@@ -2,6 +2,7 @@
   "title": "What's changing?",
   "description": "How and why the way you find and use public services is changing.",
   "service_type": "information",
+  "page_role": "entry",
   "stage": "alpha",
   "updated_at": "2026-05-28",
   "body": {

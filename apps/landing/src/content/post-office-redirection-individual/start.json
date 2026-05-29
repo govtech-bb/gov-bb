@@ -1,8 +1,9 @@
 {
   "title": "Redirect my personal mail",
   "service_type": "information",
+  "page_role": "start",
   "stage": "alpha",
-  "updated_at": "2026-05-28",
+  "updated_at": "2026-05-29",
   "body": {
     "root": {
       "type": "root",
@@ -196,28 +197,21 @@
           "direction": null
         },
         {
-          "type": "paragraph",
+          "type": "block",
+          "fields": {
+            "id": "35606b79ae700a61629d7960",
+            "type": "form",
+            "label": "",
+            "formId": "post-office-redirection-individual",
+            "blockName": "",
+            "blockType": "startButton"
+          },
           "format": "",
-          "indent": 0,
-          "version": 1,
-          "children": [
-            {
-              "mode": "normal",
-              "text": "<a data-start-link>Start now</a>",
-              "type": "text",
-              "style": "",
-              "detail": 0,
-              "format": 0,
-              "version": 1
-            }
-          ],
-          "direction": null,
-          "textStyle": "",
-          "textFormat": 0
+          "version": 2
         }
       ],
       "direction": null
     }
   },
-  "bodyText": "You should complete the redirection notice in one go. At the moment, it is not possible to save your answers and come back to them later\n\n## How long does it take?\n\nIt shouldn’t take longer than 10 minutes.\n\n## What you will need\n\n- the name and National Identification number of every person who wants to redirect their mail\n- the old address\n- the new address\n- start date of redirection\n- end date of the redirection\n\n<a data-start-link>Start now</a>"
+  "bodyText": "You should complete the redirection notice in one go. At the moment, it is not possible to save your answers and come back to them later\n\n## How long does it take?\n\nIt shouldn’t take longer than 10 minutes.\n\n## What you will need\n\n- the name and National Identification number of every person who wants to redirect their mail\n- the old address\n- the new address\n- start date of redirection\n- end date of the redirection\n\nBlock Field"
 }

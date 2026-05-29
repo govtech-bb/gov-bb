@@ -3,6 +3,7 @@
   "description": "Information for visitors and temporary residents on obtaining a driver's permit and various transportation options in Barbados, including buses, minibuses, route taxis, and regular taxis.",
   "categories": ["travel-id-citizenship"],
   "service_type": "information",
+  "page_role": "entry",
   "stage": "alpha",
   "source_url": "https://www.gov.bb/Visit-Barbados/getting-around-barbados",
   "updated_at": "2026-05-28",

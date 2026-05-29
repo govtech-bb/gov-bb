@@ -3,6 +3,7 @@
   "description": "Find out how to get a document notarised in Barbados, including where to go and what to bring.",
   "categories": ["travel-id-citizenship"],
   "service_type": "information",
+  "page_role": "entry",
   "stage": "alpha",
   "updated_at": "2026-05-28",
   "body": {

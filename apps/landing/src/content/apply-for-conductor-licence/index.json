@@ -2,9 +2,10 @@
   "title": "Apply for a conductor's licence",
   "description": "Apply for a conductor's licence to work on a Public Service Vehicle (PSV) in Barbados. You must be 18 years or older to apply.",
   "categories": ["work-employment"],
-  "service_type": "information",
+  "service_type": "digital",
+  "page_role": "entry",
   "stage": "alpha",
-  "updated_at": "2026-05-28",
+  "updated_at": "2026-05-29",
   "body": {
     "root": {
       "type": "root",
@@ -142,24 +143,17 @@
           "textFormat": 0
         },
         {
-          "type": "paragraph",
+          "type": "block",
+          "fields": {
+            "id": "2edec8da9707ff2edc928f49",
+            "type": "form",
+            "label": "",
+            "formId": "apply-for-conductor-licence",
+            "blockName": "",
+            "blockType": "startButton"
+          },
           "format": "",
-          "indent": 0,
-          "version": 1,
-          "children": [
-            {
-              "mode": "normal",
-              "text": "   <a data-start-link href=\"/work-employment/apply-for-conductor-licence/start\">Apply online</a>",
-              "type": "text",
-              "style": "",
-              "detail": 0,
-              "format": 0,
-              "version": 1
-            }
-          ],
-          "direction": null,
-          "textStyle": "",
-          "textFormat": 0
+          "version": 2
         },
         {
           "tag": "ol",
@@ -378,5 +372,5 @@
       "direction": null
     }
   },
-  "bodyText": "If you are 18 years old or older, you can use this service to apply for a licence to become a conductor on a Public Service Vehicle (PSV).\n\n## How to apply\n\n### Complete the form\n\nThere are 2 ways to apply for a conductor's licence. You can:\n\n1. Apply online\n\n   You can complete the application online\n\n   <a data-start-link href=\"/work-employment/apply-for-conductor-licence/start\">Apply online</a>\n\n2. Get a paper application form from the Ministry of Transport and Works.\n\n   You must complete it by hand and return it to the department.\n\n   \\\\ Ministry of Transport and Works \\\\ 2nd Floor \\\\ The Goddard Building \\\\ Haggatt Hall \\\\ St. Michael \\\\ Bridgetown\n\n### What you will need to share\n\nAlong with your personal details, the application form will ask for information about your licences, driving history, and any relevant convictions.\n\nYou will also need to provide a copy of your [Police Certificate of Character](https://forms.gov.bb/CertificateOfCharacter)\n\n### After you apply\n\nWe will review your application.\n\nYou must contact the department (246-536-0282) to schedule your in-person oral test."
+  "bodyText": "If you are 18 years old or older, you can use this service to apply for a licence to become a conductor on a Public Service Vehicle (PSV).\n\n## How to apply\n\n### Complete the form\n\nThere are 2 ways to apply for a conductor's licence. You can:\n\n1. Apply online\n\n   You can complete the application online\n\nBlock Field\n\n2. Get a paper application form from the Ministry of Transport and Works.\n\n   You must complete it by hand and return it to the department.\n\n   \\\\ Ministry of Transport and Works \\\\ 2nd Floor \\\\ The Goddard Building \\\\ Haggatt Hall \\\\ St. Michael \\\\ Bridgetown\n\n### What you will need to share\n\nAlong with your personal details, the application form will ask for information about your licences, driving history, and any relevant convictions.\n\nYou will also need to provide a copy of your [Police Certificate of Character](https://forms.gov.bb/CertificateOfCharacter)\n\n### After you apply\n\nWe will review your application.\n\nYou must contact the department (246-536-0282) to schedule your in-person oral test."
 }

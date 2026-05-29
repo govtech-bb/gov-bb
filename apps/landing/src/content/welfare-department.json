@@ -2,6 +2,7 @@
   "title": "Welfare Department",
   "description": "Details the mission, acting chief welfare officer, and contact information for the Welfare Department of Barbados.",
   "service_type": "information",
+  "page_role": "entry",
   "stage": "alpha",
   "source_url": "https://www.gov.bb/Departments/welfare",
   "updated_at": "2026-05-28",

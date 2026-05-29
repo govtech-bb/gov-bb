@@ -3,6 +3,7 @@
   "description": "Apply for a temporary teaching position in the Government of Barbados school system.",
   "categories": ["work-employment"],
   "service_type": "information",
+  "page_role": "entry",
   "stage": "alpha",
   "updated_at": "2026-05-28",
   "body": {

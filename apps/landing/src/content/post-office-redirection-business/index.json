@@ -3,8 +3,9 @@
   "description": "Tell the Barbados Post Office to redirect your business mail to a new address when your business relocates.",
   "categories": ["travel-id-citizenship"],
   "service_type": "information",
+  "page_role": "entry",
   "stage": "alpha",
-  "updated_at": "2026-05-28",
+  "updated_at": "2026-05-29",
   "body": {
     "root": {
       "type": "root",
@@ -302,24 +303,17 @@
           "textFormat": 0
         },
         {
-          "type": "paragraph",
+          "type": "block",
+          "fields": {
+            "id": "00eddb932650f0709e94e635",
+            "type": "form",
+            "label": "",
+            "formId": "post-office-redirection-business",
+            "blockName": "",
+            "blockType": "startButton"
+          },
           "format": "",
-          "indent": 0,
-          "version": 1,
-          "children": [
-            {
-              "mode": "normal",
-              "text": "   <a data-start-link href=\"/travel-id-citizenship/post-office-redirection-business/start\">Complete online form</a>",
-              "type": "text",
-              "style": "",
-              "detail": 0,
-              "format": 0,
-              "version": 1
-            }
-          ],
-          "direction": null,
-          "textStyle": "",
-          "textFormat": 0
+          "version": 2
         },
         {
           "tag": "ol",
@@ -842,5 +836,5 @@
       "direction": null
     }
   },
-  "bodyText": "You should use this service to tell the Post Office that you would like to change the address that your business mail gets delivered to.\n\nYou can complete a redirection notice to redirect mail addressed to your business.\n\nA common use case is if your business is moving offices.\n\nA redirection notice will last for 6 months.\n\nThere are separate forms if you would like to:\n\n- [redirect your personal mail](/travel-id-citizenship/post-office-redirection-individual/)\n- [tell the Post Office that someone has died](/travel-id-citizenship/post-office-redirection-deceased/)\n\n## How to redirect business mail\n\n### Complete the form\n\nThere are 2 ways to redirect your business mail. You can:\n\n1. #### Tell the Post Office online\n\n   <!-- You can complete the redirection form online. You must pay $30 BBD online as part of the process so you will need a credit or debit card, and you will need to have (or create) an EZPay+ account. -->\n\n   <a data-start-link href=\"/travel-id-citizenship/post-office-redirection-business/start\">Complete online form</a>\n\n2. #### Complete a paper redirection form\n\n   You can either:\n\n1. [Download and print the form](https://www.gov.bb/media_files/PostOffice_RedirNotice.pdf) from the Barbados Postal Service website.\n2. Collect a paper form from any Post Office.\n\n   You must complete the paper form by hand and return it to any Post Office. You can pay the $30 BBD by credit or debit card, or in cash, at the branch.\n\n### What you will need to share\n\nThe redirection form asks you to share:\n\n- the full name and National Identification number of the person applying on behalf of the business\n- the business registration number\n- the old address\n- the new address\n- start date of redirection\n- end date of the redirection\n\n## After you have submitted the form\n\nThe person who is applying on behalf of the business must visit any Post Office, in person, to:\n\n1. Sign the form.\n2. Verify your identity with your National ID card.\n3. Present the Certificate of Incorporation with the official stamp.\n\nIf you complete the online redirection form, the Post Office cashier will ask for the reference number on the confirmation email.\n\n## After the Post Office has processed your request\n\nThe Barbados Postal Service will begin to deliver your mail to your new address from the start date you gave on the form.\n\nYour redirection notice will last for a maximum of 6 months. After the notice has expired, all mail will be delivered to the address it has on it. Therefore, you should update the relevant people and businesses on your new address.\n\nThe Post Office is responsible for this service."
+  "bodyText": "You should use this service to tell the Post Office that you would like to change the address that your business mail gets delivered to.\n\nYou can complete a redirection notice to redirect mail addressed to your business.\n\nA common use case is if your business is moving offices.\n\nA redirection notice will last for 6 months.\n\nThere are separate forms if you would like to:\n\n- [redirect your personal mail](/travel-id-citizenship/post-office-redirection-individual/)\n- [tell the Post Office that someone has died](/travel-id-citizenship/post-office-redirection-deceased/)\n\n## How to redirect business mail\n\n### Complete the form\n\nThere are 2 ways to redirect your business mail. You can:\n\n1. #### Tell the Post Office online\n\n   <!-- You can complete the redirection form online. You must pay $30 BBD online as part of the process so you will need a credit or debit card, and you will need to have (or create) an EZPay+ account. -->\n\nBlock Field\n\n2. #### Complete a paper redirection form\n\n   You can either:\n\n1. [Download and print the form](https://www.gov.bb/media_files/PostOffice_RedirNotice.pdf) from the Barbados Postal Service website.\n2. Collect a paper form from any Post Office.\n\n   You must complete the paper form by hand and return it to any Post Office. You can pay the $30 BBD by credit or debit card, or in cash, at the branch.\n\n### What you will need to share\n\nThe redirection form asks you to share:\n\n- the full name and National Identification number of the person applying on behalf of the business\n- the business registration number\n- the old address\n- the new address\n- start date of redirection\n- end date of the redirection\n\n## After you have submitted the form\n\nThe person who is applying on behalf of the business must visit any Post Office, in person, to:\n\n1. Sign the form.\n2. Verify your identity with your National ID card.\n3. Present the Certificate of Incorporation with the official stamp.\n\nIf you complete the online redirection form, the Post Office cashier will ask for the reference number on the confirmation email.\n\n## After the Post Office has processed your request\n\nThe Barbados Postal Service will begin to deliver your mail to your new address from the start date you gave on the form.\n\nYour redirection notice will last for a maximum of 6 months. After the notice has expired, all mail will be delivered to the address it has on it. Therefore, you should update the relevant people and businesses on your new address.\n\nThe Post Office is responsible for this service."
 }

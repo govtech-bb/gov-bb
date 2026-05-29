@@ -2,8 +2,9 @@
   "title": "Find out how much severance payment you are owed",
   "categories": ["money-financial-support"],
   "service_type": "information",
+  "page_role": "start",
   "stage": "alpha",
-  "updated_at": "2026-05-28",
+  "updated_at": "2026-05-29",
   "body": {
     "root": {
       "type": "root",

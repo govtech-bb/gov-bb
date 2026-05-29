@@ -3,6 +3,7 @@
   "description": "Information for applicants for U.S. immigrant visas regarding mandatory medical examinations in Barbados at The Diagnostic Clinic, including location, contact, and scheduling details.",
   "categories": ["travel-id-citizenship"],
   "service_type": "information",
+  "page_role": "entry",
   "stage": "alpha",
   "source_url": "https://www.gov.bb/Visit-Barbados/medical-requirements",
   "updated_at": "2026-05-28",

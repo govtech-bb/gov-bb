@@ -3,6 +3,7 @@
   "description": "An overview of the Government of Barbados' EZpay+ payments platform, detailing its purpose, registration requirements, and available payment methods for various government services.",
   "categories": ["money-financial-support"],
   "service_type": "information",
+  "page_role": "entry",
   "stage": "alpha",
   "source_url": "https://www.gov.bb/Citizens/ezpay",
   "updated_at": "2026-05-28",

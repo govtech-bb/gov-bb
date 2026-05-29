@@ -3,8 +3,9 @@
   "description": "Tell the Barbados Post Office that someone has died and arrange for their mail to be redirected to a different address.",
   "categories": ["travel-id-citizenship"],
   "service_type": "information",
+  "page_role": "entry",
   "stage": "alpha",
-  "updated_at": "2026-05-28",
+  "updated_at": "2026-05-29",
   "body": {
     "root": {
       "type": "root",
@@ -354,24 +355,17 @@
           "direction": null
         },
         {
-          "type": "paragraph",
+          "type": "block",
+          "fields": {
+            "id": "441782a41f65fee52a713f5e",
+            "type": "form",
+            "label": "",
+            "formId": "post-office-redirection-deceased",
+            "blockName": "",
+            "blockType": "startButton"
+          },
           "format": "",
-          "indent": 0,
-          "version": 1,
-          "children": [
-            {
-              "mode": "normal",
-              "text": "   <a data-start-link href=\"/travel-id-citizenship/post-office-redirection-deceased/start\">Complete the online form</a>",
-              "type": "text",
-              "style": "",
-              "detail": 0,
-              "format": 0,
-              "version": 1
-            }
-          ],
-          "direction": null,
-          "textStyle": "",
-          "textFormat": 0
+          "version": 2
         },
         {
           "tag": "ol",
@@ -855,5 +849,5 @@
       "direction": null
     }
   },
-  "bodyText": "You can use this service to tell the Post Office that someone has died and therefore you would like to redirect their mail to a different address.\n\nA redirection notice will last for 6 months.\n\nThere are separate forms if you would like to:\n\n- [redirect your personal mail](/travel-id-citizenship/post-office-redirection-individual/)\n- [redirect your business mail](/travel-id-citizenship/post-office-redirection-business/)\n\n## Who can use the service\n\nOnly the person who is named as executor of the will can redirect the mail. The executor must present Letters Testamentary to the Post Office before the redirection can be processed. You need to take the will to the Supreme Court to get Letters Testamentary.\n\nIf there is no will, the deceased’s next of kin (or other persons entitled by law) may apply to the High Court for a grant of Letters of Administration.\n\nYou can [read more about Letters Testamentary and Letters of Administration](https://www.barbadoslawcourts.gov.bb/court-administration/supreme-court-registry/probate-unit) on the Barbados Judicial System website.\n\n## How to redirect someone's mail after their death\n\n### Complete the form\n\nThere are 2 ways to redirect their mail. You can:\n\n1. #### Tell the Post Office online\n\n   <a data-start-link href=\"/travel-id-citizenship/post-office-redirection-deceased/start\">Complete the online form</a>\n\n2. #### Complete a paper form and return it to any Post Office\n\n   You can either:\n\n1. [Download and print the form](https://www.gov.bb/media_files/PostOffice_RedirNotice.pdf) from the Barbados Postal Service website.\n2. Collect a paper form from any Post Office.\n\nWhether you complete the form online or on paper, you will need to pay $13 BBD by credit or debit card, or in cash, at any Post Office when you go to verify your identity.\n\n### What you will need to share\n\nAlong with your contact details, the redirection form asks you to share:\n\n- your details, including your relationship to the person who has died\n- details of the person who has died, including their address\n- where mail should be redirected to\n- start date of redirection\n- end date of the redirection (a redirection notice lasts a maximum of 6 months)\n\n## After you have submitted the form\n\nYou must visit any Post Office, in person, to:\n\n1. Sign the form.\n2. Verify your identity with your National ID card.\n3. Present proof you have authority to act on behalf of the deceased person. This could be the Letters Testamentary or the Letters of Administration.\n\nIf you complete the online redirection form, the Post Office cashier will ask for the reference number on the confirmation email.\n\n## After the Post Office has processed your request\n\nThe Barbados Postal Service will begin to deliver the mail to the new address from the start date you gave on the form. The redirection notice will last for 6 months.\n\nThe Post Office is responsible for this service."
+  "bodyText": "You can use this service to tell the Post Office that someone has died and therefore you would like to redirect their mail to a different address.\n\nA redirection notice will last for 6 months.\n\nThere are separate forms if you would like to:\n\n- [redirect your personal mail](/travel-id-citizenship/post-office-redirection-individual/)\n- [redirect your business mail](/travel-id-citizenship/post-office-redirection-business/)\n\n## Who can use the service\n\nOnly the person who is named as executor of the will can redirect the mail. The executor must present Letters Testamentary to the Post Office before the redirection can be processed. You need to take the will to the Supreme Court to get Letters Testamentary.\n\nIf there is no will, the deceased’s next of kin (or other persons entitled by law) may apply to the High Court for a grant of Letters of Administration.\n\nYou can [read more about Letters Testamentary and Letters of Administration](https://www.barbadoslawcourts.gov.bb/court-administration/supreme-court-registry/probate-unit) on the Barbados Judicial System website.\n\n## How to redirect someone's mail after their death\n\n### Complete the form\n\nThere are 2 ways to redirect their mail. You can:\n\n1. #### Tell the Post Office online\n\nBlock Field\n\n2. #### Complete a paper form and return it to any Post Office\n\n   You can either:\n\n1. [Download and print the form](https://www.gov.bb/media_files/PostOffice_RedirNotice.pdf) from the Barbados Postal Service website.\n2. Collect a paper form from any Post Office.\n\nWhether you complete the form online or on paper, you will need to pay $13 BBD by credit or debit card, or in cash, at any Post Office when you go to verify your identity.\n\n### What you will need to share\n\nAlong with your contact details, the redirection form asks you to share:\n\n- your details, including your relationship to the person who has died\n- details of the person who has died, including their address\n- where mail should be redirected to\n- start date of redirection\n- end date of the redirection (a redirection notice lasts a maximum of 6 months)\n\n## After you have submitted the form\n\nYou must visit any Post Office, in person, to:\n\n1. Sign the form.\n2. Verify your identity with your National ID card.\n3. Present proof you have authority to act on behalf of the deceased person. This could be the Letters Testamentary or the Letters of Administration.\n\nIf you complete the online redirection form, the Post Office cashier will ask for the reference number on the confirmation email.\n\n## After the Post Office has processed your request\n\nThe Barbados Postal Service will begin to deliver the mail to the new address from the start date you gave on the form. The redirection notice will last for 6 months.\n\nThe Post Office is responsible for this service."
 }
