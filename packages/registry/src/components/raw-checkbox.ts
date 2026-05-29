@@ -1,7 +1,7 @@
 import type { CheckboxPrimitive } from "@govtech-bb/form-types";
 
-export const GenericCheckbox: CheckboxPrimitive = {
-  fieldId: "generic-checkbox",
+export const RawCheckbox: CheckboxPrimitive = {
+  fieldId: "raw-checkbox",
   htmlType: "checkbox",
   label: "Checkbox",
   options: [],

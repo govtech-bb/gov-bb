@@ -1,7 +1,7 @@
 import type { FilePrimitive } from "@govtech-bb/form-types";
 
-export const GenericFile: FilePrimitive = {
-  fieldId: "generic-file",
+export const RawFile: FilePrimitive = {
+  fieldId: "raw-file",
   htmlType: "file",
   label: "File upload",
   multiple: false,

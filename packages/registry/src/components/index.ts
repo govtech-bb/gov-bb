@@ -31,16 +31,16 @@ export { Town } from "./town";
 export { UploadDocument } from "./upload-document";
 export { WorkTelephone } from "./work-telephone";
 export { Title } from "./title";
-export { GenericText } from "./generic-text";
-export { GenericTextarea } from "./generic-textarea";
-export { GenericNumber } from "./generic-number";
-export { GenericDateInput } from "./generic-date";
-export { GenericTel } from "./generic-tel";
-export { GenericEmail } from "./generic-email";
-export { GenericCheckbox } from "./generic-checkbox";
-export { GenericRadio } from "./generic-radio";
-export { GenericFile } from "./generic-file";
-export { GenericSelect } from "./generic-select";
+export { RawText } from "./raw-text";
+export { RawTextarea } from "./raw-textarea";
+export { RawNumber } from "./raw-number";
+export { RawDate } from "./raw-date";
+export { RawTel } from "./raw-tel";
+export { RawEmail } from "./raw-email";
+export { RawCheckbox } from "./raw-checkbox";
+export { RawRadio } from "./raw-radio";
+export { RawFile } from "./raw-file";
+export { RawSelect } from "./raw-select";
 export { ShowHide } from "./show-hide";
 
 import { AccountName } from "./account-name";
@@ -76,30 +76,30 @@ import { Town } from "./town";
 import { UploadDocument } from "./upload-document";
 import { WorkTelephone } from "./work-telephone";
 import { Title } from "./title";
-import { GenericText } from "./generic-text";
-import { GenericTextarea } from "./generic-textarea";
-import { GenericNumber } from "./generic-number";
-import { GenericDateInput } from "./generic-date";
-import { GenericTel } from "./generic-tel";
-import { GenericEmail } from "./generic-email";
-import { GenericCheckbox } from "./generic-checkbox";
-import { GenericRadio } from "./generic-radio";
-import { GenericFile } from "./generic-file";
-import { GenericSelect } from "./generic-select";
+import { RawText } from "./raw-text";
+import { RawTextarea } from "./raw-textarea";
+import { RawNumber } from "./raw-number";
+import { RawDate } from "./raw-date";
+import { RawTel } from "./raw-tel";
+import { RawEmail } from "./raw-email";
+import { RawCheckbox } from "./raw-checkbox";
+import { RawRadio } from "./raw-radio";
+import { RawFile } from "./raw-file";
+import { RawSelect } from "./raw-select";
 import { ShowHide } from "./show-hide";
 import type { Primitive } from "@govtech-bb/form-types";
 
 const PRIMITIVES = [
-  GenericText,
-  GenericTextarea,
-  GenericNumber,
-  GenericDateInput,
-  GenericTel,
-  GenericEmail,
-  GenericCheckbox,
-  GenericRadio,
-  GenericFile,
-  GenericSelect,
+  RawText,
+  RawTextarea,
+  RawNumber,
+  RawDate,
+  RawTel,
+  RawEmail,
+  RawCheckbox,
+  RawRadio,
+  RawFile,
+  RawSelect,
 ] as const satisfies Primitive[];
 
 const ALL = [
