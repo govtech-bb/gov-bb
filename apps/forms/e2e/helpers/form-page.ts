@@ -35,9 +35,11 @@ export class FormPage {
 
   constructor(page: Page) {
     this.page = page;
-    this.continueBtn = page.locator('button[data-variant="primary"]');
-    this.previousBtn = page.locator('button[data-variant="secondary"]');
-    this.errorSummary = page.locator("[data-error-summary]");
+    this.continueBtn = page.locator(".govbb-btn-group button.govbb-btn");
+    this.previousBtn = page.locator(
+      ".govbb-btn-group button.govbb-btn--secondary",
+    );
+    this.errorSummary = page.locator(".govbb-error-summary");
   }
 
   // ─── Navigation ────────────────────────────────────────────────────────────
@@ -122,14 +124,14 @@ export class FormPage {
    * the [data-radio-item] whose label matches.
    */
   async clickRadio(fieldFullId: string, labelText: string): Promise<void> {
-    const group = this.page.locator("[data-radio-group]").filter({
+    const group = this.page.locator(".govbb-fieldset").filter({
       has: this.page.locator(`input[id="${escId(fieldFullId)}"]`),
     });
     // Use an exact-match regex so "Male" does not accidentally match "Female".
     const exactLabel = new RegExp(
       `^\\s*${labelText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`,
     );
-    const item = group.locator("[data-radio-item]").filter({
+    const item = group.locator(".govbb-radio-item").filter({
       has: this.page.locator("label", { hasText: exactLabel }),
     });
     await item.locator("input[type=radio]").first().click();
@@ -140,13 +142,13 @@ export class FormPage {
    * Works for both single-option and multi-option checkbox fields.
    */
   async clickCheckbox(fieldFullId: string, labelText: string): Promise<void> {
-    const group = this.page.locator("[data-checkbox-group]").filter({
+    const group = this.page.locator(".govbb-fieldset").filter({
       has: this.page.locator(`input[id="${escId(fieldFullId)}"]`),
     });
     const exactLabel = new RegExp(
       `^\\s*${labelText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`,
     );
-    const option = group.locator("[data-checkbox-option]").filter({
+    const option = group.locator(".govbb-checkbox-item").filter({
       has: this.page.locator("label", { hasText: exactLabel }),
     });
     await option.locator("input").first().click();
@@ -163,10 +165,10 @@ export class FormPage {
     month: number,
     year: number,
   ): Promise<void> {
-    const dateField = this.page.locator("[data-date-field]").filter({
+    const dateField = this.page.locator(".govbb-fieldset").filter({
       has: this.page.locator(`input[id="${escId(fieldFullId)}"]`),
     });
-    const parts = dateField.locator("[data-date-part]");
+    const parts = dateField.locator(".govbb-date-input__part");
     await parts.nth(0).locator("input").fill(String(day));
     await parts.nth(1).locator("input").fill(String(month));
     await parts.nth(2).locator("input").fill(String(year));
@@ -191,9 +193,9 @@ export class FormPage {
   /** Click the "Remove" button next to the nth uploaded file (0-based). */
   async removeUploadedFile(fieldFullId: string, index: number): Promise<void> {
     const fileField = this.page
-      .locator("[data-file-upload]")
+      .locator(".govbb-file-upload")
       .filter({ has: this.page.locator(`input[id="${escId(fieldFullId)}"]`) });
-    await fileField.locator("[data-file-upload-remove]").nth(index).click();
+    await fileField.locator(".govbb-btn--destructive-link").nth(index).click();
   }
 
   // ─── Assertions ────────────────────────────────────────────────────────────
@@ -201,14 +203,16 @@ export class FormPage {
   /** Assert that an inline [data-error] with the given message is visible. */
   async expectError(message: string): Promise<void> {
     await expect(
-      this.page.locator("[data-error]", { hasText: message }),
+      this.page.locator(".govbb-error-message", { hasText: message }),
     ).toBeVisible();
   }
 
   /** Assert that no [data-error] or [data-error-summary] is visible. */
   async expectNoErrors(): Promise<void> {
     await expect(this.errorSummary).not.toBeVisible();
-    await expect(this.page.locator("[data-error]").first()).not.toBeVisible();
+    await expect(
+      this.page.locator(".govbb-error-message").first(),
+    ).not.toBeVisible();
   }
 
   /** Assert that the error summary contains a link/text matching the message. */
@@ -390,13 +394,13 @@ export class FormPage {
     if (hasBankAccount) {
       // default is "confirmed" — may already be checked, but ensure it is
       const checkbox = this.page
-        .locator("[data-checkbox-group]")
+        .locator(".govbb-fieldset")
         .filter({
           has: this.page.locator(
             `input[id="${escId(this.fid(s, "has-bank-account"))}"]`,
           ),
         })
-        .locator("[data-checkbox-option]")
+        .locator(".govbb-checkbox-item")
         .filter({ hasText: "I do" })
         .locator("input");
       const isChecked = await checkbox.isChecked();
@@ -418,13 +422,13 @@ export class FormPage {
     } else {
       // Uncheck if already checked (default is confirmed)
       const checkbox = this.page
-        .locator("[data-checkbox-group]")
+        .locator(".govbb-fieldset")
         .filter({
           has: this.page.locator(
             `input[id="${escId(this.fid(s, "has-bank-account"))}"]`,
           ),
         })
-        .locator("[data-checkbox-option]")
+        .locator(".govbb-checkbox-item")
         .filter({ hasText: "I do" })
         .locator("input");
       const isChecked = await checkbox.isChecked();
@@ -483,7 +487,7 @@ export class FormPage {
 
     // Answer the "Add another?" radio if present
     const addAnotherFid = this.fid(repeatStepId, "addAnother");
-    const addAnotherGroup = this.page.locator("[data-radio-group]").filter({
+    const addAnotherGroup = this.page.locator(".govbb-fieldset").filter({
       has: this.page.locator(`input[id="${escId(addAnotherFid)}"]`),
     });
     if ((await addAnotherGroup.count()) > 0) {

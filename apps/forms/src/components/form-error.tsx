@@ -23,18 +23,20 @@ export default function FormError({ error, reset }: FormErrorProps) {
       : "An unexpected error occurred while loading the form.";
 
   return (
-    <div>
+    <div className="form-page form-page__message">
       <div>
-        <h1>{heading}</h1>
+        <h1 className="govbb-text-h1">{heading}</h1>
         <p>{error.message}</p>
         <p>{suggestion}</p>
       </div>
 
-      <div>
-        <button type="button" onClick={reset}>
+      <div className="govbb-btn-group">
+        <button type="button" className="govbb-btn" onClick={reset}>
           Try again
         </button>
-        <a href="/">Go to Homepage</a>
+        <a className="govbb-link" href="/">
+          Go to Homepage
+        </a>
       </div>
     </div>
   );

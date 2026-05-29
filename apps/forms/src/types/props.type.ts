@@ -44,6 +44,8 @@ export type FileUploadProps = {
   onFileChange: (files: File[] | null) => void;
   value?: File[] | null;
   errorMessage?: string;
+  /** id for the error element, so the input's aria-describedby resolves. */
+  errorId?: string;
   validationRules?: any;
   formId?: string;
 };

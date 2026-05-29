@@ -27,7 +27,7 @@ export default function ApplicantNameDisplay({
   const fullName = [firstName, lastName].filter(Boolean).join(" ");
 
   return (
-    <div data-applicant-name>
+    <div className="form-page__applicant">
       <p>
         <strong>Applicant: </strong> {fullName}
       </p>

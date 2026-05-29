@@ -11,8 +11,6 @@ export default ({ mode }) => {
     define: {
       "process.env": {
         VITE_API_URL: env["VITE_API_URL"],
-        DESIGN_SYSTEM: env["DESIGN_SYSTEM"],
-        VITE_DESIGN_SYSTEM: env["VITE_DESIGN_SYSTEM"],
         SKIP_CONTINUE_VALIDATION: env["SKIP_CONTINUE_VALIDATION"],
         VITE_PAYMENT_ALLOWED_ORIGINS: env["VITE_PAYMENT_ALLOWED_ORIGINS"],
       },
