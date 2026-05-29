@@ -395,9 +395,9 @@
           "type": "block",
           "fields": {
             "id": "cfe966d7bbd266fdbc79a71e",
-            "type": "form",
+            "url": "/post-office-redirection-individual/start",
+            "type": "page",
             "label": "",
-            "formId": "post-office-redirection-individual",
             "blockName": "",
             "blockType": "startButton"
           },

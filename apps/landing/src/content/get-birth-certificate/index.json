@@ -289,9 +289,9 @@
           "type": "block",
           "fields": {
             "id": "2291e4f0f58caf0361467eba",
-            "type": "form",
+            "url": "/get-birth-certificate/start",
+            "type": "page",
             "label": "",
-            "formId": "get-birth-certificate",
             "blockName": "",
             "blockType": "startButton"
           },

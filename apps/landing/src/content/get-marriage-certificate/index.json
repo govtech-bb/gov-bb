@@ -256,9 +256,9 @@
           "type": "block",
           "fields": {
             "id": "d08c4e5bd78d3f80c9bcc8c0",
-            "type": "form",
+            "url": "/get-marriage-certificate/start",
+            "type": "page",
             "label": "",
-            "formId": "get-marriage-certificate",
             "blockName": "",
             "blockType": "startButton"
           },

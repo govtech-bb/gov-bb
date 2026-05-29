@@ -146,9 +146,9 @@
           "type": "block",
           "fields": {
             "id": "1ab4cd1c5eaa65d14c029883",
-            "type": "form",
+            "url": "/apply-to-be-a-project-protege-mentor/start",
+            "type": "page",
             "label": "",
-            "formId": "project-protege-mentor",
             "blockName": "",
             "blockType": "startButton"
           },

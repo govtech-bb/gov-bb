@@ -306,9 +306,9 @@
           "type": "block",
           "fields": {
             "id": "00eddb932650f0709e94e635",
-            "type": "form",
+            "url": "/post-office-redirection-business/start",
+            "type": "page",
             "label": "",
-            "formId": "post-office-redirection-business",
             "blockName": "",
             "blockType": "startButton"
           },

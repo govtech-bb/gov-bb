@@ -256,9 +256,9 @@
           "type": "block",
           "fields": {
             "id": "58998d79ce7b2f8302de1c27",
-            "type": "form",
+            "url": "/get-death-certificate/start",
+            "type": "page",
             "label": "",
-            "formId": "get-death-certificate",
             "blockName": "",
             "blockType": "startButton"
           },

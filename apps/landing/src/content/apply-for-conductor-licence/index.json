@@ -146,9 +146,9 @@
           "type": "block",
           "fields": {
             "id": "2edec8da9707ff2edc928f49",
-            "type": "form",
+            "url": "/apply-for-conductor-licence/start",
+            "type": "page",
             "label": "",
-            "formId": "apply-for-conductor-licence",
             "blockName": "",
             "blockType": "startButton"
           },

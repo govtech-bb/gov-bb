@@ -540,9 +540,9 @@
           "type": "block",
           "fields": {
             "id": "33c90c14d5efbfad8cb28ca9",
-            "type": "form",
+            "url": "/apply-to-jobstart-plus-programme/start",
+            "type": "page",
             "label": "",
-            "formId": "jobstart-plus-programme",
             "blockName": "",
             "blockType": "startButton"
           },

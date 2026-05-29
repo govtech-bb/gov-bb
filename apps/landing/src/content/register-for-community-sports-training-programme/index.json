@@ -146,9 +146,9 @@
           "type": "block",
           "fields": {
             "id": "ab01772ecfee052065f3cafd",
-            "type": "form",
+            "url": "/register-for-community-sports-training-programme/start",
+            "type": "page",
             "label": "",
-            "formId": "community-sports-training",
             "blockName": "",
             "blockType": "startButton"
           },

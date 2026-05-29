@@ -358,9 +358,9 @@
           "type": "block",
           "fields": {
             "id": "441782a41f65fee52a713f5e",
-            "type": "form",
+            "url": "/post-office-redirection-deceased/start",
+            "type": "page",
             "label": "",
-            "formId": "post-office-redirection-deceased",
             "blockName": "",
             "blockType": "startButton"
           },

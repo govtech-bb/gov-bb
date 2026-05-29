@@ -1,13 +1,18 @@
-// One-off content migration: replace the migrated `<a data-start-link>…</a>`
-// text placeholders in service bodies with real `startButton` blocks, using the
-// form_id recovered from the pre-CMS markdown frontmatter (git history).
+// Content migration: give every service's start action a correct `startButton`
+// block, following the two-step flow —
+//   entry page  → its /start page   (type 'page')
+//   /start page → the online form   (type 'form', form_id)
+// A service with no /start page links its entry straight to the form.
 //
-// Idempotent: a second run finds no placeholders and changes nothing.
+// Handles both the migrated `<a data-start-link>…</a>` text placeholders and
+// startButton blocks an earlier run produced, so it is idempotent and
+// self-correcting. form_id was recovered from the pre-CMS markdown frontmatter.
+//
 // Dry run:  DRY_RUN=1 pnpm wire:start-buttons
 // Apply:    pnpm wire:start-buttons
-//
-// Run again in each environment (the live site renders from the DB, not the
-// exported JSON). After applying, re-run `pnpm export:content`.
+// Run per environment (the live site renders from the DB), then re-run
+// `pnpm export:content`. Requires migration 20260529_000000 to have run first
+// (the description validator needs pageRole='start' on /start docs).
 
 import 'dotenv/config'
 import crypto from 'crypto'
@@ -30,8 +35,8 @@ const FORM_BY_SLUG: Record<string, string> = {
   'sell-goods-services-beach-park': 'sell-goods-services-beach-park',
 }
 
-// Form ids present in the live forms manifest — only these become `digital`,
-// since only they have a Start now button that actually renders today.
+// Form ids present in the live forms manifest — only these services become
+// `digital`, since only they have a Start now button that resolves today.
 const LIVE_FORMS = new Set<string>([
   'apply-for-conductor-licence',
   'project-protege-mentor',
@@ -49,30 +54,46 @@ interface LexNode {
   type?: string
   text?: string
   children?: LexNode[]
+  fields?: Record<string, unknown>
   [k: string]: unknown
 }
 
-function isPlaceholder(node: LexNode): boolean {
-  if (node?.type !== 'paragraph' || !Array.isArray(node.children)) return false
-  if (node.children.length !== 1) return false
-  const c = node.children[0]
-  return c?.type === 'text' && typeof c.text === 'string' && PLACEHOLDER.test(c.text.trim())
+function isStartAction(node: LexNode): boolean {
+  if (node?.type === 'block' && node.fields?.blockType === 'startButton') return true
+  if (node?.type === 'paragraph' && Array.isArray(node.children) && node.children.length === 1) {
+    const c = node.children[0]
+    return c?.type === 'text' && typeof c.text === 'string' && PLACEHOLDER.test(c.text.trim())
+  }
+  return false
 }
 
-function startButton(formId: string): LexNode {
-  return {
-    type: 'block',
-    version: 2,
-    format: '',
-    fields: {
-      id: crypto.randomBytes(12).toString('hex'),
-      blockName: '',
-      blockType: 'startButton',
-      type: 'form',
-      formId,
-      label: '',
-    },
+// The startButton fields this doc should end up with.
+function targetFields(
+  slug: string,
+  base: string,
+  hasStartPage: boolean,
+  existingId?: string,
+): Record<string, unknown> {
+  const id = existingId ?? crypto.randomBytes(12).toString('hex')
+  const common = { id, blockName: '', blockType: 'startButton', label: '' }
+  // Entry page of a service that has a /start page → link to the start page.
+  if (!slug.endsWith('/start') && hasStartPage) {
+    return { ...common, type: 'page', url: `/${base}/start` }
   }
+  // /start page, or an entry with no start page → link straight to the form.
+  return { ...common, type: 'form', formId: FORM_BY_SLUG[base] }
+}
+
+// True when an existing startButton block already matches the target (so we can
+// skip it and stay idempotent).
+function alreadyCorrect(node: LexNode, fields: Record<string, unknown>): boolean {
+  if (node.type !== 'block' || !node.fields) return false
+  const f = node.fields
+  return (
+    f.type === fields.type &&
+    (f.formId ?? undefined) === (fields.formId ?? undefined) &&
+    (f.url ?? undefined) === (fields.url ?? undefined)
+  )
 }
 
 async function run(): Promise<void> {
@@ -83,37 +104,50 @@ async function run(): Promise<void> {
     limit: 1000,
     depth: 0,
   })
+  const docs = res.docs as unknown as Array<Record<string, unknown>>
 
-  let docs = 0
-  let buttons = 0
-  let digital = 0
+  const hasStartPage = new Set(
+    docs
+      .map((d) => String(d.slug))
+      .filter((s) => s.endsWith('/start'))
+      .map((s) => s.slice(0, -'/start'.length)),
+  )
 
-  for (const doc of res.docs as unknown as Array<Record<string, unknown>>) {
-    const baseSlug = String(doc.slug).replace(/\/start$/, '')
-    const formId = FORM_BY_SLUG[baseSlug]
-    if (!formId) continue
+  let changed = 0
+  let toDigital = 0
+
+  for (const doc of docs) {
+    const slug = String(doc.slug)
+    const base = slug.replace(/\/start$/, '')
+    if (!FORM_BY_SLUG[base]) continue
 
     const body = doc.body as { root?: { children?: LexNode[] } } | null
     const children = body?.root?.children
     if (!Array.isArray(children)) continue
 
-    let replaced = 0
+    let touched = 0
     const next = children.map((child) => {
-      if (isPlaceholder(child)) {
-        replaced++
-        return startButton(formId)
-      }
-      return child
+      if (!isStartAction(child)) return child
+      const fields = targetFields(
+        slug,
+        base,
+        hasStartPage.has(base),
+        child.type === 'block' ? (child.fields?.id as string | undefined) : undefined,
+      )
+      if (alreadyCorrect(child, fields)) return child
+      touched++
+      return { type: 'block', version: 2, format: '', fields }
     })
-    if (replaced === 0) continue
+    if (touched === 0) continue
 
-    const goDigital = LIVE_FORMS.has(formId) && doc.serviceType !== 'digital'
-    docs++
-    buttons += replaced
-    if (goDigital) digital++
-    console.log(
-      `${DRY ? '[dry] ' : ''}${doc.slug}: ${replaced} → ${formId}${goDigital ? '  +digital' : ''}`,
-    )
+    const goDigital = LIVE_FORMS.has(FORM_BY_SLUG[base]) && doc.serviceType !== 'digital'
+    changed++
+    if (goDigital) toDigital++
+    const dest =
+      slug.endsWith('/start') || !hasStartPage.has(base)
+        ? `form ${FORM_BY_SLUG[base]}`
+        : `/${base}/start`
+    console.log(`${DRY ? '[dry] ' : ''}${slug}: → ${dest}${goDigital ? '  +digital' : ''}`)
     if (DRY) continue
 
     await payload.update({
@@ -127,9 +161,7 @@ async function run(): Promise<void> {
     } as Parameters<typeof payload.update>[0])
   }
 
-  console.log(
-    `\n${DRY ? '[dry] would change' : 'changed'} ${docs} docs, ${buttons} start buttons, ${digital} → digital`,
-  )
+  console.log(`\n${DRY ? '[dry] would change' : 'changed'} ${changed} docs, ${toDigital} → digital`)
   process.exit(0)
 }
 

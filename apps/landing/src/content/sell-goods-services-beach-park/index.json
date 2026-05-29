@@ -174,9 +174,9 @@
           "type": "block",
           "fields": {
             "id": "6a6d69c08c984bd4f743c50f",
-            "type": "form",
+            "url": "/sell-goods-services-beach-park/start",
+            "type": "page",
             "label": "",
-            "formId": "sell-goods-services-beach-park",
             "blockName": "",
             "blockType": "startButton"
           },
