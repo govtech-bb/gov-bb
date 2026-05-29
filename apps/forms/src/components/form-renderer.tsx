@@ -270,6 +270,20 @@ export default function FormRenderer({
           formMeta,
           repeatableStepSettings: repeatableStepSettings,
         });
+
+        // removeRepeatableStep prunes the step list but leaves the removed
+        // instances' values in the form store. storeFormData would re-persist
+        // them and restoreRepeatableStepsFromStorage would resurrect the steps
+        // on refresh — sending the user back to a "step" they declined. Purge
+        // the removed instances' field values so they stay gone. (#432)
+        const remainingStepIds = new Set(updatedSteps.map((s) => s.stepId));
+        for (const step of visibleSteps) {
+          if (remainingStepIds.has(step.stepId)) continue;
+          for (const field of step.fields) {
+            form.deleteField(field.id);
+          }
+        }
+
         completeAndContinue(currentStep.stepId, updatedSteps);
         return;
       }
