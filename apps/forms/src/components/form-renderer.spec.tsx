@@ -86,6 +86,10 @@ jest.mock("@forms/lib", () => ({
   stepFieldIdConcactenator: "_",
   repeatStepConcactenator: "~",
   getRepeatStepCount: jest.fn(() => undefined),
+  buildFieldValidationProperties: jest.fn(() => ({
+    onChange: jest.fn(),
+    onBlur: jest.fn(),
+  })),
 }));
 
 import FormRenderer from "./form-renderer";
@@ -386,6 +390,42 @@ describe("FormRenderer", () => {
     );
     const renderers = screen.getAllByTestId("field-renderer");
     expect(renderers).toHaveLength(2);
+  });
+
+  it("builds validators from the field when it is missing from validationProperties (repeat instances, #432)", () => {
+    const { buildFieldValidationProperties } = jest.requireMock("@forms/lib");
+    // A repeat-instance field (step~N_*) that buildValidation never saw, so it
+    // has no entry in formMeta.validationProperties. Before the fix it would be
+    // rendered with no validators and silently bypass validation.
+    const repeatField = makePlainField("step-1~1_name", "name", "step-1~1");
+    const presentField = makePlainField("step-1~1_age", "age", "step-1~1");
+    const step = makeStep("step-1~1", [repeatField, presentField]);
+
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={
+          makeMeta({
+            steps: [step],
+            // Only `age` has a pre-built validator entry; `name` does not.
+            validationProperties: {
+              "step-1~1_age": { onChange: jest.fn(), onBlur: jest.fn() },
+            },
+          }) as any
+        }
+        stepId="step-1~1"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+
+    // The missing field falls back to building validators from the field; the
+    // present field uses its pre-built entry and is not rebuilt.
+    expect(buildFieldValidationProperties).toHaveBeenCalledWith(repeatField);
+    expect(buildFieldValidationProperties).not.toHaveBeenCalledWith(
+      presentField,
+    );
   });
 
   it("show-hide group: renders controlled fields when toggle value is true", () => {

@@ -19,6 +19,7 @@ import {
   stepFieldIdConcactenator,
   repeatStepConcactenator,
   getRepeatStepCount,
+  buildFieldValidationProperties,
 } from "@forms/lib";
 import { trackEvent } from "../lib/analytics";
 
@@ -149,6 +150,15 @@ export default function FormRenderer({
   if (!currentStep) return null;
 
   const currentFields = [...currentStep.fields];
+
+  // Resolve the validators for a field. Pre-built validators live in
+  // formMeta.validationProperties (keyed by field id), but repeat-instance
+  // fields (`step~N_*`) are created after buildValidation runs, so they have no
+  // entry. Fall back to building them from the field's own `validations` so
+  // every repeat instance is validated like the first. (See #432.)
+  const resolveValidators = (field: ClientPrimitive) =>
+    formMeta.validationProperties[field.id] ??
+    buildFieldValidationProperties(field);
 
   const handlePrevious = () => {
     const prevStep = visibleSteps[stepIndex - 1];
@@ -367,9 +377,7 @@ export default function FormRenderer({
                 <FieldRenderer
                   form={form}
                   field={group.toggle}
-                  validationProperties={
-                    formMeta.validationProperties[group.toggle.id]
-                  }
+                  validationProperties={resolveValidators(group.toggle)}
                   formId={formMeta.formId}
                 />
                 {isOpen && (
@@ -382,9 +390,7 @@ export default function FormRenderer({
                         key={field.id}
                         form={form}
                         field={field}
-                        validationProperties={
-                          formMeta.validationProperties[field.id]
-                        }
+                        validationProperties={resolveValidators(field)}
                         formId={formMeta.formId}
                       />
                     ))}
@@ -403,7 +409,7 @@ export default function FormRenderer({
                   optVal,
                   insetFields.map((f) => ({
                     field: f,
-                    validationProperties: formMeta.validationProperties[f.id],
+                    validationProperties: resolveValidators(f),
                   })),
                 ],
               ),
@@ -414,9 +420,7 @@ export default function FormRenderer({
                 key={group.radio.id}
                 form={form}
                 field={group.radio}
-                validationProperties={
-                  formMeta.validationProperties[group.radio.id]
-                }
+                validationProperties={resolveValidators(group.radio)}
                 insetFieldsByOption={insetFieldsByOption}
                 formId={formMeta.formId}
               />
@@ -428,9 +432,7 @@ export default function FormRenderer({
               key={group.field.id}
               form={form}
               field={group.field}
-              validationProperties={
-                formMeta.validationProperties[group.field.id]
-              }
+              validationProperties={resolveValidators(group.field)}
               formId={formMeta.formId}
             />
           );
