@@ -1,14 +1,25 @@
 {
   "formId": "smart-stream-vendor-registration",
   "title": "Smart Stream Vendor Registration Form",
+  "description": "Smart Stream Vendor Registration Form",
   "version": "1.1.0",
   "organization": "Ministry of Finance, Economic Affairs and Investment",
   "department": "Treasury Department - Information Systems Unit",
   "createdAt": "2026-05-27T14:36:29.044Z",
   "updatedAt": "2026-05-28T00:00:00.000Z",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "subject": "Your Smart Stream Vendor Registration Form request has been received",
+        "recipientField": "basic-info.vendor-email"
+      }
+    }
+  ],
+
   "steps": [
     {
-      "stepId": "step-1-basic-info",
+      "stepId": "basic-info",
       "title": "Basic Information",
       "elements": [
         {
@@ -48,7 +59,7 @@
       ]
     },
     {
-      "stepId": "step-2-classification",
+      "stepId": "classification",
       "title": "Vendor Classification",
       "elements": [
         {
@@ -89,7 +100,7 @@
       ]
     },
     {
-      "stepId": "step-3-identification",
+      "stepId": "identification",
       "title": "Identification Numbers",
       "elements": [
         {
@@ -154,7 +165,7 @@
       ]
     },
     {
-      "stepId": "step-4-contact-address",
+      "stepId": "contact-address",
       "title": "Contact and Address Information",
       "elements": [
         {
@@ -206,7 +217,7 @@
       ]
     },
     {
-      "stepId": "step-5-bank-details",
+      "stepId": "bank-details",
       "title": "Bank Account Details",
       "elements": [
         {
@@ -361,6 +372,17 @@
             "fieldId": "declaration-date",
             "isHidden": true
           }
+        }
+      ]
+    },
+    {
+      "title": "Application Submitted",
+      "stepId": "submission-confirmation",
+      "elements": [],
+      "nextSteps": [
+        {
+          "title": "What happens next",
+          "content": "We have received your submission. You will receive a confirmation email at the address you provided."
         }
       ]
     }
