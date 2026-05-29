@@ -68,7 +68,7 @@ describe("Index route", () => {
   it("displays the page heading", () => {
     render(<Route.component />);
     expect(
-      screen.getByRole("heading", { level: 1, name: /all forms/i }),
+      screen.getByRole("heading", { level: 1, name: /forms/i }),
     ).toBeInTheDocument();
   });
 

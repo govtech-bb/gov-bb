@@ -12,7 +12,7 @@ function Index() {
 
   return (
     <div>
-      <h1 className="mb-6">All Forms</h1>
+      <h1 className="govbb-text-h1 mb-6">Forms</h1>
       <ul className="flex flex-col gap-2">
         {forms.map(({ formId, title }) => (
           <li key={formId}>
