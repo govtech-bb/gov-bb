@@ -1,7 +1,7 @@
 import type { TextAreaPrimitive } from "@govtech-bb/form-types";
 
-export const RawTextarea: TextAreaPrimitive = {
-  fieldId: "raw-textarea",
+export const GenericTextarea: TextAreaPrimitive = {
+  fieldId: "generic-textarea",
   htmlType: "textarea",
   label: "Long text",
   validations: {

@@ -8,7 +8,7 @@
       "title": "Student Information",
       "elements": [
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "First Name",
             "fieldId": "firstName",
@@ -16,7 +16,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Last Name",
             "fieldId": "lastName",
@@ -24,7 +24,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Gender",
             "fieldId": "gender",
@@ -32,7 +32,7 @@
           }
         },
         {
-          "ref": "components/generic/number",
+          "ref": "components/generic-number",
           "overrides": {
             "max": 31,
             "min": 1,
@@ -42,7 +42,7 @@
           }
         },
         {
-          "ref": "components/generic/number",
+          "ref": "components/generic-number",
           "overrides": {
             "max": 12,
             "min": 1,
@@ -52,7 +52,7 @@
           }
         },
         {
-          "ref": "components/generic/number",
+          "ref": "components/generic-number",
           "overrides": {
             "label": "Year",
             "fieldId": "dobYear",
@@ -60,7 +60,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "ID Number",
             "fieldId": "idNumber",
@@ -68,7 +68,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Address",
             "fieldId": "address",
@@ -77,7 +77,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "type": "email",
             "label": "Email",
@@ -86,7 +86,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Telephone No",
             "fieldId": "telephoneNo",
@@ -101,7 +101,7 @@
       "title": "Subject Registration",
       "elements": [
         {
-          "ref": "components/generic/show-hide",
+          "ref": "components/show-hide",
           "overrides": {
             "label": "Subject Registration Information",
             "content": "Please list below the subject(s) for which you are registering. If you are repeating a subject from a previous sitting for which a School Based Assessment (SBA) was required, please select RESIT and type your previous registration number in the relevant field.",
@@ -153,7 +153,7 @@
       "title": "Important Information & Declarations",
       "elements": [
         {
-          "ref": "components/generic/show-hide",
+          "ref": "components/show-hide",
           "overrides": {
             "label": "Name Change Notice",
             "content": "Candidates should inform the CXC Local Registrar of any name changes which have occurred since their last examination sitting.",
@@ -161,7 +161,7 @@
           }
         },
         {
-          "ref": "components/generic/show-hide",
+          "ref": "components/show-hide",
           "overrides": {
             "label": "Timetable Check",
             "content": "Candidates should check ALL Timetables before registering so as to avoid any subject clashes with other Examination Boards.",
@@ -169,7 +169,7 @@
           }
         },
         {
-          "ref": "components/generic/show-hide",
+          "ref": "components/show-hide",
           "overrides": {
             "label": "Clash Policy",
             "content": "ABSOLUTELY NO ALTERNATIVE ARRANGEMENTS WILL BE MADE IN RESPECT OF CLASHES",
@@ -193,7 +193,7 @@
           }
         },
         {
-          "ref": "components/generic/date-input",
+          "ref": "components/generic-date",
           "overrides": {
             "label": "Date",
             "fieldId": "signatureDate",

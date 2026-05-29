@@ -151,7 +151,7 @@
           }
         },
         {
-          "ref": "components/generic/show-hide",
+          "ref": "components/show-hide",
           "overrides": {
             "hint": "If you don't have a National ID number, you can use your passport number instead.",
             "label": "Use passport number instead",
@@ -311,7 +311,7 @@
       "stepId": "goods-or-services",
       "elements": [
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Selling goods or services",
             "fieldId": "goods-or-services",
@@ -341,7 +341,7 @@
       "stepId": "goods-details",
       "elements": [
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Where are the goods from?",
             "fieldId": "goods-origin",

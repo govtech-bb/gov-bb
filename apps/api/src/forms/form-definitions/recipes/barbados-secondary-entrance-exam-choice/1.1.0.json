@@ -8,7 +8,7 @@
       "title": "Student Information",
       "elements": [
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "School",
             "fieldId": "school",
@@ -16,7 +16,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "First Name",
             "fieldId": "firstName",
@@ -24,7 +24,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Last Name",
             "fieldId": "lastName",
@@ -32,7 +32,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Middle Name",
             "fieldId": "middleName",
@@ -40,7 +40,7 @@
           }
         },
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Gender",
             "fieldId": "gender",
@@ -62,7 +62,7 @@
           }
         },
         {
-          "ref": "components/generic/number",
+          "ref": "components/generic-number",
           "overrides": {
             "label": "Age",
             "fieldId": "age",
@@ -70,7 +70,7 @@
           }
         },
         {
-          "ref": "components/generic/date",
+          "ref": "components/generic-date",
           "overrides": {
             "label": "Date of Birth (mm/dd/yyyy)",
             "format": "mm/dd/yyyy",
@@ -79,7 +79,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "type": "email",
             "label": "Email",
@@ -88,7 +88,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Address",
             "fieldId": "address",
@@ -97,7 +97,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Parish",
             "fieldId": "parish",
@@ -105,7 +105,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "ID Number",
             "fieldId": "idNumber",
@@ -113,7 +113,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Birth Country",
             "fieldId": "birthCountry",
@@ -128,7 +128,7 @@
       "title": "Parent/Guardian Information",
       "elements": [
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Title",
             "fieldId": "parentTitle",
@@ -137,7 +137,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "First Name",
             "fieldId": "parentFirstName",
@@ -145,7 +145,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Last Name",
             "fieldId": "parentLastName",
@@ -153,7 +153,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "ID Number",
             "fieldId": "parentIdNumber",
@@ -161,7 +161,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "type": "tel",
             "label": "Phone",
@@ -177,7 +177,7 @@
       "title": "School Choices",
       "elements": [
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Zone",
             "fieldId": "zone",
@@ -185,7 +185,7 @@
           }
         },
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Private School",
             "fieldId": "private",
@@ -203,7 +203,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "1st Choice (Open Choice from any of the 21 Schools)",
             "fieldId": "choice1",
@@ -211,7 +211,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "2nd Choice (Open Choice from any of the 21 Schools)",
             "fieldId": "choice2",
@@ -219,7 +219,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "3rd Choice (Zone Only)",
             "fieldId": "choice3",
@@ -227,7 +227,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "4th Choice (Zone Only)",
             "fieldId": "choice4",
@@ -235,7 +235,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "5th Choice (Zone Only)",
             "fieldId": "choice5",
@@ -243,7 +243,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "6th Choice (Zone Only)",
             "fieldId": "choice6",
@@ -251,7 +251,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "7th Choice (Zone Only)",
             "fieldId": "choice7",
@@ -259,7 +259,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "8th Choice (Zone Only)",
             "fieldId": "choice8",
@@ -267,7 +267,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "9th Choice (Zone Only)",
             "fieldId": "choice9",
@@ -290,7 +290,7 @@
           }
         },
         {
-          "ref": "components/generic/date",
+          "ref": "components/generic-date",
           "overrides": {
             "label": "Date",
             "fieldId": "signatureDate",
@@ -305,7 +305,7 @@
       "title": "For Official Use Only",
       "elements": [
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Centre Code",
             "fieldId": "centreCode",
@@ -313,7 +313,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Sequence No",
             "fieldId": "sequenceNo",
@@ -329,7 +329,7 @@
           }
         },
         {
-          "ref": "components/generic/date",
+          "ref": "components/generic-date",
           "overrides": {
             "label": "Date",
             "fieldId": "principalSignatureDate",

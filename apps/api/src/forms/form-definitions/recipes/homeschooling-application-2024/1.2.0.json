@@ -8,7 +8,7 @@
       "title": "Applicant Information",
       "elements": [
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Name of Applicant",
             "fieldId": "applicant_name",
@@ -17,7 +17,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Address",
             "fieldId": "applicant_address",
@@ -26,7 +26,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Contact Number(s)",
             "fieldId": "contact_numbers",
@@ -35,7 +35,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "type": "email",
             "label": "Email Address",
@@ -45,7 +45,7 @@
           }
         },
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Status Resident",
             "fieldId": "resident_status",
@@ -93,7 +93,7 @@
           }
         },
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Was the student(s) previously in school?",
             "fieldId": "previously_in_school",
@@ -111,7 +111,7 @@
           }
         },
         {
-          "ref": "components/generic/text-input",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "If Yes, Name and Address of the School",
             "fieldId": "previous_school_info",
@@ -162,7 +162,7 @@
       "title": "Curriculum and Attachments",
       "elements": [
         {
-          "ref": "components/generic/file-upload",
+          "ref": "components/generic-file",
           "overrides": {
             "label": "Timetable (detailing subjects and times)",
             "fieldId": "timetable_attachment",
@@ -172,7 +172,7 @@
           }
         },
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Are you following the National Curriculum?",
             "fieldId": "following_national_curriculum",
@@ -190,7 +190,7 @@
           }
         },
         {
-          "ref": "components/generic/file-upload",
+          "ref": "components/generic-file",
           "overrides": {
             "label": "Curriculum (if not following National Curriculum)",
             "fieldId": "curriculum_attachment",
@@ -205,7 +205,7 @@
           }
         },
         {
-          "ref": "components/generic/file-upload",
+          "ref": "components/generic-file",
           "overrides": {
             "label": "Certified Copies of Tutor Qualifications",
             "fieldId": "tutor_qualifications_attachment",
@@ -215,7 +215,7 @@
           }
         },
         {
-          "ref": "components/generic/file-upload",
+          "ref": "components/generic-file",
           "overrides": {
             "label": "Previous Progress Report (Report Card)",
             "fieldId": "progress_report_attachment",
@@ -239,7 +239,7 @@
           }
         },
         {
-          "ref": "components/generic/checkbox",
+          "ref": "components/generic-checkbox",
           "overrides": {
             "label": "I acknowledge that I have read and understand the requirements for home schooling",
             "fieldId": "acknowledge_requirements",
@@ -255,7 +255,7 @@
           }
         },
         {
-          "ref": "components/generic/date-input",
+          "ref": "components/generic-date",
           "overrides": {
             "label": "Date",
             "fieldId": "signature_date",

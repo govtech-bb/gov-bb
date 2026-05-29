@@ -79,7 +79,7 @@
           }
         },
         {
-          "ref": "components/generic/number",
+          "ref": "components/generic-number",
           "overrides": {
             "hint": "Enter the camper's age in years",
             "label": "Age (in years)",
@@ -120,7 +120,7 @@
           }
         },
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Religion",
             "fieldId": "camper-religion",
@@ -386,7 +386,7 @@
       "stepId": "medical-health-information",
       "elements": [
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "hint": "e.g. Blood clotting, respiratory, heart conditions, frequent infections, diabetes, fainting",
             "label": "Does your child/ward suffer from any illness(es)?",
@@ -429,7 +429,7 @@
           }
         },
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Is your child/ward on medication?",
             "fieldId": "is-on-medication",
@@ -470,7 +470,7 @@
           }
         },
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Does your child/ward have a disability?",
             "fieldId": "has-disability",
@@ -511,7 +511,7 @@
           }
         },
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Does your child/ward have any allergies?",
             "fieldId": "has-allergies",
@@ -558,7 +558,7 @@
       "stepId": "nutrition-program",
       "elements": [
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "hint": "School meals will be provided. However, you are encouraged to send meals if your child has dietary restrictions and food allergies.",
             "label": "My child/ward will be taking meals provided",
@@ -582,7 +582,7 @@
           }
         },
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Dietary Restrictions",
             "fieldId": "dietary-restrictions",
@@ -708,7 +708,7 @@
       "stepId": "permissions",
       "elements": [
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Permission to take photos/videos of your child/ward during National Summer Camp activities",
             "fieldId": "photo-video-permission",

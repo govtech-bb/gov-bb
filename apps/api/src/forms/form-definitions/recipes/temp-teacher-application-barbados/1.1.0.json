@@ -8,7 +8,7 @@
       "title": "Personal Data",
       "elements": [
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "First Name",
             "fieldId": "firstName",
@@ -16,7 +16,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Last Name",
             "fieldId": "lastName",
@@ -24,14 +24,14 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Other Names",
             "fieldId": "otherNames"
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "ID Number",
             "fieldId": "idNumber",
@@ -39,7 +39,7 @@
           }
         },
         {
-          "ref": "components/generic/date",
+          "ref": "components/generic-date",
           "overrides": {
             "label": "Date of birth",
             "fieldId": "dateOfBirth",
@@ -47,7 +47,7 @@
           }
         },
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Gender",
             "fieldId": "gender",
@@ -69,14 +69,14 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "NIS No",
             "fieldId": "nisNumber"
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Address",
             "fieldId": "address",
@@ -85,7 +85,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Parish",
             "value": "Christ Church",
@@ -94,7 +94,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "type": "email",
             "label": "Email",
@@ -103,14 +103,14 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Tel Home",
             "fieldId": "telHome"
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Tel Cell",
             "fieldId": "telCell",
@@ -118,21 +118,21 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Place of birth",
             "fieldId": "placeOfBirth"
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Marital Status",
             "fieldId": "maritalStatus"
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Citizenship",
             "fieldId": "citizenship",
@@ -140,7 +140,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Period Residing in Barbados",
             "fieldId": "periodResidingBarbados"
@@ -256,7 +256,7 @@
       "title": "Other Related Information",
       "elements": [
         {
-          "ref": "components/generic/textarea",
+          "ref": "components/generic-textarea",
           "overrides": {
             "label": "Skills possessed in athletics/games/crafts/etc. (Please specify)",
             "fieldId": "skillsAthletics",
@@ -264,7 +264,7 @@
           }
         },
         {
-          "ref": "components/generic/textarea",
+          "ref": "components/generic-textarea",
           "overrides": {
             "label": "Experience in Youth/Community Organisations (Specify indicating any positions of responsibility held)",
             "fieldId": "youthCommunityExperience",
@@ -272,7 +272,7 @@
           }
         },
         {
-          "ref": "components/generic/textarea",
+          "ref": "components/generic-textarea",
           "overrides": {
             "label": "Positions of responsibility held at School/College/University (Specify indicating any positions of responsibility held)",
             "fieldId": "positionsResponsibility",
@@ -280,7 +280,7 @@
           }
         },
         {
-          "ref": "components/generic/textarea",
+          "ref": "components/generic-textarea",
           "overrides": {
             "label": "Any other relevant information not covered by the foregoing",
             "fieldId": "otherRelevantInfo",
@@ -295,7 +295,7 @@
       "title": "References",
       "elements": [
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Reference 1 - Name",
             "fieldId": "ref1Name",
@@ -303,7 +303,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Reference 1 - Address",
             "fieldId": "ref1Address",
@@ -312,7 +312,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Reference 1 - Occupation/Profession",
             "fieldId": "ref1Occupation",
@@ -320,7 +320,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Reference 1 - Contact No",
             "fieldId": "ref1Contact",
@@ -328,7 +328,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "type": "email",
             "label": "Reference 1 - Email",
@@ -336,7 +336,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Reference 2 - Name",
             "fieldId": "ref2Name",
@@ -344,7 +344,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Reference 2 - Address",
             "fieldId": "ref2Address",
@@ -353,7 +353,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Reference 2 - Occupation/Profession",
             "fieldId": "ref2Occupation",
@@ -361,7 +361,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Reference 2 - Contact No",
             "fieldId": "ref2Contact",
@@ -369,7 +369,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "type": "email",
             "label": "Reference 2 - Email",
@@ -391,7 +391,7 @@
           }
         },
         {
-          "ref": "components/generic/file-upload",
+          "ref": "components/generic-file",
           "overrides": {
             "label": "Upload Supporting Documents (Zipped Folder)",
             "accept": ".zip",
@@ -408,7 +408,7 @@
           }
         },
         {
-          "ref": "components/generic/date",
+          "ref": "components/generic-date",
           "overrides": {
             "label": "Date Signed",
             "fieldId": "dateSigned",

@@ -1,7 +1,7 @@
 import type { TelPrimitive } from "@govtech-bb/form-types";
 
-export const RawTel: TelPrimitive = {
-  fieldId: "raw-tel",
+export const GenericTel: TelPrimitive = {
+  fieldId: "generic-tel",
   htmlType: "tel",
   label: "Telephone",
   validations: {

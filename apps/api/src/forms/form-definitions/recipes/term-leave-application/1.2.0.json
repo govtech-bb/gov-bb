@@ -8,7 +8,7 @@
       "title": "Applicant Information",
       "elements": [
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "School",
             "fieldId": "school",
@@ -17,7 +17,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "First Name",
             "fieldId": "firstName",
@@ -26,7 +26,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Last Name",
             "fieldId": "lastName",
@@ -35,7 +35,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Contact No",
             "fieldId": "contactNo",
@@ -44,7 +44,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "type": "email",
             "label": "Email",
@@ -54,7 +54,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Post",
             "fieldId": "post",
@@ -63,7 +63,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "ID Number",
             "fieldId": "idNumber",
@@ -79,7 +79,7 @@
       "title": "Leave Details",
       "elements": [
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "type": "date",
             "label": "Start Date",
@@ -89,7 +89,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "type": "date",
             "label": "End Date",
@@ -99,7 +99,7 @@
           }
         },
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Have you previously been granted term's leave?",
             "fieldId": "previousLeaveGranted",
@@ -123,7 +123,7 @@
             "fieldId": "previousLeaveDetails",
             "elements": [
               {
-                "ref": "components/generic/text",
+                "ref": "components/generic-text",
                 "overrides": {
                   "type": "date",
                   "label": "Start Date",
@@ -132,7 +132,7 @@
                 }
               },
               {
-                "ref": "components/generic/text",
+                "ref": "components/generic-text",
                 "overrides": {
                   "type": "date",
                   "label": "End Date",
@@ -148,7 +148,7 @@
           }
         },
         {
-          "ref": "components/generic/textarea",
+          "ref": "components/generic-textarea",
           "overrides": {
             "rows": 4,
             "label": "Comments",
@@ -173,7 +173,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "type": "date",
             "label": "Date of Signature",
@@ -190,7 +190,7 @@
       "title": "For Official Use Only",
       "elements": [
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Recommendation",
             "fieldId": "recommendation",
@@ -208,7 +208,7 @@
           }
         },
         {
-          "ref": "components/generic/textarea",
+          "ref": "components/generic-textarea",
           "overrides": {
             "rows": 4,
             "label": "Comments",
@@ -226,7 +226,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "type": "date",
             "label": "Date Signed",

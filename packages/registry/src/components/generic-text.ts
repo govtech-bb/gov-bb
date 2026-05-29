@@ -1,7 +1,7 @@
 import type { TextPrimitive } from "@govtech-bb/form-types";
 
-export const RawText: TextPrimitive = {
-  fieldId: "raw-text",
+export const GenericText: TextPrimitive = {
+  fieldId: "generic-text",
   htmlType: "text",
   label: "Text",
   validations: {
