@@ -381,6 +381,55 @@ jobs:
           echo "status=TIMED_OUT" >> "$GITHUB_OUTPUT"
           exit 1
 
+  # Live E2E against the PR's own forms preview build. Runs only after the
+  # forms preview succeeds, and points the existing vendor-registration smoke
+  # spec at the per-PR preview URL via SMOKE_BASE_URL. The frontend is the PR
+  # build; form definition + submission still go to the shared sandbox API, so
+  # this creates one real (faker, timestamped) sandbox submission per run.
+  e2e-forms-preview:
+    name: E2E (forms preview)
+    needs: [setup, preview-forms]
+    if: needs.preview-forms.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright chromium
+        run: pnpm --filter @govtech-bb/forms exec playwright install --with-deps chromium
+
+      - name: Wait for the preview to serve the form
+        env:
+          URL: ${{ needs.preview-forms.outputs.url }}
+        run: |
+          target="$URL/forms/smart-stream-vendor-registration"
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "$target" || echo 000)
+            echo "[$i/30] $target -> $code"
+            [ "$code" = "200" ] && exit 0
+            sleep 10
+          done
+          echo "::error::Preview did not become reachable within 5 minutes"
+          exit 1
+
+      - name: Run vendor-registration smoke test against the preview
+        env:
+          SMOKE_BASE_URL: ${{ needs.preview-forms.outputs.url }}
+        run: pnpm --filter @govtech-bb/forms test:smoke
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-forms-preview
+          path: apps/forms/playwright-report
+          retention-days: 7
+
   # Post or edit a single sticky comment on the PR listing the preview
   # URLs and their statuses. Runs after the 4 preview jobs reach any
   # terminal state (success, failure, or skip).
