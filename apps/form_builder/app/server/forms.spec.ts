@@ -27,9 +27,18 @@ jest.mock("./api-client", () => {
   };
 });
 
+// getRecipe resolves the published copy through getPublishedRecipe; mock it so
+// the precedence tests don't hit GitHub.
+jest.mock("./github-recipes", () => ({
+  getPublishedRecipe: jest.fn(),
+}));
+
 import { getSession } from "./session-cipher.server";
-import { api } from "./api-client";
-import { listForms } from "./forms";
+import { api, ApiError } from "./api-client";
+import { getPublishedRecipe } from "./github-recipes";
+import { listForms, getRecipe } from "./forms";
+
+const getPublishedRecipeMock = getPublishedRecipe as jest.Mock;
 
 const SESSION = {
   login: "alice",
@@ -194,5 +203,80 @@ describe("listForms", () => {
     const result = await listForms();
 
     expect(result.map((f) => f.formId)).toEqual(["alive"]);
+  });
+});
+
+describe("getRecipe (draft-vs-published precedence)", () => {
+  const FORM_ID = "apply-for-conductor-licence";
+
+  // A schema-valid published recipe; getRecipe parses the published copy before
+  // returning it, so it must satisfy serviceContractRecipeSchema.
+  function publishedRecipe(version: string) {
+    return {
+      formId: FORM_ID,
+      title: "Apply for Conductor Licence",
+      description: "Apply for a conductor licence",
+      version,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-05-22T00:00:00.000Z",
+      steps: [],
+    };
+  }
+
+  function draftRecipe(version: string) {
+    return { ...publishedRecipe(version), title: "Conductor (draft)" };
+  }
+
+  it("returns the published copy when it is newer than the draft", async () => {
+    apiGet.mockResolvedValue(draftRecipe("1.1.0"));
+    getPublishedRecipeMock.mockResolvedValue(publishedRecipe("1.3.0"));
+
+    const result = await getRecipe({
+      data: { formId: FORM_ID },
+      context: { session: SESSION },
+    } as never);
+
+    expect(result.version).toBe("1.3.0");
+    expect(result.title).toBe("Apply for Conductor Licence");
+  });
+
+  it("returns the draft when its version is greater than or equal to the published copy", async () => {
+    apiGet.mockResolvedValue(draftRecipe("1.3.0"));
+    getPublishedRecipeMock.mockResolvedValue(publishedRecipe("1.3.0"));
+
+    const result = await getRecipe({
+      data: { formId: FORM_ID },
+      context: { session: SESSION },
+    } as never);
+
+    expect(result.version).toBe("1.3.0");
+    // Equal versions tie-break to the draft.
+    expect(result.title).toBe("Conductor (draft)");
+  });
+
+  it("falls back to the draft when there is no published copy", async () => {
+    apiGet.mockResolvedValue(draftRecipe("1.1.0"));
+    getPublishedRecipeMock.mockRejectedValue(new Error("no published recipe"));
+
+    const result = await getRecipe({
+      data: { formId: FORM_ID },
+      context: { session: SESSION },
+    } as never);
+
+    expect(result.version).toBe("1.1.0");
+    expect(result.title).toBe("Conductor (draft)");
+  });
+
+  it("returns the published copy when there is no draft (404)", async () => {
+    apiGet.mockRejectedValue(new ApiError(404, "not found"));
+    getPublishedRecipeMock.mockResolvedValue(publishedRecipe("1.3.0"));
+
+    const result = await getRecipe({
+      data: { formId: FORM_ID },
+      context: { session: SESSION },
+    } as never);
+
+    expect(result.version).toBe("1.3.0");
+    expect(result.title).toBe("Apply for Conductor Licence");
   });
 });

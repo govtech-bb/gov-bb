@@ -27,3 +27,11 @@ export function bumpMinor(s: string): string {
   const [major, minor] = s.split(".").map(Number);
   return `${major}.${minor + 1}.0`;
 }
+
+/**
+ * Returns the next patch version: "1.2.3" → "1.2.4"
+ */
+export function bumpPatch(s: string): string {
+  const [major, minor, patch] = s.split(".").map(Number);
+  return `${major}.${minor}.${patch + 1}`;
+}
