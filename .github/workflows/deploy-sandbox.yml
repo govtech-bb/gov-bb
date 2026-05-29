@@ -203,6 +203,67 @@ jobs:
           cluster: ${{ env.ECS_CLUSTER }}
           wait-for-service-stability: true
 
+      # ECS deployment circuit breaker rolls back to the last green image on
+      # health-check failure but still reports the deploy "succeeded with
+      # rollback". That silent revert is what masked #412 (registry
+      # MODULE_NOT_FOUND) for three deploys. Compare the running task's image
+      # against what we just built; fail loud if they don't match.
+      - name: Verify deployed image matches pushed image
+        env:
+          EXPECTED_IMAGE: ${{ steps.build.outputs.image }}
+        run: |
+          # The service's most recent PRIMARY deployment is what's serving
+          # traffic right now. Grab the task definition it points to and
+          # extract the container's image URI.
+          RUNNING_TASK_DEF=$(aws ecs describe-services \
+            --cluster "$ECS_CLUSTER" \
+            --services "$ECS_SERVICE" \
+            --region "$AWS_REGION" \
+            --query 'services[0].deployments[?status==`PRIMARY`].taskDefinition | [0]' \
+            --output text)
+
+          RUNNING_IMAGE=$(aws ecs describe-task-definition \
+            --task-definition "$RUNNING_TASK_DEF" \
+            --region "$AWS_REGION" \
+            --query 'taskDefinition.containerDefinitions[?name==`api`].image | [0]' \
+            --output text)
+
+          echo "Expected image: $EXPECTED_IMAGE"
+          echo "Running image:  $RUNNING_IMAGE"
+
+          if [ "$RUNNING_IMAGE" != "$EXPECTED_IMAGE" ]; then
+            echo "❌ Image mismatch — ECS circuit breaker rolled back to a prior revision."
+            echo "Check CloudWatch for the failed task's boot logs:"
+            echo "  aws logs tail $ECS_CLUSTER --filter-pattern ERROR --since 10m"
+            exit 1
+          fi
+          echo "✅ Running image matches the build output"
+
+      # Lightweight smoke check that the new image is actually serving traffic
+      # with the schema we expect. Hits a known recipe endpoint; if the API
+      # returns 5xx or null data, fail the deploy so the rollback is visible.
+      # This is the second line of defense after the image-tag check — catches
+      # cases where the new task definition is running but the API is
+      # mis-configured (wrong env, broken DB connection, etc).
+      - name: Smoke test deployed API
+        run: |
+          set -e
+          URL="https://forms.api.sandbox.alpha.gov.bb/form-definitions/passport-renewal"
+          echo "GET $URL"
+          # Allow a few retries — the target group can briefly serve from the
+          # old task while the new one drains.
+          for i in 1 2 3 4 5; do
+            BODY=$(curl -fsS --max-time 10 "$URL" 2>/dev/null || echo "")
+            if [ -n "$BODY" ] && echo "$BODY" | jq -e '.data.steps | length > 0' >/dev/null 2>&1; then
+              echo "✅ Smoke test passed: $(echo "$BODY" | jq -c '{formId: .data.formId, version: .data.version, steps: (.data.steps | length)}')"
+              exit 0
+            fi
+            echo "[$i/5] not ready yet, retrying in 10s..."
+            sleep 10
+          done
+          echo "❌ Smoke test failed after 5 attempts — API responded but recipe schema is empty/missing"
+          exit 1
+
       # Task definition revision cleanup removed — old revisions don't consume
       # resources and deregistering them causes OpenTofu state drift (the revision
       # tofu tracks gets deregistered, making tofu think the resource is gone).
