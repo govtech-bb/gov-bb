@@ -34,6 +34,7 @@ export interface CmsServiceListItem {
   description?: string
   stage?: 'alpha' | 'beta' | 'migrated'
   serviceType?: 'digital' | 'information'
+  pageRole?: 'entry' | 'start'
   flag?: 'live' | 'flagged'
   categories: string[]
   subcategory?: string
@@ -72,6 +73,7 @@ interface PayloadServiceDoc {
   description?: string | null
   stage?: 'alpha' | 'beta' | 'migrated' | null
   serviceType?: 'digital' | 'information' | null
+  pageRole?: 'entry' | 'start' | null
   flag?: 'live' | 'flagged' | null
   categories?: Array<PayloadRelationship | string | number> | null
   subcategory?: PayloadRelationship | string | number | null
@@ -132,6 +134,7 @@ function normaliseService(doc: PayloadServiceDoc): CmsServiceListItem {
     description: doc.description ?? undefined,
     stage: doc.stage ?? undefined,
     serviceType: doc.serviceType ?? undefined,
+    pageRole: doc.pageRole ?? undefined,
     flag: doc.flag ?? undefined,
     categories,
     subcategory,
@@ -179,9 +182,7 @@ export async function fetchServicesByCategory(
   const res = await cmsFetch<PayloadServiceDoc>(
     `/api/services?${PUBLISHED}${flagWhere(flag)}&where[categories.slug][in]=${encodeURIComponent(categorySlug)}&depth=1&sort=title&limit=200`,
   )
-  return res.docs
-    .map(normaliseService)
-    .filter((s) => !s.slug.endsWith('/start'))
+  return res.docs.map(normaliseService).filter((s) => s.pageRole !== 'start')
 }
 
 export async function fetchServicesBySubcategory(
@@ -195,9 +196,7 @@ export async function fetchServicesBySubcategory(
       `&where[subcategory.slug][equals]=${encodeURIComponent(subcategorySlug)}` +
       `&depth=1&sort=title&limit=200`,
   )
-  return res.docs
-    .map(normaliseService)
-    .filter((s) => !s.slug.endsWith('/start'))
+  return res.docs.map(normaliseService).filter((s) => s.pageRole !== 'start')
 }
 
 /**
@@ -248,9 +247,7 @@ export async function fetchAllServices(
   const res = await cmsFetch<PayloadServiceDoc>(
     `/api/services?${PUBLISHED}${flagWhere(flag)}&depth=1&sort=title&limit=500`,
   )
-  return res.docs
-    .map(normaliseService)
-    .filter((s) => !s.slug.endsWith('/start'))
+  return res.docs.map(normaliseService).filter((s) => s.pageRole !== 'start')
 }
 
 // Query options — passed to `queryClient.ensureQueryData` in loaders and to

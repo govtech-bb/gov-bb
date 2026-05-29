@@ -59,6 +59,7 @@ export interface ServiceDoc {
   categories?: Ref[] | null;
   subcategory?: Ref | null;
   serviceType?: "digital" | "information" | null;
+  pageRole?: "entry" | "start" | null;
   stage?: "alpha" | "beta" | "migrated" | null;
   sourceUrl?: string | null;
   updatedAt?: string | null;
@@ -77,6 +78,7 @@ export function serviceDocToFrontmatter(doc: ServiceDoc): MappedFile {
   if (subcategory) data.subcategory = subcategory;
 
   if (doc.serviceType) data.service_type = doc.serviceType;
+  if (doc.pageRole) data.page_role = doc.pageRole;
   if (doc.stage) data.stage = doc.stage;
   if (doc.sourceUrl) data.source_url = doc.sourceUrl;
   const updatedAt = isoDate(doc.updatedAt);

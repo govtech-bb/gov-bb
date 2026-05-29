@@ -12,7 +12,7 @@ export const Services: CollectionConfig = {
     useAsTitle: 'title',
     defaultColumns: ['title', '_status', 'categories', 'stage', 'updatedAt'],
     description:
-      'Service and guide pages shown to the public on the site. Some services have sub-pages with a slashed slug like service-name/start — edit the main page for its description and listings, and the sub-page for the form-start content.',
+      'Service and guide pages shown to the public. An Entry page describes a service and appears in listings; a digital service has a Start now button in its body pointing at the online form. A Start page (set Page role to “Start”, slug ending /start) is a sub-page of an entry page holding form-start content — it is excluded from listings automatically.',
     group: 'Content',
   },
   access: {
@@ -29,6 +29,21 @@ export const Services: CollectionConfig = {
     slugField(),
     flagField,
     {
+      name: 'pageRole',
+      type: 'select',
+      required: true,
+      defaultValue: 'entry',
+      options: [
+        { label: 'Entry page (listed, has description)', value: 'entry' },
+        { label: 'Start page (sub-page, not listed)', value: 'start' },
+      ],
+      admin: {
+        position: 'sidebar',
+        description:
+          'Entry pages appear in category and service listings. Start pages are sub-pages reached from an entry page (slug ending /start) and are excluded from listings.',
+      },
+    },
+    {
       type: 'tabs',
       tabs: [
         {
@@ -43,10 +58,10 @@ export const Services: CollectionConfig = {
               // have no standalone listing. Enforced at publish — drafts skip it.
               validate: (
                 value: string | null | undefined,
-                { data }: { data?: { slug?: string | null } },
+                { data }: { data?: { pageRole?: string | null } },
               ) => {
-                const isSubPage = (data?.slug ?? '').includes('/')
-                if (!value && !isSubPage)
+                const isStartPage = data?.pageRole === 'start'
+                if (!value && !isStartPage)
                   return 'Add a short summary — it appears in search results and listings.'
                 return true
               },

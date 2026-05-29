@@ -14,6 +14,8 @@ export const FrontmatterSchema = z.object({
   source_url: z.url().optional(),
   stage: z.enum(['alpha', 'beta', 'migrated']).optional(),
   service_type: z.enum(['digital', 'information']).optional(),
+  /** Entry page (listed) or start sub-page (excluded from listings). From the CMS pageRole. */
+  page_role: z.enum(['entry', 'start']).optional(),
   /**
    * Form ID in the forms API. When set, a `<a data-start-link>` element
    * inside the page's body is rendered as a Start now button linking to

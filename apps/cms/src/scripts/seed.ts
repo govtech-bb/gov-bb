@@ -139,6 +139,7 @@ async function seedServices(
       categories,
       subcategory: subId,
       serviceType: fm.service_type ?? 'information',
+      pageRole: slug.endsWith('/start') ? 'start' : 'entry',
       stage: fm.stage ?? 'alpha',
       sourceUrl: fm.source_url,
       _status: 'published',

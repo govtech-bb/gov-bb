@@ -128,7 +128,7 @@ export interface UserAuthOperations {
   }
 }
 /**
- * Service and guide pages shown to the public on the site. Some services have sub-pages with a slashed slug like service-name/start — edit the main page for its description and listings, and the sub-page for the form-start content.
+ * Service and guide pages shown to the public. An Entry page describes a service and appears in listings; a digital service has a Start now button in its body pointing at the online form. A Start page (set Page role to “Start”, slug ending /start) is a sub-page of an entry page holding form-start content — it is excluded from listings automatically.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "services".
@@ -143,6 +143,10 @@ export interface Service {
    * Set to “Flagged” while preparing — the page is hidden from the public and only visible to reviewers with the feature-flag cookie. Switch to “Live” when ready to release.
    */
   flag: 'live' | 'flagged'
+  /**
+   * Entry pages appear in category and service listings. Start pages are sub-pages reached from an entry page (slug ending /start) and are excluded from listings.
+   */
+  pageRole: 'entry' | 'start'
   title: string
   /**
    * A one-sentence summary, shown in search results and listings. Aim for under 160 characters — that’s roughly what search engines show in results.
@@ -612,6 +616,7 @@ export interface PayloadMigration {
 export interface ServicesSelect<T extends boolean = true> {
   slug?: T
   flag?: T
+  pageRole?: T
   title?: T
   description?: T
   body?: T

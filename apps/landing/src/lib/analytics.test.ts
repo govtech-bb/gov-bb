@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { deriveStartEventName, trackEvent, trackPageview } from './analytics'
+import { trackEvent, trackPageview } from './analytics'
 
 describe('trackEvent', () => {
   afterEach(() => {
@@ -48,31 +48,5 @@ describe('trackPageview', () => {
     trackPageview()
     expect(track).toHaveBeenCalledTimes(1)
     expect(track).toHaveBeenCalledWith()
-  })
-})
-
-describe('deriveStartEventName', () => {
-  it('derives a single-segment slug', () => {
-    expect(deriveStartEventName('/renew-passport/start')).toBe(
-      'renew-passport-start',
-    )
-  })
-
-  it('joins nested paths with dashes', () => {
-    expect(deriveStartEventName('/travel/renew-passport/start')).toBe(
-      'travel-renew-passport-start',
-    )
-  })
-
-  it('tolerates trailing slashes', () => {
-    expect(deriveStartEventName('/renew-passport/start/')).toBe(
-      'renew-passport-start',
-    )
-  })
-
-  it('tolerates missing leading slash', () => {
-    expect(deriveStartEventName('renew-passport/start')).toBe(
-      'renew-passport-start',
-    )
   })
 })

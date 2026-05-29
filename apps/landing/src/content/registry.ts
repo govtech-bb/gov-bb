@@ -134,6 +134,9 @@ export function findPage(urlPath: string): ContentPage | undefined {
  * page — are not sub-pages and stay listed.
  */
 export function isSubPage(page: ContentPage): boolean {
+  // Prefer the explicit CMS role; fall back to the slug heuristic for content
+  // not yet re-exported with page_role.
+  if (page.frontmatter.page_role) return page.frontmatter.page_role === 'start'
   const i = page.slug.lastIndexOf('/')
   if (i < 0) return false
   return BY_SLUG.has(page.slug.slice(0, i))
