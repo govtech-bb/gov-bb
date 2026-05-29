@@ -9,10 +9,14 @@ on:
 permissions:
   contents: read
 
-# Serialise events for the same item so rapid label toggles don't race.
-concurrency:
-  group: proj-sync-${{ github.event.issue.number || github.event.pull_request.number }}
-  cancel-in-progress: false
+# NOTE: deliberately no `concurrency` group. Creating a labeled issue fires
+# `opened` + one `labeled` per label as a near-simultaneous burst with no
+# ordering guarantee; a per-issue concurrency group made GitHub cancel whichever
+# run was "previously pending" (often the `opened` run that sets Backlog). Each
+# event handler is idempotent and only `opened` writes status on creation, so
+# letting the runs proceed independently is correct. The only residual risk is a
+# rare race if a human toggles `ready`<->`progressing` within ~1s, which is
+# self-correcting by re-applying the label.
 
 jobs:
   sync:
