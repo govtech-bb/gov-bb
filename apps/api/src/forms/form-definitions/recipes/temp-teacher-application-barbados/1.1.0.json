@@ -813,7 +813,7 @@
         {
           "ref": "components/confirmation",
           "overrides": {
-            "label": "Declaration",
+            "label": "",
             "fieldId": "declaration-confirmed",
             "options": [
               {

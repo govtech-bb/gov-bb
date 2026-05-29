@@ -215,6 +215,11 @@ test.describe("Temporary Teacher Application — Live Smoke", () => {
 
     // ─── Declaration ─────────────────────────────────────────────────────────
     expectStep(page, "declaration");
+    // #456: the applicant's name (from the earlier name fields) and today's
+    // date (DD/MM/YYYY) auto-render read-only on the declaration step.
+    const applicant = page.locator(".form-page__applicant");
+    await expect(applicant).toContainText(`${firstName} ${lastName}`);
+    await expect(applicant).toContainText(/\b\d{2}\/\d{2}\/\d{4}\b/);
     await page
       .locator(`input[id="declaration_declaration-confirmed-confirmed"]`)
       .check();
