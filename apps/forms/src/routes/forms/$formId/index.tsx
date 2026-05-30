@@ -151,9 +151,11 @@ function RouteComponent() {
         case "submitted":
         case "success":
         case "complete":
+          // No-payment forms return `submitted`; the backend never attaches
+          // payment to these responses, so hasPayment is correctly false here.
           subState = {
             submissionSuccess: true,
-            hasPayment: false, // Get this value from response
+            hasPayment: false,
             ...baseSubState,
           };
           setSubmissionState(subState);
@@ -179,7 +181,18 @@ function RouteComponent() {
               paymentId,
               paymentDescription: description,
             };
+          } else {
+            // Payment was expected but the gateway details are missing — commit
+            // a payment-init error state (no paymentUrl) so the confirmation
+            // step renders "Payment could not be initiated" with the reference
+            // number, rather than leaving state undefined and bouncing away.
+            subState = {
+              ...baseSubState,
+              submissionSuccess: true,
+              hasPayment: true,
+            };
           }
+          setSubmissionState(subState);
           trackEvent("form-submit-success", {
             form_id: formMeta.formId,
             step_count: visibleSteps.length,
