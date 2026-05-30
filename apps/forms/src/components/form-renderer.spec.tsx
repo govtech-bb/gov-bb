@@ -368,6 +368,39 @@ describe("FormRenderer", () => {
     expect(screen.getByTestId("submission-confirmation")).toBeInTheDocument();
   });
 
+  it("redirects to check-your-answers when on submission-confirmation with no submissionState", () => {
+    const step = makeStep("submission-confirmation");
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="submission-confirmation"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={undefined}
+      />,
+    );
+    // Refreshing on the confirmation step loses the in-memory submissionState.
+    // Rather than render an empty (or previously fake) confirmation, bounce the
+    // user back to where they can re-submit.
+    expect(mockNavigateToStep).toHaveBeenCalledWith("check-your-answers");
+  });
+
+  it("does NOT redirect away from submission-confirmation when submissionState exists", () => {
+    const step = makeStep("submission-confirmation");
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="submission-confirmation"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    expect(mockNavigateToStep).not.toHaveBeenCalledWith("check-your-answers");
+  });
+
   it("renders a FieldRenderer for each plain field in the step", () => {
     const fields = [
       makePlainField("step-1_field-a", "field-a", "step-1"),

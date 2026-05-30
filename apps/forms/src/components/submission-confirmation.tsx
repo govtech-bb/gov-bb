@@ -10,6 +10,13 @@ export default function SubmissionConfirmation({
   onTryAgain,
   submissionState,
 }: SubmissionConfirmationProps) {
+  // Without a committed submissionState there is nothing genuine to confirm.
+  // The form-renderer redirects away from this step when state is absent, so
+  // rendering null here avoids ever fabricating a fake payment receipt.
+  if (!submissionState) {
+    return null;
+  }
+
   const {
     hasPayment,
     serviceName,
@@ -22,19 +29,7 @@ export default function SubmissionConfirmation({
     paymentUrl,
     paymentId,
     paymentDescription,
-  } = submissionState ?? {
-    hasPayment: true,
-    serviceName: "Example Service",
-    amount: "$100.00",
-    quantity: 1,
-    submissionSuccess: true,
-    paymentSuccess: true,
-    referenceNumber: "ABC123456789",
-    date: "07/05/2026",
-    paymentDescription: undefined,
-    paymentId: undefined,
-    paymentUrl: undefined,
-  };
+  } = submissionState;
 
   return (
     <div className="form-page__confirmation">
