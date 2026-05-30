@@ -1,7 +1,11 @@
 import { serializeRecipeDraft, deserializeRecipe } from "./serialization";
 import { getCatalog } from "./catalog";
 import { serviceContractRecipeSchema } from "@govtech-bb/form-types";
-import type { Processor, ServiceContractRecipe } from "@govtech-bb/form-types";
+import type {
+  ContactDetails,
+  Processor,
+  ServiceContractRecipe,
+} from "@govtech-bb/form-types";
 import type { RegistryCatalog } from "./catalog";
 import type { RecipeDraft, RecipeFieldDraft } from "./types";
 
@@ -593,5 +597,78 @@ describe("processors round-trip through deserialize/serialize", () => {
     expect(ids).toHaveLength(3);
     for (const id of ids) expect(typeof id).toBe("string");
     expect(new Set(ids).size).toBe(ids.length); // all unique
+  });
+});
+
+// ─── contactDetails round-trip (silent-drop fix, issue #452) ───────────────
+
+describe("contactDetails round-trip through deserialize/serialize", () => {
+  const contactDetailsFixture: ContactDetails = {
+    title: "Ministry of Health",
+    telephoneNumber: "+1 246 555 0100",
+    email: "health@gov.bb",
+    address: {
+      line1: "Jemmotts Lane",
+      line2: "St Michael",
+      city: "Bridgetown",
+      country: "Barbados",
+    },
+  };
+
+  function makeRecipeWithContactDetails(
+    contactDetails: ContactDetails = contactDetailsFixture,
+  ): ServiceContractRecipe {
+    return {
+      formId: "form-001",
+      title: "Test Form",
+      version: "1.0.0",
+      contactDetails,
+      steps: [],
+      createdAt: "2025-01-01T00:00:00.000Z",
+      updatedAt: "2025-01-01T00:00:00.000Z",
+    };
+  }
+
+  it("preserves contactDetails (with address) across deserialize → serialize", () => {
+    const draft = deserializeRecipe(makeRecipeWithContactDetails());
+    expect(draft.contactDetails).toEqual(contactDetailsFixture);
+
+    const result = serializeRecipeDraft(draft, { version: "1.0.0" });
+    expect(result.contactDetails).toEqual(contactDetailsFixture);
+  });
+
+  it("preserves contactDetails without the optional address", () => {
+    const noAddress: ContactDetails = {
+      title: "Ministry of Health",
+      telephoneNumber: "+1 246 555 0100",
+      email: "health@gov.bb",
+    };
+    const draft = deserializeRecipe(makeRecipeWithContactDetails(noAddress));
+    const result = serializeRecipeDraft(draft, { version: "1.0.0" });
+    expect(result.contactDetails).toEqual(noAddress);
+    expect(result.contactDetails?.address).toBeUndefined();
+  });
+
+  it("a recipe with no contactDetails round-trips with the key absent", () => {
+    const recipe = serializeRecipeDraft(makeBaseDraft(), { version: "1.0.0" });
+    expect(Object.keys(recipe)).not.toContain("contactDetails");
+
+    const draft = deserializeRecipe(recipe);
+    expect(Object.keys(draft)).not.toContain("contactDetails");
+
+    const reserialized = serializeRecipeDraft(draft, { version: "1.0.0" });
+    expect(reserialized.contactDetails).toBeUndefined();
+    expect(Object.keys(reserialized)).not.toContain("contactDetails");
+  });
+
+  it("the serialized recipe (with contactDetails) parses through serviceContractRecipeSchema", () => {
+    const draft = deserializeRecipe(makeRecipeWithContactDetails());
+    const result = serializeRecipeDraft(draft, { version: "1.0.0" });
+
+    const parsed = serviceContractRecipeSchema.safeParse(result);
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.contactDetails).toEqual(contactDetailsFixture);
+    }
   });
 });
