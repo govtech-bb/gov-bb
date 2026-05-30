@@ -370,19 +370,22 @@ jobs:
           echo
 
           # Lambda returns 200 even when the function errored — FunctionError
-          # is the protocol-level error signal. statusCode in the body is
-          # the application-level signal.
+          # is the protocol-level error signal we check first. Then the
+          # application-level signal is the body's "status" field — the
+          # indexer Lambda returns {"status":"started","taskArn":"..."} on
+          # success (it kicks off a Fargate task and returns immediately;
+          # it doesn't wait for ingest to complete).
           if jq -e '.FunctionError' /tmp/invoke-meta.json >/dev/null 2>&1; then
             echo "❌ Lambda invocation reported a FunctionError"
             exit 1
           fi
 
-          STATUS=$(jq -r '.statusCode // "unknown"' /tmp/indexer-out.json 2>/dev/null || echo "parse-error")
-          if [ "$STATUS" != "200" ]; then
-            echo "❌ Indexer returned statusCode=$STATUS (expected 200)"
+          STATUS=$(jq -r '.status // "unknown"' /tmp/indexer-out.json 2>/dev/null || echo "parse-error")
+          if [ "$STATUS" != "started" ]; then
+            echo "❌ Indexer returned status=\"$STATUS\" (expected \"started\")"
             exit 1
           fi
-          echo "✅ Indexer reported success — content sync started"
+          echo "✅ Indexer reported success — ingest task started"
 
   # ---------------------------------------------------------------------------
   # Amplify deploys — auto-build is OFF on the staging branch (per app IaC),
