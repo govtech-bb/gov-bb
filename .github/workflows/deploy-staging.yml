@@ -529,6 +529,24 @@ jobs:
           echo "❌ Amplify $APP_LABEL build did not finish in 15 min"
           exit 1
 
+      # The Terraform AWS provider doesn't manage compute_role_arn on
+      # aws_amplify_app, and a number of unrelated operations (tofu apply,
+      # console Amplify edits, possibly Amplify release jobs themselves) can
+      # silently clear it. Without the compute role, the chat SSR Lambda has
+      # no IAM identity and Bedrock calls fail with "Could not load
+      # credentials from any providers" — which causes /api/health to return
+      # db: disconnected. Re-attach every deploy to keep chat healing itself.
+      - name: Restore chat Amplify compute role
+        run: |
+          set -euo pipefail
+          aws amplify update-app \
+            --app-id d2kl5gyeq6yv2d \
+            --compute-role-arn arn:aws:iam::096863132510:role/gov-bb-chat-amplify-compute-staging \
+            --region "$AWS_REGION" \
+            --query "app.computeRoleArn" \
+            --output text
+          echo "✅ Chat compute role restored"
+
       - name: Smoke test chat /api/health (validates db connection)
         env:
           URL: ${{ env.AMPLIFY_CHAT_HEALTH_URL }}
