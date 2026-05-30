@@ -48,3 +48,5 @@ WORKDIR /app/apps/chat
 # the dev server.
 ENTRYPOINT ["sh", "-c", "pnpm exec tsx src/lib/db/migrate.ts && exec \"$@\"", "--"]
 CMD ["pnpm", "exec", "tsx", "src/ingest/cli.ts"]
+
+# Staging bootstrap touch — 2026-05-30: force chat-ingest image push to ECR. See PR.
