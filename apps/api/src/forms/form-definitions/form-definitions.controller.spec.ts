@@ -49,6 +49,22 @@ describe("FormDefinitionsController", () => {
       expect(mockService.findAll).toHaveBeenCalled();
       expect(result).toMatchObject({ status: "success", data: list });
     });
+
+    it("passes each form's category through unchanged", async () => {
+      const list = [
+        {
+          formId: "passport-renewal",
+          title: "Passport Renewal",
+          version: "1.0.0",
+          category: "Immigration Department",
+        },
+      ];
+      mockService.findAll.mockResolvedValue(list);
+
+      const result = await controller.getAll();
+
+      expect(result).toMatchObject({ status: "success", data: list });
+    });
   });
 
   describe("get (GET /form-definitions/:formId)", () => {

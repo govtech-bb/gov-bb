@@ -237,12 +237,32 @@ export class RecipeFileLoaderService implements OnModuleInit, OnModuleDestroy {
     );
   }
 
-  findAll(): { formId: string; title: string; version: string }[] {
-    const out: { formId: string; title: string; version: string }[] = [];
+  findAll(): {
+    formId: string;
+    title: string;
+    version: string;
+    category?: string;
+  }[] {
+    const out: {
+      formId: string;
+      title: string;
+      version: string;
+      category?: string;
+    }[] = [];
     for (const [formId, versions] of this.store) {
       const latest = this.latestVersion(versions);
       if (latest)
-        out.push({ formId, title: latest.title, version: latest.version });
+        out.push({
+          formId,
+          title: latest.title,
+          version: latest.version,
+          // Category is the contact-details title (e.g. the owning
+          // ministry/department). Omitted when the recipe has no
+          // contactDetails so the landing page can fall back to "Unknown".
+          ...(latest.contactDetails?.title && {
+            category: latest.contactDetails.title,
+          }),
+        });
     }
     return out;
   }

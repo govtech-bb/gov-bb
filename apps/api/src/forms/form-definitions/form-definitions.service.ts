@@ -45,7 +45,7 @@ export class FormDefinitionsService {
   }
 
   async findAll(): Promise<
-    { formId: string; title: string; version: string }[]
+    { formId: string; title: string; version: string; category?: string }[]
   > {
     const source = this.source();
     if (source === "files") {
@@ -68,13 +68,18 @@ export class FormDefinitionsService {
   }
 
   private async findAllFromDb(): Promise<
-    { formId: string; title: string; version: string }[]
+    { formId: string; title: string; version: string; category?: string }[]
   > {
     const entities = await this.formDefRepo.find({
       order: { createdAt: "DESC" },
     });
     const seen = new Set<string>();
-    const result: { formId: string; title: string; version: string }[] = [];
+    const result: {
+      formId: string;
+      title: string;
+      version: string;
+      category?: string;
+    }[] = [];
     for (const entity of entities) {
       if (!seen.has(entity.formId)) {
         seen.add(entity.formId);
@@ -82,6 +87,11 @@ export class FormDefinitionsService {
           formId: entity.formId,
           title: entity.schema.title,
           version: entity.version,
+          // See RecipeFileLoaderService.findAll: category mirrors the
+          // contact-details title and is omitted when absent.
+          ...(entity.schema.contactDetails?.title && {
+            category: entity.schema.contactDetails.title,
+          }),
         });
       }
     }

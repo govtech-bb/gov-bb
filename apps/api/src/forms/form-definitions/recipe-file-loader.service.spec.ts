@@ -119,6 +119,35 @@ describe("RecipeFileLoaderService", () => {
       );
     });
 
+    it("surfaces contactDetails.title as the form category", async () => {
+      const root = await newRoot({
+        "passport-renewal": ["recipe-with-contact.json"],
+      });
+      const loader = new RecipeFileLoaderService(root);
+
+      await loader.loadAll();
+
+      expect(loader.findAll()).toEqual([
+        {
+          formId: "passport-renewal",
+          title: "Passport Renewal",
+          version: "1.0.0",
+          category: "Immigration Department",
+        },
+      ]);
+    });
+
+    it("omits category when the recipe has no contactDetails", async () => {
+      const root = await newRoot({
+        "passport-renewal": ["valid-recipe.json"],
+      });
+      const loader = new RecipeFileLoaderService(root);
+
+      await loader.loadAll();
+
+      expect(loader.findAll()[0]).not.toHaveProperty("category");
+    });
+
     it("uses the latest version when a form has multiple versions", async () => {
       const root = await newRoot({
         "passport-renewal": ["valid-recipe.json", "valid-recipe-v2.json"],
