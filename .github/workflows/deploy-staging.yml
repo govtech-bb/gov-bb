@@ -601,6 +601,11 @@ jobs:
         env:
           URL: ${{ env.AMPLIFY_FORM_BUILDER_URL }}
           LABEL: form-builder
+          # form-builder is auth-gated: unauthenticated requests get a 307
+          # redirect to /auth/github (which 302s on to github.com OAuth).
+          # Either of those means the SSR is alive and routing correctly —
+          # the smoke is proof-of-life, not proof-of-auth-flow.
+          EXPECT_CODES: "200,302,307"
         run: bash .github/scripts/smoke-test-url.sh
 
   summary:
