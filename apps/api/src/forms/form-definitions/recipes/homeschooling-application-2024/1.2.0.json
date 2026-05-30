@@ -2,9 +2,18 @@
   "formId": "homeschooling-application-2024",
   "title": "Ministry of Education Transformation - Homeschooling Application Form",
   "version": "1.2.0",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "subject": "Your Homeschooling Application has been received",
+        "recipientField": "applicant-info.email_address"
+      }
+    }
+  ],
   "steps": [
     {
-      "stepId": "step-1-applicant-info",
+      "stepId": "applicant-info",
       "title": "Applicant Information",
       "elements": [
         {
@@ -12,7 +21,16 @@
           "overrides": {
             "label": "Name of Applicant",
             "fieldId": "applicant_name",
-            "required": true,
+            "validations": {
+              "required": {
+                "error": "Name of Applicant is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Name of Applicant must be at least 2 characters",
+                "value": 2
+              }
+            },
             "placeholder": "Enter full name"
           }
         },
@@ -21,7 +39,16 @@
           "overrides": {
             "label": "Address",
             "fieldId": "applicant_address",
-            "required": true,
+            "validations": {
+              "required": {
+                "error": "Address is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Address must be at least 2 characters",
+                "value": 2
+              }
+            },
             "placeholder": "Enter residential address"
           }
         },
@@ -30,7 +57,16 @@
           "overrides": {
             "label": "Contact Number(s)",
             "fieldId": "contact_numbers",
-            "required": true,
+            "validations": {
+              "required": {
+                "error": "Contact Number(s) is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Contact Number(s) must be at least 2 characters",
+                "value": 2
+              }
+            },
             "placeholder": "Enter contact number(s)"
           }
         },
@@ -40,7 +76,12 @@
             "type": "email",
             "label": "Email Address",
             "fieldId": "email_address",
-            "required": true,
+            "validations": {
+              "required": {
+                "error": "Email Address is required",
+                "value": true
+              }
+            },
             "placeholder": "Enter email address"
           }
         },
@@ -59,39 +100,66 @@
                 "value": "non-resident"
               }
             ],
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Status Resident is required",
+                "value": true
+              }
+            }
           }
         }
       ],
       "behaviours": []
     },
     {
-      "stepId": "step-2-student-info",
+      "stepId": "student-info",
       "title": "Student Information",
+      "description": "Name and Date of Birth of Student(s) to be Homeschooled",
       "elements": [
         {
-          "ref": "components/generic/repeater",
+          "ref": "components/generic-text",
           "overrides": {
-            "label": "Name and Date of Birth of Student(s) to be Homeschooled",
-            "fields": [
-              {
-                "type": "text",
-                "label": "Student Name",
-                "fieldId": "student_name",
-                "required": true
+            "label": "Student Name",
+            "fieldId": "student_name",
+            "validations": {
+              "required": {
+                "error": "Student Name is required",
+                "value": true
               },
-              {
-                "type": "date",
-                "label": "Date of Birth (DD/MM/YYYY)",
-                "fieldId": "student_dob",
-                "required": true
+              "minLength": {
+                "error": "Student Name must be at least 2 characters",
+                "value": 2
               }
-            ],
-            "fieldId": "students",
-            "minRows": 1,
-            "required": true
+            }
           }
         },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "date",
+            "label": "Date of Birth (DD/MM/YYYY)",
+            "fieldId": "student_dob",
+            "validations": {
+              "required": {
+                "error": "Date of Birth (DD/MM/YYYY) is required",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 1,
+          "max": 10
+        }
+      ]
+    },
+    {
+      "stepId": "previous-schooling",
+      "title": "Previous Schooling",
+      "elements": [
         {
           "ref": "components/generic-radio",
           "overrides": {
@@ -107,7 +175,12 @@
                 "value": "no"
               }
             ],
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Was the student(s) previously in school? is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -115,7 +188,11 @@
           "overrides": {
             "label": "If Yes, Name and Address of the School",
             "fieldId": "previous_school_info",
-            "required": false,
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
             "conditional": {
               "value": "yes",
               "fieldId": "previously_in_school",
@@ -128,37 +205,55 @@
       "behaviours": []
     },
     {
-      "stepId": "step-3-instructor-info",
+      "stepId": "instructor-info",
       "title": "Instructor/Tutor Information",
+      "description": "Names of Instructors/Tutors (Please provide certified copies of qualifications)",
       "elements": [
         {
-          "ref": "components/generic/repeater",
+          "ref": "components/generic-text",
           "overrides": {
-            "label": "Names of Instructors/Tutors (Please provide certified copies of qualifications)",
-            "fields": [
-              {
-                "type": "text",
-                "label": "Instructor/Tutor Name",
-                "fieldId": "instructor_name",
-                "required": true
+            "label": "Instructor/Tutor Name",
+            "fieldId": "instructor_name",
+            "validations": {
+              "required": {
+                "error": "Instructor/Tutor Name is required",
+                "value": true
               },
-              {
-                "type": "text",
-                "label": "List of Qualifications",
-                "fieldId": "instructor_qualifications",
-                "required": true
+              "minLength": {
+                "error": "Instructor/Tutor Name must be at least 2 characters",
+                "value": 2
               }
-            ],
-            "fieldId": "instructors",
-            "minRows": 1,
-            "required": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "List of Qualifications",
+            "fieldId": "instructor_qualifications",
+            "validations": {
+              "required": {
+                "error": "List of Qualifications is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "List of Qualifications must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         }
       ],
-      "behaviours": []
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 1,
+          "max": 10
+        }
+      ]
     },
     {
-      "stepId": "step-4-curriculum-attachments",
+      "stepId": "curriculum-attachments",
       "title": "Curriculum and Attachments",
       "elements": [
         {
@@ -166,7 +261,12 @@
           "overrides": {
             "label": "Timetable (detailing subjects and times)",
             "fieldId": "timetable_attachment",
-            "required": true,
+            "validations": {
+              "required": {
+                "error": "Timetable (detailing subjects and times) is required",
+                "value": true
+              }
+            },
             "helperText": "The timetable should include three (3) core subjects: English, Mathematics, Science and Social Studies and a session of Physical Activity",
             "acceptedFormats": [".pdf", ".doc", ".docx", ".xls", ".xlsx"]
           }
@@ -186,7 +286,12 @@
                 "value": "no"
               }
             ],
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Are you following the National Curriculum? is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -194,7 +299,11 @@
           "overrides": {
             "label": "Curriculum (if not following National Curriculum)",
             "fieldId": "curriculum_attachment",
-            "required": false,
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
             "helperText": "Please attach the curriculum you will be following if you are not following the National Curriculum",
             "conditional": {
               "value": "no",
@@ -209,7 +318,12 @@
           "overrides": {
             "label": "Certified Copies of Tutor Qualifications",
             "fieldId": "tutor_qualifications_attachment",
-            "required": true,
+            "validations": {
+              "required": {
+                "error": "Certified Copies of Tutor Qualifications is required",
+                "value": true
+              }
+            },
             "helperText": "Please attach certified copies of qualifications of persons who will be teaching",
             "acceptedFormats": [".pdf", ".doc", ".docx"]
           }
@@ -219,7 +333,11 @@
           "overrides": {
             "label": "Previous Progress Report (Report Card)",
             "fieldId": "progress_report_attachment",
-            "required": false,
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
             "acceptedFormats": [".pdf", ".doc", ".docx"]
           }
         }
@@ -227,7 +345,7 @@
       "behaviours": []
     },
     {
-      "stepId": "step-5-declaration",
+      "stepId": "declaration-and-signature",
       "title": "Declaration and Signature",
       "elements": [
         {
@@ -243,15 +361,29 @@
           "overrides": {
             "label": "I acknowledge that I have read and understand the requirements for home schooling",
             "fieldId": "acknowledge_requirements",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "I acknowledge that I have read and understand the requirements for home schooling is required",
+                "value": true
+              }
+            }
           }
         },
         {
-          "ref": "components/generic/signature",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Parent/Guardian Signature",
             "fieldId": "parent_signature",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Parent/Guardian Signature is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Parent/Guardian Signature must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -259,7 +391,12 @@
           "overrides": {
             "label": "Date",
             "fieldId": "signature_date",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Date is required",
+                "value": true
+              }
+            }
           }
         }
       ],
