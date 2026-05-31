@@ -290,12 +290,15 @@ jobs:
   deploy-payload-cms:
     # STUB. gov-bb has no apps/payload_cms source — see Part D of
     # docs/plans/staging-cicd-reliability-first.md.
-    # Fails loudly so the staging pipeline surfaces the gap rather than
-    # silently leaving payload-cms-staging broken (same outage pattern as
-    # payload-cms-sandbox).
+    # Surfaces the gap loudly in the run summary, but does NOT fail the
+    # workflow: continue-on-error keeps the overall deploy GREEN when the real
+    # apps succeed, so a red staging deploy means something ACTUALLY broke
+    # (instead of every run being red on this known stub → alarm fatigue that
+    # masks real failures like the 2026-05-31 landing outage).
     name: Build, Push & Deploy payload-cms (STUB)
     needs: setup
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - name: Inform on missing source
         run: |
@@ -387,10 +390,76 @@ jobs:
           echo "✅ Indexer reported success — ingest task started"
 
   # ---------------------------------------------------------------------------
+  # SSR smoke gate — boots each affected WEB_COMPUTE app's BUILT compute server
+  # in the runner and asserts its homepage responds (<500, no hang) BEFORE the
+  # Amplify deploy jobs run. Catches "compiles clean but hangs/5xx at runtime"
+  # regressions that build/typecheck/unit all miss — e.g. the 2026-05-31 outage
+  # where a transitive @tanstack/react-start bump hung landing's createServerFn
+  # SSR path (30s timeout → 500). amplify-{landing,chat,form-builder} need this
+  # job, so a failure here BLOCKS the deploy and staging stays on the last good
+  # version. forms is static (WEB) — no compute server to smoke.
+  # ---------------------------------------------------------------------------
+  ssr-smoke:
+    name: SSR smoke (web-compute apps)
+    needs: setup
+    if: |
+      needs.setup.outputs.landing == 'true'
+      || needs.setup.outputs.chat == 'true'
+      || needs.setup.outputs.fb-app == 'true'
+      || needs.setup.outputs.amplify-config == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+
+      - name: Smoke landing
+        if: needs.setup.outputs.landing == 'true' || needs.setup.outputs.amplify-config == 'true'
+        env:
+          # landing's prebuild fetches the live form manifest; point it at the
+          # staging API so the build resolves against the env it deploys into.
+          VITE_FORMS_API_URL: https://api.staging.alpha.gov.bb
+        run: |
+          pnpm exec nx build landing
+          node .github/scripts/ssr-smoke.mjs apps/landing/.amplify-hosting/compute/default landing
+
+      - name: Smoke chat
+        if: needs.setup.outputs.chat == 'true' || needs.setup.outputs.amplify-config == 'true'
+        run: |
+          pnpm exec nx build chat
+          node .github/scripts/ssr-smoke.mjs apps/chat/.amplify-hosting/compute/default chat
+
+      - name: Smoke form-builder
+        if: needs.setup.outputs.fb-app == 'true' || needs.setup.outputs.amplify-config == 'true'
+        env:
+          # Dummy boot-time values so the SSR server starts: the session cipher
+          # requires a 32-byte base64 SESSION_SECRET (set below) or it throws.
+          # The smoke only GETs / which 307-redirects to OAuth — that proves the
+          # runtime serves requests; it never completes an actual OAuth flow.
+          GITHUB_OAUTH_CLIENT_ID: smoke
+          GITHUB_OAUTH_CLIENT_SECRET: smoke
+          GITHUB_ORG: govtech-bb
+          ADMIN_API_TOKEN: smoke
+          BUILDER_API_URL: http://127.0.0.1:9
+          OAUTH_REDIRECT_BASE: http://127.0.0.1:3000
+        run: |
+          export SESSION_SECRET="$(node -e "console.log(require('crypto').randomBytes(32).toString('base64'))")"
+          pnpm exec nx build form-builder-app
+          node .github/scripts/ssr-smoke.mjs apps/form_builder/.amplify-hosting/compute/default form-builder
+
+  # ---------------------------------------------------------------------------
   # Amplify deploys — auto-build is OFF on the staging branch (per app IaC),
   # so this workflow is the sole trigger. Each job runs start-job → monitor →
   # URL smoke test. The smoke test catches "build succeeded but URL doesn't
   # serve" (same pattern as sandbox commit ab003dd9).
+  #
+  # The three WEB_COMPUTE apps also `needs: ssr-smoke` — a runtime hang there
+  # blocks the deploy entirely, so a broken SSR build never reaches the live URL.
   # ---------------------------------------------------------------------------
 
   amplify-forms:
@@ -443,7 +512,7 @@ jobs:
 
   amplify-landing:
     name: Amplify build (landing)
-    needs: setup
+    needs: [setup, ssr-smoke]
     if: needs.setup.outputs.landing == 'true' || needs.setup.outputs.amplify-config == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -491,7 +560,7 @@ jobs:
 
   amplify-chat:
     name: Amplify build (chat)
-    needs: setup
+    needs: [setup, ssr-smoke]
     if: needs.setup.outputs.chat == 'true' || needs.setup.outputs.amplify-config == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -559,7 +628,7 @@ jobs:
 
   amplify-form-builder:
     name: Amplify build (form-builder)
-    needs: setup
+    needs: [setup, ssr-smoke]
     if: needs.setup.outputs.fb-app == 'true' || needs.setup.outputs.amplify-config == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -612,7 +681,7 @@ jobs:
 
   summary:
     name: Deployment summary
-    needs: [setup, deploy-api, deploy-form-builder, deploy-payload-cms, deploy-chat-ingest, amplify-forms, amplify-landing, amplify-chat, amplify-form-builder]
+    needs: [setup, deploy-api, deploy-form-builder, deploy-payload-cms, deploy-chat-ingest, ssr-smoke, amplify-forms, amplify-landing, amplify-chat, amplify-form-builder]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -636,6 +705,7 @@ jobs:
             echo ""
             echo "| Target | Result |"
             echo "|--------|--------|"
+            row "SSR smoke (pre-deploy)" "${{ needs.ssr-smoke.result }}"
             row "API"                  "${{ needs.deploy-api.result }}"
             row "form-builder API"     "${{ needs.deploy-form-builder.result }}"
             row "payload-cms"          "${{ needs.deploy-payload-cms.result }}"
