@@ -14,6 +14,19 @@ view`) for an issue the work resolves.
   closing. Watch for a plan that cites a stale or duplicate issue number — the
   live issue may differ from the one named.
 
+## Delete the plan file once dev-finish writes its summary
+
+A plan in `docs/plans/` is scaffolding for building the change — once the work
+is done and `bb:dev-finish` has written the session summary in
+`docs/summaries/`, the summary supersedes it (it captures the *why*, and the
+*what* now lives in the code). Delete the corresponding plan file in the same
+commit as the summary so plans don't pile up.
+
+- Before deleting, check nothing load-bearing links to the plan's path (an ADR
+  or another summary may reference it — e.g. ADRs cite plans for deferred
+  follow-ups). If something does, update or keep the link rather than orphaning
+  it.
+
 ## When creating a GitHub issue, assign it to the author
 
 Whenever you create a GitHub issue (`gh issue create`), always assign it to the
