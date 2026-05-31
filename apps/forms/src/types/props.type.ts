@@ -66,18 +66,41 @@ export type FileUploadProps = {
   formVersion?: string;
 };
 
+/**
+ * Which of the three confirmation outcomes the screen should render. This is
+ * the discriminant the confirmation component renders off. When omitted it is
+ * derived from `submissionSuccess` for back-compat (true → "success",
+ * false → "error").
+ *
+ * - "success"    — submission saved (with or without payment).
+ * - "processing" — the submission is still being processed asynchronously
+ *                  (idempotent replay of an in-flight submit).
+ * - "error"      — the submission failed; show a genuine error message.
+ */
+export type SubmissionDisplayStatus = "success" | "processing" | "error";
+
 export interface SubmissionState {
+  /**
+   * Display discriminant. Optional for back-compat — when absent it is derived
+   * from `submissionSuccess`.
+   */
+  displayStatus?: SubmissionDisplayStatus;
   hasPayment: boolean;
-  serviceName: string;
+  /** Absent when an error is surfaced with no submission response body. */
+  serviceName?: string;
   amount?: string;
   quantity?: number;
   submissionSuccess: boolean;
   paymentSuccess?: boolean;
-  referenceNumber: string;
-  date: string;
+  /** Absent for a generic error raised before any reference was issued. */
+  referenceNumber?: string;
+  /** Absent for a generic error raised before any reference was issued. */
+  date?: string;
   paymentUrl?: string;
   paymentId?: string;
   paymentDescription?: string;
+  /** Human-readable message shown when `displayStatus` is "error". */
+  errorMessage?: string;
 }
 
 export interface SubmissionConfirmationProps {

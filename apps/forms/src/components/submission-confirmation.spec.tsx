@@ -339,6 +339,146 @@ describe("SubmissionConfirmation — contactDetails address branches", () => {
   });
 });
 
+describe("SubmissionConfirmation — processing render", () => {
+  it("renders the processing panel with reference number", () => {
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Passport"
+        stepTitle="Submitted"
+        submissionState={{
+          hasPayment: false,
+          serviceName: "X",
+          submissionSuccess: false,
+          displayStatus: "processing",
+          referenceNumber: "PROC-1",
+          date: "19/05/2026",
+        }}
+        onTryAgain={jest.fn()}
+      />,
+    );
+    expect(
+      screen.getByText("We're still processing your submission"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("PROC-1")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /try again/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Your submission has been saved"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders the processing panel without a reference dl when reference is absent", () => {
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Passport"
+        stepTitle="Submitted"
+        submissionState={{
+          hasPayment: false,
+          serviceName: "X",
+          submissionSuccess: false,
+          displayStatus: "processing",
+        }}
+      />,
+    );
+    expect(
+      screen.getByText("We're still processing your submission"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Reference Number/i)).not.toBeInTheDocument();
+  });
+
+  it("passes axe accessibility audit (excluding heading-order)", async () => {
+    const { container } = render(
+      <SubmissionConfirmation
+        serviceTitle="Passport"
+        stepTitle="Submitted"
+        submissionState={{
+          hasPayment: false,
+          serviceName: "X",
+          submissionSuccess: false,
+          displayStatus: "processing",
+          referenceNumber: "PROC-1",
+        }}
+      />,
+    );
+    const results = await axe(container, {
+      rules: { "heading-order": { enabled: false } },
+    });
+    expect(results).toHaveNoViolations();
+  });
+});
+
+describe("SubmissionConfirmation — error render", () => {
+  it("renders the error panel with explicit displayStatus and errorMessage", () => {
+    const onTryAgain = jest.fn();
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Passport"
+        stepTitle="Submitted"
+        submissionState={{
+          hasPayment: false,
+          serviceName: "X",
+          submissionSuccess: false,
+          displayStatus: "error",
+          errorMessage: "We couldn't reach the server.",
+          referenceNumber: "ERR-9",
+        }}
+        onTryAgain={onTryAgain}
+      />,
+    );
+    expect(screen.getByText("Something went wrong")).toBeInTheDocument();
+    expect(
+      screen.getByText("We couldn't reach the server."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("ERR-9")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /try again/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders the default fallback copy when errorMessage is absent (back-compat)", () => {
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Passport"
+        stepTitle="Submitted"
+        submissionState={{ ...baseState, submissionSuccess: false }}
+        onTryAgain={jest.fn()}
+      />,
+    );
+    expect(screen.getByText("Something went wrong")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "We couldn't complete your submission. Please try again.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /try again/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("passes axe accessibility audit (excluding heading-order)", async () => {
+    const { container } = render(
+      <SubmissionConfirmation
+        serviceTitle="Passport"
+        stepTitle="Submitted"
+        submissionState={{
+          hasPayment: false,
+          serviceName: "X",
+          submissionSuccess: false,
+          displayStatus: "error",
+          errorMessage: "We couldn't reach the server.",
+          referenceNumber: "ERR-9",
+        }}
+        onTryAgain={jest.fn()}
+      />,
+    );
+    const results = await axe(container, {
+      rules: { "heading-order": { enabled: false } },
+    });
+    expect(results).toHaveNoViolations();
+  });
+});
+
 describe("SubmissionConfirmation — undefined submissionState", () => {
   it("renders nothing payment-related when submissionState is not provided", () => {
     const { container } = render(

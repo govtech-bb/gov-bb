@@ -21,6 +21,7 @@ export type {
   FileUploadProps,
   UploadedFile,
   SubmissionState,
+  SubmissionDisplayStatus,
 } from "./props.type.ts";
 export type {
   RepeatableStepSettings,

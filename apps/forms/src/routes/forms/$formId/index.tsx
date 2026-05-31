@@ -22,7 +22,11 @@ import {
 } from "@forms/types";
 import React from "react";
 import { getFormData, storeFormData } from "../../../lib/session-storage";
-import { formatDataForSubmission, postFormSubmission } from "@forms/form-api";
+import {
+  formatDataForSubmission,
+  postFormSubmission,
+  FormFetchError,
+} from "@forms/form-api";
 import { trackEvent } from "../../../lib/analytics";
 
 export const Route = createFileRoute("/forms/$formId/")({
@@ -131,10 +135,23 @@ function RouteComponent() {
       let response;
       try {
         response = await postFormSubmission(formMeta, formattedData);
-      } catch {
+      } catch (err) {
+        const reason =
+          err instanceof FormFetchError && err.status === 0
+            ? "network"
+            : "server";
         trackEvent("form-submit-error", {
           form_id: formMeta.formId,
-          reason: "network",
+          reason,
+        });
+        setSubmissionState({
+          displayStatus: "error",
+          submissionSuccess: false,
+          hasPayment: false,
+          errorMessage:
+            reason === "network"
+              ? "We couldn't reach the server to complete your submission. Please check your connection and try again."
+              : "Something went wrong while processing your submission. Please try again in a few moments.",
         });
         return;
       }
@@ -147,13 +164,13 @@ function RouteComponent() {
         serviceName: responseData.formId,
       };
 
-      switch (response.status) {
+      switch (responseData.status) {
         case "submitted":
-        case "success":
         case "complete":
           // No-payment forms return `submitted`; the backend never attaches
           // payment to these responses, so hasPayment is correctly false here.
           subState = {
+            displayStatus: "success",
             submissionSuccess: true,
             hasPayment: false,
             ...baseSubState,
@@ -165,8 +182,18 @@ function RouteComponent() {
           });
           break;
         case "processing":
+          subState = {
+            ...baseSubState,
+            displayStatus: "processing",
+            submissionSuccess: false,
+            hasPayment: false,
+          };
+          setSubmissionState(subState);
           break;
         case "draft":
+          // `/submissions` never returns `draft` (drafts come from the separate
+          // `/form-drafts` flow); draft UX is intentionally out of scope here —
+          // documented TODO, no UI.
           break;
         case "pending_payment":
           if (response.meta?.deferred) {
@@ -174,6 +201,7 @@ function RouteComponent() {
               response.meta?.deferred;
             subState = {
               ...baseSubState,
+              displayStatus: "success",
               submissionSuccess: true,
               hasPayment: true,
               amount: amount.toString(),
@@ -188,6 +216,7 @@ function RouteComponent() {
             // number, rather than leaving state undefined and bouncing away.
             subState = {
               ...baseSubState,
+              displayStatus: "success",
               submissionSuccess: true,
               hasPayment: true,
             };
@@ -200,7 +229,15 @@ function RouteComponent() {
           break;
         case "failed":
         case "error":
-          //TODO: Add state handling for errors
+          subState = {
+            ...baseSubState,
+            displayStatus: "error",
+            submissionSuccess: false,
+            hasPayment: false,
+            errorMessage:
+              "We couldn't complete your submission. Please try again, and if the problem continues contact support quoting your reference number.",
+          };
+          setSubmissionState(subState);
           trackEvent("form-submit-error", {
             form_id: formMeta.formId,
             reason: "server",

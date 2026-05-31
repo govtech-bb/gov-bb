@@ -29,11 +29,16 @@ export default function SubmissionConfirmation({
     paymentUrl,
     paymentId,
     paymentDescription,
+    displayStatus: displayStatusProp,
+    errorMessage,
   } = submissionState;
+
+  const displayStatus =
+    displayStatusProp ?? (submissionSuccess ? "success" : "error");
 
   return (
     <div className="form-page__confirmation">
-      {submissionSuccess ? (
+      {displayStatus === "success" ? (
         <>
           {hasPayment ? (
             paymentSuccess ? (
@@ -201,16 +206,41 @@ export default function SubmissionConfirmation({
             </p>
           </div>
         </>
+      ) : displayStatus === "processing" ? (
+        <div>
+          <div className="form-page__panel form-page__panel--processing">
+            <p className="form-page__panel-service-title">{serviceTitle}</p>
+            <h1 className="govbb-text-h1">
+              We're still processing your submission
+            </h1>
+            <p className="form-page__panel-subheading">
+              Your submission has been received and is being processed. We'll
+              email you once it's complete — you can safely close this page.
+            </p>
+          </div>
+          {referenceNumber && (
+            <dl className="form-page__payment-table">
+              <dt>Reference Number</dt>
+              <dd>{referenceNumber}</dd>
+            </dl>
+          )}
+        </div>
       ) : (
         <div>
           <div className="form-page__panel form-page__panel--error">
             <p className="form-page__panel-service-title">{serviceTitle}</p>
-            <h1 className="govbb-text-h1">Error</h1>
+            <h1 className="govbb-text-h1">Something went wrong</h1>
             <p className="form-page__panel-subheading">
-              More error details go here.
+              {errorMessage ??
+                "We couldn't complete your submission. Please try again."}
             </p>
           </div>
-
+          {referenceNumber && (
+            <dl className="form-page__payment-table">
+              <dt>Reference Number</dt>
+              <dd>{referenceNumber}</dd>
+            </dl>
+          )}
           <button className="govbb-btn" onClick={onTryAgain}>
             Try again
           </button>

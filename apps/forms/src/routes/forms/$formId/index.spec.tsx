@@ -54,10 +54,24 @@ jest.mock("../../../lib/session-storage", () => ({
   storeFormData: jest.fn(),
 }));
 
-jest.mock("@forms/form-api", () => ({
-  formatDataForSubmission: jest.fn(() => ({})),
-  postFormSubmission: jest.fn(),
-}));
+jest.mock("@forms/form-api", () => {
+  // Minimal stand-in for the real FormFetchError so both the route under test
+  // and this spec resolve the SAME class (the route's `err instanceof
+  // FormFetchError` check needs the identical constructor reference).
+  class FormFetchError extends Error {
+    status: number;
+    constructor(message: string, status: number) {
+      super(message);
+      this.name = "FormFetchError";
+      this.status = status;
+    }
+  }
+  return {
+    formatDataForSubmission: jest.fn(() => ({})),
+    postFormSubmission: jest.fn(),
+    FormFetchError,
+  };
+});
 
 jest.mock("../../../lib/analytics", () => ({
   trackEvent: jest.fn(),
@@ -68,6 +82,7 @@ import { useForm, useStore } from "@tanstack/react-form";
 import { getVisibleSteps, restoreRepeatableStepsFromStorage } from "@forms/lib";
 import { getFormData } from "../../../lib/session-storage";
 import { trackEvent } from "../../../lib/analytics";
+import { FormFetchError } from "@forms/form-api";
 
 const mockUseForm = useForm as jest.Mock;
 const mockUseStore = useStore as jest.Mock;
@@ -345,8 +360,9 @@ describe("RouteComponent onSubmit handler", () => {
   it("calls postFormSubmission with formMeta and formatted data", async () => {
     const onSubmit = renderAndExtractOnSubmit();
     (postFormSubmission as jest.Mock).mockResolvedValue({
-      status: "submitted",
+      status: "success",
       data: {
+        status: "submitted",
         id: "ref-001",
         submittedAt: "2026-05-22T00:00:00Z",
         formId: "test-form",
@@ -359,8 +375,9 @@ describe("RouteComponent onSubmit handler", () => {
   it("sets submissionSuccess=true on 'submitted' status", async () => {
     const onSubmit = renderAndExtractOnSubmit();
     (postFormSubmission as jest.Mock).mockResolvedValue({
-      status: "submitted",
+      status: "success",
       data: {
+        status: "submitted",
         id: "ref-001",
         submittedAt: "2026-05-22T00:00:00Z",
         formId: "test-form",
@@ -369,11 +386,12 @@ describe("RouteComponent onSubmit handler", () => {
     await expect(onSubmit({ value: {} })).resolves.not.toThrow();
   });
 
-  it("sets submissionSuccess=true on 'success' status", async () => {
+  it("sets submissionSuccess=true on 'complete' status", async () => {
     const onSubmit = renderAndExtractOnSubmit();
     (postFormSubmission as jest.Mock).mockResolvedValue({
       status: "success",
       data: {
+        status: "complete",
         id: "ref-001",
         submittedAt: "2026-05-22T00:00:00Z",
         formId: "test-form",
@@ -385,7 +403,7 @@ describe("RouteComponent onSubmit handler", () => {
   it("handles 'pending_payment' with deferred meta by setting hasPayment=true", async () => {
     const onSubmit = renderAndExtractOnSubmit();
     (postFormSubmission as jest.Mock).mockResolvedValue({
-      status: "pending_payment",
+      status: "success",
       meta: {
         deferred: {
           amount: 100,
@@ -395,6 +413,7 @@ describe("RouteComponent onSubmit handler", () => {
         },
       },
       data: {
+        status: "pending_payment",
         id: "ref-001",
         submittedAt: "2026-05-22T00:00:00Z",
         formId: "test-form",
@@ -406,9 +425,10 @@ describe("RouteComponent onSubmit handler", () => {
   it("commits a payment-init error state on 'pending_payment' without deferred meta", async () => {
     const onSubmit = renderAndExtractOnSubmit();
     (postFormSubmission as jest.Mock).mockResolvedValue({
-      status: "pending_payment",
+      status: "success",
       // No meta.deferred — the payment could not be initiated.
       data: {
+        status: "pending_payment",
         id: "ref-001",
         submittedAt: "2026-05-22T00:00:00Z",
         formId: "test-form",
@@ -434,17 +454,60 @@ describe("RouteComponent onSubmit handler", () => {
     ).toBeUndefined();
   });
 
-  it("handles 'failed' status without throwing", async () => {
+  it("commits an error state and tracks server error on 'failed' status", async () => {
     const onSubmit = renderAndExtractOnSubmit();
     (postFormSubmission as jest.Mock).mockResolvedValue({
-      status: "failed",
+      status: "success",
       data: {
+        status: "failed",
         id: "ref-001",
         submittedAt: "2026-05-22T00:00:00Z",
         formId: "test-form",
       },
     });
-    await expect(onSubmit({ value: {} })).resolves.not.toThrow();
+    await act(async () => {
+      await onSubmit({ value: {} });
+    });
+    const committed = mockFormRendererProps.current.submissionState;
+    expect(committed).toEqual(
+      expect.objectContaining({
+        displayStatus: "error",
+        submissionSuccess: false,
+        referenceNumber: "ref-001",
+      }),
+    );
+    expect(committed.errorMessage).toEqual(expect.any(String));
+    expect(committed.errorMessage.length).toBeGreaterThan(0);
+    expect(mockTrackEvent).toHaveBeenCalledWith("form-submit-error", {
+      form_id: "test-form",
+      reason: "server",
+    });
+  });
+
+  it("commits an error state on 'error' lifecycle status", async () => {
+    const onSubmit = renderAndExtractOnSubmit();
+    (postFormSubmission as jest.Mock).mockResolvedValue({
+      status: "success",
+      data: {
+        status: "error",
+        id: "ref-001",
+        submittedAt: "2026-05-22T00:00:00Z",
+        formId: "test-form",
+      },
+    });
+    await act(async () => {
+      await onSubmit({ value: {} });
+    });
+    const committed = mockFormRendererProps.current.submissionState;
+    expect(committed).toEqual(
+      expect.objectContaining({
+        displayStatus: "error",
+        submissionSuccess: false,
+        referenceNumber: "ref-001",
+      }),
+    );
+    expect(committed.errorMessage).toEqual(expect.any(String));
+    expect(committed.errorMessage.length).toBeGreaterThan(0);
   });
 
   it("calls formatDataForSubmission before postFormSubmission", async () => {
@@ -454,8 +517,9 @@ describe("RouteComponent onSubmit handler", () => {
       step1: { name: "test" },
     });
     (postFormSubmission as jest.Mock).mockResolvedValue({
-      status: "submitted",
+      status: "success",
       data: {
+        status: "submitted",
         id: "ref-001",
         submittedAt: "2026-05-22T00:00:00Z",
         formId: "test-form",
@@ -465,20 +529,30 @@ describe("RouteComponent onSubmit handler", () => {
     expect(formatDataForSubmission).toHaveBeenCalled();
   });
 
-  it("does NOT trackEvent on 'processing' status (no-op branch)", async () => {
+  it("commits a processing state without analytics on 'processing' status", async () => {
     const onSubmit = renderAndExtractOnSubmit();
     (postFormSubmission as jest.Mock).mockResolvedValue({
-      status: "processing",
+      status: "success",
       data: {
+        status: "processing",
         id: "ref-001",
         submittedAt: "2026-05-22T00:00:00Z",
         formId: "test-form",
       },
     });
-    await onSubmit({ value: {} });
-    // The 'processing' branch in index.tsx is a `break;` — no analytics
-    // should fire. Asserting absence pins the no-op so a future change
-    // that adds side-effects has to update this test.
+    await act(async () => {
+      await onSubmit({ value: {} });
+    });
+    // 'processing' now commits a processing display state so the confirmation
+    // step can render the in-flight UI...
+    expect(mockFormRendererProps.current.submissionState).toEqual(
+      expect.objectContaining({
+        displayStatus: "processing",
+        submissionSuccess: false,
+        referenceNumber: "ref-001",
+      }),
+    );
+    // ...but it fires NO analytics (neither success nor error).
     expect(mockTrackEvent).not.toHaveBeenCalledWith(
       "form-submit-success",
       expect.anything(),
@@ -492,8 +566,9 @@ describe("RouteComponent onSubmit handler", () => {
   it("does NOT trackEvent on 'draft' status (no-op branch)", async () => {
     const onSubmit = renderAndExtractOnSubmit();
     (postFormSubmission as jest.Mock).mockResolvedValue({
-      status: "draft",
+      status: "success",
       data: {
+        status: "draft",
         id: "ref-001",
         submittedAt: "2026-05-22T00:00:00Z",
         formId: "test-form",
@@ -508,13 +583,17 @@ describe("RouteComponent onSubmit handler", () => {
       "form-submit-error",
       expect.anything(),
     );
+    // 'draft' is a deliberate no-op (drafts come from the /form-drafts flow),
+    // so no submission state is committed.
+    expect(mockFormRendererProps.current.submissionState).toBeUndefined();
   });
 
   it("handles unknown/default status without throwing", async () => {
     const onSubmit = renderAndExtractOnSubmit();
     (postFormSubmission as jest.Mock).mockResolvedValue({
-      status: "completely-unknown",
+      status: "success",
       data: {
+        status: "completely-unknown",
         id: "ref-001",
         submittedAt: "2026-05-22T00:00:00Z",
         formId: "test-form",
@@ -526,11 +605,13 @@ describe("RouteComponent onSubmit handler", () => {
   it("tracks form-submit-error with reason 'network' when postFormSubmission rejects", async () => {
     const onSubmit = renderAndExtractOnSubmit();
     (postFormSubmission as jest.Mock).mockRejectedValue(
-      new Error("network failure"),
+      new FormFetchError("unreachable", 0),
     );
-    await expect(onSubmit({ value: {} })).resolves.not.toThrow();
-    // Verify the catch block fires the analytics event AND short-circuits
-    // before any setSubmissionState/success tracking can happen.
+    await act(async () => {
+      await onSubmit({ value: {} });
+    });
+    // status 0 → genuine network failure → reason "network". The catch block
+    // fires the analytics event AND short-circuits before any success tracking.
     expect(mockTrackEvent).toHaveBeenCalledWith("form-submit-error", {
       form_id: "test-form",
       reason: "network",
@@ -539,6 +620,32 @@ describe("RouteComponent onSubmit handler", () => {
       "form-submit-success",
       expect.anything(),
     );
+  });
+
+  it("commits a generic error state with reason 'server' when postFormSubmission throws a server FormFetchError", async () => {
+    const onSubmit = renderAndExtractOnSubmit();
+    (postFormSubmission as jest.Mock).mockRejectedValue(
+      new FormFetchError("boom", 500),
+    );
+    await act(async () => {
+      await onSubmit({ value: {} });
+    });
+    // A non-zero status is a server/HTTP/bad-body error → reason "server".
+    expect(mockTrackEvent).toHaveBeenCalledWith("form-submit-error", {
+      form_id: "test-form",
+      reason: "server",
+    });
+    const committed = mockFormRendererProps.current.submissionState;
+    expect(committed).toEqual(
+      expect.objectContaining({
+        displayStatus: "error",
+        submissionSuccess: false,
+      }),
+    );
+    // This error is raised before any reference was issued.
+    expect(committed.referenceNumber).toBeUndefined();
+    expect(committed.errorMessage).toEqual(expect.any(String));
+    expect(committed.errorMessage.length).toBeGreaterThan(0);
   });
 
   it("filters hidden and conditionally-hidden fields before submission", async () => {
@@ -588,8 +695,9 @@ describe("RouteComponent onSubmit handler", () => {
     mockGetVisibleSteps.mockReturnValue([stepWithHiddenFields]);
     const onSubmit = renderAndExtractOnSubmit();
     (postFormSubmission as jest.Mock).mockResolvedValue({
-      status: "submitted",
+      status: "success",
       data: {
+        status: "submitted",
         id: "ref-001",
         submittedAt: "2026-05-22T00:00:00Z",
         formId: "test-form",
