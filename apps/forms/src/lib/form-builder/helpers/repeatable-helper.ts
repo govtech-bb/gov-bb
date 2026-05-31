@@ -56,8 +56,13 @@ export const setupRepeatSteps = (
       step.stepId,
     );
 
-    if (repeatBehaviour.min) {
-      // Update source step:
+    const hasSharedFields = sharedFieldsIds.length > 0;
+
+    if (repeatBehaviour.min && hasSharedFields) {
+      // Shared-fields steps: the source step is a separate "shared values" page
+      // (it holds the shared fields, filled once) and the minimum repeat
+      // instances are materialised as ~1..~min. The "Add another?" control sits
+      // on the last generated instance.
       updatedSteps[i] = {
         ...step,
         fields: sourceFields,
@@ -94,6 +99,52 @@ export const setupRepeatSteps = (
           stepId: nextStepId,
         };
         updatedSteps.splice(i + repeatStepCount, 0, nextStep);
+        repeatConfig.orderedStepIds.push(nextStepId);
+      }
+    } else if (repeatBehaviour.min) {
+      // No shared fields: the source step IS the first instance. Render
+      // max(min, 1) instances total (so min=1 shows a single instance, not a
+      // duplicate pair) and put the "Add another?" control on the last one
+      // when the user can still add more.
+      const totalInstances = repeatBehaviour.min;
+      const canAddMore = totalInstances < repeatBehaviour.max;
+
+      updatedSteps[i] = {
+        ...step,
+        fields:
+          totalInstances === 1 && canAddMore
+            ? [...sourceFields, generateRepeatableAddAnotherField(step.stepId)]
+            : sourceFields,
+      };
+
+      for (let j = 1; j <= totalInstances - 1; j++) {
+        const nextStepId = getRepeatStepId(step.stepId, j);
+        let currentFields = structuredClone(step.fields);
+
+        // Need to ensure that each fieldConditionalOn in a repeatable behaviour has a `targetStepId`
+        currentFields = handleMissingTargetStepIds(
+          currentFields,
+          sharedFieldsIds,
+          nextStepId,
+        );
+
+        const nextStepFields = generateRepeatStepFields(
+          currentFields,
+          nextStepId,
+          undefined,
+          sharedBehaviour,
+        );
+
+        if (j === totalInstances - 1 && canAddMore) {
+          nextStepFields.push(generateRepeatableAddAnotherField(nextStepId));
+        }
+
+        const nextStep: ClientFormStep = {
+          ...step,
+          fields: nextStepFields,
+          stepId: nextStepId,
+        };
+        updatedSteps.splice(i + j, 0, nextStep);
         repeatConfig.orderedStepIds.push(nextStepId);
       }
     } else {

@@ -169,6 +169,25 @@ describe("hydrateForm", () => {
     expect(result.version).toBe("1.0.0");
     expect(result.createdAt).toBe("2026-01-01T00:00:00");
   });
+
+  it("carries contactDetails through to the served contract (issue #452 dead-feature fix)", async () => {
+    const contactDetails = {
+      title: "Ministry of Health",
+      telephoneNumber: "+1 246 555 0100",
+      email: "health@gov.bb",
+      address: { line1: "Jemmotts Lane", city: "Bridgetown" },
+    };
+    const result = await hydrateForm(
+      { ...baseRecipe, contactDetails },
+      resolver,
+    );
+    expect(result.contactDetails).toEqual(contactDetails);
+  });
+
+  it("leaves contactDetails undefined when the recipe has none", async () => {
+    const result = await hydrateForm(baseRecipe, resolver);
+    expect(result.contactDetails).toBeUndefined();
+  });
 });
 
 // ─── RegistryService ───────────────────────────────────────────────────────

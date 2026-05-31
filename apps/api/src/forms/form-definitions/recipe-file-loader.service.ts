@@ -3,8 +3,10 @@ import {
   Logger,
   Optional,
   type OnModuleInit,
+  type OnModuleDestroy,
 } from "@nestjs/common";
 import * as fs from "node:fs/promises";
+import { watch, type FSWatcher } from "node:fs";
 import * as path from "node:path";
 import {
   serviceContractRecipeSchema,
@@ -54,12 +56,22 @@ export function compareSemver(a: string, b: string): number {
   return 0;
 }
 
+// Debounce window for coalescing the burst of fs events a single recipe
+// edit produces (the nx asset watcher re-copies the file, which fires
+// multiple change events) into one reload.
+const WATCH_DEBOUNCE_MS = 250;
+
 @Injectable()
-export class RecipeFileLoaderService implements OnModuleInit {
+export class RecipeFileLoaderService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(RecipeFileLoaderService.name);
   private readonly recipesRoot: string;
   // formId → version → recipe
   private store = new Map<string, Map<string, ServiceContractRecipe>>();
+
+  // Dev-only hot-reload watcher (see startWatching). Undefined outside
+  // development or if the watch fails to attach.
+  private watcher?: FSWatcher;
+  private reloadTimer?: NodeJS.Timeout;
 
   // `@Optional()` tells NestJS DI to inject `undefined` when no provider is
   // registered for the string parameter. Tests bypass DI and pass a root
@@ -70,6 +82,69 @@ export class RecipeFileLoaderService implements OnModuleInit {
 
   async onModuleInit(): Promise<void> {
     await this.loadAll();
+    this.startWatching();
+  }
+
+  onModuleDestroy(): void {
+    if (this.reloadTimer) clearTimeout(this.reloadTimer);
+    this.watcher?.close();
+    this.watcher = undefined;
+  }
+
+  /**
+   * In development, watch the recipes directory and re-run `loadAll()` when a
+   * recipe file changes, so edits are picked up without restarting the API.
+   *
+   * `loadAll` reads from `recipesRoot`, which in `nx run api:dev` is the
+   * compiled `dist/.../recipes` tree. With the nx daemon enabled (the local
+   * default), `@nx/js:tsc`'s asset watcher re-copies edited `src` recipes into
+   * that tree — this watcher then reloads them. The running process otherwise
+   * only reads recipes once at boot, so without this you must restart the API
+   * to see recipe changes.
+   *
+   * Gated to NODE_ENV=development (matching FormDefinitionsService's dev-only
+   * escape hatches) so production never attaches a filesystem watcher.
+   */
+  private startWatching(): void {
+    if (process.env.NODE_ENV !== "development") return;
+
+    try {
+      this.watcher = watch(
+        this.recipesRoot,
+        { recursive: true },
+        (_event, filename) => {
+          this.handleWatchEvent(typeof filename === "string" ? filename : null);
+        },
+      );
+      this.logger.log(`Watching ${this.recipesRoot} for recipe changes`);
+    } catch (err) {
+      // A missing directory or platform without recursive watch support is
+      // non-fatal — the loader still serves the recipes read at boot.
+      this.logger.warn(
+        `Could not watch recipes directory ${this.recipesRoot}: ${(err as Error).message}`,
+      );
+    }
+  }
+
+  /**
+   * Filter watch events down to recipe files, then debounce a reload. Split
+   * out from the watch callback so the filtering is unit-testable.
+   */
+  private handleWatchEvent(filename: string | null): void {
+    if (filename && !filename.endsWith(".json")) return;
+    this.scheduleReload();
+  }
+
+  private scheduleReload(): void {
+    if (this.reloadTimer) clearTimeout(this.reloadTimer);
+    this.reloadTimer = setTimeout(() => {
+      this.reloadTimer = undefined;
+      this.loadAll().catch((err) =>
+        this.logger.error(
+          `Recipe hot-reload failed: ${(err as Error).message}`,
+        ),
+      );
+    }, WATCH_DEBOUNCE_MS);
   }
 
   async loadAll(): Promise<void> {
@@ -162,12 +237,32 @@ export class RecipeFileLoaderService implements OnModuleInit {
     );
   }
 
-  findAll(): { formId: string; title: string; version: string }[] {
-    const out: { formId: string; title: string; version: string }[] = [];
+  findAll(): {
+    formId: string;
+    title: string;
+    version: string;
+    category?: string;
+  }[] {
+    const out: {
+      formId: string;
+      title: string;
+      version: string;
+      category?: string;
+    }[] = [];
     for (const [formId, versions] of this.store) {
       const latest = this.latestVersion(versions);
       if (latest)
-        out.push({ formId, title: latest.title, version: latest.version });
+        out.push({
+          formId,
+          title: latest.title,
+          version: latest.version,
+          // Category is the contact-details title (e.g. the owning
+          // ministry/department). Omitted when the recipe has no
+          // contactDetails so the landing page can fall back to "Unknown".
+          ...(latest.contactDetails?.title && {
+            category: latest.contactDetails.title,
+          }),
+        });
     }
     return out;
   }

@@ -2,9 +2,18 @@
   "formId": "statement-of-travelling-form",
   "title": "Statement of Travelling Form",
   "version": "1.1.0",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "subject": "Your Statement of Travelling submission has been received",
+        "recipientField": "applicant-info.email"
+      }
+    }
+  ],
   "steps": [
     {
-      "stepId": "step-1-personal-information",
+      "stepId": "applicant-info",
       "title": "Personal Information",
       "elements": [
         {
@@ -39,7 +48,7 @@
       "behaviours": []
     },
     {
-      "stepId": "step-2-travel-certification",
+      "stepId": "travel-certification",
       "title": "Travel Certification",
       "elements": [
         {
@@ -69,47 +78,60 @@
       "behaviours": []
     },
     {
-      "stepId": "step-3-travel-details",
+      "stepId": "travel-details",
       "title": "Travel Details",
+      "description": "Add a row for each day of travel.",
       "elements": [
         {
-          "ref": "components/generic/table",
+          "ref": "components/generic-text",
           "overrides": {
-            "label": "Travel Details",
-            "columns": [
-              {
-                "key": "day",
-                "label": "DAY"
-              },
-              {
-                "key": "distanceTravelled",
-                "label": "Distance Travelled"
-              },
-              {
-                "key": "particulars",
-                "label": "PARTICULARS"
-              },
-              {
-                "key": "numPassengers",
-                "label": "No. of Passengers"
-              }
-            ],
-            "fieldId": "travelDetailsTable"
+            "label": "DAY",
+            "fieldId": "day"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Distance Travelled",
+            "fieldId": "distanceTravelled"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "PARTICULARS",
+            "fieldId": "particulars",
+            "multiline": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "No. of Passengers",
+            "fieldId": "numPassengers"
           }
         }
       ],
-      "behaviours": []
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 1,
+          "max": 31
+        }
+      ]
     },
     {
-      "stepId": "step-4-travel-rates",
+      "stepId": "travel-rates",
       "title": "Travel Rates & Calculations",
       "elements": [
         {
-          "ref": "components/generic/display",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Travel Rates",
-            "content": "FIRST 320 KM OR LESS: $2.56 PER KM\nREMAINDER OVER 320 KM: $1.03 PER KM\nPASSENGER RATE: # OF PASSENGERS * $0.11 PER KM",
-            "fieldId": "travelRatesInfo"
+            "value": "FIRST 320 KM OR LESS: $2.56 PER KM\nREMAINDER OVER 320 KM: $1.03 PER KM\nPASSENGER RATE: # OF PASSENGERS * $0.11 PER KM",
+            "fieldId": "travelRatesInfo",
+            "multiline": true,
+            "readonly": true
           }
         },
         {
@@ -156,7 +178,7 @@
       "behaviours": []
     },
     {
-      "stepId": "step-5-certifications",
+      "stepId": "certifications",
       "title": "Certifications",
       "elements": [
         {
@@ -186,7 +208,7 @@
       "behaviours": []
     },
     {
-      "stepId": "step-6-official-examination",
+      "stepId": "official-examination",
       "title": "Official Use - Examination Section",
       "elements": [
         {
@@ -217,7 +239,7 @@
       "behaviours": []
     },
     {
-      "stepId": "step-7-dps-approval",
+      "stepId": "dps-approval",
       "title": "DPS Approval",
       "elements": [
         {
@@ -240,7 +262,7 @@
       "behaviours": []
     },
     {
-      "stepId": "step-8-processing-officer",
+      "stepId": "processing-officer",
       "title": "Processing Officer",
       "elements": [
         {
@@ -263,15 +285,17 @@
       "behaviours": []
     },
     {
-      "stepId": "step-9-school-reference",
+      "stepId": "school-reference",
       "title": "School Distance Reference",
       "elements": [
         {
-          "ref": "components/generic/display",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "School Distances by Parish",
-            "content": "Reference table for distances to various schools by parish - see form pages 3-5 for complete listing",
-            "fieldId": "schoolReferenceInfo"
+            "value": "Reference table for distances to various schools by parish - see form pages 3-5 for complete listing",
+            "fieldId": "schoolReferenceInfo",
+            "multiline": true,
+            "readonly": true
           }
         }
       ],

@@ -14,7 +14,7 @@
  */
 
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, act } from "@testing-library/react";
 
 jest.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (routeConfig: any) => ({
@@ -37,8 +37,15 @@ jest.mock("@forms/lib", () => ({
   formMetaQueryOptions: jest.fn(() => ({ queryKey: ["form-meta"] })),
 }));
 
+// Captures the props FormRenderer is last rendered with so tests can assert
+// the submissionState the route handler commits. Must be `mock`-prefixed so
+// jest's hoisted factory may reference it.
+const mockFormRendererProps: { current: any } = { current: undefined };
 jest.mock("@forms/components", () => ({
-  FormRenderer: () => <div data-testid="form-renderer" />,
+  FormRenderer: (props: any) => {
+    mockFormRendererProps.current = props;
+    return <div data-testid="form-renderer" />;
+  },
   FormError: () => <div data-testid="form-error" />,
 }));
 
@@ -394,6 +401,37 @@ describe("RouteComponent onSubmit handler", () => {
       },
     });
     await expect(onSubmit({ value: {} })).resolves.not.toThrow();
+  });
+
+  it("commits a payment-init error state on 'pending_payment' without deferred meta", async () => {
+    const onSubmit = renderAndExtractOnSubmit();
+    (postFormSubmission as jest.Mock).mockResolvedValue({
+      status: "pending_payment",
+      // No meta.deferred — the payment could not be initiated.
+      data: {
+        id: "ref-001",
+        submittedAt: "2026-05-22T00:00:00Z",
+        formId: "test-form",
+      },
+    });
+    await act(async () => {
+      await onSubmit({ value: {} });
+    });
+    // State must be committed (not left undefined) so the confirmation step
+    // can render the "Payment could not be initiated" block with the reference
+    // number, rather than being redirected away.
+    expect(mockFormRendererProps.current.submissionState).toEqual(
+      expect.objectContaining({
+        hasPayment: true,
+        submissionSuccess: true,
+        referenceNumber: "ref-001",
+      }),
+    );
+    // No paymentUrl — that is what makes the component show the error block
+    // (isSafePaymentUrl(undefined) is false).
+    expect(
+      mockFormRendererProps.current.submissionState.paymentUrl,
+    ).toBeUndefined();
   });
 
   it("handles 'failed' status without throwing", async () => {

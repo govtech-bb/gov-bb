@@ -3,7 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useReducer, useState, useRef, useEffect, useMemo } from "react";
 import { getCatalogFn } from "../../../server/registry";
 import { submitRecipe, updateRecipe, deleteForm, getRecipe } from "../../../server/forms";
-import { publishRecipe } from "../../../server/publish";
+import { publishRecipe, getPublishBaseBranch } from "../../../server/publish";
 import { validateRecipe, previewRecipe } from "../../../server/registry";
 import { serializeRecipeDraft, findRecipeIdCollisions, formatCollisionIssues, resolveFieldIds } from "@govtech-bb/form-builder";
 import { bumpMinor, bumpPatch } from "../../../lib/version";
@@ -16,6 +16,7 @@ import { Toolbar } from "./-toolbar";
 import { StepList } from "./-step-list";
 import { StepEditor } from "./-step-editor";
 import { ProcessorsEditor } from "./-processors-editor";
+import { ContactDetailsEditor } from "./-contact-details-editor";
 import { ValidationPanel } from "./-validation-panel";
 import { PreviewModal } from "./-preview-modal";
 import { formPreviewUrl } from "../../../lib/form-url";
@@ -30,19 +31,24 @@ import styles from "../../../styles/builder.module.css";
 
 export const Route = createFileRoute("/builder/ui/")({
   validateSearch: parseBuilderSearch,
-  // Only the catalog is awaited here — it's needed for the first render
-  // (StepEditor, the duplicate-ID memo) and is cheap thanks to its 60s server
-  // cache. The forms list is a slow, uncached GitHub-API waterfall consumed only
-  // by the Open picker, so it's fetched off the critical path via useFormsList.
+  // The catalog is needed for the first render (StepEditor, the duplicate-ID
+  // memo) and is cheap thanks to its 60s server cache. The base branch is a
+  // tiny env-var read resolved server-side (it can't be read from the client
+  // bundle), so it rides along here. The forms list is a slow, uncached
+  // GitHub-API waterfall consumed only by the Open picker, so it stays off the
+  // critical path via useFormsList.
   loader: async () => {
-    const catalog = await getCatalogFn();
-    return { catalog };
+    const [catalog, baseBranch] = await Promise.all([
+      getCatalogFn(),
+      getPublishBaseBranch(),
+    ]);
+    return { catalog, baseBranch };
   },
   component: BuilderPage,
 });
 
 function BuilderPage() {
-  const { catalog } = Route.useLoaderData();
+  const { catalog, baseBranch } = Route.useLoaderData();
   const { forms, loadError: formsLoadError, refetch: refetchForms } = useFormsList();
   const { formId: openFormId } = Route.useSearch();
   const navigate = useNavigate();
@@ -50,9 +56,12 @@ function BuilderPage() {
 
   // UI state
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
-  // Which view the main area shows. Processors are form-scoped, so they get a
-  // sibling view to the per-step editor rather than living inside a step.
-  const [mainView, setMainView] = useState<"step" | "processors">("step");
+  // Which view the main area shows. Processors and contact details are
+  // form-scoped, so they each get a sibling view to the per-step editor rather
+  // than living inside a step.
+  const [mainView, setMainView] = useState<
+    "step" | "processors" | "contactDetails"
+  >("step");
   const [version, setVersion] = useState("1.0.0");
   const [currentVersion, setCurrentVersion] = useState<string | null>(null);
   const [loadedFromId, setLoadedFromId] = useState<string | null>(null);
@@ -418,6 +427,10 @@ function BuilderPage() {
     setMainView("processors");
   };
 
+  const handleSelectContactDetails = () => {
+    setMainView("contactDetails");
+  };
+
   const handleAddStep = () => {
     const stepId = nextStepId(draft.steps);
     dispatch({ type: "ADD_STEP" });
@@ -483,9 +496,14 @@ function BuilderPage() {
           processorCount={draft.processors?.length ?? 0}
           isProcessorsActive={mainView === "processors"}
           onSelectProcessors={handleSelectProcessors}
+          hasContactDetails={draft.contactDetails !== undefined}
+          isContactDetailsActive={mainView === "contactDetails"}
+          onSelectContactDetails={handleSelectContactDetails}
         />
 
-        {mainView === "processors" ? (
+        {mainView === "contactDetails" ? (
+          <ContactDetailsEditor draft={draft} dispatch={dispatch} />
+        ) : mainView === "processors" ? (
           <ProcessorsEditor
             draft={draft}
             dispatch={dispatch}
@@ -570,6 +588,7 @@ function BuilderPage() {
         <PublishModal
           draft={draft}
           version={deployVersion}
+          baseBranch={baseBranch}
           isPublishing={isPublishing}
           publishSuccess={publishSuccess}
           publishError={publishError}

@@ -14,7 +14,7 @@ import type { RecipeDraft, RegistryCatalog } from "@govtech-bb/form-builder";
 jest.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (config: Record<string, unknown>) => ({
     ...config,
-    useLoaderData: () => ({ catalog: CATALOG }),
+    useLoaderData: () => ({ catalog: CATALOG, baseBranch: "dev" }),
     useSearch: () => ({}),
   }),
   useNavigate: () => jest.fn(),
@@ -35,7 +35,10 @@ jest.mock("../../../server/forms", () => ({
   deleteForm: jest.fn(),
   getRecipe: jest.fn(),
 }));
-jest.mock("../../../server/publish", () => ({ publishRecipe: jest.fn() }));
+jest.mock("../../../server/publish", () => ({
+  publishRecipe: jest.fn(),
+  getPublishBaseBranch: jest.fn(),
+}));
 
 // The Open picker's forms list is a slow GitHub-API waterfall; stub it out.
 jest.mock("./-use-forms-list", () => ({

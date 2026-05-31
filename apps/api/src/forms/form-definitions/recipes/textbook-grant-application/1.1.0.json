@@ -2,9 +2,18 @@
   "formId": "textbook-grant-application",
   "title": "Application for $100 Textbook Grant",
   "version": "1.1.0",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "subject": "Your $100 Textbook Grant application has been received",
+        "recipientField": "applicant-info.email"
+      }
+    }
+  ],
   "steps": [
     {
-      "stepId": "step-1-parent-guardian",
+      "stepId": "applicant-info",
       "title": "Parent/Guardian Information",
       "elements": [
         {
@@ -12,8 +21,17 @@
           "overrides": {
             "label": "Title",
             "fieldId": "title",
-            "required": true,
-            "placeholder": "---"
+            "placeholder": "---",
+            "validations": {
+              "required": {
+                "error": "Title is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Title must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -21,7 +39,16 @@
           "overrides": {
             "label": "First Name",
             "fieldId": "firstName",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "First Name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "First Name must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -29,7 +56,16 @@
           "overrides": {
             "label": "Last Name",
             "fieldId": "lastName",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Last Name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Last Name must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -44,7 +80,16 @@
           "overrides": {
             "label": "ID Number",
             "fieldId": "idNumber",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "ID Number is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "ID Number must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -59,7 +104,16 @@
           "overrides": {
             "label": "Cell Phone",
             "fieldId": "cellPhone",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Cell Phone is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Cell Phone must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -75,7 +129,12 @@
             "type": "email",
             "label": "Email",
             "fieldId": "email",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Email is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -83,7 +142,16 @@
           "overrides": {
             "label": "Address",
             "fieldId": "address",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Address is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Address must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -91,7 +159,16 @@
           "overrides": {
             "label": "Parish",
             "fieldId": "parish",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Parish is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Parish must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -105,7 +182,7 @@
       "behaviours": []
     },
     {
-      "stepId": "step-2-banking",
+      "stepId": "banking-information",
       "title": "Banking Information",
       "elements": [
         {
@@ -113,8 +190,17 @@
           "overrides": {
             "label": "Bank/Branch",
             "fieldId": "bankBranch",
-            "required": true,
-            "helperText": "In order to receive the $100 Grant, please provide accurate and current banking information to prevent delays in processing this application."
+            "helperText": "In order to receive the $100 Grant, please provide accurate and current banking information to prevent delays in processing this application.",
+            "validations": {
+              "required": {
+                "error": "Bank/Branch is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Bank/Branch must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -122,7 +208,16 @@
           "overrides": {
             "label": "Account No",
             "fieldId": "accountNo",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Account No is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Account No must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -130,7 +225,16 @@
           "overrides": {
             "label": "Account Type",
             "fieldId": "accountType",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Account Type is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Account Type must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -138,72 +242,132 @@
           "overrides": {
             "label": "Name on Acct",
             "fieldId": "nameOnAcct",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Name on Acct is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Name on Acct must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         }
       ],
       "behaviours": []
     },
     {
-      "stepId": "step-3-student-info",
+      "stepId": "student-information",
       "title": "Student Information",
+      "description": "This form allows a parent/guardian to claim for up to 5 children. If necessary, another claim can be submitted if there are additional children in the household. Please ensure that multiple claims are not submitted for the same child.",
       "elements": [
         {
-          "ref": "components/generic/table",
+          "ref": "components/generic-text",
           "overrides": {
-            "rows": 5,
-            "label": "Student Information",
-            "columns": [
+            "label": "Name",
+            "fieldId": "name",
+            "validations": {
+              "required": {
+                "error": "Name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Name must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "ID Number",
+            "fieldId": "idNumber",
+            "validations": {
+              "required": {
+                "error": "ID Number is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "ID Number must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-select",
+          "overrides": {
+            "label": "Gender",
+            "fieldId": "gender",
+            "options": [
               {
-                "key": "name",
-                "type": "text",
-                "label": "Name"
+                "label": "Male",
+                "value": "M"
               },
               {
-                "key": "idNumber",
-                "type": "text",
-                "label": "ID Number"
+                "label": "Female",
+                "value": "F"
               },
               {
-                "key": "gender",
-                "type": "select",
-                "label": "Gender",
-                "options": [
-                  {
-                    "label": "Male",
-                    "value": "M"
-                  },
-                  {
-                    "label": "Female",
-                    "value": "F"
-                  },
-                  {
-                    "label": "Other",
-                    "value": "O"
-                  }
-                ]
-              },
-              {
-                "key": "class",
-                "type": "text",
-                "label": "Class"
-              },
-              {
-                "key": "relation",
-                "type": "text",
-                "label": "Relation"
+                "label": "Other",
+                "value": "O"
               }
             ],
-            "fieldId": "studentTable",
-            "required": true,
-            "helperText": "This form allows a parent/guardian to claim for up to 5 children. If necessary, another claim can be submitted if there are additional children in the household. Please ensure that multiple claims are not submitted for the same child."
+            "validations": {
+              "required": {
+                "error": "Gender is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Class",
+            "fieldId": "class",
+            "validations": {
+              "required": {
+                "error": "Class is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Class must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Relation",
+            "fieldId": "relation",
+            "validations": {
+              "required": {
+                "error": "Relation is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Relation must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         }
       ],
-      "behaviours": []
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 1,
+          "max": 5
+        }
+      ]
     },
     {
-      "stepId": "step-4-declaration",
+      "stepId": "declaration-and-signature",
       "title": "Declaration and Signature",
       "elements": [
         {
@@ -211,8 +375,17 @@
           "overrides": {
             "label": "I, hereby submit a claim for",
             "fieldId": "declaration",
-            "required": true,
-            "placeholder": "child/children"
+            "placeholder": "child/children",
+            "validations": {
+              "required": {
+                "error": "I, hereby submit a claim for is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "I, hereby submit a claim for must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -220,7 +393,16 @@
           "overrides": {
             "label": "Signature of Parent/Guardian",
             "fieldId": "parentSignature",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Signature of Parent/Guardian is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Signature of Parent/Guardian must be at least 2 characters",
+                "value": 2
+              }
+            }
           }
         },
         {
@@ -229,14 +411,19 @@
             "type": "date",
             "label": "Date",
             "fieldId": "parentDate",
-            "required": true
+            "validations": {
+              "required": {
+                "error": "Date is required",
+                "value": true
+              }
+            }
           }
         }
       ],
       "behaviours": []
     },
     {
-      "stepId": "step-5-official-use",
+      "stepId": "official-use",
       "title": "For Official Use Only",
       "elements": [
         {

@@ -1,6 +1,7 @@
 export type { RequiredState } from "./validation-methods";
 export { fetchContract } from "./form-fetcher";
 export { buildForm } from "./build-form";
+export { buildFieldValidationProperties } from "./validation-builder";
 export {
   getFullFieldId,
   stepFieldIdConcactenator,
