@@ -975,4 +975,37 @@ describe("FormDefinitionsService.findAll", () => {
       { formId: "form-c", title: "Form C", version: "1.0.0" },
     ]);
   });
+
+  it("surfaces contactDetails.title as the category", async () => {
+    const entities = [
+      makeEntityWithTitle("passport-renewal", "Passport Renewal", {
+        schema: {
+          title: "Passport Renewal",
+          contactDetails: { title: "Immigration Department" },
+        } as unknown as ServiceContractRecipe,
+      }),
+    ];
+    const { service } = makeFindAllMocks(entities);
+
+    const result = await service.findAll();
+
+    expect(result).toEqual([
+      {
+        formId: "passport-renewal",
+        title: "Passport Renewal",
+        version: "1.0.0",
+        category: "Immigration Department",
+      },
+    ]);
+  });
+
+  it("omits category when the schema has no contactDetails", async () => {
+    const { service } = makeFindAllMocks([
+      makeEntityWithTitle("passport-renewal", "Passport Renewal"),
+    ]);
+
+    const result = await service.findAll();
+
+    expect(result[0]).not.toHaveProperty("category");
+  });
 });

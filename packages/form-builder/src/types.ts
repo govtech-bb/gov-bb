@@ -2,6 +2,7 @@ import type {
   FieldOverrides,
   Behaviour,
   Processor,
+  ContactDetails,
 } from "@govtech-bb/form-types";
 
 // Per-child field overrides for a block (keyed by child fieldId)
@@ -38,6 +39,10 @@ export interface RecipeDraft {
   formId: string;
   title: string;
   description?: string;
+  // Service "Contact Details" shown on the citizen-facing form (issue #452).
+  // A single optional structured object — no editor-only id, unlike processors.
+  // Round-tripped with the same `!== undefined` guard so absent stays distinct.
+  contactDetails?: ContactDetails;
   steps: RecipeStepDraft[];
   // Carried through with an editor-only id per entry (issue #255). Serializer
   // drops the id; deserialize mints a fresh one. Authoring UI: Session 2.

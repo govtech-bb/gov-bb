@@ -1,12 +1,43 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { axe } from "jest-axe";
 import FileUpload from "./file-upload";
-import type { FileUploadProps } from "@forms/types";
+import type { FileUploadProps, UploadedFile } from "@forms/types";
+
+// Mock the presigned-upload client so tests don't hit the network.
+jest.mock("../lib/api/files", () => {
+  class FileUploadError extends Error {
+    constructor(
+      message: string,
+      public readonly stage: string,
+    ) {
+      super(message);
+      this.name = "FileUploadError";
+    }
+  }
+  return { uploadFile: jest.fn(), FileUploadError };
+});
+import { uploadFile, FileUploadError } from "../lib/api/files";
+
+const mockUploadFile = uploadFile as jest.Mock;
 
 function makeFile(name: string, type: string, sizeBytes: number): File {
   return new File(["x".repeat(sizeBytes)], name, { type });
+}
+
+function makeUploaded(
+  name: string,
+  type = "application/pdf",
+  size = 100,
+): UploadedFile {
+  return {
+    key: `uploads/test/2026/05/00000000-0000-0000-0000-000000000000-${name}`,
+    name,
+    size,
+    type,
+    url: `https://preview.example/${name}`,
+  };
 }
 
 const baseField: FileUploadProps["field"] = {
@@ -52,7 +83,10 @@ function renderComponent(overrides: Partial<FileUploadProps> = {}) {
 }
 
 describe("FileUpload", () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockUploadFile.mockResolvedValue(makeUploaded("default.pdf"));
+  });
 
   it("renders a file input with the accept attribute from sharedProps", () => {
     const { fileInput } = renderComponent({
@@ -64,33 +98,109 @@ describe("FileUpload", () => {
     expect(fileInput.accept).toBe("image/png,image/jpeg");
   });
 
-  it("calls onFileChange with the selected file", async () => {
+  it("uploads the selected file and stores the confirmed reference (without url)", async () => {
     const user = userEvent.setup();
-    const { onFileChange, fileInput } = renderComponent();
+    mockUploadFile.mockResolvedValue(makeUploaded("report.pdf"));
+    const { onFileChange, fileInput } = renderComponent({ formId: "f1" });
 
     const file = makeFile("report.pdf", "application/pdf", 512);
     await user.upload(fileInput, file);
 
-    expect(onFileChange).toHaveBeenCalledTimes(1);
-    const calledWith = onFileChange.mock.calls[0][0] as File[];
+    await waitFor(() => expect(onFileChange).toHaveBeenCalled());
+    expect(mockUploadFile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fieldId: "doc-field",
+        stepId: "step-1",
+        formId: "f1",
+        file: expect.any(File),
+      }),
+    );
+    const calledWith = onFileChange.mock.calls.at(-1)?.[0] as UploadedFile[];
     expect(calledWith).toHaveLength(1);
     expect(calledWith[0].name).toBe("report.pdf");
+    // The expiring preview url is not stored in form state.
+    expect(calledWith[0].url).toBeUndefined();
+    expect(calledWith[0].key).toBeDefined();
   });
 
-  it("appends a newly selected file to existing files in the list", async () => {
+  it("appends a newly uploaded file to existing files in the list", async () => {
     const user = userEvent.setup();
-    const existingFile = makeFile("existing.png", "image/png", 100);
+    mockUploadFile.mockResolvedValue(
+      makeUploaded("new.jpg", "image/jpeg", 200),
+    );
     const { onFileChange, fileInput } = renderComponent({
-      value: [existingFile],
+      value: [makeUploaded("existing.png", "image/png", 100)],
     });
 
     const newFile = makeFile("new.jpg", "image/jpeg", 200);
     await user.upload(fileInput, newFile);
 
-    expect(onFileChange).toHaveBeenCalledTimes(1);
-    const calledWith = onFileChange.mock.calls[0][0] as File[];
-    expect(calledWith).toHaveLength(2);
+    await waitFor(() => expect(onFileChange).toHaveBeenCalled());
+    const calledWith = onFileChange.mock.calls.at(-1)?.[0] as UploadedFile[];
     expect(calledWith.map((f) => f.name)).toEqual(["existing.png", "new.jpg"]);
+  });
+
+  it("shows an uploading status while in progress, then the file when confirmed", async () => {
+    const user = userEvent.setup();
+    let resolveUpload: (f: UploadedFile) => void = () => {};
+    mockUploadFile.mockReturnValue(
+      new Promise<UploadedFile>((resolve) => {
+        resolveUpload = resolve;
+      }),
+    );
+
+    // Controlled wrapper: feed onFileChange back into value, like the real form,
+    // so the confirmed file renders once the upload resolves.
+    function Harness() {
+      const [value, setValue] = React.useState<UploadedFile[] | null>(null);
+      return (
+        <FileUpload
+          field={baseField}
+          sharedProps={baseSharedProps}
+          value={value}
+          onFileChange={setValue}
+        />
+      );
+    }
+    const { container } = render(<Harness />);
+    const fileInput = container.querySelector(
+      ".govbb-file-upload__input",
+    ) as HTMLInputElement;
+
+    await user.upload(fileInput, makeFile("slow.pdf", "application/pdf", 100));
+    expect(await screen.findByText(/uploading/i)).toBeInTheDocument();
+
+    resolveUpload(makeUploaded("slow.pdf"));
+    await waitFor(() =>
+      expect(screen.queryByText(/uploading/i)).not.toBeInTheDocument(),
+    );
+    expect(screen.getByText("slow.pdf")).toBeInTheDocument();
+  });
+
+  it("shows an error and does not store the file when the upload fails", async () => {
+    const user = userEvent.setup();
+    mockUploadFile.mockRejectedValue(
+      new FileUploadError("File upload failed (put). Please try again.", "put"),
+    );
+    const { onFileChange, fileInput } = renderComponent();
+
+    await user.upload(fileInput, makeFile("bad.pdf", "application/pdf", 100));
+
+    expect(await screen.findByText(/file upload failed/i)).toBeInTheDocument();
+    expect(onFileChange).not.toHaveBeenCalled();
+  });
+
+  it("rejects an oversize file client-side without calling the upload API", async () => {
+    const user = userEvent.setup();
+    const { onFileChange, fileInput } = renderComponent({
+      validationRules: { maxSize: { value: 1024 } }, // 1KB cap
+    });
+
+    await user.upload(fileInput, makeFile("huge.pdf", "application/pdf", 5000));
+
+    expect(await screen.findByText(/larger than/i)).toBeInTheDocument();
+    expect(mockUploadFile).not.toHaveBeenCalled();
+    expect(onFileChange).not.toHaveBeenCalled();
   });
 
   // MIME-type and size validation is external; component only renders the errorMessage prop.
@@ -116,8 +226,8 @@ describe("FileUpload", () => {
 
   it("calls onFileChange without the removed file when Remove is clicked", async () => {
     const user = userEvent.setup();
-    const fileA = makeFile("alpha.pdf", "application/pdf", 100);
-    const fileB = makeFile("beta.pdf", "application/pdf", 200);
+    const fileA = makeUploaded("alpha.pdf");
+    const fileB = makeUploaded("beta.pdf", "application/pdf", 200);
     const { onFileChange } = renderComponent({ value: [fileA, fileB] });
 
     expect(screen.getByText("alpha.pdf")).toBeInTheDocument();
@@ -127,15 +237,16 @@ describe("FileUpload", () => {
     await user.click(removeButtons[0]);
 
     expect(onFileChange).toHaveBeenCalledTimes(1);
-    const remaining = onFileChange.mock.calls[0][0] as File[];
+    const remaining = onFileChange.mock.calls[0][0] as UploadedFile[];
     expect(remaining).toHaveLength(1);
     expect(remaining[0].name).toBe("beta.pdf");
   });
 
   it("calls onFileChange with null when the only file is removed", async () => {
     const user = userEvent.setup();
-    const file = makeFile("only.pdf", "application/pdf", 100);
-    const { onFileChange } = renderComponent({ value: [file] });
+    const { onFileChange } = renderComponent({
+      value: [makeUploaded("only.pdf")],
+    });
 
     const removeButton = screen.getByRole("button", { name: /remove/i });
     await user.click(removeButton);
@@ -146,7 +257,7 @@ describe("FileUpload", () => {
   it("still renders the file input when files equal maxItems (enforcement is external)", () => {
     const maxItems = 3;
     const files = Array.from({ length: maxItems }, (_, i) =>
-      makeFile(`file-${i}.pdf`, "application/pdf", 100),
+      makeUploaded(`file-${i}.pdf`),
     );
     const { fileInput } = renderComponent({
       value: files,
@@ -161,9 +272,8 @@ describe("FileUpload", () => {
   });
 
   it("shows a minItems error when fewer files than required are selected", () => {
-    const file = makeFile("single.pdf", "application/pdf", 100);
     renderComponent({
-      value: [file],
+      value: [makeUploaded("single.pdf")],
       errorMessage: "Please attach at least 2 files.",
       field: {
         ...baseField,
@@ -189,6 +299,20 @@ describe("FileUpload", () => {
     });
     // Component formats: "Attach a png or jpeg file"
     expect(screen.getByText(/attach a png or jpeg file/i)).toBeInTheDocument();
+  });
+
+  it("renders extension-style file types verbatim (with leading dots)", () => {
+    renderComponent({
+      field: {
+        ...baseField,
+        validations: {
+          fileTypes: { value: [".pdf", ".docx", ".png"] },
+        },
+      },
+    });
+    expect(
+      screen.getByText(/attach a \.pdf, \.docx, or \.png file/i),
+    ).toBeInTheDocument();
   });
 
   it("renders fallback description when no fileTypes validation is set", () => {
@@ -222,8 +346,8 @@ describe("FileUpload", () => {
 
   it("passes axe accessibility audit with files listed", async () => {
     const files = [
-      makeFile("alpha.pdf", "application/pdf", 100),
-      makeFile("beta.png", "image/png", 200),
+      makeUploaded("alpha.pdf"),
+      makeUploaded("beta.png", "image/png", 200),
     ];
     const { container } = renderComponent({ value: files });
     const results = await axe(container);

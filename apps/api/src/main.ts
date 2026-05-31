@@ -21,9 +21,16 @@ async function bootstrap() {
   app.use(require("express").json({ limit: "1mb" }));
   const corsOrigin =
     config.get<string>("app.corsOrigin") ?? "http://localhost:3000";
-  const corsOrigins = corsOrigin.includes(",")
-    ? corsOrigin.split(",").map((o) => o.trim())
-    : corsOrigin;
+  const corsOrigins: (string | RegExp)[] = corsOrigin
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean)
+    .map((o) => {
+      // Support regex patterns wrapped in slashes: /\.amplifyapp\.com$/
+      const match = o.match(/^\/(.+)\/([gimsuy]*)$/);
+      if (match) return new RegExp(match[1], match[2]);
+      return o;
+    });
 
   // contentSecurityPolicy is disabled because the only HTML this API serves is
   // Swagger UI at /api-docs, which needs inline scripts/styles. CSP for the

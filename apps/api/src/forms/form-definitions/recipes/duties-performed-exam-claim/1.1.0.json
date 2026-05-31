@@ -2,9 +2,18 @@
   "formId": "duties-performed-exam-claim",
   "title": "Claim Form for Duties Performed During Examinations",
   "version": "1.1.0",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "subject": "Your Duties Performed Examination claim has been received",
+        "recipientField": "applicant-info.email"
+      }
+    }
+  ],
   "steps": [
     {
-      "stepId": "section-a",
+      "stepId": "applicant-info",
       "title": "Section A: Claimant Details",
       "elements": [
         {
@@ -114,43 +123,134 @@
       "title": "Section B: Duties Performed (Invigilators, Supervisors, Examination Assessors)",
       "elements": [
         {
-          "ref": "components/generic/table",
+          "ref": "components/generic-text",
           "overrides": {
-            "rows": 25,
-            "label": "Duties Record",
-            "columns": [
-              {
-                "id": "#",
-                "label": "#"
+            "label": "#",
+            "fieldId": "#",
+            "validations": {
+              "required": {
+                "error": "# is required",
+                "value": true
               },
-              {
-                "id": "date",
-                "label": "Date"
-              },
-              {
-                "id": "centre",
-                "label": "Centre"
-              },
-              {
-                "id": "role",
-                "label": "Role"
-              },
-              {
-                "id": "rate",
-                "label": "Rate"
-              },
-              {
-                "id": "overtimeHrs",
-                "label": "Overtime (Hrs)"
-              },
-              {
-                "id": "subtotal",
-                "label": "Subtotal"
+              "minLength": {
+                "error": "# must be at least 2 characters",
+                "value": 2
               }
-            ],
-            "fieldId": "dutyTable"
+            }
           }
         },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Date",
+            "fieldId": "date",
+            "type": "date",
+            "validations": {
+              "required": {
+                "error": "Date is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Centre",
+            "fieldId": "centre",
+            "validations": {
+              "required": {
+                "error": "Centre is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Centre must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Role",
+            "fieldId": "role",
+            "validations": {
+              "required": {
+                "error": "Role is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Role must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Rate",
+            "fieldId": "rate",
+            "validations": {
+              "required": {
+                "error": "Rate is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Rate must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Overtime (Hrs)",
+            "fieldId": "overtimeHrs",
+            "validations": {
+              "required": {
+                "error": "Overtime (Hrs) is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Overtime (Hrs) must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Subtotal",
+            "fieldId": "subtotal",
+            "validations": {
+              "required": {
+                "error": "Subtotal is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Subtotal must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 1,
+          "max": 25
+        }
+      ]
+    },
+    {
+      "stepId": "section-b-total",
+      "title": "Section B: Total",
+      "elements": [
         {
           "ref": "components/generic-number",
           "overrides": {
@@ -167,39 +267,117 @@
       "title": "Section C: Practical Examination Setup",
       "elements": [
         {
-          "ref": "components/generic/table",
+          "ref": "components/generic-text",
           "overrides": {
-            "rows": 7,
-            "label": "Practical Examination Setup Record",
-            "columns": [
-              {
-                "id": "date",
-                "label": "Date"
-              },
-              {
-                "id": "centre",
-                "label": "Centre"
-              },
-              {
-                "id": "subject",
-                "label": "Subject"
-              },
-              {
-                "id": "totalCandidates",
-                "label": "Total Candidates"
-              },
-              {
-                "id": "totalPersonnel",
-                "label": "Total Personnel"
-              },
-              {
-                "id": "subtotal",
-                "label": "Subtotal"
+            "label": "Date",
+            "fieldId": "date",
+            "type": "date",
+            "validations": {
+              "required": {
+                "error": "Date is required",
+                "value": true
               }
-            ],
-            "fieldId": "practicalExamTable"
+            }
           }
         },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Centre",
+            "fieldId": "centre",
+            "validations": {
+              "required": {
+                "error": "Centre is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Centre must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Subject",
+            "fieldId": "subject",
+            "validations": {
+              "required": {
+                "error": "Subject is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Subject must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Total Candidates",
+            "fieldId": "totalCandidates",
+            "validations": {
+              "required": {
+                "error": "Total Candidates is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Total Candidates must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Total Personnel",
+            "fieldId": "totalPersonnel",
+            "validations": {
+              "required": {
+                "error": "Total Personnel is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Total Personnel must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Subtotal",
+            "fieldId": "subtotal",
+            "validations": {
+              "required": {
+                "error": "Subtotal is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Subtotal must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 1,
+          "max": 7
+        }
+      ]
+    },
+    {
+      "stepId": "section-c-total",
+      "title": "Section C: Total",
+      "elements": [
         {
           "ref": "components/generic-number",
           "overrides": {
@@ -216,39 +394,117 @@
       "title": "Section D: Reader, Writer, Interpreter, Model, Moderator or Dictator Duties",
       "elements": [
         {
-          "ref": "components/generic/table",
+          "ref": "components/generic-text",
           "overrides": {
-            "rows": 10,
-            "label": "Special Duties Record",
-            "columns": [
-              {
-                "id": "date",
-                "label": "Date"
-              },
-              {
-                "id": "centre",
-                "label": "Centre"
-              },
-              {
-                "id": "subject",
-                "label": "Subject"
-              },
-              {
-                "id": "duties",
-                "label": "Duties"
-              },
-              {
-                "id": "noHoursPassages",
-                "label": "No of Hours / Passages"
-              },
-              {
-                "id": "subtotal",
-                "label": "Subtotal"
+            "label": "Date",
+            "fieldId": "date",
+            "type": "date",
+            "validations": {
+              "required": {
+                "error": "Date is required",
+                "value": true
               }
-            ],
-            "fieldId": "specialDutiesTable"
+            }
           }
         },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Centre",
+            "fieldId": "centre",
+            "validations": {
+              "required": {
+                "error": "Centre is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Centre must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Subject",
+            "fieldId": "subject",
+            "validations": {
+              "required": {
+                "error": "Subject is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Subject must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Duties",
+            "fieldId": "duties",
+            "validations": {
+              "required": {
+                "error": "Duties is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Duties must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "No of Hours / Passages",
+            "fieldId": "noHoursPassages",
+            "validations": {
+              "required": {
+                "error": "No of Hours / Passages is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "No of Hours / Passages must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Subtotal",
+            "fieldId": "subtotal",
+            "validations": {
+              "required": {
+                "error": "Subtotal is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Subtotal must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 1,
+          "max": 10
+        }
+      ]
+    },
+    {
+      "stepId": "section-d-total",
+      "title": "Section D: Total",
+      "elements": [
         {
           "ref": "components/generic-number",
           "overrides": {

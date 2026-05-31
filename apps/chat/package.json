@@ -6,7 +6,7 @@
     "#/*": "./src/*"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   },
   "scripts": {
     "dev": "vite dev --port 3000",
@@ -20,45 +20,45 @@
     "eval:sweep": "tsx --env-file-if-exists=.env.local --env-file-if-exists=.env eval/sweep.ts"
   },
   "dependencies": {
-    "@aws-sdk/client-bedrock-runtime": "^3.700.0",
-    "@fontsource/figtree": "^5.0.0",
+    "@aws-sdk/client-bedrock-runtime": "^3.1057.0",
+    "@fontsource/figtree": "^5.2.10",
     "@govtech-bb/ai-bedrock": "workspace:*",
     "@govtech-bb/content": "workspace:*",
-    "@govtech-bb/design": "^1.0.0-alpha.16",
+    "@govtech-bb/design": "1.0.0-alpha.16",
     "@govtech-bb/form-conditions": "workspace:*",
-    "@govtech-bb/react": "^1.0.0-alpha.14",
-    "@standard-schema/spec": "^1.1.0",
-    "@tailwindcss/vite": "^4.1.18",
-    "@tanstack/ai": "^0.20.1",
-    "@tanstack/ai-react": "^0.11.3",
-    "@tanstack/react-devtools": "^0.10.5",
-    "@tanstack/react-router": "^1.170.5",
-    "@tanstack/react-router-devtools": "^1.167.0",
-    "@tanstack/react-start": "^1.168.7",
-    "drizzle-orm": "^0.36.4",
-    "gray-matter": "^4.0.3",
+    "@govtech-bb/form-types": "workspace:*",
+    "@govtech-bb/react": "1.0.0-alpha.16",
+    "@tailwindcss/vite": "^4.3.0",
+    "@tanstack/ai": "^0.22.1",
+    "@tanstack/ai-react": "^0.12.1",
+    "@tanstack/react-router": "^1.170.9",
+    "@tanstack/react-start": "^1.168.16",
+    "@tanstack/react-virtual": "^3.13.26",
+    "drizzle-orm": "^0.45.2",
     "partial-json": "^0.1.7",
     "pg": "^8.21.0",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
-    "tailwindcss": "^4.1.18",
-    "zod": "^4.3.6"
+    "tailwindcss": "^4.3.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@tailwindcss/typography": "^0.5.16",
+    "@tailwindcss/typography": "^0.5.19",
     "@tanstack/devtools-vite": "^0.7.0",
-    "@types/node": "^22.10.2",
+    "@tanstack/react-devtools": "^0.10.5",
+    "@tanstack/react-router-devtools": "^1.167.0",
+    "@types/node": "^24.0.0",
     "@types/pg": "^8.20.0",
-    "@types/react": "^19.2.0",
-    "@types/react-dom": "^19.2.0",
-    "@vitejs/plugin-react": "^6.0.1",
+    "@types/react": "^19.2.15",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.2",
     "dotenv": "17.4.2",
-    "drizzle-kit": "^0.28.0",
+    "drizzle-kit": "^0.31.10",
     "nitro": "3.0.260429-beta",
-    "tsx": "^4.19.0",
-    "typescript": "^5.7.0",
-    "vite": "^8.0.0"
+    "tsx": "^4.22.3",
+    "typescript": "^5.9.3",
+    "vite": "^8.0.14"
   }
 }
