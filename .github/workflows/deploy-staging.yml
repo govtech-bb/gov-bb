@@ -42,17 +42,16 @@ env:
   ECS_CLUSTER: simple-service-builder-staging
   ECS_SERVICE: ssb-api-staging
 
-  # Smoke test URLs. Currently point at the auto-assigned ALB DNS / Amplify
-  # branch URLs (HTTP-only on ALB until PR-4 swaps the listener to HTTPS,
-  # and amplifyapp.com domains until PR-3 wires *.staging.alpha.gov.bb DNS).
-  # Update to friendly URLs once DNS lands.
-  API_SMOKE_URL: http://ssb-api-staging-2009642786.ca-central-1.elb.amazonaws.com/health
-  FORM_BUILDER_API_SMOKE_URL: http://ssb-api-staging-2009642786.ca-central-1.elb.amazonaws.com/builder/health
-  AMPLIFY_FORMS_URL: https://staging.d27gpzyoit5nrf.amplifyapp.com
-  AMPLIFY_LANDING_URL: https://staging.d3u4q4kqt5t6ok.amplifyapp.com
-  AMPLIFY_CHAT_URL: https://staging.d2kl5gyeq6yv2d.amplifyapp.com
-  AMPLIFY_CHAT_HEALTH_URL: https://staging.d2kl5gyeq6yv2d.amplifyapp.com/api/health
-  AMPLIFY_FORM_BUILDER_URL: https://staging.ds1h02l8ue9hv.amplifyapp.com
+  # Smoke test URLs — friendly *.staging.alpha.gov.bb hostnames. DNS + ACM +
+  # the ALB HTTPS listener landed in alpha-infra PR-3 (network + staging stack),
+  # so smoke tests now hit the real URLs QA uses, over TLS.
+  API_SMOKE_URL: https://api.staging.alpha.gov.bb/health
+  FORM_BUILDER_API_SMOKE_URL: https://api.staging.alpha.gov.bb/builder/health
+  AMPLIFY_FORMS_URL: https://forms.staging.alpha.gov.bb
+  AMPLIFY_LANDING_URL: https://staging.alpha.gov.bb
+  AMPLIFY_CHAT_URL: https://chat.staging.alpha.gov.bb
+  AMPLIFY_CHAT_HEALTH_URL: https://chat.staging.alpha.gov.bb/api/health
+  AMPLIFY_FORM_BUILDER_URL: https://builder.staging.alpha.gov.bb
 
 jobs:
   setup:
