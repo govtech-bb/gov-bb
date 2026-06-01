@@ -1,6 +1,9 @@
 import { Router, type Request, type Response } from "express";
 import { CustomComponent } from "@govtech-bb/database";
+import { collectUnknownRefs, type UnknownRef } from "@govtech-bb/form-builder";
+import type { ServiceContractRecipe } from "@govtech-bb/form-types";
 import { getDataSource } from "../db.js";
+import { getFullCatalog } from "../catalog.js";
 import { getSystemPrompt } from "../ai/system-prompt.js";
 import { chat, isAvailable } from "../ai/client.js";
 import { extractRecipe } from "../ai/recipe-extractor.js";
@@ -62,9 +65,13 @@ aiRouter.get("/status", async (_req, res) => {
 // Body: { message?, recipeJson?, pdfBase64? }. At least one must be present.
 //   - Edit Form:  { message, recipeJson }  → modified recipe
 //   - Upload:     { pdfBase64 }            → converted recipe
-// Returns { recipe: <recipe>|null, reply: <assistant text> }. `recipe` is null
-// when the model replies conversationally without emitting a recipe; the editor
-// surfaces `reply` and leaves the draft untouched in that case.
+// Returns { recipe: <recipe>|null, reply: <assistant text>, unresolvableRefs }.
+// `recipe` is null when the model replies conversationally without emitting a
+// recipe; the editor surfaces `reply` and leaves the draft untouched in that
+// case. `unresolvableRefs` lists any refs in the emitted recipe that don't
+// resolve against the full catalog (a hallucinated/renamed component) — the
+// editor warns but still loads the draft so the author can fix them in place;
+// Deploy stays the hard gate (#504).
 //
 // PDF is sent inline as base64. The Amplify SSR Lambda caps requests at ~6 MB,
 // so the SSR client guards uploads at 4 MB. (A presigned-S3 path once lived here
@@ -98,7 +105,19 @@ export async function convertHandler(
     );
     const recipe = extractRecipe(reply);
 
-    res.json({ recipe, reply });
+    // If the model emitted a recipe, flag refs that don't resolve against the
+    // full catalog (builtins + registry + live custom components). The editor
+    // surfaces these as a non-blocking warning and still loads the draft.
+    let unresolvableRefs: UnknownRef[] = [];
+    if (recipe && Array.isArray((recipe as { steps?: unknown }).steps)) {
+      const catalog = await getFullCatalog();
+      unresolvableRefs = collectUnknownRefs(
+        recipe as unknown as ServiceContractRecipe,
+        catalog,
+      );
+    }
+
+    res.json({ recipe, reply, unresolvableRefs });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

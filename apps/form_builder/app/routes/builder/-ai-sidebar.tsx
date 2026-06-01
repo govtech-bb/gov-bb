@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { serializeRecipeDraft } from "@govtech-bb/form-builder";
-import type { RecipeDraft } from "@govtech-bb/form-builder";
+import type { RecipeDraft, UnknownRef } from "@govtech-bb/form-builder";
 import type { ServiceContractRecipe } from "@govtech-bb/form-types";
 import { convertRecipe } from "../../server/ai-builder/convert";
 import type { ChatMessage } from "../../server/ai-builder/types";
@@ -17,7 +17,10 @@ interface AiSidebarProps {
   // The live draft + working version, so Edit Form can send the current recipe.
   draft: RecipeDraft;
   version: string;
-  onApplyRecipe: (recipe: ServiceContractRecipe) => Promise<ApplyRecipeResult>;
+  onApplyRecipe: (
+    recipe: ServiceContractRecipe,
+    unresolvableRefs: UnknownRef[],
+  ) => Promise<ApplyRecipeResult>;
 }
 
 // Hard cap matches the Amplify SSR Lambda request-body limit. The PDF is
@@ -64,13 +67,20 @@ export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
 
   // Shared tail for both actions: append the assistant reply, then apply the
   // recipe (if any) through the editor's validate-then-load pipeline.
+  // `unresolvableRefs` (computed server-side against the full catalog) rides
+  // along so the editor can warn-but-still-load when the model hallucinated a
+  // ref. Deploy stays the hard gate (#504).
   const handleResponse = async (
     reply: string,
     recipe: Record<string, unknown> | null,
+    unresolvableRefs: UnknownRef[] = [],
   ) => {
     setMessages((m) => [...m, { role: "assistant", content: reply }]);
     if (!recipe) return; // conversational reply — nothing to apply
-    const result = await onApplyRecipe(recipe as unknown as ServiceContractRecipe);
+    const result = await onApplyRecipe(
+      recipe as unknown as ServiceContractRecipe,
+      unresolvableRefs,
+    );
     if (result.error) setError(result.error);
   };
 
@@ -84,10 +94,12 @@ export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
     ]);
     try {
       const pdfBase64 = await fileToBase64(pdfFile);
-      const { recipe, reply } = await convertRecipe({ data: { pdfBase64 } });
+      const { recipe, reply, unresolvableRefs } = await convertRecipe({
+        data: { pdfBase64 },
+      });
       setPdfFile(null);
       setPdfName(null);
-      await handleResponse(reply, recipe);
+      await handleResponse(reply, recipe, unresolvableRefs);
     } catch (err) {
       setError(toMessage(err));
     } finally {
@@ -104,10 +116,10 @@ export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
     setMessages((m) => [...m, { role: "user", content: message }]);
     try {
       const recipeJson = JSON.stringify(serializeRecipeDraft(draft, { version }));
-      const { recipe, reply } = await convertRecipe({
+      const { recipe, reply, unresolvableRefs } = await convertRecipe({
         data: { message, recipeJson },
       });
-      await handleResponse(reply, recipe);
+      await handleResponse(reply, recipe, unresolvableRefs);
     } catch (err) {
       setError(toMessage(err));
     } finally {
