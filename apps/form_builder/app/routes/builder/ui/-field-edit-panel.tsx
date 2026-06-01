@@ -42,6 +42,7 @@ interface OverrideFormProps {
   checkDuplicateFieldId?: (candidateId: string) => boolean;
   defaultOptions?: Option[];
   defaultMultiple?: boolean;
+  defaultRequired?: boolean;
 }
 
 const OPTIONS_HTML_TYPES: ReadonlySet<HtmlTypes> = new Set([
@@ -49,6 +50,10 @@ const OPTIONS_HTML_TYPES: ReadonlySet<HtmlTypes> = new Set([
   "radio",
   "checkbox",
 ]);
+
+function isRequiredRule(rule: { value?: unknown } | undefined): boolean {
+  return rule !== undefined && rule.value !== false;
+}
 
 function OverrideForm({
   overrides,
@@ -59,6 +64,7 @@ function OverrideForm({
   checkDuplicateFieldId,
   defaultOptions,
   defaultMultiple,
+  defaultRequired = false,
 }: OverrideFormProps) {
   const [fieldIdError, setFieldIdError] = useState("");
   const fieldIdDuplicate =
@@ -147,11 +153,18 @@ function OverrideForm({
         <label>
           <input
             type="checkbox"
-            checked={overrides.validations?.required !== undefined}
+            checked={
+              overrides.validations?.required !== undefined
+                ? isRequiredRule(overrides.validations.required)
+                : defaultRequired
+            }
             onChange={(e) => {
               const next = { ...(overrides.validations ?? {}) };
               if (e.target.checked) {
-                next.required = {};
+                next.required = { value: true };
+              } else if (defaultRequired) {
+                // Base requires the field; write an explicit false to override it.
+                next.required = { value: false };
               } else {
                 delete next.required;
               }
@@ -311,6 +324,7 @@ export function FieldEditPanel({
                     }
                     defaultOptions={element.options}
                     defaultMultiple={element.multiple}
+                    defaultRequired={isRequiredRule(element.validations?.required)}
                   />
                 </div>
               );
@@ -328,6 +342,11 @@ export function FieldEditPanel({
             }
             defaultOptions={item && "primitive" in item ? item.primitive.options : undefined}
             defaultMultiple={item && "primitive" in item ? item.primitive.multiple : undefined}
+            defaultRequired={
+              item && "primitive" in item
+                ? isRequiredRule(item.primitive.validations?.required)
+                : false
+            }
           />
         )}
 
