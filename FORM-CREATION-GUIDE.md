@@ -829,6 +829,25 @@ VALUES (
 - Example: step `"stepId": "contact-details"` + element `"fieldId": "applicant-email"` → `"recipientField": "contact-details.applicant-email"`
 - Every form must include an email processor (no empty `processors: []`)
 
+#### Reserved `contactDetails.` prefix (MDA notification email)
+- A `recipientField` beginning with `contactDetails.` is **reserved**: it
+  resolves against the form's service-contract `contactDetails` object, **not**
+  against submitted answer values.
+- Use `"recipientField": "contactDetails.email"` to send a notification to the
+  responsible MDA contact (the address set in the form's `contactDetails`).
+  This is the recipient source for the "MDA Email" processor.
+- Because the prefix is reserved, **`contactDetails` cannot be used as a step
+  id** — such a step would be shadowed by contract resolution. Name the contact
+  step something else (e.g. `contact-details`).
+- If the contract has no `contactDetails`, or the requested key is absent, that
+  email is skipped with a warning; other email processors (e.g. the applicant
+  confirmation) still send.
+
+#### Optional per-instance `label`
+- An email config may carry an optional `label` (e.g. `"Applicant Email"`,
+  `"MDA Email"`) to distinguish multiple email processors on the same form. It
+  is metadata only — ignored for delivery.
+
 ### Contact Information Requirement
 - Every form must have at least one step with an email field AND a telephone field
 - The email field is required for the email processor
