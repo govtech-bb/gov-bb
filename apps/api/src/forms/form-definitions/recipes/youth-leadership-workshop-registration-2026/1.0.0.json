@@ -5,7 +5,7 @@
       "stepId": "informed-consent",
       "elements": [
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "hint": "The Ministry of Youth, Sports and Community Empowerment will use the information you provide solely for the purposes of planning, evaluating, and improving its programmes and initiatives. By completing this form, you consent to the collection and use of your responses for these purposes. You may withdraw your consent at any time by contacting the Ministry.",
             "label": "Would you like to continue applying?",
@@ -74,7 +74,7 @@
           }
         },
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Gender",
             "fieldId": "applicant-gender",
@@ -97,7 +97,7 @@
           }
         },
         {
-          "ref": "components/generic/number",
+          "ref": "components/generic-number",
           "overrides": {
             "label": "Age",
             "fieldId": "applicant-age",

@@ -1,0 +1,47 @@
+name: Project board automation
+
+on:
+  issues:
+    types: [opened, labeled, closed]
+  pull_request:
+    types: [opened, reopened, ready_for_review, closed]
+
+permissions:
+  contents: read
+
+# NOTE: deliberately no `concurrency` group. Creating a labeled issue fires
+# `opened` + one `labeled` per label as a near-simultaneous burst with no
+# ordering guarantee; a per-issue concurrency group made GitHub cancel whichever
+# run was "previously pending" (often the `opened` run that sets Backlog). Each
+# event handler is idempotent and only `opened` writes status on creation, so
+# letting the runs proceed independently is correct. The only residual risk is a
+# rare race if a human toggles `ready`<->`progressing` within ~1s, which is
+# self-correcting by re-applying the label.
+
+jobs:
+  sync:
+    name: Sync issue to Alpha² board
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Mint GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.BOARD_BOT_APP_ID }}
+          private-key: ${{ secrets.BOARD_BOT_PRIVATE_KEY }}
+          # Org-scoped token so org-level Projects v2 writes are permitted.
+          owner: ${{ github.repository_owner }}
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+
+      - name: Sync board
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: pnpm tsx scripts/project-board-sync.ts

@@ -25,7 +25,7 @@
           }
         },
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Would you like to continue applying?",
             "fieldId": "would-like-to-continue",
@@ -80,7 +80,7 @@
           }
         },
         {
-          "ref": "components/generic/number",
+          "ref": "components/generic-number",
           "overrides": {
             "label": "Age",
             "fieldId": "applicant-age",

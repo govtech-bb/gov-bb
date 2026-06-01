@@ -41,11 +41,13 @@ jest.mock("./field-renderer", () => ({
   __esModule: true,
   default: (props: {
     field: { id: string };
+    formVersion?: string;
     insetFieldsByOption?: Map<string, Array<{ field: { id: string } }>>;
   }) => (
     <div
       data-testid="field-renderer"
       data-field-id={props.field.id}
+      data-form-version={props.formVersion}
       data-inset-options={
         props.insetFieldsByOption
           ? JSON.stringify(
@@ -79,17 +81,6 @@ jest.mock("./applicant-name-display", () => ({
   default: () => <div data-testid="applicant-name-display" />,
 }));
 
-jest.mock("../lib/design-system", () => ({
-  __esModule: true,
-  default: {
-    formRoot: "",
-    formTitle: "",
-    formStep: "",
-    formNavigation: "",
-    formStepDescription: "",
-  },
-}));
-
 jest.mock("@forms/lib", () => ({
   getFullFieldId: (step: string, field: string) => `${step}_${field}`,
   addRepeatableStep: jest.fn(() => []),
@@ -97,16 +88,13 @@ jest.mock("@forms/lib", () => ({
   stepFieldIdConcactenator: "_",
   repeatStepConcactenator: "~",
   getRepeatStepCount: jest.fn(() => undefined),
-}));
-
-jest.mock("../lib/env", () => ({
-  isDevMode: jest.fn(() => true),
+  buildFieldValidationProperties: jest.fn(() => ({
+    onChange: jest.fn(),
+    onBlur: jest.fn(),
+  })),
 }));
 
 import FormRenderer from "./form-renderer";
-import { isDevMode } from "../lib/env";
-
-const mockIsDevMode = isDevMode as jest.Mock;
 
 const mockUseStore = useStore as jest.Mock;
 const mockUseStepGuard = useStepGuard as jest.Mock;
@@ -149,9 +137,11 @@ function makePlainField(id: string, fieldId: string, stepId: string) {
 
 const mockForm = {
   store: {},
+  state: { isValid: true, isSubmitting: false, values: {} },
   getFieldValue: jest.fn(),
   validateField: jest.fn().mockResolvedValue([]),
   handleSubmit: jest.fn(),
+  deleteField: jest.fn(),
 };
 
 const mockRepeatableStepSettingsRef = { current: {} };
@@ -170,6 +160,8 @@ beforeEach(() => {
   // `mockForm.getFieldValue.mockReturnValue("yes")` set in one test would
   // silently leak into subsequent tests under `clearAllMocks`.
   jest.resetAllMocks();
+  // resetAllMocks doesn't touch plain object fields, so reset form.state too.
+  mockForm.state = { isValid: true, isSubmitting: false, values: {} };
   mockForm.validateField.mockResolvedValue([]);
   mockUseStepGuard.mockReturnValue({
     navigateToStep: mockNavigateToStep,
@@ -383,6 +375,39 @@ describe("FormRenderer", () => {
     expect(screen.getByTestId("submission-confirmation")).toBeInTheDocument();
   });
 
+  it("redirects to check-your-answers when on submission-confirmation with no submissionState", () => {
+    const step = makeStep("submission-confirmation");
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="submission-confirmation"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={undefined}
+      />,
+    );
+    // Refreshing on the confirmation step loses the in-memory submissionState.
+    // Rather than render an empty (or previously fake) confirmation, bounce the
+    // user back to where they can re-submit.
+    expect(mockNavigateToStep).toHaveBeenCalledWith("check-your-answers");
+  });
+
+  it("does NOT redirect away from submission-confirmation when submissionState exists", () => {
+    const step = makeStep("submission-confirmation");
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="submission-confirmation"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    expect(mockNavigateToStep).not.toHaveBeenCalledWith("check-your-answers");
+  });
+
   it("renders a FieldRenderer for each plain field in the step", () => {
     const fields = [
       makePlainField("step-1_field-a", "field-a", "step-1"),
@@ -401,6 +426,61 @@ describe("FormRenderer", () => {
     );
     const renderers = screen.getAllByTestId("field-renderer");
     expect(renderers).toHaveLength(2);
+  });
+
+  it("threads formVersion to plain field renderers (needed for file presign, #438)", () => {
+    const fields = [makePlainField("step-1_doc", "doc", "step-1")];
+    const step = makeStep("step-1", fields);
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta({ steps: [step], version: "1.1.0" }) as any}
+        stepId="step-1"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    expect(screen.getByTestId("field-renderer")).toHaveAttribute(
+      "data-form-version",
+      "1.1.0",
+    );
+  });
+
+  it("builds validators from the field when it is missing from validationProperties (repeat instances, #432)", () => {
+    const { buildFieldValidationProperties } = jest.requireMock("@forms/lib");
+    // A repeat-instance field (step~N_*) that buildValidation never saw, so it
+    // has no entry in formMeta.validationProperties. Before the fix it would be
+    // rendered with no validators and silently bypass validation.
+    const repeatField = makePlainField("step-1~1_name", "name", "step-1~1");
+    const presentField = makePlainField("step-1~1_age", "age", "step-1~1");
+    const step = makeStep("step-1~1", [repeatField, presentField]);
+
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={
+          makeMeta({
+            steps: [step],
+            // Only `age` has a pre-built validator entry; `name` does not.
+            validationProperties: {
+              "step-1~1_age": { onChange: jest.fn(), onBlur: jest.fn() },
+            },
+          }) as any
+        }
+        stepId="step-1~1"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+
+    // The missing field falls back to building validators from the field; the
+    // present field uses its pre-built entry and is not rebuilt.
+    expect(buildFieldValidationProperties).toHaveBeenCalledWith(repeatField);
+    expect(buildFieldValidationProperties).not.toHaveBeenCalledWith(
+      presentField,
+    );
   });
 
   it("show-hide group: renders controlled fields when toggle value is true", () => {
@@ -621,8 +701,9 @@ describe("FormRenderer", () => {
     expect(mockCompleteAndContinue).toHaveBeenCalledWith("step-1");
   });
 
-  it("clicking Submit calls form.handleSubmit and completeAndContinue", async () => {
+  it("clicking Submit calls form.handleSubmit and completeAndContinue when valid", async () => {
     const user = userEvent.setup();
+    mockForm.state = { isValid: true, isSubmitting: false, values: {} };
     const step = makeStep("declaration");
     render(
       <FormRenderer
@@ -639,8 +720,33 @@ describe("FormRenderer", () => {
     expect(mockCompleteAndContinue).toHaveBeenCalledWith("declaration");
   });
 
-  it("clicking Continue with validation errors does NOT call completeAndContinue (production mode)", async () => {
-    mockIsDevMode.mockReturnValue(false);
+  // #317: form.handleSubmit() resolves even when validation fails (it just
+  // skips onSubmit). Before the fix, completeAndContinue ran unconditionally
+  // after the await, advancing the user past their own errors. Now it's gated
+  // on form.state.isValid. Run this against the pre-fix handleSubmit and it
+  // fails — completeAndContinue is called despite isValid being false.
+  it("clicking Submit does NOT call completeAndContinue when the form is invalid", async () => {
+    const user = userEvent.setup();
+    mockForm.state = { isValid: false, isSubmitting: false, values: {} };
+    const step = makeStep("declaration");
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="declaration"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /submit/i }));
+    // handleSubmit still ran (and resolved) — proving the premise — but the
+    // invalid form must keep the user on the step.
+    expect(mockForm.handleSubmit).toHaveBeenCalledTimes(1);
+    expect(mockCompleteAndContinue).not.toHaveBeenCalled();
+  });
+
+  it("clicking Continue with validation errors does NOT call completeAndContinue", async () => {
     const user = userEvent.setup();
     Object.defineProperty(window, "scrollTo", {
       value: jest.fn(),
@@ -707,6 +813,39 @@ describe("FormRenderer", () => {
     await user.click(screen.getByRole("button", { name: /continue/i }));
     expect(removeRepeatableStep).toHaveBeenCalled();
     expect(mockCompleteAndContinue).toHaveBeenCalledWith("step-1", []);
+  });
+
+  it("purges removed instances' field values from the form store on 'No' (#432)", async () => {
+    const user = userEvent.setup();
+    const { removeRepeatableStep } = jest.requireMock("@forms/lib");
+    const repeatableBehaviour = { type: "repeatable", min: 1, max: 3 };
+    const baseStep = makeStep("step-1", [], [repeatableBehaviour]);
+    const removedField = makePlainField("step-1~1_name", "name", "step-1~1");
+    const removedStep = makeStep(
+      "step-1~1",
+      [removedField],
+      [repeatableBehaviour],
+    );
+    // removeRepeatableStep prunes ~1, returning only the surviving base step.
+    (removeRepeatableStep as jest.Mock).mockReturnValue([baseStep]);
+    mockForm.validateField.mockResolvedValue([]);
+    mockForm.getFieldValue.mockReturnValue("no");
+
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="step-1"
+        visibleSteps={[baseStep, removedStep]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /continue/i }));
+
+    // The declined instance's field is deleted so it is not re-persisted and
+    // resurrected on refresh.
+    expect(mockForm.deleteField).toHaveBeenCalledWith("step-1~1_name");
   });
 
   it("renders step description when present", () => {

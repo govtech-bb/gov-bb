@@ -1,8 +1,12 @@
 # 0011 — Builder-mode handoff goes through persistence
 
 **Date:** 2026-05-27
-**Status:** Accepted
+**Status:** Superseded by [0022 — AI builder is stateless and edits the live draft](./0022-ai-builder-is-stateless-and-edits-the-live-draft.md) (2026-06-01)
 **Related:** [#235](https://github.com/govtech-bb/gov-bb/issues/235) — Form Builder AI: open generated form directly in the Form UI builder.
+
+> **Superseded (#490).** The two builder modes were merged into one `/builder`
+> screen with a docked AI sidebar that edits the live draft in place, so there
+> is no longer a cross-mode handoff to route through persistence. See ADR 0022.
 
 ## Context
 

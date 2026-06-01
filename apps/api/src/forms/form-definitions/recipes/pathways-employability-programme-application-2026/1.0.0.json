@@ -5,7 +5,7 @@
       "stepId": "informed-consent",
       "elements": [
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "hint": "The Division of Youth Affairs, Prime Minister's Office, will use the information you provide solely for the purposes of planning, evaluating, and improving its programmes and initiatives. By completing this form, you consent to the collection and use of your responses for these purposes. You may withdraw your consent at any time by contacting the Ministry.",
             "label": "Would you like to continue applying?",
@@ -61,7 +61,7 @@
           }
         },
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Gender",
             "fieldId": "applicant-gender",
@@ -92,7 +92,7 @@
           }
         },
         {
-          "ref": "components/generic/number",
+          "ref": "components/generic-number",
           "overrides": {
             "hint": "Please enter your current age",
             "label": "Age",
@@ -136,7 +136,7 @@
           }
         },
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Nationality",
             "fieldId": "applicant-nationality",
@@ -175,7 +175,7 @@
           }
         },
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Marital Status",
             "fieldId": "marital-status",
@@ -459,7 +459,7 @@
           }
         },
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Do you have an active bank account or credit union account?",
             "fieldId": "has-bank-account",
@@ -786,7 +786,7 @@
       "stepId": "additional-information",
       "elements": [
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "How did you hear about the Pathways Employability Programme?",
             "fieldId": "heard-about-pathways",

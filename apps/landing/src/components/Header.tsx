@@ -3,23 +3,11 @@ import { Link, useRouterState } from '@tanstack/react-router'
 import { Button, Logo, Link as GovLink } from '@govtech-bb/react'
 import { OfficialBanner } from './OfficialBanner'
 import { StageBanner } from './StageBanner'
-import { hasMigratedSource, ORG_PATH_PREFIX } from '../content/orgs'
 
-const NAV_ITEMS = [
-  { label: 'Services', to: '/services' },
-  { label: 'Departments', to: '/government/organisations' },
-] as const
-
-function orgSlugFromPath(pathname: string): string | null {
-  if (!pathname.startsWith(ORG_PATH_PREFIX)) return null
-  const slug = pathname.slice(ORG_PATH_PREFIX.length).replace(/^\/+|\/+$/g, '')
-  return slug.includes('/') || slug.length === 0 ? null : slug
-}
+const NAV_ITEMS = [{ label: 'Services', to: '/services' }] as const
 
 export default function Header() {
   const { location } = useRouterState()
-  const slug = orgSlugFromPath(location.pathname)
-  const hideAlpha = slug ? hasMigratedSource(slug) : false
 
   const [menuOpen, setMenuOpen] = useState(false)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
@@ -51,13 +39,11 @@ export default function Header() {
   return (
     <div>
       <OfficialBanner />
-      {hideAlpha ? null : (
-        <div className="bg-blue-10">
-          <div className="container">
-            <StageBanner stage="alpha" />
-          </div>
+      <div className="bg-blue-10">
+        <div className="container">
+          <StageBanner stage="alpha" />
         </div>
-      )}
+      </div>
       <header className="relative bg-yellow-100">
         <div className="container">
           <div className="flex items-center gap-x-6 py-4 lg:py-6">

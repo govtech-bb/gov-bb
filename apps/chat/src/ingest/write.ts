@@ -11,7 +11,7 @@ export interface ProgressEvent {
   phase: "documents" | "chunks";
   done: number;
   total: number;
-  /** Last chunk's document for context — e.g. "ministry-mist". */
+  /** Last chunk's document for context — e.g. "service-renew-passport". */
   lastId?: string;
 }
 

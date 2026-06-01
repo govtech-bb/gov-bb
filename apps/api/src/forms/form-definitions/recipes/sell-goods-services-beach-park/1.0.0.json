@@ -151,7 +151,7 @@
           }
         },
         {
-          "ref": "components/generic/show-hide",
+          "ref": "components/show-hide",
           "overrides": {
             "hint": "If you don't have a National ID number, you can use your passport number instead.",
             "label": "Use passport number instead",
@@ -311,7 +311,7 @@
       "stepId": "goods-or-services",
       "elements": [
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Selling goods or services",
             "fieldId": "goods-or-services",
@@ -341,7 +341,7 @@
       "stepId": "goods-details",
       "elements": [
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Where are the goods from?",
             "fieldId": "goods-origin",
@@ -424,7 +424,7 @@
           }
         },
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
             "hint": "For example, fresh, locally-sourced fruit",
             "label": "Describe the goods you would like to sell",
@@ -442,7 +442,7 @@
           }
         },
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
             "hint": "For example, Brownes Beach",
             "label": "Where do you intend to sell your goods?",
@@ -475,7 +475,7 @@
       "stepId": "services-details",
       "elements": [
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
             "hint": "For example, 20-minute jet ski rides",
             "label": "Describe the services you would like to offer",
@@ -493,7 +493,7 @@
           }
         },
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
             "hint": "For example, Brownes Beach",
             "label": "Where do you intend to offer this service?",
@@ -558,7 +558,7 @@
           }
         },
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Relationship",
             "fieldId": "prof-ref-relationship",
@@ -723,7 +723,7 @@
           }
         },
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Relationship",
             "fieldId": "pers-ref-relationship",

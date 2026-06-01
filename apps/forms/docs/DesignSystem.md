@@ -2,7 +2,20 @@
 
 ## Overview
 
-The modular-forms design system uses CSS Modules to style form fields. Each design system is a CSS Module file that exports styles scoped to the `.formRoot` class.
+The forms app styles its fields with the official GOV.BB design system,
+[`@govtech-bb/styles`](https://www.npmjs.com/package/@govtech-bb/styles) — a
+CSS-first, class-based stylesheet (`govbb-*` classes) imported once in
+`src/main.tsx`. Components apply the `govbb-*` classes directly to their markup.
+Site chrome (header, footer, official banner) continues to use
+`@govtech-bb/react` components with `@govtech-bb/design` brand tokens.
+
+> **Superseded:** The earlier mechanism — selectable CSS-module themes
+> (`basic` / `govtechbb` / `template`) switched via a `DESIGN_SYSTEM` /
+> `VITE_DESIGN_SYSTEM` env var and a `data-*` styling contract — was removed in
+> the migration to `@govtech-bb/styles` (see
+> `docs/plans/migrate-forms-design-system.md`). The "Design Systems Available",
+> env-var, and `data-*` CSS sections below are retained for historical
+> reference only and no longer reflect the codebase.
 
 ## Design Systems Available
 

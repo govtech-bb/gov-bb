@@ -9,6 +9,12 @@ import { getDataSource } from "../db.js";
 
 export const formsRouter = Router();
 
+// Upstream apps/api base URL for the published-recipe proxy. Falls back to the
+// sandbox API when API_BASE_URL is unset so the form_builder "Open" modal works
+// out of the box (e.g. `dev` without a local apps/api). No trailing slash —
+// listPublishedHandler appends "/form-definitions".
+const DEFAULT_API_BASE_URL = "https://forms.api.sandbox.alpha.gov.bb";
+
 // GET /builder/forms/disabled — form_ids with a tombstone (deleted/disabled).
 // Registered before "/:formId" so "disabled" isn't captured as a formId.
 export async function listDisabledHandler(
@@ -24,6 +30,59 @@ export async function listDisabledHandler(
   }
 }
 formsRouter.get("/disabled", listDisabledHandler);
+
+// GET /builder/forms/published — proxy apps/api's in-memory recipe index so
+// the form_builder Open modal renders in <1s without hitting GitHub. Returns
+// {formId,title,version}[]. Registered before "/:formId" so "published" isn't
+// captured as a formId. Upstream errors surface as 502 so a flaky apps/api
+// shows in the front-end rather than as a generic 500.
+export async function listPublishedHandler(
+  _req: Request,
+  res: Response,
+): Promise<void> {
+  const baseUrl = process.env.API_BASE_URL || DEFAULT_API_BASE_URL;
+  // Parse + protocol-check the configured upstream so a malformed or
+  // non-http(s) API_BASE_URL can't turn this proxy into an SSRF primitive
+  // (e.g. file://, gopher://). API_BASE_URL is operator-controlled config,
+  // not user input, but validating it cheaply at the boundary is worth the
+  // line count.
+  let parsedBase: URL;
+  try {
+    parsedBase = new URL(baseUrl);
+  } catch {
+    res.status(500).json({ error: "API_BASE_URL is not a valid URL" });
+    return;
+  }
+  if (parsedBase.protocol !== "http:" && parsedBase.protocol !== "https:") {
+    res
+      .status(500)
+      .json({ error: "API_BASE_URL must use http or https protocol" });
+    return;
+  }
+  try {
+    const upstream = await fetch(
+      `${baseUrl.replace(/\/$/, "")}/form-definitions`,
+    );
+    if (!upstream.ok) {
+      const upstreamBody = await upstream.text();
+      res.status(502).json({
+        error: `Upstream apps/api returned ${upstream.status}`,
+        upstreamStatus: upstream.status,
+        upstreamBody,
+      });
+      return;
+    }
+    const body = (await upstream.json()) as {
+      data: { formId: string; title: string; version: string }[];
+    };
+    res.json(body.data);
+  } catch (err: any) {
+    res.status(502).json({
+      error: `Upstream apps/api request failed: ${err.message}`,
+    });
+  }
+}
+formsRouter.get("/published", listPublishedHandler);
 
 // GET /builder/forms — list all forms (latest version per formId)
 formsRouter.get("/", async (_req, res) => {
@@ -67,31 +126,6 @@ formsRouter.get("/:formId", async (req, res) => {
       return;
     }
     res.json(rows[0].schema);
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// GET /builder/forms/:formId/next-version
-formsRouter.get("/:formId/next-version", async (req, res) => {
-  try {
-    const ds = await getDataSource();
-    const rows = await ds.query(
-      `SELECT version FROM form_definitions
-       WHERE form_id = $1
-       ORDER BY string_to_array(version, '.')::int[] DESC
-       LIMIT 1`,
-      [req.params.formId],
-    );
-    if (!rows.length) {
-      res.json({ currentVersion: null, nextVersion: "1.0.0" });
-      return;
-    }
-    const current = rows[0].version;
-    const parts = current.split(".").map(Number);
-    parts[1] = (parts[1] ?? 0) + 1;
-    parts[2] = 0;
-    res.json({ currentVersion: current, nextVersion: parts.join(".") });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -166,6 +200,45 @@ formsRouter.put("/:formId", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// DELETE /builder/forms/:formId/versions/:version — surgically remove a single
+// draft version row. Unlike the form-level delete below, this writes NO
+// tombstone and never touches form_disabled_overrides: it's for pruning a
+// superseded draft (e.g. a stale row the published copy already beats), leaving
+// the formId fully usable. 404 if no such row; 400 if the row is published
+// (mirrors the PUT guard — only DB-resident drafts are mutable).
+export async function deleteFormVersionHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const { formId, version } = req.params;
+  try {
+    const ds = await getDataSource();
+    const rows = await ds.query(
+      `SELECT id, published_at FROM form_definitions
+       WHERE form_id = $1 AND version = $2
+       LIMIT 1`,
+      [formId, version],
+    );
+    if (!rows.length) {
+      res.status(404).json({
+        error: `No recipe found for formId: ${formId} version: ${version}`,
+      });
+      return;
+    }
+    if (rows[0].published_at !== null) {
+      res.status(400).json({ error: "Cannot delete a published recipe" });
+      return;
+    }
+    await ds.query(`DELETE FROM form_definitions WHERE id = $1`, [rows[0].id]);
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+}
+// Registered before the catch-all "/:formId" delete so the extra path segments
+// are matched here, not swallowed as a formId.
+formsRouter.delete("/:formId/versions/:version", deleteFormVersionHandler);
 
 // DELETE /builder/forms/:formId — hard-remove every version of a form and
 // write a tombstone so the form_id stays claimed (public fetch -> 410 Gone).

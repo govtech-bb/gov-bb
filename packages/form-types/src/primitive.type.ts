@@ -52,6 +52,7 @@ export const basePrimitiveSchema = z.object({
   metadata: primitiveMetadataSchema.partial().optional(),
   options: z.array(optionSchema).optional(),
   multiple: z.boolean().optional(),
+  mask: z.string().optional(),
   ui: primitiveUISchema.optional(),
 });
 export type BasePrimitive = z.infer<typeof basePrimitiveSchema>;
@@ -144,6 +145,7 @@ export const fieldOverridesSchema = basePrimitiveSchema
     behaviours: true,
     multiple: true,
     options: true,
+    mask: true,
     ui: true,
   })
   .partial();

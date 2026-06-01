@@ -70,7 +70,10 @@ Other props, where appropriate, can include:
 
 ## Design Adapter
 
-The design adapter will make use of style systems implemented using [CSS Module Stylesheets](https://create-react-app.dev/docs/adding-a-css-modules-stylesheet/). CSS Modules will ensure that the designs applied are scoped locally and avoid conflicting class names.
+> **Superseded:** This section describes the former CSS-module "design adapter"
+> (a `DESIGN_SYSTEM`-selected `.module.css` theme), which was removed in the
+> migration to `@govtech-bb/styles`. The forms app now applies the official
+> `govbb-*` classes directly. See `docs/plans/migrate-forms-design-system.md`.
 
 ### Design Systems
 

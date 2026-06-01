@@ -19,8 +19,6 @@ const config: Config = {
     "^@forms/lib$": "<rootDir>/lib/form-builder/index.ts",
     "^@forms/form-api$": "<rootDir>/lib/api/forms.ts",
     "^@forms/components$": "<rootDir>/components/index.ts",
-    // CSS modules
-    "\\.module\\.css$": "<rootDir>/test/styleMock.js",
   },
   transform: {
     "^.+\\.tsx?$": [
@@ -40,7 +38,6 @@ const config: Config = {
                     PROD: false,
                     MODE: "test",
                     VITE_API_URL: "http://localhost:3001",
-                    VITE_DESIGN_SYSTEM: "basic",
                   },
                 },
               },

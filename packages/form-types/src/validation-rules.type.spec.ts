@@ -86,18 +86,24 @@ describe("maxLengthRuleSchema", () => {
 // ---------------------------------------------------------------------------
 
 describe("patternRuleSchema", () => {
-  it("accepts a valid rule with a regex string pattern", () => {
+  it("accepts a valid rule with a regex string in `value` (#339)", () => {
     expect(
-      patternRuleSchema.safeParse({ pattern: "^[A-Z]{2}\\d{6}$" }).success,
+      patternRuleSchema.safeParse({ value: "^[A-Z]{2}\\d{6}$" }).success,
     ).toBe(true);
   });
 
-  it("rejects when pattern is missing", () => {
+  it("rejects when value is missing", () => {
     expect(patternRuleSchema.safeParse({}).success).toBe(false);
   });
 
-  it("rejects when pattern is a non-string", () => {
-    expect(patternRuleSchema.safeParse({ pattern: 123 }).success).toBe(false);
+  it("rejects when value is a non-string", () => {
+    expect(patternRuleSchema.safeParse({ value: 123 }).success).toBe(false);
+  });
+
+  it("rejects the legacy `pattern` field name (#339)", () => {
+    expect(patternRuleSchema.safeParse({ pattern: "^[A-Z]+$" }).success).toBe(
+      false,
+    );
   });
 });
 

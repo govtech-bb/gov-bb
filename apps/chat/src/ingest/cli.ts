@@ -10,7 +10,7 @@ import { randomUUID } from "node:crypto";
 import { count, sql } from "drizzle-orm";
 import { loadContent } from "@govtech-bb/content";
 import { getDb, hasDatabase, schema } from "#/lib/db";
-import { chunkMda, chunkService, type PlannedEntity } from "./chunker";
+import { chunkService, type PlannedEntity } from "./chunker";
 import { applyDeletes, buildPlan, summarise } from "./plan";
 import { applyPlan } from "./write";
 
@@ -99,14 +99,9 @@ async function main() {
   if (content.warnings.length) {
     for (const w of content.warnings) console.warn(`[content] ${w}`);
   }
-  console.log(
-    `[ingest] loaded ${content.mdas.length} MDAs, ${content.services.length} services`,
-  );
+  console.log(`[ingest] loaded ${content.services.length} services`);
 
-  let planned: PlannedEntity[] = [
-    ...content.mdas.map(chunkMda),
-    ...content.services.map(chunkService),
-  ];
+  let planned: PlannedEntity[] = content.services.map(chunkService);
   if (args.limit !== undefined) {
     planned = planned.slice(0, args.limit);
     console.log(`[ingest] --limit=${args.limit} → ${planned.length} entities`);

@@ -1,16 +1,19 @@
 import { Router } from "express";
+import type { Request, Response } from "express";
 import {
   getRegistryItem,
   hydrateForm,
   validateFormContract,
   findRecipeIdCollisionsFromRecipe,
   formatCollisionIssues,
+  collectUnknownRefs,
   BEHAVIOUR_TYPE_DESCRIPTORS,
   VALIDATION_RULE_DESCRIPTORS,
 } from "@govtech-bb/form-builder";
 import type {
   ServiceContractRecipe,
   ServiceContract,
+  ValidationIssue,
 } from "@govtech-bb/form-types";
 import { getFullCatalog } from "../catalog.js";
 
@@ -55,7 +58,7 @@ registryRouter.get("/metadata", async (_req, res) => {
 });
 
 // POST /builder/registry/validate
-registryRouter.post("/validate", async (req, res) => {
+export async function validateHandler(req: Request, res: Response) {
   try {
     const result = validateFormContract(req.body.recipe);
     if (!result.ok) {
@@ -73,11 +76,27 @@ registryRouter.post("/validate", async (req, res) => {
       res.json({ ok: false, issues });
       return;
     }
+    // Catalog-dependent ref existence check (also ADR 0010): the schema only
+    // validates ref *format*, so a ref to a removed/renamed component passes
+    // parse but would silently drop in preview / throw in the renderer. Catch
+    // it here via the shared collector, reporting every unknown ref together.
+    const unknownRefIssues: ValidationIssue[] = collectUnknownRefs(
+      result.data,
+      catalog,
+    ).map(({ ref, path }) => ({
+      path,
+      message: `Unknown component/block ref "${ref}"`,
+    }));
+    if (unknownRefIssues.length > 0) {
+      res.json({ ok: false, issues: unknownRefIssues });
+      return;
+    }
     res.json(result);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
-});
+}
+registryRouter.post("/validate", validateHandler);
 
 // POST /builder/registry/preview
 registryRouter.post("/preview", async (req, res) => {

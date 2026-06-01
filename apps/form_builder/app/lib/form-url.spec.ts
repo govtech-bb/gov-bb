@@ -1,44 +1,52 @@
 import { joinFormPreviewUrl, formPreviewUrl } from "./form-url";
 
 describe("joinFormPreviewUrl", () => {
-  it("joins a forms-app origin with the form id", () => {
-    expect(joinFormPreviewUrl("http://localhost:3000", "passport")).toBe(
-      "http://localhost:3000/forms/passport",
-    );
+  it("joins a forms-app origin with the form id and preview token", () => {
+    expect(
+      joinFormPreviewUrl("http://localhost:3000", "passport", "demo"),
+    ).toBe("http://localhost:3000/forms/passport?preview=demo");
   });
 
   it("trims a trailing slash so the path has no double slash", () => {
-    expect(joinFormPreviewUrl("http://localhost:3000/", "passport")).toBe(
-      "http://localhost:3000/forms/passport",
-    );
+    expect(
+      joinFormPreviewUrl("http://localhost:3000/", "passport", "demo"),
+    ).toBe("http://localhost:3000/forms/passport?preview=demo");
   });
 
   it("trims multiple trailing slashes", () => {
-    expect(joinFormPreviewUrl("https://forms.gov.bb///", "birth-cert")).toBe(
-      "https://forms.gov.bb/forms/birth-cert",
-    );
+    expect(
+      joinFormPreviewUrl("https://forms.gov.bb///", "birth-cert", "demo"),
+    ).toBe("https://forms.gov.bb/forms/birth-cert?preview=demo");
   });
 
   it("falls back to the dev default when the origin is empty", () => {
-    expect(joinFormPreviewUrl("", "passport")).toBe(
-      "http://localhost:3000/forms/passport",
+    expect(joinFormPreviewUrl("", "passport", "demo")).toBe(
+      "http://localhost:3000/forms/passport?preview=demo",
     );
   });
 
   it("keeps a non-default origin verbatim", () => {
-    expect(joinFormPreviewUrl("https://forms.gov.bb", "birth-cert")).toBe(
-      "https://forms.gov.bb/forms/birth-cert",
-    );
+    expect(
+      joinFormPreviewUrl("https://forms.gov.bb", "birth-cert", "demo"),
+    ).toBe("https://forms.gov.bb/forms/birth-cert?preview=demo");
+  });
+
+  it("URL-encodes a token containing metacharacters", () => {
+    expect(
+      joinFormPreviewUrl("https://forms.gov.bb", "passport", "a b&c=d/e"),
+    ).toBe("https://forms.gov.bb/forms/passport?preview=a%20b%26c%3Dd%2Fe");
   });
 });
 
 describe("formPreviewUrl", () => {
-  // VITE_FORMS_URL is stubbed by ts-jest-mock-import-meta in jest.config.ts.
-  // The empty/unset → dev-default branch is covered by joinFormPreviewUrl
-  // above (import.meta replacement is static, so it can't be unset per-test).
-  it("builds the link from VITE_FORMS_URL", () => {
+  // VITE_FORMS_URL and VITE_RECIPE_PREVIEW_TOKEN are stubbed by
+  // ts-jest-mock-import-meta in jest.config.ts. The empty/unset → default
+  // branches (dev-default origin, "demo" token) are covered by
+  // joinFormPreviewUrl above — import.meta replacement is static, so the vars
+  // can't be unset per-test.
+  it("builds the link from VITE_FORMS_URL and VITE_RECIPE_PREVIEW_TOKEN", () => {
     expect(formPreviewUrl("passport")).toBe(
-      "https://forms.example.test/forms/passport",
+      "https://forms.example.test/forms/passport?preview=stub-token",
     );
   });
 });

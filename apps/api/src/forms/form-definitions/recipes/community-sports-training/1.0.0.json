@@ -68,7 +68,7 @@
       "stepId": "discipline",
       "elements": [
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
             "hint": "For example, football or gymnastics",
             "label": "Discipline of interest",
@@ -86,7 +86,7 @@
           }
         },
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Do you have experience in this discipline?",
             "fieldId": "has-experience",
@@ -116,7 +116,7 @@
       "stepId": "experience",
       "elements": [
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "What level of experience do you have?",
             "fieldId": "level-of-experience",
@@ -147,10 +147,18 @@
           }
         },
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Please specify",
             "fieldId": "other-experience",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "other",
+                "operator": "equal",
+                "targetFieldId": "level-of-experience"
+              }
+            ],
             "validations": {
               "required": {
                 "error": "Please specify your experience level",
@@ -164,7 +172,7 @@
           }
         },
         {
-          "ref": "components/generic/number",
+          "ref": "components/generic-number",
           "overrides": {
             "label": "Years of experience",
             "fieldId": "years-of-experience",
@@ -193,7 +201,7 @@
       "stepId": "employment",
       "elements": [
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "What is your employment status?",
             "fieldId": "employment-status",
@@ -224,17 +232,30 @@
           }
         },
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Name of institution or company",
-            "fieldId": "institution-name"
+            "fieldId": "institution-name",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Please give details",
-            "fieldId": "employment-other-details"
+            "fieldId": "employment-other-details",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "other",
+                "operator": "equal",
+                "targetFieldId": "employment-status"
+              }
+            ]
           }
         }
       ],
@@ -245,7 +266,7 @@
       "stepId": "membership",
       "elements": [
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Do you belong to any organisations?",
             "fieldId": "belongs-to-organisations",
@@ -268,24 +289,58 @@
           }
         },
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Organisation 1",
-            "fieldId": "organisation-1"
+            "fieldId": "organisation-1",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetFieldId": "belongs-to-organisations"
+              }
+            ]
           }
         },
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Organisation 2 (optional)",
-            "fieldId": "organisation-2"
+            "fieldId": "organisation-2",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetFieldId": "belongs-to-organisations"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Organisation 3 (optional)",
-            "fieldId": "organisation-3"
+            "fieldId": "organisation-3",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetFieldId": "belongs-to-organisations"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         }
       ],
@@ -316,7 +371,12 @@
           "ref": "components/address",
           "overrides": {
             "label": "Address line 2",
-            "fieldId": "contact-address-2"
+            "fieldId": "contact-address-2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {

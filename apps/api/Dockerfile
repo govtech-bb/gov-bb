@@ -26,6 +26,7 @@ COPY --chown=app:app packages/expressions/package.json packages/expressions/
 COPY --chown=app:app packages/form-conditions/package.json packages/form-conditions/
 COPY --chown=app:app packages/form-types/package.json packages/form-types/
 COPY --chown=app:app packages/form-validation/package.json packages/form-validation/
+COPY --chown=app:app packages/registry/package.json packages/registry/
 
 # BuildKit cache mount keeps the pnpm content-addressable store across builds,
 # so a cache-invalidating change to the lockfile or any package.json re-installs
@@ -86,11 +87,19 @@ COPY --from=builder --chown=app:app /app/node_modules/ ./node_modules/
 # entry is /app/dist/src/main.js, and Node's module-lookup walks up from
 # there — it never enters apps/api/. Expose the workspace packages at the
 # root so `require("@govtech-bb/form-types")` resolves.
+#
+# Symlinks are generated from whatever's actually in packages/ rather than
+# from a hand-maintained list. The previous hard-coded list silently broke
+# (#412) when `registry` was added without updating the Dockerfile — the
+# API crash-looped on MODULE_NOT_FOUND and ECS's circuit breaker rolled
+# back to the prior image, masking the failure as a "successful" deploy.
 RUN mkdir -p node_modules/@govtech-bb && \
-    ln -sfn ../../packages/expressions node_modules/@govtech-bb/expressions && \
-    ln -sfn ../../packages/form-conditions node_modules/@govtech-bb/form-conditions && \
-    ln -sfn ../../packages/form-types node_modules/@govtech-bb/form-types && \
-    ln -sfn ../../packages/form-validation node_modules/@govtech-bb/form-validation
+    for pkg_dir in packages/*/; do \
+      pkg_name=$(basename "$pkg_dir"); \
+      [ -f "$pkg_dir/package.json" ] || continue; \
+      ln -sfn "../../packages/$pkg_name" "node_modules/@govtech-bb/$pkg_name"; \
+      echo "  symlinked @govtech-bb/$pkg_name"; \
+    done
 COPY --from=builder --chown=app:app /app/package.json ./
 COPY --from=builder --chown=app:app /app/pnpm-lock.yaml ./
 COPY --from=builder --chown=app:app /app/pnpm-workspace.yaml ./

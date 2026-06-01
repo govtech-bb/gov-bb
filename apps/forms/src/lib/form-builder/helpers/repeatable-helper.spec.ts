@@ -219,28 +219,76 @@ describe("generateRepeatStepFields", () => {
 // ---------------------------------------------------------------------------
 
 describe("setupRepeatSteps", () => {
-  it("creates min repeat steps and populates repeatSettings (min < max, single repeat)", () => {
+  it("renders a single instance on the source step when min=1 with no shared fields (#432)", () => {
     const repeatBehaviour = makeRepeatableBehaviour(1, 3);
     const step = makeStep("personalInfo", ["firstName"], [repeatBehaviour]);
     const repeatSettings: RepeatableStepSettings = {};
 
     const result = setupRepeatSteps([step], repeatSettings);
 
-    // Should have the original step + 1 repeat step (min=1)
-    expect(result).toHaveLength(2);
-    expect(result[1].stepId).toBe("personalInfo~1");
-    // min(1) < max(3), so the last (and only) repeat step gets an addAnother
-    // field appended so the user can still add another instance.
-    expect(result[1].fields.some((f) => f.fieldId === "addAnother")).toBe(true);
+    // No shared fields → the source step IS the first instance. min=1 must show
+    // exactly ONE instance (the source step), not a duplicate source + ~1 pair.
+    expect(result).toHaveLength(1);
+    expect(result[0].stepId).toBe("personalInfo");
+    // min(1) < max(3), so the (only) instance carries the addAnother control on
+    // the source step itself.
+    expect(result[0].fields.some((f) => f.fieldId === "addAnother")).toBe(true);
 
-    // repeatSettings should be populated
+    // repeatSettings should be populated, with no generated ~1 instance.
     expect(repeatSettings["personalInfo"]).toBeDefined();
-    expect(repeatSettings["personalInfo"].orderedStepIds).toContain(
+    expect(repeatSettings["personalInfo"].orderedStepIds).toEqual([
       "personalInfo",
+    ]);
+  });
+
+  it("renders min instances on the source + ~N steps when min>1 with no shared fields (#432)", () => {
+    const repeatBehaviour = makeRepeatableBehaviour(2, 5);
+    const step = makeStep("personalInfo", ["firstName"], [repeatBehaviour]);
+    const repeatSettings: RepeatableStepSettings = {};
+
+    const result = setupRepeatSteps([step], repeatSettings);
+
+    // min=2 → source step (instance 1) + personalInfo~1 (instance 2).
+    expect(result).toHaveLength(2);
+    expect(result[0].stepId).toBe("personalInfo");
+    expect(result[1].stepId).toBe("personalInfo~1");
+    // The source (not the last instance) has no addAnother; the last instance
+    // does, because min(2) < max(5).
+    expect(result[0].fields.some((f) => f.fieldId === "addAnother")).toBe(
+      false,
     );
-    expect(repeatSettings["personalInfo"].orderedStepIds).toContain(
+    expect(result[1].fields.some((f) => f.fieldId === "addAnother")).toBe(true);
+    expect(repeatSettings["personalInfo"].orderedStepIds).toEqual([
+      "personalInfo",
       "personalInfo~1",
+    ]);
+  });
+
+  it("keeps the source step as a separate shared-values page when sharedFields are present", () => {
+    const repeatBehaviour = makeRepeatableBehaviour(1, 3);
+    const sharedBehaviour = makeSharedFieldsBehaviour(["firstName"]);
+    const step = makeStep(
+      "personalInfo",
+      ["firstName", "lastName"],
+      [repeatBehaviour, sharedBehaviour],
     );
+    const repeatSettings: RepeatableStepSettings = {};
+
+    const result = setupRepeatSteps([step], repeatSettings);
+
+    // With shared fields the source step is the shared-values host and the
+    // minimum instances are generated as ~1..~min; addAnother sits on ~1.
+    expect(result).toHaveLength(2);
+    expect(result[0].stepId).toBe("personalInfo");
+    expect(result[0].fields.some((f) => f.fieldId === "addAnother")).toBe(
+      false,
+    );
+    expect(result[1].stepId).toBe("personalInfo~1");
+    expect(result[1].fields.some((f) => f.fieldId === "addAnother")).toBe(true);
+    expect(repeatSettings["personalInfo"].orderedStepIds).toEqual([
+      "personalInfo",
+      "personalInfo~1",
+    ]);
   });
 
   it("appends addAnother field to the source step when min is 0 (falsy)", () => {
@@ -280,19 +328,23 @@ describe("setupRepeatSteps", () => {
     expect(Object.keys(repeatSettings)).toHaveLength(0);
   });
 
-  it("does NOT append addAnother to the last repeated step when min === max", () => {
+  it("does NOT append addAnother to the last instance when min === max (no shared fields)", () => {
     const repeatBehaviour = makeRepeatableBehaviour(2, 2);
     const step = makeStep("personalInfo", ["firstName"], [repeatBehaviour]);
     const repeatSettings: RepeatableStepSettings = {};
 
     const result = setupRepeatSteps([step], repeatSettings);
 
-    // Should have original step + 2 repeat steps (min=2)
-    expect(result).toHaveLength(3);
-    // The last step (personalInfo~2) is at min AND max → addAnother must NOT be appended
+    // No shared fields: source step is instance 1, so min=2 → source + ~1.
+    expect(result).toHaveLength(2);
+    // The last instance (personalInfo~1) is at min AND max → no addAnother.
     const lastStep = result[result.length - 1];
-    expect(lastStep.stepId).toBe("personalInfo~2");
+    expect(lastStep.stepId).toBe("personalInfo~1");
     expect(lastStep.fields.some((f) => f.fieldId === "addAnother")).toBe(false);
+    // The source step is also not the place for addAnother here.
+    expect(result[0].fields.some((f) => f.fieldId === "addAnother")).toBe(
+      false,
+    );
   });
 });
 
@@ -607,16 +659,25 @@ describe("restoreRepeatableStepsFromStorage", () => {
     const generatedSteps = setupRepeatSteps([sourceStep], repeatSettings);
     const formMeta = makeFormMeta(generatedSteps);
 
-    // savedData has a key for personalInfo~2 — simulating a previously added step
+    // No shared fields → setup materialises only the source step (instance 1).
+    // savedData has keys for ~1 and ~2 — instances the user added before the
+    // refresh. Restore must recreate them in order (~1 then ~2).
     const savedData: Record<string, unknown> = {
+      "personalInfo~1_firstName": "Joan",
       "personalInfo~2_firstName": "Jane",
     };
 
     restoreRepeatableStepsFromStorage(savedData, formMeta, repeatSettings);
 
-    // personalInfo~2 should now be in formMeta.steps
+    // personalInfo~1 and ~2 should now be in formMeta.steps
+    expect(formMeta.steps.some((s) => s.stepId === "personalInfo~1")).toBe(
+      true,
+    );
     expect(formMeta.steps.some((s) => s.stepId === "personalInfo~2")).toBe(
       true,
+    );
+    expect(repeatSettings["personalInfo"].orderedStepIds).toContain(
+      "personalInfo~1",
     );
     expect(repeatSettings["personalInfo"].orderedStepIds).toContain(
       "personalInfo~2",

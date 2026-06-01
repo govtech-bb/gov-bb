@@ -1,17 +1,8 @@
 import MiniSearch from 'minisearch'
-import { PAGES } from '../content/registry'
+import { isUrlPreview, PAGES } from '../content/registry'
 import { CATEGORY_BY_SLUG } from '../content/categories'
-import {
-  BODY_BY_SLUG,
-  DEPARTMENTS,
-  MINISTRIES,
-  ORG_CATEGORY_LABEL,
-  STATE_BODIES,
-} from '../content/mda'
-import type { Department, Ministry, StateBody } from '../content/mda'
-import { orgHref } from '../content/orgs'
 
-export type SearchKind = 'service' | 'ministry' | 'department' | 'state-body'
+export type SearchKind = 'service'
 
 export interface SearchHit {
   id: string
@@ -186,24 +177,6 @@ function buildKeywords(
   ].join(' ')
 }
 
-function mdaDoc(entry: Ministry | Department | StateBody): IndexDoc {
-  const { kind, slug, name, keywords = [] } = entry
-  const description =
-    typeof entry.intro === 'string'
-      ? (entry.shortDescription ?? entry.intro)
-      : (entry.shortDescription ?? '')
-  return {
-    id: `${kind}:${slug}`,
-    title: name,
-    description,
-    body: stripMarkdown(BODY_BY_SLUG.get(slug) ?? ''),
-    keywords: buildKeywords(name, description, keywords),
-    href: orgHref(slug),
-    category: ORG_CATEGORY_LABEL[kind],
-    kind,
-  }
-}
-
 function buildIndex(): {
   ms: MiniSearch<IndexDoc>
   docs: Map<string, IndexDoc>
@@ -226,11 +199,6 @@ function buildIndex(): {
       category,
       kind: 'service',
     }
-    docs.set(doc.id, doc)
-  }
-
-  for (const entry of [...MINISTRIES, ...DEPARTMENTS, ...STATE_BODIES]) {
-    const doc = mdaDoc(entry)
     docs.set(doc.id, doc)
   }
 
@@ -263,19 +231,25 @@ function getIndex() {
   return indexPromise.current
 }
 
-export function search(query: string): Array<SearchHit> {
+export function search(query: string, inPreview = false): Array<SearchHit> {
   const trimmed = query.trim()
   if (!trimmed) return []
   const { ms, docs } = getIndex()
-  return ms.search(trimmed).map((r): SearchHit => {
-    const stored = docs.get(String(r.id))
-    return {
-      id: String(r.id),
-      title: (r.title as string) ?? stored?.title ?? '',
-      description: (r.description as string) ?? stored?.description ?? '',
-      href: (r.href as string) ?? stored?.href ?? '',
-      category: (r.category as string) ?? stored?.category ?? '',
-      kind: (r.kind as SearchKind) ?? stored?.kind ?? 'service',
-    }
-  })
+  return ms
+    .search(trimmed)
+    .map((r): SearchHit => {
+      const stored = docs.get(String(r.id))
+      return {
+        id: String(r.id),
+        title: (r.title as string) ?? stored?.title ?? '',
+        description: (r.description as string) ?? stored?.description ?? '',
+        href: (r.href as string) ?? stored?.href ?? '',
+        category: (r.category as string) ?? stored?.category ?? '',
+        kind: (r.kind as SearchKind) ?? stored?.kind ?? 'service',
+      }
+    })
+    .filter((hit) => {
+      if (inPreview) return true
+      return !isUrlPreview(hit.id.slice('service:'.length))
+    })
 }

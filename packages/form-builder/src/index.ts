@@ -3,6 +3,8 @@ export type {
   RecipeDraft,
   RecipeStepDraft,
   RecipeFieldDraft,
+  RecipeProcessorDraft,
+  AuthorableProcessorType,
   ChildOverrides,
 } from "./types";
 
@@ -29,8 +31,13 @@ export type {
 export { VALIDATION_RULE_DESCRIPTORS } from "./behaviors/validation-builder";
 export type { ValidationRuleDescriptor } from "./behaviors/validation-builder";
 
+// Processor authoring defaults
+export { makeDefaultProcessor } from "./processor-defaults";
+
 // Core utilities
-export { hydrateForm } from "./resolution";
+export { hydrateForm, collectUnknownRefs } from "./resolution";
+export { UnknownRefError } from "./errors";
+export type { UnknownRef } from "./errors";
 export { serializeRecipeDraft, deserializeRecipe } from "./serialization";
 export { validateFormContract } from "./validation";
 export type {

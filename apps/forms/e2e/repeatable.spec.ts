@@ -109,7 +109,7 @@ test.describe("Step 5 — first repeat instance (step-5-financial-information~1)
   test("repeat instance renders the addAnother radio (min=1 < max=6)", async ({
     page,
   }) => {
-    const addAnotherGroup = page.locator("[data-radio-group]").filter({
+    const addAnotherGroup = page.locator(".govbb-fieldset").filter({
       has: page.locator(
         `input[id="step-5-financial-information~1_addAnother"]`,
       ),

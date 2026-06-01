@@ -27,7 +27,7 @@ interface Entry {
   id: string;
   query: string;
   expected_doc_ids: string[];
-  tag: "direct" | "followup" | "mda" | "ambig" | "none";
+  tag: "direct" | "followup" | "ambig" | "none";
 }
 
 interface Golden {
@@ -48,7 +48,6 @@ interface Config {
   topK: number;
   maxSources: number;
   serviceWeight: number;
-  mdaWeight: number;
   newsWeight: number;
 }
 
@@ -150,12 +149,9 @@ async function buildRowsCache(
 
 // Note: weights stay parameterised in the sweep (we want to tune them) even
 // though prod imports static weights from src/lib/chat/rag-config.ts.
-const MDA_KINDS = new Set(["ministry", "department", "state-body"]);
-
 function weightFor(kind: string, c: Config): number {
   if (kind === "service") return c.serviceWeight;
   if (kind === "news") return c.newsWeight;
-  if (MDA_KINDS.has(kind)) return c.mdaWeight;
   return 1.0;
 }
 
@@ -222,7 +218,7 @@ function evaluate(
       continue;
     }
 
-    // direct / followup / mda → single (or few) expected docs.
+    // direct / followup → single (or few) expected docs.
     recallN++;
     const idx = delivered.findIndex((d) => e.expected_doc_ids.includes(d));
     if (idx >= 0) {
@@ -253,7 +249,7 @@ function evaluate(
 }
 
 function formatConfig(c: Config): string {
-  return `sim=${c.similarity} score=${c.scoreThresh} topK=${c.topK} max=${c.maxSources} svc=${c.serviceWeight} mda=${c.mdaWeight}`;
+  return `sim=${c.similarity} score=${c.scoreThresh} topK=${c.topK} max=${c.maxSources} svc=${c.serviceWeight}`;
 }
 
 async function main() {
@@ -268,7 +264,6 @@ async function main() {
     topK: [6, 8, 10, 12] as const,
     maxSources: [4, 5, 6, 7] as const,
     serviceWeight: [1.0, 1.1, 1.2, 1.3] as const,
-    mdaWeight: [1.0, 1.1] as const,
     newsWeight: [0.7] as const,
   };
   const configs = cartesian(grid);

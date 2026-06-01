@@ -19,6 +19,9 @@
     },
     {
       "path": "../../packages/form-conditions"
+    },
+    {
+      "path": "../../packages/registry"
     }
   ],
   "include": ["src/**/*.ts"],

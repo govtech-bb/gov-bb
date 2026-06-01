@@ -1,0 +1,14 @@
+{
+  "extraKnownMarketplaces": {
+    "team-skills": {
+      "source": {
+        "source": "github",
+        "repo": "govtech-bb/team-skills"
+      },
+      "autoUpdate": true
+    }
+  },
+  "enabledPlugins": {
+    "bb@team-skills": true
+  }
+}

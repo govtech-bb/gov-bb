@@ -5,7 +5,6 @@ import {
   FormValues,
 } from "@forms/types";
 import FieldRenderer from "./field-renderer";
-import designSystem from "../lib/design-system";
 import React from "react";
 import ErrorSummary from "./error-summary";
 import { useStore } from "@tanstack/react-form";
@@ -20,9 +19,9 @@ import {
   stepFieldIdConcactenator,
   repeatStepConcactenator,
   getRepeatStepCount,
+  buildFieldValidationProperties,
 } from "@forms/lib";
 import { trackEvent } from "../lib/analytics";
-import { isDevMode } from "../lib/env";
 
 // ---------------------------------------------------------------------------
 // Field grouping (show-hide + radio conditional reveal)
@@ -148,9 +147,28 @@ export default function FormRenderer({
     });
   }, [currentStep?.stepId, formMeta.formId, stepIndex, visibleSteps.length]);
 
+  // On a refresh at the confirmation step the in-memory submissionState is
+  // lost, so there is nothing genuine to confirm. Bounce back to
+  // check-your-answers (the same target as "Try again") rather than render an
+  // empty confirmation.
+  React.useEffect(() => {
+    if (currentStep?.stepId === "submission-confirmation" && !submissionState) {
+      navigateToStep("check-your-answers");
+    }
+  }, [currentStep?.stepId, submissionState, navigateToStep]);
+
   if (!currentStep) return null;
 
   const currentFields = [...currentStep.fields];
+
+  // Resolve the validators for a field. Pre-built validators live in
+  // formMeta.validationProperties (keyed by field id), but repeat-instance
+  // fields (`step~N_*`) are created after buildValidation runs, so they have no
+  // entry. Fall back to building them from the field's own `validations` so
+  // every repeat instance is validated like the first. (See #432.)
+  const resolveValidators = (field: ClientPrimitive) =>
+    formMeta.validationProperties[field.id] ??
+    buildFieldValidationProperties(field);
 
   const handlePrevious = () => {
     const prevStep = visibleSteps[stepIndex - 1];
@@ -227,7 +245,7 @@ export default function FormRenderer({
         });
       });
       scrollToTop();
-      if (!isDevMode()) return;
+      return;
     }
 
     // Handle navigation to repeatable step.
@@ -262,6 +280,20 @@ export default function FormRenderer({
           formMeta,
           repeatableStepSettings: repeatableStepSettings,
         });
+
+        // removeRepeatableStep prunes the step list but leaves the removed
+        // instances' values in the form store. storeFormData would re-persist
+        // them and restoreRepeatableStepsFromStorage would resurrect the steps
+        // on refresh — sending the user back to a "step" they declined. Purge
+        // the removed instances' field values so they stay gone. (#432)
+        const remainingStepIds = new Set(updatedSteps.map((s) => s.stepId));
+        for (const step of visibleSteps) {
+          if (remainingStepIds.has(step.stepId)) continue;
+          for (const field of step.fields) {
+            form.deleteField(field.id);
+          }
+        }
+
         completeAndContinue(currentStep.stepId, updatedSteps);
         return;
       }
@@ -277,10 +309,14 @@ export default function FormRenderer({
     completeAndContinue(currentStep.stepId);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     trackEvent("form-submit", { form_id: formMeta.formId });
-    form.handleSubmit();
-    completeAndContinue(currentStep.stepId);
+    await form.handleSubmit();
+    // handleSubmit resolves even when validation fails, so only advance when the
+    // form is valid — otherwise the user would be moved past their own errors.
+    if (form.state.isValid) {
+      completeAndContinue(currentStep.stepId);
+    }
   };
 
   const errors = useStore(form.store, (state) => {
@@ -292,6 +328,8 @@ export default function FormRenderer({
     }
     return fieldValidationErrors;
   });
+
+  const isSubmitting = useStore(form.store, (state) => state.isSubmitting);
 
   const isSubmissionConfirmation =
     currentStep.stepId === "submission-confirmation";
@@ -314,20 +352,20 @@ export default function FormRenderer({
   });
 
   return (
-    <div className={designSystem.formRoot}>
+    <div className="form-page">
       {!isSubmissionConfirmation && (
-        <p className={designSystem.formTitle}> {formMeta.formTitle} </p>
+        <p className="form-page__service-title"> {formMeta.formTitle} </p>
       )}
 
-      {!isSubmissionConfirmation && <h1>{currentStep.title}</h1>}
+      {!isSubmissionConfirmation && (
+        <h1 className="govbb-text-h1">{currentStep.title}</h1>
+      )}
       {!isSubmissionConfirmation && currentStep.description && (
-        <p className={designSystem.formStepDescription}>
-          {currentStep.description}
-        </p>
+        <p className="form-page__step-description">{currentStep.description}</p>
       )}
       <ErrorSummary errors={errors} />
 
-      <div className={designSystem.formStep}>
+      <div className="form-page__step">
         {currentStep.stepId === "check-your-answers" && (
           <Review
             key={"review-step"}
@@ -363,23 +401,23 @@ export default function FormRenderer({
                 <FieldRenderer
                   form={form}
                   field={group.toggle}
-                  validationProperties={
-                    formMeta.validationProperties[group.toggle.id]
-                  }
+                  validationProperties={resolveValidators(group.toggle)}
                   formId={formMeta.formId}
+                  formVersion={formMeta.version}
                 />
                 {isOpen && (
-                  <div data-show-hide-content>
-                    {group.toggle.hint && <p data-hint>{group.toggle.hint}</p>}
+                  <div className="form-page__show-hide-content">
+                    {group.toggle.hint && (
+                      <p className="govbb-hint">{group.toggle.hint}</p>
+                    )}
                     {group.controlled.map((field) => (
                       <FieldRenderer
                         key={field.id}
                         form={form}
                         field={field}
-                        validationProperties={
-                          formMeta.validationProperties[field.id]
-                        }
+                        validationProperties={resolveValidators(field)}
                         formId={formMeta.formId}
+                        formVersion={formMeta.version}
                       />
                     ))}
                   </div>
@@ -397,7 +435,7 @@ export default function FormRenderer({
                   optVal,
                   insetFields.map((f) => ({
                     field: f,
-                    validationProperties: formMeta.validationProperties[f.id],
+                    validationProperties: resolveValidators(f),
                   })),
                 ],
               ),
@@ -408,11 +446,10 @@ export default function FormRenderer({
                 key={group.radio.id}
                 form={form}
                 field={group.radio}
-                validationProperties={
-                  formMeta.validationProperties[group.radio.id]
-                }
+                validationProperties={resolveValidators(group.radio)}
                 insetFieldsByOption={insetFieldsByOption}
                 formId={formMeta.formId}
+                formVersion={formMeta.version}
               />
             );
           }
@@ -422,19 +459,18 @@ export default function FormRenderer({
               key={group.field.id}
               form={form}
               field={group.field}
-              validationProperties={
-                formMeta.validationProperties[group.field.id]
-              }
+              validationProperties={resolveValidators(group.field)}
               formId={formMeta.formId}
+              formVersion={formMeta.version}
             />
           );
         })}
 
         {currentStep.stepId !== "submission-confirmation" && (
-          <div className={designSystem.formNavigation}>
+          <div className="govbb-btn-group">
             {!hidePrevious && (
               <button
-                data-variant="secondary"
+                className="govbb-btn--secondary"
                 type="button"
                 onClick={handlePrevious}
               >
@@ -442,11 +478,16 @@ export default function FormRenderer({
               </button>
             )}
             <button
-              data-variant="primary"
+              className="govbb-btn"
               type="button"
+              disabled={isLastFormStep && isSubmitting}
               onClick={isLastFormStep ? handleSubmit : handleContinue}
             >
-              {isLastFormStep ? "Submit" : "Continue"}
+              {isLastFormStep && isSubmitting
+                ? "Submitting…"
+                : isLastFormStep
+                  ? "Submit"
+                  : "Continue"}
             </button>
           </div>
         )}

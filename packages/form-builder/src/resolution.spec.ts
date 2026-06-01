@@ -1,5 +1,6 @@
-import { hydrateForm } from "./resolution";
-import { getCatalog } from "./catalog";
+import { hydrateForm, collectUnknownRefs } from "./resolution";
+import { UnknownRefError } from "./errors";
+import { getCatalog, getRegistryItem } from "./catalog";
 import type { RegistryCatalog } from "./catalog";
 import type { ServiceContractRecipe } from "@govtech-bb/form-types";
 
@@ -18,6 +19,108 @@ function makeRecipe(
     ...overrides,
   };
 }
+
+// ─── collectUnknownRefs ────────────────────────────────────────────────────────
+
+describe("collectUnknownRefs", () => {
+  let catalog: RegistryCatalog;
+
+  beforeEach(() => {
+    catalog = getCatalog();
+  });
+
+  it("returns [] when every ref resolves", () => {
+    const recipe = makeRecipe({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          elements: [{ ref: "components/text" }, { ref: "blocks/name" }],
+        },
+      ],
+    });
+
+    expect(collectUnknownRefs(recipe, catalog)).toEqual([]);
+  });
+
+  it("reports an unknown ref with its recipe path", () => {
+    const recipe = makeRecipe({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          elements: [
+            { ref: "components/unknown-widget" },
+            { ref: "components/text" },
+          ],
+        },
+      ],
+    });
+
+    expect(collectUnknownRefs(recipe, catalog)).toEqual([
+      {
+        ref: "components/unknown-widget",
+        path: "steps[step-1].elements[0].ref",
+      },
+    ]);
+  });
+
+  it("collects every unknown ref across all steps in one pass", () => {
+    const recipe = makeRecipe({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          elements: [
+            { ref: "components/text" },
+            { ref: "components/nope-one" },
+          ],
+        },
+        {
+          stepId: "step-2",
+          title: "Step 2",
+          elements: [{ ref: "blocks/nope-two" }],
+        },
+      ],
+    });
+
+    expect(collectUnknownRefs(recipe, catalog)).toEqual([
+      { ref: "components/nope-one", path: "steps[step-1].elements[1].ref" },
+      { ref: "blocks/nope-two", path: "steps[step-2].elements[0].ref" },
+    ]);
+  });
+
+  it("resolves a custom ref present in catalog.custom (does not report it)", () => {
+    const customCatalog: RegistryCatalog = {
+      ...getCatalog(),
+      custom: [
+        {
+          ref: "components/custom-my-widget",
+          displayName: "My Widget",
+          namespace: "custom",
+          type: "my-widget",
+          definition: {
+            fieldId: "my-widget",
+            label: "My Widget",
+            htmlType: "text",
+          },
+        },
+      ],
+    };
+
+    const recipe = makeRecipe({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          elements: [{ ref: "components/custom-my-widget" }],
+        },
+      ],
+    });
+
+    expect(collectUnknownRefs(recipe, customCatalog)).toEqual([]);
+  });
+});
 
 // ─── hydrateForm ──────────────────────────────────────────────────────────────
 
@@ -151,6 +254,38 @@ describe("hydrateForm", () => {
     });
   });
 
+  // Regression (#487): a field that is required in the registry must be made
+  // optional by a `required: { value: false }` override — otherwise the merge
+  // falls back to the base `{ value: true }` and the field is always required.
+  it("un-requires a base-required component via a required:{value:false} override", () => {
+    const recipe = makeRecipe({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          elements: [
+            {
+              ref: "components/last-name",
+              overrides: { validations: { required: { value: false } } },
+            },
+          ],
+        },
+      ],
+    });
+
+    const contract = hydrateForm(recipe, catalog);
+    const base = getRegistryItem("components/last-name", catalog);
+    // Sanity: the base really is required, so the override is doing the work.
+    expect(
+      base && "primitive" in base
+        ? base.primitive.validations?.required?.value
+        : undefined,
+    ).toBe(true);
+    expect(contract.steps[0].elements[0].validations?.required?.value).toBe(
+      false,
+    );
+  });
+
   it("expands a block ref to all child primitives", () => {
     const recipe = makeRecipe({
       steps: [
@@ -222,9 +357,7 @@ describe("hydrateForm", () => {
     expect(lastName.label).toBe("Last Name");
   });
 
-  it("skips unknown ref with console.warn and does not appear in output", () => {
-    const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
-
+  it("throws UnknownRefError pointing at an unknown ref's recipe path", () => {
     const recipe = makeRecipe({
       steps: [
         {
@@ -238,36 +371,51 @@ describe("hydrateForm", () => {
       ],
     });
 
-    const contract = hydrateForm(recipe, catalog);
+    expect(() => hydrateForm(recipe, catalog)).toThrow(UnknownRefError);
 
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("components/unknown-widget"),
-    );
-    // Only the known field appears
-    expect(contract.steps[0].elements).toHaveLength(1);
-    expect(contract.steps[0].elements[0].fieldId).toBe("text");
-
-    warnSpy.mockRestore();
+    try {
+      hydrateForm(recipe, catalog);
+      throw new Error("expected hydrateForm to throw");
+    } catch (err) {
+      expect(err).toBeInstanceOf(UnknownRefError);
+      expect((err as UnknownRefError).unknownRefs).toEqual([
+        {
+          ref: "components/unknown-widget",
+          path: "steps[step-1].elements[0].ref",
+        },
+      ]);
+    }
   });
 
-  it("does not throw when all refs in a step are unknown", () => {
-    const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
-
+  it("collects every unknown ref across all steps before throwing", () => {
     const recipe = makeRecipe({
       steps: [
         {
           stepId: "step-1",
           title: "Step 1",
-          elements: [{ ref: "components/nonexistent" }],
+          elements: [
+            { ref: "components/text" },
+            { ref: "components/nope-one" },
+          ],
+        },
+        {
+          stepId: "step-2",
+          title: "Step 2",
+          elements: [{ ref: "blocks/nope-two" }],
         },
       ],
     });
 
-    const result = hydrateForm(recipe, catalog);
-    expect(result).toBeDefined();
-    expect(warnSpy).toHaveBeenCalled();
-
-    warnSpy.mockRestore();
+    try {
+      hydrateForm(recipe, catalog);
+      throw new Error("expected hydrateForm to throw");
+    } catch (err) {
+      expect(err).toBeInstanceOf(UnknownRefError);
+      expect((err as UnknownRefError).unknownRefs).toEqual([
+        { ref: "components/nope-one", path: "steps[step-1].elements[1].ref" },
+        { ref: "blocks/nope-two", path: "steps[step-2].elements[0].ref" },
+      ]);
+    }
   });
 
   it("expands a custom component ref when it exists in catalog.custom", () => {
@@ -420,5 +568,28 @@ describe("hydrateForm", () => {
     expect(contract.steps[0].elements[0].fieldId).toBe("email");
     expect(contract.steps[0].elements[1].fieldId).toBe("first-name");
     expect(contract.steps[0].elements[2].fieldId).toBe("last-name");
+  });
+
+  it("carries contactDetails through to the hydrated contract (issue #452)", () => {
+    const contactDetails = {
+      title: "Ministry of Health",
+      telephoneNumber: "+1 246 555 0100",
+      email: "health@gov.bb",
+      address: {
+        line1: "Jemmotts Lane",
+        city: "Bridgetown",
+      },
+    };
+    const recipe = makeRecipe({ contactDetails });
+    const contract = hydrateForm(recipe, catalog);
+
+    expect(contract.contactDetails).toEqual(contactDetails);
+  });
+
+  it("omits contactDetails when not present in recipe", () => {
+    const recipe = makeRecipe();
+    const contract = hydrateForm(recipe, catalog);
+
+    expect(contract.contactDetails).toBeUndefined();
   });
 });

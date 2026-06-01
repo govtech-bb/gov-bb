@@ -44,11 +44,12 @@ jest.mock("@forms/form-api", () => ({
 // After the mocks are in place, import the route module so that
 // createFileRoute (already mocked) captures the component reference.
 // We also need to patch useLoaderData onto Route before rendering.
-import { Route } from "./index";
+import { Route, groupFormsByCategory } from "./index";
 
 const MOCK_FORMS = [
-  { formId: "form-1", title: "Passport Renewal" },
-  { formId: "form-2", title: "Driver's Licence" },
+  { formId: "form-1", title: "Passport Renewal", category: "Immigration" },
+  { formId: "form-2", title: "Driver's Licence", category: "Transport" },
+  { formId: "form-3", title: "Uncategorised Form" },
 ];
 
 beforeEach(() => {
@@ -65,10 +66,10 @@ describe("Index route", () => {
     expect(container).not.toBeEmptyDOMElement();
   });
 
-  it("displays the welcome heading", () => {
+  it("displays the page heading", () => {
     render(<Route.component />);
     expect(
-      screen.getByRole("heading", { name: /welcome govtech/i }),
+      screen.getByRole("heading", { level: 1, name: /forms/i }),
     ).toBeInTheDocument();
   });
 
@@ -99,13 +100,74 @@ describe("Index route", () => {
     expect(screen.queryByRole("listitem")).not.toBeInTheDocument();
   });
 
+  it("groups forms under a category heading", () => {
+    render(<Route.component />);
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Immigration" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Transport" }),
+    ).toBeInTheDocument();
+  });
+
+  it("places forms without a category under 'Unknown Category'", () => {
+    render(<Route.component />);
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Unknown Category" }),
+    ).toBeInTheDocument();
+  });
+
+  it("orders categories alphabetically with 'Unknown Category' last", () => {
+    render(<Route.component />);
+    const headings = screen
+      .getAllByRole("heading", { level: 2 })
+      .map((h) => h.textContent);
+    expect(headings).toEqual(["Immigration", "Transport", "Unknown Category"]);
+  });
+
   it("passes jest-axe accessibility audit", async () => {
     const { container } = render(<Route.component />);
-    // heading-order: h3 without a preceding h1/h2 — pre-existing in the component;
-    // excluded here consistent with the project convention (see submission-confirmation.spec.tsx).
-    const results = await axe(container, {
-      rules: { "heading-order": { enabled: false } },
-    });
+    const results = await axe(container);
     expect(results).toHaveNoViolations();
+  });
+});
+
+describe("groupFormsByCategory", () => {
+  it("returns an empty array for no forms", () => {
+    expect(groupFormsByCategory([])).toEqual([]);
+  });
+
+  it("groups forms by their category", () => {
+    const result = groupFormsByCategory([
+      { formId: "a", title: "A", category: "Health" },
+      { formId: "b", title: "B", category: "Health" },
+      { formId: "c", title: "C", category: "Transport" },
+    ]);
+    expect(result).toEqual([
+      {
+        category: "Health",
+        forms: [
+          { formId: "a", title: "A", category: "Health" },
+          { formId: "b", title: "B", category: "Health" },
+        ],
+      },
+      {
+        category: "Transport",
+        forms: [{ formId: "c", title: "C", category: "Transport" }],
+      },
+    ]);
+  });
+
+  it("buckets forms with a missing or blank category under 'Unknown Category', sorted last", () => {
+    const result = groupFormsByCategory([
+      { formId: "a", title: "A" },
+      { formId: "b", title: "B", category: "   " },
+      { formId: "c", title: "C", category: "Transport" },
+    ]);
+    expect(result.map((g) => g.category)).toEqual([
+      "Transport",
+      "Unknown Category",
+    ]);
+    expect(result[1].forms.map((f) => f.formId)).toEqual(["a", "b"]);
   });
 });

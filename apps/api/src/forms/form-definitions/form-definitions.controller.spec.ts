@@ -34,13 +34,35 @@ describe("FormDefinitionsController", () => {
   });
 
   describe("getAll (GET /form-definitions)", () => {
-    it("calls service.findAll and returns success response shape", async () => {
-      const list = [{ formId: "passport-renewal", title: "Passport Renewal" }];
+    it("calls service.findAll and returns success response shape with version", async () => {
+      const list = [
+        {
+          formId: "passport-renewal",
+          title: "Passport Renewal",
+          version: "1.0.0",
+        },
+      ];
       mockService.findAll.mockResolvedValue(list);
 
       const result = await controller.getAll();
 
       expect(mockService.findAll).toHaveBeenCalled();
+      expect(result).toMatchObject({ status: "success", data: list });
+    });
+
+    it("passes each form's category through unchanged", async () => {
+      const list = [
+        {
+          formId: "passport-renewal",
+          title: "Passport Renewal",
+          version: "1.0.0",
+          category: "Immigration Department",
+        },
+      ];
+      mockService.findAll.mockResolvedValue(list);
+
+      const result = await controller.getAll();
+
       expect(result).toMatchObject({ status: "success", data: list });
     });
   });
