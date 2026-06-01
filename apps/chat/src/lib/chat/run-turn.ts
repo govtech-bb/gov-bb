@@ -119,6 +119,10 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     maxTokens: 600,
     temperature: 0,
     abortController,
+    // DEV-only: traces provider chunks, tool calls, and agent-loop iterations
+    // that withTurnLog (which only taps RUN_FINISHED) can't see. NEVER enable
+    // on the deployed Lambda — it logs message content (CloudWatch cost + PII).
+    debug: import.meta.env.DEV,
   });
 
   const stream = withTurnLog(
