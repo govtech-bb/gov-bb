@@ -121,7 +121,7 @@
           }
         },
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
             "hint": "If they are between school years, add the class they are going into",
             "label": "Which class are they currently in?",
@@ -477,7 +477,7 @@
           }
         },
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
             "hint": "Enter the bank branch code used for transfers",
             "label": "Branch code",

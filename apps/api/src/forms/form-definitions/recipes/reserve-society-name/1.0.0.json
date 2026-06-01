@@ -32,7 +32,7 @@
           }
         },
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "What is the current name of the society?",
             "fieldId": "current-society-name",
@@ -59,7 +59,7 @@
       "stepId": "proposed-names",
       "elements": [
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "First choice of society name",
             "fieldId": "society-name-1",
@@ -93,11 +93,16 @@
           }
         },
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
             "hint": "Leave blank if you only have one choice",
             "label": "Second choice of society name (optional)",
-            "fieldId": "society-name-2"
+            "fieldId": "society-name-2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -108,11 +113,16 @@
           }
         },
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
             "hint": "Leave blank if you only have two choices",
             "label": "Third choice of society name (optional)",
-            "fieldId": "society-name-3"
+            "fieldId": "society-name-3",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -229,7 +239,12 @@
           "ref": "components/address",
           "overrides": {
             "label": "Address Line 2",
-            "fieldId": "address-line-2"
+            "fieldId": "address-line-2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
