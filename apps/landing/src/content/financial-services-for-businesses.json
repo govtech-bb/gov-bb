@@ -2,8 +2,6 @@
   "title": "Financial services for businesses",
   "description": "The Financial Services Commission supervises and regulates non-bank financial institutions in Barbados under various Acts of Parliament, providing contact information and a link to their official website.",
   "categories": ["business-trade"],
-  "service_type": "information",
-  "page_role": "entry",
   "stage": "alpha",
   "source_url": "https://www.gov.bb/State-Bodies/financial-services-commission",
   "updated_at": "2026-05-28",

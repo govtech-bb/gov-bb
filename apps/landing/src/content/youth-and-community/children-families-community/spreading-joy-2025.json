@@ -3,8 +3,6 @@
   "description": "Festive motorcades visiting communities between 15 and 19 December 2025 with gift distribution for vulnerable children.",
   "categories": ["youth-and-community"],
   "subcategory": "children-families-community",
-  "service_type": "information",
-  "page_role": "entry",
   "stage": "alpha",
   "updated_at": "2026-05-28",
   "body": {

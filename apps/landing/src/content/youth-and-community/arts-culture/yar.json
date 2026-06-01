@@ -3,8 +3,6 @@
   "description": "An arts-focused initiative for young people aged 17 to 30, run under the Youth Development Programme.",
   "categories": ["youth-and-community"],
   "subcategory": "arts-culture",
-  "service_type": "information",
-  "page_role": "entry",
   "stage": "alpha",
   "updated_at": "2026-05-28",
   "body": {

@@ -151,6 +151,10 @@ export default buildConfig({
     outputFile: path.resolve(dirname, 'payload-types.ts'),
   },
   db: postgresAdapter({
+    // Scripts (migrate/fold/export) set PAYLOAD_NO_PUSH=1 to run against an
+    // already-migrated database without drizzle's interactive dev schema-push
+    // prompts. Left undefined for normal dev, where push keeps the schema in sync.
+    push: process.env.PAYLOAD_NO_PUSH === '1' ? false : undefined,
     pool: {
       connectionString: resolveDatabaseUrl(),
       ssl: resolveSslConfig(),

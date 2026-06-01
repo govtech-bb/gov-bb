@@ -3,8 +3,6 @@
   "description": "A job-attachment and mentorship programme for unemployed young people aged 16 to 24, with support from social workers and counsellors.",
   "categories": ["youth-and-community"],
   "subcategory": "youth-development-leadership",
-  "service_type": "information",
-  "page_role": "entry",
   "stage": "alpha",
   "updated_at": "2026-05-28",
   "body": {

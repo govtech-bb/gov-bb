@@ -2,10 +2,11 @@
   "title": "Apply to be a Project Protégé mentor",
   "description": "Apply to become a volunteer mentor for a young person aged 13 to 17 in the Government of Barbados Project Protégé programme.",
   "categories": ["work-employment"],
-  "service_type": "digital",
-  "page_role": "entry",
+  "start_type": "form",
+  "form_id": "project-protege-mentor",
   "stage": "alpha",
   "updated_at": "2026-05-29",
+  "has_start_page": true,
   "body": {
     "root": {
       "type": "root",
@@ -141,19 +142,6 @@
           ],
           "listType": "number",
           "direction": null
-        },
-        {
-          "type": "block",
-          "fields": {
-            "id": "1ab4cd1c5eaa65d14c029883",
-            "url": "/apply-to-be-a-project-protege-mentor/start",
-            "type": "page",
-            "label": "",
-            "blockName": "",
-            "blockType": "startButton"
-          },
-          "format": "",
-          "version": 2
         },
         {
           "tag": "ol",
@@ -775,5 +763,5 @@
       "direction": null
     }
   },
-  "bodyText": "Anyone aged 18 and over is eligible to apply to mentor a young person between the age of 13 and 17 in the Project Protégé programme. Mentors are volunteers who are able to commit regular time to support and inspire their mentee.\n\nApplications are accepted all year round.\n\n## How to apply \n\n### Complete an application form\n\nYou can apply online using the Apply to be a Project Protégé mentor form.\n\n1. Apply online\n\nBlock Field\n\n2. Get a paper form from:\n\n   Ministry of Youth, Sports and Community Empowerment \\\\ Sky Mall \\\\ Haggatt Hall \\\\ St. Michael\n\n### What you will need to share\n\nAs well as your contact details, the application form asks about:\n\n- your qualifications, skills and interests\n- your previous experience of mentoring\n- your current and past employment\n- your reasons for applying\n- your strengths (your knowledge, skills and abilities)\n- what you think a mentee could learn from you\n- your preference of mentoring a male or female\n\nYou will also be asked for the names and contact details of 2 references: \\\\ 1 personal 1 professional.\n\n### Submit your application\n\nIf you apply online, your application will be submitted to the Youth Development Programme.\n\nIf you complete a paper form, you can:\n\n- send a scan or photograph to [YDP@barbados.gov.bb](mailto:YDP@barbados.gov.bb)\n- take it or send it to the ministry office\n\n## After you have applied\n\nIf you are shortlisted, you will be contacted by phone or email and invited for an interview.\n\n## If your interview is successful\n\n### Safeguarding\n\nIf you are successful at the interview stage and accept the role, you will need to [apply for a Police Certificate of Character](https://forms.gov.bb/CertificateOfCharacter).\n\n### Training\n\nYou must also complete some training. This includes a module on safeguarding.\n\n### Before you start\n\nBefore you begin your mentorship, you will be invited to an orientation session to familiarise yourself with the project and help you understand expectations.\n\nYour skills and interests will be taken into account and the ministry will match you with a young person. You will be introduced at a networking event."
+  "bodyText": "Anyone aged 18 and over is eligible to apply to mentor a young person between the age of 13 and 17 in the Project Protégé programme. Mentors are volunteers who are able to commit regular time to support and inspire their mentee.\n\nApplications are accepted all year round.\n\n## How to apply \n\n### Complete an application form\n\nYou can apply online using the Apply to be a Project Protégé mentor form.\n\n1. Apply online\n\n2. Get a paper form from:\n\n   Ministry of Youth, Sports and Community Empowerment \\\\ Sky Mall \\\\ Haggatt Hall \\\\ St. Michael\n\n### What you will need to share\n\nAs well as your contact details, the application form asks about:\n\n- your qualifications, skills and interests\n- your previous experience of mentoring\n- your current and past employment\n- your reasons for applying\n- your strengths (your knowledge, skills and abilities)\n- what you think a mentee could learn from you\n- your preference of mentoring a male or female\n\nYou will also be asked for the names and contact details of 2 references: \\\\ 1 personal 1 professional.\n\n### Submit your application\n\nIf you apply online, your application will be submitted to the Youth Development Programme.\n\nIf you complete a paper form, you can:\n\n- send a scan or photograph to [YDP@barbados.gov.bb](mailto:YDP@barbados.gov.bb)\n- take it or send it to the ministry office\n\n## After you have applied\n\nIf you are shortlisted, you will be contacted by phone or email and invited for an interview.\n\n## If your interview is successful\n\n### Safeguarding\n\nIf you are successful at the interview stage and accept the role, you will need to [apply for a Police Certificate of Character](https://forms.gov.bb/CertificateOfCharacter).\n\n### Training\n\nYou must also complete some training. This includes a module on safeguarding.\n\n### Before you start\n\nBefore you begin your mentorship, you will be invited to an orientation session to familiarise yourself with the project and help you understand expectations.\n\nYour skills and interests will be taken into account and the ministry will match you with a young person. You will be introduced at a networking event."
 }

@@ -13,17 +13,20 @@ export const FrontmatterSchema = z.object({
   updated_at: z.coerce.date().optional(),
   source_url: z.url().optional(),
   stage: z.enum(['alpha', 'beta', 'migrated']).optional(),
-  service_type: z.enum(['digital', 'information']).optional(),
-  /** Entry page (listed) or start sub-page (excluded from listings). From the CMS pageRole. */
-  page_role: z.enum(['entry', 'start']).optional(),
+  /** How a digital service starts: a Form Builder form, or a link (calculator/external). */
+  start_type: z.enum(['form', 'link']).optional(),
+  /** Link target when start_type is 'link'. */
+  start_url: z.string().optional(),
   /**
-   * Form ID in the forms API. When set, a `<a data-start-link>` element
-   * inside the page's body is rendered as a Start now button linking to
-   * the forms app — but only if the form ID is present in the
-   * build-time manifest at src/content/available-forms.gen.ts.
-   * See docs/decisions/0005 for the convention.
+   * Form Builder form ID for a digital service. The Start now button links to
+   * `${FORMS_BASE_URL}/forms/${form_id}`, but only if the id is in the build-time
+   * manifest src/content/available-forms.gen.ts (see decision 0005).
    */
   form_id: z.string().optional(),
+  /** True on an entry page that has a start page; its Start now button links to <url>/start. */
+  has_start_page: z.boolean().optional(),
+  /** True on the start page itself; its Start now button links to the form. */
+  is_start_page: z.boolean().optional(),
   /**
    * Structured Start now button from the CMS. Rendered after the body when
    * no `<a data-start-link>` anchor exists in the body (legacy pages keep

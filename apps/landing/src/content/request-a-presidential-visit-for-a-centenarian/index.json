@@ -2,8 +2,6 @@
   "title": "Request a Presidential Visit for a Centenarian",
   "description": "Ask the President to visit a Barbadian who is turning 100 years old.",
   "categories": ["family-birth-relationships"],
-  "service_type": "information",
-  "page_role": "entry",
   "stage": "alpha",
   "updated_at": "2026-05-28",
   "body": {

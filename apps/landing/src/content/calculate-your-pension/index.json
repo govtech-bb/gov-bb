@@ -2,10 +2,10 @@
   "title": "Calculate your pension",
   "description": "Estimate your public sector pension and gratuity (lump sum) based on your pensionable service and last annual salary.",
   "categories": ["pensions-and-gratuities"],
-  "service_type": "information",
-  "page_role": "entry",
+  "start_type": "link",
+  "start_url": "/pensions-and-gratuities/calculate-your-pension/form",
   "stage": "alpha",
-  "updated_at": "2026-05-28",
+  "updated_at": "2026-05-29",
   "body": {
     "root": {
       "type": "root",

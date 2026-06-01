@@ -2,8 +2,6 @@
   "title": "Get support for a victim of domestic abuse",
   "description": "Find support services available in Barbados for victims of domestic abuse, including who to contact and how to get help.",
   "categories": ["public-safety"],
-  "service_type": "information",
-  "page_role": "entry",
   "stage": "alpha",
   "updated_at": "2026-05-28",
   "body": {

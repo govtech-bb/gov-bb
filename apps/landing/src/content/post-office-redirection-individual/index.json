@@ -2,10 +2,11 @@
   "title": "Redirect my personal mail",
   "description": "Tell the Barbados Post Office to redirect your personal mail to a new address. You must complete one redirection notice per household.",
   "categories": ["travel-id-citizenship"],
-  "service_type": "information",
-  "page_role": "entry",
+  "start_type": "form",
+  "form_id": "post-office-redirection-individual",
   "stage": "alpha",
   "updated_at": "2026-05-29",
+  "has_start_page": true,
   "body": {
     "root": {
       "type": "root",
@@ -390,19 +391,6 @@
           "direction": null,
           "textStyle": "",
           "textFormat": 0
-        },
-        {
-          "type": "block",
-          "fields": {
-            "id": "cfe966d7bbd266fdbc79a71e",
-            "url": "/post-office-redirection-individual/start",
-            "type": "page",
-            "label": "",
-            "blockName": "",
-            "blockType": "startButton"
-          },
-          "format": "",
-          "version": 2
         },
         {
           "tag": "ol",
@@ -855,5 +843,5 @@
       "direction": null
     }
   },
-  "bodyText": "You should use this service to tell the Post Office that you would like to change the address that your mail gets delivered to. You must complete one redirection notice per household.\n\n## Who can use this service\n\nIf you are an adult (18 years old or over), you can complete a redirection form to redirect mail addressed to you. You should also use this service to redirect the post of your dependants.\n\nDependants are:\n\n- children under 18\n- vulnerable relatives (those with physical or mental infirmity or care needs)\n\nA common use case is if you and your family are moving house.\n\nA redirection notice will last for 6 months.\n\nThere are separate forms if you would like to:\n\n- [redirect your business mail](/travel-id-citizenship/post-office-redirection-business)\n- [tell the Post Office that someone has died](/travel-id-citizenship/post-office-redirection-deceased)\n\n## How to redirect personal mail\n\n### Complete the form\n\nThere are 2 ways to redirect your personal mail. You can:\n\n1. #### Tell the Post Office online\n\n   You can complete the redirection form online.\n\nBlock Field\n\n2. #### Complete a paper redirection form You can either:\n3. [Download and print the form](https://www.gov.bb/media_files/PostOffice_RedirNotice.pdf) from the Barbados Postal Service website.\n4. Collect a paper form from any Post Office.\n\n   You must complete the paper form by hand and return it to any Post Office. \n\n### What you will need to share\n\nAlong with your personal details, the redirection form asks you to share:\n\n- the name and National Identification number of every person who wants to redirect their mail\n- the old address\n- the new address\n- start date of redirection\n- end date of the redirection\n\n### After you have submitted the form\n\nEveryone who is 18 years old and over who wants to redirect their personal mail must visit any Post Office, in person, to:\n\n1. Sign the form.\n2. Verify their identity with their National ID card.\n\nFor households who complete the online redirection form, the Post Office cashier will ask for the reference number on the confirmation email.\n\n## After the Post Office has processed your request\n\nThe Barbados Postal Service will begin to deliver your mail to your new address from the start date you gave on the form.\n\nYour redirection notice will last for a maximum of 6 months. After the notice has expired, all mail will be delivered to the address it has on it. Therefore, you should update the relevant people and businesses on your new address.\n\nThe Post Office is responsible for this service."
+  "bodyText": "You should use this service to tell the Post Office that you would like to change the address that your mail gets delivered to. You must complete one redirection notice per household.\n\n## Who can use this service\n\nIf you are an adult (18 years old or over), you can complete a redirection form to redirect mail addressed to you. You should also use this service to redirect the post of your dependants.\n\nDependants are:\n\n- children under 18\n- vulnerable relatives (those with physical or mental infirmity or care needs)\n\nA common use case is if you and your family are moving house.\n\nA redirection notice will last for 6 months.\n\nThere are separate forms if you would like to:\n\n- [redirect your business mail](/travel-id-citizenship/post-office-redirection-business)\n- [tell the Post Office that someone has died](/travel-id-citizenship/post-office-redirection-deceased)\n\n## How to redirect personal mail\n\n### Complete the form\n\nThere are 2 ways to redirect your personal mail. You can:\n\n1. #### Tell the Post Office online\n\n   You can complete the redirection form online.\n\n2. #### Complete a paper redirection form You can either:\n3. [Download and print the form](https://www.gov.bb/media_files/PostOffice_RedirNotice.pdf) from the Barbados Postal Service website.\n4. Collect a paper form from any Post Office.\n\n   You must complete the paper form by hand and return it to any Post Office. \n\n### What you will need to share\n\nAlong with your personal details, the redirection form asks you to share:\n\n- the name and National Identification number of every person who wants to redirect their mail\n- the old address\n- the new address\n- start date of redirection\n- end date of the redirection\n\n### After you have submitted the form\n\nEveryone who is 18 years old and over who wants to redirect their personal mail must visit any Post Office, in person, to:\n\n1. Sign the form.\n2. Verify their identity with their National ID card.\n\nFor households who complete the online redirection form, the Post Office cashier will ask for the reference number on the confirmation email.\n\n## After the Post Office has processed your request\n\nThe Barbados Postal Service will begin to deliver your mail to your new address from the start date you gave on the form.\n\nYour redirection notice will last for a maximum of 6 months. After the notice has expired, all mail will be delivered to the address it has on it. Therefore, you should update the relevant people and businesses on your new address.\n\nThe Post Office is responsible for this service."
 }

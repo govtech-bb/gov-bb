@@ -2,8 +2,6 @@
   "title": "Report elderly abuse",
   "description": "Find out how to report suspected abuse, neglect, or exploitation of an elderly person in Barbados.",
   "categories": ["public-safety"],
-  "service_type": "information",
-  "page_role": "entry",
   "stage": "alpha",
   "updated_at": "2026-05-28",
   "body": {

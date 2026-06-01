@@ -94,6 +94,46 @@ function StartButtonBlock({ type, formId, url, label }: StartButtonFields) {
   )
 }
 
+// The page-level Start now button, generated from the service's start fields
+// (not authored as a body block). An entry page that has a start page links to
+// it; the start page — and a digital service with no start content — link to the
+// form, gated on the build-time forms manifest.
+function StartNowAction({ frontmatter }: { frontmatter: Frontmatter }) {
+  const { pathname } = useLocation()
+  // Entry page that has a start page → link to <current path>/start.
+  if (frontmatter.has_start_page) {
+    return (
+      <LinkButton className="self-start" href={`${pathname}/start`}>
+        Start now
+      </LinkButton>
+    )
+  }
+  // The start action itself (on the start page, or a digital entry with no
+  // start-page content). A link goes to a calculator/another site; a form goes
+  // to the forms app, gated on the build-time manifest.
+  if (frontmatter.start_type === 'link' && frontmatter.start_url) {
+    return (
+      <LinkButton className="self-start" href={resolveServiceHref(frontmatter.start_url)}>
+        Start now
+      </LinkButton>
+    )
+  }
+  const formId = frontmatter.form_id
+  if (frontmatter.start_type === 'form' && formId && AVAILABLE_FORMS.has(formId)) {
+    return (
+      <LinkButton
+        className="self-start"
+        href={`${FORMS_BASE_URL}/forms/${formId}`}
+        data-umami-event={`${formId}-start`}
+        data-umami-event-from={pathname}
+      >
+        Start now
+      </LinkButton>
+    )
+  }
+  return null
+}
+
 const converters: JSXConvertersFunction = ({ defaultConverters }) => {
   const overrides: JSXConverters = {
     heading: ({ node, nodesToJSX }) => (
@@ -256,6 +296,7 @@ export function LexicalContent({ frontmatter, body }: LexicalContentProps) {
 
         <div className="space-y-6">
           <LexicalBody body={body} />
+          <StartNowAction frontmatter={frontmatter} />
         </div>
       </div>
     </div>

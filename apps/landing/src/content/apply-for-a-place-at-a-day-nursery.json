@@ -2,8 +2,6 @@
   "title": "Apply for a place at a day nursery",
   "description": "Apply for a place at a government-run day nursery in Barbados for young children. Nurseries provide early childhood education and care.",
   "categories": ["family-birth-relationships"],
-  "service_type": "information",
-  "page_role": "entry",
   "stage": "alpha",
   "updated_at": "2026-05-28",
   "body": {

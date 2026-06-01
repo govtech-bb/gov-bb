@@ -3,10 +3,8 @@
   "description": "An umbrella of workshops, projects and learning initiatives for young people aged 9 to 29 in communities across the island.",
   "categories": ["youth-and-community"],
   "subcategory": "youth-development-leadership",
-  "service_type": "information",
-  "page_role": "entry",
   "stage": "alpha",
-  "updated_at": "2026-05-28",
+  "updated_at": "2026-05-29",
   "body": {
     "root": {
       "type": "root",

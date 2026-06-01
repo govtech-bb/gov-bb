@@ -1,9 +1,9 @@
 {
   "title": "Get a copy of a birth certificate",
-  "service_type": "digital",
-  "page_role": "start",
-  "stage": "alpha",
-  "updated_at": "2026-05-29",
+  "is_start_page": true,
+  "categories": ["family-birth-relationships"],
+  "start_type": "form",
+  "form_id": "get-birth-certificate",
   "body": {
     "root": {
       "type": "root",
@@ -237,23 +237,10 @@
           ],
           "listType": "bullet",
           "direction": null
-        },
-        {
-          "type": "block",
-          "fields": {
-            "id": "f1e5e35485641ce71b0b40db",
-            "type": "form",
-            "label": "",
-            "formId": "get-birth-certificate",
-            "blockName": "",
-            "blockType": "startButton"
-          },
-          "format": "",
-          "version": 2
         }
       ],
       "direction": null
     }
   },
-  "bodyText": "You should complete your application in one go. At the moment, it is not possible to save your answers and come back to them later.\n\nYou cannot use the online service if you would like the certificate to be sent overseas. Instead, contact the Registration Department.\n\n## How long does it take?\n\nIt shouldn’t take longer than 20 minutes.\n\n## What you will need\n\nYou will need a debit or credit card, and you will need to have (or create) an EZPay+ account.\n\nEach certified copy costs $5 BBD. People aged 60 and over pay $1 BBD per certificate.\n\nThe form asks for:\n\n- the applicant’s name, address and National ID number\n- the full name, date of birth, place of birth and place of baptism of the person named on the certificate\n- the full name(s) of the parent(s) of the person named on the certificate\n\nBlock Field"
+  "bodyText": "You should complete your application in one go. At the moment, it is not possible to save your answers and come back to them later.\n\nYou cannot use the online service if you would like the certificate to be sent overseas. Instead, contact the Registration Department.\n\n## How long does it take?\n\nIt shouldn’t take longer than 20 minutes.\n\n## What you will need\n\nYou will need a debit or credit card, and you will need to have (or create) an EZPay+ account.\n\nEach certified copy costs $5 BBD. People aged 60 and over pay $1 BBD per certificate.\n\nThe form asks for:\n\n- the applicant’s name, address and National ID number\n- the full name, date of birth, place of birth and place of baptism of the person named on the certificate\n- the full name(s) of the parent(s) of the person named on the certificate"
 }

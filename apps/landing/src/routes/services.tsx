@@ -27,17 +27,15 @@ function ServicesPage() {
   const { flag } = Route.useRouteContext()
   const { data: services } = useSuspenseQuery(allServicesQueryOptions(flag))
 
-  // `fetchAllServices` already filters out `/start` sub-pages at the API
-  // boundary; classification is driven by the structured `serviceType`
-  // field (required on Services as of the previous commit), so no
-  // proxy-by-presence-of-/start dance is needed here.
+  // Each service is one document; `digital` is true when it has a start action
+  // (a form or a link), which is what marks it as a transactional service here.
   const items = services
     .filter((s) => s.stage === 'alpha')
     .map((s) => ({
       title: s.title,
       href: `/${s.url}`,
       slug: s.slug,
-      isEntry: s.serviceType === 'digital',
+      isEntry: Boolean(s.digital),
     }))
     // API already returns sort=title, but re-sort defensively in case of locale.
     .sort((a, b) => a.title.localeCompare(b.title))

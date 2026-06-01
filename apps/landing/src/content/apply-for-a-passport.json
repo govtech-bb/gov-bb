@@ -2,8 +2,6 @@
   "title": "Apply for a passport",
   "description": "This article provides detailed instructions for citizens of Barbados on how to apply for a passport, including requirements, application forms, collection procedures, and fee schedules.",
   "categories": ["travel-id-citizenship"],
-  "service_type": "information",
-  "page_role": "entry",
   "stage": "alpha",
   "source_url": "https://www.gov.bb/Citizens/apply-passport",
   "updated_at": "2026-05-28",

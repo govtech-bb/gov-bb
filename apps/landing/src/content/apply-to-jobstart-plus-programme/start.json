@@ -1,9 +1,9 @@
 {
   "title": "Register for Job Start Plus",
-  "service_type": "digital",
-  "page_role": "start",
-  "stage": "alpha",
-  "updated_at": "2026-05-29",
+  "is_start_page": true,
+  "categories": ["work-employment"],
+  "start_type": "form",
+  "form_id": "jobstart-plus-programme",
   "body": {
     "root": {
       "type": "root",
@@ -69,19 +69,6 @@
           "direction": null,
           "textStyle": "",
           "textFormat": 0
-        },
-        {
-          "type": "block",
-          "fields": {
-            "id": "01dfebcf84868dc54c60e8bc",
-            "type": "form",
-            "label": "",
-            "formId": "jobstart-plus-programme",
-            "blockName": "",
-            "blockType": "startButton"
-          },
-          "format": "",
-          "version": 2
         },
         {
           "tag": "h2",
@@ -233,5 +220,5 @@
       "direction": null
     }
   },
-  "bodyText": "You should complete your registration in one go. At the moment, it is not possible to save your answers and come back to them later.\n\n## How long does it take?\n\nIt should not take more than 20 minutes\n\nBlock Field\n\n## Information you will need to apply to online\n\nAs well as your contact details, the application form asks about:\n\n- any access or support needs so they can be accommodated\n- your education, training and qualifications\n- your skills, interests and community groups\n- your availability\n- your short-term, work-related goals"
+  "bodyText": "You should complete your registration in one go. At the moment, it is not possible to save your answers and come back to them later.\n\n## How long does it take?\n\nIt should not take more than 20 minutes\n\n## Information you will need to apply to online\n\nAs well as your contact details, the application form asks about:\n\n- any access or support needs so they can be accommodated\n- your education, training and qualifications\n- your skills, interests and community groups\n- your availability\n- your short-term, work-related goals"
 }
