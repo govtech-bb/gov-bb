@@ -5,7 +5,7 @@ export const showHideComponent: ComponentDefinition = {
   displayName: "Show / hide toggle",
   primitive: {
     fieldId: "show-hide",
-    label: "Show more",
+    label: "Show / hide",
     htmlType: "show-hide",
   },
 };
