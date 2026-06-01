@@ -40,6 +40,22 @@ export function ProcessorConfigForm({
       return (
         <>
           <div className={styles.formGroup}>
+            <label htmlFor={fid("label")}>Label</label>
+            <input
+              id={fid("label")}
+              type="text"
+              value={asText(config.label)}
+              onChange={(e) => {
+                // Prune to absent when emptied (it's optional, min length 1),
+                // mirroring `subject`, so a blank label doesn't persist "".
+                const next = { ...config };
+                if (e.target.value) next.label = e.target.value;
+                else delete next.label;
+                onConfigChange(next);
+              }}
+            />
+          </div>
+          <div className={styles.formGroup}>
             <label htmlFor={fid("recipientField")}>Recipient field</label>
             <ValuePathPicker
               id={fid("recipientField")}
