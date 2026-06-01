@@ -8,7 +8,7 @@
       "title": "Child Information",
       "elements": [
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "First Name",
             "fieldId": "child_first_name",
@@ -16,7 +16,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Surname",
             "fieldId": "child_surname",
@@ -24,7 +24,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Other Name(s)",
             "fieldId": "child_other_names",
@@ -32,7 +32,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Country of Birth",
             "fieldId": "country_of_birth",
@@ -40,7 +40,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Name of Present School",
             "fieldId": "present_school",
@@ -48,7 +48,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Gender",
             "fieldId": "gender",
@@ -56,7 +56,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Date of Birth of Child",
             "fieldId": "date_of_birth",
@@ -65,7 +65,7 @@
           }
         },
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Caricom National",
             "fieldId": "caricom_national",
@@ -90,7 +90,7 @@
       "title": "Parent/Guardian Information",
       "elements": [
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Title",
             "fieldId": "guardian_title",
@@ -98,7 +98,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "First Name",
             "fieldId": "guardian_first_name",
@@ -106,7 +106,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Last Name",
             "fieldId": "guardian_last_name",
@@ -114,7 +114,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Address",
             "fieldId": "guardian_address",
@@ -122,7 +122,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Contact Number",
             "fieldId": "guardian_contact_number",
@@ -131,7 +131,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Country of Birth of Parent/Guardian",
             "fieldId": "guardian_country_of_birth",
@@ -139,7 +139,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Status",
             "fieldId": "guardian_status",
@@ -154,7 +154,7 @@
       "title": "Document Upload",
       "elements": [
         {
-          "ref": "components/generic/show-hide",
+          "ref": "components/show-hide",
           "overrides": {
             "label": "Document Requirements",
             "content": "A copy of the birth certificate should be uploaded by all Non-Nationals. Caricom Nationals also have to upload a certificate of Immigration Status for the Parent. All other Non-Nationals should upload a copy of Immigration Status for the child. Persons unable to upload these documents should submit physical copies to the school.",
@@ -162,7 +162,7 @@
           }
         },
         {
-          "ref": "components/generic/file-upload",
+          "ref": "components/generic-file",
           "overrides": {
             "label": "Birth Certificate",
             "accept": "application/pdf,image/*",
@@ -171,7 +171,7 @@
           }
         },
         {
-          "ref": "components/generic/file-upload",
+          "ref": "components/generic-file",
           "overrides": {
             "label": "Immigration Status Document (Parent for CARICOM Nationals, Child for Other Non-Nationals)",
             "accept": "application/pdf,image/*",
@@ -187,7 +187,7 @@
       "title": "Applicant Declaration",
       "elements": [
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Signature",
             "fieldId": "applicant_signature",
@@ -195,7 +195,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Date",
             "fieldId": "applicant_date",
@@ -211,7 +211,7 @@
       "title": "For Official Use",
       "elements": [
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Certification",
             "value": "This is to certify that I have seen the request submitted by the parent/guardian of the pupil",
@@ -222,7 +222,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Signature",
             "fieldId": "official_signature",
@@ -230,7 +230,7 @@
           }
         },
         {
-          "ref": "components/generic/text",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Date",
             "fieldId": "official_date",
