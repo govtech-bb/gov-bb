@@ -7,6 +7,7 @@ import type {
 import {
   EMPTY_DRAFT,
   REQUIRED_STEP_IDS,
+  isNoFieldsStep,
   isRequiredStep,
   nextStepId,
   recipeReducer,
@@ -41,6 +42,10 @@ const emailConfig = (p: RecipeProcessorDraft) => {
 // ── isRequiredStep ───────────────────────────────────────────────────────────
 
 describe("isRequiredStep", () => {
+  it("returns true for 'check-your-answers'", () => {
+    expect(isRequiredStep("check-your-answers")).toBe(true);
+  });
+
   it("returns true for 'declaration'", () => {
     expect(isRequiredStep("declaration")).toBe(true);
   });
@@ -58,17 +63,51 @@ describe("isRequiredStep", () => {
   });
 });
 
+// ── isNoFieldsStep ───────────────────────────────────────────────────────────
+
+describe("isNoFieldsStep", () => {
+  it("returns true for 'check-your-answers'", () => {
+    expect(isNoFieldsStep("check-your-answers")).toBe(true);
+  });
+
+  it("returns true for 'submission-confirmation'", () => {
+    expect(isNoFieldsStep("submission-confirmation")).toBe(true);
+  });
+
+  it("returns false for 'declaration' (it bears the confirmation checkbox)", () => {
+    expect(isNoFieldsStep("declaration")).toBe(false);
+  });
+
+  it("returns false for an arbitrary editable step id", () => {
+    expect(isNoFieldsStep("step-1")).toBe(false);
+  });
+});
+
 // ── EMPTY_DRAFT ──────────────────────────────────────────────────────────────
 
 describe("EMPTY_DRAFT", () => {
-  it("seeds exactly the two required steps", () => {
+  it("seeds exactly the three required steps", () => {
     const ids = EMPTY_DRAFT.steps.map((s) => s.stepId);
-    expect(ids).toEqual(["declaration", "submission-confirmation"]);
+    expect(ids).toEqual([
+      "check-your-answers",
+      "declaration",
+      "submission-confirmation",
+    ]);
   });
 
   it("seeds required steps in canonical order", () => {
     expect(EMPTY_DRAFT.steps[0].stepId).toBe(REQUIRED_STEP_IDS[0]);
     expect(EMPTY_DRAFT.steps[1].stepId).toBe(REQUIRED_STEP_IDS[1]);
+    expect(EMPTY_DRAFT.steps[2].stepId).toBe(REQUIRED_STEP_IDS[2]);
+  });
+
+  it("seeds check-your-answers with its review title and description", () => {
+    const cya = EMPTY_DRAFT.steps[0];
+    expect(cya.stepId).toBe("check-your-answers");
+    expect(cya.title).toBe("Check your answers");
+    expect(cya.description).toBe(
+      "Review all the information you have provided before submitting your application.",
+    );
   });
 
   it("seeds exactly two email processors", () => {
@@ -101,7 +140,7 @@ describe("EMPTY_DRAFT", () => {
 // ── RESET ────────────────────────────────────────────────────────────────────
 
 describe("RESET", () => {
-  it("returns a fresh draft containing only the two required steps", () => {
+  it("returns a fresh draft containing only the three required steps", () => {
     const withExtras = {
       ...baseDraft(),
       steps: [
@@ -112,6 +151,7 @@ describe("RESET", () => {
     };
     const result = recipeReducer(withExtras, { type: "RESET" });
     expect(result.steps.map((s) => s.stepId)).toEqual([
+      "check-your-answers",
       "declaration",
       "submission-confirmation",
     ]);
@@ -195,18 +235,19 @@ describe("REMOVE_STEP", () => {
 // ── ADD_STEP ─────────────────────────────────────────────────────────────────
 
 describe("ADD_STEP", () => {
-  it("inserts a new step at index 0 when only the two required steps are present", () => {
-    // With only declaration + submission-confirmation, there are no step-N ids,
-    // so nextStepId returns "step-1".
+  it("inserts a new step at index 0 when only the required steps are present", () => {
+    // With only the required tail, there are no step-N ids, so nextStepId
+    // returns "step-1".
     const state = { ...baseDraft(), steps: [...EMPTY_DRAFT.steps] };
     const result = recipeReducer(state, { type: "ADD_STEP" });
     expect(result.steps[0].stepId).toBe("step-1");
     // Required steps still present at the tail
-    expect(result.steps[1].stepId).toBe("declaration");
-    expect(result.steps[2].stepId).toBe("submission-confirmation");
+    expect(result.steps[1].stepId).toBe("check-your-answers");
+    expect(result.steps[2].stepId).toBe("declaration");
+    expect(result.steps[3].stepId).toBe("submission-confirmation");
   });
 
-  it("inserts at index 2 (between editable and required) when 2 editable + 2 required steps exist", () => {
+  it("inserts at index 2 (between editable and required) when 2 editable + 3 required steps exist", () => {
     const state = {
       ...baseDraft(),
       steps: [
@@ -217,17 +258,19 @@ describe("ADD_STEP", () => {
     };
     const result = recipeReducer(state, { type: "ADD_STEP" });
     // New step should be at index 2, before the required tail
-    expect(result.steps.length).toBe(5);
+    expect(result.steps.length).toBe(6);
     expect(result.steps[2].stepId).toBe("step-3");
-    expect(result.steps[3].stepId).toBe("declaration");
-    expect(result.steps[4].stepId).toBe("submission-confirmation");
+    expect(result.steps[3].stepId).toBe("check-your-answers");
+    expect(result.steps[4].stepId).toBe("declaration");
+    expect(result.steps[5].stepId).toBe("submission-confirmation");
   });
 });
 
 // ── REORDER_STEPS ────────────────────────────────────────────────────────────
 
 describe("REORDER_STEPS", () => {
-  // State: [step-1(0), step-2(1), declaration(2), submission-confirmation(3)]
+  // State: [step-1(0), step-2(1), check-your-answers(2), declaration(3),
+  // submission-confirmation(4)]
   const state = {
     ...baseDraft(),
     steps: [
@@ -237,8 +280,8 @@ describe("REORDER_STEPS", () => {
     ],
   };
 
-  it("refuses a move where toIndex is in the required tail (editable → declaration slot)", () => {
-    // Trying to move step-1 to index 2 (declaration's position)
+  it("refuses a move where toIndex is in the required tail (editable → check-your-answers slot)", () => {
+    // Trying to move step-1 to index 2 (check-your-answers' position)
     const result = recipeReducer(state, {
       type: "REORDER_STEPS",
       fromIndex: 0,
@@ -248,10 +291,10 @@ describe("REORDER_STEPS", () => {
   });
 
   it("refuses a move where fromIndex is in the required tail", () => {
-    // Trying to move declaration (index 2) to index 0
+    // Trying to move declaration (index 3) to index 0
     const result = recipeReducer(state, {
       type: "REORDER_STEPS",
-      fromIndex: 2,
+      fromIndex: 3,
       toIndex: 0,
     });
     expect(result).toBe(state);
@@ -267,15 +310,16 @@ describe("REORDER_STEPS", () => {
     expect(result.steps[0].stepId).toBe("step-2");
     expect(result.steps[1].stepId).toBe("step-1");
     // Required steps remain at tail
-    expect(result.steps[2].stepId).toBe("declaration");
-    expect(result.steps[3].stepId).toBe("submission-confirmation");
+    expect(result.steps[2].stepId).toBe("check-your-answers");
+    expect(result.steps[3].stepId).toBe("declaration");
+    expect(result.steps[4].stepId).toBe("submission-confirmation");
   });
 });
 
 // ── LOAD_DRAFT ───────────────────────────────────────────────────────────────
 
 describe("LOAD_DRAFT", () => {
-  it("appends both required steps in canonical order when draft lacks them", () => {
+  it("appends all required steps in canonical order when draft lacks them", () => {
     const draft = {
       ...baseDraft(),
       steps: [editableStep("step-1"), editableStep("step-2")],
@@ -288,9 +332,72 @@ describe("LOAD_DRAFT", () => {
     expect(ids).toEqual([
       "step-1",
       "step-2",
+      "check-your-answers",
       "declaration",
       "submission-confirmation",
     ]);
+  });
+
+  it("seeds a missing check-your-answers with its default title/description (migration path)", () => {
+    // A recipe saved before check-your-answers became authored has only
+    // declaration + submission-confirmation. Opening it must materialise
+    // check-your-answers with sensible defaults, before declaration.
+    const draft = {
+      ...baseDraft(),
+      steps: [
+        editableStep("step-1"),
+        {
+          stepId: "declaration" as const,
+          title: "Declaration",
+          description: undefined,
+          fields: [],
+          behaviours: [],
+        },
+        {
+          stepId: "submission-confirmation" as const,
+          title: "Submission Confirmation",
+          description: undefined,
+          fields: [],
+          behaviours: [],
+        },
+      ],
+    };
+    const result = recipeReducer(
+      { ...baseDraft(), steps: [] },
+      { type: "LOAD_DRAFT", draft },
+    );
+    expect(result.steps.map((s) => s.stepId)).toEqual([
+      "step-1",
+      "check-your-answers",
+      "declaration",
+      "submission-confirmation",
+    ]);
+    const cya = result.steps.find((s) => s.stepId === "check-your-answers");
+    expect(cya?.title).toBe("Check your answers");
+    expect(cya?.description).toBe(
+      "Review all the information you have provided before submitting your application.",
+    );
+  });
+
+  it("preserves a check-your-answers step that already carries author edits", () => {
+    const customCya: RecipeStepDraft = {
+      stepId: "check-your-answers",
+      title: "Review your details",
+      description: "Have a final look before you submit.",
+      fields: [],
+      behaviours: [],
+    };
+    const draft = {
+      ...baseDraft(),
+      steps: [editableStep("step-1"), customCya, ...EMPTY_DRAFT.steps.slice(1)],
+    };
+    const result = recipeReducer(
+      { ...baseDraft(), steps: [] },
+      { type: "LOAD_DRAFT", draft },
+    );
+    const cya = result.steps.find((s) => s.stepId === "check-your-answers");
+    expect(cya?.title).toBe("Review your details");
+    expect(cya?.description).toBe("Have a final look before you submit.");
   });
 
   it("normalises required steps to canonical order at the tail when they appear in reverse order", () => {
@@ -320,7 +427,12 @@ describe("LOAD_DRAFT", () => {
       { type: "LOAD_DRAFT", draft },
     );
     const ids = result.steps.map((s) => s.stepId);
-    expect(ids).toEqual(["step-1", "declaration", "submission-confirmation"]);
+    expect(ids).toEqual([
+      "step-1",
+      "check-your-answers",
+      "declaration",
+      "submission-confirmation",
+    ]);
   });
 
   it("moves required steps from the middle to the tail", () => {
@@ -356,6 +468,7 @@ describe("LOAD_DRAFT", () => {
       "step-1",
       "step-2",
       "step-3",
+      "check-your-answers",
       "declaration",
       "submission-confirmation",
     ]);
@@ -374,7 +487,8 @@ describe("LOAD_DRAFT", () => {
       steps: [
         editableStep("step-1"),
         customDeclaration,
-        ...EMPTY_DRAFT.steps.slice(1),
+        // slice(2) is [submission-confirmation]; check-your-answers is seeded.
+        ...EMPTY_DRAFT.steps.slice(2),
       ],
     };
     const result = recipeReducer(
