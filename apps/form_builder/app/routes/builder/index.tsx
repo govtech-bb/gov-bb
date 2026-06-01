@@ -8,7 +8,7 @@ import { validateRecipe, previewRecipe } from "../../server/registry";
 import { serializeRecipeDraft, findRecipeIdCollisions, formatCollisionIssues, resolveFieldIds } from "@govtech-bb/form-builder";
 import { bumpMinor, bumpPatch } from "../../lib/version";
 import type { ServiceContract, ServiceContractRecipe } from "@govtech-bb/form-types";
-import type { RecipeDraft, ValidationResult, RecipeValidateResponse } from "@govtech-bb/form-builder";
+import type { RecipeDraft, ValidationResult, RecipeValidateResponse, UnknownRef } from "@govtech-bb/form-builder";
 
 import { buildLoadArgs, draftsEqual } from "./-apply-recipe";
 import { AiSidebar, type ApplyRecipeResult } from "./-ai-sidebar";
@@ -326,10 +326,16 @@ function BuilderPage() {
   // Apply a recipe the AI sidebar produced, in place, against the live draft:
   // deserialize → uniqueness pre-flight → server validate → (no-op guard) →
   // confirm-if-dirty → LOAD_DRAFT → bump patch. Returns a result the sidebar
-  // surfaces. The draft is only ever replaced on the fully-valid, changed,
-  // confirmed path — a broken or unchanged recipe never clobbers good work.
+  // surfaces. The draft is only ever replaced on the changed, confirmed path —
+  // an unchanged recipe or a structurally-broken one never clobbers good work.
+  //
+  // `unresolvableRefs` (flagged by the convert endpoint against the full
+  // catalog) is the one tolerated defect: rather than reject, we load the draft
+  // and light up the validation panel so the author can fix the bad fields in
+  // place. Deploy stays the hard gate (#504).
   const applyAiRecipe = async (
     recipe: ServiceContractRecipe,
+    unresolvableRefs: UnknownRef[] = [],
   ): Promise<ApplyRecipeResult> => {
     let incoming: RecipeDraft;
     try {
@@ -364,24 +370,29 @@ function BuilderPage() {
     }
 
     // Server validate; a recipe that fails the contract must not overwrite.
-    try {
-      const serialized = serializeRecipeDraft(incoming, { version });
-      const raw = (await validateRecipe({
-        data: { recipe: serialized },
-      })) as ValidationResult;
-      if (!raw.ok) {
+    // The exception is unresolvable refs (already flagged by convert): those
+    // are loaded-with-a-warning below rather than rejected, so skip the gate —
+    // it would only fail on the very refs we're choosing to tolerate.
+    if (unresolvableRefs.length === 0) {
+      try {
+        const serialized = serializeRecipeDraft(incoming, { version });
+        const raw = (await validateRecipe({
+          data: { recipe: serialized },
+        })) as ValidationResult;
+        if (!raw.ok) {
+          return {
+            applied: false,
+            error: raw.issues
+              .map((i) => (i.path ? `${i.path}: ${i.message}` : i.message))
+              .join("; "),
+          };
+        }
+      } catch (e) {
         return {
           applied: false,
-          error: raw.issues
-            .map((i) => (i.path ? `${i.path}: ${i.message}` : i.message))
-            .join("; "),
+          error: e instanceof Error ? e.message : "Validation request failed.",
         };
       }
-    } catch (e) {
-      return {
-        applied: false,
-        error: e instanceof Error ? e.message : "Validation request failed.",
-      };
     }
 
     // Guard against silently discarding manual edits already in the editor.
@@ -397,10 +408,23 @@ function BuilderPage() {
     dispatch({ type: "LOAD_DRAFT", draft: incoming });
     setSelectedStepId(null);
     setMainView("step");
-    setValidateResult(null);
+    // Surface unresolvable refs as a non-blocking warning in the existing
+    // validation panel; otherwise clear it.
+    if (unresolvableRefs.length > 0) {
+      setValidateResult({
+        valid: false,
+        issues: unresolvableRefs.map((r) => ({
+          path: r.path,
+          message: `Unknown component/block ref "${r.ref}" — fix this field before deploying.`,
+        })),
+      });
+      setLastSaveStatus("error");
+    } else {
+      setValidateResult(null);
+      setLastSaveStatus("idle");
+    }
     setSubmitSuccess(false);
     setSubmitError(null);
-    setLastSaveStatus("idle");
     // The recipe changed, so cut a fresh patch off the working version.
     setVersion((v) => bumpPatch(v));
     return { applied: true };

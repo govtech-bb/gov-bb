@@ -11,6 +11,13 @@ import type { SubmissionCreatedEvent } from "../submissions.types";
 
 const CONFIRMATION_TEMPLATE = "submission-confirmation";
 
+// Reserved recipientField prefix. A recipientField of "contactDetails.<key>"
+// resolves against the form's service-contract contactDetails (e.g. the MDA
+// notification address) rather than against submitted answer values. A step
+// literally named "contactDetails" is therefore shadowed — see
+// FORM-CREATION-GUIDE.md.
+const CONTACT_DETAILS_PREFIX = "contactDetails.";
+
 @Injectable()
 export class EmailProcessor implements ISubmissionProcessor {
   readonly type = "email" as const;
@@ -54,7 +61,15 @@ export class EmailProcessor implements ISubmissionProcessor {
       return;
     }
 
-    const to = this.resolveRecipient(recipientField, payload);
+    // A literal address (contains "@") is used verbatim — this is how a recipe
+    // hardcodes a fixed internal recipient (e.g. "testing@govtech.bb"). Neither
+    // a "contactDetails." prefix nor a "stepId.fieldId" path contains "@", so
+    // the literal case is unambiguous and checked first.
+    const to = recipientField.includes("@")
+      ? recipientField
+      : recipientField.startsWith(CONTACT_DETAILS_PREFIX)
+        ? await this.resolveContactRecipient(payload, recipientField)
+        : this.resolveSubmittedRecipient(payload, recipientField);
 
     if (!to) {
       this.logger.warn(
@@ -102,27 +117,40 @@ export class EmailProcessor implements ISubmissionProcessor {
   }
 
   /**
-   * Resolves the destination address from a processor's `recipientField`.
+   * Resolves a recipient from submitted answer values.
    *
-   * Two forms are supported:
-   *  - A literal email address (contains "@") — used verbatim. This is how a
-   *    recipe hardcodes a fixed internal recipient (e.g. "testing@govtech.bb").
-   *  - A "stepId.fieldId" path into the submission values — used to email the
-   *    address the applicant entered. Field/step IDs are kebab-case and never
-   *    contain "@", so the two forms are unambiguous. Targeting a field inside
-   *    a repeatable (array) step is not supported and resolves to undefined.
+   * recipientField format: "stepId.fieldId". Targeting fields inside a
+   * repeatable step is not supported — an array step value yields `undefined`,
+   * which the caller treats as an unresolved recipient.
    */
-  private resolveRecipient(
-    recipientField: string,
+  private resolveSubmittedRecipient(
     payload: SubmissionCreatedEvent,
+    recipientField: string,
   ): string | undefined {
-    if (recipientField.includes("@")) return recipientField;
-
     const [stepId, fieldId] = recipientField.split(".");
     const stepValues = payload.values[stepId];
     return stepValues && !Array.isArray(stepValues)
       ? (stepValues[fieldId] as string | undefined)
       : undefined;
+  }
+
+  /**
+   * Resolves a recipient from the form's service-contract contactDetails
+   * (e.g. the MDA notification address). The recipientField after the
+   * "contactDetails." prefix names the key to read (today only `email`).
+   * Returns `undefined` when the contract has no contactDetails or the
+   * requested key is absent/non-string — the caller logs and skips, so a
+   * sibling applicant email still sends (ADR 0006).
+   */
+  private async resolveContactRecipient(
+    payload: SubmissionCreatedEvent,
+    recipientField: string,
+  ): Promise<string | undefined> {
+    const key = recipientField.slice(CONTACT_DETAILS_PREFIX.length);
+    const contactDetails =
+      await this.emailBodyBuilder.resolveContactDetails(payload);
+    const value = contactDetails?.[key as keyof typeof contactDetails];
+    return typeof value === "string" ? value : undefined;
   }
 
   /**

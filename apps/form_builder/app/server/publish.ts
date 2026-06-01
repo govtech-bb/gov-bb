@@ -3,7 +3,11 @@ import { getRequestHeaders } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { type SessionPayload } from "./session";
 import { getSession } from "./session-cipher.server";
-import type { ServiceContractRecipe } from "@govtech-bb/form-types";
+import type {
+  ServiceContractRecipe,
+  ValidationResult,
+} from "@govtech-bb/form-types";
+import { api } from "./api-client";
 
 const REPO_NAME = "gov-bb";
 const DEFAULT_BASE_BRANCH = "dev";
@@ -125,6 +129,24 @@ export const publishRecipe = createServerFn({ method: "POST" })
     const session = requireSession();
     const token = session.accessToken;
     const baseBranch = resolveBaseBranch();
+
+    // Server-side gate (defense-in-depth): the Deploy button already runs this
+    // client-side, but the client is bypassable — the server must be the
+    // authority. Reuse the API's /validate endpoint, which resolves every ref
+    // against the full catalog (builtins + registry + live custom components
+    // from the DB) that this frontend can't reach directly. Refuse to open any
+    // branch/PR if the recipe is unresolvable, so a bad ref never reaches the
+    // repo (the hole behind #504).
+    const validation = await api.post<ValidationResult>(
+      "/builder/registry/validate",
+      { recipe },
+    );
+    if (!validation.ok) {
+      const detail = validation.issues
+        .map((i) => (i.path ? `${i.path}: ${i.message}` : i.message))
+        .join("; ");
+      throw new Error(`Recipe validation failed: ${detail}`);
+    }
 
     // Step 1: get base branch tip SHA
     const refRes = await fetch(repoUrl(`/git/ref/heads/${baseBranch}`), {

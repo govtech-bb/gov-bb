@@ -10,8 +10,14 @@ jest.mock("./session-cipher.server", () => ({
 jest.mock("@tanstack/react-start/server", () => ({
   getRequestHeaders: () => new Headers({ cookie: "fb_session=opaque" }),
 }));
+// Mock the API client so the server-side /validate gate is controllable and
+// never touches globalThis.fetch — the GitHub steps below mock fetch directly.
+jest.mock("./api-client", () => ({
+  api: { post: jest.fn(), get: jest.fn(), put: jest.fn(), del: jest.fn() },
+}));
 
 import { getSession } from "./session-cipher.server";
+import { api } from "./api-client";
 import { publishRecipe } from "./publish";
 
 const SESSION = {
@@ -46,6 +52,9 @@ beforeEach(() => {
   process.env.SESSION_SECRET = Buffer.alloc(32).toString("base64");
   process.env.GITHUB_ORG = "govtech-bb";
   (getSession as jest.Mock).mockReturnValue(SESSION);
+  // Default: the server-side /validate gate passes. Tests that exercise a
+  // rejection override this.
+  (api.post as jest.Mock).mockResolvedValue({ ok: true, data: RECIPE });
   // Freeze "now" so branch names are deterministic.
   jest.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
 });
@@ -294,6 +303,49 @@ describe("publishRecipe", () => {
     await expect(
       publishRecipe({ data: { recipe: RECIPE, description: "" } }),
     ).rejects.toThrow(/already exists on sandbox/);
+  });
+
+  it("validates against the API before opening a branch/PR", async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(200, { object: { sha: "devsha" } }))
+      .mockResolvedValueOnce(jsonResponse(201, { ref: "refs/heads/x" }))
+      .mockResolvedValueOnce(emptyResponse(404))
+      .mockResolvedValueOnce(jsonResponse(201, { commit: { sha: "c1" } }))
+      .mockResolvedValueOnce(
+        jsonResponse(201, {
+          number: 1,
+          html_url: "https://github.com/govtech-bb/gov-bb/pull/1",
+        }),
+      );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    await publishRecipe({ data: { recipe: RECIPE, description: "" } });
+
+    expect(api.post).toHaveBeenCalledWith("/builder/registry/validate", {
+      recipe: RECIPE,
+    });
+  });
+
+  it("throws and opens no branch/PR when the recipe has an unresolvable ref", async () => {
+    (api.post as jest.Mock).mockResolvedValue({
+      ok: false,
+      issues: [
+        {
+          path: "steps[step-1].elements[0].ref",
+          message: 'Unknown component/block ref "components/generic/text"',
+        },
+      ],
+    });
+    const fetchMock = jest.fn();
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    await expect(
+      publishRecipe({ data: { recipe: RECIPE, description: "" } }),
+    ).rejects.toThrow(/Recipe validation failed:.*components\/generic\/text/);
+
+    // No GitHub calls at all — validation gates before step 1.
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("rethrows the original error even when cleanup itself fails", async () => {

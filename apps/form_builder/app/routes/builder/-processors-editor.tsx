@@ -92,7 +92,13 @@ export function ProcessorsEditor({
         processors.map((p) => (
           <div key={p.id} className={styles.processorCard}>
             <div className={styles.processorCardHeader}>
-              <strong>{PROCESSOR_LABELS[p.type]}</strong>
+              {/* Prefer the per-instance label (e.g. seeded "Applicant Email" /
+                  "MDA Email", issue #501) so two email processors are
+                  distinguishable; fall back to the type label otherwise. */}
+              <strong>
+                {(p.type === "email" && p.config.label) ||
+                  PROCESSOR_LABELS[p.type]}
+              </strong>
               <button type="button" onClick={() => handleRemove(p.id)}>
                 Remove
               </button>

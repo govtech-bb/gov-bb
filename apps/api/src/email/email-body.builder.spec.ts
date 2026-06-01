@@ -526,6 +526,37 @@ describe("EmailBodyBuilder", () => {
     });
   });
 
+  describe("resolveContactDetails()", () => {
+    it("returns the contract's contactDetails when present", async () => {
+      const contactDetails = {
+        title: "Passport Office",
+        telephoneNumber: "+1-246-555-0100",
+        email: "mda@gov.bb",
+      };
+      formSvc = makeFormDefinitionsService(makeContract({ contactDetails }));
+      builder = new EmailBodyBuilder(formSvc);
+
+      const result = await builder.resolveContactDetails(makePayload());
+
+      expect(result).toEqual(contactDetails);
+    });
+
+    it("returns undefined when the contract has no contactDetails", async () => {
+      const result = await builder.resolveContactDetails(makePayload());
+
+      expect(result).toBeUndefined();
+    });
+
+    it("reuses the cached contract — does not double-fetch alongside build()", async () => {
+      const payload = makePayload();
+
+      await builder.build(payload);
+      await builder.resolveContactDetails(payload);
+
+      expect(formSvc.findByFormId).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe("missing branch coverage", () => {
     it("handles null rawVal for an active step (line 114 ?? {} branch)", async () => {
       // Step is in activeStepIds but values[stepId] is undefined → rawVal ?? {} = {}
