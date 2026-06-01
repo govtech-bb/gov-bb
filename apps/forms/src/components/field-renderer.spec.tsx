@@ -139,10 +139,13 @@ describe("FieldRenderer", () => {
     expect(inputs.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("date → renders three number inputs (day/month/year)", () => {
+  it("date → renders three text inputs with numeric inputmode (day/month/year)", () => {
     const { container } = renderField(primitive("date"));
-    const inputs = container.querySelectorAll('input[type="number"]');
+    const inputs = container.querySelectorAll('input[type="text"]');
     expect(inputs).toHaveLength(3);
+    inputs.forEach((input) => {
+      expect(input.getAttribute("inputmode")).toBe("numeric");
+    });
   });
 
   it("file → renders a file input", () => {
@@ -546,7 +549,7 @@ describe("FieldRenderer", () => {
     it("renders with empty inputs when value is undefined", () => {
       mockState = { value: undefined, meta: { isValid: true, errors: [] } };
       const { container } = renderField(primitive("date"));
-      const inputs = container.querySelectorAll('input[type="number"]');
+      const inputs = container.querySelectorAll('input[type="text"]');
       inputs.forEach((input) => {
         expect((input as HTMLInputElement).value).toBe("");
       });
