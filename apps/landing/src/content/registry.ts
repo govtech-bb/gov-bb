@@ -40,17 +40,11 @@ function leafFromSlug(
   return slug
 }
 
-// Organisation MDs (government/organisations/*.md) have their own loader and
-// content shape — they aren't content pages and must not be parsed by the
-// page registry's FrontmatterSchema.
-const modules = import.meta.glob(
-  ['./**/*.md', '!./government/organisations/**'],
-  {
-    query: '?raw',
-    import: 'default',
-    eager: true,
-  },
-)
+const modules = import.meta.glob('./**/*.md', {
+  query: '?raw',
+  import: 'default',
+  eager: true,
+})
 
 export const PAGES: Array<ContentPage> = Object.entries(modules).map(
   ([path, source]) => {
