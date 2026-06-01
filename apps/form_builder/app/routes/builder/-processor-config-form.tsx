@@ -4,7 +4,7 @@ import type {
 } from "@govtech-bb/form-builder";
 import { ValuePathPicker } from "./-value-path-picker";
 import { KeyValueEditor } from "./-key-value-editor";
-import styles from "../../../styles/builder.module.css";
+import styles from "../../styles/builder.module.css";
 
 interface ProcessorConfigFormProps {
   processor: RecipeProcessorDraft;

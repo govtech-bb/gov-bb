@@ -1,5 +1,5 @@
 import { useState } from "react";
-import styles from "../../../styles/builder.module.css";
+import styles from "../../styles/builder.module.css";
 
 interface DeleteModalProps {
   formId: string;

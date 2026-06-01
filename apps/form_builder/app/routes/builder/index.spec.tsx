@@ -24,20 +24,26 @@ jest.mock("@tanstack/react-router", () => ({
 // the valid path); the rest are mocked so importing the route doesn't attempt a
 // real RPC.
 const validateRecipe = jest.fn();
-jest.mock("../../../server/registry", () => ({
+jest.mock("../../server/registry", () => ({
   getCatalogFn: jest.fn(),
   validateRecipe: (...args: unknown[]) => validateRecipe(...args),
   previewRecipe: jest.fn(),
 }));
-jest.mock("../../../server/forms", () => ({
+jest.mock("../../server/forms", () => ({
   submitRecipe: jest.fn(),
   updateRecipe: jest.fn(),
   deleteForm: jest.fn(),
   getRecipe: jest.fn(),
 }));
-jest.mock("../../../server/publish", () => ({
+jest.mock("../../server/publish", () => ({
   publishRecipe: jest.fn(),
   getPublishBaseBranch: jest.fn(),
+}));
+// The AI sidebar's convert server-fn is another createServerFn; stub it so
+// importing the editor doesn't pull a real RPC at module-eval.
+jest.mock("../../server/ai-builder/convert", () => ({
+  convertRecipe: jest.fn(),
+  getAiStatus: jest.fn(),
 }));
 
 // The Open picker's forms list is a slow GitHub-API waterfall; stub it out.

@@ -4,7 +4,7 @@ import type { RecipeDraft } from "@govtech-bb/form-builder";
 import { contactDetailsSchema } from "@govtech-bb/form-types";
 import type { ContactDetails } from "@govtech-bb/form-types";
 import type { RecipeAction } from "./-recipe-reducer";
-import styles from "../../../styles/builder.module.css";
+import styles from "../../styles/builder.module.css";
 
 interface ContactDetailsEditorProps {
   draft: RecipeDraft;

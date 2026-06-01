@@ -3,10 +3,10 @@
  */
 import { renderHook, waitFor } from "@testing-library/react";
 import { useFormsList } from "./-use-forms-list";
-import { listForms } from "../../../server/forms";
-import type { FormDefinitionSummary } from "../../../types/index";
+import { listForms } from "../../server/forms";
+import type { FormDefinitionSummary } from "../../types/index";
 
-jest.mock("../../../server/forms", () => ({
+jest.mock("../../server/forms", () => ({
   listForms: jest.fn(),
 }));
 

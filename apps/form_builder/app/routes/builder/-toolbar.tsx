@@ -1,5 +1,5 @@
 import { useState } from "react";
-import styles from "../../../styles/builder.module.css";
+import styles from "../../styles/builder.module.css";
 
 const FORM_ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
 const FORM_ID_ERROR =

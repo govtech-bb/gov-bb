@@ -3,17 +3,19 @@ export interface ChatMessage {
   content: string;
 }
 
-export interface SessionResponse {
-  sessionId: string;
-  messages: ChatMessage[];
-  recipe: Record<string, any> | null;
+// Request to the stateless POST /builder/ai/convert. At least one of the three
+// fields must be present: an Edit Form tweak sends { message, recipeJson }; an
+// Upload sends { pdfBase64 }.
+export interface ConvertRequest {
+  message?: string;
+  recipeJson?: string;
+  pdfBase64?: string;
 }
 
-export interface PublishResponse {
-  formId: string;
-  message: string;
-  sql: string;
-  // Returned by form_builder_api but no longer read by the frontend — preview
-  // links are now built locally from VITE_FORMS_URL + formId (lib/form-url.ts).
-  previewUrl?: string;
+// Response from POST /builder/ai/convert. `recipe` is null when the model
+// replied conversationally without emitting a recipe; `reply` is the assistant's
+// text, shown in the sidebar conversation either way.
+export interface ConvertResponse {
+  recipe: Record<string, unknown> | null;
+  reply: string;
 }

@@ -15,7 +15,7 @@ import { BehavioursEditor } from "./-behaviours-editor";
 import { FieldPicker } from "./-field-picker";
 import { FieldEditPanel } from "./-field-edit-panel";
 import { resolveFieldLabel } from "./-field-label";
-import styles from "../../../styles/builder.module.css";
+import styles from "../../styles/builder.module.css";
 
 const STEP_ID_ERROR =
   "Use lowercase letters, digits, and hyphens only. Must start with a letter (e.g. my-step, step-1).";
