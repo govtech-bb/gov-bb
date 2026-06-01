@@ -10,7 +10,7 @@
 Drive the Alpha² Kanban board automatically from issue labels and pull-request
 activity, so the board reflects real work state without manual column dragging.
 
-Five behaviours are required:
+Six behaviours are required:
 
 0. A newly created issue lands in **Backlog**.
 1. Adding the `ready` label moves the issue to **Ready**.
@@ -21,16 +21,18 @@ Five behaviours are required:
    the `progressing` label, and closes the issue.
 5. An issue holds at most one of `ready` / `progressing` at a time; merging also
    strips `progressing`.
+6. Manually closing an issue as _completed_ moves it to **Done**. A "not planned"
+   close is a no-op.
 
 ## Confirmed decisions
 
-| Decision | Choice |
-|----------|--------|
-| Repo hosting the automation | `govtech-bb/gov-bb` only |
-| Auth to write the org project | Org-owned **GitHub App** (durable, not tied to a person) |
-| PR → issue linkage | GitHub **closing keywords** (`Closes #N` / `Fixes #N`) only |
-| On merge to sandbox/dev | Move to **Done** **and close** the issue |
-| Architecture | Single custom GitHub Actions workflow (one source of truth) |
+| Decision                      | Choice                                                      |
+| ----------------------------- | ----------------------------------------------------------- |
+| Repo hosting the automation   | `govtech-bb/gov-bb` only                                    |
+| Auth to write the org project | Org-owned **GitHub App** (durable, not tied to a person)    |
+| PR → issue linkage            | GitHub **closing keywords** (`Closes #N` / `Fixes #N`) only |
+| On merge to sandbox/dev       | Move to **Done** **and close** the issue                    |
+| Architecture                  | Single custom GitHub Actions workflow (one source of truth) |
 
 The board's `Status` field options already match the requirements exactly:
 **Backlog, Ready, In progress, In review, Done.**
@@ -39,7 +41,7 @@ The board's `Status` field options already match the requirements exactly:
 
 One GitHub Actions workflow in `gov-bb` owns **all status transitions and the
 issue close**. GitHub's built-in Projects workflows are reduced to board
-*membership* only. This keeps every status rule in one reviewable, versioned
+_membership_ only. This keeps every status rule in one reviewable, versioned
 file rather than split across unversioned board UI settings.
 
 ### Components
@@ -73,7 +75,7 @@ required.
 ```yaml
 on:
   issues:
-    types: [opened, labeled]
+    types: [opened, labeled, closed]
   pull_request:
     types: [opened, reopened, ready_for_review, closed]
 ```
@@ -88,12 +90,12 @@ on:
 
 **5. Built-in Projects workflows**
 
-- **Disable** (status-mutating — would fight our Action): #12 *Item added to
-  project*, #7 *Item closed*, #8 *Pull request merged*, #11 *Pull request linked
-  to issue*, #9 *Auto-close issue*. (#15 *Code changes requested* is already
+- **Disable** (status-mutating — would fight our Action): #12 _Item added to
+  project_, #7 _Item closed_, #8 _Pull request merged_, #11 _Pull request linked
+  to issue_, #9 _Auto-close issue_. (#15 _Code changes requested_ is already
   disabled.)
-- **Keep** (membership only): #13 *Auto-add to project*, #14 *Auto-add bug to
-  project*, #10 *Auto-add sub-issues to project*.
+- **Keep** (membership only): #13 _Auto-add to project_, #14 _Auto-add bug to
+  project_, #10 _Auto-add sub-issues to project_.
 
 ## Behaviour
 
@@ -101,15 +103,16 @@ Every handler first calls `ensureItemOnBoard(issueId)` — an idempotent
 `addProjectV2ItemById` — so a transition never fails on an issue not yet on the
 board (including pre-existing issues).
 
-| # | Event | Guard | Actions (ordered) |
-|---|-------|-------|-------------------|
-| 0 | `issues.opened` | — | ensure on board → Status=**Backlog** |
-| 1 | `issues.labeled` | label == `ready` | remove `progressing` if present → ensure on board → Status=**Ready** |
-| 2 | `issues.labeled` | label == `progressing` | remove `ready` if present → ensure on board → Status=**In progress** |
-| 3 | `pull_request.{opened,reopened,ready_for_review}` | ≥1 closing-keyword issue | per linked issue: ensure on board → Status=**In review** |
-| 4 | `pull_request.closed` | `merged == true` AND base ∈ {`sandbox`,`dev`} AND ≥1 linked issue | per linked issue: ensure on board → Status=**Done** → remove `progressing` → close issue |
+| #   | Event                                             | Guard                                                             | Actions (ordered)                                                                        |
+| --- | ------------------------------------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| 0   | `issues.opened`                                   | —                                                                 | ensure on board → Status=**Backlog**                                                     |
+| 1   | `issues.labeled`                                  | label == `ready`                                                  | remove `progressing` if present → ensure on board → Status=**Ready**                     |
+| 2   | `issues.labeled`                                  | label == `progressing`                                            | remove `ready` if present → ensure on board → Status=**In progress**                     |
+| 3   | `pull_request.{opened,reopened,ready_for_review}` | ≥1 closing-keyword issue                                          | per linked issue: ensure on board → Status=**In review**                                 |
+| 4   | `pull_request.closed`                             | `merged == true` AND base ∈ {`sandbox`,`dev`} AND ≥1 linked issue | per linked issue: ensure on board → Status=**Done** → remove `progressing` → close issue |
+| 5   | `issues.closed`                                   | `state_reason == completed`                                       | ensure on board → Status=**Done**                                                        |
 
-### Mutual exclusion (rule 5)
+### Mutual exclusion (behaviour 5)
 
 Enforced on add: adding `ready` strips `progressing` and vice-versa, so an issue
 never holds both. Removing the opposite label emits `issues.unlabeled`, which the
@@ -126,13 +129,18 @@ workflow does **not** subscribe to — no trigger loop.
 - **Label re-added when issue already In review/Done** → label rule fires and
   moves it back. Accepted: a human label action is authoritative.
 - **Label removal** → no-op (we never move an issue backward on un-label).
+- **Merge path also fires `issues.closed`** → the PR-merge handler (rule 4)
+  closes the issue, which GitHub records with `state_reason = completed`. That
+  emits an `issues.closed` event handled by rule 5, which re-sets **Done** —
+  idempotent, no conflict.
+- **Issue closed as "not planned"** → no-op (stays in its current column).
 - **Empty closing-ref set** on a PR → `core.info` and clean exit, not a failure.
 
 ## GraphQL / REST operations
 
 - **Resolve project metadata once per run:** `projectV2(number: 7)` → project node
   ID, `Status` field ID, and option ID per column name. Cached in-process.
-  Resolving option IDs *by name* means a column rename surfaces a clear
+  Resolving option IDs _by name_ means a column rename surfaces a clear
   "option not found" error rather than writing the wrong column.
 - **Find item:** issue's `projectItems` → item ID on project #7; if absent,
   `addProjectV2ItemById` (returns existing item if present → idempotent).
