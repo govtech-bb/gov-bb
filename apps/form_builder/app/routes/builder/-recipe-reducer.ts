@@ -12,7 +12,11 @@ import type {
   FieldOverrides,
 } from "@govtech-bb/form-types";
 
+// Listed in display order. `check-your-answers` is first so the pinned tail
+// renders as [check-your-answers, declaration, submission-confirmation] — i.e.
+// the review step sits right before the declaration.
 export const REQUIRED_STEP_IDS = [
+  "check-your-answers",
   "declaration",
   "submission-confirmation",
 ] as const;
@@ -22,23 +26,43 @@ export function isRequiredStep(stepId: string): stepId is RequiredStepId {
   return (REQUIRED_STEP_IDS as readonly string[]).includes(stepId);
 }
 
+// Required steps that accept no author-added fields. `check-your-answers` is a
+// pure review screen and `submission-confirmation` renders only its nextSteps
+// copy — neither should expose the FieldPicker. `declaration` is intentionally
+// absent: it bears the confirmation checkbox and stays field-editable.
+export const NO_FIELDS_STEP_IDS = [
+  "check-your-answers",
+  "submission-confirmation",
+] as const;
+
+export function isNoFieldsStep(stepId: string): boolean {
+  return (NO_FIELDS_STEP_IDS as readonly string[]).includes(stepId);
+}
+
+// Default title/description seeded for each required step when one is missing
+// (new form via makeRequiredSteps, or an older recipe loaded via LOAD_DRAFT).
+// check-your-answers reuses the runtime review copy from apps/forms.
+const REQUIRED_STEP_DEFAULTS: Record<
+  RequiredStepId,
+  { title: string; description?: string }
+> = {
+  "check-your-answers": {
+    title: "Check your answers",
+    description:
+      "Review all the information you have provided before submitting your application.",
+  },
+  declaration: { title: "Declaration" },
+  "submission-confirmation": { title: "Submission Confirmation" },
+};
+
 function makeRequiredSteps(): RecipeStepDraft[] {
-  return [
-    {
-      stepId: "declaration",
-      title: "Declaration",
-      description: undefined,
-      fields: [],
-      behaviours: [],
-    },
-    {
-      stepId: "submission-confirmation",
-      title: "Submission Confirmation",
-      description: undefined,
-      fields: [],
-      behaviours: [],
-    },
-  ];
+  return REQUIRED_STEP_IDS.map((stepId) => ({
+    stepId,
+    title: REQUIRED_STEP_DEFAULTS[stepId].title,
+    description: REQUIRED_STEP_DEFAULTS[stepId].description,
+    fields: [],
+    behaviours: [],
+  }));
 }
 
 /**
@@ -301,9 +325,8 @@ export function recipeReducer(
         return (
           existing ?? {
             stepId: id,
-            title:
-              id === "declaration" ? "Declaration" : "Submission Confirmation",
-            description: undefined,
+            title: REQUIRED_STEP_DEFAULTS[id].title,
+            description: REQUIRED_STEP_DEFAULTS[id].description,
             fields: [],
             behaviours: [],
           }

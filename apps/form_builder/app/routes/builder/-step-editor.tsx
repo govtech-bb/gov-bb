@@ -8,7 +8,7 @@ import type {
 import { getRegistryItem } from "@govtech-bb/form-builder";
 import type { Behaviour } from "@govtech-bb/form-types";
 import type { RecipeAction } from "./-recipe-reducer";
-import { isRequiredStep } from "./-recipe-reducer";
+import { isNoFieldsStep, isRequiredStep } from "./-recipe-reducer";
 import { KEBAB_ID_PATTERN, kebabize } from "./-id-validation";
 import { getFieldRefs, getStepRefs } from "./-recipe-refs";
 import { BehavioursEditor } from "./-behaviours-editor";
@@ -49,13 +49,20 @@ export function StepEditor({
     setEditingFieldId(null);
   }, [step.stepId]);
 
-  const fieldRefs = useMemo(() => getFieldRefs(draft, catalog), [draft, catalog]);
+  const fieldRefs = useMemo(
+    () => getFieldRefs(draft, catalog),
+    [draft, catalog],
+  );
   const stepRefs = useMemo(() => getStepRefs(draft), [draft]);
 
   const editingField =
     editingFieldId !== null
       ? (step.fields.find((f) => f.id === editingFieldId) ?? null)
       : null;
+
+  // Review/confirmation steps carry no author-added fields, so hide the entire
+  // Fields section (list + picker) for them. See isNoFieldsStep.
+  const noFields = isNoFieldsStep(step.stepId);
 
   function handleStepIdChange(newId: string) {
     setLocalStepId(newId);
@@ -184,57 +191,77 @@ export function StepEditor({
         />
       </div>
 
-      {/* Fields */}
-      <div className={styles.sectionTitle}>Fields ({step.fields.length})</div>
-      {step.fields.map((field, idx) => {
-        const item = getRegistryItem(field.ref, catalog);
-        const label = resolveFieldLabel(field, item);
-        const displayName = item?.displayName ?? field.ref;
-        const showSecondary = displayName !== label;
-        const hasOverrides =
-          Object.keys(field.overrides ?? {}).length > 0 ||
-          (field.kind === "block" && Object.keys(field.childOverrides ?? {}).length > 0);
-        return (
-          <div key={field.id} className={styles.fieldRow}>
-            <div style={{ flex: 1 }}>
-              <div>
-                {hasOverrides && <span className={styles.overrideDot} title="Has overrides" />}
-                {label}
-              </div>
-              {showSecondary && (
-                <div className={styles.fieldRowSecondary}>{displayName}</div>
-              )}
-            </div>
-            <span className={styles.badge}>{field.kind}</span>
-            <button
-              type="button"
-              title="Move up"
-              disabled={idx === 0}
-              onClick={() => handleMoveFieldUp(idx)}
-            >
-              ▲
-            </button>
-            <button
-              type="button"
-              title="Move down"
-              disabled={idx === step.fields.length - 1}
-              onClick={() => handleMoveFieldDown(idx)}
-            >
-              ▼
-            </button>
-            <button type="button" onClick={() => setEditingFieldId(field.id)}>
-              Edit
-            </button>
-            <button type="button" onClick={() => handleRemoveField(field.id)}>
-              ×
-            </button>
+      {/* Fields — hidden for review/confirmation steps that accept no fields */}
+      {!noFields && (
+        <>
+          <div className={styles.sectionTitle}>
+            Fields ({step.fields.length})
           </div>
-        );
-      })}
+          {step.fields.map((field, idx) => {
+            const item = getRegistryItem(field.ref, catalog);
+            const label = resolveFieldLabel(field, item);
+            const displayName = item?.displayName ?? field.ref;
+            const showSecondary = displayName !== label;
+            const hasOverrides =
+              Object.keys(field.overrides ?? {}).length > 0 ||
+              (field.kind === "block" &&
+                Object.keys(field.childOverrides ?? {}).length > 0);
+            return (
+              <div key={field.id} className={styles.fieldRow}>
+                <div style={{ flex: 1 }}>
+                  <div>
+                    {hasOverrides && (
+                      <span
+                        className={styles.overrideDot}
+                        title="Has overrides"
+                      />
+                    )}
+                    {label}
+                  </div>
+                  {showSecondary && (
+                    <div className={styles.fieldRowSecondary}>
+                      {displayName}
+                    </div>
+                  )}
+                </div>
+                <span className={styles.badge}>{field.kind}</span>
+                <button
+                  type="button"
+                  title="Move up"
+                  disabled={idx === 0}
+                  onClick={() => handleMoveFieldUp(idx)}
+                >
+                  ▲
+                </button>
+                <button
+                  type="button"
+                  title="Move down"
+                  disabled={idx === step.fields.length - 1}
+                  onClick={() => handleMoveFieldDown(idx)}
+                >
+                  ▼
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingFieldId(field.id)}
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveField(field.id)}
+                >
+                  ×
+                </button>
+              </div>
+            );
+          })}
 
-      {/* Inline field picker palette */}
-      <div className={styles.sectionTitle}>Add field</div>
-      <FieldPicker catalog={catalog} onAddField={handleAddField} />
+          {/* Inline field picker palette */}
+          <div className={styles.sectionTitle}>Add field</div>
+          <FieldPicker catalog={catalog} onAddField={handleAddField} />
+        </>
+      )}
 
       {/* Inline field edit panel */}
       {editingField !== null && editingFieldId !== null && (
