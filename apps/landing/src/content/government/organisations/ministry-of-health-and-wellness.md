@@ -35,10 +35,7 @@ contact:
       - 'Frank Walcott Building, Culloden Road'
       - St. Michael
       - 'Barbados, W.I.'
-onlineServices:
-  - title: Medical requirements
-    href: /medical-requirements
-    description: Medical requirements for entering or living in Barbados.
+onlineServices: []
 associatedDepartments:
   - category: Health
     items:

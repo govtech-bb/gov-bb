@@ -2,6 +2,11 @@
 
 Guidance for working in this repo. Use **pnpm** for everything — never `npm`.
 
+## Open pull requests against `sandbox` by default
+
+`sandbox` is the default base branch for pull requests — open PRs against it,
+not `dev`, unless the human explicitly asks otherwise.
+
 ## When work is finished, close the related GitHub issue
 
 After completing a piece of work, check GitHub (`gh issue list` / `gh issue

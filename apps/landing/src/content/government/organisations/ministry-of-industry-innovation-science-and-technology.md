@@ -32,16 +32,7 @@ contact:
       - 3rd and 4th Floor Baobab Tower
       - Warrens
       - St. Michael
-onlineServices:
-  - title: Start a business
-    href: /start-a-business
-    description: How to start a business in Barbados.
-  - title: Register a business name
-    href: /registering-a-business-name
-    description: Register a new business name with the Corporate Affairs Office.
-  - title: Business policies and law
-    href: /business-policies-and-law
-    description: Policy and legal framework for businesses.
+onlineServices: []
 associatedDepartments:
   - category: ''
     items:

@@ -38,15 +38,9 @@ contact:
       - St. Michael
       - 'Barbados, W. I'
 onlineServices:
-  - title: Apply for a driver's licence
-    href: /apply-for-a-drivers-licence
-    description: Apply for or renew a Barbados driver's licence.
   - title: Apply for a conductor licence
     href: /apply-for-conductor-licence
     description: Apply for a public service vehicle conductor licence.
-  - title: Getting around Barbados
-    href: /getting-around-barbados
-    description: Public transport and travel information.
 associatedDepartments:
   - category: Transport
     items:

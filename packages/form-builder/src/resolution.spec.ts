@@ -1,6 +1,6 @@
 import { hydrateForm } from "./resolution";
 import { UnknownRefError } from "./errors";
-import { getCatalog } from "./catalog";
+import { getCatalog, getRegistryItem } from "./catalog";
 import type { RegistryCatalog } from "./catalog";
 import type { ServiceContractRecipe } from "@govtech-bb/form-types";
 
@@ -150,6 +150,38 @@ describe("hydrateForm", () => {
     expect(contract.steps[0].elements[0].validations?.required).toEqual({
       error: "Required",
     });
+  });
+
+  // Regression (#487): a field that is required in the registry must be made
+  // optional by a `required: { value: false }` override — otherwise the merge
+  // falls back to the base `{ value: true }` and the field is always required.
+  it("un-requires a base-required component via a required:{value:false} override", () => {
+    const recipe = makeRecipe({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          elements: [
+            {
+              ref: "components/last-name",
+              overrides: { validations: { required: { value: false } } },
+            },
+          ],
+        },
+      ],
+    });
+
+    const contract = hydrateForm(recipe, catalog);
+    const base = getRegistryItem("components/last-name", catalog);
+    // Sanity: the base really is required, so the override is doing the work.
+    expect(
+      base && "primitive" in base
+        ? base.primitive.validations?.required?.value
+        : undefined,
+    ).toBe(true);
+    expect(contract.steps[0].elements[0].validations?.required?.value).toBe(
+      false,
+    );
   });
 
   it("expands a block ref to all child primitives", () => {

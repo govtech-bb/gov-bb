@@ -198,8 +198,9 @@ export function startSubPageInPreview(page: ContentPage): boolean {
 /**
  * Canonical URL keyed by a page's leaf slug (last path segment). Used to
  * rewrite the bare-slug links authored in organisation content — e.g. a
- * ministry listing `/apply-for-a-passport` — to the category-prefixed route
- * that actually resolves (`/travel-id-citizenship/apply-for-a-passport`).
+ * ministry listing `/get-a-document-notarised` — to the category-prefixed
+ * route that actually resolves
+ * (`/travel-id-citizenship/get-a-document-notarised`).
  * Leaves shared by multiple pages (e.g. step pages named `start`) are
  * ambiguous and dropped so they never resolve to the wrong page.
  */

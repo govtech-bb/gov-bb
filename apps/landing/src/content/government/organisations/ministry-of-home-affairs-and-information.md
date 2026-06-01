@@ -32,21 +32,9 @@ contact:
       Ground Floor Jones Building, Webster Business Park, Wildey, St. Michael,
       Barbados, W.I.
 onlineServices:
-  - title: Apply for a passport
-    href: /apply-for-a-passport
-    description: Apply for or renew a Barbados passport.
-  - title: National registration
-    href: /national-registration
-    description: Register for a national ID card.
   - title: Register a birth
     href: /register-a-birth
     description: Register the birth of a child.
-  - title: Register a death
-    href: /register-a-death
-    description: Register a death.
-  - title: Register a marriage
-    href: /register-a-marriage
-    description: Register a marriage.
   - title: Get a birth certificate
     href: /get-birth-certificate
     description: Order a copy of a birth certificate.
@@ -56,9 +44,6 @@ onlineServices:
   - title: Get a marriage certificate
     href: /get-marriage-certificate
     description: Order a copy of a marriage certificate.
-  - title: Marriage licences
-    href: /marriage-licences
-    description: Apply for a marriage licence.
   - title: Get a document notarised
     href: /get-a-document-notarised
     description: How to get a document notarised in Barbados.
