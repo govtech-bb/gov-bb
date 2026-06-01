@@ -15,7 +15,7 @@ import { ValidationRulesEditor } from "./-validation-rules-editor";
 import { BehavioursEditor } from "./-behaviours-editor";
 import { OptionsEditor } from "./-options-editor";
 import { KEBAB_ID_PATTERN, kebabize } from "./-id-validation";
-import styles from "../../../styles/builder.module.css";
+import styles from "../../styles/builder.module.css";
 
 const FIELD_ID_ERROR =
   "Use lowercase letters, digits, and hyphens only. Must start with a letter (e.g. applicant-first-name).";

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import styles from "../../../styles/builder.module.css";
+import styles from "../../styles/builder.module.css";
 
 const FORM_ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
 const FORM_ID_ERROR =
@@ -118,11 +118,6 @@ export function Toolbar({
       >
         {isSubmitting ? "Submitting…" : "Save draft"}
       </button>
-      {import.meta.env.DEV && (
-        <span className={styles.toolbarHint}>
-          Saved drafts are served by the local API immediately — no PR needed.
-        </span>
-      )}
       <button
         type="button"
         className={styles.btnPrimary}

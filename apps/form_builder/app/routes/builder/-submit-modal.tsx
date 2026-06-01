@@ -1,8 +1,8 @@
 import { useState } from "react";
 import type { RecipeDraft } from "@govtech-bb/form-builder";
-import { validate, compare } from "../../../lib/version";
-import { formPreviewUrl } from "../../../lib/form-url";
-import styles from "../../../styles/builder.module.css";
+import { validate, compare } from "../../lib/version";
+import { formPreviewUrl } from "../../lib/form-url";
+import styles from "../../styles/builder.module.css";
 
 interface SubmitModalProps {
   draft: RecipeDraft;

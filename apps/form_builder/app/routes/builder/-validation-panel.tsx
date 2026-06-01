@@ -1,5 +1,5 @@
 import type { RecipeValidateResponse } from "@govtech-bb/form-builder";
-import styles from "../../../styles/builder.module.css";
+import styles from "../../styles/builder.module.css";
 
 interface ValidationPanelProps {
   result: RecipeValidateResponse | null;

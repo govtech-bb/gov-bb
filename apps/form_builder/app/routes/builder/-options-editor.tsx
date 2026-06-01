@@ -1,5 +1,5 @@
 import type { Option } from "@govtech-bb/form-types";
-import styles from "../../../styles/builder.module.css";
+import styles from "../../styles/builder.module.css";
 
 interface OptionsEditorProps {
   value: Option[];

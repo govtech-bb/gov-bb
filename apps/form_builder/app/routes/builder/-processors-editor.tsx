@@ -8,7 +8,7 @@ import type {
 } from "@govtech-bb/form-builder";
 import type { RecipeAction } from "./-recipe-reducer";
 import { ProcessorConfigForm } from "./-processor-config-form";
-import styles from "../../../styles/builder.module.css";
+import styles from "../../styles/builder.module.css";
 
 interface ProcessorsEditorProps {
   draft: RecipeDraft;

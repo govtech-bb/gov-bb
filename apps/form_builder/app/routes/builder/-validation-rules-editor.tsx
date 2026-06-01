@@ -2,7 +2,7 @@ import { VALIDATION_RULE_DESCRIPTORS } from "@govtech-bb/form-builder";
 import type { HtmlTypes, FieldOverrides, ValidationType, ValidationConfig } from "@govtech-bb/form-types";
 import type { FieldRef } from "./-recipe-refs";
 import { FieldRefPicker } from "./-field-ref-picker";
-import styles from "../../../styles/builder.module.css";
+import styles from "../../styles/builder.module.css";
 
 interface ValidationRulesEditorProps {
   htmlType: HtmlTypes;

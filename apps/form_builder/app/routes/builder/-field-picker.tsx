@@ -5,7 +5,7 @@ import {
   REGISTRY_BLOCKS,
   REGISTRY_PRIMITIVES,
 } from "@govtech-bb/registry";
-import styles from "../../../styles/builder.module.css";
+import styles from "../../styles/builder.module.css";
 
 interface FieldPickerProps {
   catalog: RegistryCatalog;

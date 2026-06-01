@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { RecipeDraft } from "@govtech-bb/form-builder";
-import styles from "../../../styles/builder.module.css";
+import styles from "../../styles/builder.module.css";
 
 interface PublishModalProps {
   draft: RecipeDraft;

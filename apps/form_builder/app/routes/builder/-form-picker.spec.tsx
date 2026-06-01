@@ -4,12 +4,12 @@
 import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
 import { FormPicker } from "./-form-picker";
-import type { FormDefinitionSummary } from "../../../types/index";
+import type { FormDefinitionSummary } from "../../types/index";
 import type { RegistryCatalog } from "@govtech-bb/form-builder";
 
 // getRecipe is only invoked when a row is clicked; render-only tests never hit
 // it, but mocking keeps the module from attempting a real RPC.
-jest.mock("../../../server/forms", () => ({
+jest.mock("../../server/forms", () => ({
   getRecipe: jest.fn(),
 }));
 

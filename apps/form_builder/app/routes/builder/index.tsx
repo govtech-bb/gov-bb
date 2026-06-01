@@ -1,72 +1,660 @@
 import "../../styles/builder.global.css";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
+import { useReducer, useState, useMemo } from "react";
+import { getCatalogFn } from "../../server/registry";
+import { submitRecipe, updateRecipe, deleteForm } from "../../server/forms";
+import { publishRecipe, getPublishBaseBranch } from "../../server/publish";
+import { validateRecipe, previewRecipe } from "../../server/registry";
+import { serializeRecipeDraft, findRecipeIdCollisions, formatCollisionIssues, resolveFieldIds } from "@govtech-bb/form-builder";
+import { bumpMinor, bumpPatch } from "../../lib/version";
+import type { ServiceContract, ServiceContractRecipe } from "@govtech-bb/form-types";
+import type { RecipeDraft, ValidationResult, RecipeValidateResponse } from "@govtech-bb/form-builder";
+
+import { buildLoadArgs, draftsEqual } from "./-apply-recipe";
+import { AiSidebar, type ApplyRecipeResult } from "./-ai-sidebar";
+import { recipeReducer, EMPTY_DRAFT, nextStepId, REQUIRED_STEP_IDS, isRequiredStep } from "./-recipe-reducer";
+import { Toolbar } from "./-toolbar";
+import { StepList } from "./-step-list";
+import { StepEditor } from "./-step-editor";
+import { ProcessorsEditor } from "./-processors-editor";
+import { ContactDetailsEditor } from "./-contact-details-editor";
+import { ValidationPanel } from "./-validation-panel";
+import { PreviewModal } from "./-preview-modal";
+import { formPreviewUrl } from "../../lib/form-url";
+import { SubmitModal } from "./-submit-modal";
+import { PublishModal } from "./-publish-modal";
+import { FormPicker } from "./-form-picker";
+import { useFormsList } from "./-use-forms-list";
+import { DeleteModal } from "./-delete-modal";
+import type { FormDefinitionSummary } from "../../types/index";
+
+import styles from "../../styles/builder.module.css";
 
 export const Route = createFileRoute("/builder/")({
-  component: BuilderLanding,
+  // The catalog is needed for the first render (StepEditor, the duplicate-ID
+  // memo) and is cheap thanks to its 60s server cache. The base branch is a
+  // tiny env-var read resolved server-side (it can't be read from the client
+  // bundle), so it rides along here. The forms list is a slow, uncached
+  // GitHub-API waterfall consumed only by the Open picker, so it stays off the
+  // critical path via useFormsList.
+  loader: async () => {
+    const [catalog, baseBranch] = await Promise.all([
+      getCatalogFn(),
+      getPublishBaseBranch(),
+    ]);
+    return { catalog, baseBranch };
+  },
+  component: BuilderPage,
 });
 
-const cardStyle: React.CSSProperties = {
-  flex: 1,
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: 12,
-  padding: 32,
-  border: "1px solid #e0e0e0",
-  borderRadius: 12,
-  background: "#fff",
-  textDecoration: "none",
-  color: "#222",
-};
+function BuilderPage() {
+  const { catalog, baseBranch } = Route.useLoaderData();
+  const { forms, loadError: formsLoadError, refetch: refetchForms } = useFormsList();
+  const [draft, dispatch] = useReducer(recipeReducer, EMPTY_DRAFT);
 
-function BuilderLanding() {
+  // UI state
+  const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
+  // Which view the main area shows. Processors and contact details are
+  // form-scoped, so they each get a sibling view to the per-step editor rather
+  // than living inside a step.
+  const [mainView, setMainView] = useState<
+    "step" | "processors" | "contactDetails"
+  >("step");
+  const [version, setVersion] = useState("1.0.0");
+  const [currentVersion, setCurrentVersion] = useState<string | null>(null);
+  const [loadedFromId, setLoadedFromId] = useState<string | null>(null);
+  const [isValidating, setIsValidating] = useState(false);
+  const [validateResult, setValidateResult] = useState<RecipeValidateResponse | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isPreviewing, setIsPreviewing] = useState(false);
+  const [previewData, setPreviewData] = useState<ServiceContract | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [isSubmitOpen, setIsSubmitOpen] = useState(false);
+  const [isPublishOpen, setIsPublishOpen] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [publishSuccess, setPublishSuccess] = useState<
+    { prUrl: string; prNumber: number } | null
+  >(null);
+  const [publishError, setPublishError] = useState<string | null>(null);
+  const [lastSaveStatus, setLastSaveStatus] = useState<"idle" | "success" | "error" | "submitted">("idle");
+  const [deleteTarget, setDeleteTarget] = useState<FormDefinitionSummary | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // Derived
+  const selectedStep = draft.steps.find((s) => s.stepId === selectedStepId) ?? null;
+  const isDirty =
+    draft.steps.length > REQUIRED_STEP_IDS.length ||
+    draft.formId !== "" ||
+    draft.title !== "";
+  const editableSteps = draft.steps.filter((s) => !isRequiredStep(s.stepId));
+  const hasEditableSteps = editableSteps.length > 0;
+  // Live recipe-wide uniqueness check over resolved field ids + step ids. Drives
+  // the red duplicate-ID banner below the body; the collision pre-flight inside
+  // runValidation re-checks it on every Save draft / Deploy click.
+  const idCollisions = useMemo(
+    () => findRecipeIdCollisions(draft, catalog),
+    [draft, catalog],
+  );
+  const hasIdCollisions =
+    idCollisions.fieldIdCollisions.length > 0 ||
+    idCollisions.stepIdCollisions.length > 0;
+
+  // Resolved field paths (stepId.fieldId, blocks expanded) for the processor
+  // config path-pickers. Same memo shape as idCollisions above.
+  const resolvedFieldIds = useMemo(
+    () => resolveFieldIds(draft, catalog),
+    [draft, catalog],
+  );
+
+  // Versioning is deterministic and client-side — no async round-trip on the
+  // load path (that fetch was the source of the version flicker). The loaded /
+  // working version (`version`, set by handleLoad / handleNew / handleSubmit) is
+  // the single source of truth. Save draft cuts a patch; Deploy cuts a minor; a
+  // brand-new form (no current version) starts at 1.0.0.
+  const saveDraftVersion = currentVersion ? bumpPatch(currentVersion) : "1.0.0";
+  const deployVersion = currentVersion ? bumpMinor(currentVersion) : "1.0.0";
+
+  // Handlers
+  // Runs the full validation flow (pre-flight checks + server validate), sets
+  // all the state it always has, AND returns the computed result. Returning it
+  // lets the Save draft / Deploy click handlers act on a fresh validation
+  // synchronously — React state updates are async, so they can't read
+  // validateResult right after triggering it.
+  const runValidation = async (): Promise<RecipeValidateResponse> => {
+    setIsValidating(true);
+    try {
+      // Pre-flight checks that the server schema would also fail, but with friendlier messages.
+      if (!hasEditableSteps) {
+        const result: RecipeValidateResponse = {
+          valid: false,
+          issues: [
+            {
+              path: "steps",
+              message:
+                "Add at least one step before the required Declaration and Submission Confirmation steps.",
+            },
+          ],
+        };
+        setValidateResult(result);
+        setLastSaveStatus("error");
+        return result;
+      }
+      const emptyStep = editableSteps.find((s) => s.fields.length === 0);
+      if (emptyStep) {
+        const result: RecipeValidateResponse = {
+          valid: false,
+          issues: [
+            {
+              path: `steps[${emptyStep.stepId}].fields`,
+              message: `Step "${emptyStep.title || emptyStep.stepId}" has no fields.`,
+            },
+          ],
+        };
+        setValidateResult(result);
+        setLastSaveStatus("error");
+        return result;
+      }
+
+      // Pre-flight: surface duplicate resolved fieldIds / stepIds in the panel.
+      // (The server contract validator can't resolve catalog defaults, so this
+      // is the client's job — same pattern as the empty-step pre-flight above.)
+      const collisions = findRecipeIdCollisions(draft, catalog);
+      if (
+        collisions.fieldIdCollisions.length > 0 ||
+        collisions.stepIdCollisions.length > 0
+      ) {
+        const result: RecipeValidateResponse = {
+          valid: false,
+          issues: formatCollisionIssues(collisions),
+        };
+        setValidateResult(result);
+        setLastSaveStatus("error");
+        return result;
+      }
+
+      const recipe = serializeRecipeDraft(draft, { version });
+      const raw = (await validateRecipe({ data: { recipe } })) as ValidationResult;
+      const result: RecipeValidateResponse = {
+        valid: raw.ok,
+        issues: raw.ok ? [] : raw.issues,
+      };
+      setValidateResult(result);
+      setLastSaveStatus(raw.ok ? "success" : "error");
+      return result;
+    } catch (e) {
+      const result: RecipeValidateResponse = {
+        valid: false,
+        issues: [
+          { path: "", message: e instanceof Error ? e.message : "Validation request failed" },
+        ],
+      };
+      setValidateResult(result);
+      setLastSaveStatus("error");
+      return result;
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
+  // Save draft / Deploy validate the current draft on click, then open their
+  // modal only if it's valid. One click, not two — and because every click
+  // re-validates the live draft, a stale validateResult can never green-light a
+  // bad save.
+  //
+  // Save draft is the exception: an invalid draft can still be saved once the
+  // user confirms, so an in-progress form can be shared for review. The errors
+  // stay lit in the validation panel either way; the SubmitModal still collects
+  // (and semver-validates) the version. Deploy stays hard-gated on validity.
+  const handleSaveDraftClick = async () => {
+    const result = await runValidation();
+    if (
+      !result.valid &&
+      !window.confirm(
+        "This form has validation errors. Save it as a draft anyway so others can review it?",
+      )
+    ) {
+      return;
+    }
+    setSubmitSuccess(false);
+    setSubmitError(null);
+    setIsSubmitOpen(true);
+  };
+
+  const handleDeployClick = async () => {
+    const result = await runValidation();
+    if (result.valid) handleOpenPublish();
+  };
+
+  const handleDismissValidation = () => {
+    setValidateResult(null);
+    setLastSaveStatus("idle");
+  };
+
+  const handlePreview = async () => {
+    setIsPreviewOpen(true);
+    setIsPreviewing(true);
+    setPreviewError(null);
+    try {
+      const recipe = serializeRecipeDraft(draft, { version });
+      const contract = await previewRecipe({ data: { recipe } }) as ServiceContract;
+      setPreviewData(contract as ServiceContract);
+    } catch (e) {
+      setPreviewError(e instanceof Error ? e.message : "Preview request failed");
+    } finally {
+      setIsPreviewing(false);
+    }
+  };
+
+  const handleSubmit = async (submitVersion: string) => {
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      const recipe = serializeRecipeDraft(draft, { version: submitVersion });
+      if (loadedFromId && currentVersion && submitVersion === currentVersion) {
+        await updateRecipe({ data: { formId: loadedFromId, recipe } });
+      } else {
+        await submitRecipe({ data: { recipe } });
+      }
+      setSubmitSuccess(true);
+      setLastSaveStatus("submitted");
+      setLoadedFromId(draft.formId);
+
+      // The just-saved version becomes the new working/current version, so the
+      // toolbar reflects it and the next Save-draft patch / Deploy minor bumps
+      // off it. No server round-trip — the bump is computed client-side.
+      setCurrentVersion(submitVersion);
+      setVersion(submitVersion);
+    } catch (e) {
+      setSubmitError(e instanceof Error ? e.message : "Submission failed");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleOpenPublish = () => {
+    setPublishSuccess(null);
+    setPublishError(null);
+    setIsPublishOpen(true);
+  };
+
+  const handlePublish = async (description: string) => {
+    setIsPublishing(true);
+    setPublishError(null);
+    try {
+      // Deploy publishes a fresh minor of the current version — both the
+      // PublishModal display and the published recipe use deployVersion, so
+      // they can't diverge, and a redeploy never collides with the existing
+      // <current>.json on GitHub.
+      const recipe = serializeRecipeDraft(draft, { version: deployVersion });
+      const result = await publishRecipe({
+        data: { recipe, description },
+      });
+      setPublishSuccess(result);
+    } catch (e) {
+      setPublishError(e instanceof Error ? e.message : "Publish failed");
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  const handleClosePublish = () => {
+    setIsPublishOpen(false);
+    setPublishSuccess(null);
+    setPublishError(null);
+  };
+
+  const handleLoad = (loadedDraft: RecipeDraft, formId: string, ver: string) => {
+    dispatch({ type: "LOAD_DRAFT", draft: loadedDraft });
+    setLoadedFromId(formId);
+    setCurrentVersion(ver);
+    setVersion(ver);
+    setSelectedStepId(null);
+    setMainView("step");
+    setValidateResult(null);
+    setSubmitSuccess(false);
+    setSubmitError(null);
+    setPreviewData(null);
+    setPreviewError(null);
+    setLastSaveStatus("idle");
+  };
+
+  // Apply a recipe the AI sidebar produced, in place, against the live draft:
+  // deserialize → uniqueness pre-flight → server validate → (no-op guard) →
+  // confirm-if-dirty → LOAD_DRAFT → bump patch. Returns a result the sidebar
+  // surfaces. The draft is only ever replaced on the fully-valid, changed,
+  // confirmed path — a broken or unchanged recipe never clobbers good work.
+  const applyAiRecipe = async (
+    recipe: ServiceContractRecipe,
+  ): Promise<ApplyRecipeResult> => {
+    let incoming: RecipeDraft;
+    try {
+      incoming = buildLoadArgs(recipe, catalog).draft;
+    } catch (e) {
+      return {
+        applied: false,
+        error: e instanceof Error ? e.message : "Could not read the AI recipe.",
+      };
+    }
+
+    // No-op guard first: a conversational tweak can echo the form back
+    // unchanged. Don't validate, don't prompt, don't bump — there's nothing to
+    // apply. (Equality ignores version, timestamps, and editor-only ids.)
+    if (draftsEqual(draft, incoming)) {
+      return { applied: false };
+    }
+
+    // Uniqueness pre-flight — the same resolved-id check Save draft / Deploy
+    // run. The server contract validator can't resolve catalog defaults.
+    const collisions = findRecipeIdCollisions(incoming, catalog);
+    if (
+      collisions.fieldIdCollisions.length > 0 ||
+      collisions.stepIdCollisions.length > 0
+    ) {
+      return {
+        applied: false,
+        error: formatCollisionIssues(collisions)
+          .map((i) => i.message)
+          .join(" "),
+      };
+    }
+
+    // Server validate; a recipe that fails the contract must not overwrite.
+    try {
+      const serialized = serializeRecipeDraft(incoming, { version });
+      const raw = (await validateRecipe({
+        data: { recipe: serialized },
+      })) as ValidationResult;
+      if (!raw.ok) {
+        return {
+          applied: false,
+          error: raw.issues
+            .map((i) => (i.path ? `${i.path}: ${i.message}` : i.message))
+            .join("; "),
+        };
+      }
+    } catch (e) {
+      return {
+        applied: false,
+        error: e instanceof Error ? e.message : "Validation request failed.",
+      };
+    }
+
+    // Guard against silently discarding manual edits already in the editor.
+    if (
+      isDirty &&
+      !window.confirm(
+        "Apply the AI changes? This replaces the current form in the editor.",
+      )
+    ) {
+      return { applied: false };
+    }
+
+    dispatch({ type: "LOAD_DRAFT", draft: incoming });
+    setSelectedStepId(null);
+    setMainView("step");
+    setValidateResult(null);
+    setSubmitSuccess(false);
+    setSubmitError(null);
+    setLastSaveStatus("idle");
+    // The recipe changed, so cut a fresh patch off the working version.
+    setVersion((v) => bumpPatch(v));
+    return { applied: true };
+  };
+
+  const handleNew = () => {
+    dispatch({ type: "RESET" });
+    setSelectedStepId(null);
+    setMainView("step");
+    setVersion("1.0.0");
+    setCurrentVersion(null);
+    setLoadedFromId(null);
+    setValidateResult(null);
+    setSubmitSuccess(false);
+    setSubmitError(null);
+    setPreviewData(null);
+    setLastSaveStatus("idle");
+    // Close all open panels/modals
+    setIsPickerOpen(false);
+    setIsSubmitOpen(false);
+    setIsPreviewOpen(false);
+    // Clear transient errors
+    setPreviewError(null);
+  };
+
+  const handleRequestDelete = (form: FormDefinitionSummary) => {
+    setDeleteError(null);
+    setDeleteTarget(form);
+    setIsPickerOpen(false);
+  };
+
+  const handleConfirmDelete = async (reason: string) => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteForm({ data: { formId: deleteTarget.formId, reason } });
+      // If the deleted form is the one open in the editor, clear it.
+      if (loadedFromId === deleteTarget.formId) handleNew();
+      setDeleteTarget(null);
+      // The forms list lives in useFormsList (no longer route-loader data), so
+      // refetch it directly to drop the deleted entry from the Open picker.
+      refetchForms();
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleCloseDelete = () => {
+    if (isDeleting) return;
+    setDeleteTarget(null);
+    setDeleteError(null);
+  };
+
+  const handleFormIdChange = (id: string) => {
+    dispatch({ type: "SET_FORM_META", formId: id, title: draft.title, description: draft.description });
+  };
+
+  const handleTitleChange = (title: string) => {
+    dispatch({ type: "SET_FORM_META", formId: draft.formId, title, description: draft.description });
+  };
+
+  const handleSelectStep = (stepId: string) => {
+    setSelectedStepId(stepId);
+    setMainView("step");
+  };
+
+  const handleSelectProcessors = () => {
+    setMainView("processors");
+  };
+
+  const handleSelectContactDetails = () => {
+    setMainView("contactDetails");
+  };
+
+  const handleAddStep = () => {
+    const stepId = nextStepId(draft.steps);
+    dispatch({ type: "ADD_STEP" });
+    setSelectedStepId(stepId);
+    setMainView("step");
+  };
+
+  const handleRemoveStep = (stepId: string) => {
+    dispatch({ type: "REMOVE_STEP", stepId });
+    if (selectedStepId === stepId) setSelectedStepId(null);
+  };
+
+  const handleMoveStepUp = (index: number) => {
+    dispatch({ type: "REORDER_STEPS", fromIndex: index, toIndex: index - 1 });
+  };
+
+  const handleMoveStepDown = (index: number) => {
+    dispatch({ type: "REORDER_STEPS", fromIndex: index, toIndex: index + 1 });
+  };
+
+  const handleStepIdChange = (_oldId: string, newId: string) => {
+    setSelectedStepId(newId);
+  };
+
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 32,
-        fontFamily: "system-ui",
-        background: "#fafafa",
-      }}
-    >
-      <div
-        style={{
-          maxWidth: 900,
-          width: "100%",
-          display: "flex",
-          flexDirection: "column",
-          gap: 24,
-        }}
-      >
-        <header style={{ textAlign: "center" }}>
-          <h1 style={{ margin: 0, fontSize: 28 }}>Form Builder</h1>
-          <p style={{ marginTop: 8, color: "#666" }}>
-            Pick how you want to author this form.
-          </p>
-        </header>
-        <div style={{ display: "flex", gap: 16 }}>
-          <Link to="/builder/ui" style={cardStyle}>
-            <div style={{ fontSize: 32 }}>🧱</div>
-            <h2 style={{ margin: 0, fontSize: 20 }}>Build with the UI</h2>
-            <p style={{ margin: 0, color: "#666", textAlign: "center" }}>
-              Drag, configure, and validate. Full control via the visual editor.
-            </p>
-            <span style={{ color: "#1976d2", fontWeight: 600 }}>Open UI builder →</span>
-          </Link>
-          <Link to="/builder/ai" style={cardStyle}>
-            <div style={{ fontSize: 32 }}>🤖</div>
-            <h2 style={{ margin: 0, fontSize: 20 }}>Build with AI</h2>
-            <p style={{ margin: 0, color: "#666", textAlign: "center" }}>
-              Describe a form or upload a PDF — Claude turns it into a recipe.
-            </p>
-            <span style={{ color: "#1976d2", fontWeight: 600 }}>Open AI builder →</span>
-          </Link>
-        </div>
+    <div className={styles.builderShell}>
+      <div className={styles.builderRoot}>
+      <Toolbar
+        formId={draft.formId}
+        title={draft.title}
+        version={version}
+        isDirty={isDirty}
+        isValidating={isValidating}
+        isPreviewing={isPreviewing}
+        isSubmitting={isSubmitting}
+        isPublishing={isPublishing}
+        lastSaveStatus={lastSaveStatus}
+        onFormIdChange={handleFormIdChange}
+        onTitleChange={handleTitleChange}
+        onNew={handleNew}
+        onOpen={() => setIsPickerOpen(true)}
+        onValidate={runValidation}
+        onPreview={handlePreview}
+        onSubmit={handleSaveDraftClick}
+        onPublish={handleDeployClick}
+      />
+
+      <div className={styles.builderBody}>
+        <StepList
+          steps={draft.steps}
+          selectedStepId={mainView === "step" ? selectedStepId : null}
+          onSelect={handleSelectStep}
+          onAdd={handleAddStep}
+          onRemove={handleRemoveStep}
+          onMoveUp={handleMoveStepUp}
+          onMoveDown={handleMoveStepDown}
+          processorCount={draft.processors?.length ?? 0}
+          isProcessorsActive={mainView === "processors"}
+          onSelectProcessors={handleSelectProcessors}
+          hasContactDetails={draft.contactDetails !== undefined}
+          isContactDetailsActive={mainView === "contactDetails"}
+          onSelectContactDetails={handleSelectContactDetails}
+        />
+
+        {mainView === "contactDetails" ? (
+          <ContactDetailsEditor draft={draft} dispatch={dispatch} />
+        ) : mainView === "processors" ? (
+          <ProcessorsEditor
+            draft={draft}
+            dispatch={dispatch}
+            fields={resolvedFieldIds}
+          />
+        ) : selectedStep !== null ? (
+          <StepEditor
+            step={selectedStep}
+            draft={draft}
+            dispatch={dispatch}
+            catalog={catalog}
+            onStepIdChange={handleStepIdChange}
+          />
+        ) : (
+          <div className={styles.noStepSelected}>Select or add a step to begin</div>
+        )}
       </div>
+
+      {hasIdCollisions && (
+        <div className={styles.validationErrors} role="alert">
+          <strong>Duplicate IDs must be fixed before saving or deploying</strong>
+          <ul>
+            {idCollisions.fieldIdCollisions.map((c) => (
+              <li key={`field-${c.id}`}>
+                Field ID <code>{c.id}</code> is used by {c.locations.length}{" "}
+                fields:{" "}
+                {c.locations
+                  .map((l) => `${l.stepTitle || l.stepId} › ${l.display}`)
+                  .join("; ")}
+              </li>
+            ))}
+            {idCollisions.stepIdCollisions.map((c) => (
+              <li key={`step-${c.stepId}`}>
+                Step ID <code>{c.stepId}</code> is used by {c.locations.length}{" "}
+                steps:{" "}
+                {c.locations.map((l) => l.stepTitle || l.stepId).join("; ")}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <ValidationPanel result={validateResult} onDismiss={handleDismissValidation} />
+
+      {isPickerOpen && (
+        <FormPicker
+          forms={forms}
+          loadError={formsLoadError}
+          isDirty={isDirty}
+          catalog={catalog}
+          onLoad={handleLoad}
+          onClose={() => setIsPickerOpen(false)}
+          onRequestDelete={handleRequestDelete}
+        />
+      )}
+
+      {isPreviewOpen && (
+        <PreviewModal
+          contract={previewData}
+          isLoading={isPreviewing}
+          error={previewError}
+          previewUrl={loadedFromId ? formPreviewUrl(loadedFromId) : null}
+          onClose={() => { setIsPreviewOpen(false); setPreviewData(null); setPreviewError(null); }}
+        />
+      )}
+
+      {isSubmitOpen && (
+        <SubmitModal
+          draft={draft}
+          version={saveDraftVersion}
+          currentVersion={currentVersion}
+          loadedFromId={loadedFromId}
+          isSubmitting={isSubmitting}
+          submitSuccess={submitSuccess}
+          submitError={submitError}
+          onSubmit={handleSubmit}
+          onClose={() => setIsSubmitOpen(false)}
+        />
+      )}
+
+      {isPublishOpen && (
+        <PublishModal
+          draft={draft}
+          version={deployVersion}
+          baseBranch={baseBranch}
+          isPublishing={isPublishing}
+          publishSuccess={publishSuccess}
+          publishError={publishError}
+          onPublish={handlePublish}
+          onClose={handleClosePublish}
+        />
+      )}
+
+      {deleteTarget && (
+        <DeleteModal
+          formId={deleteTarget.formId}
+          title={deleteTarget.title}
+          isDeleting={isDeleting}
+          deleteError={deleteError}
+          onConfirm={handleConfirmDelete}
+          onClose={handleCloseDelete}
+        />
+      )}
+      </div>
+
+      <AiSidebar
+        draft={draft}
+        version={version}
+        onApplyRecipe={applyAiRecipe}
+      />
     </div>
   );
 }
