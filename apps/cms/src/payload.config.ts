@@ -1,6 +1,7 @@
 import { postgresAdapter } from '@payloadcms/db-postgres'
 import { nodemailerAdapter } from '@payloadcms/email-nodemailer'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
+import { s3Storage } from '@payloadcms/storage-s3'
 import fs from 'fs'
 import path from 'path'
 import { buildConfig } from 'payload'
@@ -13,6 +14,7 @@ import { Categories, Subcategories } from './collections/Categories'
 import { Services } from './collections/Services'
 import { Organisations } from './collections/Organisations'
 import { withoutExcludedFeatures } from './lib/editor-features'
+import { migrations } from './migrations'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -80,6 +82,31 @@ function sesEmailAdapter() {
   })
 }
 
+// Media storage. ECS Fargate / App Runner have ephemeral disk, so local-disk
+// uploads are wiped on every restart/redeploy. When S3_BUCKET is set the
+// s3Storage plugin offloads Media to S3 instead. Credentials come from the
+// task's IAM role by default; S3_ACCESS_KEY_ID / S3_SECRET_ACCESS_KEY override
+// that for environments without an instance role. Unset locally → uploads stay
+// on the local filesystem, which is fine for dev.
+function mediaStoragePlugins() {
+  const bucket = process.env.S3_BUCKET
+  if (!bucket) return []
+  const accessKeyId = process.env.S3_ACCESS_KEY_ID
+  const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY
+  return [
+    s3Storage({
+      collections: { media: true },
+      bucket,
+      config: {
+        region: process.env.S3_REGION || process.env.AWS_REGION,
+        ...(accessKeyId && secretAccessKey
+          ? { credentials: { accessKeyId, secretAccessKey } }
+          : {}),
+      },
+    }),
+  ]
+}
+
 export default buildConfig({
   cors: [LANDING_ORIGIN, ADMIN_ORIGIN],
   csrf: [ADMIN_ORIGIN, LANDING_ORIGIN],
@@ -107,6 +134,15 @@ export default buildConfig({
     },
   },
   collections: [Services, Organisations, Categories, Subcategories, Media, Users],
+  // Nothing consumes the CMS over GraphQL — the landing site reads the REST
+  // API only. Disabling it stops schema generation and route registration,
+  // removing the playground/introspection attack surface (Payload's
+  // preventing-abuse guidance). The /api/graphql* route files are deleted too.
+  graphQL: { disable: true },
+  // Cap relationship-population depth a request may ask for (default 10). The
+  // landing site never requests more than depth 2, so 5 leaves headroom while
+  // blocking deep-population abuse on the public API.
+  maxDepth: 5,
   editor: lexicalEditor({
     features: ({ defaultFeatures }) => withoutExcludedFeatures(defaultFeatures),
   }),
@@ -119,8 +155,13 @@ export default buildConfig({
       connectionString: resolveDatabaseUrl(),
       ssl: resolveSslConfig(),
     },
+    // In production the slim runner image can't shell out to the Payload CLI,
+    // so apply pending migrations from the bundled set on boot. In dev
+    // (NODE_ENV !== 'production') this is ignored and the adapter push-syncs
+    // the schema instead.
+    prodMigrations: migrations,
   }),
   email: sesEmailAdapter(),
   sharp,
-  plugins: [],
+  plugins: [...mediaStoragePlugins()],
 })

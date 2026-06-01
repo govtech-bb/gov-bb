@@ -1,5 +1,5 @@
 import type { CollectionConfig } from 'payload'
-import { anyone, isAdminOrEditor } from '../access/roles'
+import { publishedOnly, isAdminOrEditor } from '../access/roles'
 import { slugField } from '../fields/slug'
 import { flagField } from '../fields/flag'
 import { lockSlugAfterPublish } from '../hooks/lockSlugAfterPublish'
@@ -16,7 +16,8 @@ export const Services: CollectionConfig = {
     group: 'Content',
   },
   access: {
-    read: anyone,
+    read: publishedOnly,
+    readVersions: isAdminOrEditor,
     create: isAdminOrEditor,
     update: isAdminOrEditor,
     delete: isAdminOrEditor,

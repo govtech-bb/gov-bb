@@ -25,3 +25,16 @@ export const isAdminOrSelf: Access = ({ req: { user } }) => {
 export const isAdminFieldLevel: FieldAccess = ({ req: { user } }) => hasRole(user, 'admin')
 
 export const anyone: Access = () => true
+
+/**
+ * Public read access for content collections. Logged-in users (admin/editor)
+ * see everything, including drafts; anonymous callers are constrained to
+ * published documents. Without this, the open REST/GraphQL API serves
+ * unpublished autosaved drafts to anyone passing `?draft=true`.
+ *
+ * Flagged-but-published docs are intentionally still returned: the landing
+ * site applies the `flag=live` filter itself, and omits it for reviewers
+ * holding the FLAG_SECRET cookie (and to surface 503 for flagged pages).
+ */
+export const publishedOnly: Access = ({ req: { user } }) =>
+  user ? true : { _status: { equals: 'published' } }

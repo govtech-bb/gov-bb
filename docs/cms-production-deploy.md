@@ -5,7 +5,7 @@ Target stack as of this branch:
 - **Runtime**: AWS App Runner or ECS Fargate (containerised)
 - **Database**: AWS RDS Postgres (see [aws-database-sizing.md](./aws-database-sizing.md))
 - **Email**: AWS SES via SMTP
-- **Media uploads**: local filesystem (see [warning](#warning-media-on-ephemeral-disk))
+- **Media uploads**: S3 when `S3_BUCKET` is set (local filesystem otherwise — see [media storage](#media-storage))
 
 ## What's in the box
 
@@ -31,7 +31,9 @@ workspace lockfile and the other `packages/*` manifests.
 
 | Variable                | Required | Notes                                                                                       |
 | ----------------------- | -------- | ------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`          | yes      | `postgres://USER:PASS@HOST:5432/cms` — RDS endpoint                                         |
+| `DATABASE_URL`          | yes\*    | `postgres://USER:PASS@HOST:5432/cms` — RDS endpoint. \*Or the `DB_*` set below.            |
+| `DB_HOST` / `DB_USERNAME` / `DB_PASSWORD` / `DB_NAME` / `DB_PORT` | alt | alpha-infra injects these; the connection string is assembled from them when `DATABASE_URL` is unset. |
+| `DATABASE_SSL_CA_PATH`  | prod     | Path to the RDS CA bundle for verified TLS (Dockerfile writes `/etc/ssl/certs/rds-global-bundle.pem`). If unset, pg connects **without TLS** — set it in any RDS environment. |
 | `PAYLOAD_SECRET`        | yes      | `openssl rand -hex 32`. Never reuse across environments. Rotate if leaked.                  |
 | `PAYLOAD_PUBLIC_URL`    | yes      | The admin's deployed origin (e.g. `https://cms.alpha.gov.bb`) — used for CSRF allowlist     |
 | `LANDING_URL`           | yes      | Landing site origin for Live Preview + CORS                                                 |
@@ -44,6 +46,9 @@ workspace lockfile and the other `packages/*` manifests.
 | `SES_FROM_NAME`         | no       | Display name on outgoing emails                                                             |
 | `CMS_ADMIN_EMAIL`       | seed     | Used by `pnpm seed` to create the first admin. Not read at runtime.                         |
 | `CMS_ADMIN_PASSWORD`    | seed     | Same.                                                                                       |
+| `S3_BUCKET`             | media    | Set to offload Media to S3 (required in prod — Fargate disk is ephemeral). Unset → local disk. |
+| `S3_REGION`             | media    | Bucket region (falls back to `AWS_REGION`).                                                  |
+| `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | no | Only where no task IAM role is available; otherwise the role's credentials are used. |
 
 ## Health checks
 
@@ -54,15 +59,21 @@ App Runner / ALB / target-group probes hit `GET /api/health`:
 
 ## Database migrations
 
-The repo carries Payload migrations under `apps/cms/src/migrations/`. Apply them against the target database before serving traffic:
+The repo carries Payload migrations under `apps/cms/src/migrations/`. The
+postgres adapter is configured with `prodMigrations`, so **the container
+applies any pending migrations from the bundled set on boot** when
+`NODE_ENV=production` — no separate CLI step or migrate-capable image is
+needed. Applied migrations are tracked in the `payload_migrations` table, so
+this is idempotent across restarts and rolling deploys.
+
+A fresh database picks up the genesis migration automatically on first boot.
+An existing database provisioned without migrations (e.g. via dev push mode)
+may need the schema dropped or a delta regenerated — see the note at the top
+of `src/migrations/20260528_090649.ts`. To apply manually instead:
 
 ```bash
 DATABASE_URL=$PROD_URL pnpm --filter cms run payload migrate
 ```
-
-A fresh database can use the genesis migration as-is. An existing database
-provisioned without migrations may require regenerating a delta — see the
-note at the top of `src/migrations/20260528_090649.ts`.
 
 ## Initial admin
 
@@ -79,17 +90,25 @@ After the first deploy, either:
 4. Set `SES_SMTP_*` env vars on the container.
 5. Verify by triggering a password reset to a verified address.
 
-## Warning: media on ephemeral disk
+## Media storage
 
-This deployment runs Media uploads on the container's local filesystem. App Runner and ECS Fargate both have **ephemeral disk** — every container restart, redeploy, or autoscale event wipes the uploaded files.
+The `s3Storage` plugin is wired in `payload.config.ts` and activates when
+`S3_BUCKET` is set, offloading Media uploads to S3. **Set `S3_BUCKET` (and
+`S3_REGION`) in production** — App Runner and ECS Fargate have ephemeral disk,
+so without S3 every container restart, redeploy, or autoscale event silently
+wipes uploaded files. Note that Organisations carry `upload` fields (hero
+image, featured tiles), so Media is reachable as soon as an author edits one.
 
-If Media is used:
+To provision:
 
-- **Short-term mitigation**: avoid container restarts mid-day; redeploys lose uploads silently.
-- **Proper fix (ECS Fargate)**: mount an EFS volume at the Media upload path. Roughly $0.30/GB/month, persists across restarts. Requires task definition changes.
-- **Better fix**: swap to S3 via `@payloadcms/storage-s3`. ~30 minutes of work — adds a plugin to `payload.config.ts` and an S3 bucket + IAM role.
+1. Create an S3 bucket (e.g. `gov-bb-cms-media`).
+2. Grant the task's IAM role `s3:PutObject` / `GetObject` / `DeleteObject` /
+   `ListBucket` on it (credentials are taken from the role automatically; set
+   `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` only where no role exists).
+3. Set `S3_BUCKET` + `S3_REGION` on the container.
 
-For an alpha-stage site without uploads yet, the current choice is fine; revisit before the first Media-using author lands.
+Leave `S3_BUCKET` unset locally to keep uploads on the local filesystem, which
+is fine for dev.
 
 ## Security baseline (status)
 
@@ -100,7 +119,11 @@ For an alpha-stage site without uploads yet, the current choice is fine; revisit
 - [x] Max-login-attempt lockout (5 / 10min)
 - [x] Role-based access control on Users (create/update/delete = admin)
 - [x] Users.read restricted to admin or self
+- [x] Public read on Services/Organisations constrained to published docs (`publishedOnly`); `readVersions` admin/editor-only — anonymous callers can't pull drafts via `?draft=true` or the versions API
 - [x] Custom auth cookie prefix (`gov-bb-cms`) so cookies don't collide with another app on the same domain
+- [ ] Server-side `flag` enforcement — flagged-but-published docs are still served by the API and hidden only by the landing site's query filter; a real reviewer-auth mechanism in the CMS is a follow-up
+- [x] GraphQL disabled (`graphQL: { disable: true }`) and the `/api/graphql*` route files removed — landing uses REST only, so the playground/introspection surface is gone
+- [x] `maxDepth: 5` caps relationship-population depth on the public API (landing requests ≤ 2)
 - [ ] Rate limiting on the admin login endpoint (Payload's max-login-attempts is per-user; a real rate-limit on the route belongs at the load balancer or via AWS WAF)
 - [ ] Backup retention beyond the RDS default 7 days — decide per data-retention policy
 - [ ] WAF rules / IP allowlist for the admin route — optional, depends on threat model
