@@ -35,7 +35,7 @@ export type { ValidationRuleDescriptor } from "./behaviors/validation-builder";
 export { makeDefaultProcessor } from "./processor-defaults";
 
 // Core utilities
-export { hydrateForm } from "./resolution";
+export { hydrateForm, collectUnknownRefs } from "./resolution";
 export { UnknownRefError } from "./errors";
 export type { UnknownRef } from "./errors";
 export { serializeRecipeDraft, deserializeRecipe } from "./serialization";
