@@ -16,7 +16,7 @@ export const getAiStatus = createServerFn({ method: "GET" })
 //
 // PDF is sent inline as base64 in the server-fn body. The Amplify SSR Lambda
 // caps requests at ~6 MB, so the sidebar guards uploads at 4 MB client-side.
-export const convertRecipe = createServerFn({ method: "POST" })
+export const convertRecipe = createServerFn({ method: "POST", strict: false })
   .middleware([requireSession])
   .inputValidator(
     z
