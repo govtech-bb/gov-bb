@@ -5,6 +5,7 @@ type FormSessionStatus = "collecting" | "submitting" | "submitted" | "failed";
 export interface FormSession {
   threadId: string;
   slug: string | null;
+  handedOffSlug: string | null;
   values: Record<string, string>;
   submissionId: string;
   status: FormSessionStatus;
@@ -42,6 +43,7 @@ export function getOrCreateSession(threadId: string): FormSession {
     s = {
       threadId,
       slug: null,
+      handedOffSlug: null,
       values: {},
       submissionId: randomUUID(),
       status: "collecting",
@@ -57,6 +59,7 @@ export function getOrCreateSession(threadId: string): FormSession {
 
 export function resetSessionForNewForm(session: FormSession): void {
   session.slug = null;
+  session.handedOffSlug = null;
   session.values = {};
   session.submissionId = randomUUID();
   session.status = "collecting";

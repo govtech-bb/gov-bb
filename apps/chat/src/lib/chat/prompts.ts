@@ -102,3 +102,11 @@ export const NO_FORM_DISCLOSURE = `HARD OVERRIDE — NO ONLINE FORM AVAILABLE:
 export function buildSchemaDisclosure(slug: string, schema: string): string {
   return `FORM SCHEMA for "${slug}". Collect every required field before calling submit_form.\n\n${schema}`;
 }
+
+export function buildHandoffDisclosure(title: string, url: string): string {
+  return `HARD OVERRIDE — THIS FORM CAN'T BE COMPLETED IN CHAT:
+- "${title}" needs a file upload and/or a payment, which can't be done here.
+- Do NOT collect fields, do NOT use set_field/present_choices, do NOT call submit_form. None of those tools are available this turn.
+- Tell the user briefly that this one has to be done on the form itself, and give them the link as a normal markdown link: [${title}](${url}). This is the ONE case where you DO write a real link in your reply.
+- You may still answer side questions (cost, documents needed, eligibility) from the retrieved context.`;
+}

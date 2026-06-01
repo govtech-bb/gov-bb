@@ -6,16 +6,18 @@ import { getServerEnv } from "#/config/env";
 import {
   buildFormTools,
   getOrCreateSession,
-  loadActiveFormSchema,
+  resolveActiveForm,
   matchFormsFromText,
   resetSessionForNewForm,
   withThreadLock,
+  type FormResolution,
   type FormSession,
 } from "./form";
 import { lastUserText, recentUserText } from "./messages";
 import {
   NO_FORM_DISCLOSURE,
   SYSTEM_PROMPT,
+  buildHandoffDisclosure,
   buildSchemaDisclosure,
 } from "./prompts";
 import { buildCitedContext, isGreetingOrTooShort, retrieve } from "./retrieval";
@@ -67,11 +69,18 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
 
   const session = getOrCreateSession(threadId);
   if (!session.slug || session.status === "submitted") {
-    const matched = await matchFormsFromText(recentUserText(messages));
-    if (matched && matched.formId !== session.slug) {
-      resetSessionForNewForm(session);
-      session.slug = matched.formId;
-    } else if (matched) {
+    const windowMatch = await matchFormsFromText(recentUserText(messages));
+    // A handed-off form (file upload / payment) isn't pinned to the session,
+    // so it re-enters matching from the rolling window. If the window still
+    // points at the form we just handed off, defer to what the user's LATEST
+    // message matches (possibly nothing) so they aren't re-handed the same
+    // link turn after turn, and a genuine topic switch still activates.
+    const matched =
+      windowMatch && windowMatch.formId === session.handedOffSlug
+        ? await matchFormsFromText(lastUserText(messages))
+        : windowMatch;
+    if (matched) {
+      if (matched.formId !== session.slug) resetSessionForNewForm(session);
       session.slug = matched.formId;
     }
   }
@@ -95,18 +104,24 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     query,
   );
 
-  const schema = session.slug
-    ? await loadActiveFormSchema(session.slug, session.values)
-    : null;
+  const resolution: FormResolution = session.slug
+    ? await resolveActiveForm(session.slug, session.values)
+    : { kind: "none" };
 
-  const systemPrompts = buildSystemPrompts(
-    contextBlock,
-    schema?.schema,
-    schema?.slug,
-    session,
-  );
+  // Handoff carries no in-progress state. Don't pin the session to it, or the
+  // user stays stuck getting the same handoff link on every later turn. Record
+  // it so the matcher above won't immediately re-hand-off the same form.
+  if (resolution.kind === "handoff") {
+    session.handedOffSlug = session.slug;
+    session.slug = null;
+  }
 
-  const tools = schema ? buildFormTools(session, schema, signal) : [];
+  const systemPrompts = buildSystemPrompts(contextBlock, resolution, session);
+
+  const tools =
+    resolution.kind === "collect"
+      ? buildFormTools(session, resolution.form, signal)
+      : [];
 
   const abortController = childController(signal);
 
@@ -175,19 +190,22 @@ async function fetchContext(
 
 function buildSystemPrompts(
   contextBlock: string,
-  schemaText: string | undefined,
-  slug: string | undefined,
+  resolution: FormResolution,
   session: FormSession,
 ): SystemEntry[] {
   const prompts: SystemEntry[] = [
     SYSTEM_PROMPT,
     `Context for this turn:\n${contextBlock}`,
   ];
-  if (slug && schemaText) {
-    prompts.push(
-      `Active form: ${slug}`,
-      buildSchemaDisclosure(slug, schemaText),
-    );
+
+  if (resolution.kind === "handoff") {
+    prompts.push(buildHandoffDisclosure(resolution.title, resolution.url));
+    return prompts;
+  }
+
+  if (resolution.kind === "collect") {
+    const { slug, schema } = resolution.form;
+    prompts.push(`Active form: ${slug}`, buildSchemaDisclosure(slug, schema));
     const entries = Object.entries(session.values);
     if (entries.length) {
       const lines = entries
