@@ -153,6 +153,27 @@ function OverrideForm({
           {" "}Hidden
         </label>
       </div>
+      <div className={`${fg(overrides.ui?.hideLabel === true)} ${styles.checkRow}`}>
+        <label>
+          <input
+            type="checkbox"
+            checked={overrides.ui?.hideLabel ?? false}
+            onChange={(e) => {
+              // Patch the nested ui object, dropping hideLabel when unchecked
+              // and collapsing ui to undefined once it holds no set keys.
+              const nextUi = {
+                ...overrides.ui,
+                hideLabel: e.target.checked || undefined,
+              };
+              const hasValue = Object.values(nextUi).some(
+                (v) => v !== undefined,
+              );
+              patch({ ui: hasValue ? nextUi : undefined });
+            }}
+          />
+          {" "}Hide label
+        </label>
+      </div>
       <div className={`${fg(overrides.validations?.required !== undefined)} ${styles.checkRow}`}>
         <label>
           <input

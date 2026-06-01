@@ -32,6 +32,9 @@ export type Option = z.infer<typeof optionSchema>;
 
 export const primitiveUISchema = z.object({
   width: z.enum(["short", "medium", "long"]).optional(),
+  /** When true, the field's visible label is hidden but kept in the DOM
+   * (via `.govbb-visually-hidden`) so the accessible name is preserved. */
+  hideLabel: z.boolean().optional(),
 });
 
 export type PrimitiveUI = z.infer<typeof primitiveUISchema>;
