@@ -736,8 +736,40 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Summary
+        env:
+          API_RESULT: ${{ needs.deploy-api.result }}
+          FB_API_RESULT: ${{ needs.deploy-form-builder.result }}
+          FORMS_RESULT: ${{ needs.amplify-forms.result }}
+          LANDING_RESULT: ${{ needs.amplify-landing.result }}
+          CHAT_RESULT: ${{ needs.amplify-chat.result }}
+          FB_APP_RESULT: ${{ needs.amplify-form-builder.result }}
+          CHAT_INGEST_RESULT: ${{ needs.deploy-chat-ingest.result }}
+          MIGRATIONS_GATE: ${{ needs.setup.outputs.migrations }}
         run: |
-          gate() { [ "$1" = "true" ] && echo "deployed" || echo "skipped (unaffected)"; }
+          # Report each target's ACTUAL job result, not just the
+          # affected-flag. A job can be affected, run, and then fail — and
+          # this table is what the team reads first to answer "did my
+          # change ship?". result is success|failure|cancelled|skipped.
+          outcome() {
+            case "$1" in
+              success)   echo "✅ deployed" ;;
+              failure)   echo "❌ failed" ;;
+              cancelled) echo "⏹ cancelled" ;;
+              skipped|*) echo "skipped (unaffected)" ;;
+            esac
+          }
+          # Migrations run as a step inside deploy-api (no separate job),
+          # so derive their line from the migrations gate + the API job.
+          migrations_outcome() {
+            if [ "$MIGRATIONS_GATE" != "true" ]; then
+              echo "skipped (no migration changes)"
+            else
+              case "$API_RESULT" in
+                success) echo "✅ ran" ;;
+                *)       echo "⚠️ see API ($API_RESULT)" ;;
+              esac
+            fi
+          }
           {
             echo "## Sandbox Deployment Summary"
             echo ""
@@ -745,14 +777,14 @@ jobs:
             echo ""
             echo "| Target | Result |"
             echo "|--------|--------|"
-            echo "| API | $(gate '${{ needs.setup.outputs.api }}') |"
-            echo "| API migrations | $(gate '${{ needs.setup.outputs.migrations }}') |"
-            echo "| form-builder API | $(gate '${{ needs.setup.outputs.fb-api }}') |"
-            echo "| Amplify forms | $(gate '${{ needs.setup.outputs.forms }}') |"
-            echo "| Amplify landing | $(gate '${{ needs.setup.outputs.landing }}') |"
-            echo "| Amplify chat | $(gate '${{ needs.setup.outputs.chat }}') |"
-            echo "| Amplify form-builder | $(gate '${{ needs.setup.outputs.fb-app }}') |"
-            echo "| chat-ingest image | $(gate '${{ needs.setup.outputs.chat }}') |"
+            echo "| API | $(outcome "$API_RESULT") |"
+            echo "| API migrations | $(migrations_outcome) |"
+            echo "| form-builder API | $(outcome "$FB_API_RESULT") |"
+            echo "| Amplify forms | $(outcome "$FORMS_RESULT") |"
+            echo "| Amplify landing | $(outcome "$LANDING_RESULT") |"
+            echo "| Amplify chat | $(outcome "$CHAT_RESULT") |"
+            echo "| Amplify form-builder | $(outcome "$FB_APP_RESULT") |"
+            echo "| chat-ingest image | $(outcome "$CHAT_INGEST_RESULT") |"
             echo ""
             echo "**API URL:** https://forms.api.sandbox.alpha.gov.bb"
             echo "**Landing URL:** https://landing.sandbox.alpha.gov.bb"
