@@ -82,6 +82,11 @@ export default function FieldRenderer({
         const describedBy =
           [hintId, errorId].filter(Boolean).join(" ") || undefined;
 
+        // When ui.hideLabel is set, keep the label/legend in the DOM (so the
+        // accessible name is preserved) but hide it visually.
+        const labelClass = (base: string) =>
+          field.ui?.hideLabel ? `${base} govbb-visually-hidden` : base;
+
         const sharedProps = {
           type: field.htmlType,
           name: field.name,
@@ -104,7 +109,7 @@ export default function FieldRenderer({
             const value = f.state.value as DateValue | undefined;
             return (
               <fieldset className="govbb-fieldset">
-                <legend className="govbb-fieldset__legend">
+                <legend className={labelClass("govbb-fieldset__legend")}>
                   {field.label}
                 </legend>
                 {field.hint && (
@@ -212,7 +217,10 @@ export default function FieldRenderer({
                   className="govbb-form-group"
                   data-field-width={field.ui?.width}
                 >
-                  <label className="govbb-label" htmlFor={field.id}>
+                  <label
+                    className={labelClass("govbb-label")}
+                    htmlFor={field.id}
+                  >
                     {field.label}
                   </label>
                   {field.hint && (
@@ -342,7 +350,7 @@ export default function FieldRenderer({
                 className="govbb-form-group"
                 data-field-width={field.ui?.width}
               >
-                <label className="govbb-label" htmlFor={field.id}>
+                <label className={labelClass("govbb-label")} htmlFor={field.id}>
                   {field.label}
                 </label>
                 {field.hint && (
@@ -364,7 +372,7 @@ export default function FieldRenderer({
                 className="govbb-form-group"
                 data-field-width={field.ui?.width}
               >
-                <label className="govbb-label" htmlFor={field.id}>
+                <label className={labelClass("govbb-label")} htmlFor={field.id}>
                   {field.label}
                 </label>
                 {field.hint && (
@@ -404,7 +412,7 @@ export default function FieldRenderer({
               const value = (f.state.value as string | undefined) ?? "";
               return (
                 <fieldset className="govbb-fieldset">
-                  <legend className="govbb-fieldset__legend">
+                  <legend className={labelClass("govbb-fieldset__legend")}>
                     {field.label}
                   </legend>
                   {field.hint && (
@@ -452,7 +460,7 @@ export default function FieldRenderer({
 
             return (
               <fieldset className="govbb-fieldset">
-                <legend className="govbb-fieldset__legend">
+                <legend className={labelClass("govbb-fieldset__legend")}>
                   {field.label}
                 </legend>
                 {field.hint && (
@@ -489,7 +497,7 @@ export default function FieldRenderer({
             const value: string = (f.state.value as string | undefined) ?? "";
             return (
               <fieldset className="govbb-fieldset">
-                <legend className="govbb-fieldset__legend">
+                <legend className={labelClass("govbb-fieldset__legend")}>
                   {field.label}
                 </legend>
                 {field.hint && (

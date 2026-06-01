@@ -22,6 +22,9 @@ export type SyncInput =
       action: string;
       issueNumber: number;
       labelName?: string;
+      // Reason an issue was closed: "completed" or "not_planned". Only present
+      // on `closed` events.
+      stateReason?: string;
     }
   | {
       eventName: "pull_request";
@@ -73,6 +76,20 @@ export function decideActions(input: SyncInput): IssuePlan[] {
           },
         ];
       }
+    }
+    // Manually closing an issue as *completed* moves it to Done. A
+    // "not planned" close (or a close with no reason) is left where it is.
+    // Idempotent with the PR-merge path, which also closes + sets Done.
+    if (input.action === "closed" && input.stateReason === "completed") {
+      return [
+        {
+          issue,
+          actions: [
+            { type: "ensureOnBoard" },
+            { type: "setStatus", status: "Done" },
+          ],
+        },
+      ];
     }
     return [];
   }
@@ -396,6 +413,7 @@ async function main(): Promise<void> {
       action: payload.action,
       issueNumber: payload.issue.number,
       labelName: payload.label?.name,
+      stateReason: payload.issue.state_reason,
     };
   } else {
     const pr = payload.pull_request;

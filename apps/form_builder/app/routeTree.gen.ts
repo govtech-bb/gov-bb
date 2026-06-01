@@ -15,8 +15,6 @@ import { Route as BuilderIndexRouteImport } from './routes/builder/index'
 import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
 import { Route as AuthGithubRouteImport } from './routes/auth/github'
 import { Route as AuthDeniedRouteImport } from './routes/auth/denied'
-import { Route as BuilderUiIndexRouteImport } from './routes/builder/ui/index'
-import { Route as BuilderAiIndexRouteImport } from './routes/builder/ai/index'
 import { Route as AuthGithubCallbackRouteImport } from './routes/auth/github_.callback'
 
 const BuilderRoute = BuilderRouteImport.update({
@@ -49,16 +47,6 @@ const AuthDeniedRoute = AuthDeniedRouteImport.update({
   path: '/auth/denied',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BuilderUiIndexRoute = BuilderUiIndexRouteImport.update({
-  id: '/ui/',
-  path: '/ui/',
-  getParentRoute: () => BuilderRoute,
-} as any)
-const BuilderAiIndexRoute = BuilderAiIndexRouteImport.update({
-  id: '/ai/',
-  path: '/ai/',
-  getParentRoute: () => BuilderRoute,
-} as any)
 const AuthGithubCallbackRoute = AuthGithubCallbackRouteImport.update({
   id: '/auth/github_/callback',
   path: '/auth/github/callback',
@@ -73,8 +61,6 @@ export interface FileRoutesByFullPath {
   '/auth/logout': typeof AuthLogoutRoute
   '/builder/': typeof BuilderIndexRoute
   '/auth/github/callback': typeof AuthGithubCallbackRoute
-  '/builder/ai/': typeof BuilderAiIndexRoute
-  '/builder/ui/': typeof BuilderUiIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -83,8 +69,6 @@ export interface FileRoutesByTo {
   '/auth/logout': typeof AuthLogoutRoute
   '/builder': typeof BuilderIndexRoute
   '/auth/github/callback': typeof AuthGithubCallbackRoute
-  '/builder/ai': typeof BuilderAiIndexRoute
-  '/builder/ui': typeof BuilderUiIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -95,8 +79,6 @@ export interface FileRoutesById {
   '/auth/logout': typeof AuthLogoutRoute
   '/builder/': typeof BuilderIndexRoute
   '/auth/github_/callback': typeof AuthGithubCallbackRoute
-  '/builder/ai/': typeof BuilderAiIndexRoute
-  '/builder/ui/': typeof BuilderUiIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -108,8 +90,6 @@ export interface FileRouteTypes {
     | '/auth/logout'
     | '/builder/'
     | '/auth/github/callback'
-    | '/builder/ai/'
-    | '/builder/ui/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -118,8 +98,6 @@ export interface FileRouteTypes {
     | '/auth/logout'
     | '/builder'
     | '/auth/github/callback'
-    | '/builder/ai'
-    | '/builder/ui'
   id:
     | '__root__'
     | '/'
@@ -129,8 +107,6 @@ export interface FileRouteTypes {
     | '/auth/logout'
     | '/builder/'
     | '/auth/github_/callback'
-    | '/builder/ai/'
-    | '/builder/ui/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -186,20 +162,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthDeniedRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/builder/ui/': {
-      id: '/builder/ui/'
-      path: '/ui'
-      fullPath: '/builder/ui/'
-      preLoaderRoute: typeof BuilderUiIndexRouteImport
-      parentRoute: typeof BuilderRoute
-    }
-    '/builder/ai/': {
-      id: '/builder/ai/'
-      path: '/ai'
-      fullPath: '/builder/ai/'
-      preLoaderRoute: typeof BuilderAiIndexRouteImport
-      parentRoute: typeof BuilderRoute
-    }
     '/auth/github_/callback': {
       id: '/auth/github_/callback'
       path: '/auth/github/callback'
@@ -212,14 +174,10 @@ declare module '@tanstack/react-router' {
 
 interface BuilderRouteChildren {
   BuilderIndexRoute: typeof BuilderIndexRoute
-  BuilderAiIndexRoute: typeof BuilderAiIndexRoute
-  BuilderUiIndexRoute: typeof BuilderUiIndexRoute
 }
 
 const BuilderRouteChildren: BuilderRouteChildren = {
   BuilderIndexRoute: BuilderIndexRoute,
-  BuilderAiIndexRoute: BuilderAiIndexRoute,
-  BuilderUiIndexRoute: BuilderUiIndexRoute,
 }
 
 const BuilderRouteWithChildren =

@@ -6,6 +6,7 @@ import {
   validateFormContract,
   findRecipeIdCollisionsFromRecipe,
   formatCollisionIssues,
+  collectUnknownRefs,
   BEHAVIOUR_TYPE_DESCRIPTORS,
   VALIDATION_RULE_DESCRIPTORS,
 } from "@govtech-bb/form-builder";
@@ -78,18 +79,14 @@ export async function validateHandler(req: Request, res: Response) {
     // Catalog-dependent ref existence check (also ADR 0010): the schema only
     // validates ref *format*, so a ref to a removed/renamed component passes
     // parse but would silently drop in preview / throw in the renderer. Catch
-    // it here, reporting every unknown ref together.
-    const unknownRefIssues: ValidationIssue[] = [];
-    result.data.steps.forEach((step) => {
-      step.elements.forEach((field, index) => {
-        if (!getRegistryItem(field.ref, catalog)) {
-          unknownRefIssues.push({
-            path: `steps[${step.stepId}].elements[${index}].ref`,
-            message: `Unknown component/block ref "${field.ref}"`,
-          });
-        }
-      });
-    });
+    // it here via the shared collector, reporting every unknown ref together.
+    const unknownRefIssues: ValidationIssue[] = collectUnknownRefs(
+      result.data,
+      catalog,
+    ).map(({ ref, path }) => ({
+      path,
+      message: `Unknown component/block ref "${ref}"`,
+    }));
     if (unknownRefIssues.length > 0) {
       res.json({ ok: false, issues: unknownRefIssues });
       return;

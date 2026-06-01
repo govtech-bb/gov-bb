@@ -27,14 +27,16 @@ export const BEHAVIOUR_TYPE_DESCRIPTORS: BehaviourTypeDescriptor[] = [
     type: "fieldConditionalOn",
     label: "Field Conditional On",
     scopes: ["field"],
+    // Target Step precedes Target Field: the editor scopes (and gates) the
+    // field picker on the selected step (#519).
     params: [
-      { name: "targetFieldId", label: "Target Field", kind: "fieldRef" },
       {
         name: "targetStepId",
         label: "Target Step",
         kind: "stepRef",
         optional: true,
       },
+      { name: "targetFieldId", label: "Target Field", kind: "fieldRef" },
       { name: "operator", label: "Operator", kind: "operator" },
       { name: "value", label: "Value", kind: "value" },
     ],
@@ -44,8 +46,8 @@ export const BEHAVIOUR_TYPE_DESCRIPTORS: BehaviourTypeDescriptor[] = [
     label: "Step Conditional On",
     scopes: ["step"],
     params: [
-      { name: "targetFieldId", label: "Target Field", kind: "fieldRef" },
       { name: "targetStepId", label: "Target Step", kind: "stepRef" },
+      { name: "targetFieldId", label: "Target Field", kind: "fieldRef" },
       { name: "operator", label: "Operator", kind: "operator" },
       { name: "value", label: "Value", kind: "value" },
     ],

@@ -81,7 +81,7 @@
           }
         },
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Name of institution",
             "fieldId": "institution-name",
@@ -102,7 +102,7 @@
           }
         },
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Name of company or organisation",
             "fieldId": "employer-name",
@@ -123,7 +123,7 @@
           }
         },
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Please give details",
             "fieldId": "other-employment-details",

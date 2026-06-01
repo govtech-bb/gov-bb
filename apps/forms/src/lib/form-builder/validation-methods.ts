@@ -71,14 +71,13 @@ export const checkRequired = ({
     return "unknownState";
   }
 
-  if (required && required.value && isEmpty) {
+  if (required !== undefined && required.value !== false) {
+    if (!isEmpty) return "notEmpty";
     setValidationError(fieldName, required, results);
     return "requiredAndEmpty";
   }
-  if ((!required || (required && !required.value)) && isEmpty)
-    return "notRequiredAndEmpty";
 
-  return "notEmpty";
+  return isEmpty ? "notRequiredAndEmpty" : "notEmpty";
 };
 
 export const checkLength = ({

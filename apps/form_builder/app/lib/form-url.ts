@@ -4,8 +4,8 @@
  * The origin comes from VITE_FORMS_URL — the same browser-exposed var the
  * landing app uses for forms links (ADR 0004). Per ADR 0005, browser-readable
  * config is read via import.meta.env, never process.env / a vite `define`.
- * Both builder surfaces — AI (/builder/ai) and UI (/builder/ui) — render the
- * same link. See apps/form_builder/.env.example.
+ * The unified builder (/builder) renders this link. See
+ * apps/form_builder/.env.example.
  *
  * The link carries the recipe preview token as `?preview=<token>`, which the
  * forms app forwards to the API as the X-Recipe-Preview header so an author

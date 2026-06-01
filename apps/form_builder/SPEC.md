@@ -2,24 +2,18 @@
 
 A web application for authoring **form recipes** for the GovTech Barbados Modular Forms platform. A "recipe" is a versioned, JSON-shaped form definition that downstream apps consume to render a multi-step government service form. This builder is the authoring tool — it does not render the public-facing forms themselves.
 
-Authors can build a recipe in one of two ways:
-
-1. **UI Builder** — a visual, step-and-field editor with full control over every override.
-2. **AI Builder** — a chat assistant (Claude) that converts a PDF or text description of a paper form into a recipe.
-
-Both modes write into the same `form_definitions` table and can be switched between freely during a session.
+Authoring happens on **one unified screen**: a visual, step-and-field editor with full control over every override, plus a **collapsible AI assistant sidebar** docked beside it. The AI assistant (Claude) converts a PDF or text description of a paper form into a recipe, or applies a text tweak to the form you're already editing — writing directly to the live draft, with no DB round trip.
 
 ---
 
 ## 1. Entry & Navigation
 
 - The root URL (`/`) redirects to `/builder`.
-- `/builder` is a landing page with two cards: **"Build with the UI"** and **"Build with AI"**.
-- From inside either builder, a button allows switching to the other. If there are unsaved changes, the user is warned before navigating away.
+- `/builder` *is* the editor — it lands directly in the visual builder with the AI sidebar docked on the right (expanded by default, collapsible). There is no separate landing page and no `/builder/ui` or `/builder/ai` route.
 
 ---
 
-## 2. The UI Builder (`/builder/ui`)
+## 2. The visual editor (`/builder`)
 
 ### 2.1 Toolbar (form-level controls)
 
@@ -139,40 +133,34 @@ Examples surfaced through descriptors include `fieldConditionalOn`, `stepConditi
 
 ---
 
-## 3. The AI Builder (`/builder/ai`)
+## 3. The AI assistant sidebar
 
-### 3.1 Chat workflow
+A collapsible panel docked to the right of the editor, sharing the editor's live `draft` / `version` state. It is **stateless**: every action is a single, self-contained call to `POST /builder/ai/convert` — there is no server-side conversation, session, or growing history (closes #332). The transcript shown in the sidebar is held client-side for the session's lifetime only.
 
-A two-pane layout: a chat conversation on the left, the generated recipe JSON on the right.
+The system prompt is built per call from the base prompt plus a dynamically appended list of live custom components from the database, so the AI always knows which `components/<namespace>/<type>` refs it may use.
 
-- The user can **upload a PDF** (or PNG/JPG) and/or type a description.
-- Hitting "Send" starts a session on first message (calling `createSession`), then sends the message and any uploaded file to Claude via `sendMessage`.
-- The system prompt is built from `prompts/system-prompt.md` plus a dynamically appended list of live custom components from the database, so the AI knows which `components/<namespace>/<type>` refs it may use.
-- The conversation history is preserved across messages within a session.
-- Loading state ("Thinking…") and errors are surfaced inline.
+### 3.1 Two actions
+
+- **Upload** — attach a PDF (or PNG/JPG) and convert it to a recipe. Stands alone: no accompanying message is required. The file is sent inline as base64; the sidebar guards uploads at **4 MB** client-side (the Amplify SSR Lambda caps request bodies at ~6 MB, and base64 inflates the payload ~1.4×). An oversize file is rejected before upload with a clear message; a 413 at the edge is decoded from TanStack Start's cryptic "Invariant failed".
+- **Edit Form** — a text tweak (e.g. "make the email field required") applied to the current draft. The live draft is serialized and sent as `recipeJson` alongside the `message`; the AI returns the **full modified recipe** (full replacement, not a patch).
+
+Loading state ("Thinking…") and errors are surfaced inline in the sidebar.
 
 ### 3.2 Recipe extraction
 
-After every assistant turn the server attempts to extract a recipe JSON from the response, trying in order:
+The server extracts a recipe JSON from the assistant's response by scanning for a fenced ` ```json ` block (or any fenced block / raw object) containing both `"formId"` and `"steps"`. If none is found — a purely conversational reply — `recipe` comes back `null` and the sidebar simply shows the reply, leaving the draft untouched.
 
-1. A fenced ` ```json ` block.
-2. Any fenced code block.
-3. The largest brace-balanced substring that contains both `"formId"` and `"steps"`.
-4. Strips Postgres `$recipe$ … $recipe$` dollar-quoting or an `INSERT … VALUES …` wrapper if the AI emitted SQL.
+### 3.3 Applying a recipe to the live draft
 
-If found, the recipe is shown in the right pane as syntax-highlighted JSON.
+A returned recipe is applied through the editor's pipeline before it can replace the draft:
 
-An **Extract** button manually re-runs extraction across the conversation history if automatic extraction missed it.
+1. **Deserialize** the recipe into a draft (reusing the catalog).
+2. **No-op guard** — if the result is structurally identical to the current draft (ignoring version, timestamps, and editor-only ids), nothing is applied and the version is not bumped.
+3. **Validate** — a uniqueness pre-flight (`findRecipeIdCollisions`) followed by the server contract validator (`validateRecipe`). On failure the error is surfaced in the sidebar and the draft is **not** overwritten.
+4. **Confirm** — if the editor already holds content, the user confirms before the overwrite.
+5. **Apply** — `LOAD_DRAFT` replaces the draft and the working version's **patch** is bumped once.
 
-### 3.3 Recipe actions
-
-Once a recipe is present, three actions are available:
-
-- **Publish** — inserts the recipe into `form_definitions` with `published_at = NOW()`. On re-publish within the same session, the previously published form is deleted first so the AI session owns at most one published form at a time. Validates that the recipe has `formId`, `steps`, well-formed elements with proper `ref` prefixes (`components/` or `blocks/`), `fieldId` overrides on components, and `createdAt`/`updatedAt`/`version`.
-- **Open in builder** — publishes the recipe (via the same `publishSession` path) and then opens the just-created form in the UI builder (`/builder/ui?formId=<id>`) ready to edit.
-- **Delete** — removes the form published from this session.
-
-After a successful publish, a preview link is shown pointing at `https://app-sandbox.alpha.gov.bb/forms/<formId>`.
+Publishing is not the sidebar's job: the AI assistant only ever writes to the live draft. Saving and deploying stay the editor's existing Save draft / Deploy flow.
 
 ### 3.4 AI configuration
 
@@ -198,15 +186,9 @@ The app uses TanStack Start's `createServerFn` so all "API endpoints" are in-pro
 - `validateRecipe(recipe)` — runs `validateFormContract`.
 - `previewRecipe(recipe)` — hydrates a recipe into a `ServiceContract`.
 
-**AI builder**
+**AI assistant**
 - `getAiStatus` — whether the AI client is configured.
-- `createSession(name?)` — start a new chat session, pre-build the system prompt with current custom components.
-- `sendMessage(sessionId, message, pdfBase64?)` — send a turn to Claude.
-- `getSession(sessionId)` — fetch session state.
-- `getRecipe(sessionId)` — last successfully-extracted recipe.
-- `extractRecipeFromSession(sessionId)` — retry extraction across the session's assistant messages.
-- `publishSession(sessionId, formId?)` — persist to `form_definitions`.
-- `deletePublished(sessionId)` — undo the most recent publish from this session.
+- `convertRecipe({ message?, recipeJson?, pdfBase64? })` — the single stateless AI call. Proxies `POST /builder/ai/convert` and returns `{ recipe, reply }` (`recipe` is `null` for a conversational reply). Edit Form sends `{ message, recipeJson }`; Upload sends `{ pdfBase64 }`.
 
 ---
 
@@ -216,7 +198,7 @@ The app uses TanStack Start's `createServerFn` so all "API endpoints" are in-pro
 - **Tables used**:
   - `form_definitions` — `(id, form_id, version, schema jsonb, published_at, created_at, updated_at)`. The builder reads/writes here directly.
   - `custom_components` — provides the "Custom" tab in the field picker and is appended to the AI system prompt.
-- **AI sessions** — stored **in-process, in memory** (`Map<id, Session>`). They are lost on server restart and not shared across instances.
+- **AI assistant** — fully **stateless**. There is no server-side session store; each `convert` call is self-contained and survives a server restart with no loss (the sidebar carries the live recipe on every turn).
 - **Catalog cache** — `getCatalogFn` caches the merged builtin + custom catalog for 60 seconds.
 
 ---
@@ -262,7 +244,7 @@ Notable rules enforced by the builder:
 
 > The following came up during exploration and aren't fully obvious from the code. They are not bugs by default — just questions to confirm intent.
 
-1. **In-memory AI sessions.** AI chat sessions live in a `Map` in the running process. A restart loses every active conversation, and horizontal scaling would split traffic across processes with separate session maps. Is that the intended trade-off, or is persistent storage planned?
+1. ~~**In-memory AI sessions.**~~ *Resolved (#490/#332):* the AI assistant is now stateless — there is no server-side session `Map`. Each `convert` call is self-contained, so a restart loses nothing and horizontal scaling is unaffected.
 
 2. **PDF handling under Anthropic vs. Bedrock.** Under the Anthropic provider, uploaded files are sent as base64 with `media_type: "image/png"` regardless of actual file type, while Bedrock receives a true `document/pdf` content block. The chat UI also accepts `.png/.jpg/.jpeg` in addition to `.pdf`. Is image-as-PDF intentional fallback, or should there be true PDF parsing on the Anthropic path?
 
@@ -281,7 +263,7 @@ Notable rules enforced by the builder:
 
 8. **Custom components without a UI to manage them.** The Custom tab and the AI system prompt both read from the `custom_components` table, but there's no apparent UI in this app for creating/editing custom components. Where is that authored?
 
-9. **Catalog cache TTL.** `getCatalogFn` caches the merged catalog for 60 seconds. If a custom component is added (presumably via another app or SQL), the AI system prompt for a brand-new session won't see it until the cache expires. Is 60s the right window, or should there be a cache-invalidation hook?
+9. **Catalog cache TTL.** `getCatalogFn` caches the merged catalog for 60 seconds. If a custom component is added (presumably via another app or SQL), the AI system prompt won't see it until the cache expires. (Note: `convert` reads custom components live per call, so only the shared catalog cache applies.) Is 60s the right window, or should there be a cache-invalidation hook?
 
 10. **`start` script vs. build output.** `package.json` declares `"start": "node dist/server/server.js"`, but the Vite/TanStack Start build target hasn't been verified to emit exactly that path. Worth confirming for production/Docker deployment.
 

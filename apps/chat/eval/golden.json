@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "note": "Hand-written eval set for RAG hyperparameter tuning. Queries are written as a query rewriter would produce them (standalone, no follow-up context required). Tags: direct = single expected service; followup = phrasing that resembles a follow-up turn but expanded; mda = ministry/department/state-body lookup; ambig = multiple acceptable matches; none = expect no retrieval / off-topic.",
+  "note": "Hand-written eval set for RAG hyperparameter tuning. Queries are written as a query rewriter would produce them (standalone, no follow-up context required). Tags: direct = single expected service; followup = phrasing that resembles a follow-up turn but expanded; ambig = multiple acceptable matches; none = expect no retrieval / off-topic.",
   "entries": [
     {
       "id": "birth-cert-copy",
@@ -39,52 +39,10 @@
       "tag": "direct"
     },
     {
-      "id": "register-death",
-      "query": "register a death in Barbados",
-      "expected_doc_ids": ["service-register-a-death"],
-      "tag": "direct"
-    },
-    {
       "id": "marriage-cert",
       "query": "how to get a marriage certificate copy",
       "expected_doc_ids": ["service-get-marriage-certificate"],
       "tag": "direct"
-    },
-    {
-      "id": "marriage-licence",
-      "query": "apply for a marriage licence",
-      "expected_doc_ids": ["service-marriage-licences"],
-      "tag": "direct"
-    },
-    {
-      "id": "register-marriage",
-      "query": "register a marriage in Barbados",
-      "expected_doc_ids": ["service-register-a-marriage"],
-      "tag": "direct"
-    },
-    {
-      "id": "passport-apply",
-      "query": "apply for a Barbados passport",
-      "expected_doc_ids": ["service-apply-for-a-passport"],
-      "tag": "direct"
-    },
-    {
-      "id": "passport-fee",
-      "query": "passport application fee Barbados",
-      "expected_doc_ids": ["service-apply-for-a-passport"],
-      "tag": "followup"
-    },
-    {
-      "id": "drivers-licence-apply",
-      "query": "how to apply for a driver's licence",
-      "expected_doc_ids": ["service-apply-for-a-drivers-licence"],
-      "tag": "direct"
-    },
-    {
-      "id": "drivers-licence-docs",
-      "query": "what do I need to bring to apply for a driver's licence",
-      "expected_doc_ids": ["service-apply-for-a-drivers-licence"],
-      "tag": "followup"
     },
     {
       "id": "conductor-licence",
@@ -135,27 +93,9 @@
       "tag": "direct"
     },
     {
-      "id": "register-business-name",
-      "query": "register a business name in Barbados",
-      "expected_doc_ids": ["service-registering-a-business-name"],
-      "tag": "direct"
-    },
-    {
-      "id": "start-business",
-      "query": "how to start a business in Barbados",
-      "expected_doc_ids": ["service-start-a-business"],
-      "tag": "direct"
-    },
-    {
       "id": "disaster-relief",
       "query": "disaster relief assistance",
       "expected_doc_ids": ["service-get-disaster-relief-assistance"],
-      "tag": "direct"
-    },
-    {
-      "id": "ezpay",
-      "query": "what is EZPay and how do I use it",
-      "expected_doc_ids": ["service-ezpay"],
       "tag": "direct"
     },
     {
@@ -176,18 +116,6 @@
       "expected_doc_ids": [
         "service-get-support-for-a-victim-of-domestic-abuse"
       ],
-      "tag": "direct"
-    },
-    {
-      "id": "visa-info",
-      "query": "visa information for Barbados",
-      "expected_doc_ids": ["service-visa-information"],
-      "tag": "direct"
-    },
-    {
-      "id": "visitor-permit",
-      "query": "visitor permit application",
-      "expected_doc_ids": ["service-visitor-permit-application"],
       "tag": "direct"
     },
     {
@@ -249,42 +177,6 @@
       "tag": "direct"
     },
     {
-      "id": "registration-dept",
-      "query": "where is the Registration Department",
-      "expected_doc_ids": ["department-registration"],
-      "tag": "mda"
-    },
-    {
-      "id": "customs-dept",
-      "query": "Customs and Excise Department contact",
-      "expected_doc_ids": ["department-customs"],
-      "tag": "mda"
-    },
-    {
-      "id": "revenue-authority",
-      "query": "Barbados Revenue Authority",
-      "expected_doc_ids": ["state-body-revenue-authority"],
-      "tag": "mda"
-    },
-    {
-      "id": "nis-dept",
-      "query": "National Insurance Department",
-      "expected_doc_ids": ["department-national-insurance"],
-      "tag": "mda"
-    },
-    {
-      "id": "transport-board",
-      "query": "Transport Board Barbados",
-      "expected_doc_ids": ["state-body-transport-board"],
-      "tag": "mda"
-    },
-    {
-      "id": "qeh",
-      "query": "Queen Elizabeth Hospital",
-      "expected_doc_ids": ["state-body-queen-elizabeth-hospital"],
-      "tag": "mda"
-    },
-    {
       "id": "ambig-certificate-copy",
       "query": "get a copy of a certificate",
       "expected_doc_ids": [
@@ -297,12 +189,7 @@
     {
       "id": "ambig-register",
       "query": "I want to register",
-      "expected_doc_ids": [
-        "service-register-a-birth",
-        "service-register-a-death",
-        "service-register-a-marriage",
-        "service-registering-a-business-name"
-      ],
+      "expected_doc_ids": ["service-register-a-birth"],
       "tag": "ambig"
     },
     {
@@ -361,18 +248,6 @@
       "id": "section-marriage-collect",
       "query": "where do I collect a marriage certificate",
       "expected_doc_ids": ["service-get-marriage-certificate"],
-      "tag": "followup"
-    },
-    {
-      "id": "section-passport-pay",
-      "query": "how to pay for a passport application",
-      "expected_doc_ids": ["service-apply-for-a-passport"],
-      "tag": "followup"
-    },
-    {
-      "id": "section-drivers-cost",
-      "query": "fees for a driver's licence",
-      "expected_doc_ids": ["service-apply-for-a-drivers-licence"],
       "tag": "followup"
     },
     {

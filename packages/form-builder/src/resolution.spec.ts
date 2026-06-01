@@ -1,6 +1,6 @@
-import { hydrateForm } from "./resolution";
+import { hydrateForm, collectUnknownRefs } from "./resolution";
 import { UnknownRefError } from "./errors";
-import { getCatalog } from "./catalog";
+import { getCatalog, getRegistryItem } from "./catalog";
 import type { RegistryCatalog } from "./catalog";
 import type { ServiceContractRecipe } from "@govtech-bb/form-types";
 
@@ -19,6 +19,108 @@ function makeRecipe(
     ...overrides,
   };
 }
+
+// ─── collectUnknownRefs ────────────────────────────────────────────────────────
+
+describe("collectUnknownRefs", () => {
+  let catalog: RegistryCatalog;
+
+  beforeEach(() => {
+    catalog = getCatalog();
+  });
+
+  it("returns [] when every ref resolves", () => {
+    const recipe = makeRecipe({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          elements: [{ ref: "components/text" }, { ref: "blocks/name" }],
+        },
+      ],
+    });
+
+    expect(collectUnknownRefs(recipe, catalog)).toEqual([]);
+  });
+
+  it("reports an unknown ref with its recipe path", () => {
+    const recipe = makeRecipe({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          elements: [
+            { ref: "components/unknown-widget" },
+            { ref: "components/text" },
+          ],
+        },
+      ],
+    });
+
+    expect(collectUnknownRefs(recipe, catalog)).toEqual([
+      {
+        ref: "components/unknown-widget",
+        path: "steps[step-1].elements[0].ref",
+      },
+    ]);
+  });
+
+  it("collects every unknown ref across all steps in one pass", () => {
+    const recipe = makeRecipe({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          elements: [
+            { ref: "components/text" },
+            { ref: "components/nope-one" },
+          ],
+        },
+        {
+          stepId: "step-2",
+          title: "Step 2",
+          elements: [{ ref: "blocks/nope-two" }],
+        },
+      ],
+    });
+
+    expect(collectUnknownRefs(recipe, catalog)).toEqual([
+      { ref: "components/nope-one", path: "steps[step-1].elements[1].ref" },
+      { ref: "blocks/nope-two", path: "steps[step-2].elements[0].ref" },
+    ]);
+  });
+
+  it("resolves a custom ref present in catalog.custom (does not report it)", () => {
+    const customCatalog: RegistryCatalog = {
+      ...getCatalog(),
+      custom: [
+        {
+          ref: "components/custom-my-widget",
+          displayName: "My Widget",
+          namespace: "custom",
+          type: "my-widget",
+          definition: {
+            fieldId: "my-widget",
+            label: "My Widget",
+            htmlType: "text",
+          },
+        },
+      ],
+    };
+
+    const recipe = makeRecipe({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          elements: [{ ref: "components/custom-my-widget" }],
+        },
+      ],
+    });
+
+    expect(collectUnknownRefs(recipe, customCatalog)).toEqual([]);
+  });
+});
 
 // ─── hydrateForm ──────────────────────────────────────────────────────────────
 
@@ -150,6 +252,38 @@ describe("hydrateForm", () => {
     expect(contract.steps[0].elements[0].validations?.required).toEqual({
       error: "Required",
     });
+  });
+
+  // Regression (#487): a field that is required in the registry must be made
+  // optional by a `required: { value: false }` override — otherwise the merge
+  // falls back to the base `{ value: true }` and the field is always required.
+  it("un-requires a base-required component via a required:{value:false} override", () => {
+    const recipe = makeRecipe({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          elements: [
+            {
+              ref: "components/last-name",
+              overrides: { validations: { required: { value: false } } },
+            },
+          ],
+        },
+      ],
+    });
+
+    const contract = hydrateForm(recipe, catalog);
+    const base = getRegistryItem("components/last-name", catalog);
+    // Sanity: the base really is required, so the override is doing the work.
+    expect(
+      base && "primitive" in base
+        ? base.primitive.validations?.required?.value
+        : undefined,
+    ).toBe(true);
+    expect(contract.steps[0].elements[0].validations?.required?.value).toBe(
+      false,
+    );
   });
 
   it("expands a block ref to all child primitives", () => {

@@ -3,22 +3,37 @@ import { getRequestHeaders } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { type SessionPayload } from "./session";
 import { getSession } from "./session-cipher.server";
-import type { ServiceContractRecipe } from "@govtech-bb/form-types";
+import type {
+  ServiceContractRecipe,
+  ValidationResult,
+} from "@govtech-bb/form-types";
+import { api } from "./api-client";
 
 const REPO_NAME = "gov-bb";
 const DEFAULT_BASE_BRANCH = "dev";
 const GH_API = "https://api.github.com";
 
 /**
- * The branch the Deploy PR is opened against. Read from `PUBLISH_BASE_BRANCH`
- * at runtime (server-side) so the deploy target can move — e.g. to `sandbox` or
- * a release branch — by changing an env var, with no code change or rebuild.
- * Falls back to `dev`, preserving the original hardcoded behaviour. This is the
- * single source of truth; both `publishRecipe` and `getPublishBaseBranch` use
- * it, so the value the modal shows can never diverge from the PR's actual base.
+ * The branch the Deploy PR is opened against, from `PUBLISH_BASE_BRANCH`.
+ * Resolution order:
+ *   1. The LIVE runtime env var — wins wherever the platform exposes it
+ *      (docker, ECS, local node), so changing it retargets deploys with no
+ *      rebuild. Read via bracket access on purpose: Vite's `define` only
+ *      rewrites the literal `process.env.PUBLISH_BASE_BRANCH`, so the bracket
+ *      form survives the build as a real runtime read instead of being inlined.
+ *   2. The build-time baked value (`process.env.PUBLISH_BASE_BRANCH_DEFAULT`,
+ *      substituted by Vite — see vite.config.ts `define`). This is the fallback
+ *      for Amplify Compute, whose SSR Lambda doesn't receive runtime env vars;
+ *      set PUBLISH_BASE_BRANCH in the Amplify console and redeploy to change it.
+ *   3. `dev`.
+ * This is the single source of truth; both `publishRecipe` and
+ * `getPublishBaseBranch` use it, so the value the modal shows can never diverge
+ * from the PR's actual base.
  */
 function resolveBaseBranch(): string {
-  return process.env.PUBLISH_BASE_BRANCH?.trim() || DEFAULT_BASE_BRANCH;
+  const runtime = process.env["PUBLISH_BASE_BRANCH"]?.trim();
+  if (runtime) return runtime;
+  return process.env.PUBLISH_BASE_BRANCH_DEFAULT?.trim() || DEFAULT_BASE_BRANCH;
 }
 
 function repoOwner(): string {
@@ -125,6 +140,24 @@ export const publishRecipe = createServerFn({ method: "POST" })
     const session = requireSession();
     const token = session.accessToken;
     const baseBranch = resolveBaseBranch();
+
+    // Server-side gate (defense-in-depth): the Deploy button already runs this
+    // client-side, but the client is bypassable — the server must be the
+    // authority. Reuse the API's /validate endpoint, which resolves every ref
+    // against the full catalog (builtins + registry + live custom components
+    // from the DB) that this frontend can't reach directly. Refuse to open any
+    // branch/PR if the recipe is unresolvable, so a bad ref never reaches the
+    // repo (the hole behind #504).
+    const validation = await api.post<ValidationResult>(
+      "/builder/registry/validate",
+      { recipe },
+    );
+    if (!validation.ok) {
+      const detail = validation.issues
+        .map((i) => (i.path ? `${i.path}: ${i.message}` : i.message))
+        .join("; ");
+      throw new Error(`Recipe validation failed: ${detail}`);
+    }
 
     // Step 1: get base branch tip SHA
     const refRes = await fetch(repoUrl(`/git/ref/heads/${baseBranch}`), {

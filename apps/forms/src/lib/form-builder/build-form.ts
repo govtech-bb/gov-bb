@@ -24,22 +24,32 @@ export const buildForm = (contract: ClientServiceContract): FormMeta => {
 
   const steps = setupRepeatSteps(contract.steps, repeatSettings);
 
-  // Configure check-your-answer step
-  const checkAnswers: ClientFormStep = {
-    stepId: "check-your-answers",
-    fields: [],
-    title: "Check your answers",
-    description:
-      "Review all the information you have provided before submitting your application.",
-  };
-
-  const declarationIndex = steps.findIndex((s) => s.stepId === "declaration");
-  const submissionIndex = steps.findIndex(
-    (s) => s.stepId === "submission-confirmation",
+  // Inject the check-your-answers review step, unless the contract already
+  // carries one. The form builder now authors check-your-answers as a
+  // first-class required step, so newer recipes ship it already positioned
+  // before declaration; legacy recipes (saved before that change) don't, and
+  // still need it spliced in here. Guarding on its presence keeps the step
+  // single — never duplicated — across both eras of recipe.
+  const alreadyHasCheckAnswers = steps.some(
+    (s) => s.stepId === "check-your-answers",
   );
-  const insertBefore =
-    declarationIndex !== -1 ? declarationIndex : submissionIndex;
-  steps.splice(insertBefore, 0, checkAnswers);
+  if (!alreadyHasCheckAnswers) {
+    const checkAnswers: ClientFormStep = {
+      stepId: "check-your-answers",
+      fields: [],
+      title: "Check your answers",
+      description:
+        "Review all the information you have provided before submitting your application.",
+    };
+
+    const declarationIndex = steps.findIndex((s) => s.stepId === "declaration");
+    const submissionIndex = steps.findIndex(
+      (s) => s.stepId === "submission-confirmation",
+    );
+    const insertBefore =
+      declarationIndex !== -1 ? declarationIndex : submissionIndex;
+    steps.splice(insertBefore, 0, checkAnswers);
+  }
 
   // Generate Idempotency Key
   const idempotencyKey = uuidv4();

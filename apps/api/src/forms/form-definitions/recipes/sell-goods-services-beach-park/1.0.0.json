@@ -424,7 +424,7 @@
           }
         },
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
             "hint": "For example, fresh, locally-sourced fruit",
             "label": "Describe the goods you would like to sell",
@@ -442,7 +442,7 @@
           }
         },
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
             "hint": "For example, Brownes Beach",
             "label": "Where do you intend to sell your goods?",
@@ -475,7 +475,7 @@
       "stepId": "services-details",
       "elements": [
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
             "hint": "For example, 20-minute jet ski rides",
             "label": "Describe the services you would like to offer",
@@ -493,7 +493,7 @@
           }
         },
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
             "hint": "For example, Brownes Beach",
             "label": "Where do you intend to offer this service?",
@@ -558,7 +558,7 @@
           }
         },
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Relationship",
             "fieldId": "prof-ref-relationship",
@@ -723,7 +723,7 @@
           }
         },
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Relationship",
             "fieldId": "pers-ref-relationship",
