@@ -167,6 +167,22 @@ describe("POST /builder/ai/convert", () => {
     ]);
   });
 
+  it("degrades to unresolvableRefs: [] (preserving the reply) when a step is malformed", async () => {
+    // A hallucinated recipe whose step has no `elements` would make the ref
+    // pre-check throw; it must not sink the response.
+    extractRecipeMock.mockReturnValue({
+      formId: "f",
+      steps: [{ stepId: "step-1", title: "Step 1" }],
+    });
+    const res = mockRes();
+    await convertHandler(mockReq({ message: "build a form" }), res);
+
+    expect(res.statusCode).toBe(200);
+    const body = res.body as { reply: string; unresolvableRefs: unknown };
+    expect(body.reply).toBe("assistant reply");
+    expect(body.unresolvableRefs).toEqual([]);
+  });
+
   it("500s when chat() throws", async () => {
     chatMock.mockRejectedValue(new Error("bedrock exploded"));
     const res = mockRes();

@@ -108,13 +108,23 @@ export async function convertHandler(
     // If the model emitted a recipe, flag refs that don't resolve against the
     // full catalog (builtins + registry + live custom components). The editor
     // surfaces these as a non-blocking warning and still loads the draft.
+    //
+    // This runs on *unvalidated* model output, after an expensive chat() — so
+    // it must never sink the response. A catalog/DB hiccup or a malformed step
+    // (missing elements/ref) degrades to "no warnings"; the bad recipe is still
+    // caught downstream (the editor's strict /validate runs when refs are empty,
+    // and Deploy is the hard gate).
     let unresolvableRefs: UnknownRef[] = [];
     if (recipe && Array.isArray((recipe as { steps?: unknown }).steps)) {
-      const catalog = await getFullCatalog();
-      unresolvableRefs = collectUnknownRefs(
-        recipe as unknown as ServiceContractRecipe,
-        catalog,
-      );
+      try {
+        const catalog = await getFullCatalog();
+        unresolvableRefs = collectUnknownRefs(
+          recipe as unknown as ServiceContractRecipe,
+          catalog,
+        );
+      } catch (err) {
+        console.warn("convert: ref pre-check skipped —", err);
+      }
     }
 
     res.json({ recipe, reply, unresolvableRefs });
