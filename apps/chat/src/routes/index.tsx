@@ -5,11 +5,11 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   Button,
   cn,
-  Input,
   Link as GovLink,
   linkVariants,
   Logo,
   Text,
+  TextArea,
 } from "@govtech-bb/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Bubble } from "#/components/chat/bubble";
@@ -390,7 +390,7 @@ function Composer({
   onStop: () => void;
   streaming: boolean;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
     if (!streaming) inputRef.current?.focus();
   }, [streaming]);
@@ -406,19 +406,20 @@ function Composer({
           onSubmit();
         }}
       >
-        <div className="flex w-full items-center gap-xs">
-          <Input
+        <div className="flex w-full items-end gap-xs">
+          <TextArea
             aria-label="Ask the government assistant"
-            className="flex-1 text-black-00"
+            className="composer-field flex-1 text-black-00"
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") {
+              if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 if (!streaming) onSubmit();
               }
             }}
             placeholder="Ask a question..."
             ref={inputRef}
+            rows={1}
             value={input}
           />
           {streaming ? (
