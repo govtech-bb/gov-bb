@@ -14,15 +14,26 @@ const DEFAULT_BASE_BRANCH = "dev";
 const GH_API = "https://api.github.com";
 
 /**
- * The branch the Deploy PR is opened against. Read from `PUBLISH_BASE_BRANCH`
- * at runtime (server-side) so the deploy target can move — e.g. to `sandbox` or
- * a release branch — by changing an env var, with no code change or rebuild.
- * Falls back to `dev`, preserving the original hardcoded behaviour. This is the
- * single source of truth; both `publishRecipe` and `getPublishBaseBranch` use
- * it, so the value the modal shows can never diverge from the PR's actual base.
+ * The branch the Deploy PR is opened against, from `PUBLISH_BASE_BRANCH`.
+ * Resolution order:
+ *   1. The LIVE runtime env var — wins wherever the platform exposes it
+ *      (docker, ECS, local node), so changing it retargets deploys with no
+ *      rebuild. Read via bracket access on purpose: Vite's `define` only
+ *      rewrites the literal `process.env.PUBLISH_BASE_BRANCH`, so the bracket
+ *      form survives the build as a real runtime read instead of being inlined.
+ *   2. The build-time baked value (`process.env.PUBLISH_BASE_BRANCH_DEFAULT`,
+ *      substituted by Vite — see vite.config.ts `define`). This is the fallback
+ *      for Amplify Compute, whose SSR Lambda doesn't receive runtime env vars;
+ *      set PUBLISH_BASE_BRANCH in the Amplify console and redeploy to change it.
+ *   3. `dev`.
+ * This is the single source of truth; both `publishRecipe` and
+ * `getPublishBaseBranch` use it, so the value the modal shows can never diverge
+ * from the PR's actual base.
  */
 function resolveBaseBranch(): string {
-  return process.env.PUBLISH_BASE_BRANCH?.trim() || DEFAULT_BASE_BRANCH;
+  const runtime = process.env["PUBLISH_BASE_BRANCH"]?.trim();
+  if (runtime) return runtime;
+  return process.env.PUBLISH_BASE_BRANCH_DEFAULT?.trim() || DEFAULT_BASE_BRANCH;
 }
 
 function repoOwner(): string {
