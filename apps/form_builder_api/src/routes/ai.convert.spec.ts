@@ -97,6 +97,7 @@ describe("POST /builder/ai/convert", () => {
     expect(res.body).toEqual({
       recipe: { formId: "f", steps: [] },
       reply: "assistant reply",
+      unresolvableRefs: [],
     });
   });
 
@@ -135,7 +136,51 @@ describe("POST /builder/ai/convert", () => {
     expect(res.body).toEqual({
       recipe: null,
       reply: "I can't help with that.",
+      unresolvableRefs: [],
     });
+  });
+
+  it("reports unresolvableRefs when the emitted recipe references an unknown ref", async () => {
+    extractRecipeMock.mockReturnValue({
+      formId: "f",
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          elements: [
+            { ref: "components/generic/text" }, // pre-migration slash ref
+            { ref: "components/text" }, // resolves against builtin catalog
+          ],
+        },
+      ],
+    });
+    const res = mockRes();
+    await convertHandler(mockReq({ message: "build a form" }), res);
+
+    expect(res.statusCode).toBe(200);
+    const body = res.body as { unresolvableRefs: unknown };
+    expect(body.unresolvableRefs).toEqual([
+      {
+        ref: "components/generic/text",
+        path: "steps[step-1].elements[0].ref",
+      },
+    ]);
+  });
+
+  it("degrades to unresolvableRefs: [] (preserving the reply) when a step is malformed", async () => {
+    // A hallucinated recipe whose step has no `elements` would make the ref
+    // pre-check throw; it must not sink the response.
+    extractRecipeMock.mockReturnValue({
+      formId: "f",
+      steps: [{ stepId: "step-1", title: "Step 1" }],
+    });
+    const res = mockRes();
+    await convertHandler(mockReq({ message: "build a form" }), res);
+
+    expect(res.statusCode).toBe(200);
+    const body = res.body as { reply: string; unresolvableRefs: unknown };
+    expect(body.reply).toBe("assistant reply");
+    expect(body.unresolvableRefs).toEqual([]);
   });
 
   it("500s when chat() throws", async () => {

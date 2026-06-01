@@ -48,12 +48,35 @@ describe("AiSidebar — Edit Form", () => {
     // The current draft rides along as serialized recipe JSON.
     expect(JSON.parse(arg.data.recipeJson).formId).toBe("contact");
 
-    expect(onApplyRecipe).toHaveBeenCalledWith(recipe);
+    expect(onApplyRecipe).toHaveBeenCalledWith(recipe, []);
     // Both turns land in the transcript.
     expect(screen.getByText("make the email field required")).toBeInTheDocument();
     expect(
       await screen.findByText("Done — email is now required."),
     ).toBeInTheDocument();
+  });
+
+  it("forwards unresolvableRefs from the convert response to the apply pipeline", async () => {
+    const recipe = { formId: "contact", steps: [] };
+    const unresolvableRefs = [
+      { ref: "components/generic/text", path: "steps[step-1].elements[0].ref" },
+    ];
+    convertRecipe.mockResolvedValue({
+      recipe,
+      reply: "Built it.",
+      unresolvableRefs,
+    });
+    const { onApplyRecipe } = setup();
+
+    await userEvent.type(
+      screen.getByPlaceholderText(/make the email field required/i),
+      "build a contact form",
+    );
+    await userEvent.click(screen.getByRole("button", { name: /edit form/i }));
+
+    await waitFor(() =>
+      expect(onApplyRecipe).toHaveBeenCalledWith(recipe, unresolvableRefs),
+    );
   });
 
   it("does not apply when the model replies conversationally (no recipe)", async () => {
