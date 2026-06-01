@@ -38,9 +38,6 @@ contact:
       - St. Michael
       - 'Barbados, W.I.'
 onlineServices:
-  - title: Jobseekers
-    href: /jobseekers
-    description: Information and support for jobseekers.
   - title: Apply to JobStart Plus Programme
     href: /apply-to-jobstart-plus-programme
     description: Apply to the JobStart Plus employment programme.

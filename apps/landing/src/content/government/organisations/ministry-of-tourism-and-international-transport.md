@@ -36,16 +36,7 @@ contact:
       - Warrens
       - St. Michael
       - 'Barbados, W.I.'
-onlineServices:
-  - title: Visa information
-    href: /visa-information
-    description: Visa requirements for visiting Barbados.
-  - title: Visitor permit application
-    href: /visitor-permit-application
-    description: Apply to extend your stay in Barbados.
-  - title: Ports of entry
-    href: /ports-of-entry
-    description: Information on Barbados ports of entry.
+onlineServices: []
 associatedDepartments:
   - category: Tourism
     items:

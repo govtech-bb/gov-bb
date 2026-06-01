@@ -33,10 +33,7 @@ contact:
   - label: Address
     type: address
     value: '1 Culloden Road, St. Michael, Barbados, W. I.'
-onlineServices:
-  - title: Visa information
-    href: /visa-information
-    description: Visa requirements for visiting Barbados.
+onlineServices: []
 associatedDepartments: []
 originalSource: 'https://www.gov.bb/Ministries/foreign-affairs'
 ---
