@@ -163,6 +163,20 @@ describe("checkRequired", () => {
     expect(results.hasError).toBe(false);
   });
 
+  // Regression (#487): a present `required` rule with no `value` must enforce
+  // required, matching the server-side `@govtech-bb/form-validation` validator.
+  it("returns 'requiredAndEmpty' when required is present without a value and value is empty", () => {
+    const results = makeResults();
+    const state = checkRequired({
+      ...base,
+      value: "",
+      validations: { required: {} },
+      results,
+    });
+    expect(state).toBe("requiredAndEmpty");
+    expect(results.hasError).toBe(true);
+  });
+
   it("returns 'notRequiredAndEmpty' when required.value is false and value is empty", () => {
     const results = makeResults();
     const state = checkRequired({

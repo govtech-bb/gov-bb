@@ -215,11 +215,10 @@ Set `VITE_UMAMI_WEBSITE_ID` (and optionally `VITE_UMAMI_SRC`) in the deploy envi
 | -------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `<surface>-<action>` | `header-home`, `footer-careers`, `feedback-submit`             | Fixed UI elements                                                                                                                                                |
 | `service-<slug>`     | `service-renew-passport`                                       | Per-service clicks on `/services` list                                                                                                                           |
-| `org-<slug>`         | `org-ministry-of-finance`                                      | Per-organisation clicks on `/government/organisations`                                                                                                           |
 | `<slug>-start`       | `renew-passport-start`, `travel-renew-passport-start`          | Slug-prefixed start CTA clicks from a service root page into its `/start` flow (derived automatically by `deriveStartEventName()` from the link href)            |
 | `<form_id>-start`    | `get-birth-certificate-start`, `jobstart-plus-programme-start` | Click on a Start now button rendered from a page's `form_id` frontmatter. Keyed on the form actually started, not the page slug — see _Start now buttons_ below. |
 
-The per-service and per-org named events let each item show up as its own metric in Umami's dashboard. The `<slug>-start` events measure the conversion from root page to start page and are grouped separately so they're easy to find.
+The per-service named events let each item show up as its own metric in Umami's dashboard. The `<slug>-start` events measure the conversion from root page to start page and are grouped separately so they're easy to find.
 
 ## Start now buttons (cross-app links to the forms app)
 

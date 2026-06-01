@@ -235,6 +235,9 @@ Never put fields in the submission-confirmation step.
 ### Rule 14: Never include addAnother in recipes
 The frontend injects this automatically on repeatable steps.
 
+### Rule 15: Never author a check-your-answers step
+The "check-your-answers" step is an auto-managed review screen — the platform inserts and positions it for you, immediately before the declaration step. Do NOT emit a step with stepId "check-your-answers" in your recipe, and never put fields in one. Like submission-confirmation, it is field-free and managed by the platform, not authored.
+
 ---
 
 ## Complete Component Reference

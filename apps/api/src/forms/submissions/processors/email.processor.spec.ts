@@ -11,6 +11,7 @@ import type {
   EmailBodyBuilder,
   EmailTemplateContext,
 } from "../../../email/email-body.builder";
+import type { ContactDetails } from "@govtech-bb/form-types";
 import type { SubmissionCreatedEvent } from "../submissions.types";
 
 jest.mock("@aws-sdk/client-sesv2");
@@ -97,9 +98,11 @@ const STUB_CTX: EmailTemplateContext = {
 
 function makeBodyBuilder(
   ctx: EmailTemplateContext = STUB_CTX,
+  contactDetails: ContactDetails | undefined = undefined,
 ): jest.Mocked<EmailBodyBuilder> {
   return {
     build: jest.fn().mockResolvedValue(ctx),
+    resolveContactDetails: jest.fn().mockResolvedValue(contactDetails),
   } as unknown as jest.Mocked<EmailBodyBuilder>;
 }
 
@@ -121,6 +124,19 @@ describe("EmailProcessor", () => {
 
       expect(getSentInput().Destination?.ToAddresses).toEqual([
         "jane@example.com",
+      ]);
+    });
+
+    it("sends to a literal email when recipientField is an address, not a field path", async () => {
+      // A recipe hardcodes a fixed internal recipient by putting the address
+      // straight in recipientField (e.g. "testing@govtech.bb") rather than a
+      // "stepId.fieldId" path. It must be used verbatim, not path-resolved.
+      await processor.process(
+        makePayload({ recipientField: "testing@govtech.bb" }),
+      );
+
+      expect(getSentInput().Destination?.ToAddresses).toEqual([
+        "testing@govtech.bb",
       ]);
     });
 
@@ -226,6 +242,121 @@ describe("EmailProcessor", () => {
       await processor.process(makePayload());
 
       expect(getSentInput().FromEmailAddress).toBe("noreply@gov.bb");
+    });
+  });
+
+  describe("contactDetails.* recipient resolution", () => {
+    const MDA_CONTACT: ContactDetails = {
+      title: "Passport Office",
+      telephoneNumber: "+1-246-555-0100",
+      email: "mda@gov.bb",
+    };
+
+    it("resolves the recipient from the contract's contactDetails, not submission values", async () => {
+      const bodyBuilder = makeBodyBuilder(STUB_CTX, MDA_CONTACT);
+      processor = new EmailProcessor(
+        makeConfig(),
+        makeTemplateService(),
+        bodyBuilder,
+      );
+      const payload = makePayload({ recipientField: "contactDetails.email" });
+
+      await processor.process(payload);
+
+      expect(bodyBuilder.resolveContactDetails).toHaveBeenCalledWith(
+        expect.objectContaining({ submissionId: "sub-001" }),
+      );
+      expect(getSentInput().Destination?.ToAddresses).toEqual(["mda@gov.bb"]);
+    });
+
+    it("resolves two distinct recipients when an applicant and an MDA email are both configured", async () => {
+      const bodyBuilder = makeBodyBuilder(STUB_CTX, MDA_CONTACT);
+      processor = new EmailProcessor(
+        makeConfig(),
+        makeTemplateService(),
+        bodyBuilder,
+      );
+      const payload = makePayload();
+      payload.processors = [
+        { type: "email", config: { recipientField: "personal.email" } },
+        { type: "email", config: { recipientField: "contactDetails.email" } },
+      ];
+
+      await processor.process(payload);
+
+      const recipients = (SendEmailCommand as unknown as jest.Mock).mock.calls
+        .map((c) => (c[0] as SendEmailCommandInput).Destination?.ToAddresses)
+        .flat();
+      expect(recipients).toEqual(["jane@example.com", "mda@gov.bb"]);
+    });
+
+    it("skips and warns when the contract has no contactDetails, leaving the applicant email to send", async () => {
+      const warn = jest.spyOn(Logger.prototype, "warn").mockImplementation();
+      const bodyBuilder = makeBodyBuilder(STUB_CTX, undefined); // no contactDetails
+      processor = new EmailProcessor(
+        makeConfig(),
+        makeTemplateService(),
+        bodyBuilder,
+      );
+      const payload = makePayload();
+      payload.processors = [
+        { type: "email", config: { recipientField: "personal.email" } },
+        { type: "email", config: { recipientField: "contactDetails.email" } },
+      ];
+
+      await processor.process(payload);
+
+      // Applicant email still sent; MDA email skipped with a warning.
+      expect(mockSend).toHaveBeenCalledTimes(1);
+      expect(getSentInput().Destination?.ToAddresses).toEqual([
+        "jane@example.com",
+      ]);
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("Could not resolve recipient"),
+      );
+      warn.mockRestore();
+    });
+
+    it("skips and warns when the requested contactDetails key is absent", async () => {
+      const warn = jest.spyOn(Logger.prototype, "warn").mockImplementation();
+      const bodyBuilder = makeBodyBuilder(STUB_CTX, MDA_CONTACT);
+      processor = new EmailProcessor(
+        makeConfig(),
+        makeTemplateService(),
+        bodyBuilder,
+      );
+      // contactDetails has no `fax` key.
+      const payload = makePayload({ recipientField: "contactDetails.fax" });
+
+      await processor.process(payload);
+
+      expect(mockSend).not.toHaveBeenCalled();
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("Could not resolve recipient"),
+      );
+      warn.mockRestore();
+    });
+
+    it("skips and warns when the requested contactDetails key is a non-string (e.g. address object)", async () => {
+      const warn = jest.spyOn(Logger.prototype, "warn").mockImplementation();
+      const bodyBuilder = makeBodyBuilder(STUB_CTX, {
+        ...MDA_CONTACT,
+        address: { line1: "1 Bay St", city: "Bridgetown" },
+      });
+      processor = new EmailProcessor(
+        makeConfig(),
+        makeTemplateService(),
+        bodyBuilder,
+      );
+      const payload = makePayload({ recipientField: "contactDetails.address" });
+
+      await processor.process(payload);
+
+      expect(mockSend).not.toHaveBeenCalled();
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("Could not resolve recipient"),
+      );
+      warn.mockRestore();
     });
   });
 });

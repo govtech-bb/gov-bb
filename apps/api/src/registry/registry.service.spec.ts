@@ -82,6 +82,58 @@ describe("mergeEntry", () => {
     });
     expect((blockEntry.elements[0] as any).label).toBe(originalLabel);
   });
+
+  // Regression: a recipe that overrides one validation rule must not wipe out
+  // the primitive's other shipped rules. EmailAddress ships `required` + `email`
+  // by default; overriding only `required` must preserve `email`. See #371.
+  it("preserves un-overridden validation rules on a primitive (#371)", () => {
+    const emailEntry = BUILTIN_REGISTRY["components/email"] as Primitive;
+    const result = mergeEntry(emailEntry, {
+      ref: "components/email",
+      overrides: {
+        fieldId: "contact-email",
+        validations: {
+          required: { value: true, error: "Email address is required" },
+        },
+      },
+    }) as Primitive;
+
+    expect(result.validations?.required).toEqual({
+      value: true,
+      error: "Email address is required",
+    });
+    // The format rule the primitive shipped must survive the override.
+    expect(result.validations?.email).toEqual({
+      value: true,
+      error: "Please enter a valid email address",
+    });
+  });
+
+  it("preserves un-overridden validation rules on a block child (#371)", () => {
+    const contactBlock = BUILTIN_REGISTRY[
+      "blocks/contact-information"
+    ] as Block;
+    const result = mergeEntry(contactBlock, {
+      ref: "blocks/contact-information",
+      overrides: {
+        email: {
+          validations: {
+            required: { value: true, error: "Email address is required" },
+          },
+        },
+      },
+    }) as Block;
+
+    const emailEl = result.elements.find((el) => el.fieldId === "email");
+    expect((emailEl as Primitive).validations?.required).toEqual({
+      value: true,
+      error: "Email address is required",
+    });
+    expect((emailEl as Primitive).validations?.email).toEqual({
+      value: true,
+      error: "Please enter a valid email address",
+    });
+  });
 });
 
 // ─── hydrateStep ───────────────────────────────────────────────────────────

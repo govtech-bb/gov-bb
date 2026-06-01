@@ -76,7 +76,12 @@
           "ref": "components/address",
           "overrides": {
             "label": "Address Line 2",
-            "fieldId": "applicant-address-2"
+            "fieldId": "applicant-address-2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -534,7 +539,12 @@
           "ref": "components/name",
           "overrides": {
             "label": "Mother other names",
-            "fieldId": "mother-other-names"
+            "fieldId": "mother-other-names",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {

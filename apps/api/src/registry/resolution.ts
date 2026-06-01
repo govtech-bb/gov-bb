@@ -1,4 +1,8 @@
-import type { Primitive, FieldOverrides } from "@govtech-bb/form-types";
+import type {
+  Primitive,
+  FieldOverrides,
+  ValidationRule,
+} from "@govtech-bb/form-types";
 import type { Block } from "@govtech-bb/form-types";
 import type {
   FormStep,
@@ -24,11 +28,42 @@ function isBlock(entry: RegistryEntry): entry is Block {
   return "blockId" in entry;
 }
 
+/**
+ * Deep-merge validation rules: both can have keys; override keys win.
+ *
+ * A shallow spread of `overrides` over the primitive would replace the whole
+ * `validations` object, silently dropping any rule the primitive ships but the
+ * recipe didn't restate (e.g. a recipe overriding only `required`'s message
+ * would lose the primitive's `email`/`pattern` format rule). See issue #371.
+ */
+function mergeValidations(
+  base: ValidationRule | undefined,
+  override: ValidationRule | undefined,
+): ValidationRule | undefined {
+  if (!base && !override) return undefined;
+  if (!base) return override;
+  if (!override) return base;
+  return { ...base, ...override };
+}
+
 function applyPrimitiveOverrides(
   primitive: Primitive,
   overrides: FieldOverrides,
 ): Primitive {
-  return { ...primitive, ...overrides };
+  const { validations: baseValidations, ...restPrimitive } = primitive;
+  const { validations: overrideValidations, ...restOverrides } = overrides;
+
+  const mergedValidations = mergeValidations(
+    baseValidations,
+    overrideValidations,
+  );
+  return {
+    ...restPrimitive,
+    ...restOverrides,
+    ...(mergedValidations !== undefined
+      ? { validations: mergedValidations }
+      : {}),
+  } as Primitive;
 }
 
 function applyBlockOverrides(
@@ -40,7 +75,7 @@ function applyBlockOverrides(
     elements: block.elements.map((el) => {
       const fieldOverride = overrides[el.fieldId];
       if (!fieldOverride) return el;
-      return { ...el, ...fieldOverride };
+      return applyPrimitiveOverrides(el, fieldOverride);
     }),
   };
 }

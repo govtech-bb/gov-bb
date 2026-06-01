@@ -180,6 +180,46 @@ describe("buildForm", () => {
       // Total: 3 original + 1 injected
       expect(result.steps.length).toBe(4);
     });
+
+    it("does not duplicate check-your-answers when the contract already authors it", () => {
+      // Newer recipes (built by the form builder) ship check-your-answers as a
+      // first-class step. Injection must be idempotent — exactly one survives.
+      const contract = makeContract({
+        steps: [
+          makeStep("step1", [makeField("name", "step1")]),
+          makeStep("check-your-answers", []),
+          makeStep("declaration", []),
+          makeStep("submission-confirmation", []),
+        ],
+      });
+
+      const result = buildForm(contract);
+      const cyaSteps = result.steps.filter(
+        (s) => s.stepId === "check-your-answers",
+      );
+
+      expect(cyaSteps).toHaveLength(1);
+      // Untouched original count: no extra step spliced in.
+      expect(result.steps.length).toBe(4);
+    });
+
+    it("preserves an authored check-your-answers position before declaration", () => {
+      const contract = makeContract({
+        steps: [
+          makeStep("step1", [makeField("name", "step1")]),
+          makeStep("check-your-answers", []),
+          makeStep("declaration", []),
+          makeStep("submission-confirmation", []),
+        ],
+      });
+
+      const result = buildForm(contract);
+      const stepIds = result.steps.map((s) => s.stepId);
+
+      expect(stepIds.indexOf("check-your-answers")).toBe(
+        stepIds.indexOf("declaration") - 1,
+      );
+    });
   });
 
   // ---------------------------------------------------------------------------

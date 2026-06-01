@@ -32,7 +32,7 @@
           }
         },
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Name of premises",
             "fieldId": "name-of-premises",
@@ -61,7 +61,12 @@
           "ref": "components/address",
           "overrides": {
             "label": "Address line 2",
-            "fieldId": "premises-address-line-2"
+            "fieldId": "premises-address-line-2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
