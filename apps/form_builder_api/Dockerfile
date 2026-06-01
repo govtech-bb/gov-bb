@@ -25,7 +25,6 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,uid=1001,gid=1001 \
     pnpm install --store-dir=/pnpm/store --frozen-lockfile --ignore-scripts
 
 COPY --chown=app:app apps/form_builder_api/ apps/form_builder_api/
-COPY --chown=app:app apps/form_builder/app/server/ai-builder/prompts/ apps/form_builder/app/server/ai-builder/prompts/
 COPY --chown=app:app packages/ packages/
 
 # Build the API and all workspace deps (Nx handles the dependency graph via dependsOn: ["^build"])
@@ -82,9 +81,6 @@ COPY --from=builder --chown=app:app /app/package.json ./
 COPY --from=builder --chown=app:app /app/tsconfig.base.json ./
 COPY --from=builder --chown=app:app /app/apps/form_builder_api/package.json ./apps/form_builder_api/
 COPY --from=builder --chown=app:app /app/apps/form_builder_api/tsconfig.json ./apps/form_builder_api/
-
-# AI system prompt
-COPY --from=builder --chown=app:app /app/apps/form_builder/app/server/ai-builder/prompts/ ./prompts/
 
 ENV NODE_ENV=production
 ENV NODE_EXTRA_CA_CERTS=/app/rds-ca-bundle.pem
