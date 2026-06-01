@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import NodeCache from "node-cache";
 import type {
+  ContactDetails,
   FormStep,
   Primitive,
   ServiceContract,
@@ -124,6 +125,25 @@ export class EmailBodyBuilder {
       processedAt: new Date().toISOString(),
       sections,
     };
+  }
+
+  /**
+   * Resolves the responsible MDA's `contactDetails` from the form's service
+   * contract, reusing the same per-`formId:version` contract cache as `build`.
+   *
+   * Used by the email processor to deliver to a `contactDetails.*`
+   * recipientField (e.g. the MDA notification email) rather than to an address
+   * the applicant submitted. Returns `undefined` when the contract carries no
+   * `contactDetails` (it is optional) — the caller decides how to handle that.
+   */
+  async resolveContactDetails(
+    payload: SubmissionCreatedEvent,
+  ): Promise<ContactDetails | undefined> {
+    const contract = await this.resolveContract(
+      payload.formId,
+      payload.formVersion,
+    );
+    return contract.contactDetails;
   }
 
   private async resolveContract(

@@ -6,6 +6,9 @@ import { dynamic } from "./dynamic";
 const emailConfigAuthorSchema = z.object({
   recipientField: dynamic(z.string().min(1)),
   subject: dynamic(z.string().min(1)).optional(),
+  // Per-instance display label (e.g. "Applicant Email" / "MDA Email"). Plain
+  // literal — labels aren't templated. Metadata only; ignored for delivery.
+  label: z.string().min(1).optional(),
 });
 
 const opencrvsConfigAuthorSchema = z.record(
@@ -77,6 +80,8 @@ export type PaymentProcessorConfig = z.infer<typeof paymentConfigAuthorSchema>;
 const emailConfigResolvedSchema = z.object({
   recipientField: z.string().min(1),
   subject: z.string().min(1).optional(),
+  // See emailConfigAuthorSchema — carried verbatim through resolution.
+  label: z.string().min(1).optional(),
 });
 
 const paymentConfigResolvedSchema = z.object({

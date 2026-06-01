@@ -11,6 +11,13 @@ import type { SubmissionCreatedEvent } from "../submissions.types";
 
 const CONFIRMATION_TEMPLATE = "submission-confirmation";
 
+// Reserved recipientField prefix. A recipientField of "contactDetails.<key>"
+// resolves against the form's service-contract contactDetails (e.g. the MDA
+// notification address) rather than against submitted answer values. A step
+// literally named "contactDetails" is therefore shadowed — see
+// FORM-CREATION-GUIDE.md.
+const CONTACT_DETAILS_PREFIX = "contactDetails.";
+
 @Injectable()
 export class EmailProcessor implements ISubmissionProcessor {
   readonly type = "email" as const;
@@ -54,15 +61,9 @@ export class EmailProcessor implements ISubmissionProcessor {
       return;
     }
 
-    // recipientField format: "stepId.fieldId". Targeting fields inside a
-    // repeatable step is not supported here — falls through to the
-    // warning below.
-    const [stepId, fieldId] = recipientField.split(".");
-    const stepValues = payload.values[stepId];
-    const to =
-      stepValues && !Array.isArray(stepValues)
-        ? (stepValues[fieldId] as string | undefined)
-        : undefined;
+    const to = recipientField.startsWith(CONTACT_DETAILS_PREFIX)
+      ? await this.resolveContactRecipient(payload, recipientField)
+      : this.resolveSubmittedRecipient(payload, recipientField);
 
     if (!to) {
       this.logger.warn(
@@ -107,6 +108,43 @@ export class EmailProcessor implements ISubmissionProcessor {
     this.logger.log(
       `[email] Confirmation sent to ${to} for submission ${payload.submissionId}`,
     );
+  }
+
+  /**
+   * Resolves a recipient from submitted answer values.
+   *
+   * recipientField format: "stepId.fieldId". Targeting fields inside a
+   * repeatable step is not supported — an array step value yields `undefined`,
+   * which the caller treats as an unresolved recipient.
+   */
+  private resolveSubmittedRecipient(
+    payload: SubmissionCreatedEvent,
+    recipientField: string,
+  ): string | undefined {
+    const [stepId, fieldId] = recipientField.split(".");
+    const stepValues = payload.values[stepId];
+    return stepValues && !Array.isArray(stepValues)
+      ? (stepValues[fieldId] as string | undefined)
+      : undefined;
+  }
+
+  /**
+   * Resolves a recipient from the form's service-contract contactDetails
+   * (e.g. the MDA notification address). The recipientField after the
+   * "contactDetails." prefix names the key to read (today only `email`).
+   * Returns `undefined` when the contract has no contactDetails or the
+   * requested key is absent/non-string — the caller logs and skips, so a
+   * sibling applicant email still sends (ADR 0006).
+   */
+  private async resolveContactRecipient(
+    payload: SubmissionCreatedEvent,
+    recipientField: string,
+  ): Promise<string | undefined> {
+    const key = recipientField.slice(CONTACT_DETAILS_PREFIX.length);
+    const contactDetails =
+      await this.emailBodyBuilder.resolveContactDetails(payload);
+    const value = contactDetails?.[key as keyof typeof contactDetails];
+    return typeof value === "string" ? value : undefined;
   }
 
   /**
