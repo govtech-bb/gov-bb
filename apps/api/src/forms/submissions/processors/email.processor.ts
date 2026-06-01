@@ -54,15 +54,7 @@ export class EmailProcessor implements ISubmissionProcessor {
       return;
     }
 
-    // recipientField format: "stepId.fieldId". Targeting fields inside a
-    // repeatable step is not supported here — falls through to the
-    // warning below.
-    const [stepId, fieldId] = recipientField.split(".");
-    const stepValues = payload.values[stepId];
-    const to =
-      stepValues && !Array.isArray(stepValues)
-        ? (stepValues[fieldId] as string | undefined)
-        : undefined;
+    const to = this.resolveRecipient(recipientField, payload);
 
     if (!to) {
       this.logger.warn(
@@ -107,6 +99,30 @@ export class EmailProcessor implements ISubmissionProcessor {
     this.logger.log(
       `[email] Confirmation sent to ${to} for submission ${payload.submissionId}`,
     );
+  }
+
+  /**
+   * Resolves the destination address from a processor's `recipientField`.
+   *
+   * Two forms are supported:
+   *  - A literal email address (contains "@") — used verbatim. This is how a
+   *    recipe hardcodes a fixed internal recipient (e.g. "testing@govtech.bb").
+   *  - A "stepId.fieldId" path into the submission values — used to email the
+   *    address the applicant entered. Field/step IDs are kebab-case and never
+   *    contain "@", so the two forms are unambiguous. Targeting a field inside
+   *    a repeatable (array) step is not supported and resolves to undefined.
+   */
+  private resolveRecipient(
+    recipientField: string,
+    payload: SubmissionCreatedEvent,
+  ): string | undefined {
+    if (recipientField.includes("@")) return recipientField;
+
+    const [stepId, fieldId] = recipientField.split(".");
+    const stepValues = payload.values[stepId];
+    return stepValues && !Array.isArray(stepValues)
+      ? (stepValues[fieldId] as string | undefined)
+      : undefined;
   }
 
   /**
