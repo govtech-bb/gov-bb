@@ -11,6 +11,24 @@ import { DateValue, FieldArrayBehaviour } from "@govtech-bb/form-types";
 import FileUpload from "./file-upload";
 import { MaskedInput } from "./masked-input";
 
+/**
+ * Parse a date-part text input into a number, ignoring any non-digit
+ * characters the user types. Returns undefined for empty input so a cleared
+ * field is stored as undefined rather than 0 or NaN.
+ */
+function parseDatePart(raw: string): number | undefined {
+  const digits = raw.replace(/\D/g, "");
+  return digits === "" ? undefined : Number(digits);
+}
+
+/**
+ * Render a date part for display. Anything non-finite (undefined or a NaN
+ * left in state by a legacy draft) shows as an empty field rather than "NaN".
+ */
+function displayDatePart(part: number | undefined): string {
+  return Number.isFinite(part) ? String(part) : "";
+}
+
 /** An inset field entry passed from the parent radio group. */
 export interface InsetFieldEntry {
   field: ClientPrimitive;
@@ -127,15 +145,14 @@ export default function FieldRenderer({
                         {...requiredProps}
                         id={`${field.id}-day`}
                         className="govbb-date-input__field"
-                        value={value?.day ?? ""}
+                        value={displayDatePart(value?.day)}
                         type="text"
                         inputMode="numeric"
                         aria-invalid={invalid}
                         onChange={(e) => {
-                          const day = Number(e.target.value) ?? undefined;
                           f.handleChange({
                             ...value,
-                            day,
+                            day: parseDatePart(e.target.value),
                           });
                         }}
                       />
@@ -157,13 +174,12 @@ export default function FieldRenderer({
                         className="govbb-date-input__field"
                         type="text"
                         inputMode="numeric"
-                        value={value?.month ?? ""}
+                        value={displayDatePart(value?.month)}
                         aria-invalid={invalid}
                         onChange={(e) => {
-                          const month = Number(e.target.value) ?? undefined;
                           f.handleChange({
                             ...value,
-                            month,
+                            month: parseDatePart(e.target.value),
                           });
                         }}
                       />
@@ -185,13 +201,12 @@ export default function FieldRenderer({
                         className="govbb-date-input__field"
                         type="text"
                         inputMode="numeric"
-                        value={value?.year ?? ""}
+                        value={displayDatePart(value?.year)}
                         aria-invalid={invalid}
                         onChange={(e) => {
-                          const year = Number(e.target.value) ?? undefined;
                           f.handleChange({
                             ...value,
-                            year,
+                            year: parseDatePart(e.target.value),
                           });
                         }}
                       />

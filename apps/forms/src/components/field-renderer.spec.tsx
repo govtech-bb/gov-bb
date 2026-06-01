@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import FieldRenderer from "./field-renderer";
 import type { ClientPrimitive } from "@forms/types";
@@ -544,6 +544,45 @@ describe("FieldRenderer", () => {
       await user.clear(yearInput);
       await user.type(yearInput, "2025");
       expect(mockFieldApi.handleChange).toHaveBeenCalled();
+    });
+
+    it("ignores non-numeric characters instead of storing NaN", () => {
+      mockState = { value: undefined, meta: { isValid: true, errors: [] } };
+      const { container } = renderField(primitive("date"));
+      const dayInput = container
+        .querySelectorAll(".govbb-date-input__part")[0]
+        .querySelector("input") as HTMLInputElement;
+      fireEvent.change(dayInput, { target: { value: "12a" } });
+      expect(mockFieldApi.handleChange).toHaveBeenCalledWith({ day: 12 });
+    });
+
+    it("stores undefined (not 0 or NaN) when a date part is cleared", () => {
+      mockState = {
+        value: { day: 5, month: 6, year: 2024 },
+        meta: { isValid: true, errors: [] },
+      };
+      const { container } = renderField(primitive("date"));
+      const dayInput = container
+        .querySelectorAll(".govbb-date-input__part")[0]
+        .querySelector("input") as HTMLInputElement;
+      fireEvent.change(dayInput, { target: { value: "" } });
+      expect(mockFieldApi.handleChange).toHaveBeenCalledWith({
+        day: undefined,
+        month: 6,
+        year: 2024,
+      });
+    });
+
+    it("renders empty (not 'NaN') when a stored date part is NaN", () => {
+      // Legacy drafts saved before the text-input fix can hold NaN parts.
+      mockState = {
+        value: { day: NaN, month: 6, year: 2024 },
+        meta: { isValid: true, errors: [] },
+      };
+      const { container } = renderField(primitive("date"));
+      const dateParts = container.querySelectorAll(".govbb-date-input__part");
+      const dayInput = dateParts[0].querySelector("input") as HTMLInputElement;
+      expect(dayInput.value).toBe("");
     });
 
     it("renders with empty inputs when value is undefined", () => {
