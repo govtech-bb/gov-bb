@@ -10,6 +10,10 @@ interface BehavioursEditorProps {
   fieldRefs: FieldRef[];
   stepRefs: StepRef[];
   onChange: (behaviours: Behaviour[]) => void;
+  // The step the edited entity lives in. For field behaviours this seeds a new
+  // fieldConditionalOn's Target Step so the common "same step" case needs no
+  // extra click. Step behaviours pass nothing (the target step is open). (#519)
+  currentStepId?: string;
 }
 
 const OPERATOR_OPTIONS = ["equal", "notEqual", "in", "exists"] as const;
@@ -20,6 +24,7 @@ export function BehavioursEditor({
   fieldRefs,
   stepRefs,
   onChange,
+  currentStepId,
 }: BehavioursEditorProps) {
   const available = BEHAVIOUR_TYPE_DESCRIPTORS.filter(
     (d) => d.scopes.includes(scope) && !behaviours.some((b) => b.type === d.type),
@@ -30,7 +35,11 @@ export function BehavioursEditor({
     if (!descriptor) return;
     const newBehaviour: Record<string, unknown> = { type: bType };
     for (const param of descriptor.params) {
-      if (param.kind === "fieldRef" || param.kind === "stepRef" || param.kind === "value") {
+      if (param.kind === "stepRef") {
+        // Default the Target Step to the current step; step-scoped behaviours
+        // (currentStepId undefined) stay empty so the field picker is gated.
+        newBehaviour[param.name] = currentStepId ?? "";
+      } else if (param.kind === "fieldRef" || param.kind === "value") {
         newBehaviour[param.name] = "";
       } else if (param.kind === "operator") {
         newBehaviour[param.name] = "equal";
@@ -50,7 +59,22 @@ export function BehavioursEditor({
   function handleParamChange(index: number, paramName: string, value: unknown) {
     const updated = behaviours.map((b, i) => {
       if (i !== index) return b;
-      return { ...b, [paramName]: value } as Behaviour;
+      const descriptor = BEHAVIOUR_TYPE_DESCRIPTORS.find((d) => d.type === b.type);
+      const next = { ...b, [paramName]: value } as Record<string, unknown>;
+      // Changing the Target Step invalidates a Target Field that no longer
+      // belongs to it — clear the stale selection so it can't be saved. (#519)
+      const stepParam = descriptor?.params.find((p) => p.kind === "stepRef");
+      const fieldParam = descriptor?.params.find((p) => p.kind === "fieldRef");
+      if (stepParam && fieldParam && paramName === stepParam.name) {
+        const validIds = fieldRefs
+          .filter((f) => f.stepId === value)
+          .map((f) => f.fieldId);
+        const current = next[fieldParam.name];
+        if (current && !validIds.includes(current as string)) {
+          next[fieldParam.name] = "";
+        }
+      }
+      return next as unknown as Behaviour;
     });
     onChange(updated);
   }
@@ -59,6 +83,7 @@ export function BehavioursEditor({
     <div>
       {behaviours.map((behaviour, index) => {
         const descriptor = BEHAVIOUR_TYPE_DESCRIPTORS.find((d) => d.type === behaviour.type);
+        const stepParam = descriptor?.params.find((p) => p.kind === "stepRef");
         return (
           <div key={behaviour.type} className={styles.fieldRow} style={{ flexDirection: "column", alignItems: "flex-start" }}>
             <div style={{ display: "flex", gap: 8, alignItems: "center", width: "100%" }}>
@@ -68,12 +93,21 @@ export function BehavioursEditor({
             {descriptor?.params.map((param) => {
               const bRecord = behaviour as Record<string, unknown>;
               if (param.kind === "fieldRef") {
+                // Scope the field picker to the behaviour's selected Target
+                // Step, and disable it until a step is chosen. (#519)
+                const selectedStepId = stepParam
+                  ? ((bRecord[stepParam.name] as string) ?? "")
+                  : "";
+                const scopedRefs = selectedStepId
+                  ? fieldRefs.filter((f) => f.stepId === selectedStepId)
+                  : [];
                 return (
                   <div key={param.name} className={styles.formGroup}>
                     <label>{param.label}</label>
                     <FieldRefPicker
                       value={(bRecord[param.name] as string) ?? ""}
-                      fieldRefs={fieldRefs}
+                      fieldRefs={scopedRefs}
+                      disabled={!selectedStepId}
                       onChange={(val) => handleParamChange(index, param.name, val)}
                     />
                   </div>

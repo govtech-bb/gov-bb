@@ -1,10 +1,14 @@
 import { useMemo } from "react";
-import { getRegistryItem } from "@govtech-bb/form-builder";
+import { resolveFieldIds } from "@govtech-bb/form-builder";
 import type { RecipeDraft, RegistryCatalog } from "@govtech-bb/form-builder";
 
 export interface FieldRef {
   stepId: string;
-  fieldRef: string;
+  // The resolved *runtime* field id — what a conditional's `targetFieldId`
+  // must equal to fire (see behavior-helper's getFullFieldId). This is the
+  // overridden id when an author set a Field ID Override, the primitive's
+  // fieldId for a component, or the child's fieldId for a block element.
+  fieldId: string;
   displayName: string;
 }
 
@@ -13,22 +17,18 @@ export interface StepRef {
   title: string;
 }
 
+// Delegate to resolveFieldIds (the ADR-0010 single source of truth for runtime
+// ids): it expands blocks into their child fields and applies fieldId
+// overrides, so option values match what conditionals match against at runtime.
 export function getFieldRefs(
   draft: RecipeDraft,
   catalog: RegistryCatalog,
 ): FieldRef[] {
-  const refs: FieldRef[] = [];
-  for (const step of draft.steps) {
-    for (const field of step.fields) {
-      const item = getRegistryItem(field.ref, catalog);
-      refs.push({
-        stepId: step.stepId,
-        fieldRef: field.ref,
-        displayName: item?.displayName ?? field.ref,
-      });
-    }
-  }
-  return refs;
+  return resolveFieldIds(draft, catalog).map((entry) => ({
+    stepId: entry.stepId,
+    fieldId: entry.fieldId,
+    displayName: entry.display,
+  }));
 }
 
 export function getStepRefs(draft: RecipeDraft): StepRef[] {

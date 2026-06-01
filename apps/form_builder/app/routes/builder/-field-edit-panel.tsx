@@ -36,6 +36,9 @@ interface OverrideFormProps {
   htmlType: HtmlTypes;
   fieldRefs: FieldRef[];
   stepRefs: StepRef[];
+  // The step this field lives in — seeds a new fieldConditionalOn's Target Step
+  // so the field picker is enabled and scoped to this step by default (#519).
+  currentStepId: string;
   onChange: (overrides: FieldOverrides) => void;
   // Returns true when the candidate Field ID Override duplicates another field's
   // resolved id. Omitted for block-child forms (deferred to the recipe-wide gate).
@@ -60,6 +63,7 @@ function OverrideForm({
   htmlType,
   fieldRefs,
   stepRefs,
+  currentStepId,
   onChange,
   checkDuplicateFieldId,
   defaultOptions,
@@ -189,6 +193,7 @@ function OverrideForm({
         behaviours={overrides.behaviours ?? []}
         fieldRefs={fieldRefs}
         stepRefs={stepRefs}
+        currentStepId={currentStepId}
         onChange={(behaviours) =>
           patch({ behaviours: behaviours.length > 0 ? behaviours : undefined })
         }
@@ -319,6 +324,7 @@ export function FieldEditPanel({
                     htmlType={childHtmlType}
                     fieldRefs={fieldRefs}
                     stepRefs={stepRefs}
+                    currentStepId={stepId}
                     onChange={(updated) =>
                       handleChildOverrideChange(element.fieldId, updated)
                     }
@@ -336,6 +342,7 @@ export function FieldEditPanel({
             htmlType={htmlType}
             fieldRefs={fieldRefs}
             stepRefs={stepRefs}
+            currentStepId={stepId}
             onChange={setOverrides}
             checkDuplicateFieldId={(candidate) =>
               fieldIdDuplicatesAnother(draft, catalog, field.id, candidate)
