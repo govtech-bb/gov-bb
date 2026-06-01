@@ -99,7 +99,7 @@
           }
         },
         {
-          "ref": "components/generic-show-hide",
+          "ref": "components/show-hide",
           "overrides": {
             "fieldId": "passport-toggle",
             "label": "Use passport number instead",
