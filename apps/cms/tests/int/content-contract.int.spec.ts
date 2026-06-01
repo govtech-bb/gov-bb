@@ -14,7 +14,11 @@ const fullService: ServiceDoc = {
   body: EMPTY_EDITOR_STATE,
   categories: [{ slug: 'travel-id-citizenship' }],
   subcategory: { slug: 'youth-development-leadership' },
-  serviceType: 'information',
+  // One-doc model: a digital service carries a start action (form/link), not a
+  // serviceType flag. "Digital" is derived from startType being set.
+  startType: 'form',
+  formId: 'passport-renewal',
+  startBody: EMPTY_EDITOR_STATE,
   stage: 'alpha',
   sourceUrl: 'https://www.gov.bb/Citizens/apply-passport',
   updatedAt: '2025-10-24T12:00:00.000Z',
@@ -103,6 +107,14 @@ describe('content export contract', () => {
     expect(body.root).toBeDefined()
     expect(Array.isArray(body.root.children)).toBe(true)
     expect(() => serviceFrontmatterSchema.parse(data)).not.toThrow()
+  })
+
+  it('digital service export emits the start action (start_type + form_id), not service_type', () => {
+    const { data } = serviceDocToFrontmatter(fullService)
+    expect(data.start_type).toBe('form')
+    expect(data.form_id).toBe('passport-renewal')
+    expect(data.service_type).toBeUndefined()
+    expect(serviceFrontmatterSchema.parse(data).start_type).toBe('form')
   })
 
   it('ministry export satisfies the canonical MDA schema', () => {

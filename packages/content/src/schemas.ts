@@ -120,8 +120,12 @@ export const serviceFrontmatterSchema = z.object({
   category: z.string().optional(),
   categories: z.array(z.string()).optional(),
   subcategory: z.string().optional(),
-  service_type: z.enum(["digital", "information"]).optional(),
+  // One-doc model: a service is digital when it has a start action. start_type
+  // selects the action; form_id (a Form Builder form) or start_url (a link)
+  // carries the target. service_type is gone — digital is derived, not flagged.
+  start_type: z.enum(["form", "link"]).optional(),
   form_id: z.string().optional(),
+  start_url: z.string().optional(),
   start_button: startButtonSchema,
   forms: z.array(onlineServiceLinkSchema).optional().default([]),
   updated_at: z.union([z.string(), z.date()]).optional(),
