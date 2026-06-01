@@ -61,9 +61,15 @@ export class EmailProcessor implements ISubmissionProcessor {
       return;
     }
 
-    const to = recipientField.startsWith(CONTACT_DETAILS_PREFIX)
-      ? await this.resolveContactRecipient(payload, recipientField)
-      : this.resolveSubmittedRecipient(payload, recipientField);
+    // A literal address (contains "@") is used verbatim — this is how a recipe
+    // hardcodes a fixed internal recipient (e.g. "testing@govtech.bb"). Neither
+    // a "contactDetails." prefix nor a "stepId.fieldId" path contains "@", so
+    // the literal case is unambiguous and checked first.
+    const to = recipientField.includes("@")
+      ? recipientField
+      : recipientField.startsWith(CONTACT_DETAILS_PREFIX)
+        ? await this.resolveContactRecipient(payload, recipientField)
+        : this.resolveSubmittedRecipient(payload, recipientField);
 
     if (!to) {
       this.logger.warn(

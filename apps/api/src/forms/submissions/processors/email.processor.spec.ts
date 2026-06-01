@@ -127,6 +127,19 @@ describe("EmailProcessor", () => {
       ]);
     });
 
+    it("sends to a literal email when recipientField is an address, not a field path", async () => {
+      // A recipe hardcodes a fixed internal recipient by putting the address
+      // straight in recipientField (e.g. "testing@govtech.bb") rather than a
+      // "stepId.fieldId" path. It must be used verbatim, not path-resolved.
+      await processor.process(
+        makePayload({ recipientField: "testing@govtech.bb" }),
+      );
+
+      expect(getSentInput().Destination?.ToAddresses).toEqual([
+        "testing@govtech.bb",
+      ]);
+    });
+
     it("sends from the configured SES sender identity", async () => {
       await processor.process(makePayload());
 
