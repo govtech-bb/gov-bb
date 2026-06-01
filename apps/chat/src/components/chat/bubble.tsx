@@ -40,7 +40,10 @@ function CitationMarker({ citation }: { citation: Citation }) {
       target="_blank"
       title={label}
     >
-      <span aria-hidden="true" className={`size-3.5 rounded-[3px] ${favColor}`} />
+      <span
+        aria-hidden="true"
+        className={`size-3.5 rounded-[3px] ${favColor}`}
+      />
       {host}
     </a>
   );
@@ -163,6 +166,11 @@ function BubbleImpl({
   const submitPart = findToolCall(message, "submit_form");
   const submitApproval =
     submitPart?.state === "approval-requested" ? submitPart.approval : null;
+  // "Not yet" flips the part to approval-responded/approved=false. Without this
+  // the prompt would just vanish, leaving the decline unacknowledged.
+  const submitDeclined =
+    submitPart?.state === "approval-responded" &&
+    submitPart.approval?.approved === false;
 
   const choicesReady =
     choicesPart?.state === "input-complete" ||
@@ -178,7 +186,8 @@ function BubbleImpl({
 
   const showText = text.length > 0 && !choicesPart;
 
-  if (!showText && !hasChoices && !submitApproval) return null;
+  if (!showText && !hasChoices && !submitApproval && !submitDeclined)
+    return null;
 
   return (
     <div className="flex max-w-[92%] items-start gap-2.5">
@@ -243,6 +252,12 @@ function BubbleImpl({
                 </button>
               </div>
             </div>
+          )}
+
+          {submitDeclined && (
+            <p className="text-bubble text-mid-grey-00 italic">
+              Not submitted.
+            </p>
           )}
         </div>
       </div>

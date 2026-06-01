@@ -37,12 +37,16 @@ type ChatRow =
   | { kind: "optimistic"; key: string; text: string }
   | { kind: "message"; key: string; message: UIMessage; index: number }
   | { kind: "thinking"; key: string }
+  | { kind: "submitting"; key: string }
   | { kind: "error"; key: string; text: string };
 
 function ChatPage() {
   const [input, setInput] = useState("");
   const [pendingQuery, setPendingQuery] = useState<string | null>(null);
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
+  // True between the submit_form tool's "submitting" and "submitted"/"failed"
+  // custom events, so the UI can show progress during the blocking POST.
+  const [submitting, setSubmitting] = useState(false);
   const parentRef = useRef<HTMLDivElement>(null);
   // Citations keyed by assistant messageId. Populated from the `citations`
   // custom event the server emits right after TEXT_MESSAGE_START.
@@ -52,26 +56,44 @@ function ChatPage() {
 
   const connection = useMemo(() => fetchServerSentEvents("/api/chat"), []);
 
-  const { messages, sendMessage, status, error, stop, clear, addToolApprovalResponse } =
-    useChat({
-      connection,
-      onCustomEvent: (eventType, data) => {
-        if (eventType === "citations") {
-          const payload = data as
-            | { messageId?: string; citations?: Citation[] }
-            | undefined;
-          if (payload?.messageId && Array.isArray(payload.citations)) {
-            const id = payload.messageId;
-            const cs = payload.citations;
-            setCitationsByMessageId((prev) =>
-              prev[id] ? prev : { ...prev, [id]: cs },
-            );
-          }
+  const {
+    messages,
+    sendMessage,
+    status,
+    error,
+    stop,
+    clear,
+    addToolApprovalResponse,
+  } = useChat({
+    connection,
+    onCustomEvent: (eventType, data) => {
+      if (eventType === "citations") {
+        const payload = data as
+          | { messageId?: string; citations?: Citation[] }
+          | undefined;
+        if (payload?.messageId && Array.isArray(payload.citations)) {
+          const id = payload.messageId;
+          const cs = payload.citations;
+          setCitationsByMessageId((prev) =>
+            prev[id] ? prev : { ...prev, [id]: cs },
+          );
         }
-      },
-    });
+        return;
+      }
+      if (eventType === "submit_status") {
+        const state = (data as { state?: string } | undefined)?.state;
+        setSubmitting(state === "submitting");
+      }
+    },
+  });
 
   const isStreaming = status === "submitted" || status === "streaming";
+
+  // Safety net: clear the submitting indicator if a run ends without a
+  // terminal submit_status event (e.g. the stream errors mid-POST).
+  useEffect(() => {
+    if (!isStreaming) setSubmitting(false);
+  }, [isStreaming]);
 
   const rows = useMemo<ChatRow[]>(() => {
     const out: ChatRow[] = [{ kind: "welcome", key: "welcome" }];
@@ -82,12 +104,14 @@ function ChatPage() {
     messages.forEach((message, index) =>
       out.push({ kind: "message", key: message.id, message, index }),
     );
-    if (messages.length > 0 && shouldShowThinking(messages)) {
+    if (submitting) {
+      out.push({ kind: "submitting", key: "submitting" });
+    } else if (messages.length > 0 && shouldShowThinking(messages)) {
       out.push({ kind: "thinking", key: "thinking" });
     }
     if (error) out.push({ kind: "error", key: "error", text: error.message });
     return out;
-  }, [messages, pendingQuery, error]);
+  }, [messages, pendingQuery, error, submitting]);
 
   // Choice pills / approval buttons go stale once a later turn lands. A choice
   // is historical when a user/assistant message exists after it.
@@ -163,6 +187,7 @@ function ChatPage() {
     clear();
     setCitationsByMessageId({});
     setPendingQuery(null);
+    setSubmitting(false);
     setInput("");
     didInitialScrollRef.current = false;
   }, [stop, clear]);
@@ -188,6 +213,8 @@ function ChatPage() {
         return <OptimisticUserBubble text={row.text} />;
       case "thinking":
         return <ThinkingIndicator />;
+      case "submitting":
+        return <ThinkingIndicator label="Submitting your application" />;
       case "error":
         return (
           <div className="rounded-md bg-red-10 px-3 py-2 text-red-00 text-sm">
@@ -338,7 +365,8 @@ function WelcomeBubble() {
     <div className="flex max-w-[92%] items-start gap-2.5">
       <TridentAvatar size="sm" tone="filled" />
       <div className="text-bubble rounded-[16px_16px_16px_4px] bg-blue-10 px-4 py-3 text-black-00 sm:px-5 sm:py-3.5">
-       Welcome to <strong>alpha.gov.bb.</strong> What would you like help with today?
+        Welcome to <strong>alpha.gov.bb.</strong> What would you like help with
+        today?
       </div>
     </div>
   );
@@ -351,15 +379,13 @@ function shouldShowThinking(messages: UIMessage[]): boolean {
   // Hide once something renderable lands: text deltas, a present_choices
   // tool call, or a submit_form approval prompt. set_field is invisible.
   if (extractText(last).length > 0) return false;
-  if (
-    hasAnyToolCall([last], [presentChoicesDef.name, submitFormDef.name])
-  ) {
+  if (hasAnyToolCall([last], [presentChoicesDef.name, submitFormDef.name])) {
     return false;
   }
   return true;
 }
 
-function ThinkingIndicator() {
+function ThinkingIndicator({ label = "Thinking" }: { label?: string }) {
   return (
     <div className="flex items-center gap-2.5">
       <TridentAvatar size="sm" tone="filled" />
@@ -371,7 +397,7 @@ function ThinkingIndicator() {
           backgroundSize: "200% 100%",
         }}
       >
-        Thinking
+        {label}
       </span>
     </div>
   );
