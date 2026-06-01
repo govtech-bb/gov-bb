@@ -46,6 +46,19 @@ jobs:
       fb-app: ${{ steps.affected.outputs.fb-app }}
       amplify-config: ${{ steps.affected.outputs.amplify-config }}
     steps:
+      # Defensive mirror of the teardown guard: refuse the whole preview
+      # pipeline for a head branch named after a long-lived branch, so a
+      # protected name never gets a create-branch in the preview jobs.
+      - name: Guard against protected branch names
+        env:
+          BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
+        run: |
+          case "$BRANCH_NAME" in
+            sandbox|main|staging|prod|production|dev)
+              echo "❌ Refusing PR preview for protected branch name '$BRANCH_NAME' — these map to live Amplify environments."
+              exit 1 ;;
+          esac
+
       - name: Checkout
         uses: actions/checkout@v5
         with:
@@ -597,6 +610,16 @@ jobs:
         env:
           BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
         run: |
+          # A PR whose head branch is named after a long-lived branch
+          # (e.g. someone runs `git checkout -b sandbox`) would otherwise
+          # delete-branch the LIVE sandbox Amplify branch on all 4 apps,
+          # severing the real environment. Refuse outright.
+          case "$BRANCH_NAME" in
+            sandbox|main|staging|prod|production|dev)
+              echo "❌ Refusing teardown for protected branch name '$BRANCH_NAME' — these map to live Amplify environments, not PR previews."
+              exit 1 ;;
+          esac
+
           for entry in \
               "forms:d1j7z1k0h7u5nb" \
               "landing:d3kbl8o0ovutw4" \

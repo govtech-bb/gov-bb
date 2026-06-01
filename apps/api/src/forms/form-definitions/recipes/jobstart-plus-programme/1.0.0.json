@@ -560,7 +560,7 @@
           }
         },
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
             "ui": {
               "width": "short"
@@ -571,12 +571,16 @@
               "required": {
                 "error": "Start year is required",
                 "value": true
+              },
+              "pattern": {
+                "error": "Start year must be a valid year",
+                "value": "^[0-9]{4}$"
               }
             }
           }
         },
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
             "ui": {
               "width": "short"
@@ -587,6 +591,10 @@
               "required": {
                 "error": "End year is required",
                 "value": true
+              },
+              "pattern": {
+                "error": "End year must be a valid year",
+                "value": "^[0-9]{4}$"
               }
             }
           }
@@ -615,7 +623,7 @@
           }
         },
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
             "ui": {
               "width": "short"
@@ -626,12 +634,16 @@
               "required": {
                 "error": "Start year is required",
                 "value": true
+              },
+              "pattern": {
+                "error": "Start year must be a valid year",
+                "value": "^[0-9]{4}$"
               }
             }
           }
         },
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
             "ui": {
               "width": "short"
@@ -642,6 +654,10 @@
               "required": {
                 "error": "End year is required",
                 "value": true
+              },
+              "pattern": {
+                "error": "End year must be a valid year",
+                "value": "^[0-9]{4}$"
               }
             }
           }
@@ -675,23 +691,35 @@
           }
         },
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
             "ui": {
               "width": "short"
             },
             "label": "Start year",
-            "fieldId": "post-sec-start-year-1"
+            "fieldId": "post-sec-start-year-1",
+            "validations": {
+              "pattern": {
+                "error": "Start year must be a valid year",
+                "value": "^[0-9]{4}$"
+              }
+            }
           }
         },
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
             "ui": {
               "width": "short"
             },
             "label": "End year",
-            "fieldId": "post-sec-end-year-1"
+            "fieldId": "post-sec-end-year-1",
+            "validations": {
+              "pattern": {
+                "error": "End year must be a valid year",
+                "value": "^[0-9]{4}$"
+              }
+            }
           }
         }
       ],

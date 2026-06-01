@@ -18,12 +18,8 @@ import { Route as FeedbackRouteImport } from './routes/feedback'
 import { Route as BankHolidayCalendarRouteImport } from './routes/bank-holiday-calendar'
 import { Route as SplatRouteImport } from './routes/$'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as GovernmentIndexRouteImport } from './routes/government.index'
-import { Route as GovernmentOrganisationsRouteImport } from './routes/government.organisations'
-import { Route as GovernmentOrganisationsIndexRouteImport } from './routes/government.organisations.index'
 import { Route as PensionsAndGratuitiesCalculateYourPensionFormRouteImport } from './routes/pensions-and-gratuities.calculate-your-pension.form'
 import { Route as MoneyFinancialSupportCalculateSeverancePayFormRouteImport } from './routes/money-financial-support.calculate-severance-pay.form'
-import { Route as GovernmentOrganisationsSlugRouteImport } from './routes/government.organisations.$slug'
 import { Route as BusinessTradeCropOverPermitsFormRouteImport } from './routes/business-trade.crop-over-permits.form'
 
 const TellUsRoute = TellUsRouteImport.update({
@@ -71,22 +67,6 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const GovernmentIndexRoute = GovernmentIndexRouteImport.update({
-  id: '/government/',
-  path: '/government/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const GovernmentOrganisationsRoute = GovernmentOrganisationsRouteImport.update({
-  id: '/government/organisations',
-  path: '/government/organisations',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const GovernmentOrganisationsIndexRoute =
-  GovernmentOrganisationsIndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => GovernmentOrganisationsRoute,
-  } as any)
 const PensionsAndGratuitiesCalculateYourPensionFormRoute =
   PensionsAndGratuitiesCalculateYourPensionFormRouteImport.update({
     id: '/pensions-and-gratuities/calculate-your-pension/form',
@@ -98,12 +78,6 @@ const MoneyFinancialSupportCalculateSeverancePayFormRoute =
     id: '/money-financial-support/calculate-severance-pay/form',
     path: '/money-financial-support/calculate-severance-pay/form',
     getParentRoute: () => rootRouteImport,
-  } as any)
-const GovernmentOrganisationsSlugRoute =
-  GovernmentOrganisationsSlugRouteImport.update({
-    id: '/$slug',
-    path: '/$slug',
-    getParentRoute: () => GovernmentOrganisationsRoute,
   } as any)
 const BusinessTradeCropOverPermitsFormRoute =
   BusinessTradeCropOverPermitsFormRouteImport.update({
@@ -122,13 +96,9 @@ export interface FileRoutesByFullPath {
   '/service-unavailable': typeof ServiceUnavailableRoute
   '/services': typeof ServicesRoute
   '/tell-us': typeof TellUsRoute
-  '/government/organisations': typeof GovernmentOrganisationsRouteWithChildren
-  '/government/': typeof GovernmentIndexRoute
   '/business-trade/crop-over-permits/form': typeof BusinessTradeCropOverPermitsFormRoute
-  '/government/organisations/$slug': typeof GovernmentOrganisationsSlugRoute
   '/money-financial-support/calculate-severance-pay/form': typeof MoneyFinancialSupportCalculateSeverancePayFormRoute
   '/pensions-and-gratuities/calculate-your-pension/form': typeof PensionsAndGratuitiesCalculateYourPensionFormRoute
-  '/government/organisations/': typeof GovernmentOrganisationsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -140,12 +110,9 @@ export interface FileRoutesByTo {
   '/service-unavailable': typeof ServiceUnavailableRoute
   '/services': typeof ServicesRoute
   '/tell-us': typeof TellUsRoute
-  '/government': typeof GovernmentIndexRoute
   '/business-trade/crop-over-permits/form': typeof BusinessTradeCropOverPermitsFormRoute
-  '/government/organisations/$slug': typeof GovernmentOrganisationsSlugRoute
   '/money-financial-support/calculate-severance-pay/form': typeof MoneyFinancialSupportCalculateSeverancePayFormRoute
   '/pensions-and-gratuities/calculate-your-pension/form': typeof PensionsAndGratuitiesCalculateYourPensionFormRoute
-  '/government/organisations': typeof GovernmentOrganisationsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -158,13 +125,9 @@ export interface FileRoutesById {
   '/service-unavailable': typeof ServiceUnavailableRoute
   '/services': typeof ServicesRoute
   '/tell-us': typeof TellUsRoute
-  '/government/organisations': typeof GovernmentOrganisationsRouteWithChildren
-  '/government/': typeof GovernmentIndexRoute
   '/business-trade/crop-over-permits/form': typeof BusinessTradeCropOverPermitsFormRoute
-  '/government/organisations/$slug': typeof GovernmentOrganisationsSlugRoute
   '/money-financial-support/calculate-severance-pay/form': typeof MoneyFinancialSupportCalculateSeverancePayFormRoute
   '/pensions-and-gratuities/calculate-your-pension/form': typeof PensionsAndGratuitiesCalculateYourPensionFormRoute
-  '/government/organisations/': typeof GovernmentOrganisationsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -178,13 +141,9 @@ export interface FileRouteTypes {
     | '/service-unavailable'
     | '/services'
     | '/tell-us'
-    | '/government/organisations'
-    | '/government/'
     | '/business-trade/crop-over-permits/form'
-    | '/government/organisations/$slug'
     | '/money-financial-support/calculate-severance-pay/form'
     | '/pensions-and-gratuities/calculate-your-pension/form'
-    | '/government/organisations/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -196,12 +155,9 @@ export interface FileRouteTypes {
     | '/service-unavailable'
     | '/services'
     | '/tell-us'
-    | '/government'
     | '/business-trade/crop-over-permits/form'
-    | '/government/organisations/$slug'
     | '/money-financial-support/calculate-severance-pay/form'
     | '/pensions-and-gratuities/calculate-your-pension/form'
-    | '/government/organisations'
   id:
     | '__root__'
     | '/'
@@ -213,13 +169,9 @@ export interface FileRouteTypes {
     | '/service-unavailable'
     | '/services'
     | '/tell-us'
-    | '/government/organisations'
-    | '/government/'
     | '/business-trade/crop-over-permits/form'
-    | '/government/organisations/$slug'
     | '/money-financial-support/calculate-severance-pay/form'
     | '/pensions-and-gratuities/calculate-your-pension/form'
-    | '/government/organisations/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -232,8 +184,6 @@ export interface RootRouteChildren {
   ServiceUnavailableRoute: typeof ServiceUnavailableRoute
   ServicesRoute: typeof ServicesRoute
   TellUsRoute: typeof TellUsRoute
-  GovernmentOrganisationsRoute: typeof GovernmentOrganisationsRouteWithChildren
-  GovernmentIndexRoute: typeof GovernmentIndexRoute
   BusinessTradeCropOverPermitsFormRoute: typeof BusinessTradeCropOverPermitsFormRoute
   MoneyFinancialSupportCalculateSeverancePayFormRoute: typeof MoneyFinancialSupportCalculateSeverancePayFormRoute
   PensionsAndGratuitiesCalculateYourPensionFormRoute: typeof PensionsAndGratuitiesCalculateYourPensionFormRoute
@@ -304,27 +254,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/government/': {
-      id: '/government/'
-      path: '/government'
-      fullPath: '/government/'
-      preLoaderRoute: typeof GovernmentIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/government/organisations': {
-      id: '/government/organisations'
-      path: '/government/organisations'
-      fullPath: '/government/organisations'
-      preLoaderRoute: typeof GovernmentOrganisationsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/government/organisations/': {
-      id: '/government/organisations/'
-      path: '/'
-      fullPath: '/government/organisations/'
-      preLoaderRoute: typeof GovernmentOrganisationsIndexRouteImport
-      parentRoute: typeof GovernmentOrganisationsRoute
-    }
     '/pensions-and-gratuities/calculate-your-pension/form': {
       id: '/pensions-and-gratuities/calculate-your-pension/form'
       path: '/pensions-and-gratuities/calculate-your-pension/form'
@@ -339,13 +268,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MoneyFinancialSupportCalculateSeverancePayFormRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/government/organisations/$slug': {
-      id: '/government/organisations/$slug'
-      path: '/$slug'
-      fullPath: '/government/organisations/$slug'
-      preLoaderRoute: typeof GovernmentOrganisationsSlugRouteImport
-      parentRoute: typeof GovernmentOrganisationsRoute
-    }
     '/business-trade/crop-over-permits/form': {
       id: '/business-trade/crop-over-permits/form'
       path: '/business-trade/crop-over-permits/form'
@@ -355,22 +277,6 @@ declare module '@tanstack/react-router' {
     }
   }
 }
-
-interface GovernmentOrganisationsRouteChildren {
-  GovernmentOrganisationsSlugRoute: typeof GovernmentOrganisationsSlugRoute
-  GovernmentOrganisationsIndexRoute: typeof GovernmentOrganisationsIndexRoute
-}
-
-const GovernmentOrganisationsRouteChildren: GovernmentOrganisationsRouteChildren =
-  {
-    GovernmentOrganisationsSlugRoute: GovernmentOrganisationsSlugRoute,
-    GovernmentOrganisationsIndexRoute: GovernmentOrganisationsIndexRoute,
-  }
-
-const GovernmentOrganisationsRouteWithChildren =
-  GovernmentOrganisationsRoute._addFileChildren(
-    GovernmentOrganisationsRouteChildren,
-  )
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -382,8 +288,6 @@ const rootRouteChildren: RootRouteChildren = {
   ServiceUnavailableRoute: ServiceUnavailableRoute,
   ServicesRoute: ServicesRoute,
   TellUsRoute: TellUsRoute,
-  GovernmentOrganisationsRoute: GovernmentOrganisationsRouteWithChildren,
-  GovernmentIndexRoute: GovernmentIndexRoute,
   BusinessTradeCropOverPermitsFormRoute: BusinessTradeCropOverPermitsFormRoute,
   MoneyFinancialSupportCalculateSeverancePayFormRoute:
     MoneyFinancialSupportCalculateSeverancePayFormRoute,

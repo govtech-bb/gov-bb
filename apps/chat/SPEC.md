@@ -100,16 +100,11 @@ The behaviour below is enforced via the system prompt and is part of the product
 
 ### 4.1 What the assistant retrieves over
 Content is sourced from the shared `@govtech-bb/content` package and ingested into a Postgres+pgvector store. Each ingested item is one of:
-- **Ministry**, **department**, or **state-body** (collectively "MDAs") — with name, optional aliases/acronyms, minister or head, contact channels, and body copy.
 - **Service** — with title, description, and a body of sections (eligibility, steps, fees, documents, etc.).
 - **Form** — defined in the schema; reserved for future content.
 
 ### 4.2 How content is chunked for retrieval
 Each entity is split into purpose-built **chunks**, each phrased the way a user is likely to ask:
-- **Name** chunk — entity name + aliases + short description. Front-loaded with a short acronym alias when available (e.g. "BRA", "MIST") so users who type the acronym match correctly.
-- **Minister / Head** chunk — phrased as "Who is the minister of X?".
-- **Contact** chunks — one per channel, phrased as "Phone number for X", "Email address for X", etc.
-- **Body** chunks (MDAs) — long-form description, split at ~2000 chars with overlap.
 - **Intent** chunk (services) — phrased as "How do I {service title}?".
 - **Section** chunks (services) — one per `##` heading in the service body, prefixed with `"{title} — {section}"`.
 
@@ -216,7 +211,7 @@ These are things we noticed during exploration that the team should clarify befo
 
 1. **Form handoff timeline.** The `open_form_review` tool, schema registry, prefill, and validation are all wired in code but stubbed. We've assumed this is a deliberate V1 deferral. **Q:** When is this expected to ship, and where will the real `CHAT_FORM_SCHEMA_LOADERS` come from (which package, which forms first)?
 2. **Source mode hard-coded to `"alpha"`.** `search()` labels every retrieved source as `source: "alpha"`. The system prompt and UI also recognise `"legacy"` (current gov.bb pages still served by the old site) and there is a "legacy disclosure" path. **Q:** Is the legacy classification supposed to be driven by document metadata, by URL, or is it simply not active yet?
-3. **`form` document kind.** The DB schema includes a `form` document kind, but the chunker only handles MDA and service entities. **Q:** Is there a planned ingest path for forms, or is this slot reserved?
+3. **`form` document kind.** The DB schema includes a `form` document kind, but the chunker only handles service entities. **Q:** Is there a planned ingest path for forms, or is this slot reserved?
 4. **Retriever deployment.** `/api/chat` calls `${RAG_URL}/retrieve` rather than using the local `search()` directly. **Q:** Is the intent to deploy retrieval as a separate service eventually? Today the same app serves both endpoints.
 5. **Conversation persistence.** There is no transcript storage — refreshing the page loses the chat. **Q:** Is that intentional for V1 (privacy by default), or is persistence planned?
 6. **Suggested prompts.** The four empty-state prompts are hard-coded. **Q:** Should these become content-driven (top services, seasonally relevant suggestions, etc.)?

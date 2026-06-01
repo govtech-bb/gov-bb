@@ -1,10 +1,8 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import matter from "gray-matter";
-import { mdaFrontmatterSchema, serviceFrontmatterSchema } from "./schemas";
-import type { ContentArtifact, MdaEntity, ServiceEntity } from "./types";
-
-const ORG_DIR = join("government", "organisations");
+import { serviceFrontmatterSchema } from "./schemas";
+import type { ContentArtifact, ServiceEntity } from "./types";
 
 export interface LoadContentOptions {
   /**
@@ -48,41 +46,6 @@ async function readFileSafe(path: string): Promise<string | null> {
   }
 }
 
-async function loadMdas(
-  rootDir: string,
-  warnings: string[],
-): Promise<MdaEntity[]> {
-  const dir = join(rootDir, ORG_DIR);
-  let entries: string[];
-  try {
-    entries = await readdir(dir);
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === "ENOENT") return [];
-    throw err;
-  }
-
-  const out: MdaEntity[] = [];
-  for (const name of entries) {
-    if (!name.endsWith(".md")) continue;
-    const filePath = join(dir, name);
-    const raw = await readFile(filePath, "utf8");
-    const { data, content } = matter(raw);
-    const parsed = mdaFrontmatterSchema.safeParse(data);
-    if (!parsed.success) {
-      warnings.push(
-        `[mda] ${name}: ${parsed.error.issues[0]?.message ?? "invalid frontmatter"}`,
-      );
-      continue;
-    }
-    out.push({
-      ...parsed.data,
-      body: content.trim(),
-      filePath,
-    });
-  }
-  return out;
-}
-
 async function loadServices(
   rootDir: string,
   warnings: string[],
@@ -97,7 +60,6 @@ async function loadServices(
 
   const out: ServiceEntity[] = [];
   for (const name of entries) {
-    if (name === "government") continue;
     const path = join(rootDir, name);
     const s = await stat(path);
 
@@ -140,7 +102,6 @@ export async function loadContent(
 ): Promise<ContentArtifact> {
   const rootDir = await resolveContentDir(opts);
   const warnings: string[] = [];
-  const mdas = await loadMdas(rootDir, warnings);
   const services = await loadServices(rootDir, warnings);
-  return { mdas, services, warnings };
+  return { services, warnings };
 }
