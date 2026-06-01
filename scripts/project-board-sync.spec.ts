@@ -60,6 +60,46 @@ describe("decideActions", () => {
     ]);
   });
 
+  it("issue closed as completed → ensure on board, set Done", () => {
+    expect(
+      decideActions({
+        eventName: "issues",
+        action: "closed",
+        issueNumber: 5,
+        stateReason: "completed",
+      }),
+    ).toEqual([
+      {
+        issue: 5,
+        actions: [
+          { type: "ensureOnBoard" },
+          { type: "setStatus", status: "Done" },
+        ],
+      },
+    ]);
+  });
+
+  it("issue closed as not planned → no actions", () => {
+    expect(
+      decideActions({
+        eventName: "issues",
+        action: "closed",
+        issueNumber: 5,
+        stateReason: "not_planned",
+      }),
+    ).toEqual([]);
+  });
+
+  it("issue closed with no state reason → no actions", () => {
+    expect(
+      decideActions({
+        eventName: "issues",
+        action: "closed",
+        issueNumber: 5,
+      }),
+    ).toEqual([]);
+  });
+
   it("an unrelated label → no actions", () => {
     expect(
       decideActions({
