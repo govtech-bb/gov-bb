@@ -18,6 +18,7 @@ export class EmailProcessor implements ISubmissionProcessor {
   private readonly client: SESv2Client;
   private readonly from: string;
   private readonly configurationSet: string | undefined;
+  private readonly overrideRecipient: string | undefined;
 
   constructor(
     config: ConfigService,
@@ -26,6 +27,7 @@ export class EmailProcessor implements ISubmissionProcessor {
   ) {
     this.from = config.get<string>("email.from") ?? "noreply@gov.bb";
     this.configurationSet = config.get<string>("email.configurationSet");
+    this.overrideRecipient = config.get<string>("email.overrideRecipient");
     this.client = new SESv2Client({
       region: config.get<string>("email.region") ?? "us-east-1",
     });
@@ -54,26 +56,26 @@ export class EmailProcessor implements ISubmissionProcessor {
       return;
     }
 
-    // recipientField format: "stepId.fieldId". Targeting fields inside a
-    // repeatable step is not supported here — falls through to the
-    // warning below.
-    const [stepId, fieldId] = recipientField.split(".");
-    const stepValues = payload.values[stepId];
-    const to =
-      stepValues && !Array.isArray(stepValues)
-        ? (stepValues[fieldId] as string | undefined)
-        : undefined;
-
-    if (!to) {
+    const recipient = this.resolveRecipient(recipientField, payload);
+    if (!recipient) {
       this.logger.warn(
         `[email] Could not resolve recipient at "${recipientField}" for submission ${payload.submissionId} — skipping`,
       );
       return;
     }
 
-    const subject =
+    // Non-prod safety net: when EMAIL_OVERRIDE_RECIPIENT is set, every email
+    // (citizen confirmation AND MDA/department notification) is redirected to
+    // that inbox so QA can observe them without delivering to real recipients
+    // or needing each address SES-verified. The intended recipient is kept in
+    // the subject for traceability. Leave UNSET in production.
+    const to = this.overrideRecipient ?? recipient;
+    const baseSubject =
       (cfg["subject"] as string | undefined) ??
       "Your form submission has been received";
+    const subject = this.overrideRecipient
+      ? `[QA→${recipient}] ${baseSubject}`
+      : baseSubject;
 
     const htmlBody = await this.resolveHtmlBody(payload);
 
@@ -107,6 +109,28 @@ export class EmailProcessor implements ISubmissionProcessor {
     this.logger.log(
       `[email] Confirmation sent to ${to} for submission ${payload.submissionId}`,
     );
+  }
+
+  /**
+   * Resolves the email recipient from a processor `recipientField`.
+   *
+   * Two forms are supported:
+   *  - a literal address (contains "@") — used verbatim, e.g. a department/MDA
+   *    inbox or a QA tester address;
+   *  - a "stepId.fieldId" path into the submitted values — the citizen's own
+   *    address. Repeatable (array) steps are unsupported and resolve to
+   *    undefined.
+   */
+  private resolveRecipient(
+    recipientField: string,
+    payload: SubmissionCreatedEvent,
+  ): string | undefined {
+    if (recipientField.includes("@")) return recipientField;
+    const [stepId, fieldId] = recipientField.split(".");
+    const stepValues = payload.values[stepId];
+    return stepValues && !Array.isArray(stepValues)
+      ? (stepValues[fieldId] as string | undefined)
+      : undefined;
   }
 
   /**

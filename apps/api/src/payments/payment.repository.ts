@@ -1,6 +1,9 @@
 import { Injectable } from "@nestjs/common";
-import { DataSource, Repository } from "typeorm";
-import { PaymentEntity } from "../database/entities/payment.entity";
+import { DataSource, In, Repository } from "typeorm";
+import {
+  PaymentEntity,
+  PaymentStatus,
+} from "../database/entities/payment.entity";
 
 @Injectable()
 export class PaymentRepository {
@@ -23,6 +26,18 @@ export class PaymentRepository {
 
   findByReference(referenceNumber: string): Promise<PaymentEntity | null> {
     return this.repo.findOne({ where: { referenceNumber } });
+  }
+
+  /**
+   * Non-terminal payments that reconciliation should re-check with EzPay.
+   * PENDING (created, citizen may still be paying) and INITIATED (provider
+   * token issued) can still converge to success/failure; SUCCESS / FAILED /
+   * CANCELLED / MISMATCHED / REFUNDED are terminal and left alone.
+   */
+  findReconcilable(): Promise<PaymentEntity[]> {
+    return this.repo.find({
+      where: { status: In([PaymentStatus.PENDING, PaymentStatus.INITIATED]) },
+    });
   }
 
   save(p: PaymentEntity): Promise<PaymentEntity> {

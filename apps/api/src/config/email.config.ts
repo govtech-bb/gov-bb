@@ -12,4 +12,11 @@ export default registerAs("email", () => ({
   // SES configuration set for bounce/complaint tracking via SNS/EventBridge.
   // Optional — omit to send without telemetry.
   configurationSet: process.env.SES_CONFIGURATION_SET,
+
+  // Non-prod QA override: when set, the EmailProcessor redirects EVERY
+  // outbound email (citizen confirmation and MDA/department notification) to
+  // this single inbox instead of the configured recipient, and notes the
+  // intended recipient in the subject. Lets QA observe all mail without
+  // hitting real recipients or SES-verifying each one. Leave UNSET in prod.
+  overrideRecipient: process.env.EMAIL_OVERRIDE_RECIPIENT,
 }));

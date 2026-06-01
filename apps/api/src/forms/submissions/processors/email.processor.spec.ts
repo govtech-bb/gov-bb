@@ -130,6 +130,32 @@ describe("EmailProcessor", () => {
       expect(getSentInput().FromEmailAddress).toBe("noreply@test.gov");
     });
 
+    it("uses a literal recipientField (contains @) verbatim — e.g. an MDA/department address", async () => {
+      await processor.process(
+        makePayload({ recipientField: "mda-registration@govtech.bb" }),
+      );
+
+      expect(getSentInput().Destination?.ToAddresses).toEqual([
+        "mda-registration@govtech.bb",
+      ]);
+    });
+
+    it("redirects all mail to EMAIL_OVERRIDE_RECIPIENT when set, tagging the intended recipient in the subject", async () => {
+      processor = new EmailProcessor(
+        makeConfig({ "email.overrideRecipient": "qa-inbox@govtech.bb" }),
+        makeTemplateService(),
+        makeBodyBuilder(),
+      );
+
+      await processor.process(makePayload({ subject: "Birth cert received" }));
+
+      const input = getSentInput();
+      expect(input.Destination?.ToAddresses).toEqual(["qa-inbox@govtech.bb"]);
+      const subject = (input.Content?.Simple?.Subject?.Data as string) ?? "";
+      expect(subject).toContain("jane@example.com"); // intended recipient preserved
+      expect(subject).toContain("Birth cert received");
+    });
+
     it("uses the subject from processor config when provided", async () => {
       await processor.process(
         makePayload({ subject: "Passport renewal received" }),
