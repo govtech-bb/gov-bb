@@ -617,4 +617,58 @@ describe("FieldRenderer", () => {
       ).toBeNull();
     });
   });
+
+  // -------------------------------------------------------------------------
+  // ui.hideLabel — visually hides the label/legend while keeping it in the DOM
+  // so the accessible name (htmlFor / <legend> grouping) is preserved.
+  // -------------------------------------------------------------------------
+  describe("ui.hideLabel", () => {
+    it("text → label is present and carries govbb-visually-hidden when set", () => {
+      const { container } = renderField(
+        primitive("text", { label: "Email address", ui: { hideLabel: true } }),
+      );
+      const label = container.querySelector(".govbb-label");
+      expect(label).toBeTruthy();
+      expect(label?.textContent).toBe("Email address");
+      expect(label).toHaveClass("govbb-visually-hidden");
+    });
+
+    it("text → label has no govbb-visually-hidden when flag is unset", () => {
+      const { container } = renderField(primitive("text"));
+      const label = container.querySelector(".govbb-label");
+      expect(label).toBeTruthy();
+      expect(label).not.toHaveClass("govbb-visually-hidden");
+    });
+
+    it("radio → legend is present and carries govbb-visually-hidden when set", () => {
+      const { container } = renderField(
+        primitive("radio", {
+          label: "Pick one",
+          options: [
+            { value: "yes", label: "Yes" },
+            { value: "no", label: "No" },
+          ],
+          ui: { hideLabel: true },
+        }),
+      );
+      const legend = container.querySelector(".govbb-fieldset__legend");
+      expect(legend).toBeTruthy();
+      expect(legend?.textContent).toBe("Pick one");
+      expect(legend).toHaveClass("govbb-visually-hidden");
+    });
+
+    it("radio → legend has no govbb-visually-hidden when flag is unset", () => {
+      const { container } = renderField(
+        primitive("radio", {
+          options: [
+            { value: "yes", label: "Yes" },
+            { value: "no", label: "No" },
+          ],
+        }),
+      );
+      const legend = container.querySelector(".govbb-fieldset__legend");
+      expect(legend).toBeTruthy();
+      expect(legend).not.toHaveClass("govbb-visually-hidden");
+    });
+  });
 });
