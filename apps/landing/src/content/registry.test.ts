@@ -13,14 +13,14 @@ import {
 
 describe('resolveServiceHref', () => {
   it('rewrites a bare service slug to its category-prefixed URL', () => {
-    expect(resolveServiceHref('/apply-for-a-passport')).toBe(
-      '/travel-id-citizenship/apply-for-a-passport',
+    expect(resolveServiceHref('/get-a-document-notarised')).toBe(
+      '/travel-id-citizenship/get-a-document-notarised',
     )
     expect(resolveServiceHref('/register-a-birth')).toBe(
       '/family-birth-relationships/register-a-birth',
     )
-    expect(resolveServiceHref('/start-a-business')).toBe(
-      '/business-trade/start-a-business',
+    expect(resolveServiceHref('/loud-music-permit')).toBe(
+      '/business-trade/loud-music-permit',
     )
   })
 
@@ -35,8 +35,8 @@ describe('resolveServiceHref', () => {
 
   it('leaves an already-canonical path unchanged', () => {
     expect(
-      resolveServiceHref('/travel-id-citizenship/apply-for-a-passport'),
-    ).toBe('/travel-id-citizenship/apply-for-a-passport')
+      resolveServiceHref('/travel-id-citizenship/get-a-document-notarised'),
+    ).toBe('/travel-id-citizenship/get-a-document-notarised')
   })
 
   it('leaves external, mailto, tel and anchor links unchanged', () => {

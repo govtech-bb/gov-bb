@@ -35,18 +35,6 @@ contact:
     type: address
     value: 'Government Headquarters, Bay Street, St. Michael, Barbados, W.I.'
 onlineServices:
-  - title: Pay taxes online
-    href: /tax-online
-    description: File and pay your taxes online with the BRA.
-  - title: EZpay
-    href: /ezpay
-    description: Pay government bills online via EZpay.
-  - title: Information about business tax
-    href: /information-about-business-tax
-    description: Tax obligations for businesses operating in Barbados.
-  - title: Financial services for businesses
-    href: /financial-services-for-businesses
-    description: Government financial services for businesses.
   - title: Apply for financial assistance
     href: /apply-financial-assistance
     description: Government financial assistance for individuals.
