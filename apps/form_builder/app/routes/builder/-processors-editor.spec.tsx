@@ -172,6 +172,56 @@ it("prunes the webhook headers key when the last header is removed", async () =>
   expect(state()[0].config).not.toHaveProperty("headers");
 });
 
+it("renders an email processor's per-instance label as its card header", () => {
+  const initial: RecipeDraft = {
+    formId: "f",
+    title: "T",
+    steps: [],
+    processors: [
+      { id: "em-1", type: "email", config: { recipientField: "", label: "Applicant Email" } },
+      {
+        id: "em-2",
+        type: "email",
+        config: { recipientField: "contactDetails.email", label: "MDA Email" },
+      },
+    ],
+  };
+  render(<Harness initial={initial} />);
+  expect(screen.getByText("Applicant Email")).toBeInTheDocument();
+  expect(screen.getByText("MDA Email")).toBeInTheDocument();
+});
+
+it("falls back to the type label when an email processor has no label", async () => {
+  render(<Harness initial={emptyDraft} />);
+  await addProcessor("email");
+  // Scope to the card header <strong>; "Email confirmation" also appears as the
+  // add-processor dropdown option.
+  expect(
+    screen.getByText("Email confirmation", { selector: "strong" }),
+  ).toBeInTheDocument();
+});
+
+it("edits an email processor's label", async () => {
+  render(<Harness initial={emptyDraft} />);
+  await addProcessor("email");
+  await userEvent.type(screen.getByLabelText(/^label$/i), "MDA Email");
+  expect(state()[0].config.label).toBe("MDA Email");
+});
+
+it("prunes the label key when cleared", async () => {
+  const initial: RecipeDraft = {
+    formId: "f",
+    title: "T",
+    steps: [],
+    processors: [
+      { id: "em-1", type: "email", config: { recipientField: "", label: "MDA Email" } },
+    ],
+  };
+  render(<Harness initial={initial} />);
+  await userEvent.clear(screen.getByLabelText(/^label$/i));
+  expect(state()[0].config).not.toHaveProperty("label");
+});
+
 it("shows an existing payment processor read-only, not editable", () => {
   const initial: RecipeDraft = {
     formId: "f",

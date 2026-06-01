@@ -41,6 +41,44 @@ function makeRequiredSteps(): RecipeStepDraft[] {
   ];
 }
 
+/**
+ * The two email processors every new form seeds with (issue #501). Both share
+ * the email template; the role distinction is the configured `recipientField`
+ * plus the per-instance `label`:
+ *
+ * - **Applicant Email** — `recipientField` is left blank for the author to point
+ *   at the applicant's email field (a brand-new form has no fields yet, and
+ *   there's no canonical applicant-email path). The server Validate flow still
+ *   catches a recipientField left blank at deploy time.
+ * - **MDA Email** — `recipientField` is the reserved `contactDetails.email`,
+ *   resolved at runtime from the form's contact details (see Plan 2).
+ *
+ * Fresh `crypto.randomUUID()` ids per call so RESET / new-form flows re-seed
+ * with distinct editor ids, mirroring makeRequiredSteps().
+ */
+function makeDefaultProcessors(): RecipeProcessorDraft[] {
+  return [
+    {
+      id: crypto.randomUUID(),
+      type: "email",
+      config: {
+        recipientField: "",
+        label: "Applicant Email",
+        subject: "Your application has been received",
+      },
+    },
+    {
+      id: crypto.randomUUID(),
+      type: "email",
+      config: {
+        recipientField: "contactDetails.email",
+        label: "MDA Email",
+        subject: "New form submission received",
+      },
+    },
+  ];
+}
+
 export type RecipeAction =
   | { type: "ADD_STEP" }
   | { type: "REMOVE_STEP"; stepId: string }
@@ -102,11 +140,13 @@ export type RecipeAction =
     };
 
 // Shared module-level constant; treat as immutable. RESET / new-form flows
-// call makeRequiredSteps() afresh, so don't mutate this object's arrays in place.
+// call makeRequiredSteps() and makeDefaultProcessors() afresh, so don't mutate
+// this object's arrays in place.
 export const EMPTY_DRAFT: RecipeDraft = {
   formId: "",
   title: "",
   steps: makeRequiredSteps(),
+  processors: makeDefaultProcessors(),
 };
 
 export function nextStepId(steps: RecipeStepDraft[]): string {
@@ -273,7 +313,12 @@ export function recipeReducer(
     }
 
     case "RESET": {
-      return { formId: "", title: "", steps: makeRequiredSteps() };
+      return {
+        formId: "",
+        title: "",
+        steps: makeRequiredSteps(),
+        processors: makeDefaultProcessors(),
+      };
     }
 
     case "SET_FORM_META": {
