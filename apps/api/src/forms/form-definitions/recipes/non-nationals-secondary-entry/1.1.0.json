@@ -1,0 +1,259 @@
+{
+  "formId": "non-nationals-secondary-entry",
+  "title": "Application for Consideration of Non-Nationals and Children Born Outside of Barbados for Entry to Government Secondary Schools",
+  "version": "1.1.0",
+  "steps": [
+    {
+      "stepId": "child-information",
+      "title": "Child Information",
+      "elements": [
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "First Name",
+            "fieldId": "child_first_name",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Surname",
+            "fieldId": "child_surname",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Other Name(s)",
+            "fieldId": "child_other_names",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Country of Birth",
+            "fieldId": "country_of_birth",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Name of Present School",
+            "fieldId": "present_school",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Gender",
+            "fieldId": "gender",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Date of Birth of Child",
+            "fieldId": "date_of_birth",
+            "required": true,
+            "inputType": "date"
+          }
+        },
+        {
+          "ref": "components/generic/radio",
+          "overrides": {
+            "label": "Caricom National",
+            "fieldId": "caricom_national",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "required": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "parent-guardian-information",
+      "title": "Parent/Guardian Information",
+      "elements": [
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Title",
+            "fieldId": "guardian_title",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "First Name",
+            "fieldId": "guardian_first_name",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Last Name",
+            "fieldId": "guardian_last_name",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Address",
+            "fieldId": "guardian_address",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Contact Number",
+            "fieldId": "guardian_contact_number",
+            "required": true,
+            "inputType": "tel"
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Country of Birth of Parent/Guardian",
+            "fieldId": "guardian_country_of_birth",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Status",
+            "fieldId": "guardian_status",
+            "required": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "document-upload",
+      "title": "Document Upload",
+      "elements": [
+        {
+          "ref": "components/generic/show-hide",
+          "overrides": {
+            "label": "Document Requirements",
+            "content": "A copy of the birth certificate should be uploaded by all Non-Nationals. Caricom Nationals also have to upload a certificate of Immigration Status for the Parent. All other Non-Nationals should upload a copy of Immigration Status for the child. Persons unable to upload these documents should submit physical copies to the school.",
+            "fieldId": "document_requirements_info"
+          }
+        },
+        {
+          "ref": "components/generic/file-upload",
+          "overrides": {
+            "label": "Birth Certificate",
+            "accept": "application/pdf,image/*",
+            "fieldId": "birth_certificate",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/file-upload",
+          "overrides": {
+            "label": "Immigration Status Document (Parent for CARICOM Nationals, Child for Other Non-Nationals)",
+            "accept": "application/pdf,image/*",
+            "fieldId": "immigration_status_document",
+            "required": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "applicant-signature",
+      "title": "Applicant Declaration",
+      "elements": [
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Signature",
+            "fieldId": "applicant_signature",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Date",
+            "fieldId": "applicant_date",
+            "required": true,
+            "inputType": "date"
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "official-use",
+      "title": "For Official Use",
+      "elements": [
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Certification",
+            "value": "This is to certify that I have seen the request submitted by the parent/guardian of the pupil",
+            "fieldId": "official_certification",
+            "disabled": true,
+            "required": false,
+            "inputType": "textarea"
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Signature",
+            "fieldId": "official_signature",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic/text",
+          "overrides": {
+            "label": "Date",
+            "fieldId": "official_date",
+            "required": false,
+            "inputType": "date"
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Submission Confirmation",
+      "elements": [],
+      "behaviours": []
+    }
+  ],
+  "createdAt": "2026-05-28T16:03:10.475Z",
+  "updatedAt": "2026-05-28T16:03:10.475Z"
+}
