@@ -96,6 +96,56 @@ it("populates the recipient-field picker from the form's fields", async () => {
   );
 });
 
+it("offers the MDA contact email as a recipient option when the draft has contact details", async () => {
+  const initial: RecipeDraft = {
+    formId: "f",
+    title: "T",
+    steps: [],
+    contactDetails: {
+      title: "Ministry of Health",
+      telephoneNumber: "+1 246 555 0100",
+      email: "health@gov.bb",
+    },
+  };
+  render(<Harness initial={initial} />);
+  await addProcessor("email");
+  const picker = screen.getByLabelText(/recipient field/i);
+  expect(
+    within(picker).getByRole("option", {
+      name: "MDA contact email (contactDetails.email)",
+    }),
+  ).toHaveValue("contactDetails.email");
+});
+
+it("does not offer the MDA contact email option when the draft has no contact details", async () => {
+  render(<Harness initial={emptyDraft} />);
+  await addProcessor("email");
+  const picker = screen.getByLabelText(/recipient field/i);
+  expect(
+    within(picker).queryByRole("option", { name: /MDA contact email/ }),
+  ).not.toBeInTheDocument();
+});
+
+it("selects the MDA contact email as the recipient path", async () => {
+  const initial: RecipeDraft = {
+    formId: "f",
+    title: "T",
+    steps: [],
+    contactDetails: {
+      title: "Ministry of Health",
+      telephoneNumber: "+1 246 555 0100",
+      email: "health@gov.bb",
+    },
+  };
+  render(<Harness initial={initial} />);
+  await addProcessor("email");
+  await userEvent.selectOptions(
+    screen.getByLabelText(/recipient field/i),
+    "contactDetails.email",
+  );
+  expect(state()[0].config.recipientField).toBe("contactDetails.email");
+});
+
 it("edits an email processor's recipient path", async () => {
   render(<Harness initial={emptyDraft} />);
   await addProcessor("email");
