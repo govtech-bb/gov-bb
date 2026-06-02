@@ -1,4 +1,4 @@
-# 0023 — Repo-recipe integrity guards must be always-run, not affected-gated
+# 0026 — Repo-recipe integrity guards must be always-run, not affected-gated
 
 **Date:** 2026-06-01
 **Status:** Accepted

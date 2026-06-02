@@ -6,6 +6,11 @@ import {
   type ServiceContractRecipe,
 } from "@govtech-bb/form-types";
 import { getDataSource } from "../db.js";
+import {
+  latestVersionPerFormSql,
+  findTitleCollision,
+  type FormTitleRow,
+} from "./form-uniqueness.js";
 
 export const formsRouter = Router();
 
@@ -88,12 +93,11 @@ formsRouter.get("/published", listPublishedHandler);
 formsRouter.get("/", async (_req, res) => {
   try {
     const ds = await getDataSource();
-    const rows = await ds.query(`
-      SELECT DISTINCT ON (form_id)
-        id, form_id, schema->>'title' AS title, version, schema
-      FROM form_definitions
-      ORDER BY form_id, string_to_array(version, '.')::int[] DESC
-    `);
+    const rows = await ds.query(
+      latestVersionPerFormSql(
+        "id, form_id, schema->>'title' AS title, version, schema",
+      ),
+    );
     const forms = rows.map((r: any) => ({
       id: r.id,
       formId: r.form_id,
@@ -131,10 +135,34 @@ formsRouter.get("/:formId", async (req, res) => {
   }
 });
 
-// POST /builder/forms — submit a new recipe
-formsRouter.post("/", async (req, res) => {
+// Query the latest version of every form and return whichever (if any) has a
+// title that collides with `title` (case-insensitive, whitespace-trimmed),
+// ignoring `excludeFormId` so a form never collides with itself. Reuses the
+// same "latest version per formId" aggregation that powers GET /builder/forms.
+async function findTitleCollisionInDb(
+  ds: Awaited<ReturnType<typeof getDataSource>>,
+  title: string,
+  excludeFormId: string,
+): Promise<FormTitleRow | null> {
+  const rows: FormTitleRow[] = await ds.query(
+    latestVersionPerFormSql("form_id, schema->>'title' AS title"),
+  );
+  return findTitleCollision(rows, title, excludeFormId);
+}
+
+// POST /builder/forms — submit a new recipe.
+//
+// `isNew` flags a brand-new form (vs. a new *version* of an existing one — both
+// flow through here). It's the only signal that distinguishes the two at the
+// API: when set, reusing an existing formId is rejected; new versions keep
+// their id and are unaffected.
+export async function createFormHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
   try {
     const recipe = req.body.recipe as ServiceContractRecipe;
+    const isNew = req.body.isNew === true;
     if (!recipe?.formId || !recipe?.version) {
       res.status(400).json({ error: "recipe must have formId and version" });
       return;
@@ -150,6 +178,32 @@ formsRouter.post("/", async (req, res) => {
       });
       return;
     }
+    // formId uniqueness — only for a create. A new form may not reuse a formId
+    // that already belongs to another form (any version).
+    if (isNew) {
+      const idRows = await ds.query(
+        `SELECT 1 FROM form_definitions WHERE form_id = $1 LIMIT 1`,
+        [recipe.formId],
+      );
+      if (idRows.length > 0) {
+        res.status(409).json({
+          error: `A form with the ID "${recipe.formId}" already exists. Choose a different ID.`,
+        });
+        return;
+      }
+    }
+    // title uniqueness — across the latest version of every other form.
+    const titleCollision = await findTitleCollisionInDb(
+      ds,
+      recipe.title ?? "",
+      recipe.formId,
+    );
+    if (titleCollision) {
+      res.status(409).json({
+        error: `A form titled "${recipe.title}" already exists. Choose a different title.`,
+      });
+      return;
+    }
     const entity = repo.create({
       formId: recipe.formId,
       version: recipe.version,
@@ -161,10 +215,14 @@ formsRouter.post("/", async (req, res) => {
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
-});
+}
+formsRouter.post("/", createFormHandler);
 
 // PUT /builder/forms/:formId — update existing draft
-formsRouter.put("/:formId", async (req, res) => {
+export async function updateFormHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
   try {
     const recipe = req.body.recipe as ServiceContractRecipe;
     const ds = await getDataSource();
@@ -191,6 +249,19 @@ formsRouter.put("/:formId", async (req, res) => {
       });
       return;
     }
+    // title uniqueness on rename — reject renaming into another form's title,
+    // while keeping this form's own title (excluded by formId) is allowed.
+    const titleCollision = await findTitleCollisionInDb(
+      ds,
+      recipe.title ?? "",
+      String(req.params.formId),
+    );
+    if (titleCollision) {
+      res.status(409).json({
+        error: `A form titled "${recipe.title}" already exists. Choose a different title.`,
+      });
+      return;
+    }
     await ds.query(`UPDATE form_definitions SET schema = $1 WHERE id = $2`, [
       recipe,
       rows[0].id,
@@ -199,7 +270,8 @@ formsRouter.put("/:formId", async (req, res) => {
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
-});
+}
+formsRouter.put("/:formId", updateFormHandler);
 
 // DELETE /builder/forms/:formId/versions/:version — surgically remove a single
 // draft version row. Unlike the form-level delete below, this writes NO
