@@ -6,6 +6,7 @@ publish_date: 2026-05-20
 category: youth-and-community
 subcategory: skills-trades-vocational-training
 service_type: information
+form_id: youth-opportunity-cap
 ---
 
 Structured creative training to help you build a career in art, design and animation.
@@ -23,7 +24,7 @@ Structured instruction in airbrushing, animation, automotive painting, basic bod
 
 Complete the short application form to register your interest. Your progress is saved automatically.
 
-<!-- [Apply now](https://alpha.gov.bb/youth-and-community/skills-trades-vocational-training/cap/form) -->
+<a data-start-link>Start now</a>
 
 ## More information
 

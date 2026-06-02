@@ -40,7 +40,10 @@ function CitationMarker({ citation }: { citation: Citation }) {
       target="_blank"
       title={label}
     >
-      <span aria-hidden="true" className={`size-3.5 rounded-[3px] ${favColor}`} />
+      <span
+        aria-hidden="true"
+        className={`size-3.5 rounded-[3px] ${favColor}`}
+      />
       {host}
     </a>
   );
@@ -126,6 +129,13 @@ function parseChoiceArgs(raw: string | undefined): ChoicesArgs | undefined {
   }
 }
 
+// The model tends to narrate the question as text AND call present_choices.
+// Drop a trailing interrogative sentence so the question shows once (as the
+// buttons), keeping any lead-in. Without this the text+buttons double-render.
+function stripTrailingQuestion(text: string): string {
+  return text.replace(/\s*[^.!?\n]*\?\s*$/, "").trimEnd();
+}
+
 function BubbleImpl({
   message,
   onChoice,
@@ -140,10 +150,33 @@ function BubbleImpl({
   citations?: Citation[];
 }) {
   const text = useMemo(() => extractText(message), [message]);
+
+  const choicesPart = findToolCall(message, "present_choices");
+  // present_choices is a no-op server tool: once it resolves, the part lands in
+  // "complete". Keep rendering the buttons in that state (they go disabled, not
+  // gone, once a later turn lands) — otherwise they flash on then vanish.
+  const choicesReady =
+    choicesPart?.state === "input-complete" ||
+    choicesPart?.state === "approval-requested" ||
+    choicesPart?.state === "approval-responded" ||
+    choicesPart?.state === "complete";
+  const choicesArgs = choicesReady
+    ? parseChoiceArgs(choicesPart?.arguments)
+    : undefined;
+  const choices = (choicesArgs?.choices ?? []).filter(
+    (c): c is string => typeof c === "string" && c.length > 0,
+  );
+  const hasChoices = choices.length > 0;
+
+  // Keep the lead-in text but drop the trailing question when buttons render it.
+  const displayText = useMemo(
+    () => (hasChoices ? stripTrailingQuestion(text) : text),
+    [text, hasChoices],
+  );
   const renderedMarkdown = useMemo(() => {
-    const normalized = normalizeMarkdown(text);
+    const normalized = normalizeMarkdown(displayText);
     return annotateCitations(normalized, citations ?? []);
-  }, [text, citations]);
+  }, [displayText, citations]);
   const markdownComponents = useMemo(
     () => buildMarkdownComponents(citations ?? []),
     [citations],
@@ -159,26 +192,19 @@ function BubbleImpl({
     );
   }
 
-  const choicesPart = findToolCall(message, "present_choices");
   const submitPart = findToolCall(message, "submit_form");
   const submitApproval =
     submitPart?.state === "approval-requested" ? submitPart.approval : null;
+  // "Not yet" flips the part to approval-responded/approved=false. Without this
+  // the prompt would just vanish, leaving the decline unacknowledged.
+  const submitDeclined =
+    submitPart?.state === "approval-responded" &&
+    submitPart.approval?.approved === false;
 
-  const choicesReady =
-    choicesPart?.state === "input-complete" ||
-    choicesPart?.state === "approval-requested" ||
-    choicesPart?.state === "approval-responded";
-  const choicesArgs = choicesReady
-    ? parseChoiceArgs(choicesPart?.arguments)
-    : undefined;
-  const choices = (choicesArgs?.choices ?? []).filter(
-    (c): c is string => typeof c === "string" && c.length > 0,
-  );
-  const hasChoices = choices.length > 0;
+  const showText = displayText.length > 0;
 
-  const showText = text.length > 0 && !choicesPart;
-
-  if (!showText && !hasChoices && !submitApproval) return null;
+  if (!showText && !hasChoices && !submitApproval && !submitDeclined)
+    return null;
 
   return (
     <div className="flex max-w-[92%] items-start gap-2.5">
@@ -243,6 +269,12 @@ function BubbleImpl({
                 </button>
               </div>
             </div>
+          )}
+
+          {submitDeclined && (
+            <p className="text-bubble text-mid-grey-00 italic">
+              Not submitted.
+            </p>
           )}
         </div>
       </div>

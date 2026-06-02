@@ -18,6 +18,28 @@ interface BehavioursEditorProps {
 
 const OPERATOR_OPTIONS = ["equal", "notEqual", "in", "exists"] as const;
 
+type BehaviourDescriptor = (typeof BEHAVIOUR_TYPE_DESCRIPTORS)[number];
+
+// Resolve whether a conditional's selected Target Field is a boolean field
+// (checkbox / show-hide), matched on step + resolved field id. Drives the
+// type-aware condition value control. (#565)
+function targetFieldIsBoolean(
+  record: Record<string, unknown>,
+  descriptor: BehaviourDescriptor | undefined,
+  fieldRefs: FieldRef[],
+): boolean {
+  const stepParam = descriptor?.params.find((p) => p.kind === "stepRef");
+  const fieldParam = descriptor?.params.find((p) => p.kind === "fieldRef");
+  if (!fieldParam) return false;
+  const fieldId = record[fieldParam.name];
+  if (!fieldId) return false;
+  const stepId = stepParam ? record[stepParam.name] : undefined;
+  const ref = fieldRefs.find(
+    (f) => f.fieldId === fieldId && (stepId == null || f.stepId === stepId),
+  );
+  return ref?.isBoolean ?? false;
+}
+
 export function BehavioursEditor({
   scope,
   behaviours,
@@ -72,6 +94,22 @@ export function BehavioursEditor({
         const current = next[fieldParam.name];
         if (current && !validIds.includes(current as string)) {
           next[fieldParam.name] = "";
+        }
+      }
+      // When the resolved Target Field's boolean-ness changes (because the step
+      // or field changed), reset the condition value to a type-appropriate
+      // default — boolean targets to `true`, others to "" — so a stale string
+      // can't be saved against a boolean target. Mirrors the #519 invalidation.
+      const valueParam = descriptor?.params.find((p) => p.kind === "value");
+      if (
+        valueParam &&
+        fieldParam &&
+        (paramName === fieldParam.name || paramName === stepParam?.name)
+      ) {
+        const targetIsBoolean = targetFieldIsBoolean(next, descriptor, fieldRefs);
+        const valueIsBoolean = typeof next[valueParam.name] === "boolean";
+        if (targetIsBoolean !== valueIsBoolean) {
+          next[valueParam.name] = targetIsBoolean ? true : "";
         }
       }
       return next as unknown as Behaviour;
@@ -161,6 +199,31 @@ export function BehavioursEditor({
                 );
               }
               if (param.kind === "value") {
+                // Boolean target ⇒ a true/false select storing a real boolean,
+                // so "equals true/false" against a checkbox actually fires at
+                // runtime. Any other target keeps the free-text input. (#565)
+                if (targetFieldIsBoolean(bRecord, descriptor, fieldRefs)) {
+                  const raw = bRecord[param.name];
+                  const boolValue = typeof raw === "boolean" ? raw : true;
+                  return (
+                    <div key={param.name} className={styles.formGroup}>
+                      <label>{param.label}</label>
+                      <select
+                        value={String(boolValue)}
+                        onChange={(e) =>
+                          handleParamChange(
+                            index,
+                            param.name,
+                            e.target.value === "true",
+                          )
+                        }
+                      >
+                        <option value="true">true</option>
+                        <option value="false">false</option>
+                      </select>
+                    </div>
+                  );
+                }
                 return (
                   <div key={param.name} className={styles.formGroup}>
                     <label>{param.label}</label>
