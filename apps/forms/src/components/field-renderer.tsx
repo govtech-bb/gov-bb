@@ -28,9 +28,9 @@ const parseDatePart = (raw: string): number | undefined => {
   return Number.isNaN(parsed) ? undefined : parsed;
 };
 
-/** Render a numeric date part, showing "" for a missing or NaN value. */
-const displayDatePart = (part: number | undefined): string =>
-  part === undefined || Number.isNaN(part) ? "" : String(part);
+/** Render a numeric date part, showing "" for a missing (null/undefined) or NaN value. */
+const displayDatePart = (part: number | null | undefined): string =>
+  part == null || Number.isNaN(part) ? "" : String(part);
 
 type DatePart = "day" | "month" | "year";
 

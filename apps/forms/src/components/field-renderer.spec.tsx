@@ -552,6 +552,18 @@ describe("FieldRenderer", () => {
       });
     });
 
+    it("does not display 'null' when a part is null", () => {
+      mockState = {
+        value: { day: null, month: null, year: null },
+        meta: { isValid: true, errors: [] },
+      };
+      const { container } = renderField(primitive("date"));
+      const inputs = container.querySelectorAll('input[type="text"]');
+      inputs.forEach((input) => {
+        expect((input as HTMLInputElement).value).toBe("");
+      });
+    });
+
     it("does not display NaN when a part holds a non-numeric value", () => {
       mockState = {
         value: { day: NaN, month: NaN, year: NaN },
