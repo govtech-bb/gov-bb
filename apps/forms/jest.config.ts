@@ -60,7 +60,12 @@ const config: Config = {
   ],
   coverageReporters: ["text-summary", "lcov", "html"],
   coverageThreshold: {
-    global: { branches: 89, functions: 90, lines: 95, statements: 94 },
+    // `functions` was lowered 90 -> 89 when field rule-checking moved out of
+    // this app into `@govtech-bb/form-validation` (issue #433): ~22 fully
+    // covered pure validation functions were deleted here (their logic, and
+    // coverage, now live in that package), shrinking the function pool enough
+    // to drop the global ratio. Branches/lines/statements are unaffected.
+    global: { branches: 89, functions: 89, lines: 95, statements: 94 },
   },
 };
 
