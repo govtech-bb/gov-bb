@@ -2,7 +2,7 @@
  * temp-teacher-application.smoke.spec.ts
  *
  * Live, on-demand smoke test for the "Application for the Post of Temporary
- * Teacher" form (formId `temp-teacher-application-barbados`, version 1.1.0).
+ * Teacher" form (formId `temp-teacher-application-barbados`, version 1.2.0).
  *
  * It drives the REAL form end-to-end: fills every step with valid data, uploads
  * real files through the presign → PUT-to-S3 → confirm flow, SUBMITS FOR REAL,
@@ -159,7 +159,7 @@ test.describe("Temporary Teacher Application — Live Smoke", () => {
     step = expectStep(page, "educational-record");
     await fill(page, step, "institution", "University of the West Indies");
     await fill(page, step, "country", "Barbados");
-    await fill(page, step, "dates", "2008-2012");
+    await fill(page, step, "educational-dates", "2008-2012");
     await selectRadio(page, step, "addAnother", "no");
     await advance(page, step);
 
@@ -167,7 +167,7 @@ test.describe("Temporary Teacher Application — Live Smoke", () => {
     step = expectStep(page, "qualifications");
     await fill(page, step, "subject", "Mathematics");
     await fill(page, step, "examiningBody", "Caribbean Examinations Council");
-    await fill(page, step, "dates", "2010");
+    await fill(page, step, "qualification-date", "2010");
     await fill(page, step, "level", "Grade 1");
     await selectRadio(page, step, "addAnother", "no");
     await advance(page, step);

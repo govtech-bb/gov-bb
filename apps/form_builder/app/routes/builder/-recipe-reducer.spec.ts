@@ -167,20 +167,19 @@ describe("EMPTY_DRAFT", () => {
     );
   });
 
-  it("seeds exactly two email processors", () => {
-    expect(EMPTY_DRAFT.processors).toHaveLength(2);
+  it("seeds exactly one email processor", () => {
+    expect(EMPTY_DRAFT.processors).toHaveLength(1);
     expect(EMPTY_DRAFT.processors!.every((p) => p.type === "email")).toBe(true);
   });
 
-  it("seeds an Applicant Email with a blank recipient", () => {
-    const config = emailConfig(EMPTY_DRAFT.processors![0]);
-    expect(config.label).toBe("Applicant Email");
-    expect(config.recipientField).toBe("");
-    expect(config.subject).toBeTruthy();
+  it("does not seed a blank-recipient processor", () => {
+    for (const p of EMPTY_DRAFT.processors!) {
+      expect(emailConfig(p).recipientField).not.toBe("");
+    }
   });
 
   it("seeds an MDA Email targeting contactDetails.email", () => {
-    const config = emailConfig(EMPTY_DRAFT.processors![1]);
+    const config = emailConfig(EMPTY_DRAFT.processors![0]);
     expect(config.label).toBe("MDA Email");
     expect(config.recipientField).toBe("contactDetails.email");
     expect(config.subject).toBeTruthy();
@@ -230,14 +229,13 @@ describe("RESET", () => {
     expect(first.steps).not.toBe(second.steps);
   });
 
-  it("re-seeds the two labelled email processors", () => {
+  it("re-seeds the labelled MDA Email processor", () => {
     const result = recipeReducer(
       { ...baseDraft(), steps: [...EMPTY_DRAFT.steps] },
       { type: "RESET" },
     );
-    expect(result.processors).toHaveLength(2);
+    expect(result.processors).toHaveLength(1);
     expect(result.processors!.map((p) => emailConfig(p).label)).toEqual([
-      "Applicant Email",
       "MDA Email",
     ]);
   });
@@ -249,7 +247,6 @@ describe("RESET", () => {
     const firstIds = first.processors!.map((p) => p.id);
     const secondIds = second.processors!.map((p) => p.id);
     expect(firstIds[0]).not.toBe(secondIds[0]);
-    expect(firstIds[1]).not.toBe(secondIds[1]);
   });
 });
 

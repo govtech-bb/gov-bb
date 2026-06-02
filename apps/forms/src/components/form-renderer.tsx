@@ -223,7 +223,7 @@ export default function FormRenderer({
   const handleContinue = async () => {
     // Validate current step fields
     const results = await Promise.all(
-      currentFields.map((field) => form.validateField(field.id, "change")),
+      currentFields.map((field) => form.validateField(field.id, "submit")),
     );
 
     const scrollToTop = () => {
@@ -351,146 +351,154 @@ export default function FormRenderer({
     return result;
   });
 
+  // The submission confirmation owns its own full-width layout (a full-bleed
+  // banner plus inner containers), so it renders outside the page container.
+  if (isSubmissionConfirmation) {
+    return (
+      <div className="form-page-confirmation">
+        <SubmissionConfirmation
+          key={"submission-confirmation"}
+          serviceTitle={formMeta.formTitle}
+          stepTitle={currentStep.title}
+          processingMessage={currentStep.description}
+          nextSteps={currentStep.nextSteps}
+          contactDetails={formMeta.contactDetails}
+          onTryAgain={() => navigateToStep("check-your-answers")}
+          submissionState={submissionState}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="form-page">
-      {!isSubmissionConfirmation && (
-        <p className="form-page__service-title"> {formMeta.formTitle} </p>
-      )}
+    <div className="container pb-8 lg:pb-16">
+      <div className="form-page form-width">
+        <div className="form-page__header">
+          <p className="form-page__service-title"> {formMeta.formTitle} </p>
+          <h1 className="govbb-text-h1">{currentStep.title}</h1>
+          {currentStep.description && (
+            <p className="form-page__step-description">
+              {currentStep.description}
+            </p>
+          )}
+        </div>
+        <ErrorSummary errors={errors} />
 
-      {!isSubmissionConfirmation && (
-        <h1 className="govbb-text-h1">{currentStep.title}</h1>
-      )}
-      {!isSubmissionConfirmation && currentStep.description && (
-        <p className="form-page__step-description">{currentStep.description}</p>
-      )}
-      <ErrorSummary errors={errors} />
+        <div className="form-page__step">
+          {currentStep.stepId === "check-your-answers" && (
+            <Review
+              key={"review-step"}
+              formMeta={formMeta}
+              form={form}
+              visibleSteps={visibleSteps}
+            />
+          )}
 
-      <div className="form-page__step">
-        {currentStep.stepId === "check-your-answers" && (
-          <Review
-            key={"review-step"}
-            formMeta={formMeta}
-            form={form}
-            visibleSteps={visibleSteps}
-          />
-        )}
+          {currentStep.stepId === "declaration" && (
+            <ApplicantNameDisplay form={form} />
+          )}
 
-        {currentStep.stepId === "declaration" && (
-          <ApplicantNameDisplay form={form} />
-        )}
-
-        {isSubmissionConfirmation && (
-          <SubmissionConfirmation
-            key={"submission-confirmation"}
-            serviceTitle={formMeta.formTitle}
-            stepTitle={currentStep.title}
-            nextSteps={currentStep.nextSteps}
-            contactDetails={formMeta.contactDetails}
-            onTryAgain={() => navigateToStep("check-your-answers")}
-            submissionState={submissionState}
-          />
-        )}
-
-        {fieldGroups.map((group) => {
-          if (group.type === "show-hide") {
-            const isOpen = showHideValues[group.toggle.id] ?? false;
-            return (
-              <React.Fragment key={group.toggle.id}>
-                {/* Toggle button — hint and controlled fields live outside the
+          {fieldGroups.map((group) => {
+            if (group.type === "show-hide") {
+              const isOpen = showHideValues[group.toggle.id] ?? false;
+              return (
+                <React.Fragment key={group.toggle.id}>
+                  {/* Toggle button — hint and controlled fields live outside the
                     FieldRenderer so we can wrap them all in the content border */}
+                  <FieldRenderer
+                    form={form}
+                    field={group.toggle}
+                    validationProperties={resolveValidators(group.toggle)}
+                    formId={formMeta.formId}
+                    formVersion={formMeta.version}
+                  />
+                  {isOpen && (
+                    <div className="form-page__show-hide-content">
+                      {group.toggle.hint && (
+                        <p className="govbb-hint">{group.toggle.hint}</p>
+                      )}
+                      {group.controlled.map((field) => (
+                        <FieldRenderer
+                          key={field.id}
+                          form={form}
+                          field={field}
+                          validationProperties={resolveValidators(field)}
+                          formId={formMeta.formId}
+                          formVersion={formMeta.version}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </React.Fragment>
+              );
+            }
+
+            if (group.type === "radio-conditional") {
+              // Build a map of option value → [{field, validationProperties}]
+              // so the radio FieldRenderer can render inset fields per option.
+              const insetFieldsByOption = new Map(
+                [...group.conditionalsByOption.entries()].map(
+                  ([optVal, insetFields]) => [
+                    optVal,
+                    insetFields.map((f) => ({
+                      field: f,
+                      validationProperties: resolveValidators(f),
+                    })),
+                  ],
+                ),
+              );
+
+              return (
                 <FieldRenderer
+                  key={group.radio.id}
                   form={form}
-                  field={group.toggle}
-                  validationProperties={resolveValidators(group.toggle)}
+                  field={group.radio}
+                  validationProperties={resolveValidators(group.radio)}
+                  insetFieldsByOption={insetFieldsByOption}
                   formId={formMeta.formId}
                   formVersion={formMeta.version}
                 />
-                {isOpen && (
-                  <div className="form-page__show-hide-content">
-                    {group.toggle.hint && (
-                      <p className="govbb-hint">{group.toggle.hint}</p>
-                    )}
-                    {group.controlled.map((field) => (
-                      <FieldRenderer
-                        key={field.id}
-                        form={form}
-                        field={field}
-                        validationProperties={resolveValidators(field)}
-                        formId={formMeta.formId}
-                        formVersion={formMeta.version}
-                      />
-                    ))}
-                  </div>
-                )}
-              </React.Fragment>
-            );
-          }
-
-          if (group.type === "radio-conditional") {
-            // Build a map of option value → [{field, validationProperties}]
-            // so the radio FieldRenderer can render inset fields per option.
-            const insetFieldsByOption = new Map(
-              [...group.conditionalsByOption.entries()].map(
-                ([optVal, insetFields]) => [
-                  optVal,
-                  insetFields.map((f) => ({
-                    field: f,
-                    validationProperties: resolveValidators(f),
-                  })),
-                ],
-              ),
-            );
+              );
+            }
 
             return (
               <FieldRenderer
-                key={group.radio.id}
+                key={group.field.id}
                 form={form}
-                field={group.radio}
-                validationProperties={resolveValidators(group.radio)}
-                insetFieldsByOption={insetFieldsByOption}
+                field={group.field}
+                validationProperties={resolveValidators(group.field)}
                 formId={formMeta.formId}
                 formVersion={formMeta.version}
               />
             );
-          }
+          })}
 
-          return (
-            <FieldRenderer
-              key={group.field.id}
-              form={form}
-              field={group.field}
-              validationProperties={resolveValidators(group.field)}
-              formId={formMeta.formId}
-              formVersion={formMeta.version}
-            />
-          );
-        })}
-
-        {currentStep.stepId !== "submission-confirmation" && (
-          <div className="govbb-btn-group">
-            {!hidePrevious && (
+          {currentStep.stepId !== "submission-confirmation" && (
+            <div className="govbb-btn-group">
+              {!hidePrevious && (
+                <button
+                  className="govbb-btn--secondary"
+                  type="button"
+                  onClick={handlePrevious}
+                >
+                  Previous
+                </button>
+              )}
               <button
-                className="govbb-btn--secondary"
+                className="govbb-btn"
                 type="button"
-                onClick={handlePrevious}
+                disabled={isLastFormStep && isSubmitting}
+                onClick={isLastFormStep ? handleSubmit : handleContinue}
               >
-                Previous
+                {isLastFormStep && isSubmitting
+                  ? "Submitting…"
+                  : isLastFormStep
+                    ? "Submit"
+                    : "Continue"}
               </button>
-            )}
-            <button
-              className="govbb-btn"
-              type="button"
-              disabled={isLastFormStep && isSubmitting}
-              onClick={isLastFormStep ? handleSubmit : handleContinue}
-            >
-              {isLastFormStep && isSubmitting
-                ? "Submitting…"
-                : isLastFormStep
-                  ? "Submit"
-                  : "Continue"}
-            </button>
-          </div>
-        )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

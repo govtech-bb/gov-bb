@@ -207,6 +207,50 @@ jobs:
           echo "status=TIMED_OUT" >> "$GITHUB_OUTPUT"
           exit 1
 
+  # Live end-to-end smoke test of the per-PR forms preview: drives the real
+  # "term-leave-application" form against the branch's own Amplify deployment,
+  # SUBMITS FOR REAL, and asserts the confirmation screen. `needs: preview-forms`
+  # and gated on its SUCCEED status, so it runs only once the preview build is
+  # live — and is skipped whenever forms wasn't previewed. No AWS creds: it
+  # drives a headless browser against the public preview URL. The form has no
+  # uploads, so no presign/S3 flow is exercised. See ADR 0029 — this is the
+  # per-PR-preview counterpart to the post-deploy smoke in deploy-sandbox.yml.
+  smoke-test-forms-preview:
+    name: Smoke test forms preview (term-leave)
+    needs: preview-forms
+    if: needs.preview-forms.result == 'success' && needs.preview-forms.outputs.status == 'SUCCEED'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - name: Install Playwright chromium
+        run: pnpm --filter @govtech-bb/forms exec playwright install --with-deps chromium
+      - name: Run term-leave live smoke test against the preview
+        env:
+          # The branch's own Amplify forms preview URL, built by preview-forms.
+          SMOKE_BASE_URL: ${{ needs.preview-forms.outputs.url }}
+        # Run only the term-leave spec (not the whole e2e/smoke dir). Override the
+        # config's retries: 0 with 2 retries here to absorb edge cache / network
+        # flakiness on a freshly-built preview without masking a genuine failure.
+        run: >
+          pnpm --filter @govtech-bb/forms exec playwright test
+          --config playwright.smoke.config.ts
+          term-leave-application.smoke.spec.ts
+          --retries=2
+      - name: Upload Playwright trace on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: term-leave-preview-smoke-trace
+          path: apps/forms/test-results/
+          retention-days: 7
+
   preview-landing:
     name: Preview (landing)
     needs: setup

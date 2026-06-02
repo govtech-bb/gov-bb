@@ -188,7 +188,7 @@ describe("listForms", () => {
     });
   });
 
-  it("filters out tombstoned formIds (disabled list)", async () => {
+  it("keeps a disabled published form, marking it isDisabled: true", async () => {
     apiGet.mockImplementation((path: string) => {
       if (path === "/builder/forms") return Promise.resolve([]);
       if (path === "/builder/forms/published")
@@ -202,7 +202,61 @@ describe("listForms", () => {
 
     const result = await listForms();
 
+    expect(result.map((f) => f.formId).sort()).toEqual(["alive", "ghost"]);
+    const ghost = result.find((f) => f.formId === "ghost");
+    expect(ghost).toMatchObject({ formId: "ghost", isDisabled: true });
+  });
+
+  it("drops a disabled non-published (draft-only) formId", async () => {
+    const drafts: FormDefinitionSummary[] = [
+      {
+        id: "uuid-1",
+        formId: "orphan-draft",
+        title: "Orphan Draft",
+        version: "1.0.0",
+        isPublished: false,
+      },
+    ];
+    apiGet.mockImplementation((path: string) => {
+      if (path === "/builder/forms") return Promise.resolve(drafts);
+      if (path === "/builder/forms/published")
+        return Promise.resolve([
+          { formId: "alive", title: "Alive", version: "1.0.0" },
+        ]);
+      if (path === "/builder/forms/disabled")
+        return Promise.resolve(["orphan-draft"]);
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    const result = await listForms();
+
     expect(result.map((f) => f.formId)).toEqual(["alive"]);
+  });
+
+  it("leaves isDisabled falsy on entries not in the disabled list", async () => {
+    const drafts: FormDefinitionSummary[] = [
+      {
+        id: "uuid-1",
+        formId: "passport-renewal",
+        title: "Passport Renewal (draft)",
+        version: "1.1.0",
+        isPublished: false,
+      },
+    ];
+    apiGet.mockImplementation((path: string) => {
+      if (path === "/builder/forms") return Promise.resolve(drafts);
+      if (path === "/builder/forms/published")
+        return Promise.resolve([
+          { formId: "drivers-licence", title: "Drivers Licence", version: "1.0.0" },
+        ]);
+      if (path === "/builder/forms/disabled") return Promise.resolve([]);
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    const result = await listForms();
+
+    expect(result).toHaveLength(2);
+    for (const f of result) expect(f.isDisabled).toBeFalsy();
   });
 });
 

@@ -4,4 +4,5 @@ export interface FormDefinitionSummary {
   title: string;
   version: string;
   isPublished: boolean;
+  isDisabled?: boolean;
 }

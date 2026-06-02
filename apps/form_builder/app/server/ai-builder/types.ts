@@ -1,7 +1,9 @@
 import type { UnknownRef } from "@govtech-bb/form-builder";
 
 export interface ChatMessage {
-  role: "user" | "assistant";
+  // "status" is an editor-emitted line reporting an apply outcome (applied /
+  // unchanged / extraction-failed) — distinct from the model's "assistant" prose.
+  role: "user" | "assistant" | "status";
   content: string;
 }
 

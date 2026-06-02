@@ -132,6 +132,31 @@ describe("serviceContractSchema with contactDetails", () => {
     };
     expect(serviceContractSchema.safeParse(withBadContact).success).toBe(false);
   });
+
+  it("rejects an empty formId", () => {
+    expect(
+      serviceContractSchema.safeParse({ ...baseContract, formId: "" }).success,
+    ).toBe(false);
+  });
+
+  it("rejects an empty title", () => {
+    expect(
+      serviceContractSchema.safeParse({ ...baseContract, title: "" }).success,
+    ).toBe(false);
+  });
+
+  it.each(["1-foo", "foo-", "foo--bar", "Foo"])(
+    "rejects a malformed formId %p",
+    (formId) => {
+      expect(
+        serviceContractSchema.safeParse({ ...baseContract, formId }).success,
+      ).toBe(false);
+    },
+  );
+
+  it("accepts a valid kebab formId with a non-empty title", () => {
+    expect(serviceContractSchema.safeParse(baseContract).success).toBe(true);
+  });
 });
 
 describe("serviceContractRecipeSchema", () => {
@@ -183,6 +208,36 @@ describe("serviceContractRecipeSchema", () => {
   it("rejects missing formId", () => {
     const { formId: _f, ...noFormId } = baseRecipe;
     expect(serviceContractRecipeSchema.safeParse(noFormId).success).toBe(false);
+  });
+
+  it("rejects an empty formId", () => {
+    expect(
+      serviceContractRecipeSchema.safeParse({ ...baseRecipe, formId: "" })
+        .success,
+    ).toBe(false);
+  });
+
+  it("rejects an empty title", () => {
+    expect(
+      serviceContractRecipeSchema.safeParse({ ...baseRecipe, title: "" })
+        .success,
+    ).toBe(false);
+  });
+
+  it.each(["1-foo", "foo-", "foo--bar", "Foo"])(
+    "rejects a malformed formId %p",
+    (formId) => {
+      expect(
+        serviceContractRecipeSchema.safeParse({ ...baseRecipe, formId })
+          .success,
+      ).toBe(false);
+    },
+  );
+
+  it("accepts a valid kebab formId with a non-empty title", () => {
+    expect(serviceContractRecipeSchema.safeParse(baseRecipe).success).toBe(
+      true,
+    );
   });
 
   it("rejects malformed createdAt", () => {
