@@ -1,6 +1,6 @@
 # Alpha² board label automation — design
 
-**Date:** 2026-05-29
+**Date:** 2026-05-29 (updated 2026-06-02: added the **Closed** column)
 **Status:** Approved (pending spec review)
 **Project board:** [govtech-bb / Alpha² (#7)](https://github.com/orgs/govtech-bb/projects/7)
 **Repo:** `govtech-bb/gov-bb`
@@ -21,8 +21,9 @@ Six behaviours are required:
    the `progressing` label, and closes the issue.
 5. An issue holds at most one of `ready` / `progressing` at a time; merging also
    strips `progressing`.
-6. Manually closing an issue as _completed_ moves it to **Done**. A "not planned"
-   close is a no-op.
+6. Manually closing an issue as _completed_ moves it to **Done**. Closing it any
+   other way — _not planned_, _duplicate_, or with no reason — moves it to
+   **Closed**.
 
 ## Confirmed decisions
 
@@ -34,8 +35,8 @@ Six behaviours are required:
 | On merge to sandbox/dev       | Move to **Done** **and close** the issue                    |
 | Architecture                  | Single custom GitHub Actions workflow (one source of truth) |
 
-The board's `Status` field options already match the requirements exactly:
-**Backlog, Ready, In progress, In review, Done.**
+The board's `Status` field options match the requirements exactly:
+**Backlog, Ready, In progress, In review, Done, Closed.**
 
 ## Architecture (Approach A)
 
@@ -111,6 +112,7 @@ board (including pre-existing issues).
 | 3   | `pull_request.{opened,reopened,ready_for_review}` | ≥1 closing-keyword issue                                          | per linked issue: ensure on board → Status=**In review**                                 |
 | 4   | `pull_request.closed`                             | `merged == true` AND base ∈ {`sandbox`,`dev`} AND ≥1 linked issue | per linked issue: ensure on board → Status=**Done** → remove `progressing` → close issue |
 | 5   | `issues.closed`                                   | `state_reason == completed`                                       | ensure on board → Status=**Done**                                                        |
+| 6   | `issues.closed`                                   | `state_reason != completed` (not_planned / duplicate / none)      | ensure on board → Status=**Closed**                                                      |
 
 ### Mutual exclusion (behaviour 5)
 
@@ -130,10 +132,12 @@ workflow does **not** subscribe to — no trigger loop.
   moves it back. Accepted: a human label action is authoritative.
 - **Label removal** → no-op (we never move an issue backward on un-label).
 - **Merge path also fires `issues.closed`** → the PR-merge handler (rule 4)
-  closes the issue, which GitHub records with `state_reason = completed`. That
-  emits an `issues.closed` event handled by rule 5, which re-sets **Done** —
-  idempotent, no conflict.
-- **Issue closed as "not planned"** → no-op (stays in its current column).
+  closes the issue with an explicit `state_reason = completed`. That emits an
+  `issues.closed` event handled by rule 5, which re-sets **Done** — idempotent,
+  no conflict. The explicit reason is what keeps a merged issue out of the
+  **Closed** column (rule 6 now catches every non-`completed` close).
+- **Issue closed as "not planned" / "duplicate" / no reason** → moves to
+  **Closed** (rule 6).
 - **Empty closing-ref set** on a PR → `core.info` and clean exit, not a failure.
 
 ## GraphQL / REST operations
@@ -147,7 +151,9 @@ workflow does **not** subscribe to — no trigger loop.
 - **Set status:** `updateProjectV2ItemFieldValue` with field ID + option ID.
 - **Read PR links:** `pullRequest.closingIssuesReferences`.
 - **Remove label:** REST `issues.removeLabel` (404 swallowed).
-- **Close issue:** REST `issues.update { state: closed }` (no-op if already closed).
+- **Close issue:** REST `issues.update { state: closed, state_reason: completed }`
+  (no-op if already closed). The explicit `completed` reason routes the resulting
+  `issues.closed` event to **Done**, not the **Closed** column.
 
 All writes are idempotent — safe under event redelivery.
 
@@ -160,9 +166,10 @@ All writes are idempotent — safe under event redelivery.
 
 ## Testing
 
-- **jest** unit tests on `decideActions(event)` covering all five rules plus
-  edges: unmerged PR, wrong base branch, both-labels race, multi-ref PR,
-  label-removal no-op.
+- **jest** unit tests on `decideActions(event)` covering all six rules (including
+  the non-`completed` close → **Closed**) plus edges: unmerged PR, wrong base
+  branch, both-labels race, multi-ref PR, label-removal no-op. A unit test on
+  `closeIssue` asserts the explicit `state_reason: completed`.
 - The `apply()` network half is smoke-tested manually once after deploy, not
   mocked end-to-end.
 
