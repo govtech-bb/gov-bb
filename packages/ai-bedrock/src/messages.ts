@@ -200,6 +200,7 @@ function fillUnansweredToolUses(messages: Array<Message>): Array<Message> {
 
 export function systemPromptsToBedrock(
   prompts: Array<SystemPrompt> | undefined,
+  opts: { cacheFirstBlock?: boolean } = {},
 ): Array<SystemContentBlock> | undefined {
   if (!prompts?.length) return undefined;
   const normalized = normalizeSystemPrompts(prompts);
@@ -207,7 +208,16 @@ export function systemPromptsToBedrock(
     .map((p) => p.content)
     .filter((s) => s.trim().length > 0)
     .map((text) => ({ text }) as SystemContentBlock);
-  return blocks.length ? blocks : undefined;
+  if (!blocks.length) return undefined;
+  // A cache point after the first (static) block tells Bedrock to cache that
+  // prefix and reuse it on later requests; volatile blocks stay after it and
+  // are re-read each turn.
+  if (opts.cacheFirstBlock) {
+    blocks.splice(1, 0, {
+      cachePoint: { type: "default" },
+    } as SystemContentBlock);
+  }
+  return blocks;
 }
 
 function inputSchemaToJson(

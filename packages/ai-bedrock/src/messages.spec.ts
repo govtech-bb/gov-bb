@@ -222,6 +222,21 @@ describe("systemPromptsToBedrock", () => {
       { text: "be concise" },
     ]);
   });
+
+  it("inserts a cache point after the first block when cacheFirstBlock is set", () => {
+    const prompts: Array<SystemPrompt> = ["static prompt", "volatile context"];
+    expect(systemPromptsToBedrock(prompts, { cacheFirstBlock: true })).toEqual([
+      { text: "static prompt" },
+      { cachePoint: { type: "default" } },
+      { text: "volatile context" },
+    ]);
+  });
+
+  it("does not insert a cache point by default", () => {
+    expect(systemPromptsToBedrock(["only block"])).toEqual([
+      { text: "only block" },
+    ]);
+  });
 });
 
 describe("toolsToBedrockToolConfig", () => {
