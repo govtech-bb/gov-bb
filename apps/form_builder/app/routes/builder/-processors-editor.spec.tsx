@@ -39,11 +39,17 @@ const FIELDS: ResolvedFieldId[] = [
 
 const emptyDraft: RecipeDraft = { formId: "f", title: "T", steps: [] };
 
-function Harness({ initial }: { initial: RecipeDraft }) {
+function Harness({
+  initial,
+  fields = FIELDS,
+}: {
+  initial: RecipeDraft;
+  fields?: ResolvedFieldId[];
+}) {
   const [draft, dispatch] = useReducer(recipeReducer, initial);
   return (
     <>
-      <ProcessorsEditor draft={draft} dispatch={dispatch} fields={FIELDS} />
+      <ProcessorsEditor draft={draft} dispatch={dispatch} fields={fields} />
       <pre data-testid="state">{JSON.stringify(draft.processors ?? [])}</pre>
     </>
   );
@@ -84,16 +90,101 @@ it("does not offer payment as an addable type", () => {
   expect(within(select).queryByText(/payment/i)).not.toBeInTheDocument();
 });
 
-it("populates the recipient-field picker from the form's fields", async () => {
+it("populates the recipient-field picker with only email-like fields", async () => {
   render(<Harness initial={emptyDraft} />);
   await addProcessor("email");
   const picker = screen.getByLabelText(/recipient field/i);
+  // The email field is offered...
   expect(within(picker).getByRole("option", { name: /Email/ })).toHaveValue(
     "contact.email",
   );
-  expect(within(picker).getByRole("option", { name: /Full name/ })).toHaveValue(
-    "applicant.full-name",
+  // ...but a non-email field (full-name) is filtered out.
+  expect(
+    within(picker).queryByRole("option", { name: /Full name/ }),
+  ).not.toBeInTheDocument();
+});
+
+it("offers every email-like field (incl. mixed-case and applicant-email) and excludes the rest", async () => {
+  const fields: ResolvedFieldId[] = [
+    {
+      fieldId: "email",
+      editorFieldId: "e1",
+      stepId: "contact",
+      stepTitle: "Contact",
+      display: "Email",
+    },
+    {
+      fieldId: "applicant-email",
+      editorFieldId: "e2",
+      stepId: "applicant",
+      stepTitle: "Applicant",
+      display: "Applicant email",
+    },
+    {
+      fieldId: "Email", // mixed-case id
+      editorFieldId: "e3",
+      stepId: "mda",
+      stepTitle: "MDA",
+      display: "MDA contact",
+    },
+    {
+      fieldId: "full-name", // not email-like
+      editorFieldId: "e4",
+      stepId: "applicant",
+      stepTitle: "Applicant",
+      display: "Full name",
+    },
+    {
+      fieldId: "dob", // not email-like
+      editorFieldId: "e5",
+      stepId: "applicant",
+      stepTitle: "Applicant",
+      display: "Date of birth",
+    },
+  ];
+  render(<Harness initial={emptyDraft} fields={fields} />);
+  await addProcessor("email");
+  const picker = screen.getByLabelText(/recipient field/i);
+  expect(within(picker).getByRole("option", { name: /^Email/ })).toHaveValue(
+    "contact.email",
   );
+  expect(
+    within(picker).getByRole("option", { name: /Applicant email/ }),
+  ).toHaveValue("applicant.applicant-email");
+  expect(
+    within(picker).getByRole("option", { name: /MDA contact/ }),
+  ).toHaveValue("mda.Email");
+  expect(
+    within(picker).queryByRole("option", { name: /Full name/ }),
+  ).not.toBeInTheDocument();
+  expect(
+    within(picker).queryByRole("option", { name: /Date of birth/ }),
+  ).not.toBeInTheDocument();
+});
+
+it("shows only the placeholder when no field is email-like", async () => {
+  const fields: ResolvedFieldId[] = [
+    {
+      fieldId: "full-name",
+      editorFieldId: "e1",
+      stepId: "applicant",
+      stepTitle: "Applicant",
+      display: "Full name",
+    },
+    {
+      fieldId: "dob",
+      editorFieldId: "e2",
+      stepId: "applicant",
+      stepTitle: "Applicant",
+      display: "Date of birth",
+    },
+  ];
+  render(<Harness initial={emptyDraft} fields={fields} />);
+  await addProcessor("email");
+  const picker = screen.getByLabelText(/recipient field/i);
+  const options = within(picker).getAllByRole("option");
+  expect(options).toHaveLength(1);
+  expect(options[0]).toHaveTextContent(/select field/i);
 });
 
 it("offers the MDA contact email as a recipient option when the draft has contact details", async () => {

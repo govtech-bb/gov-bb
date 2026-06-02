@@ -752,11 +752,7 @@
               },
               "fileTypes": {
                 "error": "Upload a .pdf, .docx, or .png file",
-                "value": [
-                  ".pdf",
-                  ".docx",
-                  ".png"
-                ]
+                "value": [".pdf", ".docx", ".png"]
               },
               "maxSize": {
                 "error": "The file must be 25MB or smaller",
@@ -785,11 +781,7 @@
               },
               "fileTypes": {
                 "error": "Upload a .pdf, .docx, or .png file",
-                "value": [
-                  ".pdf",
-                  ".docx",
-                  ".png"
-                ]
+                "value": [".pdf", ".docx", ".png"]
               },
               "maxSize": {
                 "error": "The files must be 25MB or smaller in total",
