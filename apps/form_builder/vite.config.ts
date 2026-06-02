@@ -31,6 +31,20 @@ export default defineConfig(({ mode }) => {
       "process.env.OAUTH_REDIRECT_BASE": JSON.stringify(
         pick("OAUTH_REDIRECT_BASE"),
       ),
+      // GitHub org — team-membership login check + PR-publish repo owner.
+      "process.env.GITHUB_ORG": JSON.stringify(pick("GITHUB_ORG")),
+      // GitHub team slug whose members may sign in to the builder.
+      "process.env.GITHUB_TEAM_SLUG": JSON.stringify(pick("GITHUB_TEAM_SLUG")),
+      // Build-time FALLBACK for the Deploy PR's base branch, used only where the
+      // platform can't expose env vars to the SSR runtime (Amplify Compute). The
+      // LIVE `process.env.PUBLISH_BASE_BRANCH` still wins at runtime wherever it's
+      // available — see resolveBaseBranch() in app/server/publish.ts, which reads
+      // it via bracket access so this `define` doesn't statically replace it.
+      // Operators only ever set PUBLISH_BASE_BRANCH; we bake it under a distinct
+      // key so the runtime read survives the build.
+      "process.env.PUBLISH_BASE_BRANCH_DEFAULT": JSON.stringify(
+        pick("PUBLISH_BASE_BRANCH"),
+      ),
     },
     plugins: [
       nitro({

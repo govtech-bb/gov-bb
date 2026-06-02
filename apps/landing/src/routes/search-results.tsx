@@ -1,8 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { Heading, Link, Search as SearchInput, Text } from '@govtech-bb/react'
 import { z } from 'zod'
-import { search  } from '../lib/search'
-import type {SearchHit} from '../lib/search';
+import { search } from '../lib/search'
 import { trackEvent } from '../lib/analytics'
 
 const SearchParams = z.object({
@@ -17,15 +16,11 @@ export const Route = createFileRoute('/search-results')({
   component: SearchResultsPage,
 })
 
-function labelFor(hit: SearchHit): string {
-  if (hit.kind !== 'service') return hit.category
-  return 'Information service'
-}
-
 function SearchResultsPage() {
   const { q } = Route.useSearch()
+  const { preview } = Route.useRouteContext()
   const query = q.trim()
-  const hits = query ? search(query) : []
+  const hits = query ? search(query, preview) : []
   const hasResults = query && hits.length > 0
   const hasNoResults = query && hits.length === 0
 
@@ -113,7 +108,7 @@ function SearchResultsPage() {
                       </Text>
                     ) : null}
                     <Text as="p" className="text-mid-grey-00">
-                      {labelFor(hit)}
+                      Information service
                     </Text>
                   </li>
                 ))}

@@ -15,3 +15,377 @@
   width: min(1080px, calc(100% - 2rem));
   margin-inline: auto;
 }
+
+/* ---------------------------------------------------------------------------
+ * Forms-app layout + surfaces the @govtech-bb/styles base stylesheet doesn't
+ * cover. Form fields themselves use govbb-* classes directly (see
+ * field-renderer). Everything below composes the same brand tokens the styles
+ * package ships (var(--color-*), var(--spacing-*), var(--font-size-*)).
+ * ------------------------------------------------------------------------- */
+
+/* Page + step layout (replaces the former design-system module classes) */
+.form-page {
+  font-family: var(--font-family-base), sans-serif;
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  padding: var(--spacing-s);
+}
+
+.form-page__step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s);
+}
+
+/* Headings use the styles package's govbb-text-* classes for the type scale
+ * (single source of truth). The step title is a direct child of .form-page and
+ * needs separation from the step body; preflight zeroes all other margins. */
+.form-page > h1 {
+  margin-bottom: var(--spacing-s);
+}
+
+.form-page__service-title {
+  font-size: var(--font-size-h4);
+  line-height: var(--line-height-h4);
+  border-left: var(--color-blue-40) 0.25rem solid;
+  color: var(--color-mid-grey-00);
+  padding: 0.5rem 1rem;
+}
+
+.form-page__step-description {
+  margin-bottom: var(--spacing-s);
+}
+
+/* Per-field width hints carried on the govbb-form-group wrapper */
+.govbb-form-group[data-field-width="short"],
+.govbb-form-group[data-field-width="medium"] {
+  width: 100%;
+}
+
+/* Vertical spacing for a group of radio/checkbox options. The govbb-checkboxes
+ * wrapper isn't in this package version, so the gap is supplied here. */
+.form-page__options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+/* ---- Show/hide -----------------------------------------------------------
+ * The govbb show-hide component is built on native <details>; this app drives
+ * a React-controlled toggle that reveals sibling form fields, so the visual is
+ * hand-rolled from tokens to match the govbb look. */
+.form-page__show-hide {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.form-page__show-hide-toggle {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  cursor: pointer;
+  color: var(--color-teal-00);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  width: fit-content;
+}
+
+.form-page__show-hide-toggle:hover {
+  color: var(--color-teal-100);
+  text-decoration-thickness: 0.1875rem;
+}
+
+.form-page__show-hide-toggle:focus-visible {
+  outline: 0.25rem solid var(--color-teal-100);
+  outline-offset: 0.125rem;
+  border-radius: 0.125rem;
+}
+
+.form-page__show-hide-arrow {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  border-top: 0.3125rem solid transparent;
+  border-bottom: 0.3125rem solid transparent;
+  border-left: 0.4375rem solid currentColor;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.form-page__show-hide-toggle[aria-expanded="true"] .form-page__show-hide-arrow {
+  transform: rotate(90deg);
+}
+
+.form-page__show-hide-content {
+  margin-top: var(--spacing-s);
+  padding: var(--spacing-s) 0 var(--spacing-s) var(--spacing-m);
+  border-left: 0.25rem solid var(--color-grey-00);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s);
+}
+
+.form-page__show-hide-content .govbb-hint {
+  margin: 0;
+}
+
+/* ---- Submission confirmation panels -------------------------------------- */
+.form-page__confirmation {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.form-page__panel {
+  padding: var(--spacing-m);
+  margin-bottom: var(--spacing-m);
+}
+
+.form-page__panel--success {
+  background-color: var(--color-teal-40);
+}
+
+.form-page__panel--error {
+  background-color: var(--color-red-40);
+}
+
+.form-page__panel-service-title {
+  font-size: var(--font-size-h4);
+  line-height: var(--line-height-h4);
+  color: var(--color-black-00);
+  padding: 0.5rem 1rem;
+}
+
+.form-page__panel--success .form-page__panel-service-title {
+  border-left: var(--color-teal-00) 0.25rem solid;
+}
+
+.form-page__panel--error .form-page__panel-service-title {
+  border-left: var(--color-red-00) 0.25rem solid;
+}
+
+.form-page__panel-subheading {
+  font-size: var(--font-size-h4);
+  line-height: var(--line-height-body);
+  font-weight: var(--font-weight-normal);
+}
+
+/* ---- Payment summary ----------------------------------------------------- */
+.form-page__payment {
+  background-color: var(--color-blue-10);
+  padding: var(--spacing-m);
+  border-radius: 0.25rem;
+  margin-bottom: var(--spacing-m);
+  max-width: 100%;
+}
+
+.form-page__payment--success {
+  background-color: var(--color-green-00);
+  color: var(--color-white-00);
+}
+
+.form-page__payment h2 {
+  margin-top: 0;
+  margin-bottom: var(--spacing-xs);
+}
+
+.form-page__payment > p {
+  margin: 0 0 var(--spacing-m) 0;
+}
+
+.form-page__payment-table {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-s);
+  margin: var(--spacing-m) 0;
+  padding-top: var(--spacing-m);
+  border-top: 0.1rem solid var(--color-grey-00);
+}
+
+.form-page__payment--success .form-page__payment-table {
+  border-top-color: var(--color-white-00);
+}
+
+.form-page__payment-hint {
+  font-size: var(--font-size-caption);
+  color: var(--color-mid-grey-00);
+  padding-top: var(--spacing-xs);
+  font-style: italic;
+}
+
+/* ---- Feedback callout (mirrors the govbb feedback-box block) -------------- */
+.form-page__feedback {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spacing-xs);
+  width: 100%;
+  padding: var(--spacing-xm) var(--spacing-s);
+  margin-top: var(--spacing-m);
+  background: var(--color-yellow-40);
+  border: 4px solid var(--color-yellow-100);
+}
+
+.form-page__feedback h3 {
+  margin-top: 0;
+}
+
+/* ---- Next steps + contact details ---------------------------------------- */
+.form-page__next-steps {
+  margin-top: var(--spacing-m);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+
+.form-page__contact {
+  margin-top: var(--spacing-m);
+}
+
+.form-page__contact-body {
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s);
+}
+
+.form-page__contact-body p {
+  margin: 0;
+}
+
+.form-page__contact-label {
+  font-weight: var(--font-weight-bold);
+}
+
+/* ---- Applicant name (declaration step) ----------------------------------- */
+.form-page__applicant {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xxs);
+}
+
+/* ---- Review / check-your-answers (summary list) -------------------------
+ * govbb-summary-section / govbb-summary-list are not in this package version
+ * (alpha.16); the official component CSS is ported here under the same class
+ * names, composed from brand tokens. Remove once the package ships them. */
+.govbb-summary-section {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-areas:
+    "heading"
+    "content"
+    "button";
+  row-gap: var(--spacing-xs);
+  padding-bottom: var(--spacing-m);
+  margin-bottom: var(--spacing-m);
+  border-bottom: 4px solid var(--color-grey-00);
+}
+
+.govbb-summary-section:last-child {
+  padding-bottom: 0;
+  margin-bottom: 0;
+  border-bottom: 0;
+}
+
+.govbb-summary-section__title {
+  grid-area: heading;
+  margin: 0;
+  font-size: var(--font-size-h2);
+  line-height: var(--line-height-h2);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+}
+
+.govbb-summary-section__action {
+  grid-area: button;
+  justify-self: start;
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+
+.govbb-summary-list {
+  grid-area: content;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  margin: 0;
+}
+
+.govbb-summary-list__row {
+  display: flex;
+  flex-direction: column;
+}
+
+.govbb-summary-list__key {
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+}
+
+.govbb-summary-list__value {
+  margin: 0;
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  color: var(--color-text);
+}
+
+@media (min-width: 768px) {
+  .govbb-summary-section {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "heading button"
+      "content content";
+  }
+
+  .govbb-summary-section__action {
+    place-self: center end;
+  }
+
+  .govbb-summary-list {
+    gap: var(--spacing-s);
+  }
+
+  .govbb-summary-list__row {
+    flex-direction: row;
+    column-gap: var(--spacing-xs);
+  }
+
+  .govbb-summary-list__key {
+    flex: 0 0 33.3333%;
+  }
+
+  .govbb-summary-list__value {
+    flex: 0 0 66.6666%;
+  }
+}
+
+/* ---- Error / not-found pages --------------------------------------------- */
+.form-page__message {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s);
+}
+
+@media (min-width: 768px) {
+  .govbb-form-group[data-field-width="short"] {
+    width: 33%;
+  }
+
+  .govbb-form-group[data-field-width="medium"] {
+    width: 50%;
+  }
+
+  .form-page__review {
+    width: calc(100% * 2 / 3);
+  }
+
+  .form-page__payment,
+  .form-page__payment--success {
+    max-width: 60%;
+  }
+}

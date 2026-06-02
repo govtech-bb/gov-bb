@@ -1,4 +1,3 @@
-import designSystem from "../lib/design-system";
 import React from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { AnyFormApi } from "@tanstack/react-form";
@@ -111,40 +110,35 @@ export default function Review({
   };
 
   return (
-    <div className={designSystem.review}>
+    <div className="form-page__review">
       {visibleSteps
         .filter((step) => !excludeStepIds.includes(step.stepId))
         .map((step) => (
-          <div key={step.stepId} className={designSystem.reviewStep}>
-            <div className={designSystem.reviewStepTitle}>
-              <h2>{step.title}</h2>
+          <section key={step.stepId} className="govbb-summary-section">
+            <h2 className="govbb-summary-section__title">{step.title}</h2>
+            <div className="govbb-summary-section__action">
               <a
+                className="govbb-link"
                 href={`/forms/${formMeta.formId}?step=${step.stepId}`}
                 onClick={handleChangeClick(step.stepId)}
               >
-                Change
+                Change{" "}
+                <span className="govbb-visually-hidden">{step.title}</span>
               </a>
             </div>
-
-            <table className={designSystem.reviewFieldTable}>
-              <tbody>
-                {step.fields
-                  .filter(
-                    (field) => !field.hidden && !field.conditionallyHidden,
-                  )
-                  .map((field: ClientPrimitive) => (
-                    <tr key={field.id} className={designSystem.reviewFieldRow}>
-                      <td className={designSystem.reviewFieldLabel}>
-                        {field.label}
-                      </td>
-                      <td className={designSystem.reviewFieldValue}>
-                        {getFieldDisplayValue(field)}
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
+            <dl className="govbb-summary-list">
+              {step.fields
+                .filter((field) => !field.hidden && !field.conditionallyHidden)
+                .map((field: ClientPrimitive) => (
+                  <div key={field.id} className="govbb-summary-list__row">
+                    <dt className="govbb-summary-list__key">{field.label}</dt>
+                    <dd className="govbb-summary-list__value">
+                      {getFieldDisplayValue(field)}
+                    </dd>
+                  </div>
+                ))}
+            </dl>
+          </section>
         ))}
     </div>
   );

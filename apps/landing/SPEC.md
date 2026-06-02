@@ -11,7 +11,6 @@ The landing app is the citizen-facing entry point to the alpha programme of digi
 - Find a government service.
 - Read clear, plain-English information about how that service works.
 - Start a digital service by handing the citizen off to the forms app, when one exists.
-- Look up government organisations (ministries, departments, state bodies) and how to contact them.
 - Use interactive tools (calculators, decision-trees) that give immediate answers without leaving the site.
 - Feed back to the team about what's working and what isn't.
 
@@ -156,45 +155,7 @@ This is governed by **ADR-0005** in the monorepo docs.
 
 ---
 
-## 7. Government organisations directory
-
-### 7.1 Index (`/government/organisations`)
-
-A searchable, grouped directory of:
-
-- **Ministries** — led by a government minister, dealing with policy.
-- **Departments** — statutory bodies, agencies and departments.
-- **State bodies** — state-owned enterprises and public corporations.
-
-Features:
-
-- A search bar that filters by name / short description across all groups.
-- An in-page nav listing each group with a count.
-- Per-group sections showing a large count, an alphabetised list of links, and per-org analytics events.
-
-### 7.2 Detail page (`/government/organisations/<slug>`)
-
-Each organisation gets a generated page combining:
-
-- A hero with the organisation's title.
-- A migrated-source banner when the underlying markdown declares a `source_url`.
-- Rendered markdown body content (where available).
-- Optional **Featured** items (image + title + description).
-- Optional **Online services** list.
-- Optional **Departments and agencies** list.
-- A sidebar with:
-  - Leadership card (minister / head of department / head of state body — label varies by kind).
-  - Contact card (phone numbers as `tel:` links, emails as `mailto:` links, websites as external links, plus free-form address blocks).
-  - Associated departments grouped and cross-linked to other org pages.
-- Associated-org slugs are validated at build time; a typo causes the build to fail.
-
-### 7.3 Org-page detection in the header
-
-When the user is on an org detail page whose underlying content has been migrated (has a `source_url`), the site-wide alpha banner is hidden so it doesn't conflict with the migration banner.
-
----
-
-## 8. Bank holiday calendar (`/bank-holiday-calendar`)
+## 7. Bank holiday calendar (`/bank-holiday-calendar`)
 
 A standalone reference page listing Barbados public holidays:
 
@@ -210,11 +171,11 @@ A standalone reference page listing Barbados public holidays:
 
 ---
 
-## 9. Interactive blocks (calculators / wizards)
+## 8. Interactive blocks (calculators / wizards)
 
 Three custom interactive flows are mounted as dedicated routes outside the markdown registry. Each follows a "form steps → result" pattern with error summaries, focus management and design-system inputs.
 
-### 9.1 Severance pay calculator
+### 8.1 Severance pay calculator
 **Route:** `/money-financial-support/calculate-severance-pay/form`
 
 Steps: self-employed (yes/no) → reason sent home → start/end dates → average pay & period (weekly/monthly) → result.
@@ -227,12 +188,12 @@ Logic implements the Severance Payments Act, Cap. 355A:
   - **Ineligible** (self-employed, reason not covered, or under two years).
   - **Eligible** with money estimate, the tier breakdown, an illustrative "gap weeks" example explaining why the result is only an estimate, and NIS post-claim process info.
 
-### 9.2 Pension calculator
+### 8.2 Pension calculator
 **Route:** `/pensions-and-gratuities/calculate-your-pension/form`
 
 Inputs: months of pensionable service, last annual salary. Validates positive integers / amounts and returns a pension estimate (with warnings for low service months). Implementation lives in `src/blocks/pension/compute.ts`.
 
-### 9.3 Crop Over permits checklist
+### 8.3 Crop Over permits checklist
 **Route:** `/business-trade/crop-over-permits/form`
 
 A four-question wizard asking about event type, venue, expected size and event features (music, alcohol, food, stage, tickets, pyro, copyrighted music), then producing a **prioritised permit checklist** with:
@@ -243,7 +204,7 @@ A four-question wizard asking about event type, venue, expected size and event f
 - A **"Save checklist as PDF"** button that uses `window.print()` after force-expanding all `<details>`.
 - An advisory note clarifying that the guidance is indicative, not legal advice.
 
-### 9.4 Shared patterns across blocks
+### 8.4 Shared patterns across blocks
 
 - Single-question-per-step UX with Previous / Continue navigation and explicit error summaries.
 - Re-usable money formatter for BDS currency.
@@ -252,11 +213,11 @@ A four-question wizard asking about event type, venue, expected size and event f
 
 ---
 
-## 10. Feedback channels
+## 9. Feedback channels
 
 Two distinct ways for citizens to talk back to the team:
 
-### 10.1 Page-level feedback (`/feedback`)
+### 9.1 Page-level feedback (`/feedback`)
 
 Reached from the **HelpfulBox** at the bottom of most pages. Features:
 
@@ -267,13 +228,13 @@ Reached from the **HelpfulBox** at the bottom of most pages. Features:
 - Success state shows a "Thank you for your feedback" panel with a "Tell us something else" option that re-opens the form.
 - Analytics events fire on submit, success, and error (split into validation vs server reason).
 
-### 10.2 "Tell us what matters" (`/tell-us`)
+### 9.2 "Tell us what matters" (`/tell-us`)
 
 A page that embeds an **external Tally form** ("Help Us Improve Government Services in Barbados") via iframe. Tally's embed script is loaded server-side via the route's `<head>`.
 
 ---
 
-## 11. Analytics
+## 10. Analytics
 
 Umami Cloud is wired in with these properties:
 
@@ -286,7 +247,7 @@ Umami Cloud is wired in with these properties:
 
 ---
 
-## 12. Routing summary
+## 11. Routing summary
 
 | Path | Purpose |
 |---|---|
@@ -296,8 +257,6 @@ Umami Cloud is wired in with these properties:
 | `/<category>` | Category index or list of subcategories. |
 | `/<category>/<subcategory>` | Subcategory list. |
 | `/<any>/<segments>` | Markdown content page lookup. |
-| `/government/organisations` | Ministries / departments / state bodies directory. |
-| `/government/organisations/<slug>` | Org detail page. |
 | `/bank-holiday-calendar` | Public holidays page with year switcher. |
 | `/feedback` | Page-level feedback form. |
 | `/tell-us` | Embedded Tally feedback form. |
@@ -309,7 +268,7 @@ Umami Cloud is wired in with these properties:
 
 ---
 
-## 13. Environment / configuration contract
+## 12. Environment / configuration contract
 
 The landing app expects the following environment variables (documented in `.env.example`):
 
@@ -322,7 +281,7 @@ The landing app expects the following environment variables (documented in `.env
 
 ---
 
-## 14. Open questions / things to confirm
+## 13. Open questions / things to confirm
 
 These are points I noticed during exploration but couldn't fully resolve. Flagging them so the team can decide.
 
@@ -335,9 +294,9 @@ These are points I noticed during exploration but couldn't fully resolve. Flaggi
 7. **Bank-holiday data sources.** Holiday dates are computed in code with a `MIN_YEAR`/`MAX_YEAR` range of 2020–2050, but the page notes that the Government "may declare additional one-off public holidays." How are ad-hoc gazetted holidays (and their dates) intended to be incorporated, and what's the update process — code change + redeploy, or something more dynamic?
 8. **Severance calculator's insurable earnings ceilings.** The compute file hard-codes year-specific ceilings (`ceilingFor(endYear)`). What's the process for keeping this in sync when NIS publishes new annual ceilings?
 9. **Migration banner default URL.** `MigrationBanner` defaults to `https://www.gov.bb` when no `pageURL` is supplied, but the existing call sites all pass a `pageURL`. Is the default kept on purpose for a planned use case, or is it dead?
-10. **Content scale.** There are ~150 organisation markdown files and several dozen service-content markdown files. Worth confirming the editorial workflow for updating these (PR-only? content team access? CMS roadmap?) — the spec is a good place to record that intent if it exists.
+10. **Content scale.** There are several dozen service-content markdown files. Worth confirming the editorial workflow for updating these (PR-only? content team access? CMS roadmap?) — the spec is a good place to record that intent if it exists.
 11. **Search index size.** The MiniSearch index is built in-memory on first search and lives in module scope. As content grows, is there a target ceiling, or a plan to move to a server-built index?
 
 ---
 
-*Last drafted: 2026-05-26. Reviewers — please annotate or strike through anything that misrepresents intent, and answer the items in §14 so we can lock the spec in.*
+*Last drafted: 2026-05-26. Reviewers — please annotate or strike through anything that misrepresents intent, and answer the items in §13 so we can lock the spec in.*

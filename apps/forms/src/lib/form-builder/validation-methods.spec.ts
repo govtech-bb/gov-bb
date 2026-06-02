@@ -163,6 +163,20 @@ describe("checkRequired", () => {
     expect(results.hasError).toBe(false);
   });
 
+  // Regression (#487): a present `required` rule with no `value` must enforce
+  // required, matching the server-side `@govtech-bb/form-validation` validator.
+  it("returns 'requiredAndEmpty' when required is present without a value and value is empty", () => {
+    const results = makeResults();
+    const state = checkRequired({
+      ...base,
+      value: "",
+      validations: { required: {} },
+      results,
+    });
+    expect(state).toBe("requiredAndEmpty");
+    expect(results.hasError).toBe(true);
+  });
+
   it("returns 'notRequiredAndEmpty' when required.value is false and value is empty", () => {
     const results = makeResults();
     const state = checkRequired({
@@ -1370,6 +1384,37 @@ describe("checkFileTypes", () => {
       value: files,
       validations: {
         fileTypes: { value: ["application/pdf"], error: "Invalid type." },
+      },
+      results,
+    });
+    expect(results.hasError).toBe(true);
+  });
+
+  it("matches dotted extension values against a file's extension", () => {
+    const results = makeResults();
+    const files = makeFileList(makeFile("My Document.pdf", 100));
+    checkFileTypes({
+      ...base,
+      value: files,
+      validations: {
+        fileTypes: {
+          value: [".pdf", ".docx", ".png"],
+          error: "Upload a .pdf, .docx, or .png file",
+        },
+      },
+      results,
+    });
+    expect(results.hasError).toBe(false);
+  });
+
+  it("errors on a disallowed file when using dotted extension values", () => {
+    const results = makeResults();
+    const files = makeFileList(makeFile("photo.gif", 100));
+    checkFileTypes({
+      ...base,
+      value: files,
+      validations: {
+        fileTypes: { value: [".pdf", ".docx", ".png"], error: "Bad type." },
       },
       results,
     });

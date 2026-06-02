@@ -1,0 +1,416 @@
+{
+  "formId": "school-uniform-grant-barbados",
+  "title": "School Uniform Grant",
+  "description": "Application form for $100.00 uniform grant from the Ministry of Educational Transformation, Barbados",
+  "version": "1.1.0",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "subject": "Your School Uniform Grant application has been received",
+        "recipientField": "applicant-info.candidate_email"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "stepId": "applicant-info",
+      "title": "Candidate Information",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Name of School/Institution",
+            "fieldId": "school_name",
+            "placeholder": "A. DACOSTA EDWARDS PRIMARY",
+            "validations": {
+              "required": {
+                "error": "Name of School/Institution is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Name of School/Institution must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Candidate Full Name",
+            "fieldId": "candidate_full_name",
+            "validations": {
+              "required": {
+                "error": "Candidate Full Name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Candidate Full Name must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Candidate ID",
+            "fieldId": "candidate_id",
+            "validations": {
+              "required": {
+                "error": "Candidate ID is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Candidate ID must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "email",
+            "label": "Candidate Email",
+            "fieldId": "candidate_email",
+            "validations": {
+              "required": {
+                "error": "Candidate Email is required",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "parent-guardian-information",
+      "title": "Parent/Guardian Information",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "First Name",
+            "fieldId": "parent_first_name",
+            "validations": {
+              "required": {
+                "error": "First Name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "First Name must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Last Name",
+            "fieldId": "parent_last_name",
+            "validations": {
+              "required": {
+                "error": "Last Name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Last Name must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Address",
+            "fieldId": "parent_address",
+            "validations": {
+              "required": {
+                "error": "Address is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Address must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Parish",
+            "fieldId": "parent_parish",
+            "validations": {
+              "required": {
+                "error": "Parish is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Parish must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "tel",
+            "label": "Main Phone",
+            "fieldId": "parent_main_phone",
+            "validations": {
+              "required": {
+                "error": "Main Phone is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Main Phone must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "tel",
+            "label": "Cell Phone",
+            "fieldId": "parent_cell_phone"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "National ID",
+            "fieldId": "parent_national_id",
+            "validations": {
+              "required": {
+                "error": "National ID is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "National ID must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "N.I.S NO",
+            "fieldId": "parent_nlis_no"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "TAMIS NO",
+            "fieldId": "parent_tamis_no"
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "banking-information",
+      "title": "Banking Information",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Name of Bank",
+            "fieldId": "bank_name",
+            "validations": {
+              "required": {
+                "error": "Name of Bank is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Name of Bank must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Name on Account",
+            "fieldId": "bank_account_name",
+            "validations": {
+              "required": {
+                "error": "Name on Account is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Name on Account must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Bank Number",
+            "fieldId": "bank_number",
+            "validations": {
+              "required": {
+                "error": "Bank Number is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Bank Number must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Bank Account Type",
+            "fieldId": "bank_account_type",
+            "validations": {
+              "required": {
+                "error": "Bank Account Type is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Bank Account Type must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Branch",
+            "fieldId": "bank_branch",
+            "validations": {
+              "required": {
+                "error": "Branch is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Branch must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Bank Account No",
+            "fieldId": "bank_account_no",
+            "validations": {
+              "required": {
+                "error": "Bank Account No is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Bank Account No must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Bank Address",
+            "fieldId": "bank_address",
+            "validations": {
+              "required": {
+                "error": "Bank Address is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Bank Address must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "BIC/SWIFT CODE",
+            "fieldId": "bic_swift_code",
+            "validations": {
+              "required": {
+                "error": "BIC/SWIFT CODE is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "BIC/SWIFT CODE must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "signature-and-date",
+      "title": "Signature and Date",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Signature of Parent/Guardian",
+            "fieldId": "parent_guardian_signature",
+            "validations": {
+              "required": {
+                "error": "Signature of Parent/Guardian is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Signature of Parent/Guardian must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-date",
+          "overrides": {
+            "label": "Date",
+            "fieldId": "submission_date",
+            "validations": {
+              "required": {
+                "error": "Date is required",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Submission Confirmation",
+      "elements": [],
+      "behaviours": []
+    }
+  ],
+  "createdAt": "2026-05-27T20:17:17.379Z",
+  "updatedAt": "2026-05-27T20:17:17.379Z"
+}

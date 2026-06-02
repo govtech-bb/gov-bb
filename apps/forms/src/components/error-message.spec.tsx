@@ -9,9 +9,12 @@ describe("ErrorMessage", () => {
     expect(screen.getByText("This field is required")).toBeInTheDocument();
   });
 
-  it("applies data-error attribute", () => {
+  it("applies the govbb-error-message class with a polite status role (#320)", () => {
     render(<ErrorMessage message="Error text" />);
-    expect(screen.getByRole("alert")).toHaveAttribute("data-error");
+    const el = screen.getByRole("status");
+    expect(el).toHaveClass("govbb-error-message");
+    // Must not be assertive — inline errors should not interrupt per field.
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("renders nothing when message is empty string", () => {

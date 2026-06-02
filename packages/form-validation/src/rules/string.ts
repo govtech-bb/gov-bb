@@ -20,13 +20,18 @@ export const maxLengthRunner: RuleRunner = (value, config) => {
 };
 
 export const patternRunner: RuleRunner = (value, config) => {
-  const pattern = config.value as string;
   const msg = config.error ?? "Invalid format";
-  const result = z
-    .string()
-    .regex(new RegExp(pattern), msg)
-    .safeParse(str(value));
-  return result.success ? null : msg;
+  // A misconfigured pattern rule fails closed rather than crashing the
+  // validation loop (invalid regex) or silently passing everything
+  // (undefined value becomes /(?:)/).
+  if (typeof config.value !== "string" || config.value === "") return msg;
+  let re: RegExp;
+  try {
+    re = new RegExp(config.value);
+  } catch {
+    return msg;
+  }
+  return re.test(str(value)) ? null : msg;
 };
 
 export const emailRunner: RuleRunner = (value, config) => {
@@ -54,5 +59,8 @@ export const strictEqualityRunner: RuleRunner = (value, config, allValues) => {
       : str(value) === String(config.value ?? "")
         ? null
         : msg;
-  return str(value) === String(resolved ?? "") ? null : msg;
+  // A null/undefined resolved reference is a distinct non-value: don't let it
+  // collapse to "" and trivially match a blank field (that's required's job).
+  if (resolved === null || resolved === undefined) return msg;
+  return str(value) === String(resolved) ? null : msg;
 };

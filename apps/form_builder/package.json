@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build",
+    "build": "vite build && node scripts/patch-amplify-manifest.mjs",
     "preview": "nitro preview",
     "start": "node .amplify-hosting/compute/default/server.js",
     "test": "jest --no-coverage"
@@ -14,21 +14,21 @@
     "@govtech-bb/form-builder": "workspace:*",
     "@govtech-bb/form-types": "workspace:*",
     "@govtech-bb/registry": "workspace:*",
-    "@tanstack/react-router": "^1.170.4",
-    "@tanstack/react-start": "^1.168.6",
-    "react": "^19.2.5",
-    "react-dom": "^19.2.5",
+    "@tanstack/react-router": "catalog:",
+    "@tanstack/react-start": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
     "nitro": "3.0.260429-beta",
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@tanstack/router-plugin": "^1.167.22",
+    "@tanstack/router-plugin": "catalog:",
     "@types/jest": "^30.0.0",
     "@types/node": "^22.0.0",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "^6.0.1",
-    "typescript": "^5.7.0",
-    "vite": "^8.0.0"
+    "typescript": "catalog:",
+    "vite": "catalog:"
   }
 }

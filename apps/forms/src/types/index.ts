@@ -19,6 +19,7 @@ export type {
   FormRendererProps,
   UseStepGuardProps,
   FileUploadProps,
+  UploadedFile,
   SubmissionState,
 } from "./props.type.ts";
 export type {

@@ -339,18 +339,22 @@ describe("SubmissionConfirmation — contactDetails address branches", () => {
   });
 });
 
-describe("SubmissionConfirmation — undefined submissionState fallback", () => {
-  it("renders using default fallback values when submissionState is not provided", () => {
-    render(
+describe("SubmissionConfirmation — undefined submissionState", () => {
+  it("renders nothing payment-related when submissionState is not provided", () => {
+    const { container } = render(
       <SubmissionConfirmation
         serviceTitle="Example"
         stepTitle="Confirmation"
       />,
     );
-    // The fallback sets hasPayment: true, paymentSuccess: true — payment success summary renders
-    expect(screen.getByText("Your payment was successful")).toBeInTheDocument();
-    expect(screen.getByText("Example Service")).toBeInTheDocument();
-    expect(screen.getByText("$100.00")).toBeInTheDocument();
-    expect(screen.getByText("ABC123456789")).toBeInTheDocument();
+    // No fabricated payment receipt should ever render from a missing state.
+    expect(
+      screen.queryByText("Your payment was successful"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Example Service")).not.toBeInTheDocument();
+    expect(screen.queryByText("$100.00")).not.toBeInTheDocument();
+    expect(screen.queryByText("ABC123456789")).not.toBeInTheDocument();
+    // The component renders null when there is no state to show.
+    expect(container).toBeEmptyDOMElement();
   });
 });

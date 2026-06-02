@@ -38,14 +38,32 @@ export type UseStepGuardProps = {
   currentStepId: string;
 };
 
+/**
+ * A file that has been uploaded to storage via the presign → PUT → confirm
+ * flow. This (not the raw `File`) is what is held in form state and sent in the
+ * submission. `url` is a short-lived preview link returned at confirm time —
+ * it expires, so it is kept only in component memory and never persisted.
+ */
+export interface UploadedFile {
+  key: string;
+  name: string;
+  size: number;
+  type: string;
+  url?: string;
+}
+
 export type FileUploadProps = {
   field: ClientPrimitive;
   sharedProps: React.InputHTMLAttributes<HTMLInputElement>;
-  onFileChange: (files: File[] | null) => void;
-  value?: File[] | null;
+  onFileChange: (files: UploadedFile[] | null) => void;
+  value?: UploadedFile[] | null;
   errorMessage?: string;
+  /** id for the error element, so the input's aria-describedby resolves. */
+  errorId?: string;
   validationRules?: any;
   formId?: string;
+  /** Form version, required for the presigned-upload requests. */
+  formVersion?: string;
 };
 
 export interface SubmissionState {

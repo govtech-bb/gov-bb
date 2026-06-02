@@ -13,12 +13,6 @@ const API_BASE = "https://api.github.com";
 // canonical location. See plan/issue #145.
 const RECIPES_BASE = "apps/api/src/forms/form-definitions/recipes";
 
-export interface PublishedFormSummary {
-  formId: string;
-  title: string;
-  version: string;
-}
-
 interface ContentsListEntry {
   name: string;
   type: "file" | "dir" | "submodule" | "symlink";
@@ -71,45 +65,6 @@ async function ghGet(
     body = text;
   }
   return { status: res.status, body };
-}
-
-/** List all published forms — one entry per formId, using the latest version's title. */
-export async function listPublishedForms(
-  token: string,
-): Promise<PublishedFormSummary[]> {
-  const top = await ghGet(
-    `${API_BASE}/repos/${repoOwner()}/${REPO_NAME}/contents/${RECIPES_BASE}`,
-    token,
-  );
-  if (top.status === 404) return [];
-  if (top.status < 200 || top.status >= 300) {
-    throw new Error(
-      `GitHub Contents API returned ${top.status} for ${RECIPES_BASE}/: ${JSON.stringify(top.body)}`,
-    );
-  }
-  if (!Array.isArray(top.body)) {
-    throw new Error(
-      `Expected ${RECIPES_BASE}/ to be a directory listing, got a non-array response`,
-    );
-  }
-  const entries = top.body as ContentsListEntry[];
-  const formDirs = entries.filter((e) => e.type === "dir").map((e) => e.name);
-
-  const result: PublishedFormSummary[] = [];
-  for (const formId of formDirs) {
-    const versions = await listVersions(token, formId);
-    if (versions.length === 0) continue;
-    const latest = versions.reduce((best, v) =>
-      compareSemver(v, best) > 0 ? v : best,
-    );
-    const recipe = await fetchRecipeFile(token, formId, latest);
-    result.push({
-      formId,
-      title: typeof recipe.title === "string" ? recipe.title : formId,
-      version: latest,
-    });
-  }
-  return result;
 }
 
 /** Fetch a single recipe by formId + optional version. Latest when version omitted. */

@@ -1,14 +1,21 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import NodeCache from 'node-cache';
-import { CustomComponent } from './entities/custom-component.entity';
-import { BUILTIN_REGISTRY, RegistryEntry } from './builtins';
-import { hydrateForm, Resolver, UnresolvableComponentError } from './resolution';
-import type { ServiceContract, ServiceContractRecipe } from '@govtech-bb/form-types';
+import { Injectable, Logger } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import NodeCache from "node-cache";
+import { CustomComponent } from "./entities/custom-component.entity";
+import { BUILTIN_REGISTRY, RegistryEntry } from "@govtech-bb/registry";
+import {
+  hydrateForm,
+  Resolver,
+  UnresolvableComponentError,
+} from "./resolution";
+import type {
+  ServiceContract,
+  ServiceContractRecipe,
+} from "@govtech-bb/form-types";
 
 const CACHE_TTL_SECONDS = 60;
-const CACHE_LOADED_KEY = '__loaded__';
+const CACHE_LOADED_KEY = "__loaded__";
 
 export interface IRegistryService {
   resolve(ref: string): Promise<RegistryEntry | null>;
@@ -28,7 +35,7 @@ export class RegistryService implements IRegistryService {
   constructor(
     @InjectRepository(CustomComponent)
     private readonly customComponentRepo: Repository<CustomComponent>,
-  ) { }
+  ) {}
 
   async resolve(ref: string): Promise<RegistryEntry | null> {
     const builtin = this.builtins.get(ref);
@@ -47,17 +54,22 @@ export class RegistryService implements IRegistryService {
   private async ensureCacheFresh(): Promise<void> {
     if (this.cache.has(CACHE_LOADED_KEY)) return;
 
-    this.logger.debug('Custom component cache stale — reloading from database');
+    this.logger.debug("Custom component cache stale — reloading from database");
 
     this.cache.flushAll();
     const customs = await this.customComponentRepo.find();
 
     for (const custom of customs) {
-      this.cache.set(`components/${custom.namespace}/${custom.type}`, custom.definition);
+      this.cache.set(
+        `components/${custom.namespace}/${custom.type}`,
+        custom.definition,
+      );
     }
 
     this.cache.set(CACHE_LOADED_KEY, true);
-    this.logger.debug(`Loaded ${customs.length} custom component(s) into cache`);
+    this.logger.debug(
+      `Loaded ${customs.length} custom component(s) into cache`,
+    );
   }
 }
 

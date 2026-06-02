@@ -165,9 +165,9 @@ describe("FieldRenderer", () => {
   // show-hide
   // -------------------------------------------------------------------------
   describe("show-hide htmlType", () => {
-    it("renders a button with [data-show-hide-toggle] and aria-expanded=false by default", () => {
+    it("renders a toggle button with aria-expanded=false by default", () => {
       const { container } = renderField(primitive("show-hide"));
-      const button = container.querySelector("[data-show-hide-toggle]");
+      const button = container.querySelector(".form-page__show-hide-toggle");
       expect(button).toBeTruthy();
       expect(button).toHaveAttribute("aria-expanded", "false");
     });
@@ -176,7 +176,7 @@ describe("FieldRenderer", () => {
       const user = userEvent.setup();
       const { container } = renderField(primitive("show-hide"));
       const button = container.querySelector(
-        "[data-show-hide-toggle]",
+        ".form-page__show-hide-toggle",
       ) as HTMLButtonElement;
       await user.click(button);
       expect(mockFieldApi.handleChange).toHaveBeenCalledWith(true);
@@ -185,7 +185,7 @@ describe("FieldRenderer", () => {
     it("when value is true, aria-expanded is true", () => {
       mockState = { value: true, meta: { isValid: true, errors: [] } };
       const { container } = renderField(primitive("show-hide"));
-      const button = container.querySelector("[data-show-hide-toggle]");
+      const button = container.querySelector(".form-page__show-hide-toggle");
       expect(button).toHaveAttribute("aria-expanded", "true");
     });
 
@@ -194,7 +194,7 @@ describe("FieldRenderer", () => {
       mockState = { value: true, meta: { isValid: true, errors: [] } };
       const { container } = renderField(primitive("show-hide"));
       const button = container.querySelector(
-        "[data-show-hide-toggle]",
+        ".form-page__show-hide-toggle",
       ) as HTMLButtonElement;
       await user.click(button);
       expect(mockFieldApi.handleChange).toHaveBeenCalledWith(false);
@@ -278,6 +278,37 @@ describe("FieldRenderer", () => {
       // fieldArrayBehaviour has min: 1 — assert the exact count so a
       // regression that rendered max or every defaultValue entry is caught.
       expect(inputs.length).toBe(1);
+    });
+
+    it("'Add Another' button exposes the field label to assistive tech", () => {
+      mockState = { value: ["first"], meta: { isValid: true, errors: [] } };
+      renderField(
+        primitive("text", {
+          label: "Address line",
+          behaviours: [fieldArrayBehaviour],
+        }),
+      );
+      // Sighted users see "Add Another"; the field label is appended via a
+      // visually-hidden span so screen readers know what is being added.
+      expect(
+        screen.getByRole("button", { name: "Add Another Address line" }),
+      ).toBeInTheDocument();
+    });
+
+    it("'Remove' button exposes the field label to assistive tech", () => {
+      mockState = {
+        value: ["first", "second"],
+        meta: { isValid: true, errors: [] },
+      };
+      renderField(
+        primitive("text", {
+          label: "Address line",
+          behaviours: [fieldArrayBehaviour],
+        }),
+      );
+      expect(
+        screen.getByRole("button", { name: "Remove Address line" }),
+      ).toBeInTheDocument();
     });
   });
 
@@ -388,7 +419,7 @@ describe("FieldRenderer", () => {
               : undefined,
         });
         const { container } = renderField(field);
-        const hint = container.querySelector("[data-hint]");
+        const hint = container.querySelector(".govbb-hint");
         expect(hint).toBeTruthy();
         expect(hint?.textContent).toBe("This is a hint");
       },
@@ -475,7 +506,7 @@ describe("FieldRenderer", () => {
         meta: { isValid: true, errors: [] },
       };
       const { container } = renderField(primitive("date"));
-      const dateParts = container.querySelectorAll("[data-date-part]");
+      const dateParts = container.querySelectorAll(".govbb-date-input__part");
       const dayInput = dateParts[0].querySelector("input") as HTMLInputElement;
       await user.clear(dayInput);
       await user.type(dayInput, "15");
@@ -489,7 +520,7 @@ describe("FieldRenderer", () => {
         meta: { isValid: true, errors: [] },
       };
       const { container } = renderField(primitive("date"));
-      const dateParts = container.querySelectorAll("[data-date-part]");
+      const dateParts = container.querySelectorAll(".govbb-date-input__part");
       const monthInput = dateParts[1].querySelector(
         "input",
       ) as HTMLInputElement;
@@ -505,7 +536,7 @@ describe("FieldRenderer", () => {
         meta: { isValid: true, errors: [] },
       };
       const { container } = renderField(primitive("date"));
-      const dateParts = container.querySelectorAll("[data-date-part]");
+      const dateParts = container.querySelectorAll(".govbb-date-input__part");
       const yearInput = dateParts[2].querySelector("input") as HTMLInputElement;
       await user.clear(yearInput);
       await user.type(yearInput, "2025");
@@ -551,7 +582,9 @@ describe("FieldRenderer", () => {
         { insetFieldsByOption },
       );
 
-      expect(container.querySelector("[data-radio-conditional]")).toBeTruthy();
+      expect(
+        container.querySelector(".govbb-radio-item__conditional"),
+      ).toBeTruthy();
     });
 
     it("does not show inset fields when a different option is selected", () => {
@@ -579,7 +612,63 @@ describe("FieldRenderer", () => {
         { insetFieldsByOption },
       );
 
-      expect(container.querySelector("[data-radio-conditional]")).toBeNull();
+      expect(
+        container.querySelector(".govbb-radio-item__conditional"),
+      ).toBeNull();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // ui.hideLabel — visually hides the label/legend while keeping it in the DOM
+  // so the accessible name (htmlFor / <legend> grouping) is preserved.
+  // -------------------------------------------------------------------------
+  describe("ui.hideLabel", () => {
+    it("text → label is present and carries govbb-visually-hidden when set", () => {
+      const { container } = renderField(
+        primitive("text", { label: "Email address", ui: { hideLabel: true } }),
+      );
+      const label = container.querySelector(".govbb-label");
+      expect(label).toBeTruthy();
+      expect(label?.textContent).toBe("Email address");
+      expect(label).toHaveClass("govbb-visually-hidden");
+    });
+
+    it("text → label has no govbb-visually-hidden when flag is unset", () => {
+      const { container } = renderField(primitive("text"));
+      const label = container.querySelector(".govbb-label");
+      expect(label).toBeTruthy();
+      expect(label).not.toHaveClass("govbb-visually-hidden");
+    });
+
+    it("radio → legend is present and carries govbb-visually-hidden when set", () => {
+      const { container } = renderField(
+        primitive("radio", {
+          label: "Pick one",
+          options: [
+            { value: "yes", label: "Yes" },
+            { value: "no", label: "No" },
+          ],
+          ui: { hideLabel: true },
+        }),
+      );
+      const legend = container.querySelector(".govbb-fieldset__legend");
+      expect(legend).toBeTruthy();
+      expect(legend?.textContent).toBe("Pick one");
+      expect(legend).toHaveClass("govbb-visually-hidden");
+    });
+
+    it("radio → legend has no govbb-visually-hidden when flag is unset", () => {
+      const { container } = renderField(
+        primitive("radio", {
+          options: [
+            { value: "yes", label: "Yes" },
+            { value: "no", label: "No" },
+          ],
+        }),
+      );
+      const legend = container.querySelector(".govbb-fieldset__legend");
+      expect(legend).toBeTruthy();
+      expect(legend).not.toHaveClass("govbb-visually-hidden");
     });
   });
 });

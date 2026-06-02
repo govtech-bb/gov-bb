@@ -37,7 +37,9 @@ export type MaxLengthRule = z.infer<typeof maxLengthRuleSchema>;
 
 export const patternRuleSchema = z.object({
   ...baseRuleFields,
-  pattern: z.string(),
+  // The runtime runner reads `config.value` (and recipes serialize `value`), so
+  // the schema must use `value` — not `pattern` — to match the actual contract.
+  value: z.string(),
 });
 export type PatternRule = z.infer<typeof patternRuleSchema>;
 

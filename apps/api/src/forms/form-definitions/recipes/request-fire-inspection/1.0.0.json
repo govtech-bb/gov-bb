@@ -5,7 +5,7 @@
       "stepId": "premises",
       "elements": [
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Type of premises",
             "fieldId": "type-of-premises",
@@ -32,7 +32,7 @@
           }
         },
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Name of premises",
             "fieldId": "name-of-premises",
@@ -61,7 +61,12 @@
           "ref": "components/address",
           "overrides": {
             "label": "Address line 2",
-            "fieldId": "premises-address-line-2"
+            "fieldId": "premises-address-line-2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -129,7 +134,7 @@
       "stepId": "certificate-purpose",
       "elements": [
         {
-          "ref": "components/generic/radio",
+          "ref": "components/generic-radio",
           "overrides": {
             "label": "Purpose of certificate",
             "fieldId": "purpose-of-certificate",

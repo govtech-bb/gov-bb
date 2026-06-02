@@ -25,7 +25,6 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,uid=1001,gid=1001 \
     pnpm install --store-dir=/pnpm/store --frozen-lockfile --ignore-scripts
 
 COPY --chown=app:app apps/form_builder_api/ apps/form_builder_api/
-COPY --chown=app:app apps/form_builder/app/server/ai-builder/prompts/ apps/form_builder/app/server/ai-builder/prompts/
 COPY --chown=app:app packages/ packages/
 
 # Build the API and all workspace deps (Nx handles the dependency graph via dependsOn: ["^build"])
@@ -65,7 +64,8 @@ RUN mkdir -p node_modules/@govtech-bb && \
     ln -sfn ../../packages/form-types node_modules/@govtech-bb/form-types && \
     ln -sfn ../../packages/form-conditions node_modules/@govtech-bb/form-conditions && \
     ln -sfn ../../packages/form-validation node_modules/@govtech-bb/form-validation && \
-    ln -sfn ../../packages/expressions node_modules/@govtech-bb/expressions
+    ln -sfn ../../packages/expressions node_modules/@govtech-bb/expressions && \
+    ln -sfn ../../packages/registry node_modules/@govtech-bb/registry
 
 # Package manifests needed for module resolution
 COPY --from=builder --chown=app:app /app/packages/database/package.json ./packages/database/
@@ -74,15 +74,13 @@ COPY --from=builder --chown=app:app /app/packages/form-types/package.json ./pack
 COPY --from=builder --chown=app:app /app/packages/form-conditions/package.json ./packages/form-conditions/
 COPY --from=builder --chown=app:app /app/packages/form-validation/package.json ./packages/form-validation/
 COPY --from=builder --chown=app:app /app/packages/expressions/package.json ./packages/expressions/
+COPY --from=builder --chown=app:app /app/packages/registry/package.json ./packages/registry/
 
 # Root package.json + tsconfig for path resolution
 COPY --from=builder --chown=app:app /app/package.json ./
 COPY --from=builder --chown=app:app /app/tsconfig.base.json ./
 COPY --from=builder --chown=app:app /app/apps/form_builder_api/package.json ./apps/form_builder_api/
 COPY --from=builder --chown=app:app /app/apps/form_builder_api/tsconfig.json ./apps/form_builder_api/
-
-# AI system prompt
-COPY --from=builder --chown=app:app /app/apps/form_builder/app/server/ai-builder/prompts/ ./prompts/
 
 ENV NODE_ENV=production
 ENV NODE_EXTRA_CA_CERTS=/app/rds-ca-bundle.pem

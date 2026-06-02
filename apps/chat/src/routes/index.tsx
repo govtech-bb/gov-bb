@@ -1,14 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import type { UIMessage } from "@tanstack/ai";
 import { fetchServerSentEvents, useChat } from "@tanstack/ai-react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   Button,
   cn,
-  Input,
   Link as GovLink,
   linkVariants,
   Logo,
   Text,
+  TextArea,
 } from "@govtech-bb/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Bubble } from "#/components/chat/bubble";
@@ -21,13 +22,28 @@ export const Route = createFileRoute("/")({ component: ChatPage });
 
 const MAX_QUERY_LENGTH = 2000;
 
+// "Pinned to latest" tolerance (px). Within this of the bottom, streaming
+// growth and appended messages keep the viewport stuck to the end.
+const SCROLL_END_THRESHOLD = 80;
+
 const LANDING_URL =
   import.meta.env.VITE_LANDING_URL || "https://landing.sandbox.alpha.gov.bb";
+
+// Flat row model so the virtualizer has a single `count`. Decorations
+// (welcome header, optimistic bubble, thinking indicator, error) live in the
+// same list as messages and carry stable keys.
+type ChatRow =
+  | { kind: "welcome"; key: string }
+  | { kind: "optimistic"; key: string; text: string }
+  | { kind: "message"; key: string; message: UIMessage; index: number }
+  | { kind: "thinking"; key: string }
+  | { kind: "error"; key: string; text: string };
 
 function ChatPage() {
   const [input, setInput] = useState("");
   const [pendingQuery, setPendingQuery] = useState<string | null>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [showJumpToLatest, setShowJumpToLatest] = useState(false);
+  const parentRef = useRef<HTMLDivElement>(null);
   // Citations keyed by assistant messageId. Populated from the `citations`
   // custom event the server emits right after TEXT_MESSAGE_START.
   const [citationsByMessageId, setCitationsByMessageId] = useState<
@@ -57,6 +73,46 @@ function ChatPage() {
 
   const isStreaming = status === "submitted" || status === "streaming";
 
+  const rows = useMemo<ChatRow[]>(() => {
+    const out: ChatRow[] = [{ kind: "welcome", key: "welcome" }];
+    if (pendingQuery && messages.length === 0) {
+      out.push({ kind: "optimistic", key: "optimistic", text: pendingQuery });
+      out.push({ kind: "thinking", key: "thinking" });
+    }
+    messages.forEach((message, index) =>
+      out.push({ kind: "message", key: message.id, message, index }),
+    );
+    if (messages.length > 0 && shouldShowThinking(messages)) {
+      out.push({ kind: "thinking", key: "thinking" });
+    }
+    if (error) out.push({ kind: "error", key: "error", text: error.message });
+    return out;
+  }, [messages, pendingQuery, error]);
+
+  // Choice pills / approval buttons go stale once a later turn lands. A choice
+  // is historical when a user/assistant message exists after it.
+  const lastInteractiveIndex = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const r = messages[i].role;
+      if (r === "user" || r === "assistant") return i;
+    }
+    return -1;
+  }, [messages]);
+
+  const virtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 72,
+    getItemKey: (index) => rows[index].key,
+    // Anchor to the bottom: streaming growth and appended messages keep the
+    // end pinned, and prepends (if added later) stay visually stable.
+    anchorTo: "end",
+    // Only follow new output when the reader is already near the bottom.
+    followOnAppend: true,
+    scrollEndThreshold: SCROLL_END_THRESHOLD,
+    overscan: 6,
+  });
+
   const autoSentRef = useRef(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot mount effect; sendMessage identity is irrelevant, autoSentRef guards re-entry.
   useEffect(() => {
@@ -76,9 +132,13 @@ function ChatPage() {
     if (messages.length > 0) setPendingQuery(null);
   }, [messages.length]);
 
+  // Start pinned to the latest message once the scroll element is live.
+  const didInitialScrollRef = useRef(false);
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
-  }, [messages.length, pendingQuery]);
+    if (didInitialScrollRef.current || !parentRef.current) return;
+    didInitialScrollRef.current = true;
+    virtualizer.scrollToEnd();
+  }, [virtualizer]);
 
   const pickChoice = useCallback(
     (choice: string) => {
@@ -104,6 +164,7 @@ function ChatPage() {
     setCitationsByMessageId({});
     setPendingQuery(null);
     setInput("");
+    didInitialScrollRef.current = false;
   }, [stop, clear]);
 
   function submit(text: string) {
@@ -113,15 +174,37 @@ function ChatPage() {
     setInput("");
   }
 
-  // Choice pills / approval buttons on a past assistant message become stale
-  // once the user has answered (or the assistant has spoken again). Lock them
-  // so the user can't fire a stale choice.
-  function isHistoricalChoice(index: number): boolean {
-    for (let i = index + 1; i < messages.length; i++) {
-      const r = messages[i].role;
-      if (r === "user" || r === "assistant") return true;
+  // Surface "Jump to latest" only while the reader has scrolled up off the end.
+  // setState bails out when the boolean is unchanged, so this is cheap.
+  const handleScroll = useCallback(() => {
+    setShowJumpToLatest(!virtualizer.isAtEnd(SCROLL_END_THRESHOLD));
+  }, [virtualizer]);
+
+  function renderRow(row: ChatRow) {
+    switch (row.kind) {
+      case "welcome":
+        return <WelcomeBubble />;
+      case "optimistic":
+        return <OptimisticUserBubble text={row.text} />;
+      case "thinking":
+        return <ThinkingIndicator />;
+      case "error":
+        return (
+          <div className="rounded-md bg-red-10 px-3 py-2 text-red-00 text-sm">
+            {row.text}
+          </div>
+        );
+      case "message":
+        return (
+          <Bubble
+            message={row.message}
+            onChoice={pickChoice}
+            onApproval={onApproval}
+            choicesDisabled={row.index < lastInteractiveIndex}
+            citations={citationsByMessageId[row.message.id]}
+          />
+        );
     }
-    return false;
   }
 
   return (
@@ -129,33 +212,48 @@ function ChatPage() {
       <SiteHeader />
       <ChatHeader onStartAgain={handleStartAgain} />
 
-      <main className="flex-1 overflow-y-auto px-s pb-s" ref={scrollRef}>
-        <div className="mx-auto max-w-2xl space-y-s py-s">
-          <WelcomeBubble />
-          {pendingQuery && messages.length === 0 && (
-            <>
-              <OptimisticUserBubble text={pendingQuery} />
-              <ThinkingIndicator />
-            </>
-          )}
-          {messages.map((m, i) => (
-            <Bubble
-              key={m.id}
-              message={m}
-              onChoice={pickChoice}
-              onApproval={onApproval}
-              choicesDisabled={isHistoricalChoice(i)}
-              citations={citationsByMessageId[m.id]}
-            />
-          ))}
-          {messages.length > 0 && shouldShowThinking(messages) && <ThinkingIndicator />}
-          {error && (
-            <div className="rounded-md bg-red-10 px-3 py-2 text-red-00 text-sm">
-              {error.message}
-            </div>
-          )}
+      <div className="relative flex-1 overflow-hidden">
+        {/* Not a <main> — the root layout already provides the single main
+            landmark. role="log" + aria-live announces streamed replies; the
+            streaming bubble stays mounted at the end, so it is announced even
+            though off-screen history is unmounted by the virtualizer. */}
+        <div
+          ref={parentRef}
+          onScroll={handleScroll}
+          className="h-full overflow-y-auto px-s py-s"
+        >
+          <div
+            aria-label="Chat messages"
+            aria-live="polite"
+            className="relative mx-auto w-full max-w-2xl"
+            role="log"
+            style={{ height: virtualizer.getTotalSize() }}
+          >
+            {virtualizer.getVirtualItems().map((virtualItem) => (
+              <div
+                key={virtualItem.key}
+                data-index={virtualItem.index}
+                ref={virtualizer.measureElement}
+                className="absolute top-0 left-0 w-full pb-s"
+                style={{ transform: `translateY(${virtualItem.start}px)` }}
+              >
+                {renderRow(rows[virtualItem.index])}
+              </div>
+            ))}
+          </div>
         </div>
-      </main>
+
+        {showJumpToLatest && (
+          <button
+            type="button"
+            aria-label="Jump to latest message"
+            onClick={() => virtualizer.scrollToEnd({ behavior: "smooth" })}
+            className="-translate-x-1/2 absolute bottom-xs left-1/2 z-10 rounded-full bg-blue-100 px-4 py-2 text-sm text-white-00 shadow-md"
+          >
+            Jump to latest
+          </button>
+        )}
+      </div>
 
       <Composer
         input={input}
@@ -292,7 +390,7 @@ function Composer({
   onStop: () => void;
   streaming: boolean;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
     if (!streaming) inputRef.current?.focus();
   }, [streaming]);
@@ -308,19 +406,20 @@ function Composer({
           onSubmit();
         }}
       >
-        <div className="flex w-full items-center gap-xs">
-          <Input
+        <div className="flex w-full items-end gap-xs">
+          <TextArea
             aria-label="Ask the government assistant"
-            className="flex-1 text-black-00"
+            className="composer-field flex-1 text-black-00"
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") {
+              if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 if (!streaming) onSubmit();
               }
             }}
             placeholder="Ask a question..."
             ref={inputRef}
+            rows={1}
             value={input}
           />
           {streaming ? (

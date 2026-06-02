@@ -246,7 +246,7 @@ describe("Review", () => {
     expect(
       screen.getByRole("heading", { name: "Hidden Fields Step" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Change" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Change/ })).toBeInTheDocument();
 
     // But the hidden fields should not render
     expect(screen.queryByText("Hidden field 1")).not.toBeInTheDocument();
@@ -546,7 +546,7 @@ describe("Review", () => {
       />,
     );
 
-    const changeLinks = screen.getAllByRole("link", { name: "Change" });
+    const changeLinks = screen.getAllByRole("link", { name: /Change/ });
     expect(changeLinks).toHaveLength(2);
   });
 
@@ -567,11 +567,35 @@ describe("Review", () => {
       />,
     );
 
-    const changeLink = screen.getByRole("link", { name: "Change" });
+    const changeLink = screen.getByRole("link", { name: /Change/ });
     expect(changeLink).toHaveAttribute(
       "href",
       "/forms/my-form?step=step-personal",
     );
+  });
+
+  it("Change link exposes the step name to assistive tech via visually-hidden text", () => {
+    const steps: ClientFormStep[] = [
+      makeStep({
+        stepId: "step-personal",
+        title: "Personal Details",
+        fields: [],
+      }),
+    ];
+
+    render(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={makeMockForm() as never}
+        visibleSteps={steps}
+      />,
+    );
+
+    // The visible label is "Change"; the accessible name also carries the step
+    // title so screen-reader users know what the link changes.
+    expect(
+      screen.getByRole("link", { name: "Change Personal Details" }),
+    ).toBeInTheDocument();
   });
 
   it("clicking a Change link triggers navigate", async () => {
@@ -592,7 +616,7 @@ describe("Review", () => {
     );
 
     const user = userEvent.setup();
-    const changeLink = screen.getByRole("link", { name: "Change" });
+    const changeLink = screen.getByRole("link", { name: /Change/ });
     await user.click(changeLink);
 
     expect(mockNavigate).toHaveBeenCalled();
@@ -620,7 +644,7 @@ describe("Review", () => {
     );
 
     const user = userEvent.setup();
-    const changeLink = screen.getByRole("link", { name: "Change" });
+    const changeLink = screen.getByRole("link", { name: /Change/ });
     await user.click(changeLink);
 
     expect(mockNavigate).toHaveBeenCalledWith(

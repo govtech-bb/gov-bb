@@ -1,10 +1,15 @@
 import { AnyFieldApi } from "@tanstack/react-form";
-import { ClientPrimitive, FieldValidationProperties } from "@forms/types";
+import {
+  ClientPrimitive,
+  FieldValidationProperties,
+  UploadedFile,
+} from "@forms/types";
 import React, { JSX } from "react";
 import ErrorMessage from "./error-message";
 import { RequiredState, checkConditionalOn } from "@forms/lib";
 import { DateValue, FieldArrayBehaviour } from "@govtech-bb/form-types";
 import FileUpload from "./file-upload";
+import { MaskedInput } from "./masked-input";
 
 /** An inset field entry passed from the parent radio group. */
 export interface InsetFieldEntry {
@@ -18,14 +23,17 @@ export default function FieldRenderer({
   validationProperties,
   insetFieldsByOption,
   formId,
+  formVersion,
 }: {
   form: any;
   field: ClientPrimitive;
   validationProperties: FieldValidationProperties;
   /** Option-value → inset fields that reveal when that option is selected. */
   insetFieldsByOption?: Map<string, InsetFieldEntry[]>;
-  /** Form ID, forwarded to FileUpload for analytics event payload. */
+  /** Form ID, forwarded to FileUpload for analytics + presigned uploads. */
   formId?: string;
+  /** Form version, forwarded to FileUpload for presigned uploads. */
+  formVersion?: string;
 }) {
   if (field.hidden) return null;
 
@@ -63,6 +71,22 @@ export default function FieldRenderer({
       {(f: AnyFieldApi) => {
         // For each field type, be sure to establish...
         // const value = f.state.value as ValueType | undefined
+        let errorMessage = "";
+        if (!f.state.meta.isValid) {
+          errorMessage = f.state.meta.errors[0];
+        }
+        const invalid = errorMessage ? true : undefined;
+
+        const hintId = field.hint ? `${field.id}-hint` : undefined;
+        const errorId = errorMessage ? `${field.id}-error` : undefined;
+        const describedBy =
+          [hintId, errorId].filter(Boolean).join(" ") || undefined;
+
+        // When ui.hideLabel is set, keep the label/legend in the DOM (so the
+        // accessible name is preserved) but hide it visually.
+        const labelClass = (base: string) =>
+          field.ui?.hideLabel ? `${base} govbb-visually-hidden` : base;
+
         const sharedProps = {
           type: field.htmlType,
           name: field.name,
@@ -70,72 +94,114 @@ export default function FieldRenderer({
           disabled: field.disabled,
           placeholder: field.placeholder,
           onBlur: f.handleBlur,
+          "aria-describedby": describedBy,
         };
 
-        let errorMessage = "";
-        if (!f.state.meta.isValid) {
-          errorMessage = f.state.meta.errors[0];
-        }
+        // Surface required state to assistive tech. Not spread onto multi-option
+        // checkbox inputs — there it would force every box to be checked.
+        const isRequired = field.validations?.required?.value === true;
+        const requiredProps = isRequired
+          ? { required: true, "aria-required": true }
+          : {};
 
         switch (field.htmlType) {
           case "date": {
             const value = f.state.value as DateValue | undefined;
             return (
-              <fieldset data-field data-date-field>
-                <legend>{field.label}</legend>
-                {field.hint && <p data-hint>{field.hint}</p>}
-                <ErrorMessage message={errorMessage} />
-                <div data-date-group>
-                  <div data-date-part>
-                    <label>Day</label>
-                    <input
-                      {...sharedProps}
-                      value={value?.day ?? ""}
-                      type="number"
-                      min={1}
-                      max={31}
-                      onChange={(e) => {
-                        const day = Number(e.target.value) ?? undefined;
-                        f.handleChange({
-                          ...value,
-                          day,
-                        });
-                      }}
-                    />
+              <fieldset className="govbb-fieldset">
+                <legend className={labelClass("govbb-fieldset__legend")}>
+                  {field.label}
+                </legend>
+                {field.hint && (
+                  <p className="govbb-hint" id={hintId}>
+                    {field.hint}
+                  </p>
+                )}
+                <ErrorMessage id={errorId} message={errorMessage} />
+                <div className="govbb-date-input">
+                  <div className="govbb-date-input__part">
+                    <label
+                      className="govbb-date-input__label"
+                      htmlFor={`${field.id}-day`}
+                    >
+                      Day
+                    </label>
+                    <div className="govbb-date-input-wrapper">
+                      <input
+                        {...sharedProps}
+                        {...requiredProps}
+                        id={`${field.id}-day`}
+                        className="govbb-date-input__field"
+                        value={value?.day ?? ""}
+                        type="number"
+                        min={1}
+                        max={31}
+                        aria-invalid={invalid}
+                        onChange={(e) => {
+                          const day = Number(e.target.value) ?? undefined;
+                          f.handleChange({
+                            ...value,
+                            day,
+                          });
+                        }}
+                      />
+                    </div>
                   </div>
 
-                  <div data-date-part>
-                    <label>Month</label>
-                    <input
-                      {...sharedProps}
-                      type="number"
-                      value={value?.month ?? ""}
-                      min={1}
-                      max={12}
-                      onChange={(e) => {
-                        const month = Number(e.target.value) ?? undefined;
-                        f.handleChange({
-                          ...value,
-                          month,
-                        });
-                      }}
-                    />
+                  <div className="govbb-date-input__part">
+                    <label
+                      className="govbb-date-input__label"
+                      htmlFor={`${field.id}-month`}
+                    >
+                      Month
+                    </label>
+                    <div className="govbb-date-input-wrapper">
+                      <input
+                        {...sharedProps}
+                        {...requiredProps}
+                        id={`${field.id}-month`}
+                        className="govbb-date-input__field"
+                        type="number"
+                        value={value?.month ?? ""}
+                        min={1}
+                        max={12}
+                        aria-invalid={invalid}
+                        onChange={(e) => {
+                          const month = Number(e.target.value) ?? undefined;
+                          f.handleChange({
+                            ...value,
+                            month,
+                          });
+                        }}
+                      />
+                    </div>
                   </div>
 
-                  <div data-date-part>
-                    <label>Year</label>
-                    <input
-                      {...sharedProps}
-                      type="number"
-                      value={value?.year ?? ""}
-                      onChange={(e) => {
-                        const year = Number(e.target.value) ?? undefined;
-                        f.handleChange({
-                          ...value,
-                          year,
-                        });
-                      }}
-                    />
+                  <div className="govbb-date-input__part">
+                    <label
+                      className="govbb-date-input__label"
+                      htmlFor={`${field.id}-year`}
+                    >
+                      Year
+                    </label>
+                    <div className="govbb-date-input-wrapper govbb-date-input-wrapper--year">
+                      <input
+                        {...sharedProps}
+                        {...requiredProps}
+                        id={`${field.id}-year`}
+                        className="govbb-date-input__field"
+                        type="number"
+                        value={value?.year ?? ""}
+                        aria-invalid={invalid}
+                        onChange={(e) => {
+                          const year = Number(e.target.value) ?? undefined;
+                          f.handleChange({
+                            ...value,
+                            year,
+                          });
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
               </fieldset>
@@ -147,15 +213,33 @@ export default function FieldRenderer({
             if (!fieldArray) {
               const value = f.state.value as string | undefined;
               textareaElement = (
-                <div data-field data-field-width={field.ui?.width}>
-                  <label> {field.label} </label>
-                  {field.hint && <p data-hint>{field.hint}</p>}
-                  <textarea
-                    key={field.id}
-                    {...sharedProps}
-                    value={value ?? ""}
-                    onChange={(e) => f.handleChange(e.target.value)}
-                  />
+                <div
+                  className="govbb-form-group"
+                  data-field-width={field.ui?.width}
+                >
+                  <label
+                    className={labelClass("govbb-label")}
+                    htmlFor={field.id}
+                  >
+                    {field.label}
+                  </label>
+                  {field.hint && (
+                    <p className="govbb-hint" id={hintId}>
+                      {field.hint}
+                    </p>
+                  )}
+                  <ErrorMessage id={errorId} message={errorMessage} />
+                  <div className="govbb-input-wrapper">
+                    <textarea
+                      key={field.id}
+                      {...sharedProps}
+                      {...requiredProps}
+                      className="govbb-textarea"
+                      value={value ?? ""}
+                      aria-invalid={invalid}
+                      onChange={(e) => f.handleChange(e.target.value)}
+                    />
+                  </div>
                 </div>
               );
               return textareaElement;
@@ -170,12 +254,18 @@ export default function FieldRenderer({
             if (!fieldArray) {
               const value = f.state.value as string | undefined;
               inputElement = (
-                <input
-                  key={field.id}
-                  {...sharedProps}
-                  value={value ?? ""}
-                  onChange={(e) => f.handleChange(e.target.value)}
-                />
+                <div className="govbb-input-wrapper">
+                  <MaskedInput
+                    key={field.id}
+                    mask={field.mask}
+                    {...sharedProps}
+                    {...requiredProps}
+                    className="govbb-input"
+                    value={value ?? ""}
+                    aria-invalid={invalid}
+                    onChange={(e) => f.handleChange(e.target.value)}
+                  />
+                </div>
               );
             } else {
               const addAnotherField = (values: string[]) => {
@@ -213,30 +303,62 @@ export default function FieldRenderer({
                 <>
                   {Array.from({ length: fieldCount }).map((_, i) => (
                     <React.Fragment key={`${field.id}-${i}`}>
-                      <input
-                        {...sharedProps}
-                        value={values && values.length > 0 ? values[i] : ""}
-                        onChange={(e) => updateField(values, i, e.target.value)}
-                      />
+                      <div className="govbb-input-wrapper">
+                        <MaskedInput
+                          mask={field.mask}
+                          {...sharedProps}
+                          className="govbb-input"
+                          value={values && values.length > 0 ? values[i] : ""}
+                          aria-invalid={invalid}
+                          onChange={(e) =>
+                            updateField(values, i, e.target.value)
+                          }
+                        />
+                      </div>
                       {i === fieldCount - 1 && i != 0 ? (
-                        <p onClick={() => removeField(values)}> Remove </p>
+                        <button
+                          type="button"
+                          className="govbb-btn--destructive-link"
+                          onClick={() => removeField(values)}
+                        >
+                          Remove{" "}
+                          <span className="govbb-visually-hidden">
+                            {field.label}
+                          </span>
+                        </button>
                       ) : null}
                     </React.Fragment>
                   ))}
                   {fieldCount < max ? (
-                    <p onClick={() => addAnotherField(values)}>Add Another</p>
+                    <button
+                      type="button"
+                      className="govbb-btn--link"
+                      onClick={() => addAnotherField(values)}
+                    >
+                      Add Another{" "}
+                      <span className="govbb-visually-hidden">
+                        {field.label}
+                      </span>
+                    </button>
                   ) : null}
                 </>
               );
             }
 
             const element: JSX.Element = (
-              <div data-field data-field-width={field.ui?.width}>
-                <div>
-                  <label> {field.label} </label>
-                  {field.hint && <p data-hint>{field.hint}</p>}
-                  <ErrorMessage message={errorMessage} />
-                </div>
+              <div
+                className="govbb-form-group"
+                data-field-width={field.ui?.width}
+              >
+                <label className={labelClass("govbb-label")} htmlFor={field.id}>
+                  {field.label}
+                </label>
+                {field.hint && (
+                  <p className="govbb-hint" id={hintId}>
+                    {field.hint}
+                  </p>
+                )}
+                <ErrorMessage id={errorId} message={errorMessage} />
                 {inputElement}
               </div>
             );
@@ -247,18 +369,26 @@ export default function FieldRenderer({
             const selectValue = f.state.value as string | string[] | undefined;
             return (
               <div
-                data-field
-                data-select-field
+                className="govbb-form-group"
                 data-field-width={field.ui?.width}
               >
-                <label> {field.label} </label>
-                {field.hint && <p data-hint>{field.hint}</p>}
-                <ErrorMessage message={errorMessage} />
-                <div data-select-control>
+                <label className={labelClass("govbb-label")} htmlFor={field.id}>
+                  {field.label}
+                </label>
+                {field.hint && (
+                  <p className="govbb-hint" id={hintId}>
+                    {field.hint}
+                  </p>
+                )}
+                <ErrorMessage id={errorId} message={errorMessage} />
+                <div className="govbb-select-wrapper">
                   <select
                     {...sharedProps}
+                    {...requiredProps}
+                    className="govbb-select"
                     multiple={isMultiple}
                     value={selectValue ? selectValue : isMultiple ? [] : ""}
+                    aria-invalid={invalid}
                     onChange={(e) => f.handleChange(e.target.value)}
                   >
                     <option value=""></option>
@@ -268,6 +398,11 @@ export default function FieldRenderer({
                       </option>
                     ))}
                   </select>
+                  <span className="govbb-select__chevron" aria-hidden="true">
+                    <svg viewBox="0 0 12 8">
+                      <path d="M6 8 0 0h12z" />
+                    </svg>
+                  </span>
                 </div>
               </div>
             );
@@ -276,25 +411,40 @@ export default function FieldRenderer({
               const option = field.options[0];
               const value = (f.state.value as string | undefined) ?? "";
               return (
-                <div data-checkbox-group>
-                  <div>
-                    <legend>{field.label}</legend>
-                    {field.hint && <p data-hint>{field.hint}</p>}
-                    <ErrorMessage message={errorMessage} />
+                <fieldset className="govbb-fieldset">
+                  <legend className={labelClass("govbb-fieldset__legend")}>
+                    {field.label}
+                  </legend>
+                  {field.hint && (
+                    <p className="govbb-hint" id={hintId}>
+                      {field.hint}
+                    </p>
+                  )}
+                  <ErrorMessage id={errorId} message={errorMessage} />
+                  <div className="form-page__options">
+                    <div className="govbb-checkbox-item" key={option.value}>
+                      <input
+                        {...sharedProps}
+                        {...requiredProps}
+                        id={`${field.id}-${option.value}`}
+                        className="govbb-checkbox"
+                        checked={option.value === value}
+                        aria-invalid={invalid}
+                        onChange={() =>
+                          f.handleChange(
+                            option.value === value ? "" : option.value,
+                          )
+                        }
+                      />
+                      <label
+                        className="govbb-checkbox-item__label"
+                        htmlFor={`${field.id}-${option.value}`}
+                      >
+                        {option.label}
+                      </label>
+                    </div>
                   </div>
-                  <div key={option.value} data-checkbox-option>
-                    <input
-                      {...sharedProps}
-                      checked={option.value === value}
-                      onChange={() =>
-                        f.handleChange(
-                          option.value === value ? "" : option.value,
-                        )
-                      }
-                    />
-                    <label>{option.label}</label>
-                  </div>
-                </div>
+                </fieldset>
               );
             }
 
@@ -309,22 +459,34 @@ export default function FieldRenderer({
             };
 
             return (
-              <fieldset data-fieldset>
-                <div>
-                  <legend>{field.label}</legend>
-                  {field.hint && <p data-hint>{field.hint}</p>}
-                  <ErrorMessage message={errorMessage} />
-                </div>
-                <div data-checkbox-group>
+              <fieldset className="govbb-fieldset">
+                <legend className={labelClass("govbb-fieldset__legend")}>
+                  {field.label}
+                </legend>
+                {field.hint && (
+                  <p className="govbb-hint" id={hintId}>
+                    {field.hint}
+                  </p>
+                )}
+                <ErrorMessage id={errorId} message={errorMessage} />
+                <div className="form-page__options">
                   {field.options?.map((option) => {
                     return (
-                      <div key={option.value} data-checkbox-option>
+                      <div className="govbb-checkbox-item" key={option.value}>
                         <input
                           {...sharedProps}
+                          id={`${field.id}-${option.value}`}
+                          className="govbb-checkbox"
                           checked={checkboxValues.includes(option.value)}
+                          aria-invalid={invalid}
                           onChange={() => toggle(option.value)}
                         />
-                        <label>{option.label}</label>
+                        <label
+                          className="govbb-checkbox-item__label"
+                          htmlFor={`${field.id}-${option.value}`}
+                        >
+                          {option.label}
+                        </label>
                       </div>
                     );
                   })}
@@ -334,26 +496,45 @@ export default function FieldRenderer({
           case "radio":
             const value: string = (f.state.value as string | undefined) ?? "";
             return (
-              <fieldset data-fieldset>
-                <legend>{field.label}</legend>
-                {field.hint && <p data-hint>{field.hint}</p>}
-                <ErrorMessage message={errorMessage} />
-                <div data-radio-group>
+              <fieldset className="govbb-fieldset">
+                <legend className={labelClass("govbb-fieldset__legend")}>
+                  {field.label}
+                </legend>
+                {field.hint && (
+                  <p className="govbb-hint" id={hintId}>
+                    {field.hint}
+                  </p>
+                )}
+                <ErrorMessage id={errorId} message={errorMessage} />
+                <div className="form-page__options">
                   {field.options?.map((option) => {
                     const insetEntries = insetFieldsByOption?.get(option.value);
                     const isSelected = option.value === value;
                     return (
-                      <div key={option.value} data-radio-item>
-                        <input
-                          {...sharedProps}
-                          checked={isSelected}
-                          onChange={() => f.handleChange(option.value)}
-                        />
-                        <label>{option.label}</label>
+                      <React.Fragment key={option.value}>
+                        <div className="govbb-radio-item">
+                          <input
+                            {...sharedProps}
+                            {...requiredProps}
+                            id={`${field.id}-${option.value}`}
+                            className="govbb-radio"
+                            checked={isSelected}
+                            aria-invalid={invalid}
+                            onChange={() => f.handleChange(option.value)}
+                          />
+                          <label
+                            className="govbb-radio-item__label"
+                            htmlFor={`${field.id}-${option.value}`}
+                          >
+                            {option.label}
+                          </label>
+                        </div>
                         {/* Conditional reveal: inset fields shown below the
-                            selected option with an indented left-border style */}
+                            selected option. Rendered as a sibling immediately
+                            after the radio item so the govbb
+                            `:has(:checked) + __conditional` styling applies. */}
                         {insetEntries && isSelected && (
-                          <div data-radio-conditional>
+                          <div className="govbb-radio-item__conditional">
                             {insetEntries.map(
                               ({
                                 field: insetField,
@@ -370,7 +551,7 @@ export default function FieldRenderer({
                             )}
                           </div>
                         )}
-                      </div>
+                      </React.Fragment>
                     );
                   })}
                 </div>
@@ -381,28 +562,35 @@ export default function FieldRenderer({
               <FileUpload
                 field={field}
                 sharedProps={sharedProps}
-                value={f.state.value as File[] | null | undefined}
+                value={f.state.value as UploadedFile[] | null | undefined}
                 onFileChange={(files) => f.handleChange(files)}
                 errorMessage={errorMessage}
+                errorId={errorId}
                 validationRules={field.validations}
                 formId={formId}
+                formVersion={formVersion}
               />
             );
           case "show-hide": {
             // Value is a boolean: false = collapsed (default), true = expanded.
             // The toggle itself carries no validation. Hint text and controlled
             // sibling fields are rendered by form-renderer inside a shared
-            // data-show-hide-content wrapper so the left border spans them all.
+            // form-page__show-hide-content wrapper so the left border spans
+            // them all. The govbb show-hide component is <details>-based, so the
+            // controlled-toggle visual is hand-rolled from brand tokens.
             const isOpen = (f.state.value as boolean | undefined) ?? false;
             return (
-              <div data-show-hide>
+              <div className="form-page__show-hide">
                 <button
                   type="button"
-                  data-show-hide-toggle
+                  className="form-page__show-hide-toggle"
                   aria-expanded={isOpen}
                   onClick={() => f.handleChange(!isOpen)}
                 >
-                  <span data-show-hide-arrow aria-hidden="true" />
+                  <span
+                    className="form-page__show-hide-arrow"
+                    aria-hidden="true"
+                  />
                   {field.label}
                 </button>
               </div>

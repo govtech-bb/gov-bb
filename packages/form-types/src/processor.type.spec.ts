@@ -22,6 +22,33 @@ describe("processorSchema (author-time)", () => {
     ).toBe(true);
   });
 
+  it("accepts email with a literal label", () => {
+    expect(
+      processorSchema.safeParse({
+        type: "email",
+        config: { recipientField: "personal.email", label: "Applicant Email" },
+      }).success,
+    ).toBe(true);
+  });
+
+  it("accepts email without a label (optional)", () => {
+    expect(
+      processorSchema.safeParse({
+        type: "email",
+        config: { recipientField: "personal.email" },
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects email with an empty label", () => {
+    expect(
+      processorSchema.safeParse({
+        type: "email",
+        config: { recipientField: "personal.email", label: "" },
+      }).success,
+    ).toBe(false);
+  });
+
   it("accepts payment with JSONLogic-rule amount", () => {
     expect(
       processorSchema.safeParse({
@@ -171,6 +198,15 @@ describe("resolvedProcessorSchema (post-resolution)", () => {
         },
       }).success,
     ).toBe(false);
+  });
+
+  it("accepts a resolved email carrying a literal label", () => {
+    expect(
+      resolvedProcessorSchema.safeParse({
+        type: "email",
+        config: { recipientField: "contactDetails.email", label: "MDA Email" },
+      }).success,
+    ).toBe(true);
   });
 
   it("rejects webhook whose url is still a JSONLogic rule", () => {

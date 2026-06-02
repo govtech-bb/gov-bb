@@ -2,11 +2,11 @@ import React from "react";
 
 export default function NotFound() {
   return (
-    <div>
+    <div className="form-page form-page__message">
       <div>
         {/* Header */}
         <div>
-          <h1>We couldn&lsquo;t find that page</h1>
+          <h1 className="govbb-text-h1">We couldn&lsquo;t find that page</h1>
           <p>
             The page you’re looking for may have been moved, removed, or the
             address may have been typed incorrectly.
@@ -15,8 +15,8 @@ export default function NotFound() {
 
         {/* Suggestions */}
         <div>
-          <h3>Suggestions:</h3>
-          <ul>
+          <h3 className="govbb-text-h3">Suggestions:</h3>
+          <ul className="govbb-list govbb-list--bullet">
             <li>Check the web address for typos</li>
             <li>Return to the homepage</li>
           </ul>
@@ -24,7 +24,9 @@ export default function NotFound() {
 
         {/* Quick Link Buttons */}
         <div>
-          <a href="/">Go to Homepage</a>
+          <a className="govbb-btn" href="/">
+            Go to Homepage
+          </a>
         </div>
       </div>
     </div>

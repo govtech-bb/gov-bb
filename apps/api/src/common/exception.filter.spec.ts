@@ -84,6 +84,26 @@ describe("GlobalExceptionFilter", () => {
       expect(res.statusCode).toBe(500);
       expect(res.body).toMatchObject({ statusCode: 500 });
     });
+
+    it("non-HttpException Error carrying a 4xx .status → that status (#298)", () => {
+      const res = makeRes();
+      const err = Object.assign(new Error("request entity too large"), {
+        status: 413,
+      });
+      filter.catch(err, makeHost(res, mockReq));
+
+      expect(res.statusCode).toBe(413);
+      expect(res.body).toMatchObject({ statusCode: 413 });
+    });
+
+    it("non-HttpException Error with a 5xx .status still collapses to 500 (#298)", () => {
+      const res = makeRes();
+      const err = Object.assign(new Error("upstream boom"), { status: 502 });
+      filter.catch(err, makeHost(res, mockReq));
+
+      expect(res.statusCode).toBe(500);
+      expect(res.body).toMatchObject({ statusCode: 500 });
+    });
   });
 
   describe("metrics side-effects", () => {
@@ -208,6 +228,45 @@ describe("GlobalExceptionFilter", () => {
 
       // Falls through to `return { statusCode, message: exception.message }`
       expect(res.body).toMatchObject({ statusCode: 409 });
+    });
+  });
+
+  describe("non-HttpException error passthrough", () => {
+    let originalNodeEnv: string | undefined;
+
+    beforeEach(() => {
+      originalNodeEnv = process.env.NODE_ENV;
+    });
+
+    afterEach(() => {
+      if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = originalNodeEnv;
+    });
+
+    it("non-prod → body.meta.error includes name and message", () => {
+      process.env.NODE_ENV = "development";
+      const res = makeRes();
+
+      filter.catch(new TypeError("kapow"), makeHost(res, mockReq));
+
+      expect(res.body).toMatchObject({
+        statusCode: 500,
+        meta: { error: { name: "TypeError", message: "kapow" } },
+      });
+    });
+
+    it("production → body has no meta.error", () => {
+      process.env.NODE_ENV = "production";
+      const res = makeRes();
+
+      filter.catch(new Error("boom"), makeHost(res, mockReq));
+
+      const body = res.body as { meta?: unknown };
+      expect(body.meta).toBeUndefined();
+      expect(res.body).toMatchObject({
+        statusCode: 500,
+        message: "An unexpected error occurred",
+      });
     });
   });
 });

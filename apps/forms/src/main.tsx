@@ -4,6 +4,9 @@ import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/query-client";
 import { trackPageview } from "./lib/analytics";
+// GOV.BB design system — compiled, class-based stylesheet (govbb-* classes).
+// Loaded before the app's Tailwind entry so app tokens/chrome utilities win.
+import "@govtech-bb/styles";
 import "./styles/govtech.css";
 
 // Import the generated route tree

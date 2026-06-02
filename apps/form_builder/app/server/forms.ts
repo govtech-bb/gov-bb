@@ -5,18 +5,19 @@ import {
   type ServiceContractRecipe,
 } from "@govtech-bb/form-types";
 import { api, ApiError } from "./api-client";
-import { listPublishedForms, getPublishedRecipe } from "./github-recipes";
+import { getPublishedRecipe } from "./github-recipes";
 import { compare as compareSemver } from "../lib/version";
 import type { FormDefinitionSummary } from "../types/index";
 import { requireSession } from "./auth/require-session";
 
 export const listForms = createServerFn({ method: "GET" })
   .middleware([requireSession])
-  .handler(async ({ context }): Promise<FormDefinitionSummary[]> => {
-    const token = context.session.accessToken;
+  .handler(async (): Promise<FormDefinitionSummary[]> => {
     const [drafts, published, disabled] = await Promise.all([
       api.get<FormDefinitionSummary[]>("/builder/forms"),
-      listPublishedForms(token),
+      api.get<{ formId: string; title: string; version: string }[]>(
+        "/builder/forms/published",
+      ),
       api.get<string[]>("/builder/forms/disabled"),
     ]);
 
@@ -120,15 +121,19 @@ export const deleteForm = createServerFn({ method: "POST" })
     });
   });
 
-export const nextVersion = createServerFn({ method: "GET" })
+// Delete a single version row of a form. Unlike deleteForm, this leaves no
+// tombstone and only removes the one matching row — for pruning a superseded
+// draft. The API returns 404 if no such row and 400 if it's published.
+export const deleteFormVersion = createServerFn({ method: "POST" })
   .middleware([requireSession])
-  .inputValidator(z.object({ formId: z.string() }))
-  .handler(
-    async ({
-      data,
-    }): Promise<{ currentVersion: string | null; nextVersion: string }> => {
-      return api.get<{ currentVersion: string | null; nextVersion: string }>(
-        `/builder/forms/${encodeURIComponent(data.formId)}/next-version`,
-      );
-    },
-  );
+  .inputValidator(
+    z.object({
+      formId: z.string().min(1),
+      version: z.string().min(1),
+    }),
+  )
+  .handler(async ({ data }): Promise<void> => {
+    await api.del(
+      `/builder/forms/${encodeURIComponent(data.formId)}/versions/${encodeURIComponent(data.version)}`,
+    );
+  });

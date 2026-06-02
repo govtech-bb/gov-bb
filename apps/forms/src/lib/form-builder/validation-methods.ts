@@ -71,14 +71,13 @@ export const checkRequired = ({
     return "unknownState";
   }
 
-  if (required && required.value && isEmpty) {
+  if (required !== undefined && required.value !== false) {
+    if (!isEmpty) return "notEmpty";
     setValidationError(fieldName, required, results);
     return "requiredAndEmpty";
   }
-  if ((!required || (required && !required.value)) && isEmpty)
-    return "notRequiredAndEmpty";
 
-  return "notEmpty";
+  return isEmpty ? "notRequiredAndEmpty" : "notEmpty";
 };
 
 export const checkLength = ({
@@ -525,7 +524,12 @@ export const checkFileTypes = ({
 
   const allowedExtensions = fileTypes.value.map((type: string) => {
     const parts = type.split("/");
-    return parts.length > 1 ? parts[1].toLowerCase() : type.toLowerCase();
+    // MIME types ("application/pdf") collapse to their subtype ("pdf").
+    if (parts.length > 1) return parts[1].toLowerCase();
+    // Extension values are normalised to bare, dotless form so ".pdf", "PDF"
+    // and "pdf" all compare equal to a file's ".pdf" extension.
+    const lower = type.toLowerCase();
+    return lower.startsWith(".") ? lower.slice(1) : lower;
   });
 
   const invalidExtensions = new Set<string>();

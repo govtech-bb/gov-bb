@@ -2,7 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import * as ExcelJS from "exceljs";
 import { mkdirSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import type {
   ISubmissionProcessor,
   ProcessorOutput,
@@ -45,7 +45,11 @@ export class SpreadsheetProcessor implements ISubmissionProcessor {
     payload: SubmissionCreatedEvent,
     cfg: Record<string, unknown>,
   ): Promise<void> {
-    const filename = (cfg["filename"] as string | undefined) ?? payload.formId;
+    // basename strips any directory segments so a recipe-supplied filename like
+    // "../../etc/passwd" can't escape exportDir (path traversal).
+    const rawFilename =
+      (cfg["filename"] as string | undefined) ?? payload.formId;
+    const filename = basename(rawFilename);
     const filePath = join(this.exportDir, `${filename}.xlsx`);
 
     const workbook = new ExcelJS.Workbook();

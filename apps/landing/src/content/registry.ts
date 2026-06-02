@@ -40,17 +40,11 @@ function leafFromSlug(
   return slug
 }
 
-// Organisation MDs (government/organisations/*.md) have their own loader and
-// content shape — they aren't content pages and must not be parsed by the
-// page registry's FrontmatterSchema.
-const modules = import.meta.glob(
-  ['./**/*.md', '!./government/organisations/**'],
-  {
-    query: '?raw',
-    import: 'default',
-    eager: true,
-  },
-)
+const modules = import.meta.glob('./**/*.md', {
+  query: '?raw',
+  import: 'default',
+  eager: true,
+})
 
 export const PAGES: Array<ContentPage> = Object.entries(modules).map(
   ([path, source]) => {
@@ -135,10 +129,72 @@ export function isSubPage(page: ContentPage): boolean {
 }
 
 /**
+ * A page is *effectively preview* if its own `visibility` is `preview` or any
+ * ancestor page is. Walking ancestors by slug means flagging a service's
+ * `index.md` automatically hides its `/start` (and other) sub-pages, which sit
+ * at `<service>/<leaf>`. Slug-keyed (not URL) so it is independent of the
+ * category prefix — sub-pages frequently omit a category and resolve at a bare
+ * URL, but their slug is always `<parentSlug>/<leaf>`.
+ */
+export function isPreview(page: ContentPage): boolean {
+  return resolveIsPreview(
+    page.slug,
+    (slug) => BY_SLUG.get(slug)?.frontmatter.visibility,
+  )
+}
+
+/**
+ * Pure core of {@link isPreview}, decoupled from module state for testing:
+ * walk `slug` and each ancestor slug, returning true if any is `preview`.
+ * `visibilityOf` returns the *own* visibility of a slug, or undefined if no
+ * page sits at that slug (intermediate directory).
+ */
+export function resolveIsPreview(
+  slug: string,
+  visibilityOf: (slug: string) => 'public' | 'preview' | undefined,
+): boolean {
+  let current: string | undefined = slug
+  while (current) {
+    if (visibilityOf(current) === 'preview') return true
+    const i = current.lastIndexOf('/')
+    current = i < 0 ? undefined : current.slice(0, i)
+  }
+  return false
+}
+
+/** A page is visible when in preview mode, or when it isn't effectively preview. */
+export function isVisible(page: ContentPage, inPreview: boolean): boolean {
+  return inPreview || !isPreview(page)
+}
+
+/**
+ * Whether the page at `url` is effectively preview. Used by the static
+ * `<service>/form` routes to gate themselves on their owning service page.
+ * Unknown URLs are treated as not-preview (fail-open: a missing page already
+ * 404s through its own route).
+ */
+export function isUrlPreview(url: string): boolean {
+  const page = findPage(url)
+  return page ? isPreview(page) : false
+}
+
+/**
+ * Whether this page's `<slug>/start` sub-page exists and is effectively
+ * preview. Drives hiding the online-application method on a still-public parent
+ * page (see rehype-hide-start-links). Pages with no `/start` sub-page return
+ * false and keep their existing manifest-gated behaviour.
+ */
+export function startSubPageInPreview(page: ContentPage): boolean {
+  const start = BY_SLUG.get(`${page.slug}/start`)
+  return start ? isPreview(start) : false
+}
+
+/**
  * Canonical URL keyed by a page's leaf slug (last path segment). Used to
  * rewrite the bare-slug links authored in organisation content — e.g. a
- * ministry listing `/apply-for-a-passport` — to the category-prefixed route
- * that actually resolves (`/travel-id-citizenship/apply-for-a-passport`).
+ * ministry listing `/get-a-document-notarised` — to the category-prefixed
+ * route that actually resolves
+ * (`/travel-id-citizenship/get-a-document-notarised`).
  * Leaves shared by multiple pages (e.g. step pages named `start`) are
  * ambiguous and dropped so they never resolve to the wrong page.
  */
