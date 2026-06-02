@@ -4,6 +4,7 @@ description: "Apply for financial help towards your child’s fees at a private 
 stage: "alpha"
 publish_date: 2026-06-02
 category: education
+visibility: preview
 ---
 
 If your child has additional learning needs that cannot be met in a government school, you can apply for a bursary towards their education at a private special-education provider in Barbados.
