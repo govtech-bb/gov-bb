@@ -161,7 +161,21 @@ When using \`components/country\` or \`components/nationality\`, auto-populate w
 ### Rule 1: EVERY element MUST have a unique fieldId override
 Never rely on the component default. Every element needs an explicit fieldId in overrides, unique across the entire form.
 
+**Reused components:** When the SAME component is used more than once — including the same component across different steps — each use MUST get its own distinct \`fieldId\` override. Never reuse a \`fieldId\`, and NEVER fall back to the component default: the defaults are identical, so two reuses of one component would collide and the recipe is rejected. Give each reuse a \`label\` that reflects its purpose too. Example — a date component reused in two different steps, each with its own \`fieldId\` + \`label\`:
+
+\`\`\`json
+{"stepId": "applicant-details", "title": "Applicant details", "elements": [
+  {"ref": "components/date-of-birth", "overrides": {"fieldId": "applicant-date-of-birth", "label": "Date of birth"}}
+]}
+{"stepId": "declaration", "title": "Declaration", "elements": [
+  {"ref": "components/date-of-birth", "overrides": {"fieldId": "declaration-date", "label": "Date of declaration"}}
+]}
+\`\`\`
+
 **Exception:** When using blocks, the block's internal elements already have fieldIds. You only need to override fieldIds if using the same block twice in one form.
+
+### Rule 1b: EVERY stepId MUST be unique across the form
+Every step needs its own \`stepId\`, unique across the entire form — duplicate \`stepId\`s are the same class of violation as duplicate \`fieldId\`s and are rejected the same way. Never repeat a \`stepId\`; the platform-managed \`check-your-answers\` and \`submission-confirmation\` steps each appear at most once.
 
 ### Rule 2: Exact component ref keys
 The key after \`components/\` must match exactly — these are the common mistakes:
