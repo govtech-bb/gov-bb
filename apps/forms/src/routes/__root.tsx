@@ -30,9 +30,7 @@ const RootLayout = () => (
     <OfficialBanner />
     <SiteHeader />
     <main className="flex-1">
-      <div className="container py-8 lg:py-16">
-        <Outlet />
-      </div>
+      <Outlet />
     </main>
     <Footer
       links={FOOTER_LINKS}
