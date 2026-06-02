@@ -11,7 +11,7 @@ import {
   formSearchParamSchema,
   type FormSearchParams,
 } from "../../../types/form-search-param.type";
-import { useForm, useStore } from "@tanstack/react-form";
+import { useForm, useStore, revalidateLogic } from "@tanstack/react-form";
 import {
   RepeatableStepSettings,
   FormValues,
@@ -113,6 +113,13 @@ function RouteComponent() {
   }
 
   const form = useForm({
+    // Reward early, punish late: hold validation until a submit attempt
+    // (each step's Continue triggers validateField(…, "submit")), then
+    // revalidate on change so errors clear as the user fixes them.
+    validationLogic: revalidateLogic({
+      mode: "submit",
+      modeAfterSubmission: "change",
+    }),
     defaultValues: {
       ...(formMeta.defaultValues as FormValues),
       ...(savedFormData ?? {}),

@@ -223,7 +223,7 @@ export default function FormRenderer({
   const handleContinue = async () => {
     // Validate current step fields
     const results = await Promise.all(
-      currentFields.map((field) => form.validateField(field.id, "change")),
+      currentFields.map((field) => form.validateField(field.id, "submit")),
     );
 
     const scrollToTop = () => {
