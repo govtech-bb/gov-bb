@@ -10,5 +10,8 @@
   },
   "enabledPlugins": {
     "bb@team-skills": true
+  },
+  "worktree": {
+    "baseRef": "head"
   }
 }
