@@ -211,25 +211,28 @@ function buildSystemPrompts(
 
   if (resolution.kind === "collect") {
     const { slug, schema } = resolution.form;
-    prompts.push(`Active form: ${slug}`, buildSchemaDisclosure(slug, schema));
+    // One combined form-state block instead of 3-4 separate system entries.
+    // The schema disclosure already names the slug, so no separate marker.
+    const parts = [buildSchemaDisclosure(slug, schema)];
     const entries = Object.entries(session.values);
     if (entries.length) {
       const lines = entries
         .map(([k, v]) => `- ${k}: ${JSON.stringify(v)}`)
         .join("\n");
-      prompts.push(
+      parts.push(
         `Already collected (do NOT re-ask these unless the user wants to change them):\n${lines}`,
       );
     }
     if (session.status === "submitted" && session.referenceNumber) {
-      prompts.push(
+      parts.push(
         `Submission complete. Reference number: ${session.referenceNumber}. Do NOT submit again.`,
       );
     } else if (session.status === "failed" && session.lastError) {
-      prompts.push(
+      parts.push(
         `Last submission attempt failed: ${session.lastError}. Help the user correct the listed fields, then retry submit_form.`,
       );
     }
+    prompts.push(parts.join("\n\n"));
   } else {
     prompts.push(NO_FORM_DISCLOSURE);
   }
