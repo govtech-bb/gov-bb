@@ -88,6 +88,12 @@ export const CATEGORIES: Array<Category> = [
     title: 'Public safety',
     description: 'Reporting crime, raising a concern and safeguarding',
   },
+  {
+    slug: 'education',
+    title: 'Education',
+    description:
+      'Apply for school places and exams, claim education grants, and manage your child’s schooling',
+  },
 ]
 
 export const CATEGORY_BY_SLUG: Record<string, Category> = Object.fromEntries(
