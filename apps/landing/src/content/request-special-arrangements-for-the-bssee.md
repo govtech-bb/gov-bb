@@ -4,6 +4,7 @@ description: "Ask for access arrangements, such as extra time or a separate room
 stage: "alpha"
 publish_date: 2026-06-02
 category: education
+visibility: preview
 ---
 
 If your child needs special arrangements to sit the Barbados Secondary Schools’ Entrance Examination (BSSEE) on equal terms, you can request access arrangements. Examples include extra time, a separate room, large-print papers, a reader or a medical adjustment.
