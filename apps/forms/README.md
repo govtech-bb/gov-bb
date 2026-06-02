@@ -10,6 +10,38 @@ pnpm build    # production build
 
 See [`.env.example`](./.env.example) for environment variables.
 
+## Testing
+
+```bash
+pnpm test          # Jest unit tests
+pnpm test:e2e      # Playwright E2E vs a local dev server + the synthetic
+                   # `master` form, with mocked submissions (no backend)
+pnpm test:smoke    # Live smoke: drives REAL DB-backed forms end-to-end and
+                   # SUBMITS FOR REAL against a deployed environment
+```
+
+The **live smoke** suite (`e2e/smoke/`, run via `playwright.smoke.config.ts`) is
+kept out of the normal `test:e2e` / `nx test` run. By default it targets
+`https://forms.sandbox.alpha.gov.bb`; override with `SMOKE_BASE_URL`:
+
+```bash
+# Against the deployed sandbox (default):
+pnpm exec nx run forms:smoke
+
+# Against a local stack (Vite :3000 + API :3001 pointed at a real S3 bucket
+# via `aws sso login`):
+SMOKE_BASE_URL=http://localhost:3000 pnpm --filter @govtech-bb/forms test:smoke
+
+# Just the temp-teacher form:
+pnpm --filter @govtech-bb/forms exec playwright test \
+  --config playwright.smoke.config.ts temp-teacher-application.smoke.spec.ts
+```
+
+**In CI:** the `temp-teacher-application` smoke spec runs automatically after a
+sandbox forms deploy — see the `smoke-test-forms` job in
+[`deploy-sandbox.yml`](../../.github/workflows/deploy-sandbox.yml). It submits a
+real application (recipient `testing@govtech.bb`) on every forms deploy.
+
 ## Analytics (Umami)
 
 The forms app sends pageview and curated form-funnel events to [Umami Cloud](https://umami.is/) when configured.
