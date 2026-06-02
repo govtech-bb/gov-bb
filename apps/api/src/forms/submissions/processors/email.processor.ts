@@ -41,9 +41,35 @@ export class EmailProcessor implements ISubmissionProcessor {
   async process(payload: SubmissionCreatedEvent): Promise<ProcessorOutput> {
     const entries = payload.processors.filter((p) => p.type === "email");
 
+    // Attempt every entry before failing. A per-entry failure (e.g. an
+    // unresolvable MDA notification address) must not stop a sibling entry
+    // (e.g. the applicant confirmation) from sending — ADR 0006. But failures
+    // are no longer swallowed: they are collected here and re-thrown below so
+    // the batch fails loudly (SQS retry → DLQ, or an error log on the direct
+    // path) instead of silently dropping an undelivered email.
+    const failures: string[] = [];
     for (const entry of entries) {
       const cfg = (entry.config ?? {}) as Record<string, unknown>;
-      await this.processEntry(payload, cfg);
+      try {
+        await this.processEntry(payload, cfg);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        this.logger.error(
+          `[email] Entry failed for submission ${payload.submissionId}: ${message}`,
+        );
+        failures.push(message);
+      }
+    }
+
+    if (failures.length > 0) {
+      // NOTE: email has no per-entry idempotency key, so an SQS retry re-sends
+      // already-delivered siblings — a pre-existing gap (ADR 0006), unchanged
+      // by this throw (the SES send already threw on delivery failure).
+      throw new Error(
+        `[email] ${failures.length}/${entries.length} email ` +
+          `entr${entries.length === 1 ? "y" : "ies"} failed for submission ` +
+          `${payload.submissionId}: ${failures.join("; ")}`,
+      );
     }
 
     return { kind: "completed" };
@@ -55,10 +81,9 @@ export class EmailProcessor implements ISubmissionProcessor {
   ): Promise<void> {
     const recipientField = cfg["recipientField"] as string | undefined;
     if (!recipientField) {
-      this.logger.warn(
-        `[email] No recipientField configured for submission ${payload.submissionId} — skipping`,
+      throw new Error(
+        `No recipientField configured for submission ${payload.submissionId}`,
       );
-      return;
     }
 
     // A literal address (contains "@") is used verbatim — this is how a recipe
@@ -72,10 +97,9 @@ export class EmailProcessor implements ISubmissionProcessor {
         : this.resolveSubmittedRecipient(payload, recipientField);
 
     if (!recipient) {
-      this.logger.warn(
-        `[email] Could not resolve recipient at "${recipientField}" for submission ${payload.submissionId} — skipping`,
+      throw new Error(
+        `Could not resolve recipient at "${recipientField}" for submission ${payload.submissionId}`,
       );
-      return;
     }
 
     const subject =
@@ -139,8 +163,11 @@ export class EmailProcessor implements ISubmissionProcessor {
    * (e.g. the MDA notification address). The recipientField after the
    * "contactDetails." prefix names the key to read (today only `email`).
    * Returns `undefined` when the contract has no contactDetails or the
-   * requested key is absent/non-string — the caller logs and skips, so a
-   * sibling applicant email still sends (ADR 0006).
+   * requested key is absent/non-string. The caller (`processEntry`) then
+   * throws for this entry; `process()` collects the failure and continues so
+   * a sibling applicant email still sends (ADR 0006), then re-throws an
+   * aggregated error so the unresolved recipient is surfaced, not silently
+   * dropped.
    */
   private async resolveContactRecipient(
     payload: SubmissionCreatedEvent,
