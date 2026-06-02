@@ -222,3 +222,50 @@ describe("strictEqualityRunner", () => {
     ).toBe("Values do not match");
   });
 });
+
+// String rules applied to multi-value (array) fields validate each non-empty
+// element independently rather than the comma-joined string.
+describe("string rules over array values (per-element)", () => {
+  it("maxLength passes when every element is within the limit", () => {
+    expect(maxLengthRunner(["ab", "cd"], cfg(3), {})).toBeNull();
+  });
+
+  it("maxLength fails when any element exceeds the limit", () => {
+    expect(maxLengthRunner(["ok", "toolong"], cfg(3), {})).toBe(
+      "Must be at most 3 characters",
+    );
+  });
+
+  it("minLength fails when any element is too short, skipping empty entries", () => {
+    expect(minLengthRunner(["", "hi"], cfg(5), {})).toBe(
+      "Must be at least 5 characters",
+    );
+  });
+
+  it("minLength passes for an array of only empty strings", () => {
+    expect(minLengthRunner(["", ""], cfg(5), {})).toBeNull();
+  });
+
+  it("pattern validates each element", () => {
+    expect(
+      patternRunner(["AB12345", "nope"], cfg("^[A-Z]{2}\\d{5}$"), {}),
+    ).toBe("Invalid format");
+    expect(
+      patternRunner(["AB12345", "CD67890"], cfg("^[A-Z]{2}\\d{5}$"), {}),
+    ).toBeNull();
+  });
+
+  it("email validates each element", () => {
+    expect(emailRunner(["a@b.com", "nope"], cfg(undefined), {})).toBe(
+      "Must be a valid email address",
+    );
+    expect(emailRunner(["a@b.com", "c@d.com"], cfg(undefined), {})).toBeNull();
+  });
+
+  it("contains validates each element", () => {
+    expect(containsRunner(["xworld", "nope"], cfg("world"), {})).toBe(
+      'Must contain "world"',
+    );
+    expect(containsRunner(["world1", "world2"], cfg("world"), {})).toBeNull();
+  });
+});
