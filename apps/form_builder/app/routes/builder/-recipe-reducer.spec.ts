@@ -7,6 +7,7 @@ import type {
 import {
   EMPTY_DRAFT,
   REQUIRED_STEP_IDS,
+  firstStepId,
   isNoFieldsStep,
   isRequiredStep,
   nextStepId,
@@ -80,6 +81,62 @@ describe("isNoFieldsStep", () => {
 
   it("returns false for an arbitrary editable step id", () => {
     expect(isNoFieldsStep("step-1")).toBe(false);
+  });
+});
+
+// ── firstStepId ──────────────────────────────────────────────────────────────
+
+describe("firstStepId", () => {
+  // A required-step fixture, used to assert the helper applies the reducer's
+  // [...editable, ...required] ordering rather than naively reading steps[0].
+  const requiredStep = (
+    id: (typeof REQUIRED_STEP_IDS)[number],
+  ): RecipeStepDraft => ({
+    stepId: id,
+    title: `Title ${id}`,
+    description: undefined,
+    fields: [],
+    behaviours: [],
+  });
+
+  it("returns the first editable step's id when editable steps exist", () => {
+    const draft = {
+      ...baseDraft(),
+      steps: [editableStep("step-1"), editableStep("step-2")],
+    };
+    expect(firstStepId(draft)).toBe("step-1");
+  });
+
+  it("returns the first editable step even when a required step precedes it in the array", () => {
+    // Mirrors the pre-normalization draft handed to the load handlers: a
+    // required step can appear before the editable ones. The helper must use
+    // the editable-first ordering rule, not steps[0].
+    const draft = {
+      ...baseDraft(),
+      steps: [
+        requiredStep("check-your-answers"),
+        editableStep("step-1"),
+        editableStep("step-2"),
+      ],
+    };
+    expect(firstStepId(draft)).toBe("step-1");
+  });
+
+  it("falls back to the first step overall when only required steps exist", () => {
+    const draft = {
+      ...baseDraft(),
+      steps: [
+        requiredStep("check-your-answers"),
+        requiredStep("declaration"),
+        requiredStep("submission-confirmation"),
+      ],
+    };
+    expect(firstStepId(draft)).toBe("check-your-answers");
+  });
+
+  it("returns null when the draft has no steps", () => {
+    const draft = { ...baseDraft(), steps: [] };
+    expect(firstStepId(draft)).toBeNull();
   });
 });
 
