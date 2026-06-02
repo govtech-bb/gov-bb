@@ -307,10 +307,12 @@ export function recipeReducer(
         ...state,
         steps: state.steps.map((s) => {
           if (s.stepId !== action.stepId) return s;
+          // Move (remove + insert) rather than swap, so drag-and-drop across
+          // several positions lands correctly. Adjacent moves (the ▲/▼ arrow
+          // buttons) are the single-step case and behave identically.
           const fields = [...s.fields];
-          const tmp = fields[action.fromIndex];
-          fields[action.fromIndex] = fields[action.toIndex];
-          fields[action.toIndex] = tmp;
+          const [moved] = fields.splice(action.fromIndex, 1);
+          fields.splice(action.toIndex, 0, moved);
           return { ...s, fields };
         }),
       };
