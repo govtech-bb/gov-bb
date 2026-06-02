@@ -190,7 +190,7 @@ export default function SubmissionConfirmation({
   return (
     <div className="container pb-8 lg:pb-16">
       <div className="form-width form-page__confirmation">
-        <div className="form-page__confirmation-header">
+        <div className="form-page__header form-page__confirmation-header">
           <p className="form-page__service-title">{serviceTitle}</p>
           <h1 className="govbb-text-h1">{stepTitle}</h1>
           {processingMessage && (

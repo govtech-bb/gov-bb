@@ -371,15 +371,17 @@ export default function FormRenderer({
   }
 
   return (
-    <div className="container py-8 lg:py-16">
+    <div className="container pb-8 lg:pb-16">
       <div className="form-page form-width">
-        <p className="form-page__service-title"> {formMeta.formTitle} </p>
-        <h1 className="govbb-text-h1">{currentStep.title}</h1>
-        {currentStep.description && (
-          <p className="form-page__step-description">
-            {currentStep.description}
-          </p>
-        )}
+        <div className="form-page__header">
+          <p className="form-page__service-title"> {formMeta.formTitle} </p>
+          <h1 className="govbb-text-h1">{currentStep.title}</h1>
+          {currentStep.description && (
+            <p className="form-page__step-description">
+              {currentStep.description}
+            </p>
+          )}
+        </div>
         <ErrorSummary errors={errors} />
 
         <div className="form-page__step">
