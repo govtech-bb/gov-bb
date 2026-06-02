@@ -5,6 +5,7 @@ type FormSessionStatus = "collecting" | "submitting" | "submitted" | "failed";
 export interface FormSession {
   threadId: string;
   slug: string | null;
+  handedOffSlug: string | null;
   values: Record<string, string>;
   submissionId: string;
   status: FormSessionStatus;
@@ -42,6 +43,7 @@ export function getOrCreateSession(threadId: string): FormSession {
     s = {
       threadId,
       slug: null,
+      handedOffSlug: null,
       values: {},
       submissionId: randomUUID(),
       status: "collecting",
@@ -57,6 +59,7 @@ export function getOrCreateSession(threadId: string): FormSession {
 
 export function resetSessionForNewForm(session: FormSession): void {
   session.slug = null;
+  session.handedOffSlug = null;
   session.values = {};
   session.submissionId = randomUUID();
   session.status = "collecting";
@@ -73,11 +76,13 @@ export function withThreadLock<T>(
 ): Promise<T> {
   const prior = locks.get(threadId) ?? Promise.resolve();
   const next = prior.catch(() => undefined).then(task);
-  locks.set(
-    threadId,
-    next.finally(() => {
-      if (locks.get(threadId) === next) locks.delete(threadId);
-    }),
-  );
+  const guard: Promise<unknown> = next.finally(() => {
+    // Only evict if a newer task hasn't replaced us. Compare against the SAME
+    // promise we stored: the prior code compared against `next` (the pre-
+    // `.finally` promise), which never matched, so entries were never deleted
+    // and `locks` grew unbounded (no TTL/cap, unlike `sessions`).
+    if (locks.get(threadId) === guard) locks.delete(threadId);
+  });
+  locks.set(threadId, guard);
   return next;
 }
