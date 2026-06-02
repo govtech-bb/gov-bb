@@ -192,3 +192,34 @@ it("humanizes a key name for the schema-driven fallback label", () => {
   expect(humanize("width")).toBe("Width");
   expect(humanize("hideLabel")).toBe("Hide Label");
 });
+
+// --- Inherited base validation rules (#618) ------------------------------
+// The panel must thread the base primitive's validations into the validation
+// editor so a component's declared rules (e.g. National ID's `pattern`) are
+// visible and overridable — not silently enforced only at runtime.
+
+const NATIONAL_ID_PATTERN_ERROR =
+  "Enter a valid ID number (for example, 850101-0001)";
+
+it("surfaces a base component validation rule as an inherited, read-only row", () => {
+  // National ID number declares a `pattern` rule in the registry. Freshly added
+  // (no overrides), it must still appear — inherited from the component.
+  renderPanel(makeField("components/national-id-number"));
+
+  expect(screen.getByText(/inherited from component/i)).toBeInTheDocument();
+  expect(screen.getByText(NATIONAL_ID_PATTERN_ERROR)).toBeInTheDocument();
+});
+
+it("writes the base value into overrides when an inherited rule is overridden", async () => {
+  const dispatch = renderPanel(makeField("components/national-id-number"));
+
+  await userEvent.click(screen.getByRole("button", { name: /override/i }));
+  await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+  expect(lastOverrides(dispatch).validations).toEqual({
+    pattern: {
+      value: "^\\d{6}-\\d{4}$",
+      error: NATIONAL_ID_PATTERN_ERROR,
+    },
+  });
+});
