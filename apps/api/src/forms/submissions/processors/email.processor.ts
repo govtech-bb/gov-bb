@@ -25,7 +25,6 @@ export class EmailProcessor implements ISubmissionProcessor {
   private readonly client: SESv2Client;
   private readonly from: string;
   private readonly configurationSet: string | undefined;
-  private readonly overrideRecipient: string | undefined;
 
   constructor(
     config: ConfigService,
@@ -34,7 +33,6 @@ export class EmailProcessor implements ISubmissionProcessor {
   ) {
     this.from = config.get<string>("email.from") ?? "noreply@gov.bb";
     this.configurationSet = config.get<string>("email.configurationSet");
-    this.overrideRecipient = config.get<string>("email.overrideRecipient");
     this.client = new SESv2Client({
       region: config.get<string>("email.region") ?? "us-east-1",
     });
@@ -80,25 +78,16 @@ export class EmailProcessor implements ISubmissionProcessor {
       return;
     }
 
-    // Non-prod safety net: when EMAIL_OVERRIDE_RECIPIENT is set, every email
-    // (citizen confirmation AND MDA/department notification) is redirected to
-    // that inbox so QA can observe them without delivering to real recipients
-    // or needing each address SES-verified. The intended recipient is kept in
-    // the subject for traceability. Leave UNSET in production.
-    const to = this.overrideRecipient ?? recipient;
-    const baseSubject =
+    const subject =
       (cfg["subject"] as string | undefined) ??
       "Your form submission has been received";
-    const subject = this.overrideRecipient
-      ? `[QA→${recipient}] ${baseSubject}`
-      : baseSubject;
 
     const htmlBody = await this.resolveHtmlBody(payload);
 
     await this.client.send(
       new SendEmailCommand({
         FromEmailAddress: this.from,
-        Destination: { ToAddresses: [to] },
+        Destination: { ToAddresses: [recipient] },
         Content: {
           Simple: {
             Subject: { Data: subject, Charset: "UTF-8" },
@@ -123,7 +112,7 @@ export class EmailProcessor implements ISubmissionProcessor {
     );
 
     this.logger.log(
-      `[email] Confirmation sent to ${to} for submission ${payload.submissionId}`,
+      `[email] Confirmation sent to ${recipient} for submission ${payload.submissionId}`,
     );
   }
 
