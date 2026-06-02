@@ -89,7 +89,7 @@ jest.mock("@forms/lib", () => ({
   repeatStepConcactenator: "~",
   getRepeatStepCount: jest.fn(() => undefined),
   buildFieldValidationProperties: jest.fn(() => ({
-    onChange: jest.fn(),
+    onDynamic: jest.fn(),
     onBlur: jest.fn(),
   })),
 }));
@@ -464,7 +464,7 @@ describe("FormRenderer", () => {
             steps: [step],
             // Only `age` has a pre-built validator entry; `name` does not.
             validationProperties: {
-              "step-1~1_age": { onChange: jest.fn(), onBlur: jest.fn() },
+              "step-1~1_age": { onDynamic: jest.fn(), onBlur: jest.fn() },
             },
           }) as any
         }
@@ -696,7 +696,7 @@ describe("FormRenderer", () => {
     await user.click(screen.getByRole("button", { name: /continue/i }));
     expect(mockForm.validateField).toHaveBeenCalledWith(
       "step-1_name",
-      "change",
+      "submit",
     );
     expect(mockCompleteAndContinue).toHaveBeenCalledWith("step-1");
   });

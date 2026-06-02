@@ -77,6 +77,15 @@ export default function FieldRenderer({
         }
         const invalid = errorMessage ? true : undefined;
 
+        // revalidateLogic holds validation until a submit attempt, so typing in
+        // a fresh field never nags. But once a field is showing an error (after
+        // Continue/Submit), re-run validation on every change so the message
+        // clears the moment the value becomes valid.
+        const commitChange = (next: unknown) => {
+          f.handleChange(next as never);
+          if (!f.state.meta.isValid) void f.validate("submit");
+        };
+
         const hintId = field.hint ? `${field.id}-hint` : undefined;
         const errorId = errorMessage ? `${field.id}-error` : undefined;
         const describedBy =
@@ -138,7 +147,7 @@ export default function FieldRenderer({
                         aria-invalid={invalid}
                         onChange={(e) => {
                           const day = Number(e.target.value) ?? undefined;
-                          f.handleChange({
+                          commitChange({
                             ...value,
                             day,
                           });
@@ -166,7 +175,7 @@ export default function FieldRenderer({
                         aria-invalid={invalid}
                         onChange={(e) => {
                           const month = Number(e.target.value) ?? undefined;
-                          f.handleChange({
+                          commitChange({
                             ...value,
                             month,
                           });
@@ -194,7 +203,7 @@ export default function FieldRenderer({
                         aria-invalid={invalid}
                         onChange={(e) => {
                           const year = Number(e.target.value) ?? undefined;
-                          f.handleChange({
+                          commitChange({
                             ...value,
                             year,
                           });
@@ -236,7 +245,7 @@ export default function FieldRenderer({
                       className="govbb-textarea"
                       value={value ?? ""}
                       aria-invalid={invalid}
-                      onChange={(e) => f.handleChange(e.target.value)}
+                      onChange={(e) => commitChange(e.target.value)}
                     />
                   </div>
                 </div>
@@ -262,7 +271,7 @@ export default function FieldRenderer({
                     className="govbb-input"
                     value={value ?? ""}
                     aria-invalid={invalid}
-                    onChange={(e) => f.handleChange(e.target.value)}
+                    onChange={(e) => commitChange(e.target.value)}
                   />
                 </div>
               );
@@ -270,12 +279,12 @@ export default function FieldRenderer({
               const addAnotherField = (values: string[]) => {
                 // Pushes a new empty field, that a user can fill in
                 values.push("");
-                f.handleChange(values);
+                commitChange(values);
               };
 
               const removeField = (values: string[]) => {
                 values.pop();
-                f.handleChange(values);
+                commitChange(values);
               };
 
               const updateField = (
@@ -284,7 +293,7 @@ export default function FieldRenderer({
                 value: string,
               ) => {
                 values[index] = value;
-                f.handleChange(values);
+                commitChange(values);
               };
 
               const values = (f.state.value as string[] | undefined) ?? [
@@ -388,7 +397,7 @@ export default function FieldRenderer({
                     multiple={isMultiple}
                     value={selectValue ? selectValue : isMultiple ? [] : ""}
                     aria-invalid={invalid}
-                    onChange={(e) => f.handleChange(e.target.value)}
+                    onChange={(e) => commitChange(e.target.value)}
                   >
                     <option value=""></option>
                     {field.options?.map((option) => (
@@ -430,7 +439,7 @@ export default function FieldRenderer({
                         checked={option.value === value}
                         aria-invalid={invalid}
                         onChange={() =>
-                          f.handleChange(
+                          commitChange(
                             option.value === value ? "" : option.value,
                           )
                         }
@@ -454,7 +463,7 @@ export default function FieldRenderer({
               const next = checkboxValues.includes(item)
                 ? checkboxValues.filter((cv) => cv !== item)
                 : [...checkboxValues, item];
-              f.handleChange(next);
+              commitChange(next);
             };
 
             return (
@@ -519,7 +528,7 @@ export default function FieldRenderer({
                             className="govbb-radio"
                             checked={isSelected}
                             aria-invalid={invalid}
-                            onChange={() => f.handleChange(option.value)}
+                            onChange={() => commitChange(option.value)}
                           />
                           <label
                             className="govbb-radio-item__label"
@@ -562,7 +571,7 @@ export default function FieldRenderer({
                 field={field}
                 sharedProps={sharedProps}
                 value={f.state.value as UploadedFile[] | null | undefined}
-                onFileChange={(files) => f.handleChange(files)}
+                onFileChange={(files) => commitChange(files)}
                 errorMessage={errorMessage}
                 errorId={errorId}
                 validationRules={field.validations}
@@ -584,7 +593,7 @@ export default function FieldRenderer({
                   type="button"
                   className="form-page__show-hide-toggle"
                   aria-expanded={isOpen}
-                  onClick={() => f.handleChange(!isOpen)}
+                  onClick={() => commitChange(!isOpen)}
                 >
                   <span
                     className="form-page__show-hide-arrow"
