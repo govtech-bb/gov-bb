@@ -86,58 +86,66 @@ export class EmailProcessor implements ISubmissionProcessor {
       );
     }
 
-    // A literal address (contains "@") is used verbatim — this is how a recipe
-    // hardcodes a fixed internal recipient (e.g. "testing@govtech.bb"). Neither
-    // a "contactDetails." prefix nor a "stepId.fieldId" path contains "@", so
-    // the literal case is unambiguous and checked first.
-    const recipient = recipientField.includes("@")
-      ? recipientField
-      : recipientField.startsWith(CONTACT_DETAILS_PREFIX)
-        ? await this.resolveContactRecipient(payload, recipientField)
-        : this.resolveSubmittedRecipient(payload, recipientField);
+    // Wrap resolution + send so any failure (unresolved recipient or an SES
+    // delivery error) throws. The caller surfaces it (SQS retry → DLQ / error
+    // log) instead of silently dropping an undelivered email.
+    try {
+      // A literal address (contains "@") is used verbatim — this is how a
+      // recipe hardcodes a fixed internal recipient (e.g. "testing@govtech.bb").
+      // Neither a "contactDetails." prefix nor a "stepId.fieldId" path contains
+      // "@", so the literal case is unambiguous and checked first.
+      const recipient = recipientField.includes("@")
+        ? recipientField
+        : recipientField.startsWith(CONTACT_DETAILS_PREFIX)
+          ? await this.resolveContactRecipient(payload, recipientField)
+          : this.resolveSubmittedRecipient(payload, recipientField);
 
-    if (!recipient) {
-      throw new Error(
-        `Could not resolve recipient at "${recipientField}" for submission ${payload.submissionId}`,
-      );
-    }
+      if (!recipient) {
+        throw new Error(`Could not resolve recipient at "${recipientField}"`);
+      }
 
-    const subject =
-      (cfg["subject"] as string | undefined) ??
-      "Your form submission has been received";
+      const subject =
+        (cfg["subject"] as string | undefined) ??
+        "Your form submission has been received";
 
-    const htmlBody = await this.resolveHtmlBody(payload);
+      const htmlBody = await this.resolveHtmlBody(payload);
 
-    await this.client.send(
-      new SendEmailCommand({
-        FromEmailAddress: this.from,
-        Destination: { ToAddresses: [recipient] },
-        Content: {
-          Simple: {
-            Subject: { Data: subject, Charset: "UTF-8" },
-            Body: {
-              Text: {
-                Data: this.buildTextBody(payload),
-                Charset: "UTF-8",
-              },
-              Html: {
-                Data: htmlBody,
-                Charset: "UTF-8",
+      await this.client.send(
+        new SendEmailCommand({
+          FromEmailAddress: this.from,
+          Destination: { ToAddresses: [recipient] },
+          Content: {
+            Simple: {
+              Subject: { Data: subject, Charset: "UTF-8" },
+              Body: {
+                Text: {
+                  Data: this.buildTextBody(payload),
+                  Charset: "UTF-8",
+                },
+                Html: {
+                  Data: htmlBody,
+                  Charset: "UTF-8",
+                },
               },
             },
           },
-        },
-        // EmailTags are forwarded to the SES event destination (SNS/EventBridge).
-        EmailTags: [{ Name: "submissionId", Value: payload.submissionId }],
-        ...(this.configurationSet && {
-          ConfigurationSetName: this.configurationSet,
+          // EmailTags are forwarded to the SES event destination (SNS/EventBridge).
+          EmailTags: [{ Name: "submissionId", Value: payload.submissionId }],
+          ...(this.configurationSet && {
+            ConfigurationSetName: this.configurationSet,
+          }),
         }),
-      }),
-    );
+      );
 
-    this.logger.log(
-      `[email] Confirmation sent to ${recipient} for submission ${payload.submissionId}`,
-    );
+      this.logger.log(
+        `[email] Confirmation sent to ${recipient} for submission ${payload.submissionId}`,
+      );
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      throw new Error(
+        `Failed to send email for recipientField "${recipientField}" on submission ${payload.submissionId}: ${reason}`,
+      );
+    }
   }
 
   /**

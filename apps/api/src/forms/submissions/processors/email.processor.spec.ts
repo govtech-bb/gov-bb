@@ -228,6 +228,14 @@ describe("EmailProcessor", () => {
       expect(mockSend).not.toHaveBeenCalled();
     });
 
+    it("throws when the SES send fails so the failure is not silently swallowed", async () => {
+      mockSend.mockRejectedValueOnce(new Error("SES throttled"));
+
+      await expect(processor.process(makePayload())).rejects.toThrow(
+        /Failed to send email/,
+      );
+    });
+
     it("falls back to noreply@gov.bb when email.from is not configured", async () => {
       // Branch: `config.get<string>("email.from") ?? "noreply@gov.bb"`
       processor = new EmailProcessor(
