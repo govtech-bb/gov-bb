@@ -12,6 +12,9 @@ interface ProcessorConfigFormProps {
   // Receives the FULL replacement config. Each handler spreads the existing
   // config first, so unrendered keys (notably webhook `secret`) survive.
   onConfigChange: (config: Record<string, unknown>) => void;
+  // When the form carries contact details, the reserved `contactDetails.email`
+  // path becomes a selectable recipient for the email processor (issue #547).
+  hasContactDetails?: boolean;
 }
 
 const WEBHOOK_METHODS = ["POST", "PUT", "PATCH"] as const;
@@ -30,6 +33,7 @@ export function ProcessorConfigForm({
   processor,
   fields,
   onConfigChange,
+  hasContactDetails = false,
 }: ProcessorConfigFormProps) {
   // Namespace ids by processor so labels associate correctly with several cards.
   const fid = (name: string) => `${name}-${processor.id}`;
@@ -61,6 +65,16 @@ export function ProcessorConfigForm({
               id={fid("recipientField")}
               value={asText(config.recipientField)}
               fields={fields}
+              extraOptions={
+                hasContactDetails
+                  ? [
+                      {
+                        value: "contactDetails.email",
+                        label: "MDA contact email",
+                      },
+                    ]
+                  : undefined
+              }
               onChange={(recipientField) =>
                 onConfigChange({ ...config, recipientField })
               }
