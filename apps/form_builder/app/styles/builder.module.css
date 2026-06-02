@@ -353,6 +353,16 @@
   margin-left: 4px;
 }
 
+.disabledBadge {
+  font-size: 0.7rem;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: var(--color-danger);
+  color: white;
+  margin-left: 4px;
+}
+
 /* ── Validation banners ───────────────────────────── */
 
 .validationSuccess {

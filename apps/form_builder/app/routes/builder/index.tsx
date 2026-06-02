@@ -2,7 +2,7 @@ import "../../styles/builder.global.css";
 import { createFileRoute } from "@tanstack/react-router";
 import { useReducer, useState, useMemo } from "react";
 import { getCatalogFn } from "../../server/registry";
-import { submitRecipe, updateRecipe, deleteForm } from "../../server/forms";
+import { submitRecipe, updateRecipe, deleteForm, disableForm, enableForm } from "../../server/forms";
 import { publishRecipe, getPublishBaseBranch } from "../../server/publish";
 import { validateRecipe, previewRecipe } from "../../server/registry";
 import { serializeRecipeDraft, findRecipeIdCollisions, formatCollisionIssues, resolveFieldIds } from "@govtech-bb/form-builder";
@@ -27,6 +27,7 @@ import { FormPicker } from "./-form-picker";
 import { checkFormUniqueness } from "./-form-uniqueness";
 import { useFormsList } from "./-use-forms-list";
 import { DeleteModal } from "./-delete-modal";
+import { DisableModal } from "./-disable-modal";
 import type { FormDefinitionSummary } from "../../types/index";
 
 import styles from "../../styles/builder.module.css";
@@ -85,6 +86,9 @@ function BuilderPage() {
   const [deleteTarget, setDeleteTarget] = useState<FormDefinitionSummary | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [disableTarget, setDisableTarget] = useState<FormDefinitionSummary | null>(null);
+  const [isDisabling, setIsDisabling] = useState(false);
+  const [disableError, setDisableError] = useState<string | null>(null);
 
   // Derived
   const selectedStep = draft.steps.find((s) => s.stepId === selectedStepId) ?? null;
@@ -493,13 +497,13 @@ function BuilderPage() {
     setIsPickerOpen(false);
   };
 
-  const handleConfirmDelete = async (reason: string) => {
+  const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
     setIsDeleting(true);
     setDeleteError(null);
     try {
-      await deleteForm({ data: { formId: deleteTarget.formId, reason } });
-      // If the deleted form is the one open in the editor, clear it.
+      await deleteForm({ data: { formId: deleteTarget.formId } });
+      // If the deleted draft is the one open in the editor, clear it.
       if (loadedFromId === deleteTarget.formId) handleNew();
       setDeleteTarget(null);
       // The forms list lives in useFormsList (no longer route-loader data), so
@@ -516,6 +520,54 @@ function BuilderPage() {
     if (isDeleting) return;
     setDeleteTarget(null);
     setDeleteError(null);
+  };
+
+  const handleRequestDisable = (form: FormDefinitionSummary) => {
+    setDisableError(null);
+    setDisableTarget(form);
+    setIsPickerOpen(false);
+  };
+
+  const handleConfirmDisable = async (reason: string) => {
+    if (!disableTarget) return;
+    setIsDisabling(true);
+    setDisableError(null);
+    try {
+      await disableForm({ data: { formId: disableTarget.formId, reason } });
+      setDisableTarget(null);
+      // Refetch so the row flips to the Disabled badge + Enable button.
+      refetchForms();
+    } catch (e) {
+      setDisableError(e instanceof Error ? e.message : "Disable failed");
+    } finally {
+      setIsDisabling(false);
+    }
+  };
+
+  const handleCloseDisable = () => {
+    if (isDisabling) return;
+    setDisableTarget(null);
+    setDisableError(null);
+  };
+
+  // Enable is a direct action (no modal) with an inline confirm: clearing a
+  // tombstone restores the public service, so a single confirm is enough.
+  const handleEnable = async (form: FormDefinitionSummary) => {
+    if (
+      !window.confirm(
+        `Re-enable ${form.title || form.formId}? The public service will be restored.`,
+      )
+    ) {
+      return;
+    }
+    try {
+      await enableForm({ data: { formId: form.formId } });
+      refetchForms();
+    } catch (e) {
+      // Surface in the picker's load-error slot via the forms list is overkill;
+      // a window.alert keeps the inline action simple and visible.
+      window.alert(e instanceof Error ? e.message : "Enable failed");
+    }
   };
 
   const handleFormIdChange = (id: string) => {
@@ -660,6 +712,8 @@ function BuilderPage() {
           onLoad={handleLoad}
           onClose={() => setIsPickerOpen(false)}
           onRequestDelete={handleRequestDelete}
+          onRequestDisable={handleRequestDisable}
+          onEnable={handleEnable}
         />
       )}
 
@@ -708,6 +762,17 @@ function BuilderPage() {
           deleteError={deleteError}
           onConfirm={handleConfirmDelete}
           onClose={handleCloseDelete}
+        />
+      )}
+
+      {disableTarget && (
+        <DisableModal
+          formId={disableTarget.formId}
+          title={disableTarget.title}
+          isDisabling={isDisabling}
+          disableError={disableError}
+          onConfirm={handleConfirmDisable}
+          onClose={handleCloseDisable}
         />
       )}
       </div>
