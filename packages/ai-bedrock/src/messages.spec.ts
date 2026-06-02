@@ -100,6 +100,90 @@ describe("modelMessagesToBedrock", () => {
     );
   });
 
+  it("synthesizes a tool_result for an unanswered toolUse and folds it into the next user message", () => {
+    const messages: Array<ModelMessage> = [
+      { role: "user", content: "birth certificate" },
+      {
+        role: "assistant",
+        content: "Great, let's start.",
+        toolCalls: [
+          {
+            id: "tc-1",
+            type: "function",
+            function: {
+              name: "present_choices",
+              arguments: '{"question":"?"}',
+            },
+          },
+        ],
+      },
+      { role: "user", content: "Mr" },
+    ];
+    const out = modelMessagesToBedrock(messages);
+    expect(out).toHaveLength(3);
+    expect(out[1]?.role).toBe("assistant");
+    // The user's answer and the synthesized result share one user message so
+    // role alternation holds and the toolUse is answered.
+    expect(out[2]?.role).toBe("user");
+    const blocks = (out[2]?.content ?? []) as Array<{
+      toolResult?: { toolUseId?: string };
+      text?: string;
+    }>;
+    expect(blocks[0]?.toolResult?.toolUseId).toBe("tc-1");
+    expect(blocks.some((b) => b.text === "Mr")).toBe(true);
+  });
+
+  it("answers a text-less toolUse-only assistant message without creating consecutive user turns", () => {
+    const messages: Array<ModelMessage> = [
+      { role: "user", content: "next field" },
+      {
+        role: "assistant",
+        content: "",
+        toolCalls: [
+          {
+            id: "tc-2",
+            type: "function",
+            function: { name: "present_choices", arguments: "{}" },
+          },
+        ],
+      },
+      { role: "user", content: "Mrs" },
+    ];
+    const out = modelMessagesToBedrock(messages);
+    expect(out.map((m) => m.role)).toEqual(["user", "assistant", "user"]);
+    const blocks = (out[2]?.content ?? []) as Array<{
+      toolResult?: { toolUseId?: string };
+    }>;
+    expect(blocks[0]?.toolResult?.toolUseId).toBe("tc-2");
+  });
+
+  it("leaves answered toolUses untouched (synthesis is a no-op)", () => {
+    const messages: Array<ModelMessage> = [
+      {
+        role: "assistant",
+        content: "",
+        toolCalls: [
+          {
+            id: "tc-3",
+            type: "function",
+            function: {
+              name: "set_field",
+              arguments: '{"fieldId":"a","value":"b"}',
+            },
+          },
+        ],
+      },
+      { role: "tool", toolCallId: "tc-3", content: '{"ok":true}' },
+    ];
+    const out = modelMessagesToBedrock(messages);
+    expect(out).toHaveLength(2);
+    const blocks = (out[1]?.content ?? []) as Array<{
+      toolResult?: { toolUseId?: string; content?: Array<{ text?: string }> };
+    }>;
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0]?.toolResult?.content?.[0]?.text).toBe('{"ok":true}');
+  });
+
   it("falls back to { value } when tool arguments are not valid JSON", () => {
     const messages: Array<ModelMessage> = [
       {

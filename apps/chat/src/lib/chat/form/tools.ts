@@ -14,12 +14,14 @@ export function buildFormTools(
   signal: AbortSignal,
 ) {
   return [
-    // Deliberate no-op. present_choices is a UI signal, not real work: the
-    // client (bubble.tsx) reads the tool-call args off the message and renders
-    // the choice buttons; clicking one sends the answer back as a NEW user
-    // message, which re-runs field detection next turn. Do NOT turn this into a
-    // client tool — the result here is irrelevant, the args are the payload.
-    presentChoicesDef.server(async () => ({ shown: true })),
+    // UI signal, not real work: bubble.tsx reads the args off the message and
+    // renders the choice buttons; clicking one sends the answer as a NEW user
+    // message. Passed as a bare definition (no executor) so the agent loop
+    // treats it as a client tool and STOPS after the call instead of firing a
+    // second, empty model request to "continue" past a no-op result. The
+    // orphaned toolUse this leaves in history is answered by the adapter's
+    // fillUnansweredToolUses so Bedrock stays happy next turn.
+    presentChoicesDef,
 
     setFieldDef.server(async ({ fieldId, value }) => {
       // A previous set_field in this turn may have activated a conditional
