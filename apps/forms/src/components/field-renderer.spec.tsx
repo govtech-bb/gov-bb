@@ -620,6 +620,32 @@ describe("FieldRenderer", () => {
       expect(dayInput.value).toBe("33w");
     });
 
+    it("updates the visible text when the stored value changes externally", () => {
+      const field = primitive("date");
+      mockState = {
+        value: { day: 1, month: 6, year: 2024 },
+        meta: { isValid: true, errors: [] },
+      };
+      const { container, rerender } = renderField(field);
+      const dateParts = container.querySelectorAll(".govbb-date-input__part");
+      const dayInput = dateParts[0].querySelector("input") as HTMLInputElement;
+      expect(dayInput.value).toBe("1");
+      // Simulate an external update (cache restore / form reset) writing a new
+      // day — the re-sync effect should adopt it into the visible text.
+      mockState = {
+        value: { day: 15, month: 6, year: 2024 },
+        meta: { isValid: true, errors: [] },
+      };
+      rerender(
+        <FieldRenderer
+          form={mockForm}
+          field={field}
+          validationProperties={noValidation}
+        />,
+      );
+      expect(dayInput.value).toBe("15");
+    });
+
     it("leaves the input as typed when a non-numeric character is entered", () => {
       mockState = {
         value: { day: 1, month: 6, year: 2024 },
