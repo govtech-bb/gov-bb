@@ -2,7 +2,13 @@
 // docs/superpowers/specs/2026-05-29-board-label-automation-design.md
 import { readFileSync } from "node:fs";
 
-export type Status = "Backlog" | "Ready" | "In progress" | "In review" | "Done";
+export type Status =
+  | "Backlog"
+  | "Ready"
+  | "In progress"
+  | "In review"
+  | "Done"
+  | "Closed";
 export type ExclusiveLabel = "ready" | "progressing";
 
 export type Action =
@@ -22,8 +28,8 @@ export type SyncInput =
       action: string;
       issueNumber: number;
       labelName?: string;
-      // Reason an issue was closed: "completed" or "not_planned". Only present
-      // on `closed` events.
+      // Reason an issue was closed: "completed", "not_planned", "duplicate",
+      // or absent. Only present on `closed` events.
       stateReason?: string;
     }
   | {
@@ -77,17 +83,17 @@ export function decideActions(input: SyncInput): IssuePlan[] {
         ];
       }
     }
-    // Manually closing an issue as *completed* moves it to Done. A
-    // "not planned" close (or a close with no reason) is left where it is.
-    // Idempotent with the PR-merge path, which also closes + sets Done.
-    if (input.action === "closed" && input.stateReason === "completed") {
+    // Closing an issue as *completed* moves it to Done — idempotent with the
+    // PR-merge path, which closes the issue as completed and also sets Done.
+    // Any other close (not_planned, duplicate, or no reason) moves it to the
+    // Closed column instead.
+    if (input.action === "closed") {
+      const status: Status =
+        input.stateReason === "completed" ? "Done" : "Closed";
       return [
         {
           issue,
-          actions: [
-            { type: "ensureOnBoard" },
-            { type: "setStatus", status: "Done" },
-          ],
+          actions: [{ type: "ensureOnBoard" }, { type: "setStatus", status }],
         },
       ];
     }
@@ -208,6 +214,7 @@ export async function resolveProjectMeta(
       "In progress": byName("In progress"),
       "In review": byName("In review"),
       Done: byName("Done"),
+      Closed: byName("Closed"),
     },
   };
 }
@@ -311,18 +318,20 @@ export async function removeLabel(
     throw new Error(`removeLabel ${label} on #${issue}: HTTP ${res.status}`);
 }
 
-async function closeIssue(
+export async function closeIssue(
   owner: string,
   repo: string,
   issue: number,
   token: string,
   f: FetchFn = fetch,
 ): Promise<void> {
+  // Close explicitly as "completed" so the resulting `issues.closed` event maps
+  // to Done (not the Closed column, where any non-completed close now lands).
   const res = await rest(
     "PATCH",
     `/repos/${owner}/${repo}/issues/${issue}`,
     token,
-    { state: "closed" },
+    { state: "closed", state_reason: "completed" },
     f,
   );
   if (!res.ok) throw new Error(`closeIssue #${issue}: HTTP ${res.status}`);

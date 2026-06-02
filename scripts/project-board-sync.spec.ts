@@ -3,6 +3,7 @@ import {
   gql,
   resolveProjectMeta,
   removeLabel,
+  closeIssue,
 } from "./project-board-sync";
 
 describe("decideActions", () => {
@@ -79,7 +80,7 @@ describe("decideActions", () => {
     ]);
   });
 
-  it("issue closed as not planned → no actions", () => {
+  it("issue closed as not planned → ensure on board, set Closed", () => {
     expect(
       decideActions({
         eventName: "issues",
@@ -87,17 +88,52 @@ describe("decideActions", () => {
         issueNumber: 5,
         stateReason: "not_planned",
       }),
-    ).toEqual([]);
+    ).toEqual([
+      {
+        issue: 5,
+        actions: [
+          { type: "ensureOnBoard" },
+          { type: "setStatus", status: "Closed" },
+        ],
+      },
+    ]);
   });
 
-  it("issue closed with no state reason → no actions", () => {
+  it("issue closed as duplicate → ensure on board, set Closed", () => {
+    expect(
+      decideActions({
+        eventName: "issues",
+        action: "closed",
+        issueNumber: 5,
+        stateReason: "duplicate",
+      }),
+    ).toEqual([
+      {
+        issue: 5,
+        actions: [
+          { type: "ensureOnBoard" },
+          { type: "setStatus", status: "Closed" },
+        ],
+      },
+    ]);
+  });
+
+  it("issue closed with no state reason → ensure on board, set Closed", () => {
     expect(
       decideActions({
         eventName: "issues",
         action: "closed",
         issueNumber: 5,
       }),
-    ).toEqual([]);
+    ).toEqual([
+      {
+        issue: 5,
+        actions: [
+          { type: "ensureOnBoard" },
+          { type: "setStatus", status: "Closed" },
+        ],
+      },
+    ]);
   });
 
   it("an unrelated label → no actions", () => {
@@ -358,6 +394,31 @@ describe("removeLabel", () => {
         "tok",
         fetchMock as unknown as typeof fetch,
       ),
+    ).rejects.toThrow("HTTP 500");
+  });
+});
+
+describe("closeIssue", () => {
+  it("closes the issue explicitly as completed", async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValue(new Response(null, { status: 200 }));
+    await closeIssue("o", "r", 5, "tok", fetchMock as unknown as typeof fetch);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("https://api.github.com/repos/o/r/issues/5");
+    expect(init.method).toBe("PATCH");
+    expect(JSON.parse(init.body as string)).toEqual({
+      state: "closed",
+      state_reason: "completed",
+    });
+  });
+
+  it("throws on a non-ok status", async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValue(new Response(null, { status: 500 }));
+    await expect(
+      closeIssue("o", "r", 5, "tok", fetchMock as unknown as typeof fetch),
     ).rejects.toThrow("HTTP 500");
   });
 });
