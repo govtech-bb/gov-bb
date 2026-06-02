@@ -331,6 +331,29 @@ describe("PaymentWebhookService", () => {
     expect(txArg.status).toBe(PaymentTransactionStatus.INITIATED);
   });
 
+  it("on a still-unpaid reference (no transaction number): skips the transaction upsert entirely", async () => {
+    // Reconciliation replays every PENDING payment by reference; for one the
+    // citizen never paid, check_api returns no transaction number. Persisting
+    // it would be unsafe — findOne({ where: { transactionNumber: undefined } })
+    // matches an arbitrary row, and "" collides on the unique index across all
+    // unpaid payments — so the upsert must be skipped and the payment left
+    // non-terminal for the next cycle.
+    const payment = makePayment();
+    paymentRepo.findByReference.mockResolvedValue(payment);
+    ezpay.verifyPayment.mockResolvedValue(
+      makeVerified({ status: "Initiated", transactionNumber: "", amount: 0 }),
+    );
+
+    const result = await service.handleEzpayCallback(callbackBody);
+
+    expect(result).toEqual({ acknowledged: true });
+    expect(txRepo.findOne).not.toHaveBeenCalled();
+    expect(txRepo.save).not.toHaveBeenCalled();
+    // payment stays non-terminal; nothing emitted
+    expect(paymentRepo.save).not.toHaveBeenCalled();
+    expect(events.emit).not.toHaveBeenCalled();
+  });
+
   it("merges into existing transaction row when transactionNumber already exists", async () => {
     const existingTx = {
       id: "tx-row-1",
