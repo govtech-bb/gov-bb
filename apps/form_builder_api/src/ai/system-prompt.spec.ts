@@ -101,4 +101,12 @@ describe("AI system prompt", () => {
     expect(prompt).not.toContain("components/contact-number");
     expect(prompt).toContain("components/contact-telephone");
   });
+
+  it("instructs a distinct fieldId override when the same component is reused across steps", () => {
+    expect(prompt).toContain("same component across different steps");
+  });
+
+  it("requires every stepId to be unique across the form", () => {
+    expect(prompt).toContain("EVERY stepId MUST be unique");
+  });
 });

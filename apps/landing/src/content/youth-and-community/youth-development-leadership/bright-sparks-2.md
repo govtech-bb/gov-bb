@@ -6,6 +6,7 @@ publish_date: 2026-05-20
 category: youth-and-community
 subcategory: youth-development-leadership
 service_type: information
+form_id: youth-opportunity-bright-sparks-2
 ---
 
 An educational project for young people aged 9 to 29, run under the Youth Development Programme.
@@ -23,7 +24,7 @@ Educational project under the Youth Development Programme.
 
 Complete the short application form to register your interest. Your progress is saved automatically.
 
-<!-- [Apply now](https://alpha.gov.bb/youth-and-community/youth-development-leadership/bright-sparks-2/form) -->
+<a data-start-link>Start now</a>
 
 ## More information
 

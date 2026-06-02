@@ -6,6 +6,7 @@ publish_date: 2026-05-20
 category: youth-and-community
 subcategory: arts-culture
 service_type: information
+form_id: youth-opportunity-community-canvas
 ---
 
 A 10-episode YouTube series showcasing the activities, classes and people at community Resource Centres across Barbados.
@@ -22,7 +23,7 @@ Video/TV series on YouTube featuring activities and programs at Resource Centres
 
 Complete the short application form to register your interest. Your progress is saved automatically.
 
-<!-- [Apply now](https://alpha.gov.bb/youth-and-community/arts-culture/community-canvas/form) -->
+<a data-start-link>Start now</a>
 
 ## More information
 

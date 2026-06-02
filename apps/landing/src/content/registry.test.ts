@@ -112,8 +112,19 @@ describe('resolveIsPreview (ancestor inheritance)', () => {
 })
 
 describe('visibility helpers over real content', () => {
-  it('treats every shipped page as public (no preview content yet)', () => {
-    expect(PAGES.every((p) => !isPreview(p))).toBe(true)
+  it('flags pages gated by visibility: preview and leaves the rest public', () => {
+    const previewPages = PAGES.filter(
+      (p) => p.frontmatter.visibility === 'preview',
+    )
+    expect(previewPages.length).toBeGreaterThan(0)
+    for (const p of previewPages) expect(isPreview(p)).toBe(true)
+
+    // Public top-level pages (no ancestor that could pull them into preview)
+    // stay public.
+    const publicTopLevel = PAGES.filter(
+      (p) => p.frontmatter.visibility !== 'preview' && !p.slug.includes('/'),
+    )
+    for (const p of publicTopLevel) expect(isPreview(p)).toBe(false)
   })
 
   it('isVisible shows any page in preview mode and public pages otherwise', () => {

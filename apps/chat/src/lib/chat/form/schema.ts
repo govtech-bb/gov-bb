@@ -4,6 +4,7 @@ import type {
   ServiceContract,
 } from "@govtech-bb/form-types";
 import { evaluateFormConditions } from "@govtech-bb/form-conditions";
+import { getServerEnv } from "#/config/env";
 import { getFormDefinition } from "./defs";
 
 const UNCOLLECTABLE: ReadonlySet<HtmlTypes> = new Set<HtmlTypes>([
@@ -98,14 +99,45 @@ export interface ActiveFormSchema {
   activeFieldIds: Set<string>;
 }
 
-export async function loadActiveFormSchema(
+// File uploads and payment can't happen in chat. If a form needs either, we
+// hand the user a link to the full form rather than collecting it inline.
+// Scans the whole contract (not just active fields) since a file field may be
+// conditionally revealed.
+function needsHandoff(contract: ServiceContract): boolean {
+  const hasFile = contract.steps.some((step) =>
+    step.elements.some((el) => el.htmlType === "file"),
+  );
+  const needsPayment = !!contract.processors?.some((p) => p.type === "payment");
+  return hasFile || needsPayment;
+}
+
+export type FormResolution =
+  | { kind: "collect"; form: ActiveFormSchema }
+  | { kind: "handoff"; slug: string; title: string; url: string }
+  | { kind: "none" };
+
+export async function resolveActiveForm(
   slug: string,
   currentValues: Record<string, unknown>,
-): Promise<ActiveFormSchema | null> {
+): Promise<FormResolution> {
   const contract = await getFormDefinition(slug);
-  if (!contract) return null;
+  if (!contract) return { kind: "none" };
+
+  if (needsHandoff(contract)) {
+    const base = getServerEnv().FORMS_URL;
+    return {
+      kind: "handoff",
+      slug,
+      title: contract.title,
+      url: `${base}/forms/${encodeURIComponent(slug)}`,
+    };
+  }
+
   const active = getActiveFieldIds(contract, currentValues);
   const schema = summarizeActive(contract, active.byStep);
-  if (!schema) return null;
-  return { slug, schema, contract, activeFieldIds: active.flat };
+  if (!schema) return { kind: "none" };
+  return {
+    kind: "collect",
+    form: { slug, schema, contract, activeFieldIds: active.flat },
+  };
 }

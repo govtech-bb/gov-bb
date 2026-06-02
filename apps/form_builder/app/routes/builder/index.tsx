@@ -12,7 +12,7 @@ import type { RecipeDraft, ValidationResult, RecipeValidateResponse, UnknownRef 
 
 import { buildLoadArgs, draftsEqual } from "./-apply-recipe";
 import { AiSidebar, type ApplyRecipeResult } from "./-ai-sidebar";
-import { recipeReducer, EMPTY_DRAFT, nextStepId, REQUIRED_STEP_IDS, isRequiredStep } from "./-recipe-reducer";
+import { recipeReducer, EMPTY_DRAFT, nextStepId, REQUIRED_STEP_IDS, isRequiredStep, firstStepId } from "./-recipe-reducer";
 import { Toolbar } from "./-toolbar";
 import { StepList } from "./-step-list";
 import { StepEditor } from "./-step-editor";
@@ -24,6 +24,7 @@ import { formPreviewUrl } from "../../lib/form-url";
 import { SubmitModal } from "./-submit-modal";
 import { PublishModal } from "./-publish-modal";
 import { FormPicker } from "./-form-picker";
+import { checkFormUniqueness } from "./-form-uniqueness";
 import { useFormsList } from "./-use-forms-list";
 import { DeleteModal } from "./-delete-modal";
 import type { FormDefinitionSummary } from "../../types/index";
@@ -109,6 +110,16 @@ function BuilderPage() {
   const resolvedFieldIds = useMemo(
     () => resolveFieldIds(draft, catalog),
     [draft, catalog],
+  );
+
+  // Form-level uniqueness mirror of the API checks (#545): a new form's formId
+  // and the title must not collide with another form. Drives the live formId
+  // error in the toolbar and hard-gates Save draft / Deploy below. `forms` is
+  // null until useFormsList resolves; treat that as "nothing to collide with"
+  // and let the API re-check on save.
+  const uniqueness = useMemo(
+    () => checkFormUniqueness(forms ?? [], draft, loadedFromId),
+    [forms, draft, loadedFromId],
   );
 
   // Versioning is deterministic and client-side — no async round-trip on the
@@ -210,7 +221,24 @@ function BuilderPage() {
   // user confirms, so an in-progress form can be shared for review. The errors
   // stay lit in the validation panel either way; the SubmitModal still collects
   // (and semver-validates) the version. Deploy stays hard-gated on validity.
+  // Hard gate for both Save draft and Deploy: form-level formId/title
+  // collisions can never be saved (unlike contract errors, which Save draft can
+  // override). Lights the always-visible validation panel and returns true when
+  // blocked. The API re-checks draft collisions on save (it does not yet see
+  // published forms — see -form-uniqueness.ts).
+  const blockedByUniqueness = (): boolean => {
+    const issues = [
+      uniqueness.idError && { path: "formId", message: uniqueness.idError },
+      uniqueness.titleError && { path: "title", message: uniqueness.titleError },
+    ].filter((i): i is { path: string; message: string } => Boolean(i));
+    if (issues.length === 0) return false;
+    setValidateResult({ valid: false, issues });
+    setLastSaveStatus("error");
+    return true;
+  };
+
   const handleSaveDraftClick = async () => {
+    if (blockedByUniqueness()) return;
     const result = await runValidation();
     if (
       !result.valid &&
@@ -226,6 +254,7 @@ function BuilderPage() {
   };
 
   const handleDeployClick = async () => {
+    if (blockedByUniqueness()) return;
     const result = await runValidation();
     if (result.valid) handleOpenPublish();
   };
@@ -258,7 +287,11 @@ function BuilderPage() {
       if (loadedFromId && currentVersion && submitVersion === currentVersion) {
         await updateRecipe({ data: { formId: loadedFromId, recipe } });
       } else {
-        await submitRecipe({ data: { recipe } });
+        // A create (vs. a new version of an existing form) is when the formId
+        // isn't the one we loaded. Tells the API to enforce formId uniqueness.
+        await submitRecipe({
+          data: { recipe, isNew: draft.formId !== loadedFromId },
+        });
       }
       setSubmitSuccess(true);
       setLastSaveStatus("submitted");
@@ -313,7 +346,10 @@ function BuilderPage() {
     setLoadedFromId(formId);
     setCurrentVersion(ver);
     setVersion(ver);
-    setSelectedStepId(null);
+    // Open the first step straight away so the author lands in an editable
+    // state. firstStepId mirrors LOAD_DRAFT's [...editable, ...required]
+    // ordering, so it picks the step the reducer puts first (not loadedDraft[0]).
+    setSelectedStepId(firstStepId(loadedDraft));
     setMainView("step");
     setValidateResult(null);
     setSubmitSuccess(false);
@@ -406,7 +442,8 @@ function BuilderPage() {
     }
 
     dispatch({ type: "LOAD_DRAFT", draft: incoming });
-    setSelectedStepId(null);
+    // Mirror handleLoad: open the first step of the freshly applied recipe.
+    setSelectedStepId(firstStepId(incoming));
     setMainView("step");
     // Surface unresolvable refs as a non-blocking warning in the existing
     // validation panel; otherwise clear it.
@@ -533,6 +570,7 @@ function BuilderPage() {
         formId={draft.formId}
         title={draft.title}
         version={version}
+        idError={uniqueness.idError}
         isDirty={isDirty}
         isValidating={isValidating}
         isPreviewing={isPreviewing}

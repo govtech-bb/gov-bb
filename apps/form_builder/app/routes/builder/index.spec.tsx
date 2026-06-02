@@ -47,8 +47,10 @@ jest.mock("../../server/ai-builder/convert", () => ({
 }));
 
 // The Open picker's forms list is a slow GitHub-API waterfall; stub it out.
+// `mockForms` is swappable per test so we can drive the uniqueness pre-flight.
+let mockForms: { id: string; formId: string; title: string; version: string; isPublished: boolean }[] = [];
 jest.mock("./-use-forms-list", () => ({
-  useFormsList: () => ({ forms: [], loadError: null, refetch: jest.fn() }),
+  useFormsList: () => ({ forms: mockForms, loadError: null, refetch: jest.fn() }),
 }));
 
 // Keep the real reducer logic, but make EMPTY_DRAFT (the useReducer seed)
@@ -136,6 +138,7 @@ describe("BuilderPage — validate on Save draft click", () => {
 
   beforeEach(() => {
     validateRecipe.mockReset();
+    mockForms = [];
     confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(false);
   });
 
@@ -206,4 +209,36 @@ describe("BuilderPage — validate on Save draft click", () => {
     // Valid drafts must never trigger the confirm prompt.
     expect(confirmSpy).not.toHaveBeenCalled();
   });
+
+  it(
+    "hard-gates Save draft on a title collision: error shown, modal closed, no save-anyway",
+    async () => {
+      // An otherwise-valid new form whose title collides with another form.
+      mockEmptyDraft = VALID_DRAFT;
+      mockForms = [
+        {
+          id: "other",
+          formId: "other-form",
+          title: "Test Form",
+          version: "1.0.0",
+          isPublished: true,
+        },
+      ];
+      renderBuilder();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: /save draft/i }),
+      );
+
+      expect(
+        await screen.findByText(/already exists. Choose a different title/i),
+      ).toBeInTheDocument();
+      // Collision is a hard gate — unlike contract errors, there's no
+      // "save anyway" confirm and the server is never asked.
+      expect(confirmSpy).not.toHaveBeenCalled();
+      expect(validateRecipe).not.toHaveBeenCalled();
+      expect(screen.queryByText("Submit Recipe")).not.toBeInTheDocument();
+    },
+    15_000,
+  );
 });
