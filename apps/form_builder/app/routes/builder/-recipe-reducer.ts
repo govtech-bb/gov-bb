@@ -76,31 +76,25 @@ function makeRequiredSteps(): RecipeStepDraft[] {
 }
 
 /**
- * The two email processors every new form seeds with (issue #501). Both share
- * the email template; the role distinction is the configured `recipientField`
- * plus the per-instance `label`:
+ * The single email processor every new form seeds with (issue #572).
  *
- * - **Applicant Email** — `recipientField` is left blank for the author to point
- *   at the applicant's email field (a brand-new form has no fields yet, and
- *   there's no canonical applicant-email path). The server Validate flow still
- *   catches a recipientField left blank at deploy time.
  * - **MDA Email** — `recipientField` is the reserved `contactDetails.email`,
- *   resolved at runtime from the form's contact details (see Plan 2).
+ *   resolved at runtime from the form's contact details. A non-empty recipient,
+ *   so a brand-new form is valid out of the box.
+ *
+ * We deliberately do *not* seed an applicant-email processor: a fieldless new
+ * form has no email field to point at and no canonical applicant-email path, so
+ * a seeded one would ship with a blank `recipientField` and fail author-time
+ * Validate before the author does anything wrong (issue #572). Authors add an
+ * applicant-email processor on demand via **+ Add Processor** once a suitable
+ * field exists — that one starts blank and is *correctly* flagged until
+ * configured.
  *
  * Fresh `crypto.randomUUID()` ids per call so RESET / new-form flows re-seed
  * with distinct editor ids, mirroring makeRequiredSteps().
  */
 function makeDefaultProcessors(): RecipeProcessorDraft[] {
   return [
-    {
-      id: crypto.randomUUID(),
-      type: "email",
-      config: {
-        recipientField: "",
-        label: "Applicant Email",
-        subject: "Your application has been received",
-      },
-    },
     {
       id: crypto.randomUUID(),
       type: "email",
