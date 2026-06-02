@@ -115,6 +115,42 @@ describe("AiSidebar — Edit Form", () => {
   });
 });
 
+describe("AiSidebar — mode-aware error messages", () => {
+  beforeEach(() => convertRecipe.mockReset());
+
+  it("shows the PDF-size hint when an upload fails with 'Invariant failed'", async () => {
+    convertRecipe.mockRejectedValue(new Error("Invariant failed"));
+    setup();
+
+    const file = new File(["%PDF-1.4"], "form.pdf", { type: "application/pdf" });
+    // jsdom's File doesn't implement arrayBuffer(); stub it so the upload flow
+    // reaches convertRecipe (and thus the error path) instead of throwing early.
+    Object.defineProperty(file, "arrayBuffer", {
+      value: () => Promise.resolve(new ArrayBuffer(8)),
+    });
+    await userEvent.upload(screen.getByLabelText(/attach pdf/i), file);
+    await userEvent.click(screen.getByRole("button", { name: /^upload$/i }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(/smaller pdf/i);
+  });
+
+  it("does not mention PDFs when an edit fails with 'Invariant failed'", async () => {
+    convertRecipe.mockRejectedValue(new Error("Invariant failed"));
+    setup();
+
+    await userEvent.type(
+      screen.getByPlaceholderText(/make the email field required/i),
+      "make the email field required",
+    );
+    await userEvent.click(screen.getByRole("button", { name: /edit form/i }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).not.toHaveTextContent(/pdf/i);
+    expect(alert).toHaveTextContent(/edit request failed/i);
+  });
+});
+
 describe("AiSidebar — collapse", () => {
   beforeEach(() => convertRecipe.mockReset());
 

@@ -33,7 +33,12 @@ it("resolves a component ref to its primitive fieldId (not the registry ref)", (
     catalog,
   );
   expect(refs).toEqual([
-    { stepId: "step-1", fieldId: "text", displayName: "Text" },
+    {
+      stepId: "step-1",
+      fieldId: "text",
+      displayName: "Text",
+      isBoolean: false,
+    },
   ]);
 });
 
@@ -52,8 +57,14 @@ it("expands a block ref into one entry per child fieldId with a prefixed label",
       stepId: "step-1",
       fieldId: "first-name",
       displayName: "Name › First Name",
+      isBoolean: false,
     },
-    { stepId: "step-1", fieldId: "last-name", displayName: "Name › Last Name" },
+    {
+      stepId: "step-1",
+      fieldId: "last-name",
+      displayName: "Name › Last Name",
+      isBoolean: false,
+    },
   ]);
 });
 
@@ -70,7 +81,12 @@ it("respects a component-level fieldId override", () => {
     catalog,
   );
   expect(refs).toEqual([
-    { stepId: "step-1", fieldId: "nickname", displayName: "Text" },
+    {
+      stepId: "step-1",
+      fieldId: "nickname",
+      displayName: "Text",
+      isBoolean: false,
+    },
   ]);
 });
 
@@ -110,7 +126,53 @@ it("tags each entry with the step it belongs to", () => {
     catalog,
   );
   expect(refs).toEqual([
-    { stepId: "step-1", fieldId: "text", displayName: "Text" },
-    { stepId: "step-2", fieldId: "email", displayName: "Email" },
+    {
+      stepId: "step-1",
+      fieldId: "text",
+      displayName: "Text",
+      isBoolean: false,
+    },
+    {
+      stepId: "step-2",
+      fieldId: "email",
+      displayName: "Email",
+      isBoolean: false,
+    },
+  ]);
+});
+
+it("flags a show-hide toggle isBoolean, but not a checkbox (stores a string)", () => {
+  const refs = getFieldRefs(
+    draftOf({
+      stepId: "step-1",
+      title: "Step 1",
+      fields: [
+        field("f1", "components/show-hide"),
+        field("f2", "components/checkbox"),
+        field("f3", "components/text"),
+      ],
+      behaviours: [],
+    }),
+    catalog,
+  );
+  expect(refs).toEqual([
+    {
+      stepId: "step-1",
+      fieldId: "show-hide",
+      displayName: "Show / hide toggle",
+      isBoolean: true,
+    },
+    {
+      stepId: "step-1",
+      fieldId: "checkbox",
+      displayName: "Checkbox",
+      isBoolean: false,
+    },
+    {
+      stepId: "step-1",
+      fieldId: "text",
+      displayName: "Text",
+      isBoolean: false,
+    },
   ]);
 });

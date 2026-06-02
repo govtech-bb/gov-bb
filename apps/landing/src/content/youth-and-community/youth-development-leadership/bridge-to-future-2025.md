@@ -6,6 +6,7 @@ publish_date: 2026-05-20
 category: youth-and-community
 subcategory: youth-development-leadership
 service_type: information
+form_id: youth-opportunity-bridge-to-future-2025
 ---
 
 A career and life-skills workshop helping young people aged 9 to 29 plan what comes next.
@@ -23,7 +24,7 @@ Career and skills workshop under the Youth Development Programme.
 
 Complete the short application form to register your interest. Your progress is saved automatically.
 
-<!-- [Apply now](https://alpha.gov.bb/youth-and-community/youth-development-leadership/bridge-to-future-2025/form) -->
+<a data-start-link>Start now</a>
 
 ## More information
 

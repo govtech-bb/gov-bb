@@ -7,6 +7,7 @@ import type {
 import {
   EMPTY_DRAFT,
   REQUIRED_STEP_IDS,
+  firstStepId,
   isNoFieldsStep,
   isRequiredStep,
   nextStepId,
@@ -80,6 +81,62 @@ describe("isNoFieldsStep", () => {
 
   it("returns false for an arbitrary editable step id", () => {
     expect(isNoFieldsStep("step-1")).toBe(false);
+  });
+});
+
+// ── firstStepId ──────────────────────────────────────────────────────────────
+
+describe("firstStepId", () => {
+  // A required-step fixture, used to assert the helper applies the reducer's
+  // [...editable, ...required] ordering rather than naively reading steps[0].
+  const requiredStep = (
+    id: (typeof REQUIRED_STEP_IDS)[number],
+  ): RecipeStepDraft => ({
+    stepId: id,
+    title: `Title ${id}`,
+    description: undefined,
+    fields: [],
+    behaviours: [],
+  });
+
+  it("returns the first editable step's id when editable steps exist", () => {
+    const draft = {
+      ...baseDraft(),
+      steps: [editableStep("step-1"), editableStep("step-2")],
+    };
+    expect(firstStepId(draft)).toBe("step-1");
+  });
+
+  it("returns the first editable step even when a required step precedes it in the array", () => {
+    // Mirrors the pre-normalization draft handed to the load handlers: a
+    // required step can appear before the editable ones. The helper must use
+    // the editable-first ordering rule, not steps[0].
+    const draft = {
+      ...baseDraft(),
+      steps: [
+        requiredStep("check-your-answers"),
+        editableStep("step-1"),
+        editableStep("step-2"),
+      ],
+    };
+    expect(firstStepId(draft)).toBe("step-1");
+  });
+
+  it("falls back to the first step overall when only required steps exist", () => {
+    const draft = {
+      ...baseDraft(),
+      steps: [
+        requiredStep("check-your-answers"),
+        requiredStep("declaration"),
+        requiredStep("submission-confirmation"),
+      ],
+    };
+    expect(firstStepId(draft)).toBe("check-your-answers");
+  });
+
+  it("returns null when the draft has no steps", () => {
+    const draft = { ...baseDraft(), steps: [] };
+    expect(firstStepId(draft)).toBeNull();
   });
 });
 
@@ -313,6 +370,88 @@ describe("REORDER_STEPS", () => {
     expect(result.steps[2].stepId).toBe("check-your-answers");
     expect(result.steps[3].stepId).toBe("declaration");
     expect(result.steps[4].stepId).toBe("submission-confirmation");
+  });
+});
+
+// ── REORDER_FIELDS ────────────────────────────────────────────────────────────
+// Drag-and-drop performs multi-position moves, not just adjacent swaps, so the
+// reducer must splice (remove + insert), preserving the order of every other
+// field. The arrow buttons dispatch adjacent moves, which splice handles too.
+
+describe("REORDER_FIELDS", () => {
+  const field = (id: string): RecipeFieldDraft => ({
+    id,
+    kind: "component",
+    ref: "components/text",
+    overrides: {},
+  });
+
+  // step-1 fields: [a(0), b(1), c(2), d(3), e(4)]
+  const stateWith = (...ids: string[]) => ({
+    ...baseDraft(),
+    steps: [editableStep("step-1", ids.map(field)), ...EMPTY_DRAFT.steps],
+  });
+
+  const order = (result: RecipeDraft) =>
+    result.steps[0].fields.map((f) => f.id);
+
+  it("moves a field forward across several positions (e at 4 → 0)", () => {
+    const result = recipeReducer(stateWith("a", "b", "c", "d", "e"), {
+      type: "REORDER_FIELDS",
+      stepId: "step-1",
+      fromIndex: 4,
+      toIndex: 0,
+    });
+    expect(order(result)).toEqual(["e", "a", "b", "c", "d"]);
+  });
+
+  it("moves a field backward across several positions (a at 0 → 4)", () => {
+    const result = recipeReducer(stateWith("a", "b", "c", "d", "e"), {
+      type: "REORDER_FIELDS",
+      stepId: "step-1",
+      fromIndex: 0,
+      toIndex: 4,
+    });
+    expect(order(result)).toEqual(["b", "c", "d", "e", "a"]);
+  });
+
+  it("moves a field to a middle position (b at 1 → 3)", () => {
+    const result = recipeReducer(stateWith("a", "b", "c", "d", "e"), {
+      type: "REORDER_FIELDS",
+      stepId: "step-1",
+      fromIndex: 1,
+      toIndex: 3,
+    });
+    expect(order(result)).toEqual(["a", "c", "d", "b", "e"]);
+  });
+
+  it("still handles an adjacent move (arrow-button behaviour preserved)", () => {
+    const result = recipeReducer(stateWith("a", "b", "c"), {
+      type: "REORDER_FIELDS",
+      stepId: "step-1",
+      fromIndex: 1,
+      toIndex: 0,
+    });
+    expect(order(result)).toEqual(["b", "a", "c"]);
+  });
+
+  it("only reorders the targeted step, leaving others untouched", () => {
+    const state = {
+      ...baseDraft(),
+      steps: [
+        editableStep("step-1", ["a", "b"].map(field)),
+        editableStep("step-2", ["x", "y"].map(field)),
+        ...EMPTY_DRAFT.steps,
+      ],
+    };
+    const result = recipeReducer(state, {
+      type: "REORDER_FIELDS",
+      stepId: "step-1",
+      fromIndex: 0,
+      toIndex: 1,
+    });
+    expect(result.steps[0].fields.map((f) => f.id)).toEqual(["b", "a"]);
+    expect(result.steps[1].fields.map((f) => f.id)).toEqual(["x", "y"]);
   });
 });
 

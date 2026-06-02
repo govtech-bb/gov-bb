@@ -26,6 +26,16 @@ export function isRequiredStep(stepId: string): stepId is RequiredStepId {
   return (REQUIRED_STEP_IDS as readonly string[]).includes(stepId);
 }
 
+// The step a freshly-loaded form should open in the editor. Mirrors the
+// LOAD_DRAFT normalization ([...editable, ...required]) so it stays correct
+// against the *pre*-normalization draft the load handlers receive: prefer the
+// first editable (non-required) step, fall back to the first step overall, then
+// null when there are no steps at all.
+export function firstStepId(draft: RecipeDraft): string | null {
+  const editable = draft.steps.filter((s) => !isRequiredStep(s.stepId));
+  return (editable[0] ?? draft.steps[0])?.stepId ?? null;
+}
+
 // Required steps that accept no author-added fields. `check-your-answers` is a
 // pure review screen and `submission-confirmation` renders only its nextSteps
 // copy — neither should expose the FieldPicker. `declaration` is intentionally
@@ -307,10 +317,12 @@ export function recipeReducer(
         ...state,
         steps: state.steps.map((s) => {
           if (s.stepId !== action.stepId) return s;
+          // Move (remove + insert) rather than swap, so drag-and-drop across
+          // several positions lands correctly. Adjacent moves (the ▲/▼ arrow
+          // buttons) are the single-step case and behave identically.
           const fields = [...s.fields];
-          const tmp = fields[action.fromIndex];
-          fields[action.fromIndex] = fields[action.toIndex];
-          fields[action.toIndex] = tmp;
+          const [moved] = fields.splice(action.fromIndex, 1);
+          fields.splice(action.toIndex, 0, moved);
           return { ...s, fields };
         }),
       };

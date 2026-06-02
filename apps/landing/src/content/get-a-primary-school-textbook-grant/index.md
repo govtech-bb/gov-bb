@@ -3,7 +3,8 @@ title: "Get a Primary School Textbook Grant"
 description: "Apply for the annual $100 BDD Primary School Textbook Grant for your child attending a public or private primary school in Barbados."
 stage: "alpha"
 publish_date: 2026-02-06
-category: money-financial-support
+category: education
+form_id: primary-school-textbook-grant
 ---
 
 Each academic year, every child is entitled to a $100 BDD textbook grant while they are a student at a public or private primary school. The aim of this initiative is to financially support parents and guardians so that their children have access to books which will support their learning.
@@ -27,7 +28,7 @@ You can register for the grant any time but registering in June or July means th
 
 To register, you can complete the online form.
 
-<a data-start-link href="/money-financial-support/get-a-primary-school-textbook-grant/start">Register online</a>
+<a data-start-link>Register online</a>
 
 The form asks for:
 

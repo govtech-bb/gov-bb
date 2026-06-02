@@ -3,7 +3,7 @@
 
 import { sql } from "drizzle-orm";
 import { getDb, schema } from "#/lib/db";
-import { embed } from "#/lib/rag/embed";
+import { embedWithRetry } from "#/lib/rag/embed";
 import type { PlannedChunk, PlannedDocument } from "./chunker";
 import type { IngestPlan } from "./plan";
 
@@ -71,7 +71,7 @@ export async function embedAndUpsertChunks(
   const db = await getDb();
   let done = 0;
   for (const c of chunks) {
-    const vector = await embed(c.text);
+    const vector = await embedWithRetry(c.text);
     await db
       .insert(schema.chunks)
       .values({

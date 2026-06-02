@@ -7,7 +7,8 @@ import type {
   BlockDefinition,
   RecipeDraft,
 } from "@govtech-bb/form-builder";
-import type { FieldOverrides, HtmlTypes, Option } from "@govtech-bb/form-types";
+import { primitiveUISchema } from "@govtech-bb/form-types";
+import type { FieldOverrides, HtmlTypes, Option, PrimitiveUI } from "@govtech-bb/form-types";
 import type { FieldRef, StepRef } from "./-recipe-refs";
 import { getFieldRefs, getStepRefs } from "./-recipe-refs";
 import type { RecipeAction } from "./-recipe-reducer";
@@ -56,6 +57,104 @@ const OPTIONS_HTML_TYPES: ReadonlySet<HtmlTypes> = new Set([
 
 function isRequiredRule(rule: { value?: unknown } | undefined): boolean {
   return rule !== undefined && rule.value !== false;
+}
+
+// Per-key presentation metadata for the schema-driven `ui` editor. Keys absent
+// here fall back to a humanized key name; enum keys may declare the `default`
+// value that collapses the key to `undefined` (no persistence). Boolean keys
+// need no entry beyond a label.
+const UI_FIELD_META: Partial<
+  Record<keyof PrimitiveUI, { label: string; default?: string }>
+> = {
+  width: { label: "Field width", default: "long" },
+  hideLabel: { label: "Hide label" },
+};
+
+export function humanize(key: string): string {
+  const spaced = key.replace(/([a-z])([A-Z])/g, "$1 $2");
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+// Minimal view of a zod 4 inner type after unwrapping the outer `ZodOptional`.
+type UiInnerSchema = { def: { type: string }; options?: string[] };
+
+interface UiPropertiesEditorProps {
+  ui: PrimitiveUI | undefined;
+  onChange: (ui: PrimitiveUI | undefined) => void;
+  fg: (isOverridden: boolean) => string;
+}
+
+// Schema-driven editor for a field's presentation `ui` object: it reads the
+// keys off `primitiveUISchema` and renders one control per key (checkbox for
+// booleans, native <select> for enums), so existing and future `ui` keys
+// surface with no per-key panel wiring. Setting a key to its default/unchecked
+// value drops it, and `ui` collapses to `undefined` once nothing is set, per
+// the override contract (ADR 0013/0014).
+function UiPropertiesEditor({ ui, onChange, fg }: UiPropertiesEditorProps) {
+  function setKey(key: keyof PrimitiveUI, value: string | boolean | undefined) {
+    // A key is dropped only when explicitly cleared — `false` (checkbox off) or
+    // `undefined` (enum set to its default). We deliberately avoid `value ||
+    // undefined`: that would also drop a future falsy-but-valid value (e.g. `0`
+    // or `""`), which would silently break the editor's schema-driven contract.
+    const dropped = value === false || value === undefined;
+    const nextUi = { ...ui, [key]: dropped ? undefined : value };
+    const hasValue = Object.values(nextUi).some((v) => v !== undefined);
+    onChange(hasValue ? (nextUi as PrimitiveUI) : undefined);
+  }
+
+  return (
+    <>
+      {Object.entries(primitiveUISchema.shape).map(([key, schema]) => {
+        const k = key as keyof PrimitiveUI;
+        const inner = (
+          schema as unknown as { unwrap: () => UiInnerSchema }
+        ).unwrap();
+        const meta = UI_FIELD_META[k];
+        const label = meta?.label ?? humanize(key);
+
+        if (inner.def.type === "boolean") {
+          const checked = ui?.[k] === true;
+          return (
+            <div key={key} className={`${fg(checked)} ${styles.checkRow}`}>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={(e) => setKey(k, e.target.checked)}
+                />
+                {" "}{label}
+              </label>
+            </div>
+          );
+        }
+
+        if (inner.def.type === "enum") {
+          const options = inner.options ?? [];
+          const fallback = meta?.default ?? options[0];
+          const current = (ui?.[k] as string | undefined) ?? fallback;
+          const selectId = `ui-${key}`;
+          return (
+            <div key={key} className={fg(ui?.[k] !== undefined)}>
+              <label htmlFor={selectId}>{label}</label>
+              <select
+                id={selectId}
+                value={current}
+                onChange={(e) =>
+                  setKey(k, e.target.value === fallback ? undefined : e.target.value)
+                }
+              >
+                {options.map((opt) => (
+                  <option key={opt} value={opt}>{humanize(opt)}</option>
+                ))}
+              </select>
+            </div>
+          );
+        }
+
+        return null;
+      })}
+    </>
+  );
 }
 
 function OverrideForm({
@@ -153,27 +252,11 @@ function OverrideForm({
           {" "}Hidden
         </label>
       </div>
-      <div className={`${fg(overrides.ui?.hideLabel === true)} ${styles.checkRow}`}>
-        <label>
-          <input
-            type="checkbox"
-            checked={overrides.ui?.hideLabel ?? false}
-            onChange={(e) => {
-              // Patch the nested ui object, dropping hideLabel when unchecked
-              // and collapsing ui to undefined once it holds no set keys.
-              const nextUi = {
-                ...overrides.ui,
-                hideLabel: e.target.checked || undefined,
-              };
-              const hasValue = Object.values(nextUi).some(
-                (v) => v !== undefined,
-              );
-              patch({ ui: hasValue ? nextUi : undefined });
-            }}
-          />
-          {" "}Hide label
-        </label>
-      </div>
+      <UiPropertiesEditor
+        ui={overrides.ui}
+        onChange={(ui) => patch({ ui })}
+        fg={fg}
+      />
       <div className={`${fg(overrides.validations?.required !== undefined)} ${styles.checkRow}`}>
         <label>
           <input

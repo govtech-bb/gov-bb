@@ -84,9 +84,16 @@ export const getRecipe = createServerFn({ method: "GET", strict: false })
 
 export const submitRecipe = createServerFn({ method: "POST" })
   .middleware([requireSession])
-  .inputValidator(z.object({ recipe: z.unknown() }))
+  // `isNew` flags a brand-new form so the API enforces formId uniqueness; a new
+  // version of an existing form omits it (defaults false).
+  .inputValidator(
+    z.object({ recipe: z.unknown(), isNew: z.boolean().optional() }),
+  )
   .handler(async ({ data }): Promise<void> => {
-    await api.post("/builder/forms", { recipe: data.recipe });
+    await api.post("/builder/forms", {
+      recipe: data.recipe,
+      isNew: data.isNew ?? false,
+    });
   });
 
 export const updateRecipe = createServerFn({ method: "POST" })

@@ -12,4 +12,12 @@ export interface BedrockTextAdapterConfig {
    * endpoint behaviour.
    */
   client?: BedrockRuntimeClient;
+  /**
+   * Emit a Converse cache point after the first system block so Bedrock caches
+   * that (static) prefix and reuses it across requests. Only worthwhile when
+   * the first block is a large constant prompt. Off by default — prompt caching
+   * support varies by model and region, so verify cacheReadInputTokens before
+   * relying on it.
+   */
+  cacheSystemPrompt?: boolean;
 }

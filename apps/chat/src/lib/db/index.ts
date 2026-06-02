@@ -30,10 +30,17 @@ export function getDb(): Promise<Db> {
             )
             .replace(/[?&]$/, "")
         : raw;
+      // rejectUnauthorized:false accepts RDS's self-signed chain (sandbox). To
+      // enforce certificate verification in production, set
+      // DB_SSL_REJECT_UNAUTHORIZED=true with the RDS CA trusted by Node (e.g.
+      // NODE_EXTRA_CA_CERTS). Defaults to the prior behaviour so deployments
+      // that don't yet bundle the CA keep connecting.
+      const rejectUnauthorized =
+        process.env.DB_SSL_REJECT_UNAUTHORIZED === "true";
       const pool = new pg.Pool({
         connectionString,
         max: 5,
-        ssl: wantsSsl ? { rejectUnauthorized: false } : undefined,
+        ssl: wantsSsl ? { rejectUnauthorized } : undefined,
       });
       return drizzle(pool, { schema, casing: "snake_case" }) as Db;
     })();

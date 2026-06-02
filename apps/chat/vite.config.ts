@@ -20,6 +20,7 @@ export default defineConfig(({ mode }) => {
       "process.env.RAG_URL": JSON.stringify(pick("RAG_URL")),
       "process.env.DATABASE_URL": JSON.stringify(pick("DATABASE_URL")),
       "process.env.FORM_API_URL": JSON.stringify(pick("FORM_API_URL")),
+      "process.env.FORMS_URL": JSON.stringify(pick("FORMS_URL")),
       "process.env.BEDROCK_REGION": JSON.stringify(
         pick("BEDROCK_REGION", "ca-central-1"),
       ),
