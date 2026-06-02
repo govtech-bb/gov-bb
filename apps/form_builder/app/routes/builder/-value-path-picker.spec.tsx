@@ -78,6 +78,7 @@ it("drops an extra option that collides with a real field path", () => {
       stepId: "contactDetails",
       stepTitle: "Contact Details",
       display: "Email",
+      isBoolean: false,
     },
   ];
   render(

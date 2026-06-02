@@ -22,7 +22,7 @@ fix only; no evaluator changes, no recipe migration.
   for boolean targets, text input otherwise; `handleParamChange` resets the
   value to a type-appropriate default when the target switches between boolean
   and non-boolean (mirrors the #519 step→field invalidation).
-- ADR [0025](../decisions/0025-field-value-type-is-defined-by-its-renderer-not-htmltype-name.md).
+- ADR [0027](../decisions/0027-field-value-type-is-defined-by-its-renderer-not-htmltype-name.md).
 
 ## Why we did it that way
 
@@ -57,10 +57,10 @@ vs. today's free-text input, where an author can type the real option value and
 it matches. We narrowed `BOOLEAN_HTML_TYPES` to `show-hide` only (user
 confirmed) and corrected the two test expectations that had locked in the wrong
 assumption. The generalised lesson — value type comes from the renderer, not the
-`htmlType` name — is ADR 0025.
+`htmlType` name — is ADR 0027.
 
 ## Open questions
 
 - **Number targets.** Real numbers vs. strings for `htmlType: "number"` targets
-  is a deliberate follow-up, out of scope here. ADR 0025 applies: confirm the
+  is a deliberate follow-up, out of scope here. ADR 0027 applies: confirm the
   renderer stores a real `number` before treating it as one.

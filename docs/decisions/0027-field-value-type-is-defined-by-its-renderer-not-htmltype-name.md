@@ -1,4 +1,4 @@
-# 0025 — A field's value type is defined by its renderer, not its `htmlType` name
+# 0027 — A field's value type is defined by its renderer, not its `htmlType` name
 
 **Date:** 2026-06-02
 **Status:** Accepted
@@ -59,6 +59,6 @@ definition records why.
   the capture control.
 - This complements [ADR 0010](./0010-form-data-fieldids-are-recipe-wide-unique.md):
   `resolveFieldIds` is the single detector for recipe-wide-unique runtime field
-  *ids* (per ADR 0010); 0025 establishes that the same resolution is where
+  *ids* (per ADR 0010); 0027 establishes that the same resolution is where
   runtime value-*type* facts (like `isBoolean`) belong, derived from the
   primitive — again, from behaviour, not from the type name.
