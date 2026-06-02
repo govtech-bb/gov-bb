@@ -4,7 +4,7 @@ import {
   FieldValidationProperties,
   UploadedFile,
 } from "@forms/types";
-import React, { JSX } from "react";
+import React, { JSX, useEffect, useState } from "react";
 import ErrorMessage from "./error-message";
 import { RequiredState, checkConditionalOn } from "@forms/lib";
 import { DateValue, FieldArrayBehaviour } from "@govtech-bb/form-types";
@@ -31,6 +31,119 @@ const parseDatePart = (raw: string): number | undefined => {
 /** Render a numeric date part, showing "" for a missing or NaN value. */
 const displayDatePart = (part: number | undefined): string =>
   part === undefined || Number.isNaN(part) ? "" : String(part);
+
+type DatePart = "day" | "month" | "year";
+
+/**
+ * The Day / Month / Year inputs of a date field.
+ *
+ * Keeps the raw text the user typed in local state so an invalid entry (e.g.
+ * "33w") stays on screen until they edit it again, while still propagating the
+ * numeric DateValue model upstream for validation. The visible text is the
+ * source of truth for display; the parsed number is what gets stored.
+ */
+function DateField({
+  f,
+  field,
+  labelClass,
+  sharedProps,
+  requiredProps,
+  invalid,
+  errorId,
+  errorMessage,
+  hintId,
+}: {
+  f: AnyFieldApi;
+  field: ClientPrimitive;
+  labelClass: (base: string) => string;
+  sharedProps: React.InputHTMLAttributes<HTMLInputElement>;
+  requiredProps: React.InputHTMLAttributes<HTMLInputElement>;
+  invalid: boolean | undefined;
+  errorId?: string;
+  errorMessage: string;
+  hintId?: string;
+}) {
+  const value = f.state.value as DateValue | undefined;
+
+  const [raw, setRaw] = useState<Record<DatePart, string>>({
+    day: displayDatePart(value?.day),
+    month: displayDatePart(value?.month),
+    year: displayDatePart(value?.year),
+  });
+
+  // Re-sync the visible text when the stored value changes from outside this
+  // component (e.g. cache restore or form reset). We only adopt the stored
+  // value for a part when it differs from what the current text parses to, so
+  // the raw text a user just typed (including invalid input) is never clobbered.
+  useEffect(() => {
+    setRaw((prev) => {
+      const next = { ...prev };
+      (["day", "month", "year"] as DatePart[]).forEach((part) => {
+        if (parseDatePart(prev[part]) !== value?.[part]) {
+          next[part] = displayDatePart(value?.[part]);
+        }
+      });
+      return next;
+    });
+  }, [value?.day, value?.month, value?.year]);
+
+  const handlePartChange = (part: DatePart) => (text: string) => {
+    setRaw((prev) => ({ ...prev, [part]: text }));
+    f.handleChange({ ...value, [part]: parseDatePart(text) });
+  };
+
+  const parts: { part: DatePart; label: string; extra?: object }[] = [
+    { part: "day", label: "Day", extra: { min: 1, max: 31 } },
+    { part: "month", label: "Month", extra: { min: 1, max: 12 } },
+    { part: "year", label: "Year" },
+  ];
+
+  return (
+    <fieldset className="govbb-fieldset">
+      <legend className={labelClass("govbb-fieldset__legend")}>
+        {field.label}
+      </legend>
+      {field.hint && (
+        <p className="govbb-hint" id={hintId}>
+          {field.hint}
+        </p>
+      )}
+      <ErrorMessage id={errorId} message={errorMessage} />
+      <div className="govbb-date-input">
+        {parts.map(({ part, label, extra }) => (
+          <div className="govbb-date-input__part" key={part}>
+            <label
+              className="govbb-date-input__label"
+              htmlFor={`${field.id}-${part}`}
+            >
+              {label}
+            </label>
+            <div
+              className={
+                part === "year"
+                  ? "govbb-date-input-wrapper govbb-date-input-wrapper--year"
+                  : "govbb-date-input-wrapper"
+              }
+            >
+              <input
+                {...sharedProps}
+                {...requiredProps}
+                id={`${field.id}-${part}`}
+                className="govbb-date-input__field"
+                value={raw[part]}
+                type="text"
+                inputMode="numeric"
+                {...extra}
+                aria-invalid={invalid}
+                onChange={(e) => handlePartChange(part)(e.target.value)}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
 
 export default function FieldRenderer({
   form,
@@ -121,105 +234,18 @@ export default function FieldRenderer({
 
         switch (field.htmlType) {
           case "date": {
-            const value = f.state.value as DateValue | undefined;
             return (
-              <fieldset className="govbb-fieldset">
-                <legend className={labelClass("govbb-fieldset__legend")}>
-                  {field.label}
-                </legend>
-                {field.hint && (
-                  <p className="govbb-hint" id={hintId}>
-                    {field.hint}
-                  </p>
-                )}
-                <ErrorMessage id={errorId} message={errorMessage} />
-                <div className="govbb-date-input">
-                  <div className="govbb-date-input__part">
-                    <label
-                      className="govbb-date-input__label"
-                      htmlFor={`${field.id}-day`}
-                    >
-                      Day
-                    </label>
-                    <div className="govbb-date-input-wrapper">
-                      <input
-                        {...sharedProps}
-                        {...requiredProps}
-                        id={`${field.id}-day`}
-                        className="govbb-date-input__field"
-                        value={displayDatePart(value?.day)}
-                        type="text"
-                        inputMode="numeric"
-                        min={1}
-                        max={31}
-                        aria-invalid={invalid}
-                        onChange={(e) => {
-                          f.handleChange({
-                            ...value,
-                            day: parseDatePart(e.target.value),
-                          });
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="govbb-date-input__part">
-                    <label
-                      className="govbb-date-input__label"
-                      htmlFor={`${field.id}-month`}
-                    >
-                      Month
-                    </label>
-                    <div className="govbb-date-input-wrapper">
-                      <input
-                        {...sharedProps}
-                        {...requiredProps}
-                        id={`${field.id}-month`}
-                        className="govbb-date-input__field"
-                        type="text"
-                        inputMode="numeric"
-                        value={displayDatePart(value?.month)}
-                        min={1}
-                        max={12}
-                        aria-invalid={invalid}
-                        onChange={(e) => {
-                          f.handleChange({
-                            ...value,
-                            month: parseDatePart(e.target.value),
-                          });
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="govbb-date-input__part">
-                    <label
-                      className="govbb-date-input__label"
-                      htmlFor={`${field.id}-year`}
-                    >
-                      Year
-                    </label>
-                    <div className="govbb-date-input-wrapper govbb-date-input-wrapper--year">
-                      <input
-                        {...sharedProps}
-                        {...requiredProps}
-                        id={`${field.id}-year`}
-                        className="govbb-date-input__field"
-                        type="text"
-                        inputMode="numeric"
-                        value={displayDatePart(value?.year)}
-                        aria-invalid={invalid}
-                        onChange={(e) => {
-                          f.handleChange({
-                            ...value,
-                            year: parseDatePart(e.target.value),
-                          });
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </fieldset>
+              <DateField
+                f={f}
+                field={field}
+                labelClass={labelClass}
+                sharedProps={sharedProps}
+                requiredProps={requiredProps}
+                invalid={invalid}
+                errorId={errorId}
+                errorMessage={errorMessage}
+                hintId={hintId}
+              />
             );
           }
           case "textarea": {

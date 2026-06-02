@@ -580,6 +580,20 @@ describe("FieldRenderer", () => {
       });
     });
 
+    it("leaves the input as typed when a non-numeric character is entered", () => {
+      mockState = {
+        value: { day: 1, month: 6, year: 2024 },
+        meta: { isValid: true, errors: [] },
+      };
+      const { container } = renderField(primitive("date"));
+      const dateParts = container.querySelectorAll(".govbb-date-input__part");
+      const dayInput = dateParts[0].querySelector("input") as HTMLInputElement;
+      fireEvent.change(dayInput, { target: { value: "33w" } });
+      // The raw text the user typed must stay until they edit it again,
+      // rather than being cleared because it isn't a valid number.
+      expect(dayInput.value).toBe("33w");
+    });
+
     it("stores undefined (not 0) when a part is cleared", () => {
       mockState = {
         value: { day: 1, month: 6, year: 2024 },
