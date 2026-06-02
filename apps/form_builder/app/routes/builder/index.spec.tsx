@@ -33,6 +33,8 @@ jest.mock("../../server/forms", () => ({
   submitRecipe: jest.fn(),
   updateRecipe: jest.fn(),
   deleteForm: jest.fn(),
+  disableForm: jest.fn(),
+  enableForm: jest.fn(),
   getRecipe: jest.fn(),
 }));
 jest.mock("../../server/publish", () => ({
@@ -241,4 +243,68 @@ describe("BuilderPage — validate on Save draft click", () => {
     },
     15_000,
   );
+});
+
+describe("BuilderPage — formId/title pre-flight on Validate", () => {
+  beforeEach(() => {
+    validateRecipe.mockReset();
+    mockForms = [];
+  });
+
+  it("surfaces 'Form ID is required' for an empty formId and never asks the server", async () => {
+    mockEmptyDraft = { ...VALID_DRAFT, formId: "" };
+    renderBuilder();
+
+    await userEvent.click(screen.getByRole("button", { name: /^validate$/i }));
+
+    expect(
+      await screen.findByText(/form id is required/i),
+    ).toBeInTheDocument();
+    expect(validateRecipe).not.toHaveBeenCalled();
+  });
+
+  it("surfaces the kebab-case hint for a malformed formId", async () => {
+    mockEmptyDraft = { ...VALID_DRAFT, formId: "Bad-Id-" };
+    renderBuilder();
+
+    await userEvent.click(screen.getByRole("button", { name: /^validate$/i }));
+
+    expect(
+      await screen.findByText(/lowercase letters, numbers, and hyphens only/i),
+    ).toBeInTheDocument();
+    expect(validateRecipe).not.toHaveBeenCalled();
+  });
+
+  it("surfaces 'Title is required' for an empty title", async () => {
+    mockEmptyDraft = { ...VALID_DRAFT, title: "" };
+    renderBuilder();
+
+    await userEvent.click(screen.getByRole("button", { name: /^validate$/i }));
+
+    expect(await screen.findByText(/title is required/i)).toBeInTheDocument();
+    expect(validateRecipe).not.toHaveBeenCalled();
+  });
+
+  it("reports both an empty formId and an empty title together", async () => {
+    mockEmptyDraft = { ...VALID_DRAFT, formId: "", title: "" };
+    renderBuilder();
+
+    await userEvent.click(screen.getByRole("button", { name: /^validate$/i }));
+
+    expect(
+      await screen.findByText(/form id is required/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/title is required/i)).toBeInTheDocument();
+    expect(validateRecipe).not.toHaveBeenCalled();
+  });
+
+  it("passes the formId/title pre-flight and reaches the server for a valid draft", async () => {
+    mockEmptyDraft = VALID_DRAFT;
+    validateRecipe.mockResolvedValue({ ok: true });
+    renderBuilder();
+
+    await userEvent.click(screen.getByRole("button", { name: /^validate$/i }));
+
+    expect(validateRecipe).toHaveBeenCalledTimes(1);
+  });
 });

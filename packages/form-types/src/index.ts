@@ -104,6 +104,8 @@ export type {
   ResolvedPaymentProcessorConfig,
 } from "./processor.type";
 
+export { KEBAB_ID_PATTERN, KEBAB_ID_ERROR } from "./id-pattern";
+
 export { dynamic } from "./dynamic";
 
 export { validateFormContract } from "./validate-form-contract";

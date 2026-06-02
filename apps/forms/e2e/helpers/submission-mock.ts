@@ -24,7 +24,7 @@ export async function mockSuccessfulSubmission(page: Page): Promise<void> {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           idempotencyKey: "test-idempotency-key",
-          formId: "masterFormV1",
+          formId: "master-form-v1",
           formVersion: "1.0.0",
           status: "success",
           values: {},

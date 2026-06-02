@@ -27,6 +27,7 @@ jest.mock("@tanstack/react-router", () => ({
 jest.mock("@tanstack/react-form", () => ({
   useForm: jest.fn(),
   useStore: jest.fn(),
+  revalidateLogic: jest.fn(() => jest.fn()),
 }));
 
 jest.mock("@forms/lib", () => ({

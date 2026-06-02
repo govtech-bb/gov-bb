@@ -54,6 +54,27 @@ describe("validateFormContract", () => {
     }
   });
 
+  it("rejects an empty formId and empty title with field-pathed issues", () => {
+    const result = validateFormContract({
+      ...validRecipe,
+      formId: "",
+      title: "",
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      const paths = result.issues.map((i) => i.path);
+      expect(paths).toEqual(expect.arrayContaining(["formId", "title"]));
+    }
+  });
+
+  it("rejects a malformed (non-kebab) formId", () => {
+    const result = validateFormContract({ ...validRecipe, formId: "Foo-" });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.issues.some((i) => i.path === "formId")).toBe(true);
+    }
+  });
+
   it("accepts a recipe with templatable rule in a dynamic field", () => {
     const withRule = {
       ...validRecipe,

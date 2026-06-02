@@ -91,9 +91,9 @@ describe("SubmissionConfirmation", () => {
           }}
         />,
       );
-      const link = screen
-        .getByRole("button", { name: /continue to payment/i })
-        .closest("a");
+      const link = screen.getByRole("link", {
+        name: /continue to payment/i,
+      });
       expect(link).toHaveAttribute(
         "href",
         "https://ezpay.gov.bb/pay?token=abc",
@@ -117,12 +117,14 @@ describe("SubmissionConfirmation", () => {
           />,
         );
         expect(
-          screen.queryByRole("button", { name: /continue to payment/i }),
+          screen.queryByRole("link", { name: /continue to payment/i }),
         ).not.toBeInTheDocument();
         expect(
-          screen.getByText(/payment could not be initiated/i),
+          screen.getByText(/payment was unsuccessful/i),
         ).toBeInTheDocument();
-        expect(screen.getByText("REF-PAY-1")).toBeInTheDocument();
+        expect(
+          screen.getByRole("button", { name: /try again/i }),
+        ).toBeInTheDocument();
       },
     );
 
@@ -135,11 +137,9 @@ describe("SubmissionConfirmation", () => {
         />,
       );
       expect(
-        screen.queryByRole("button", { name: /continue to payment/i }),
+        screen.queryByRole("link", { name: /continue to payment/i }),
       ).not.toBeInTheDocument();
-      expect(
-        screen.getByText(/payment could not be initiated/i),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/payment was unsuccessful/i)).toBeInTheDocument();
     });
   });
 

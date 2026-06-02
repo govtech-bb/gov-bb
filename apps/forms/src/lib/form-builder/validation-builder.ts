@@ -81,7 +81,7 @@ export const buildFieldValidation = (
       fieldSchema: z.boolean().optional(),
       properties: {
         onBlur() {},
-        onChange() {},
+        onDynamic() {},
       },
     };
   }
@@ -126,7 +126,7 @@ export const buildFieldValidationProperties = (
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       onBlur(_input) {},
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      onChange(_input) {},
+      onDynamic(_input) {},
     };
   }
   const validations = field.validations;
@@ -164,7 +164,7 @@ export const buildFieldValidationProperties = (
         return undefined;
       }
     },
-    onChange({ value, fieldApi }) {
+    onDynamic({ value, fieldApi }) {
       const results: ValidationResults = {
         hasError: false,
         errors: [],
