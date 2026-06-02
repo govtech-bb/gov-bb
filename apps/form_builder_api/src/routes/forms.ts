@@ -2,12 +2,71 @@ import { Router, type Request, type Response } from "express";
 import { z } from "zod";
 import { FormDefinitionEntity } from "@govtech-bb/database";
 import {
-  serviceContractRecipeSchema,
+  processorSchema,
   type ServiceContractRecipe,
 } from "@govtech-bb/form-types";
 import { getDataSource } from "../db.js";
 
 export const formsRouter = Router();
+
+// Author-time processors array, validated as a focused subset of the full
+// recipe schema. The form-save endpoints below write the recipe straight into
+// `form_definitions` (builder scratch that the Deploy PR copies verbatim into
+// the runtime `recipes/` tree), so an unvalidated `processors[]` planted by
+// prompt injection or a tampered request reaches the live submission pipeline.
+// We gate `processors[]` specifically — not the whole recipe — because a recipe
+// may legitimately omit other fields (ADR 0010) and the discriminated union is
+// what rejects the dangerous shapes: an unknown processor `type`, a non-object
+// entry, or a config missing required keys (e.g. a payment with no
+// `paymentCode`/`amount`).
+//
+// Two deliberate gaps, both handled elsewhere:
+//   - Templatable string fields are `dynamic(...)` = `string | jsonLogic-rule`,
+//     so a field like the webhook `url` only fails the gate when sent as a
+//     non-URL *string* — an object value parses as a template rule. URL shape is
+//     enforced after template resolution, not here.
+//   - This is a type/shape gate, not an SSRF gate: the `opencrvs`/`spreadsheet`
+//     configs are by design an arbitrary `Record<string, string | number>`, so
+//     a planted endpoint URL still parses here. Blocking the outbound target is
+//     the companion host/scheme-allowlist work, layered at processor execution
+//     time (defence in depth).
+const recipeProcessorsSchema = z.array(processorSchema).optional();
+
+type ProcessorValidation =
+  | { ok: true }
+  | { ok: false; issues: { path: string; message: string }[] };
+
+// Validate-as-gate: we never persist the parsed output (which would strip
+// unrendered config keys such as the webhook `secret`, breaking the round-trip
+// guaranteed by ADR 0013/0014) — only the original recipe is stored. This just
+// decides whether the write is allowed.
+function validateRecipeProcessors(recipe: unknown): ProcessorValidation {
+  const processors = (recipe as { processors?: unknown } | null | undefined)
+    ?.processors;
+  const parsed = recipeProcessorsSchema.safeParse(processors);
+  if (parsed.success) return { ok: true };
+  return {
+    ok: false,
+    issues: parsed.error.issues.map((i) => ({
+      path: ["processors", ...i.path].join("."),
+      message: i.message,
+    })),
+  };
+}
+
+// 422 body shared by both write handlers when `processors[]` fails the gate.
+function rejectInvalidProcessors(
+  res: Response,
+  issues: { path: string; message: string }[],
+): void {
+  res.status(422).json({
+    error:
+      "Recipe has an invalid processor configuration and was not saved. " +
+      "Every processor must declare a known type and a config matching that " +
+      "type's shape.",
+    issues,
+  });
+}
 
 // Upstream apps/api base URL for the published-recipe proxy. Falls back to the
 // sandbox API when API_BASE_URL is unset so the form_builder "Open" modal works
@@ -132,11 +191,21 @@ formsRouter.get("/:formId", async (req, res) => {
 });
 
 // POST /builder/forms — submit a new recipe
-formsRouter.post("/", async (req, res) => {
+export async function submitRecipeHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
   try {
     const recipe = req.body.recipe as ServiceContractRecipe;
     if (!recipe?.formId || !recipe?.version) {
       res.status(400).json({ error: "recipe must have formId and version" });
+      return;
+    }
+    // Reject planted/malformed processors before any DB work — see
+    // recipeProcessorsSchema.
+    const processorCheck = validateRecipeProcessors(recipe);
+    if (!processorCheck.ok) {
+      rejectInvalidProcessors(res, processorCheck.issues);
       return;
     }
     const ds = await getDataSource();
@@ -161,12 +230,23 @@ formsRouter.post("/", async (req, res) => {
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
-});
+}
+formsRouter.post("/", submitRecipeHandler);
 
 // PUT /builder/forms/:formId — update existing draft
-formsRouter.put("/:formId", async (req, res) => {
+export async function updateRecipeHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
   try {
     const recipe = req.body.recipe as ServiceContractRecipe;
+    // Reject planted/malformed processors before any DB work — see
+    // recipeProcessorsSchema.
+    const processorCheck = validateRecipeProcessors(recipe);
+    if (!processorCheck.ok) {
+      rejectInvalidProcessors(res, processorCheck.issues);
+      return;
+    }
     const ds = await getDataSource();
     const rows = await ds.query(
       `SELECT id, version, published_at FROM form_definitions
@@ -199,7 +279,8 @@ formsRouter.put("/:formId", async (req, res) => {
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
-});
+}
+formsRouter.put("/:formId", updateRecipeHandler);
 
 // DELETE /builder/forms/:formId/versions/:version — surgically remove a single
 // draft version row. Unlike the form-level delete below, this writes NO
