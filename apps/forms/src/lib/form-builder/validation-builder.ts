@@ -9,7 +9,6 @@ import {
 } from "@forms/types";
 import z from "zod";
 import {
-  isDateComplete,
   dateValueToDate,
   checkDatePast,
   checkDatePastOrToday,
@@ -37,12 +36,7 @@ import {
 import { AnyFieldApi } from "@tanstack/react-form";
 import { ValidationRule } from "@govtech-bb/form-types";
 import { validate } from "@govtech-bb/form-validation";
-import type {
-  DateValue,
-  DateValueInput,
-  FieldValue,
-  Primitive,
-} from "@govtech-bb/form-types";
+import type { DateValue, FieldValue, Primitive } from "@govtech-bb/form-types";
 
 export const buildValidation = (
   contract: ClientServiceContract,
@@ -138,31 +132,13 @@ export const buildFieldValidationProperties = (
     ) ?? [];
 
   return {
-    onBlur({ value, fieldApi }) {
-      if (field.htmlType === "date") {
-        const dateValueInput = value as DateValueInput | undefined;
-        if (!dateValueInput) return;
-        if (!isDateComplete(dateValueInput)) return;
-
-        const dateValue: DateValue = value as DateValue;
-        const date: Date | null = dateValueToDate(dateValue);
-        if (!date) return;
-
-        const year = date.getFullYear();
-        const month = date.getMonth() + 1;
-        const day = date.getDate();
-
-        // Used if the user enters a date like 10/13/2008,
-        // which when converted to a date object, will be 10/1/2009
-        // Aim is to have the field reflect that change.
-        if (
-          year != dateValue.year ||
-          month != dateValue.month ||
-          day != dateValue.day
-        )
-          fieldApi.handleChange({ day, month, year });
-        return undefined;
-      }
+    onBlur() {
+      // Date fields are intentionally NOT normalized on blur. Previously an
+      // overflow date (e.g. month=22, day=32) was rewritten via the Date
+      // constructor, which rolled the value into another month/year. Overflow
+      // dates are now rejected as invalid by dateValueToDate during onChange
+      // validation instead, so the field keeps exactly what the user typed.
+      return undefined;
     },
     onChange({ value, fieldApi }) {
       const results: ValidationResults = {

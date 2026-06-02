@@ -306,16 +306,21 @@ describe("buildFieldValidationProperties", () => {
       expect(fieldApi.handleChange).not.toHaveBeenCalled();
     });
 
-    it("calls handleChange when date overflows (e.g. day=32 rolls over to next month)", () => {
+    it("does not roll over (call handleChange) when the date overflows", () => {
       const { onBlur } = buildFieldValidationProperties(dateField);
       const fieldApi = makeFieldApi();
-      // January 32 = February 1
+      // January 32 must NOT be silently rewritten to February 1 — overflow
+      // dates are rejected by validation instead of rolling over.
       onBlur!({ value: { day: 32, month: 1, year: 2024 }, fieldApi });
-      expect(fieldApi.handleChange).toHaveBeenCalledWith({
-        day: 1,
-        month: 2,
-        year: 2024,
-      });
+      expect(fieldApi.handleChange).not.toHaveBeenCalled();
+    });
+
+    it("does not roll over the year when the month overflows", () => {
+      const { onBlur } = buildFieldValidationProperties(dateField);
+      const fieldApi = makeFieldApi();
+      // month=22 must NOT increment the year (the reported bug).
+      onBlur!({ value: { day: 1, month: 22, year: 2024 }, fieldApi });
+      expect(fieldApi.handleChange).not.toHaveBeenCalled();
     });
 
     it("returns undefined", () => {
@@ -364,6 +369,16 @@ describe("buildFieldValidationProperties", () => {
         fieldApi,
       });
       expect(result).toBeUndefined();
+    });
+
+    it("returns errors when the date overflows (e.g. month=22 is not a real date)", () => {
+      const { onChange } = buildFieldValidationProperties(dateField);
+      const fieldApi = makeFieldApi();
+      const result = onChange!({
+        value: { day: 1, month: 22, year: 2024 },
+        fieldApi,
+      });
+      expect(Array.isArray(result)).toBe(true);
     });
 
     it("returns errors when date is in the future and field has past constraint", () => {

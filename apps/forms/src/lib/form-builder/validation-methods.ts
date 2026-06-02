@@ -193,7 +193,19 @@ export const dateValueToDate = (value: DateValue): Date | null => {
   ) {
     return null;
   }
-  return new Date(value.year, value.month - 1, value.day);
+  const date = new Date(value.year, value.month - 1, value.day);
+  // The Date constructor silently rolls overflow values into other months or
+  // years (e.g. month=22 → the following year, day=32 → the next month). Reject
+  // any value that does not round-trip so overflow dates are treated as invalid
+  // rather than rolling over.
+  if (
+    date.getFullYear() !== value.year ||
+    date.getMonth() !== value.month - 1 ||
+    date.getDate() !== value.day
+  ) {
+    return null;
+  }
+  return date;
 };
 
 const parseDateString = (dateStr: string): Date | null => {

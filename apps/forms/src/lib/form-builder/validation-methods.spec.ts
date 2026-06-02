@@ -538,6 +538,25 @@ describe("dateValueToDate", () => {
       dateValueToDate({ day: 15, month: 6, year: undefined as never }),
     ).toBeNull();
   });
+
+  it("returns null when the month overflows (does not roll over the year)", () => {
+    // month=22 would roll to a later year via the Date constructor; reject it
+    expect(dateValueToDate({ day: 1, month: 22, year: 2024 })).toBeNull();
+  });
+
+  it("returns null when the day overflows (does not roll over the month)", () => {
+    // January 32 would roll to February; reject it
+    expect(dateValueToDate({ day: 32, month: 1, year: 2024 })).toBeNull();
+  });
+
+  it("returns null for a day that does not exist in the month", () => {
+    // 2024 is a leap year, so Feb has 29 days — Feb 30 is invalid
+    expect(dateValueToDate({ day: 30, month: 2, year: 2024 })).toBeNull();
+  });
+
+  it("returns null when month is below range", () => {
+    expect(dateValueToDate({ day: 1, month: 0, year: 2024 })).toBeNull();
+  });
 });
 
 // ---------------------------------------------------------------------------
