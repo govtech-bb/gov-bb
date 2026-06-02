@@ -1,5 +1,9 @@
 export { matchFormsFromText } from "./detect";
-export { loadActiveFormSchema, type ActiveFormSchema } from "./schema";
+export {
+  resolveActiveForm,
+  type ActiveFormSchema,
+  type FormResolution,
+} from "./schema";
 export {
   getOrCreateSession,
   resetSessionForNewForm,

@@ -9,6 +9,9 @@ interface ToolbarProps {
   formId: string;
   title: string;
   version: string;
+  /** Uniqueness error for the formId (e.g. id already taken), computed by the
+   *  parent against the forms list. Shown alongside the local format error. */
+  idError?: string | null;
   isDirty: boolean;
   isValidating: boolean;
   isPreviewing: boolean;
@@ -29,6 +32,7 @@ export function Toolbar({
   formId,
   title,
   version,
+  idError,
   isDirty,
   isValidating,
   isPreviewing,
@@ -45,6 +49,10 @@ export function Toolbar({
   onPublish,
 }: ToolbarProps) {
   const [formIdError, setFormIdError] = useState<string>("");
+
+  // The local format error (bad characters in the current input) takes
+  // precedence over the parent's uniqueness error (id already taken).
+  const shownFormIdError = formIdError || idError || "";
 
   function handleNew() {
     if (isDirty && !window.confirm("Unsaved changes will be lost. Continue?")) return;
@@ -70,17 +78,17 @@ export function Toolbar({
               }
             }}
             style={{ marginLeft: 4 }}
-            aria-describedby={formIdError ? "form-id-error" : undefined}
-            aria-invalid={formIdError ? true : undefined}
+            aria-describedby={shownFormIdError ? "form-id-error" : undefined}
+            aria-invalid={shownFormIdError ? true : undefined}
           />
         </label>
-        {formIdError && (
+        {shownFormIdError && (
           <span
             id="form-id-error"
             role="alert"
             style={{ fontSize: "0.75rem", color: "red" }}
           >
-            {formIdError}
+            {shownFormIdError}
           </span>
         )}
       </div>

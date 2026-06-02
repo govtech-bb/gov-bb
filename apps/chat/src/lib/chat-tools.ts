@@ -4,7 +4,7 @@ import { z } from "zod";
 export const setFieldDef = toolDefinition({
   name: "set_field",
   description:
-    "Record a single form field value collected from the user. Call this every time you learn a field's value — names, dates, addresses, choices, etc. The fieldId MUST be one of the exact ids in the FORM SCHEMA system message. Date values should be ISO YYYY-MM-DD. Select/radio/checkbox values must match an option's `value` exactly. Multiple set_field calls per turn are fine.",
+    "Record one form field value. fieldId MUST be an exact id from the FORM SCHEMA. Dates as ISO YYYY-MM-DD; select/radio/checkbox values must match an option's `value` exactly. Call every time you learn a value (even single words); multiple calls per turn are fine.",
   inputSchema: z.object({
     fieldId: z.string().meta({
       description: "Exact fieldId from the FORM SCHEMA system message.",
@@ -23,7 +23,7 @@ export const setFieldDef = toolDefinition({
 export const presentChoicesDef = toolDefinition({
   name: "present_choices",
   description:
-    "Show the user a multiple-choice question with clickable buttons. Use this when the user's next answer falls into a small closed set (yes/no, type of certificate, parent vs guardian, etc). Do NOT use for open-ended answers like names, dates, or addresses. The UI renders the question and buttons from the tool args — do NOT also type the question as plain text in the same turn. After this tool call, END YOUR TURN.",
+    "Ask a closed-set question as clickable buttons (yes/no, certificate type, parent vs guardian, etc). Not for open answers like names, dates, or addresses. The question text goes ONLY in these args, never in your text reply. END YOUR TURN after calling.",
   inputSchema: z.object({
     question: z.string(),
     choices: z.array(z.string()).min(2),
@@ -36,7 +36,7 @@ export const presentChoicesDef = toolDefinition({
 export const submitFormDef = toolDefinition({
   name: "submit_form",
   description:
-    "Submit the active form to the official API using values already recorded via set_field. Call ONCE after every required field is recorded AND you have written a review summary. The user will see an Approve/Deny prompt before the submission actually runs; you do not need to ask for confirmation in chat. Takes no arguments — reads from the active session.",
+    "Submit the active form using values already recorded via set_field. Call ONCE, after every required field is recorded and you have written the review summary. The user gets an Approve/Deny prompt, so do not ask for confirmation in chat. Takes no arguments — reads from the active session.",
   inputSchema: z.object({}),
   outputSchema: z.object({
     ok: z.boolean(),

@@ -6,6 +6,7 @@ publish_date: 2026-05-20
 category: youth-and-community
 subcategory: children-families-community
 service_type: information
+form_id: youth-opportunity-ceep
 ---
 
 Free workshops on taxes, social security and managing your money, delivered with partners like the BRA, NISSS, Sagicor and BPWCCUL.
@@ -23,7 +24,7 @@ Education and assistance with tax, NIS/social security, and financial services. 
 
 Complete the short application form to register your interest. Your progress is saved automatically.
 
-<!-- [Apply now](https://alpha.gov.bb/youth-and-community/children-families-community/ceep/form) -->
+<a data-start-link>Start now</a>
 
 ## More information
 

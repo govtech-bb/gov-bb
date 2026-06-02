@@ -6,6 +6,7 @@ publish_date: 2026-05-20
 category: youth-and-community
 subcategory: youth-development-leadership
 service_type: information
+form_id: youth-opportunity-byac
 ---
 
 A two-year programme for young people aged 16 to 20, combining residential vocational training with job attachments and community service.
@@ -23,7 +24,7 @@ Two-year developmental training. Year 1: 10 weeks residential technical/vocation
 
 Complete the short application form to register your interest. Your progress is saved automatically.
 
-<!-- [Apply now](https://alpha.gov.bb/youth-and-community/youth-development-leadership/byac/form) -->
+<a data-start-link>Start now</a>
 
 ## More information
 
