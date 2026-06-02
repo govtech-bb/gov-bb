@@ -1,0 +1,389 @@
+{
+  "formId": "bssee-form-a-pupil-under-11-request",
+  "title": "BSSEE Form A: Request for Pupil Under 11 Years on 31st August to Write Examination",
+  "description": "Application form for requesting permission for a pupil under 11 years on 31st August to write the Barbados Secondary Schools' Entrance Examination",
+  "version": "1.0.0",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "contact-information.applicant-email",
+        "subject": "BSSEE Form A Submission - Request for Pupil Under 11 Years on 31st August to Write Examination"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "stepId": "pupil-information",
+      "title": "Pupil Information",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "primary-school-name",
+            "label": "Name of Primary School",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Please enter the primary school name"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "fieldId": "pupil-first-name",
+            "label": "First Name",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Please enter the pupil's first name"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "fieldId": "pupil-surname",
+            "label": "Surname",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Please enter the pupil's surname"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "pupil-other-names",
+            "label": "Other Names"
+          }
+        },
+        {
+          "ref": "components/date-of-birth",
+          "overrides": {
+            "fieldId": "pupil-date-of-birth",
+            "label": "Pupil's Date of Birth",
+            "hint": "Enter as DD/MM/YYYY",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Please enter the pupil's date of birth"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "age-on-31st-august",
+            "label": "Age on 31st August this Year",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Please enter the pupil's age on 31st August"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "parent-guardian-information",
+      "title": "Parent/Guardian Information",
+      "elements": [
+        {
+          "ref": "components/title",
+          "overrides": {
+            "fieldId": "guardian-title",
+            "label": "Title",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Please select a title"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "fieldId": "guardian-first-name",
+            "label": "First Name",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Please enter the parent/guardian's first name"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "fieldId": "guardian-last-name",
+            "label": "Last Name",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Please enter the parent/guardian's last name"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "guardian-address",
+            "label": "Address",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Please enter the parent/guardian's address"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/contact-telephone",
+          "overrides": {
+            "fieldId": "guardian-contact-number",
+            "label": "Contact Number",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Please enter a contact number"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "examination-request",
+      "title": "Examination Request",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "pupil-name-for-request",
+            "label": "I hereby request that my",
+            "hint": "Enter pupil's name",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Please confirm the pupil's name for the request"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "fieldId": "awareness-confirmation",
+            "label": "Awareness Statement",
+            "options": [
+              {
+                "label": "I am aware that he/she will be given only one opportunity to write this examination.",
+                "value": "aware"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "You must confirm you are aware of the examination policy"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "parent-guardian-declaration",
+      "title": "Parent/Guardian Declaration",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "eligibility-confirmation",
+            "label": "I confirm that",
+            "hint": "Confirm the pupil has covered the relevant syllabus and is ready to write the examination",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Please confirm the pupil's readiness"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "reason-for-request",
+            "label": "Please indicate reason for agreement or disagreement.",
+            "ui": {
+              "width": "long"
+            },
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Please provide a reason for your agreement or disagreement"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "guardian-signature",
+            "label": "Signature",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Please provide your signature"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-date",
+          "overrides": {
+            "fieldId": "guardian-signature-date",
+            "label": "Date",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Please enter the date"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "official-use-section",
+      "title": "Official Use Section",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "syllabus-coverage-confirmation",
+            "label": "Has the pupil covered the relevant syllabus?",
+            "options": [
+              {
+                "label": "Yes, confirmed",
+                "value": "yes"
+              },
+              {
+                "label": "No, not confirmed",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Please confirm whether the syllabus has been covered"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "official-reason-notes",
+            "label": "Official Notes - Reason for Agreement or Disagreement",
+            "ui": {
+              "width": "long"
+            },
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Please provide official notes"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "official-signature",
+            "label": "Official Signature",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Please provide an official signature"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-date",
+          "overrides": {
+            "fieldId": "official-signature-date",
+            "label": "Date",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Please enter the date"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "contact-information",
+      "title": "Contact Information",
+      "elements": [
+        {
+          "ref": "components/email",
+          "overrides": {
+            "fieldId": "applicant-email",
+            "label": "Email Address",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Please enter a valid email address"
+              },
+              "email": {
+                "value": true,
+                "error": "Please enter a valid email address"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "check-your-answers",
+      "title": "Check your answers",
+      "description": "Review all the information you have provided before submitting your application.",
+      "elements": [],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Application submitted",
+      "elements": [],
+      "behaviours": []
+    }
+  ],
+  "createdAt": "2026-06-02T15:33:27.264Z",
+  "updatedAt": "2026-06-02T15:33:27.264Z"
+}
