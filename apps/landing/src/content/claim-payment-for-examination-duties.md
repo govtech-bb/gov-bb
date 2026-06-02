@@ -4,6 +4,7 @@ description: "Claim payment for duties you performed during an examination perio
 stage: "alpha"
 publish_date: 2026-06-02
 category: education
+form_id: duties-performed-exam-claim
 ---
 
 If you performed duties during a recent examination period, you can claim payment for them. Use this service if you worked as an invigilator, supervisor, examination assessor, door marshal, centre clerk, or as a reader, writer, interpreter, model, moderator or dictator, or helped with practical exam setup.

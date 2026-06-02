@@ -4,7 +4,8 @@ description: "Apply for a temporary teaching position in the Government of Barba
 featured: false
 stage: "alpha"
 publish_date: 2026-01-15
-category: work-employment
+category: education
+form_id: temp-teacher-application-barbados
 ---
 
 If you want to be a temporary teacher in a government-funded primary school in Barbados, you must apply. If your application meets the requirements and a suitable position becomes available, you may be contacted for an interview.
@@ -18,6 +19,10 @@ To apply, you need to:
 - have at least 5 CXC subjects at CSEC general proficiency level, including English language, maths and a science subject
 
 ## How to apply
+
+You can apply online. It takes about 10 minutes.
+
+<a data-start-link>Start now</a>
 
 ### Watch for vacancy notices
 

@@ -4,6 +4,7 @@ description: "Register online to sit the Caribbean Secondary Education Certifica
 stage: "alpha"
 publish_date: 2026-06-02
 category: education
+form_id: csec-private-candidate-registration
 ---
 
 If you are not registered for the Caribbean Secondary Education Certificate (CSEC) through a school, you can register as a private candidate. Use this service to choose your sitting and enter the subjects you want to sit.

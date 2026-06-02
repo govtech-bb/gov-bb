@@ -4,6 +4,7 @@ description: "Register online to sit the Caribbean Advanced Proficiency Examinat
 stage: "alpha"
 publish_date: 2026-06-02
 category: education
+form_id: cape-exam-registration-2024
 ---
 
 If you are not registered for the Caribbean Advanced Proficiency Examination (CAPE) through a school, you can register as a private candidate. Use this service to enter the subjects and units you want to sit.

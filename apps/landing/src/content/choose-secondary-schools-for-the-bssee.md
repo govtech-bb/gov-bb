@@ -4,6 +4,7 @@ description: "Rank the secondary schools you would like your child to attend aft
 stage: "alpha"
 publish_date: 2026-06-02
 category: education
+form_id: barbados-secondary-entrance-exam-choice
 ---
 
 If your child is sitting the Barbados Secondary School Entrance Examination (BSSEE), use this form to rank the secondary schools you would like them to attend.

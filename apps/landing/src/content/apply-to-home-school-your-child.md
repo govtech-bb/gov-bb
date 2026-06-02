@@ -4,6 +4,7 @@ description: "Apply for permission to home-school your child in Barbados."
 stage: "alpha"
 publish_date: 2026-06-02
 category: education
+form_id: homeschooling-application-2024
 ---
 
 Use this service to apply for permission to home-school your child in Barbados. Permission must be granted by the Permanent Secretary, Ministry of Educational Transformation.
