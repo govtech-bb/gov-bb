@@ -19,13 +19,13 @@ export interface InsetFieldEntry {
 
 /**
  * Parse a date-part text input (day/month/year) into the numeric DateValue
- * model. Empty or non-numeric input becomes `undefined` so the field never
- * stores `0` or `NaN`.
+ * model. An empty field becomes `undefined`; non-numeric input (e.g. "33w")
+ * becomes `NaN` so validation can tell an invalid entry apart from an empty
+ * one and flag it as an invalid date rather than treating it as not-yet-filled.
  */
 const parseDatePart = (raw: string): number | undefined => {
   if (raw.trim() === "") return undefined;
-  const parsed = Number(raw);
-  return Number.isNaN(parsed) ? undefined : parsed;
+  return Number(raw);
 };
 
 /** Render a numeric date part, showing "" for a missing (null/undefined) or NaN value. */
@@ -79,7 +79,9 @@ function DateField({
     setRaw((prev) => {
       const next = { ...prev };
       (["day", "month", "year"] as DatePart[]).forEach((part) => {
-        if (parseDatePart(prev[part]) !== value?.[part]) {
+        // Object.is so NaN (an invalid entry) compares equal to the stored NaN
+        // and the raw text the user typed is not clobbered on the next render.
+        if (!Object.is(parseDatePart(prev[part]), value?.[part])) {
           next[part] = displayDatePart(value?.[part]);
         }
       });

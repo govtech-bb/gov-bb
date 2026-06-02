@@ -557,6 +557,12 @@ describe("dateValueToDate", () => {
   it("returns null when month is below range", () => {
     expect(dateValueToDate({ day: 1, month: 0, year: 2024 })).toBeNull();
   });
+
+  it("returns null when a part is NaN (non-numeric input)", () => {
+    // The renderer stores NaN for a non-numeric entry (e.g. "33w") so that it
+    // is validated as an invalid date rather than treated as empty.
+    expect(dateValueToDate({ day: NaN, month: 6, year: 2024 })).toBeNull();
+  });
 });
 
 // ---------------------------------------------------------------------------

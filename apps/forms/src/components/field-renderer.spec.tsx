@@ -576,7 +576,7 @@ describe("FieldRenderer", () => {
       });
     });
 
-    it("stores undefined (not NaN) when a letter is entered", () => {
+    it("stores NaN (not undefined) when a non-number is entered so validation flags it", () => {
       mockState = {
         value: { day: 1, month: 6, year: 2024 },
         meta: { isValid: true, errors: [] },
@@ -585,11 +585,39 @@ describe("FieldRenderer", () => {
       const dateParts = container.querySelectorAll(".govbb-date-input__part");
       const dayInput = dateParts[0].querySelector("input") as HTMLInputElement;
       fireEvent.change(dayInput, { target: { value: "a" } });
+      // NaN (not undefined) distinguishes invalid input from an empty field so
+      // the date is validated as invalid rather than treated as not-yet-filled.
       expect(mockFieldApi.handleChange).toHaveBeenCalledWith({
-        day: undefined,
+        day: NaN,
         month: 6,
         year: 2024,
       });
+    });
+
+    it("keeps invalid text when the stored value updates to NaN", () => {
+      const field = primitive("date");
+      mockState = {
+        value: { day: 1, month: 6, year: 2024 },
+        meta: { isValid: true, errors: [] },
+      };
+      const { container, rerender } = renderField(field);
+      const dateParts = container.querySelectorAll(".govbb-date-input__part");
+      const dayInput = dateParts[0].querySelector("input") as HTMLInputElement;
+      fireEvent.change(dayInput, { target: { value: "33w" } });
+      // Simulate the form propagating the parsed NaN back into field state.
+      mockState = {
+        value: { day: NaN, month: 6, year: 2024 },
+        meta: { isValid: false, errors: ["invalid date"] },
+      };
+      rerender(
+        <FieldRenderer
+          form={mockForm}
+          field={field}
+          validationProperties={noValidation}
+        />,
+      );
+      // The re-sync effect must not clobber the raw text (NaN === NaN).
+      expect(dayInput.value).toBe("33w");
     });
 
     it("leaves the input as typed when a non-numeric character is entered", () => {
