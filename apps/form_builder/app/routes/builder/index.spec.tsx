@@ -33,6 +33,8 @@ jest.mock("../../server/forms", () => ({
   submitRecipe: jest.fn(),
   updateRecipe: jest.fn(),
   deleteForm: jest.fn(),
+  disableForm: jest.fn(),
+  enableForm: jest.fn(),
   getRecipe: jest.fn(),
 }));
 jest.mock("../../server/publish", () => ({

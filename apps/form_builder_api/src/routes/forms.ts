@@ -312,23 +312,23 @@ export async function deleteFormVersionHandler(
 // are matched here, not swallowed as a formId.
 formsRouter.delete("/:formId/versions/:version", deleteFormVersionHandler);
 
-// DELETE /builder/forms/:formId — hard-remove every version of a form and
-// write a tombstone so the form_id stays claimed (public fetch -> 410 Gone).
-// Submitted data (form_submissions) is deliberately never touched.
+// POST /builder/forms/:formId/disable — write/refresh a tombstone so the
+// form_id stays claimed (public fetch -> 410 Gone) without deleting any
+// drafts. Idempotent: re-disabling updates the reason/author.
 //
-// Column names (form_id, reason, disabled_by, disabled_at) are pinned to
-// apps/api's FormDisabledOverrideEntity — that app owns the table and its
-// migration; this app writes it via raw SQL over the shared DB.
-const deleteFormBodySchema = z.object({
+// Column names (form_id, reason, disabled_by) are pinned to apps/api's
+// FormDisabledOverrideEntity — that app owns the table and its migration;
+// this app writes it via raw SQL over the shared DB.
+const disableFormBodySchema = z.object({
   reason: z.string().min(1).max(2000),
-  deletedBy: z.string().min(1).max(255),
+  disabledBy: z.string().min(1).max(255),
 });
 
-export async function deleteFormHandler(
+export async function disableFormHandler(
   req: Request,
   res: Response,
 ): Promise<void> {
-  const parsed = deleteFormBodySchema.safeParse(req.body);
+  const parsed = disableFormBodySchema.safeParse(req.body);
   if (!parsed.success) {
     const detail = parsed.error.issues
       .map((i) => `${i.path.join(".") || "body"}: ${i.message}`)
@@ -336,40 +336,67 @@ export async function deleteFormHandler(
     res.status(400).json({ error: detail || "Invalid request body" });
     return;
   }
-  const { reason, deletedBy } = parsed.data;
+  const { reason, disabledBy } = parsed.data;
   const { formId } = req.params;
 
   try {
     const ds = await getDataSource();
-    const result = await ds.transaction(async (manager) => {
-      // Unknown form: no versions AND no existing tombstone -> 404, no write.
-      const defs = await manager.query(
-        `SELECT 1 FROM form_definitions WHERE form_id = $1 LIMIT 1`,
-        [formId],
-      );
-      const existing = await manager.query(
-        `SELECT 1 FROM form_disabled_overrides WHERE form_id = $1 LIMIT 1`,
-        [formId],
-      );
-      if (defs.length === 0 && existing.length === 0) {
-        return { notFound: true as const };
-      }
+    await ds.query(
+      `INSERT INTO form_disabled_overrides (form_id, reason, disabled_by)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (form_id) DO UPDATE
+       SET reason = EXCLUDED.reason, disabled_by = EXCLUDED.disabled_by`,
+      [formId, reason, disabledBy],
+    );
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+}
+formsRouter.post("/:formId/disable", disableFormHandler);
 
+// DELETE /builder/forms/:formId/disabled — clear the tombstone, re-enabling
+// the form. Idempotent: a missing row still returns 200 (no branch on count).
+export async function enableFormHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const { formId } = req.params;
+  try {
+    const ds = await getDataSource();
+    await ds.query(`DELETE FROM form_disabled_overrides WHERE form_id = $1`, [
+      formId,
+    ]);
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+}
+// Registered before the catch-all "/:formId" delete so the extra "/disabled"
+// path segment is matched here, not swallowed as a formId.
+formsRouter.delete("/:formId/disabled", enableFormHandler);
+
+// DELETE /builder/forms/:formId — hard-remove every draft version of a form.
+// No tombstone is written here: deleting a form is a pure draft delete, and
+// claiming the form_id is the separate POST /:formId/disable concern.
+// Submitted data (form_submissions) is deliberately never touched.
+export async function deleteFormHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const { formId } = req.params;
+  try {
+    const ds = await getDataSource();
+    const result = await ds.transaction(async (manager) => {
       const deleted = await manager.query(
         `DELETE FROM form_definitions WHERE form_id = $1 RETURNING id`,
         [formId],
       );
-      await manager.query(
-        `INSERT INTO form_disabled_overrides (form_id, reason, disabled_by)
-         VALUES ($1, $2, $3)
-         ON CONFLICT (form_id) DO UPDATE
-         SET reason = EXCLUDED.reason, disabled_by = EXCLUDED.disabled_by`,
-        [formId, reason, deletedBy],
-      );
-      return { notFound: false as const, deletedVersions: deleted.length };
+      return { deletedVersions: deleted.length };
     });
 
-    if (result.notFound) {
+    // No form_definitions rows -> nothing was deleted -> 404.
+    if (result.deletedVersions === 0) {
       res.status(404).json({ error: `No form found for formId: ${formId}` });
       return;
     }

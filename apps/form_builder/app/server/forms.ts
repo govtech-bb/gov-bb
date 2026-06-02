@@ -35,12 +35,21 @@ export const listForms = createServerFn({ method: "GET" })
       });
     }
 
-    // Drop tombstoned forms: a deleted form's drafts are already gone, but a
-    // GitHub-published entry survives the delete and must be hidden here.
+    // Mark disabled forms. A disabled published form is kept so it can be
+    // re-enabled from the UI; a disabled non-published entry is an orphan
+    // tombstone from the old draft-delete behaviour with no UI home, so it's
+    // dropped.
+    //
+    // Known, accepted edge: `isPublished` reflects which version won the merge
+    // above, not "appears in the published index". So a disabled published form
+    // that ALSO has a newer draft (draft version > published) is marked
+    // isPublished=false and drops out of the picker here — it can't be re-enabled
+    // via the UI until the newer draft is removed. The tombstone still keeps the
+    // public site at 410, so this is a UI-only gap we've chosen to live with.
     const disabledIds = new Set(disabled);
-    return Array.from(byFormId.values()).filter(
-      (f) => !disabledIds.has(f.formId),
-    );
+    return Array.from(byFormId.values())
+      .map((f) => ({ ...f, isDisabled: disabledIds.has(f.formId) }))
+      .filter((f) => !f.isDisabled || f.isPublished);
   });
 
 export const getRecipe = createServerFn({ method: "GET", strict: false })
@@ -110,10 +119,26 @@ export const updateRecipe = createServerFn({ method: "POST" })
     });
   });
 
-// Permanently delete a form: the API hard-removes every version and writes a
-// tombstone (public fetch -> 410). `deletedBy` is the GitHub login from the
-// session — form_builder_api only sees the shared admin token.
+// Draft-delete a form: the API removes every form_definitions row for the
+// formId. No tombstone is written, so the formId is freed for reuse and a
+// public fetch simply 404s. Disabling (not deleting) is the way to retire a
+// published form while keeping the formId reserved.
 export const deleteForm = createServerFn({ method: "POST" })
+  .middleware([requireSession])
+  .inputValidator(
+    z.object({
+      formId: z.string().min(1),
+    }),
+  )
+  .handler(async ({ data }): Promise<void> => {
+    await api.del(`/builder/forms/${encodeURIComponent(data.formId)}`);
+  });
+
+// Disable a form: the API marks the formId as disabled (public fetch -> 410)
+// without removing any rows, so it can later be re-enabled. `disabledBy` is the
+// GitHub login from the session — form_builder_api only sees the shared admin
+// token.
+export const disableForm = createServerFn({ method: "POST" })
   .middleware([requireSession])
   .inputValidator(
     z.object({
@@ -122,10 +147,22 @@ export const deleteForm = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data, context }): Promise<void> => {
-    await api.del(`/builder/forms/${encodeURIComponent(data.formId)}`, {
-      reason: data.reason,
-      deletedBy: context.session.login,
-    });
+    await api.post(
+      `/builder/forms/${encodeURIComponent(data.formId)}/disable`,
+      { reason: data.reason, disabledBy: context.session.login },
+    );
+  });
+
+// Re-enable a previously disabled form by clearing its disabled marker.
+export const enableForm = createServerFn({ method: "POST" })
+  .middleware([requireSession])
+  .inputValidator(
+    z.object({
+      formId: z.string().min(1),
+    }),
+  )
+  .handler(async ({ data }): Promise<void> => {
+    await api.del(`/builder/forms/${encodeURIComponent(data.formId)}/disabled`);
   });
 
 // Delete a single version row of a form. Unlike deleteForm, this leaves no
