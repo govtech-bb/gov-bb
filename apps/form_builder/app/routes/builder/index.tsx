@@ -387,7 +387,7 @@ function BuilderPage() {
     // unchanged. Don't validate, don't prompt, don't bump — there's nothing to
     // apply. (Equality ignores version, timestamps, and editor-only ids.)
     if (draftsEqual(draft, incoming)) {
-      return { applied: false };
+      return { applied: false, reason: "unchanged" };
     }
 
     // Uniqueness pre-flight — the same resolved-id check Save draft / Deploy
@@ -438,7 +438,7 @@ function BuilderPage() {
         "Apply the AI changes? This replaces the current form in the editor.",
       )
     ) {
-      return { applied: false };
+      return { applied: false, reason: "cancelled" };
     }
 
     dispatch({ type: "LOAD_DRAFT", draft: incoming });
