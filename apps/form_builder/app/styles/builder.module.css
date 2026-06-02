@@ -399,6 +399,16 @@
   border-radius: 4px;
 }
 
+/* Unsaved-changes indicator — amber, distinct from the green/red save status
+   it sits beside, to read as "pending" rather than success or failure. */
+.statusUnsaved {
+  color: var(--color-warning-text);
+  font-size: 0.8rem;
+  padding: 2px 6px;
+  background: var(--color-warning-light);
+  border-radius: 4px;
+}
+
 /* ── Override indicators ──────────────────────────── */
 
 .overrideDot {

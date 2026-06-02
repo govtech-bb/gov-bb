@@ -12,6 +12,11 @@ interface ToolbarProps {
    *  parent against the forms list. Shown alongside the local format error. */
   idError?: string | null;
   isDirty: boolean;
+  /** Whether the live draft differs from the last saved/loaded baseline.
+   *  Drives the "Unsaved changes" indicator and gates Save draft / Discard.
+   *  Unlike `isDirty` ("the form is non-empty"), this goes clean right after
+   *  a successful save. */
+  hasUnsavedChanges: boolean;
   isValidating: boolean;
   isPreviewing: boolean;
   isSubmitting: boolean;
@@ -25,6 +30,9 @@ interface ToolbarProps {
   onPreview: () => void;
   onSubmit: () => void;
   onPublish: () => void;
+  /** Revert the draft to the last saved baseline (or empty for a new form).
+   *  Confirm-gating lives in the parent. */
+  onDiscard: () => void;
 }
 
 export function Toolbar({
@@ -33,6 +41,7 @@ export function Toolbar({
   version,
   idError,
   isDirty,
+  hasUnsavedChanges,
   isValidating,
   isPreviewing,
   isSubmitting,
@@ -46,6 +55,7 @@ export function Toolbar({
   onPreview,
   onSubmit,
   onPublish,
+  onDiscard,
 }: ToolbarProps) {
   const [formIdError, setFormIdError] = useState<string>("");
 
@@ -125,9 +135,16 @@ export function Toolbar({
       </button>
       <button
         type="button"
+        onClick={onDiscard}
+        disabled={!hasUnsavedChanges}
+      >
+        Discard
+      </button>
+      <button
+        type="button"
         className={styles.btnPrimary}
         onClick={onSubmit}
-        disabled={isValidating || isSubmitting}
+        disabled={isValidating || isSubmitting || !hasUnsavedChanges}
       >
         {isSubmitting ? "Submitting…" : "Save draft"}
       </button>
@@ -139,6 +156,9 @@ export function Toolbar({
       >
         {isPublishing ? "Opening PR…" : "Deploy"}
       </button>
+      {hasUnsavedChanges && (
+        <span className={styles.statusUnsaved}>● Unsaved changes</span>
+      )}
       {lastSaveStatus !== "idle" && (
         <span
           className={

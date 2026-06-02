@@ -131,7 +131,10 @@ describe("AiSidebar — outcome feedback", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: /edit form/i }));
 
-    expect(await screen.findByText(/applied the changes/i)).toBeInTheDocument();
+    // The status must make clear the change is in the editor only, not saved.
+    const status = await screen.findByText(/applied to the editor/i);
+    expect(status).toBeInTheDocument();
+    expect(status).toHaveTextContent(/not saved yet/i);
   });
 
   it("shows an 'unchanged' status when the apply pipeline reports a no-op", async () => {
@@ -172,7 +175,7 @@ describe("AiSidebar — outcome feedback", () => {
     await userEvent.click(screen.getByRole("button", { name: /edit form/i }));
 
     expect(await screen.findByText("Here you go.")).toBeInTheDocument();
-    expect(screen.queryByText(/applied the changes/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/applied to the editor/i)).not.toBeInTheDocument();
     expect(
       screen.queryByText(/returned the form unchanged/i),
     ).not.toBeInTheDocument();

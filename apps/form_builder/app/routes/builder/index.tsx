@@ -54,6 +54,10 @@ function BuilderPage() {
   const { catalog, baseBranch } = Route.useLoaderData();
   const { forms, loadError: formsLoadError, refetch: refetchForms } = useFormsList();
   const [draft, dispatch] = useReducer(recipeReducer, EMPTY_DRAFT);
+  // Snapshot of the last saved/loaded draft — the baseline that "unsaved
+  // changes" is measured against. null for a brand-new form (no save/load yet);
+  // set on load, on save-success, and back to null on New.
+  const [savedDraft, setSavedDraft] = useState<RecipeDraft | null>(null);
 
   // UI state
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
@@ -97,6 +101,12 @@ function BuilderPage() {
     draft.steps.length > REQUIRED_STEP_IDS.length ||
     draft.formId !== "" ||
     draft.title !== "";
+  // The honest "has unsaved work" flag: compare the live draft against the
+  // saved baseline. Before any save/load there's no baseline, so a brand-new
+  // form falls back to isDirty ("is the form non-empty"). draftsEqual ignores
+  // version/timestamps/editor-only ids, so it goes clean right after a save.
+  const hasUnsavedChanges =
+    savedDraft === null ? isDirty : !draftsEqual(draft, savedDraft);
   const editableSteps = draft.steps.filter((s) => !isRequiredStep(s.stepId));
   const hasEditableSteps = editableSteps.length > 0;
   // Live recipe-wide uniqueness check over resolved field ids + step ids. Drives
@@ -323,6 +333,9 @@ function BuilderPage() {
       }
       setSubmitSuccess(true);
       setLastSaveStatus("submitted");
+      // The just-saved draft is now the baseline, so the unsaved indicator
+      // clears immediately after a successful save.
+      setSavedDraft(draft);
       setLoadedFromId(draft.formId);
 
       // The just-saved version becomes the new working/current version, so the
@@ -370,7 +383,15 @@ function BuilderPage() {
   };
 
   const handleLoad = (loadedDraft: RecipeDraft, formId: string, ver: string) => {
-    dispatch({ type: "LOAD_DRAFT", draft: loadedDraft });
+    const loadAction = { type: "LOAD_DRAFT" as const, draft: loadedDraft };
+    dispatch(loadAction);
+    // Snapshot the *normalized* draft the reducer produces — LOAD_DRAFT
+    // back-fills any missing required steps and reorders them — not the raw
+    // input. Snapshotting the raw draft would make a freshly loaded recipe that
+    // predates a required step (e.g. check-your-answers) read as already having
+    // unsaved changes. LOAD_DRAFT ignores prior state, so `draft` here is just
+    // the reducer's required first arg.
+    setSavedDraft(recipeReducer(draft, loadAction));
     setLoadedFromId(formId);
     setCurrentVersion(ver);
     setVersion(ver);
@@ -459,11 +480,15 @@ function BuilderPage() {
       }
     }
 
-    // Guard against silently discarding manual edits already in the editor.
+    // Guard against silently discarding unsaved work already in the editor.
+    // Gate on hasUnsavedChanges (not isDirty): replacing a clean, just-loaded
+    // form loses nothing (Discard reverts to the saved baseline), so only the
+    // presence of unsaved edits warrants a prompt. The message is explicit that
+    // the apply only updates the editor and isn't saved.
     if (
-      isDirty &&
+      hasUnsavedChanges &&
       !window.confirm(
-        "Apply the AI changes? This replaces the current form in the editor.",
+        "Apply the AI changes to the editor? This replaces the current form and isn't saved — you can Discard to undo, or Save draft to keep it.",
       )
     ) {
       return { applied: false, reason: "cancelled" };
@@ -497,6 +522,9 @@ function BuilderPage() {
 
   const handleNew = () => {
     dispatch({ type: "RESET" });
+    // No saved baseline for a fresh form — unsaved tracking falls back to
+    // isDirty until the first save/load.
+    setSavedDraft(null);
     setSelectedStepId(null);
     setMainView("step");
     setVersion("1.0.0");
@@ -513,6 +541,32 @@ function BuilderPage() {
     setIsPreviewOpen(false);
     // Clear transient errors
     setPreviewError(null);
+  };
+
+  // Throw away unsaved work. With a saved baseline, revert the editor to it
+  // (and its version); with none (brand-new form), clear the form — same as
+  // New. Confirm-gated; the toolbar already disables this when there's nothing
+  // unsaved.
+  const handleDiscard = () => {
+    const message =
+      savedDraft === null
+        ? "Discard unsaved changes and clear the form?"
+        : "Discard unsaved changes and revert to the last saved version?";
+    if (!window.confirm(message)) return;
+    if (savedDraft === null) {
+      handleNew();
+      return;
+    }
+    dispatch({ type: "LOAD_DRAFT", draft: savedDraft });
+    setSelectedStepId(firstStepId(savedDraft));
+    setMainView("step");
+    setVersion(currentVersion ?? "1.0.0");
+    setValidateResult(null);
+    setSubmitSuccess(false);
+    setSubmitError(null);
+    setPreviewData(null);
+    setPreviewError(null);
+    setLastSaveStatus("idle");
   };
 
   const handleRequestDelete = (form: FormDefinitionSummary) => {
@@ -648,6 +702,7 @@ function BuilderPage() {
         version={version}
         idError={uniqueness.idError}
         isDirty={isDirty}
+        hasUnsavedChanges={hasUnsavedChanges}
         isValidating={isValidating}
         isPreviewing={isPreviewing}
         isSubmitting={isSubmitting}
@@ -661,6 +716,7 @@ function BuilderPage() {
         onPreview={handlePreview}
         onSubmit={handleSaveDraftClick}
         onPublish={handleDeployClick}
+        onDiscard={handleDiscard}
       />
 
       <div className={styles.builderBody}>
