@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import FieldRenderer from "./field-renderer";
 import type { ClientPrimitive } from "@forms/types";
@@ -549,6 +549,52 @@ describe("FieldRenderer", () => {
       const inputs = container.querySelectorAll('input[type="text"]');
       inputs.forEach((input) => {
         expect((input as HTMLInputElement).value).toBe("");
+      });
+    });
+
+    it("does not display NaN when a part holds a non-numeric value", () => {
+      mockState = {
+        value: { day: NaN, month: NaN, year: NaN },
+        meta: { isValid: true, errors: [] },
+      };
+      const { container } = renderField(primitive("date"));
+      const inputs = container.querySelectorAll('input[type="text"]');
+      inputs.forEach((input) => {
+        expect((input as HTMLInputElement).value).toBe("");
+      });
+    });
+
+    it("stores undefined (not NaN) when a letter is entered", () => {
+      mockState = {
+        value: { day: 1, month: 6, year: 2024 },
+        meta: { isValid: true, errors: [] },
+      };
+      const { container } = renderField(primitive("date"));
+      const dateParts = container.querySelectorAll(".govbb-date-input__part");
+      const dayInput = dateParts[0].querySelector("input") as HTMLInputElement;
+      fireEvent.change(dayInput, { target: { value: "a" } });
+      expect(mockFieldApi.handleChange).toHaveBeenCalledWith({
+        day: undefined,
+        month: 6,
+        year: 2024,
+      });
+    });
+
+    it("stores undefined (not 0) when a part is cleared", () => {
+      mockState = {
+        value: { day: 1, month: 6, year: 2024 },
+        meta: { isValid: true, errors: [] },
+      };
+      const { container } = renderField(primitive("date"));
+      const dateParts = container.querySelectorAll(".govbb-date-input__part");
+      const monthInput = dateParts[1].querySelector(
+        "input",
+      ) as HTMLInputElement;
+      fireEvent.change(monthInput, { target: { value: "" } });
+      expect(mockFieldApi.handleChange).toHaveBeenCalledWith({
+        day: 1,
+        month: undefined,
+        year: 2024,
       });
     });
   });
