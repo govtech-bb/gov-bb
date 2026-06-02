@@ -11,6 +11,7 @@
     "test": "jest --no-coverage"
   },
   "dependencies": {
+    "@aws-sdk/client-secrets-manager": "^3.1057.0",
     "@govtech-bb/form-builder": "workspace:*",
     "@govtech-bb/form-types": "workspace:*",
     "@govtech-bb/registry": "workspace:*",

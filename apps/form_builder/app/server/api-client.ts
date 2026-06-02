@@ -7,8 +7,9 @@
  * This file is the only place that talks to the API.
  */
 
+import { getAdminApiToken } from "./secrets";
+
 const BASE_URL = process.env.BUILDER_API_URL;
-const ADMIN_TOKEN = process.env.ADMIN_API_TOKEN;
 
 export class ApiError extends Error {
   constructor(
@@ -26,10 +27,14 @@ async function call<T>(
   body?: unknown,
 ): Promise<T> {
   if (!BASE_URL) throw new Error("BUILDER_API_URL is not set");
-  if (!ADMIN_TOKEN) throw new Error("ADMIN_API_TOKEN is not set");
+  // ADMIN_API_TOKEN is fetched at request time from Secrets Manager via the
+  // SSR compute role (#202/#203). `getAdminApiToken` falls back to
+  // process.env.ADMIN_API_TOKEN for local dev / .env.local. Cached per warm
+  // Lambda after first call.
+  const adminToken = await getAdminApiToken();
 
   const headers: Record<string, string> = {
-    "X-Admin-Token": ADMIN_TOKEN,
+    "X-Admin-Token": adminToken,
   };
   if (body !== undefined) headers["Content-Type"] = "application/json";
 

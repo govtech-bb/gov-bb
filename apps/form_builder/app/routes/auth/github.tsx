@@ -3,6 +3,7 @@ import { createIsomorphicFn } from "@tanstack/react-start";
 import { setResponseHeader } from "@tanstack/react-start/server";
 import { randomBytes } from "node:crypto";
 import { serializeOAuthStateCookie } from "../../server/session";
+import { getGitHubOAuthCreds } from "../../server/secrets";
 
 // `randomBytes` comes from `node:crypto`, which Vite externalizes in the
 // client bundle (any property access on the stub throws). Wrapping the call
@@ -36,10 +37,9 @@ const setOAuthStateCookie = createIsomorphicFn()
   .client((_cookie: string) => {});
 
 export const Route = createFileRoute("/auth/github")({
-  beforeLoad: () => {
-    const clientId = process.env.GITHUB_OAUTH_CLIENT_ID;
+  beforeLoad: async () => {
+    const { clientId } = await getGitHubOAuthCreds();
     const base = process.env.OAUTH_REDIRECT_BASE;
-    if (!clientId) throw new Error("GITHUB_OAUTH_CLIENT_ID is not set");
     if (!base) throw new Error("OAUTH_REDIRECT_BASE is not set");
 
     const state = generateStateHex(16);

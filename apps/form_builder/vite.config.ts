@@ -6,10 +6,16 @@ import { nitro } from "nitro/vite";
 const preset = process.env.NITRO_PRESET || "aws_amplify";
 
 // Amplify Hosting Compute doesn't pass branch env vars to the SSR Lambda
-// at runtime, so we bake them into the bundle at build time via Vite's
-// `define`. The runtime code that reads these MUST use the literal form
-// `process.env.X` (not `process.env` as a whole object) for the substitution
-// to apply — see app/server/env.ts for the corresponding shape.
+// at runtime, so we bake non-sensitive values into the bundle at build time
+// via Vite's `define`. The runtime code that reads these MUST use the
+// literal form `process.env.X` (not `process.env` as a whole object) for the
+// substitution to apply — see app/server/env.ts for the corresponding shape.
+//
+// Sensitive values (ADMIN_API_TOKEN, SESSION_SECRET, GITHUB_OAUTH_CLIENT_ID,
+// GITHUB_OAUTH_CLIENT_SECRET) are intentionally NOT baked (alpha-infra#202/#203).
+// Only their Secrets Manager ARNs are baked; the Nitro server plugin in
+// server/plugins/secrets-hydrate.ts fetches the actual values at SSR boot
+// and populates process.env at runtime.
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const pick = (key: string, fallback = ""): string =>
@@ -17,17 +23,18 @@ export default defineConfig(({ mode }) => {
 
   return {
     define: {
-      // Auth + API
-      "process.env.ADMIN_API_TOKEN": JSON.stringify(pick("ADMIN_API_TOKEN")),
-      "process.env.SESSION_SECRET": JSON.stringify(pick("SESSION_SECRET")),
+      // SM-backed secret ARNs (non-sensitive identifiers). The Nitro plugin
+      // reads these at boot and hydrates ADMIN_API_TOKEN, SESSION_SECRET,
+      // GITHUB_OAUTH_CLIENT_ID, and GITHUB_OAUTH_CLIENT_SECRET into process.env.
+      "process.env.FORM_BUILDER_TOKENS_SECRET_ARN": JSON.stringify(
+        pick("FORM_BUILDER_TOKENS_SECRET_ARN"),
+      ),
+      "process.env.FORM_BUILDER_GITHUB_OAUTH_SECRET_ARN": JSON.stringify(
+        pick("FORM_BUILDER_GITHUB_OAUTH_SECRET_ARN"),
+      ),
+      // API target (not a secret)
       "process.env.BUILDER_API_URL": JSON.stringify(pick("BUILDER_API_URL")),
-      // GitHub OAuth (SSR sign-in flow + PR-publish callback)
-      "process.env.GITHUB_OAUTH_CLIENT_ID": JSON.stringify(
-        pick("GITHUB_OAUTH_CLIENT_ID"),
-      ),
-      "process.env.GITHUB_OAUTH_CLIENT_SECRET": JSON.stringify(
-        pick("GITHUB_OAUTH_CLIENT_SECRET"),
-      ),
+      // OAuth callback base (not a secret)
       "process.env.OAUTH_REDIRECT_BASE": JSON.stringify(
         pick("OAUTH_REDIRECT_BASE"),
       ),
@@ -50,6 +57,8 @@ export default defineConfig(({ mode }) => {
       nitro({
         config: {
           preset,
+          // Nitro auto-loads `app/plugins/secrets-hydrate.ts` via the default
+          // scanDirs (rootDir × app/) — no explicit `plugins:` config needed.
           ...(preset === "aws_amplify"
             ? { awsAmplify: { runtime: "nodejs24.x" } }
             : {}),

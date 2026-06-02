@@ -18,6 +18,10 @@ import {
   type SessionPayload,
 } from "../../server/session";
 import { safeEqual, setSession } from "../../server/session-cipher.server";
+import {
+  getGitHubOAuthCreds,
+  getSessionSecret,
+} from "../../server/secrets";
 
 const QuerySchema = z.object({
   code: z.string().min(1),
@@ -74,18 +78,19 @@ const issueSessionCookie = createIsomorphicFn()
 export const Route = createFileRoute("/auth/github_/callback")({
   validateSearch: (search) => QuerySchema.parse(search),
   beforeLoad: async ({ search }) => {
-    const clientId = process.env.GITHUB_OAUTH_CLIENT_ID;
-    const clientSecret = process.env.GITHUB_OAUTH_CLIENT_SECRET;
-    const sessionSecret = process.env.SESSION_SECRET;
     const base = process.env.OAUTH_REDIRECT_BASE;
     const org = process.env.GITHUB_ORG;
     const teamSlug = process.env.GITHUB_TEAM_SLUG;
-    if (!clientId) throw new Error("GITHUB_OAUTH_CLIENT_ID is not set");
-    if (!clientSecret) throw new Error("GITHUB_OAUTH_CLIENT_SECRET is not set");
-    if (!sessionSecret) throw new Error("SESSION_SECRET is not set");
     if (!base) throw new Error("OAUTH_REDIRECT_BASE is not set");
     if (!org) throw new Error("GITHUB_ORG is not set");
     if (!teamSlug) throw new Error("GITHUB_TEAM_SLUG is not set");
+
+    // Fetch secrets from Secrets Manager (cached per warm Lambda; falls back
+    // to process.env.* for local dev). See ../../server/secrets.ts.
+    const [{ clientId, clientSecret }, sessionSecret] = await Promise.all([
+      getGitHubOAuthCreds(),
+      getSessionSecret(),
+    ]);
 
     // CSRF state check (read-only on the cookie).
     const cookie = readCookieHeader();

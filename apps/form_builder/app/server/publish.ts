@@ -3,6 +3,7 @@ import { getRequestHeaders } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { type SessionPayload } from "./session";
 import { getSession } from "./session-cipher.server";
+import { getSessionSecret } from "./secrets";
 import type {
   ServiceContractRecipe,
   ValidationResult,
@@ -68,14 +69,13 @@ async function ghError(label: string, res: Response): Promise<Error> {
  * Mirrors forms.ts's `requireToken()` but returns the full session payload so
  * callers can access `session.login` in addition to `session.accessToken`.
  */
-function requireSession(): SessionPayload {
+async function requireSession(): Promise<SessionPayload> {
   const headers = getRequestHeaders();
   const cookie =
     (headers as { get?: (k: string) => string | null }).get?.("cookie") ??
     (headers as { cookie?: string }).cookie ??
     null;
-  const secret = process.env.SESSION_SECRET;
-  if (!secret) throw new Error("SESSION_SECRET is not set");
+  const secret = await getSessionSecret();
   const session = getSession(cookie, secret);
   if (!session) throw new Error("Not authenticated");
   return session;
@@ -137,7 +137,7 @@ export const publishRecipe = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<{ prUrl: string; prNumber: number }> => {
     const recipe = data.recipe as ServiceContractRecipe;
     const description = data.description ?? "";
-    const session = requireSession();
+    const session = await requireSession();
     const token = session.accessToken;
     const baseBranch = resolveBaseBranch();
 
