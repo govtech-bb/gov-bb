@@ -70,6 +70,7 @@ export interface SubmissionState {
   hasPayment: boolean;
   serviceName: string;
   amount?: string;
+  unitPrice?: string;
   quantity?: number;
   submissionSuccess: boolean;
   paymentSuccess?: boolean;
@@ -83,6 +84,13 @@ export interface SubmissionState {
 export interface SubmissionConfirmationProps {
   serviceTitle: string;
   stepTitle: string;
+  /**
+   * Service-specific processing copy shown under the title (e.g. "The Barbados
+   * Postal Service will process your request when you have made the payment").
+   * Sourced from the confirmation step's `description`; falls back to a generic
+   * message when absent.
+   */
+  processingMessage?: string;
   nextSteps?: { title: string; content?: string; items?: string[] }[];
   contactDetails?: ContactDetails;
   onTryAgain?: () => void;
