@@ -14,6 +14,7 @@ const FIELDS: ResolvedFieldId[] = [
     stepId: "contact",
     stepTitle: "Contact",
     display: "Email",
+    isBoolean: false,
   },
   {
     fieldId: "full-name",
@@ -22,6 +23,7 @@ const FIELDS: ResolvedFieldId[] = [
     stepTitle: "Applicant",
     display: "Name › Full name",
     childFieldId: "full-name",
+    isBoolean: false,
   },
 ];
 
@@ -76,6 +78,7 @@ it("drops an extra option that collides with a real field path", () => {
       stepId: "contactDetails",
       stepTitle: "Contact Details",
       display: "Email",
+      isBoolean: false,
     },
   ];
   render(

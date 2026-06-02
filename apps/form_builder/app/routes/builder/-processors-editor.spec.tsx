@@ -27,6 +27,7 @@ const FIELDS: ResolvedFieldId[] = [
     stepId: "contact",
     stepTitle: "Contact",
     display: "Email",
+    isBoolean: false,
   },
   {
     fieldId: "full-name",
@@ -34,6 +35,7 @@ const FIELDS: ResolvedFieldId[] = [
     stepId: "applicant",
     stepTitle: "Applicant",
     display: "Full name",
+    isBoolean: false,
   },
 ];
 

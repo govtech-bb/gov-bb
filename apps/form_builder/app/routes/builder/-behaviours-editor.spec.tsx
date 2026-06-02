@@ -17,9 +17,25 @@ const STEP_REFS: StepRef[] = [
 ];
 
 const FIELD_REFS: FieldRef[] = [
-  { stepId: "step-1", fieldId: "first-name", displayName: "First Name" },
-  { stepId: "step-1", fieldId: "last-name", displayName: "Last Name" },
-  { stepId: "step-2", fieldId: "email", displayName: "Email" },
+  {
+    stepId: "step-1",
+    fieldId: "first-name",
+    displayName: "First Name",
+    isBoolean: false,
+  },
+  {
+    stepId: "step-1",
+    fieldId: "last-name",
+    displayName: "Last Name",
+    isBoolean: false,
+  },
+  {
+    stepId: "step-1",
+    fieldId: "agree",
+    displayName: "Agree",
+    isBoolean: true,
+  },
+  { stepId: "step-2", fieldId: "email", displayName: "Email", isBoolean: false },
 ];
 
 function targetFieldSelect() {
@@ -73,7 +89,12 @@ it("limits Target Field options to fields in the selected Target Step", () => {
   const options = within(targetFieldSelect())
     .getAllByRole("option")
     .map((o) => o.textContent);
-  expect(options).toEqual(["— select field —", "First Name", "Last Name"]);
+  expect(options).toEqual([
+    "— select field —",
+    "First Name",
+    "Last Name",
+    "Agree",
+  ]);
 });
 
 it("uses the resolved field id as the option value", () => {
@@ -99,8 +120,8 @@ it("clears an incompatible Target Field when the Target Step changes", async () 
 it("keeps the Target Field when the new step still contains it", async () => {
   // A field id that exists in both steps must survive the step change.
   const refs: FieldRef[] = [
-    { stepId: "step-1", fieldId: "shared", displayName: "Shared" },
-    { stepId: "step-2", fieldId: "shared", displayName: "Shared" },
+    { stepId: "step-1", fieldId: "shared", displayName: "Shared", isBoolean: false },
+    { stepId: "step-2", fieldId: "shared", displayName: "Shared", isBoolean: false },
   ];
   const onChange = jest.fn();
   render(
@@ -125,8 +146,8 @@ it("renders distinct options for two fields in a step that resolve to the same i
   // the same fieldId. The picker must still render both without a duplicate
   // React key crashing the render (keys are stepId:fieldId:index).
   const refs: FieldRef[] = [
-    { stepId: "step-1", fieldId: "text", displayName: "Text" },
-    { stepId: "step-1", fieldId: "text", displayName: "Text" },
+    { stepId: "step-1", fieldId: "text", displayName: "Text", isBoolean: false },
+    { stepId: "step-1", fieldId: "text", displayName: "Text", isBoolean: false },
   ];
   render(
     <BehavioursEditor
@@ -161,5 +182,70 @@ it("defaults a new fieldConditionalOn's Target Step to currentStepId", async () 
   );
   expect(onChange).toHaveBeenCalledWith([
     expect.objectContaining({ type: "fieldConditionalOn", targetStepId: "step-2" }),
+  ]);
+});
+
+// #565: a boolean Target Field (checkbox / show-hide) captures the condition
+// value as a real boolean via a true/false control, not a string.
+
+// The value control for a boolean target is the only select offering "true".
+function valueBooleanSelect() {
+  return screen
+    .getAllByRole("combobox")
+    .find((el) => within(el).queryByRole("option", { name: "true" })) as
+    | HTMLSelectElement
+    | undefined;
+}
+
+it("renders a true/false select for a boolean Target Field", () => {
+  renderStepBehaviour([
+    { type: "stepConditionalOn", targetStepId: "step-1", targetFieldId: "agree", operator: "equal", value: true } as unknown as Behaviour,
+  ]);
+  const select = valueBooleanSelect();
+  expect(select).toBeDefined();
+  expect(
+    within(select as HTMLSelectElement)
+      .getAllByRole("option")
+      .map((o) => o.textContent),
+  ).toEqual(["true", "false"]);
+  // No free-text value input is offered for a boolean target.
+  expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+});
+
+it("stores a real boolean when the true/false control changes", async () => {
+  const onChange = renderStepBehaviour([
+    { type: "stepConditionalOn", targetStepId: "step-1", targetFieldId: "agree", operator: "equal", value: true } as unknown as Behaviour,
+  ]);
+  await userEvent.selectOptions(valueBooleanSelect() as HTMLSelectElement, "false");
+  expect(onChange).toHaveBeenLastCalledWith([
+    expect.objectContaining({ value: false }),
+  ]);
+});
+
+it("renders a text input for a non-boolean Target Field", () => {
+  renderStepBehaviour([
+    { type: "stepConditionalOn", targetStepId: "step-1", targetFieldId: "first-name", operator: "equal", value: "" } as unknown as Behaviour,
+  ]);
+  expect(valueBooleanSelect()).toBeUndefined();
+  expect(screen.getByRole("textbox")).toBeInTheDocument();
+});
+
+it("resets the value to true when the Target Field switches to boolean", async () => {
+  const onChange = renderStepBehaviour([
+    { type: "stepConditionalOn", targetStepId: "step-1", targetFieldId: "first-name", operator: "equal", value: "hello" } as unknown as Behaviour,
+  ]);
+  await userEvent.selectOptions(targetFieldSelect(), "agree");
+  expect(onChange).toHaveBeenLastCalledWith([
+    expect.objectContaining({ targetFieldId: "agree", value: true }),
+  ]);
+});
+
+it("resets the value to an empty string when the Target Field switches to non-boolean", async () => {
+  const onChange = renderStepBehaviour([
+    { type: "stepConditionalOn", targetStepId: "step-1", targetFieldId: "agree", operator: "equal", value: true } as unknown as Behaviour,
+  ]);
+  await userEvent.selectOptions(targetFieldSelect(), "first-name");
+  expect(onChange).toHaveBeenLastCalledWith([
+    expect.objectContaining({ targetFieldId: "first-name", value: "" }),
   ]);
 });

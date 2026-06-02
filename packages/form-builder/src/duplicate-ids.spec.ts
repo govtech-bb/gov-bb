@@ -230,6 +230,49 @@ describe("resolveFieldIds", () => {
     expect(resolved).toHaveLength(1);
     expect(resolved[0].fieldId).toBe("my-widget");
   });
+
+  it.each([
+    // Only show-hide stores a real boolean at runtime. A checkbox stores its
+    // selected option value (a string / string array), so it is not boolean.
+    ["components/show-hide", true],
+    ["components/checkbox", false],
+    ["components/text", false],
+    ["components/number", false],
+    ["components/select", false],
+  ])("flags %s isBoolean=%s from its primitive htmlType", (ref, isBoolean) => {
+    const draft = makeBaseDraft({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          fields: [f({ kind: "component", ref, overrides: {} })],
+          behaviours: [],
+        },
+      ],
+    });
+
+    const resolved = resolveFieldIds(draft, catalog);
+    expect(resolved).toHaveLength(1);
+    expect(resolved[0].isBoolean).toBe(isBoolean);
+  });
+
+  it("flags block child elements isBoolean from each element's htmlType", () => {
+    // blocks/name elements are all text → none boolean.
+    const draft = makeBaseDraft({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          fields: [f({ kind: "block", ref: "blocks/name", overrides: {} })],
+          behaviours: [],
+        },
+      ],
+    });
+
+    const resolved = resolveFieldIds(draft, catalog);
+    expect(resolved.length).toBeGreaterThan(0);
+    expect(resolved.every((r) => r.isBoolean === false)).toBe(true);
+  });
 });
 
 // ─── findDuplicateFieldIds ────────────────────────────────────────────────────
@@ -691,6 +734,7 @@ describe("formatCollisionIssues", () => {
               stepId: "step-1",
               stepTitle: "Personal details",
               display: "Text",
+              isBoolean: false,
             },
             {
               fieldId: "text",
@@ -698,6 +742,7 @@ describe("formatCollisionIssues", () => {
               stepId: "step-1",
               stepTitle: "Personal details",
               display: "Text",
+              isBoolean: false,
             },
           ],
         },
