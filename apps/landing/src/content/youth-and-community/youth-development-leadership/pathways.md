@@ -6,6 +6,7 @@ publish_date: 2026-05-20
 category: youth-and-community
 subcategory: youth-development-leadership
 service_type: information
+form_id: pathways-employability-programme-application-2026
 ---
 
 A job-attachment and mentorship programme for unemployed young people aged 16 to 24, with support from social workers and counsellors.
@@ -23,7 +24,7 @@ Job attachment and mentorship programme. Life and job skills, work ethic, employ
 
 Complete the short application form to register your interest. Your progress is saved automatically.
 
-<!-- [Apply now](https://alpha.gov.bb/youth-and-community/youth-development-leadership/pathways/form) -->
+<a data-start-link>Start now</a>
 
 ## More information
 
