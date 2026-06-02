@@ -12,6 +12,9 @@ interface ProcessorConfigFormProps {
   // Receives the FULL replacement config. Each handler spreads the existing
   // config first, so unrendered keys (notably webhook `secret`) survive.
   onConfigChange: (config: Record<string, unknown>) => void;
+  // When the form carries contact details, the reserved `contactDetails.email`
+  // path becomes a selectable recipient for the email processor (issue #547).
+  hasContactDetails?: boolean;
 }
 
 const WEBHOOK_METHODS = ["POST", "PUT", "PATCH"] as const;
@@ -30,6 +33,7 @@ export function ProcessorConfigForm({
   processor,
   fields,
   onConfigChange,
+  hasContactDetails = false,
 }: ProcessorConfigFormProps) {
   // Namespace ids by processor so labels associate correctly with several cards.
   const fid = (name: string) => `${name}-${processor.id}`;
@@ -37,6 +41,15 @@ export function ProcessorConfigForm({
   switch (processor.type) {
     case "email": {
       const config = processor.config;
+      // Only offer email-like fields as the recipient: picking a name/date
+      // field here yields a processor that fails at send time. The picker
+      // stays generic; we filter its input. A previously-saved non-email
+      // recipient is still preserved by the picker's `(current)` fallback.
+      // The reserved `contactDetails.email` path (issue #547) is offered
+      // alongside these via `extraOptions` and is unaffected by the filter.
+      const recipientFields = fields.filter((f) =>
+        f.fieldId.toLowerCase().includes("email"),
+      );
       return (
         <>
           <div className={styles.formGroup}>
@@ -60,7 +73,17 @@ export function ProcessorConfigForm({
             <ValuePathPicker
               id={fid("recipientField")}
               value={asText(config.recipientField)}
-              fields={fields}
+              fields={recipientFields}
+              extraOptions={
+                hasContactDetails
+                  ? [
+                      {
+                        value: "contactDetails.email",
+                        label: "MDA contact email",
+                      },
+                    ]
+                  : undefined
+              }
               onChange={(recipientField) =>
                 onConfigChange({ ...config, recipientField })
               }

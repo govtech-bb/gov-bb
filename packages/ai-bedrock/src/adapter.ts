@@ -41,10 +41,12 @@ export class BedrockTextAdapter extends BaseTextAdapter<
   readonly name = "bedrock" as const;
   private readonly client: BedrockRuntimeClient;
   private readonly resolvedModelId: string;
+  private readonly cacheSystemPrompt: boolean;
 
   constructor(config: BedrockTextAdapterConfig, model: string) {
     super({}, model);
     this.resolvedModelId = resolveBedrockModelId(model);
+    this.cacheSystemPrompt = config.cacheSystemPrompt ?? false;
     if (config.client) {
       this.client = config.client;
     } else {
@@ -70,7 +72,9 @@ export class BedrockTextAdapter extends BaseTextAdapter<
     } = options;
 
     const bedrockMessages = modelMessagesToBedrock(messages);
-    const system = systemPromptsToBedrock(systemPrompts);
+    const system = systemPromptsToBedrock(systemPrompts, {
+      cacheFirstBlock: this.cacheSystemPrompt,
+    });
     const toolConfig = toolsToBedrockToolConfig(tools);
     const inferenceConfig = buildInferenceConfig(temperature, topP, maxTokens);
 

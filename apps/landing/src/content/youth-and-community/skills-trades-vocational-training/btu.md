@@ -6,6 +6,7 @@ publish_date: 2026-05-20
 category: youth-and-community
 subcategory: skills-trades-vocational-training
 service_type: information
+form_id: youth-opportunity-btu
 ---
 
 Free vocational training in over 20 trades — from motor vehicle engineering and cookery to construction and healthcare — through Project Dawn.
@@ -28,7 +29,7 @@ Free vocational training in 20+ courses: Motor Vehicle Engineering, Professional
 
 Complete the short application form to register your interest. Your progress is saved automatically.
 
-<!-- [Apply now](https://alpha.gov.bb/youth-and-community/skills-trades-vocational-training/btu/form) -->
+<a data-start-link>Start now</a>
 
 ## More information
 

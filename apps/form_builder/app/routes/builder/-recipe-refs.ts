@@ -10,6 +10,10 @@ export interface FieldRef {
   // fieldId for a component, or the child's fieldId for a block element.
   fieldId: string;
   displayName: string;
+  // True when the target field holds a real boolean at runtime (checkbox or
+  // show-hide). The behaviours editor renders a true/false value control for
+  // boolean targets so the condition value is captured as a boolean. (#565)
+  isBoolean: boolean;
 }
 
 export interface StepRef {
@@ -28,6 +32,7 @@ export function getFieldRefs(
     stepId: entry.stepId,
     fieldId: entry.fieldId,
     displayName: entry.display,
+    isBoolean: entry.isBoolean,
   }));
 }
 

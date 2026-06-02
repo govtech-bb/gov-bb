@@ -6,6 +6,7 @@ publish_date: 2026-05-20
 category: youth-and-community
 subcategory: skills-trades-vocational-training
 service_type: information
+form_id: youth-opportunity-cip
 ---
 
 Short, hands-on training courses in trades, creative work and wellness, run two sessions a week at community centres across Barbados.
@@ -23,7 +24,7 @@ Practical demand-driven skill training in 25+ courses across trades, creative se
 
 Complete the short application form to register your interest. Your progress is saved automatically.
 
-<!-- [Apply now](https://alpha.gov.bb/youth-and-community/skills-trades-vocational-training/cip/form) -->
+<a data-start-link>Start now</a>
 
 ## More information
 

@@ -31,7 +31,7 @@ where the live catalog is available.
 - **CI hardening** — fixed `scripts/validate-recipes.ts`'s dead root path and
   folded the ref/slash/orphan guards into it (pure logic in
   `recipe-ref-guards.ts`); deleted the affected-gated spec. See ADR
-  [0023](../decisions/0023-repo-recipe-integrity-guards-must-be-always-run.md).
+  [0026](../decisions/0026-repo-recipe-integrity-guards-must-be-always-run.md).
 - Section E (vestigial `BUILTIN_COMPONENTS`) deferred to
   [#515](https://github.com/govtech-bb/gov-bb/issues/515).
 

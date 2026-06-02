@@ -57,12 +57,15 @@ export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
   }, [messages]);
 
   // Surface a server-fn failure, decoding the 413-at-the-edge case that
-  // TanStack Start reduces to "Invariant failed".
-  const toMessage = (err: unknown): string => {
+  // TanStack Start reduces to "Invariant failed". The decoded copy is
+  // mode-aware so an edit failure never tells the user to "try a smaller PDF"
+  // when no PDF was involved (#583).
+  const toMessage = (err: unknown, mode: "upload" | "edit"): string => {
     const raw = err instanceof Error ? err.message : "Unknown error";
-    return raw === "Invariant failed"
+    if (raw !== "Invariant failed") return raw;
+    return mode === "upload"
       ? "Upload failed — the file may be too large or the connection was interrupted. Try a smaller PDF (under 4 MB)."
-      : raw;
+      : "The edit request failed — your form may be too large or the connection was interrupted. Try again, or simplify your request.";
   };
 
   // Shared tail for both actions: append the assistant reply, then apply the
@@ -101,7 +104,7 @@ export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
       setPdfName(null);
       await handleResponse(reply, recipe, unresolvableRefs);
     } catch (err) {
-      setError(toMessage(err));
+      setError(toMessage(err, "upload"));
     } finally {
       setLoading(false);
     }
@@ -121,7 +124,7 @@ export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
       });
       await handleResponse(reply, recipe, unresolvableRefs);
     } catch (err) {
-      setError(toMessage(err));
+      setError(toMessage(err, "edit"));
     } finally {
       setLoading(false);
     }
