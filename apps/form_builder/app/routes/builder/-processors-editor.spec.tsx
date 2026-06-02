@@ -114,6 +114,7 @@ it("offers every email-like field (incl. mixed-case and applicant-email) and exc
       stepId: "contact",
       stepTitle: "Contact",
       display: "Email",
+      isBoolean: false,
     },
     {
       fieldId: "applicant-email",
@@ -121,6 +122,7 @@ it("offers every email-like field (incl. mixed-case and applicant-email) and exc
       stepId: "applicant",
       stepTitle: "Applicant",
       display: "Applicant email",
+      isBoolean: false,
     },
     {
       fieldId: "Email", // mixed-case id
@@ -128,6 +130,7 @@ it("offers every email-like field (incl. mixed-case and applicant-email) and exc
       stepId: "mda",
       stepTitle: "MDA",
       display: "MDA contact",
+      isBoolean: false,
     },
     {
       fieldId: "full-name", // not email-like
@@ -135,6 +138,7 @@ it("offers every email-like field (incl. mixed-case and applicant-email) and exc
       stepId: "applicant",
       stepTitle: "Applicant",
       display: "Full name",
+      isBoolean: false,
     },
     {
       fieldId: "dob", // not email-like
@@ -142,6 +146,7 @@ it("offers every email-like field (incl. mixed-case and applicant-email) and exc
       stepId: "applicant",
       stepTitle: "Applicant",
       display: "Date of birth",
+      isBoolean: false,
     },
   ];
   render(<Harness initial={emptyDraft} fields={fields} />);
@@ -172,6 +177,7 @@ it("shows only the placeholder when no field is email-like", async () => {
       stepId: "applicant",
       stepTitle: "Applicant",
       display: "Full name",
+      isBoolean: false,
     },
     {
       fieldId: "dob",
@@ -179,6 +185,7 @@ it("shows only the placeholder when no field is email-like", async () => {
       stepId: "applicant",
       stepTitle: "Applicant",
       display: "Date of birth",
+      isBoolean: false,
     },
   ];
   render(<Harness initial={emptyDraft} fields={fields} />);
