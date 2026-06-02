@@ -143,58 +143,6 @@ export function modelMessagesToBedrock(
     }
   }
 
-  return fillUnansweredToolUses(out);
-}
-
-// Bedrock rejects any toolUse that isn't answered by a toolResult in the very
-// next user turn. UI-only client tools (e.g. present_choices) render from their
-// args and never produce a result, leaving the toolUse orphaned in history.
-// Synthesize a success result for any unanswered toolUse and fold it into the
-// following user message. No-op once every toolUse already has a result.
-function fillUnansweredToolUses(messages: Array<Message>): Array<Message> {
-  const out: Array<Message> = [];
-  for (let i = 0; i < messages.length; i++) {
-    const msg = messages[i]!;
-    out.push(msg);
-    if (msg.role !== "assistant") continue;
-
-    const toolUseIds = (msg.content ?? [])
-      .map((b) => (b as { toolUse?: ToolUseBlock }).toolUse?.toolUseId)
-      .filter((id): id is string => typeof id === "string");
-    if (!toolUseIds.length) continue;
-
-    const next = messages[i + 1];
-    const answered = new Set(
-      (next?.role === "user" ? (next.content ?? []) : [])
-        .map(
-          (b) => (b as { toolResult?: ToolResultBlock }).toolResult?.toolUseId,
-        )
-        .filter((id): id is string => typeof id === "string"),
-    );
-    const missing = toolUseIds.filter((id) => !answered.has(id));
-    if (!missing.length) continue;
-
-    const synthesized: Array<ContentBlock.ToolResultMember> = missing.map(
-      (id) => ({
-        toolResult: {
-          toolUseId: id,
-          content: [{ text: '{"shown":true}' }],
-          status: "success",
-        },
-      }),
-    );
-    // Merge into the following user message (keeping role alternation) or, if
-    // there isn't one, emit a user message carrying just the results.
-    if (next?.role === "user") {
-      out.push({
-        role: "user",
-        content: [...synthesized, ...(next.content ?? [])],
-      });
-      i++;
-    } else {
-      out.push({ role: "user", content: synthesized });
-    }
-  }
   return out;
 }
 
