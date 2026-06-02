@@ -26,6 +26,16 @@ export function isRequiredStep(stepId: string): stepId is RequiredStepId {
   return (REQUIRED_STEP_IDS as readonly string[]).includes(stepId);
 }
 
+// The step a freshly-loaded form should open in the editor. Mirrors the
+// LOAD_DRAFT normalization ([...editable, ...required]) so it stays correct
+// against the *pre*-normalization draft the load handlers receive: prefer the
+// first editable (non-required) step, fall back to the first step overall, then
+// null when there are no steps at all.
+export function firstStepId(draft: RecipeDraft): string | null {
+  const editable = draft.steps.filter((s) => !isRequiredStep(s.stepId));
+  return (editable[0] ?? draft.steps[0])?.stepId ?? null;
+}
+
 // Required steps that accept no author-added fields. `check-your-answers` is a
 // pure review screen and `submission-confirmation` renders only its nextSteps
 // copy — neither should expose the FieldPicker. `declaration` is intentionally

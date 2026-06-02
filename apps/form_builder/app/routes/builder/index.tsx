@@ -12,7 +12,7 @@ import type { RecipeDraft, ValidationResult, RecipeValidateResponse, UnknownRef 
 
 import { buildLoadArgs, draftsEqual } from "./-apply-recipe";
 import { AiSidebar, type ApplyRecipeResult } from "./-ai-sidebar";
-import { recipeReducer, EMPTY_DRAFT, nextStepId, REQUIRED_STEP_IDS, isRequiredStep } from "./-recipe-reducer";
+import { recipeReducer, EMPTY_DRAFT, nextStepId, REQUIRED_STEP_IDS, isRequiredStep, firstStepId } from "./-recipe-reducer";
 import { Toolbar } from "./-toolbar";
 import { StepList } from "./-step-list";
 import { StepEditor } from "./-step-editor";
@@ -346,7 +346,10 @@ function BuilderPage() {
     setLoadedFromId(formId);
     setCurrentVersion(ver);
     setVersion(ver);
-    setSelectedStepId(null);
+    // Open the first step straight away so the author lands in an editable
+    // state. firstStepId mirrors LOAD_DRAFT's [...editable, ...required]
+    // ordering, so it picks the step the reducer puts first (not loadedDraft[0]).
+    setSelectedStepId(firstStepId(loadedDraft));
     setMainView("step");
     setValidateResult(null);
     setSubmitSuccess(false);
@@ -439,7 +442,8 @@ function BuilderPage() {
     }
 
     dispatch({ type: "LOAD_DRAFT", draft: incoming });
-    setSelectedStepId(null);
+    // Mirror handleLoad: open the first step of the freshly applied recipe.
+    setSelectedStepId(firstStepId(incoming));
     setMainView("step");
     // Surface unresolvable refs as a non-blocking warning in the existing
     // validation panel; otherwise clear it.
