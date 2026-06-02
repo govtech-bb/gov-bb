@@ -133,7 +133,8 @@ export default function FieldRenderer({
                         id={`${field.id}-day`}
                         className="govbb-date-input__field"
                         value={value?.day ?? ""}
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
                         min={1}
                         max={31}
                         aria-invalid={invalid}
@@ -161,7 +162,8 @@ export default function FieldRenderer({
                         {...requiredProps}
                         id={`${field.id}-month`}
                         className="govbb-date-input__field"
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
                         value={value?.month ?? ""}
                         min={1}
                         max={12}
@@ -190,7 +192,8 @@ export default function FieldRenderer({
                         {...requiredProps}
                         id={`${field.id}-year`}
                         className="govbb-date-input__field"
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
                         value={value?.year ?? ""}
                         aria-invalid={invalid}
                         onChange={(e) => {
