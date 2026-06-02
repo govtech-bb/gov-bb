@@ -416,6 +416,23 @@
   padding-left: 8px;
 }
 
+/* Inherited (base component) validation rule: read-only, visually muted to
+   distinguish it from author-set overrides (#618). */
+.inheritedRow {
+  border-left: 3px dashed var(--color-border, #d4d4d4);
+  padding-left: 8px;
+}
+
+.inheritedTag {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted, #6b7280);
+  background: var(--color-surface-muted, #f3f4f6);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
 /* ── Select fields ────────────────────────────────── */
 
 .formGroup select {

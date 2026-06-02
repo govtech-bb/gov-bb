@@ -8,7 +8,7 @@ import type {
   RecipeDraft,
 } from "@govtech-bb/form-builder";
 import { primitiveUISchema } from "@govtech-bb/form-types";
-import type { FieldOverrides, HtmlTypes, Option, PrimitiveUI } from "@govtech-bb/form-types";
+import type { FieldOverrides, HtmlTypes, Option, PrimitiveUI, ValidationRule } from "@govtech-bb/form-types";
 import type { FieldRef, StepRef } from "./-recipe-refs";
 import { getFieldRefs, getStepRefs } from "./-recipe-refs";
 import type { RecipeAction } from "./-recipe-reducer";
@@ -47,6 +47,9 @@ interface OverrideFormProps {
   defaultOptions?: Option[];
   defaultMultiple?: boolean;
   defaultRequired?: boolean;
+  // Validations declared on the base primitive — surfaced by the validation
+  // editor as inherited, overridable rows (#618).
+  baseValidations?: ValidationRule;
 }
 
 const OPTIONS_HTML_TYPES: ReadonlySet<HtmlTypes> = new Set([
@@ -168,6 +171,7 @@ function OverrideForm({
   defaultOptions,
   defaultMultiple,
   defaultRequired = false,
+  baseValidations,
 }: OverrideFormProps) {
   const [fieldIdError, setFieldIdError] = useState("");
   const fieldIdDuplicate =
@@ -287,6 +291,7 @@ function OverrideForm({
       <ValidationRulesEditor
         htmlType={htmlType}
         rules={overrides.validations}
+        baseRules={baseValidations}
         fieldRefs={fieldRefs}
         onChange={(validations) => patch({ validations })}
       />
@@ -435,6 +440,7 @@ export function FieldEditPanel({
                     defaultOptions={element.options}
                     defaultMultiple={element.multiple}
                     defaultRequired={isRequiredRule(element.validations?.required)}
+                    baseValidations={element.validations}
                   />
                 </div>
               );
@@ -457,6 +463,9 @@ export function FieldEditPanel({
               item && "primitive" in item
                 ? isRequiredRule(item.primitive.validations?.required)
                 : false
+            }
+            baseValidations={
+              item && "primitive" in item ? item.primitive.validations : undefined
             }
           />
         )}
