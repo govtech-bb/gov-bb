@@ -85,7 +85,25 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     }
   }
 
-  const skipRetrieval = isGreetingOrTooShort(latest);
+  const resolution: FormResolution = session.slug
+    ? await resolveActiveForm(session.slug, session.values)
+    : { kind: "none" };
+  const retrievalBoostSlug = session.slug ?? undefined;
+
+  // Handoff carries no in-progress state. Don't pin the session to it, or the
+  // user stays stuck getting the same handoff link on every later turn. Record
+  // it so the matcher above won't immediately re-hand-off the same form.
+  if (resolution.kind === "handoff") {
+    session.handedOffSlug = session.slug;
+    session.slug = null;
+  }
+
+  // During active field collection the user is answering field prompts, not
+  // asking knowledge questions, so skip the rewrite LLM call and RAG retrieval
+  // — both are dead weight on every field turn. A side question mid-form loses
+  // context for that turn, an acceptable trade for the per-turn token savings.
+  const skipRetrieval =
+    isGreetingOrTooShort(latest) || resolution.kind === "collect";
   const query = skipRetrieval
     ? latest
     : await rewriteRetrievalQuery(messages, signal);
@@ -95,7 +113,7 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     query,
     skipRetrieval,
     signal,
-    session.slug ?? undefined,
+    retrievalBoostSlug,
   );
 
   const { block: contextBlock, citations } = buildCitedContext(
@@ -103,18 +121,6 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     rawSources,
     query,
   );
-
-  const resolution: FormResolution = session.slug
-    ? await resolveActiveForm(session.slug, session.values)
-    : { kind: "none" };
-
-  // Handoff carries no in-progress state. Don't pin the session to it, or the
-  // user stays stuck getting the same handoff link on every later turn. Record
-  // it so the matcher above won't immediately re-hand-off the same form.
-  if (resolution.kind === "handoff") {
-    session.handedOffSlug = session.slug;
-    session.slug = null;
-  }
 
   const systemPrompts = buildSystemPrompts(contextBlock, resolution, session);
 
