@@ -1,9 +1,8 @@
 import { useState } from "react";
 import styles from "../../styles/builder.module.css";
+import { KEBAB_ID_PATTERN, KEBAB_ID_ERROR } from "./-id-validation";
 
-const FORM_ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
-const FORM_ID_ERROR =
-  "Use lowercase letters, numbers, and hyphens only (e.g. birth-registration)";
+const FORM_ID_REQUIRED_ERROR = "Form ID is required";
 
 interface ToolbarProps {
   formId: string;
@@ -70,11 +69,17 @@ export function Toolbar({
             value={formId}
             onChange={(e) => {
               const raw = e.target.value.toLowerCase().replace(/\s+/g, "-");
-              if (raw.length > 0 && !FORM_ID_PATTERN.test(raw)) {
-                setFormIdError(FORM_ID_ERROR);
+              // Always propagate so the controlled input reflects what the
+              // author typed (even mid-edit / invalid). The error is surfaced
+              // independently — empty is "required", anything else is checked
+              // against the shared kebab pattern the server validator uses.
+              onFormIdChange(raw);
+              if (raw === "") {
+                setFormIdError(FORM_ID_REQUIRED_ERROR);
+              } else if (!KEBAB_ID_PATTERN.test(raw)) {
+                setFormIdError(KEBAB_ID_ERROR);
               } else {
                 setFormIdError("");
-                onFormIdChange(raw);
               }
             }}
             style={{ marginLeft: 4 }}

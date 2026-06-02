@@ -8,7 +8,8 @@ import { validateRecipe, previewRecipe } from "../../server/registry";
 import { serializeRecipeDraft, findRecipeIdCollisions, formatCollisionIssues, resolveFieldIds } from "@govtech-bb/form-builder";
 import { bumpMinor, bumpPatch } from "../../lib/version";
 import type { ServiceContract, ServiceContractRecipe } from "@govtech-bb/form-types";
-import type { RecipeDraft, ValidationResult, RecipeValidateResponse, UnknownRef } from "@govtech-bb/form-builder";
+import { KEBAB_ID_PATTERN, KEBAB_ID_ERROR } from "@govtech-bb/form-types";
+import type { RecipeDraft, ValidationResult, RecipeValidateResponse, ValidationIssue, UnknownRef } from "@govtech-bb/form-builder";
 
 import { buildLoadArgs, draftsEqual } from "./-apply-recipe";
 import { AiSidebar, type ApplyRecipeResult } from "./-ai-sidebar";
@@ -182,6 +183,29 @@ function BuilderPage() {
         const result: RecipeValidateResponse = {
           valid: false,
           issues: formatCollisionIssues(collisions),
+        };
+        setValidateResult(result);
+        setLastSaveStatus("error");
+        return result;
+      }
+
+      // Pre-flight: Form ID and Title identify the form before deploy. The
+      // schema rejects an empty/malformed formId or empty title too, but a
+      // friendly message beats Zod's raw "String must contain at least 1
+      // character(s)". Reported together so the author fixes both at once.
+      const identityIssues: ValidationIssue[] = [];
+      if (draft.formId.trim() === "") {
+        identityIssues.push({ path: "formId", message: "Form ID is required" });
+      } else if (!KEBAB_ID_PATTERN.test(draft.formId)) {
+        identityIssues.push({ path: "formId", message: KEBAB_ID_ERROR });
+      }
+      if (draft.title.trim() === "") {
+        identityIssues.push({ path: "title", message: "Title is required" });
+      }
+      if (identityIssues.length > 0) {
+        const result: RecipeValidateResponse = {
+          valid: false,
+          issues: identityIssues,
         };
         setValidateResult(result);
         setLastSaveStatus("error");

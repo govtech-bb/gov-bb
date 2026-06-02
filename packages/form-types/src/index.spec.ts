@@ -46,6 +46,8 @@ import {
   serviceContractSchema,
   serviceContractRecipeSchema,
   contactDetailsSchema,
+  KEBAB_ID_PATTERN,
+  KEBAB_ID_ERROR,
 } from "./index";
 import { z } from "zod";
 
@@ -817,6 +819,26 @@ describe("serviceContractRecipeSchema", () => {
         createdAt: "not-a-date",
       }).success,
     ).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// id-pattern exports
+// ---------------------------------------------------------------------------
+
+describe("KEBAB_ID_PATTERN (re-export)", () => {
+  it("accepts a well-formed kebab id", () => {
+    expect(KEBAB_ID_PATTERN.test("birth-registration")).toBe(true);
+  });
+
+  it("rejects a malformed id", () => {
+    expect(KEBAB_ID_PATTERN.test("Foo-")).toBe(false);
+  });
+});
+
+describe("KEBAB_ID_ERROR (re-export)", () => {
+  it("is a non-empty string", () => {
+    expect(KEBAB_ID_ERROR.length).toBeGreaterThan(0);
   });
 });
 

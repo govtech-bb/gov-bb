@@ -1,11 +1,12 @@
 /**
  * Shared kebab-case id validation for the form builder.
  *
- * `KEBAB_ID_PATTERN` matches a single lowercase letter optionally followed by
- * additional lowercase/digit characters and hyphen-separated segments, e.g.
- * `field`, `step-1`, `applicant-first-name`.
+ * `KEBAB_ID_PATTERN` and `KEBAB_ID_ERROR` are the single source of truth defined
+ * in `@govtech-bb/form-types` (the same rule the contract schema enforces).
+ * They're re-exported here so the builder's id inputs (field/step/formId) all
+ * reference one definition and can never diverge from the server validator.
  */
-export const KEBAB_ID_PATTERN = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
+export { KEBAB_ID_PATTERN, KEBAB_ID_ERROR } from "@govtech-bb/form-types";
 
 /**
  * Normalize arbitrary input toward a kebab-case id. Lowercases, trims, replaces
