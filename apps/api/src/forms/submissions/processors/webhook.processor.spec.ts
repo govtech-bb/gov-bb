@@ -101,10 +101,27 @@ describe("WebhookProcessor", () => {
     expect(mockFetch.mock.calls[0][1].headers["X-Sig"]).toBeDefined();
   });
 
-  it("always sends X-Idempotency-Key set to submissionId", async () => {
+  it("sends X-Idempotency-Key keyed by submissionId and processorIndex", async () => {
     await processor.process(makePayload());
     expect(mockFetch.mock.calls[0][1].headers["X-Idempotency-Key"]).toBe(
-      "sub-100",
+      "sub-100:0",
+    );
+  });
+
+  it("acts only on the entry at processorIndex, keyed with that index", async () => {
+    const payload = makePayload();
+    payload.processors = [
+      { type: "webhook", config: { url: "https://first.example/hook" } },
+      { type: "webhook", config: { url: "https://second.example/hook" } },
+    ] as SubmissionCreatedEvent["processors"];
+    payload.processorIndex = 1;
+
+    await processor.process(payload);
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(mockFetch.mock.calls[0][0]).toBe("https://second.example/hook");
+    expect(mockFetch.mock.calls[0][1].headers["X-Idempotency-Key"]).toBe(
+      "sub-100:1",
     );
   });
 
@@ -120,7 +137,7 @@ describe("WebhookProcessor", () => {
       makePayload({ headers: { "X-Idempotency-Key": "spoofed" } }),
     );
     expect(mockFetch.mock.calls[0][1].headers["X-Idempotency-Key"]).toBe(
-      "sub-100",
+      "sub-100:0",
     );
   });
 

@@ -15,8 +15,14 @@ export class WebhookProcessor implements ISubmissionProcessor {
   private readonly logger = new Logger(WebhookProcessor.name);
 
   async process(payload: SubmissionCreatedEvent): Promise<ProcessorOutput> {
-    const cfg = (payload.processors.find((p) => p.type === "webhook")?.config ??
-      {}) as Record<string, unknown>;
+    // Per-entry dispatch (issue #95): act on exactly the entry addressed by
+    // processorIndex. Defaults to 0 for direct single-entry invocation;
+    // production dispatch (listener/consumer) always sets it.
+    const index = payload.processorIndex ?? 0;
+    const cfg = (payload.processors[index]?.config ?? {}) as Record<
+      string,
+      unknown
+    >;
 
     const url = cfg["url"] as string | undefined;
     if (!url) {
@@ -52,10 +58,12 @@ export class WebhookProcessor implements ISubmissionProcessor {
 
     // Reserved headers are applied last so author-supplied custom headers
     // cannot override Content-Type, the signature, or the idempotency key.
+    // The key carries the index so each entry retries independently and the
+    // receiver can deduplicate per entry (parity with opencrvs).
     const headers: Record<string, string> = {
       ...customHeaders,
       "Content-Type": "application/json",
-      "X-Idempotency-Key": payload.submissionId,
+      "X-Idempotency-Key": `${payload.submissionId}:${index}`,
     };
     if (secret) {
       headers[signatureHeader] = sign(body, secret);

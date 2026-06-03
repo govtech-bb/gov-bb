@@ -45,28 +45,43 @@ export class SubmissionProcessorListener {
       return;
     }
 
-    const { nonGating } = this.processorFactory.resolveSplit(
-      resolvedPayload.processors,
-    );
+    /* Per-entry dispatch — one message (or one direct invocation) per entry in
+     * the frozen processors[] snapshot, addressed by its positional index. This
+     * isolates retry/DLQ to the single entry that failed (issue #95). Indices
+     * are the snapshot positions, so unregistered/gating entries are skipped
+     * without compacting — keeping `${submissionId}:${index}` keys stable.
+     * Gating processors (payment) run synchronously in submissions.service.ts
+     * and are never enqueued here. */
+    for (let index = 0; index < resolvedPayload.processors.length; index++) {
+      const entry = resolvedPayload.processors[index];
+      const handler = this.processorFactory.resolveByType(entry.type);
 
-    for (const processor of nonGating) {
+      if (!handler) {
+        this.logger.warn(
+          `No processor registered for type "${entry.type}" — skipping (submissionId="${payload.submissionId}", index=${index})`,
+        );
+        continue;
+      }
+
+      if (handler.gatesPipeline) continue;
+
       if (this.sqsConf.enabled) {
         /* SQS path — enqueue for durable async processing with automatic retry and DLQ. */
         try {
-          await this.sqsProducer.enqueue(resolvedPayload, processor.type);
+          await this.sqsProducer.enqueue(resolvedPayload, entry.type, index);
         } catch (err) {
           this.logger.error(
-            `Failed to enqueue processor="${processor.type}" for submissionId="${payload.submissionId}"`,
+            `Failed to enqueue processor="${entry.type}" index=${index} for submissionId="${payload.submissionId}"`,
             err,
           );
         }
       } else {
-        /* Direct path (fallback) — in-process execution. */
+        /* Direct path (fallback) — in-process execution of the indexed entry. */
         try {
-          await processor.process(resolvedPayload);
+          await handler.process({ ...resolvedPayload, processorIndex: index });
         } catch (err) {
           this.logger.error(
-            `Processor "${processor.type}" failed for submission ${payload.submissionId}`,
+            `Processor "${entry.type}" index=${index} failed for submission ${payload.submissionId}`,
             err,
           );
         }
