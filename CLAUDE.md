@@ -55,7 +55,7 @@ touched** — don't run the full `nx run-many -t test`. Target the affected
 projects instead:
 
 ```bash
-pnpm exec nx run -t test <project>          # one project you changed
+pnpm exec nx run <project>:test             # one project you changed
 pnpm exec nx run-many -t test -p p1,p2      # the specific projects you changed
 ```
 
