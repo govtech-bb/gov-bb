@@ -41,6 +41,7 @@ import {
   expectStep,
   fillDate,
   fillField,
+  selectDropdown,
   selectRadio,
   submitAndConfirm,
   uploadOne,
@@ -65,20 +66,26 @@ test.describe("Temporary Teacher Application — Live Smoke", () => {
     await expect(page.locator("h1")).toContainText("Personal Data");
     await fillField(page, step, "firstName", firstName);
     await fillField(page, step, "lastName", lastName);
-    await fillField(page, step, "idNumber", faker.string.numeric(9));
+    // `components/national-id-number` enforces the 850101-0001 shape
+    // (`^\d{6}-\d{4}$`), so random digits won't validate.
+    await fillField(page, step, "idNumber", "850101-0001");
     await fillDate(page, step, "dateOfBirth", 15, 6, 1990);
     await selectRadio(page, step, "gender", "female");
     await fillField(page, step, "address", faker.location.streetAddress());
-    await fillField(page, step, "parish", "St. Michael");
+    // parish and citizenship render as native <select> dropdowns
+    // (components/parish, components/country) — option values are slugs.
+    await selectDropdown(page, step, "parish", "saint-michael");
     await fillField(page, step, "email", "testing@govtech.bb");
     await fillField(page, step, "telCell", faker.string.numeric(10));
-    await fillField(page, step, "citizenship", "Barbadian");
+    // marital-status is a required radio.
+    await selectRadio(page, step, "marital-status", "single");
+    await selectDropdown(page, step, "citizenship", "barbados");
     await advance(page, step);
 
     // ─── Educational Record (repeatable) ─────────────────────────────────────
     step = expectStep(page, "educational-record", { exact: true });
     await fillField(page, step, "institution", "University of the West Indies");
-    await fillField(page, step, "country", "Barbados");
+    await selectDropdown(page, step, "country", "barbados");
     await fillField(page, step, "education-start-year", "2008");
     await fillField(page, step, "education-end-year", "2012");
     await selectRadio(page, step, "addAnother", "no");
