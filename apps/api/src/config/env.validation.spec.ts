@@ -116,4 +116,23 @@ describe("envValidationSchema", () => {
       expect(error?.message).toMatch(/NODE_ENV/);
     });
   });
+
+  describe("SES_DEFAULT_RECIPIENT", () => {
+    it("defaults to the shared test inbox so sandbox never emails a real MDA", () => {
+      const { error, value } = envValidationSchema.validate(
+        { ...baseEnv },
+        { allowUnknown: true, abortEarly: false },
+      );
+      expect(error).toBeUndefined();
+      expect(value.SES_DEFAULT_RECIPIENT).toBe("testing@govtech.bb");
+    });
+
+    it("honours an explicit override", () => {
+      const { value } = envValidationSchema.validate(
+        { ...baseEnv, SES_DEFAULT_RECIPIENT: "ops@gov.bb" },
+        { allowUnknown: true, abortEarly: false },
+      );
+      expect(value.SES_DEFAULT_RECIPIENT).toBe("ops@gov.bb");
+    });
+  });
 });

@@ -14,7 +14,7 @@
     {
       "type": "email",
       "config": {
-        "recipientField": "testing@govtech.bb",
+        "recipientField": "config.mdaEmail",
         "subject": "Smart Stream Vendor Registration"
       }
     }

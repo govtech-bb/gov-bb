@@ -92,7 +92,12 @@ export default function SubmissionConfirmation({
       {contactDetails && (
         <div className="form-page__contact">
           <p>If you need help with your application, contact:</p>
-          <h3 className="govbb-text-h3">{contactDetails.title}</h3>
+          {/* title/telephone/email are each optional (issue #607) — render
+              only the lines that are present so a partial contact (e.g. an
+              email-only MDA) doesn't show empty labels or a blank heading. */}
+          {contactDetails.title && (
+            <h3 className="govbb-text-h3">{contactDetails.title}</h3>
+          )}
           <div className="form-page__contact-body">
             {contactDetails.address && (
               <>
@@ -106,14 +111,18 @@ export default function SubmissionConfirmation({
                 )}
               </>
             )}
-            <p>
-              <span className="form-page__contact-label">Telephone:</span>{" "}
-              {contactDetails.telephoneNumber}
-            </p>
-            <p>
-              <span className="form-page__contact-label">Email:</span>{" "}
-              {contactDetails.email}
-            </p>
+            {contactDetails.telephoneNumber && (
+              <p>
+                <span className="form-page__contact-label">Telephone:</span>{" "}
+                {contactDetails.telephoneNumber}
+              </p>
+            )}
+            {contactDetails.email && (
+              <p>
+                <span className="form-page__contact-label">Email:</span>{" "}
+                {contactDetails.email}
+              </p>
+            )}
           </div>
         </div>
       )}

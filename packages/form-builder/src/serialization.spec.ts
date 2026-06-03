@@ -688,3 +688,22 @@ describe("contactDetails round-trip through deserialize/serialize", () => {
     }
   });
 });
+
+// ─── mdaContactId is DB-only, never on the recipe wire (issue #607) ─────────
+
+describe("mdaContactId serialization", () => {
+  it("does NOT emit mdaContactId into the serialized recipe (it's a DB-only sibling field)", () => {
+    const draft = makeBaseDraft({ mdaContactId: "contact-123" });
+    const recipe = serializeRecipeDraft(draft, { version: "1.0.0" });
+    expect(Object.keys(recipe)).not.toContain("mdaContactId");
+    expect(
+      (recipe as unknown as Record<string, unknown>).mdaContactId,
+    ).toBeUndefined();
+  });
+
+  it("omits mdaContactId even when set to null", () => {
+    const draft = makeBaseDraft({ mdaContactId: null });
+    const recipe = serializeRecipeDraft(draft, { version: "1.0.0" });
+    expect(Object.keys(recipe)).not.toContain("mdaContactId");
+  });
+});

@@ -32,6 +32,11 @@ jest.mock("../../server/registry", () => ({
 const getRecipe = jest.fn();
 const rekeyRecipe = jest.fn();
 const submitRecipe = jest.fn();
+// Always resolve to "no selection" by default so the picker's Promise.all
+// load path works; individual tests can override per case.
+const getFormConfig = jest.fn((..._args: unknown[]) =>
+  Promise.resolve({ mdaContactId: null }),
+);
 jest.mock("../../server/forms", () => ({
   submitRecipe: (...args: unknown[]) => submitRecipe(...args),
   updateRecipe: jest.fn(),
@@ -40,6 +45,21 @@ jest.mock("../../server/forms", () => ({
   disableForm: jest.fn(),
   enableForm: jest.fn(),
   getRecipe: (...args: unknown[]) => getRecipe(...args),
+  getFormConfig: (...args: unknown[]) => getFormConfig(...args),
+}));
+// MDA contact directory (issue #607) — stub the server fn and the hook so the
+// contact-details dropdown doesn't pull a real RPC at module-eval.
+jest.mock("../../server/mda-contacts", () => ({
+  listMdaContacts: jest.fn(() => Promise.resolve([])),
+  createMdaContact: jest.fn(),
+}));
+jest.mock("./-use-mda-contacts", () => ({
+  useMdaContacts: () => ({
+    contacts: [],
+    loadError: null,
+    refetch: jest.fn(),
+    upsertContact: jest.fn(),
+  }),
 }));
 jest.mock("../../server/publish", () => ({
   publishRecipe: jest.fn(),

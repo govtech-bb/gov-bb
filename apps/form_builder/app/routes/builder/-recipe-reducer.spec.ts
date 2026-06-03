@@ -1053,3 +1053,37 @@ describe("UPDATE_CONTACT_DETAILS", () => {
     expect(Object.keys(next)).not.toContain("contactDetails");
   });
 });
+
+// ── SET_MDA_CONTACT (issue #607) ─────────────────────────────────────────────
+
+describe("SET_MDA_CONTACT", () => {
+  it("records the selected MDA contact id on the draft", () => {
+    const next = recipeReducer(baseDraft(), {
+      type: "SET_MDA_CONTACT",
+      mdaContactId: "contact-123",
+    });
+    expect(next.mdaContactId).toBe("contact-123");
+  });
+
+  it("clears the selection with null", () => {
+    const start: RecipeDraft = { ...baseDraft(), mdaContactId: "contact-123" };
+    const next = recipeReducer(start, {
+      type: "SET_MDA_CONTACT",
+      mdaContactId: null,
+    });
+    expect(next.mdaContactId).toBeNull();
+  });
+
+  it("leaves the rest of the draft untouched", () => {
+    const start: RecipeDraft = {
+      ...baseDraft(),
+      contactDetails: { email: "mda@gov.bb" },
+    };
+    const next = recipeReducer(start, {
+      type: "SET_MDA_CONTACT",
+      mdaContactId: "contact-9",
+    });
+    expect(next.contactDetails).toEqual({ email: "mda@gov.bb" });
+    expect(next.formId).toBe("form-1");
+  });
+});

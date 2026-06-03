@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from "express";
+import type { EntityManager } from "typeorm";
 import { z } from "zod";
-import { FormDefinitionEntity } from "@govtech-bb/database";
+import { FormDefinitionEntity, FormConfigEntity } from "@govtech-bb/database";
 import {
   serviceContractRecipeSchema,
   type ServiceContractRecipe,
@@ -13,6 +14,40 @@ import {
 } from "./form-uniqueness.js";
 
 export const formsRouter = Router();
+
+// The save/update body may carry a sibling `mdaContactId` alongside `recipe`.
+// It's DB-only (form_config) — never written into the recipe. Absent means
+// "leave form_config untouched"; an explicit value (incl. null) is persisted.
+// `null` clears the contact (FK is ON DELETE SET NULL); a string is an
+// mda_contact id the builder guarantees exists.
+const mdaContactIdSchema = z.union([z.string(), z.null()]);
+
+// Read the optional `mdaContactId` off a request body. Returns `undefined` when
+// the field is absent (no form_config write) or when it fails validation (we
+// don't want a malformed sibling field to block a valid recipe save — the
+// builder owns this value and only ever sends a real id or null).
+function readMdaContactId(body: unknown): string | null | undefined {
+  if (typeof body !== "object" || body === null || !("mdaContactId" in body)) {
+    return undefined;
+  }
+  const parsed = mdaContactIdSchema.safeParse(
+    (body as { mdaContactId: unknown }).mdaContactId,
+  );
+  return parsed.success ? parsed.data : undefined;
+}
+
+// Upsert the per-form config (form_config) within the recipe-save transaction
+// so the recipe write and the contact link commit atomically. Conflict column
+// is form_config.form_id (the Session-1 unique index).
+async function upsertFormConfig(
+  manager: EntityManager,
+  formId: string,
+  mdaContactId: string | null,
+): Promise<void> {
+  await manager
+    .getRepository(FormConfigEntity)
+    .upsert({ formId, mdaContactId }, ["formId"]);
+}
 
 // Upstream apps/api base URL for the published-recipe proxy. Falls back to the
 // sandbox API when API_BASE_URL is unset so the form_builder "Open" modal works
@@ -219,6 +254,26 @@ formsRouter.get("/:formId", async (req, res) => {
   }
 });
 
+// GET /builder/forms/:formId/config — the per-form config (form_config). Today
+// that's just the linked MDA contact id; returns null when no row exists (the
+// form has never had a contact set). Distinct path depth from "/:formId" so the
+// router never confuses the two.
+export async function getFormConfigHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const ds = await getDataSource();
+    const row = await ds.getRepository(FormConfigEntity).findOne({
+      where: { formId: String(req.params.formId) },
+    });
+    res.json({ mdaContactId: row?.mdaContactId ?? null });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+}
+formsRouter.get("/:formId/config", getFormConfigHandler);
+
 // Query the latest version of every form and return whichever (if any) has a
 // title that collides with `title` (case-insensitive, whitespace-trimmed),
 // ignoring `excludeFormId` so a form never collides with itself. Reuses the
@@ -313,13 +368,24 @@ export async function createFormHandler(
       });
       return;
     }
-    const entity = repo.create({
-      formId: recipe.formId,
-      version: recipe.version,
-      schema: recipe,
-      publishedAt: null,
+    // Persist the recipe and (when supplied) the per-form config atomically:
+    // a failed config upsert must not leave an orphaned recipe row, and vice
+    // versa.
+    const mdaContactId = readMdaContactId(req.body);
+    await ds.transaction(async (manager) => {
+      const txRepo = manager.getRepository(FormDefinitionEntity);
+      await txRepo.save(
+        txRepo.create({
+          formId: recipe.formId,
+          version: recipe.version,
+          schema: recipe,
+          publishedAt: null,
+        }),
+      );
+      if (mdaContactId !== undefined) {
+        await upsertFormConfig(manager, recipe.formId, mdaContactId);
+      }
     });
-    await repo.save(entity);
     res.status(201).json({ ok: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -375,10 +441,21 @@ export async function updateFormHandler(
       });
       return;
     }
-    await ds.query(`UPDATE form_definitions SET schema = $1 WHERE id = $2`, [
-      recipe,
-      rows[0].id,
-    ]);
+    // Update the recipe and (when supplied) the per-form config atomically.
+    const mdaContactId = readMdaContactId(req.body);
+    await ds.transaction(async (manager) => {
+      await manager.query(
+        `UPDATE form_definitions SET schema = $1 WHERE id = $2`,
+        [recipe, rows[0].id],
+      );
+      if (mdaContactId !== undefined) {
+        await upsertFormConfig(
+          manager,
+          String(req.params.formId),
+          mdaContactId,
+        );
+      }
+    });
     res.json({ ok: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -487,6 +564,15 @@ export async function rekeyFormHandler(
       // unpublished drafts, so a disabled draft can't be opened to re-key.
       await manager.query(
         `UPDATE form_definitions SET form_id = $1 WHERE form_id = $2`,
+        [newFormId, oldFormId],
+      );
+      // Move the per-form config (the MDA contact link) to the new ID too, so a
+      // re-key keeps its config.mdaEmail recipient instead of orphaning the
+      // form_config row under the old ID (#732). No-op when the form has no
+      // config row. form_config.form_id is unique and step 3 guarantees the new
+      // ID is otherwise unused, so this can't collide.
+      await manager.query(
+        `UPDATE form_config SET form_id = $1 WHERE form_id = $2`,
         [newFormId, oldFormId],
       );
       // 6. Persist the saved version's content under the new ID.

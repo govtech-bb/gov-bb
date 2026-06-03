@@ -43,6 +43,22 @@ describe("SubmissionConfirmation", () => {
     expect(screen.getByText("help@example.com")).toBeInTheDocument();
   });
 
+  it("renders only the present lines for a partial contactDetails (issue #607)", () => {
+    // An email-only contact: no title, no telephone. The panel still renders,
+    // but the missing lines (heading + Telephone) must be absent.
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Passport"
+        stepTitle="Submitted"
+        submissionState={baseState}
+        contactDetails={{ email: "help@example.com" }}
+      />,
+    );
+    expect(screen.getByText("help@example.com")).toBeInTheDocument();
+    expect(screen.queryByText(/Telephone:/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Immigration Dept")).not.toBeInTheDocument();
+  });
+
   it("does not render contact panel when contactDetails is absent", () => {
     render(
       <SubmissionConfirmation

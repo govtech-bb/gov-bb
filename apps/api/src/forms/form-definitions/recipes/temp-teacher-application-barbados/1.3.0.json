@@ -13,7 +13,7 @@
     {
       "type": "email",
       "config": {
-        "recipientField": "testing@govtech.bb",
+        "recipientField": "config.mdaEmail",
         "subject": "Apply to be a temporary teacher"
       }
     }
