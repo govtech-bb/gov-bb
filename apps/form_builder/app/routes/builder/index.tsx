@@ -2,7 +2,7 @@ import "../../styles/builder.global.css";
 import { createFileRoute } from "@tanstack/react-router";
 import { useReducer, useState, useMemo } from "react";
 import { getCatalogFn } from "../../server/registry";
-import { submitRecipe, updateRecipe, deleteForm, disableForm, enableForm } from "../../server/forms";
+import { submitRecipe, updateRecipe, rekeyRecipe, deleteForm, disableForm, enableForm } from "../../server/forms";
 import { publishRecipe, getPublishBaseBranch, eraseRecipe } from "../../server/publish";
 import { validateRecipe, previewRecipe } from "../../server/registry";
 import { serializeRecipeDraft, findRecipeIdCollisions, formatCollisionIssues, resolveFieldIds } from "@govtech-bb/form-builder";
@@ -25,7 +25,7 @@ import { formPreviewUrl } from "../../lib/form-url";
 import { SubmitModal } from "./-submit-modal";
 import { PublishModal } from "./-publish-modal";
 import { FormPicker } from "./-form-picker";
-import { checkFormUniqueness } from "./-form-uniqueness";
+import { checkFormUniqueness, checkRekeyPublished } from "./-form-uniqueness";
 import { useFormsList } from "./-use-forms-list";
 import { DeleteModal } from "./-delete-modal";
 import { DisableModal } from "./-disable-modal";
@@ -146,6 +146,14 @@ function BuilderPage() {
   // and let the API re-check on save.
   const uniqueness = useMemo(
     () => checkFormUniqueness(forms ?? [], draft, loadedFromId),
+    [forms, draft, loadedFromId],
+  );
+
+  // Re-key published guard (#674): a published form's ID can't be changed.
+  // Mirror the API's 409 so the user is pre-blocked at save time rather than
+  // only seeing the failure after the round-trip.
+  const rekeyError = useMemo(
+    () => checkRekeyPublished(forms ?? [], draft, loadedFromId),
     [forms, draft, loadedFromId],
   );
 
@@ -279,6 +287,7 @@ function BuilderPage() {
   const blockedByUniqueness = (): boolean => {
     const issues = [
       uniqueness.idError && { path: "formId", message: uniqueness.idError },
+      rekeyError && { path: "formId", message: rekeyError },
       uniqueness.titleError && { path: "title", message: uniqueness.titleError },
     ].filter((i): i is { path: string; message: string } => Boolean(i));
     if (issues.length === 0) return false;
@@ -334,20 +343,36 @@ function BuilderPage() {
     setSubmitError(null);
     try {
       const recipe = serializeRecipeDraft(draft, { version: submitVersion });
-      // A create (vs. a new version of an existing form) is when the formId
-      // isn't the one we loaded. Capture it before setLoadedFromId below
-      // overwrites loadedFromId — the Open picker refresh branches on it too.
-      const isNew = draft.formId !== loadedFromId;
-      // A same-version save overwrites the current row in place (updateRecipe);
-      // any higher version creates a new draft row (submitRecipe). This split
-      // also decides the picker row's isPublished below.
+      // Three save shapes, branching on the loaded id (captured before
+      // setLoadedFromId below overwrites loadedFromId — the picker refresh
+      // branches on these too):
+      //  - create: nothing was loaded, so this is a brand-new form.
+      //  - re-key (#674): a loaded form whose id was changed — an atomic
+      //    identity move, not a create (which would self-collide on title and
+      //    leave a stale old-id row).
+      //  - in-place / new version: the loaded id is unchanged.
+      const oldFormId = loadedFromId;
+      const isCreate = oldFormId === null;
+      // An empty id is never a re-key — it's left to the "Form ID is required"
+      // gate (mirrors checkRekeyPublished, which excludes empties too), so a
+      // cleared id on a save-anyway doesn't round-trip to the rekey endpoint.
+      const isRekey =
+        oldFormId !== null && draft.formId !== "" && draft.formId !== oldFormId;
+      // A same-version save of the same form overwrites its row in place
+      // (updateRecipe); any higher version creates a new draft row
+      // (submitRecipe). This split also decides the picker row's isPublished.
       const isInPlaceUpdate =
-        !!loadedFromId && !!currentVersion && submitVersion === currentVersion;
-      if (isInPlaceUpdate) {
-        await updateRecipe({ data: { formId: loadedFromId, recipe } });
+        !!oldFormId &&
+        draft.formId === oldFormId &&
+        !!currentVersion &&
+        submitVersion === currentVersion;
+      if (isRekey) {
+        await rekeyRecipe({ data: { oldFormId, recipe } });
+      } else if (isInPlaceUpdate) {
+        await updateRecipe({ data: { formId: oldFormId, recipe } });
       } else {
         // Tells the API to enforce formId uniqueness for a genuine create.
-        await submitRecipe({ data: { recipe, isNew } });
+        await submitRecipe({ data: { recipe, isNew: isCreate } });
       }
       setSubmitSuccess(true);
       setLastSaveStatus("submitted");
@@ -358,9 +383,11 @@ function BuilderPage() {
 
       // Keep the Open picker fresh without a reload. A new form needs the full
       // refetch so its row carries the server's published/disabled merge; a
-      // re-save just patches the existing row from data we already hold,
-      // skipping the slow listForms() waterfall.
-      if (isNew) {
+      // re-key needs it too so the old-id row disappears and the new one
+      // appears (a one-row upsert can't drop the stale row). A plain re-save
+      // just patches the existing row from data we already hold, skipping the
+      // slow listForms() waterfall.
+      if (isCreate || isRekey) {
         refetchForms();
       } else {
         // Mirror what a refetch's listForms() merge would produce for this row.

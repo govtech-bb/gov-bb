@@ -124,6 +124,27 @@ export const updateRecipe = createServerFn({ method: "POST" })
     });
   });
 
+// Re-key a draft form: change its Form ID. The API moves every
+// form_definitions row from `oldFormId` to `recipe.formId` and writes the saved
+// version's content, atomically (issue #674). Distinct from updateRecipe (which
+// keeps the ID) and submitRecipe (which creates a brand-new form) — a re-key is
+// an identity change of an existing form, so the API can exclude the form's own
+// prior record from the title check instead of flagging a false self-collision.
+export const rekeyRecipe = createServerFn({ method: "POST" })
+  .middleware([requireSession])
+  .inputValidator(
+    z.object({
+      oldFormId: z.string().min(1),
+      recipe: z.unknown(),
+    }),
+  )
+  .handler(async ({ data }): Promise<void> => {
+    await api.post(
+      `/builder/forms/${encodeURIComponent(data.oldFormId)}/rekey`,
+      { recipe: data.recipe },
+    );
+  });
+
 // Draft-delete a form: the API removes every form_definitions row for the
 // formId. No tombstone is written, so the formId is freed for reuse and a
 // public fetch simply 404s. Disabling (not deleting) is the way to retire a

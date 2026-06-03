@@ -30,9 +30,12 @@ jest.mock("../../server/registry", () => ({
   previewRecipe: jest.fn(),
 }));
 const getRecipe = jest.fn();
+const rekeyRecipe = jest.fn();
+const submitRecipe = jest.fn();
 jest.mock("../../server/forms", () => ({
-  submitRecipe: jest.fn(),
+  submitRecipe: (...args: unknown[]) => submitRecipe(...args),
   updateRecipe: jest.fn(),
+  rekeyRecipe: (...args: unknown[]) => rekeyRecipe(...args),
   deleteForm: jest.fn(),
   disableForm: jest.fn(),
   enableForm: jest.fn(),
@@ -633,4 +636,151 @@ describe("BuilderPage — Open picker freshness after save", () => {
       isPublished: true,
     });
   });
+});
+
+describe("BuilderPage — re-key (changing a loaded form's ID)", () => {
+  // A complete, canonical-order recipe for `formId` so loading it leaves the
+  // draft non-dirty and every save pre-flight passes.
+  function loadedRecipe(formId: string, title: string) {
+    return {
+      formId,
+      title,
+      version: "2.0.0",
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          elements: [{ ref: "components/first-name" }],
+          behaviours: [],
+        },
+        { stepId: "check-your-answers", title: "Check your answers", elements: [], behaviours: [] },
+        { stepId: "declaration", title: "Declaration", elements: [], behaviours: [] },
+        {
+          stepId: "submission-confirmation",
+          title: "Submission Confirmation",
+          elements: [],
+          behaviours: [],
+        },
+      ],
+      createdAt: "2020-01-01T00:00:00.000Z",
+      updatedAt: "2020-01-01T00:00:00.000Z",
+    };
+  }
+
+  let confirmSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    mockForms = [];
+    validateRecipe.mockReset();
+    getRecipe.mockReset();
+    rekeyRecipe.mockReset();
+    submitRecipe.mockReset();
+    mockRefetch.mockClear();
+    mockUpsertForm.mockClear();
+    confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(true);
+  });
+
+  afterEach(() => {
+    confirmSpy.mockRestore();
+  });
+
+  it("does not route a cleared Form ID through rekeyRecipe (an empty id is not a re-key)", async () => {
+    mockEmptyDraft = INVALID_DRAFT;
+    mockForms = [
+      { id: "old", formId: "old-form", title: "Old Form", version: "2.0.0", isPublished: false },
+    ];
+    getRecipe.mockResolvedValue(loadedRecipe("old-form", "Old Form"));
+    // Server validate fails (empty id), but the user picks "save anyway", so
+    // handleSubmit still runs — and must not treat the empty id as a re-key.
+    validateRecipe.mockResolvedValue({
+      valid: false,
+      issues: [{ path: "formId", message: "Form ID is required" }],
+    });
+    submitRecipe.mockResolvedValue(undefined);
+    renderBuilder();
+
+    await userEvent.click(screen.getByRole("button", { name: /^open$/i }));
+    await userEvent.click(await screen.findByText("Old Form"));
+    expect(await screen.findByDisplayValue("old-form")).toBeInTheDocument();
+
+    // Clear the Form ID, then save-anyway through the confirm.
+    fireEvent.change(screen.getByDisplayValue("old-form"), {
+      target: { value: "" },
+    });
+    await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Save Changes" }),
+    );
+    await screen.findByText(/recipe submitted successfully/i);
+
+    // An empty id is never a re-key — the rekey endpoint must not be hit.
+    expect(rekeyRecipe).not.toHaveBeenCalled();
+  }, 30_000);
+
+  it("re-keys via rekeyRecipe and full-refetches when a draft form's ID changes", async () => {
+    mockEmptyDraft = INVALID_DRAFT;
+    mockForms = [
+      { id: "old", formId: "old-form", title: "Old Form", version: "2.0.0", isPublished: false },
+    ];
+    getRecipe.mockResolvedValue(loadedRecipe("old-form", "Old Form"));
+    validateRecipe.mockResolvedValue({ ok: true });
+    rekeyRecipe.mockResolvedValue(undefined);
+    renderBuilder();
+
+    await userEvent.click(screen.getByRole("button", { name: /^open$/i }));
+    await userEvent.click(await screen.findByText("Old Form"));
+    expect(await screen.findByDisplayValue("old-form")).toBeInTheDocument();
+
+    // Change the Form ID — this turns the next save into a re-key.
+    fireEvent.change(screen.getByDisplayValue("old-form"), {
+      target: { value: "old-form-renamed" },
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Save Changes" }),
+    );
+    await screen.findByText(/recipe submitted successfully/i);
+
+    // The save routed through the dedicated re-key endpoint, carrying the
+    // *old* id so the API can move the rows.
+    expect(rekeyRecipe).toHaveBeenCalledTimes(1);
+    expect(rekeyRecipe).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ oldFormId: "old-form" }),
+      }),
+    );
+    // A re-key needs the full refetch (old-id row must vanish) — never the
+    // one-row upsert.
+    expect(mockRefetch).toHaveBeenCalledTimes(1);
+    expect(mockUpsertForm).not.toHaveBeenCalled();
+  }, 30_000);
+
+  it("pre-blocks re-keying a published form and never calls rekeyRecipe", async () => {
+    mockEmptyDraft = INVALID_DRAFT;
+    mockForms = [
+      { id: "pub", formId: "pub-form", title: "Pub Form", version: "2.0.0", isPublished: true },
+    ];
+    getRecipe.mockResolvedValue(loadedRecipe("pub-form", "Pub Form"));
+    validateRecipe.mockResolvedValue({ ok: true });
+    renderBuilder();
+
+    await userEvent.click(screen.getByRole("button", { name: /^open$/i }));
+    await userEvent.click(await screen.findByText("Pub Form"));
+    expect(await screen.findByDisplayValue("pub-form")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByDisplayValue("pub-form"), {
+      target: { value: "pub-form-renamed" },
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
+
+    // The published guard is a hard gate: the error surfaces, the server is
+    // never validated, and no re-key is attempted.
+    expect(
+      await screen.findByText(/cannot change the id of a published form/i),
+    ).toBeInTheDocument();
+    expect(rekeyRecipe).not.toHaveBeenCalled();
+    expect(validateRecipe).not.toHaveBeenCalled();
+  }, 30_000);
 });
