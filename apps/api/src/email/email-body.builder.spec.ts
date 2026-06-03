@@ -233,6 +233,18 @@ describe("EmailBodyBuilder", () => {
       expect(field?.value).toBe("1990-06-05");
     });
 
+    it("omits a malformed object-shaped date instead of stringifying it", async () => {
+      const payload = makePayload();
+      (payload.values.personal as Record<string, unknown>).dob = { day: 5 };
+
+      const ctx = await builder.build(payload);
+      const field = ctx.sections[0].fields.find(
+        (f) => f.label === "Date of birth",
+      );
+
+      expect(field).toBeUndefined();
+    });
+
     it("omits an empty date field", async () => {
       const payload = makePayload();
       (payload.values.personal as Record<string, unknown>).dob = undefined;

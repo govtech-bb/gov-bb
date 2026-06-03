@@ -2,11 +2,14 @@ import { Injectable } from "@nestjs/common";
 import NodeCache from "node-cache";
 import type {
   ContactDetails,
-  DateValue,
   FormStep,
   Primitive,
   ServiceContract,
 } from "@govtech-bb/form-types";
+import {
+  isCompleteDateValue,
+  formatDateValue,
+} from "@govtech-bb/form-validation";
 import { FormDefinitionsService } from "../forms/form-definitions/form-definitions.service";
 import type {
   SubmissionAuditTrail,
@@ -239,8 +242,13 @@ export class EmailBodyBuilder {
           Array.isArray(raw) ? raw : [raw],
         );
 
-      case "date":
-        return isDateValue(raw) ? formatDateValue(raw) : String(raw);
+      case "date": {
+        if (isCompleteDateValue(raw)) return formatDateValue(raw);
+        // Legacy submissions stored ISO strings — pass them through. Any
+        // other shape (partial/malformed object) would stringify to
+        // "[object Object]", so omit the row instead.
+        return typeof raw === "string" ? raw : "";
+      }
 
       default:
         return String(raw);
@@ -266,27 +274,4 @@ export class EmailBodyBuilder {
  */
 function isNestedArray(value: unknown): boolean {
   return Array.isArray(value) && value.length > 0 && Array.isArray(value[0]);
-}
-
-/**
- * Returns true when `value` is the `{ day, month, year }` object the
- * text-input date picker stores (all three parts present and numeric).
- */
-function isDateValue(value: unknown): value is DateValue {
-  if (typeof value !== "object" || value === null) return false;
-  const { day, month, year } = value as Record<string, unknown>;
-  return (
-    typeof day === "number" &&
-    typeof month === "number" &&
-    typeof year === "number"
-  );
-}
-
-/** Formats a date value as e.g. "5 June 2026" — unambiguous in an email. */
-function formatDateValue({ day, month, year }: DateValue): string {
-  return new Date(year, month - 1, day).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
 }

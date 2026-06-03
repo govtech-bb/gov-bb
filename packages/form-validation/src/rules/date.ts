@@ -1,7 +1,7 @@
 import type { RuleRunner } from "../types";
 import { resolveReference, MISSING } from "./resolve-reference";
 
-const parseDate = (v: unknown): Date | null => {
+export const parseDate = (v: unknown): Date | null => {
   if (!v) return null;
   // Handle DateValue object format: { day, month, year }
   if (typeof v === "object" && "day" in v && "month" in v && "year" in v) {

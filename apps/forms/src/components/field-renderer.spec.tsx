@@ -580,6 +580,94 @@ describe("FieldRenderer", () => {
   });
 
   // -------------------------------------------------------------------------
+  // Date field error highlighting (GOV.UK guidance: highlight failing parts)
+  // -------------------------------------------------------------------------
+  describe("date field error highlighting", () => {
+    const partInputs = (container: HTMLElement) =>
+      Array.from(
+        container.querySelectorAll(".govbb-date-input__field"),
+      ) as HTMLInputElement[];
+
+    it("renders the structured error's message and highlights only its parts", () => {
+      mockState = {
+        value: { day: 5, year: 1990 },
+        meta: {
+          isValid: false,
+          errors: [
+            { message: "Date of birth must include a month", parts: ["month"] },
+          ],
+        },
+      };
+      const { container } = renderField(primitive("date"));
+
+      expect(
+        screen.getByText("Date of birth must include a month"),
+      ).toBeTruthy();
+      const [day, month, year] = partInputs(container);
+      expect(day.getAttribute("aria-invalid")).toBeNull();
+      expect(month.getAttribute("aria-invalid")).toBe("true");
+      expect(year.getAttribute("aria-invalid")).toBeNull();
+    });
+
+    it("highlights the whole input when all parts are listed", () => {
+      mockState = {
+        value: undefined,
+        meta: {
+          isValid: false,
+          errors: [
+            {
+              message: "Enter date of birth",
+              parts: ["day", "month", "year"],
+            },
+          ],
+        },
+      };
+      const { container } = renderField(primitive("date"));
+      partInputs(container).forEach((input) => {
+        expect(input.getAttribute("aria-invalid")).toBe("true");
+      });
+    });
+
+    it("falls back to highlighting every part for a plain string error", () => {
+      mockState = {
+        value: undefined,
+        meta: { isValid: false, errors: ["Some error"] },
+      };
+      const { container } = renderField(primitive("date"));
+      expect(screen.getByText("Some error")).toBeTruthy();
+      partInputs(container).forEach((input) => {
+        expect(input.getAttribute("aria-invalid")).toBe("true");
+      });
+    });
+
+    it("anchors the fieldset with the field id and describes errors at group level", () => {
+      mockState = {
+        value: undefined,
+        meta: {
+          isValid: false,
+          errors: [
+            { message: "Enter date of birth", parts: ["day", "month", "year"] },
+          ],
+        },
+      };
+      const field = primitive("date");
+      const { container } = renderField(field);
+
+      // The ErrorSummary links to #field.id — the fieldset must carry it.
+      const fieldset = container.querySelector(`[id="${field.id}"]`);
+      expect(fieldset?.tagName).toBe("FIELDSET");
+      expect(fieldset?.getAttribute("role")).toBe("group");
+      expect(fieldset?.getAttribute("aria-describedby")).toBe(
+        `${field.id}-error`,
+      );
+      // Inputs are described at the group level, not individually.
+      partInputs(container as HTMLElement).forEach((input) => {
+        expect(input.getAttribute("aria-describedby")).toBeNull();
+      });
+    });
+  });
+
+  // -------------------------------------------------------------------------
   // Radio with inset fields
   // -------------------------------------------------------------------------
   describe("radio with insetFieldsByOption", () => {

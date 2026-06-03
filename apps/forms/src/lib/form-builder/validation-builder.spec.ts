@@ -8,7 +8,7 @@
  * own responsibilities:
  *  - buildValidation: defaults + per-field validation properties
  *  - buildFieldValidationProperties: show-hide / no-validation pass-through,
- *    onBlur date normalization, onDynamic delegating to the shared validator,
+ *    onDynamic delegating to the shared validator (structured date errors),
  *    onChangeListenTo from behaviours, and cross-field rule resolution.
  */
 
@@ -144,17 +144,15 @@ describe("buildFieldValidationProperties", () => {
   // --- show-hide pass-through ---
 
   describe("show-hide field", () => {
-    it("returns no-op onBlur and onDynamic", () => {
+    it("returns a no-op onDynamic", () => {
       const field = makeField("toggle", "step1", {
         htmlType: "show-hide",
         validations: { required: { value: true, error: "Required." } },
       });
-      const { onBlur, onDynamic } = buildFieldValidationProperties(field);
+      const { onDynamic } = buildFieldValidationProperties(field);
 
-      expect(typeof onBlur).toBe("function");
       expect(typeof onDynamic).toBe("function");
       const fieldApi = makeFieldApi();
-      expect(onBlur!({ value: true, fieldApi })).toBeUndefined();
       expect(onDynamic!({ value: true, fieldApi })).toBeUndefined();
     });
   });
@@ -162,15 +160,13 @@ describe("buildFieldValidationProperties", () => {
   // --- No validations ---
 
   describe("when field has no validations", () => {
-    it("returns no-op onBlur and onDynamic", () => {
+    it("returns a no-op onDynamic", () => {
       const field = makeField("name", "step1");
-      const { onBlur, onDynamic } = buildFieldValidationProperties(field);
+      const { onDynamic } = buildFieldValidationProperties(field);
 
-      expect(typeof onBlur).toBe("function");
       expect(typeof onDynamic).toBe("function");
 
       const fieldApi = makeFieldApi();
-      expect(onBlur!({ value: "any", fieldApi })).toBeUndefined();
       expect(onDynamic!({ value: "any", fieldApi })).toBeUndefined();
     });
 
@@ -218,71 +214,25 @@ describe("buildFieldValidationProperties", () => {
     });
   });
 
-  // --- date field onBlur (UI normalization, preserved verbatim) ---
+  // --- onBlur: never emitted. Impossible dates are rejected by validation
+  // ("must be a real date") rather than normalised on blur. ---
 
-  describe("date field onBlur", () => {
-    const dateField = makeField("dob", "step1", {
-      htmlType: "date",
-      validations: {},
-    });
-
-    it("does nothing when value is undefined", () => {
-      const { onBlur } = buildFieldValidationProperties(dateField);
-      const fieldApi = makeFieldApi();
-      expect(onBlur!({ value: undefined, fieldApi })).toBeUndefined();
-      expect(fieldApi.handleChange).not.toHaveBeenCalled();
-    });
-
-    it("does nothing when date is incomplete", () => {
-      const { onBlur } = buildFieldValidationProperties(dateField);
-      const fieldApi = makeFieldApi();
-      // Missing year
-      onBlur!({ value: { day: 15, month: 6 }, fieldApi });
-      expect(fieldApi.handleChange).not.toHaveBeenCalled();
-    });
-
-    it("does not call handleChange when all date parts match the parsed date", () => {
-      const { onBlur } = buildFieldValidationProperties(dateField);
-      const fieldApi = makeFieldApi();
-      // June 15, 2024 — should parse cleanly
-      onBlur!({ value: { day: 15, month: 6, year: 2024 }, fieldApi });
-      expect(fieldApi.handleChange).not.toHaveBeenCalled();
-    });
-
-    it("calls handleChange when date overflows (e.g. day=32 rolls over to next month)", () => {
-      const { onBlur } = buildFieldValidationProperties(dateField);
-      const fieldApi = makeFieldApi();
-      // January 32 = February 1
-      onBlur!({ value: { day: 32, month: 1, year: 2024 }, fieldApi });
-      expect(fieldApi.handleChange).toHaveBeenCalledWith({
-        day: 1,
-        month: 2,
-        year: 2024,
+  describe("onBlur", () => {
+    it("is not emitted for date fields", () => {
+      const dateField = makeField("dob", "step1", {
+        htmlType: "date",
+        validations: {},
       });
-    });
-
-    it("returns undefined", () => {
       const { onBlur } = buildFieldValidationProperties(dateField);
-      const fieldApi = makeFieldApi();
-      const result = onBlur!({
-        value: { day: 15, month: 6, year: 2024 },
-        fieldApi,
-      });
-      expect(result).toBeUndefined();
+      expect(onBlur).toBeUndefined();
     });
-  });
 
-  // --- onBlur on non-date fields ---
-
-  describe("non-date field onBlur", () => {
-    it("returns undefined and never normalizes", () => {
+    it("is not emitted for non-date fields", () => {
       const field = makeField("name", "step1", {
         validations: { required: { value: true, error: "Required." } },
       });
       const { onBlur } = buildFieldValidationProperties(field);
-      const fieldApi = makeFieldApi();
-      expect(onBlur!({ value: "John", fieldApi })).toBeUndefined();
-      expect(fieldApi.handleChange).not.toHaveBeenCalled();
+      expect(onBlur).toBeUndefined();
     });
   });
 
@@ -294,13 +244,14 @@ describe("buildFieldValidationProperties", () => {
       validations: { required: { value: true, error: "Required." } },
     });
 
-    it("returns errors when date is undefined and field is required", () => {
+    it("returns a structured error when date is undefined and field is required", () => {
       const { onDynamic } = buildFieldValidationProperties(dateField);
       const fieldApi = makeFieldApi();
       const result = onDynamic!({ value: undefined, fieldApi });
       // undefined is treated as empty → required field returns errors
-      expect(Array.isArray(result)).toBe(true);
-      expect(result).toEqual(["Required."]);
+      expect(result).toEqual([
+        { message: "Required.", parts: ["day", "month", "year"] },
+      ]);
     });
 
     it("returns errors when value is empty and field is required", () => {
@@ -310,11 +261,13 @@ describe("buildFieldValidationProperties", () => {
       expect(Array.isArray(result)).toBe(true);
     });
 
-    it("treats an incomplete date as empty (required fires)", () => {
+    it("flags an incomplete date with the missing part highlighted", () => {
       const { onDynamic } = buildFieldValidationProperties(dateField);
       const fieldApi = makeFieldApi();
       const result = onDynamic!({ value: { day: 15, month: 6 }, fieldApi });
-      expect(result).toEqual(["Required."]);
+      expect(result).toEqual([
+        { message: "dob must include a year", parts: ["year"] },
+      ]);
     });
 
     it("returns undefined when onDynamic is called with a complete DateValue and no constraints", () => {
@@ -349,7 +302,12 @@ describe("buildFieldValidationProperties", () => {
         },
         fieldApi,
       });
-      expect(result).toEqual(["Date must be in the past."]);
+      expect(result).toEqual([
+        {
+          message: "Date must be in the past.",
+          parts: ["day", "month", "year"],
+        },
+      ]);
     });
   });
 
@@ -601,7 +559,12 @@ describe("buildFieldValidationProperties", () => {
 
       expect(
         onDynamic!({ value: { day: 1, month: 6, year: 2024 }, fieldApi }),
-      ).toEqual(["End date must be after the start date."]);
+      ).toEqual([
+        {
+          message: "End date must be after the start date.",
+          parts: ["day", "month", "year"],
+        },
+      ]);
       expect(
         onDynamic!({ value: { day: 20, month: 6, year: 2024 }, fieldApi }),
       ).toBeUndefined();

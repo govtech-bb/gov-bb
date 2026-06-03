@@ -4,20 +4,12 @@ import {
   FieldValidationProperties,
   FormValidation,
 } from "@forms/types";
-import {
-  isDateComplete,
-  dateValueToDate,
-  valueIsEmpty,
-} from "./validation-methods";
+import type { AnyFieldApi } from "@tanstack/react-form";
+import { valueIsEmpty } from "./validation-methods";
 import { stepFieldIdConcactenator } from "./field-mapper";
-import { validate } from "@govtech-bb/form-validation";
+import { validate, validateDateField } from "@govtech-bb/form-validation";
 import type { StepScopedValues } from "@govtech-bb/form-validation";
-import type {
-  DateValue,
-  DateValueInput,
-  FieldValue,
-  Primitive,
-} from "@govtech-bb/form-types";
+import type { FieldValue, Primitive } from "@govtech-bb/form-types";
 
 export const buildValidation = (
   contract: ClientServiceContract,
@@ -155,11 +147,9 @@ export const buildFieldValidationProperties = (
 ): FieldValidationProperties => {
   // The show-hide toggle stores a boolean (open/closed state) and never has its
   // own validation rules; fields without validations have nothing to check.
-  // Either way, return pass-through handlers so the pipeline ignores them.
+  // Either way, return a pass-through handler so the pipeline ignores them.
   if (field.htmlType === "show-hide" || !field.validations) {
     return {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      onBlur(_input) {},
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       onDynamic(_input) {},
     };
@@ -173,34 +163,29 @@ export const buildFieldValidationProperties = (
       "targetFieldId" in b ? [b.targetFieldId] : [],
     ) ?? [];
 
+  const valueTreesFor = (fieldApi: AnyFieldApi | undefined, value: unknown) => {
+    const formValues = (fieldApi?.form?.state?.values ?? {}) as Record<
+      string,
+      unknown
+    >;
+    return buildValueTrees(field, formValues, value);
+  };
+
   return {
-    onBlur({ value, fieldApi }) {
-      if (field.htmlType === "date") {
-        const dateValueInput = value as DateValueInput | undefined;
-        if (!dateValueInput) return;
-        if (!isDateComplete(dateValueInput)) return;
-
-        const dateValue: DateValue = value as DateValue;
-        const date: Date | null = dateValueToDate(dateValue);
-        if (!date) return;
-
-        const year = date.getFullYear();
-        const month = date.getMonth() + 1;
-        const day = date.getDate();
-
-        // Used if the user enters a date like 10/13/2008,
-        // which when converted to a date object, will be 10/1/2009
-        // Aim is to have the field reflect that change.
-        if (
-          year != dateValue.year ||
-          month != dateValue.month ||
-          day != dateValue.day
-        )
-          fieldApi.handleChange({ day, month, year });
-        return undefined;
-      }
-    },
     onDynamic({ value, fieldApi }) {
+      // Date fields go through the GOV.UK date validator, which needs the raw
+      // (possibly incomplete) { day, month, year } value and returns a single
+      // { message, parts } error so the renderer can highlight failing parts.
+      if (field.htmlType === "date") {
+        const { stepValues, allValues } = valueTreesFor(fieldApi, value);
+        const dateError = validateDateField(
+          primitive,
+          value,
+          allValues,
+          stepValues,
+        );
+        return dateError ? [dateError] : undefined;
+      }
       // Defensive: an unrecognised value shape (neither empty, nor a known
       // primitive/array/date) used to short-circuit as "unknownState" with no
       // error. Preserve that by skipping validation entirely.
@@ -211,15 +196,7 @@ export const buildFieldValidationProperties = (
       if (valueIsEmpty(adaptedForFiles as FieldValue) === undefined)
         return undefined;
 
-      const formValues = (fieldApi?.form?.state?.values ?? {}) as Record<
-        string,
-        unknown
-      >;
-      const { stepValues, allValues } = buildValueTrees(
-        field,
-        formValues,
-        value,
-      );
+      const { stepValues, allValues } = valueTreesFor(fieldApi, value);
 
       const result = validate({
         primitives: [primitive],
