@@ -9,19 +9,36 @@ interface FileEntry {
 const toFiles = (v: unknown): FileEntry[] =>
   Array.isArray(v) ? (v as FileEntry[]) : [];
 
+// The bare, dotless, lowercase extension of a filename ("doc.PDF" -> "pdf").
 const extOf = (name: string): string => {
   const parts = name.split(".");
-  return parts.length > 1 ? `.${parts[parts.length - 1]!.toLowerCase()}` : "";
+  return parts.length > 1 ? parts[parts.length - 1]!.toLowerCase() : "";
+};
+
+// An allowed entry may be authored as a MIME type ("application/pdf"), a dotted
+// extension (".pdf"), or a bare extension ("pdf"). Reduce it to a bare dotless
+// token so it can be compared against a file's extension regardless of how the
+// recipe wrote it.
+const toBareExt = (allowed: string): string => {
+  const lower = allowed.toLowerCase();
+  if (lower.includes("/")) return lower.slice(lower.indexOf("/") + 1); // MIME subtype
+  return lower.startsWith(".") ? lower.slice(1) : lower;
 };
 
 export const fileTypesRunner: RuleRunner = (value, config) => {
   const allowed = config.value as string[];
   if (!Array.isArray(allowed)) return null;
   const msg = config.error ?? `Allowed file types: ${allowed.join(", ")}`;
-  const normalized = allowed.map((t) => t.toLowerCase());
+  // A file is accepted when its extension matches an allowed entry (after
+  // normalising MIME / dotted / dotless forms to a bare extension) OR its
+  // browser-reported MIME type matches an allowed MIME entry verbatim. Matching
+  // the extension covers the common case where `file.type` is empty.
+  const allowedExts = new Set(allowed.map(toBareExt));
+  const allowedMimes = new Set(allowed.map((t) => t.toLowerCase()));
   for (const file of toFiles(value)) {
     const ext = extOf(file.name);
-    if (!normalized.includes(ext) && !normalized.includes(file.type ?? "")) {
+    const mime = (file.type ?? "").toLowerCase();
+    if (!allowedExts.has(ext) && !(mime !== "" && allowedMimes.has(mime))) {
       return msg;
     }
   }

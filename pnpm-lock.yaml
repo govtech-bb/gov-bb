@@ -598,6 +598,9 @@ importers:
       '@govtech-bb/form-types':
         specifier: workspace:*
         version: link:../../packages/form-types
+      '@govtech-bb/form-validation':
+        specifier: workspace:*
+        version: link:../../packages/form-validation
       '@govtech-bb/react':
         specifier: ^1.0.0-alpha.14
         version: 1.0.0-alpha.16(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss@4.3.0)

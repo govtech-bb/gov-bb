@@ -156,6 +156,22 @@ describe("equalRunner", () => {
   it("skips when reference missing", () => {
     expect(equalRunner(1, cfg(undefined, undefined, "qty"), {})).toBeNull();
   });
+
+  it("passes for case-insensitive text equality", () => {
+    expect(equalRunner("Yes", cfg("yes"), {})).toBeNull();
+  });
+
+  it("fails when text values differ", () => {
+    expect(equalRunner("yes", cfg("no"), {})).toBe("Must equal no");
+  });
+
+  it("matches a referenced text field", () => {
+    expect(
+      equalRunner("Barbados", cfg(undefined, undefined, "country"), {
+        "step-1": { country: "barbados" },
+      }),
+    ).toBeNull();
+  });
 });
 
 describe("notEqualRunner", () => {
@@ -177,5 +193,13 @@ describe("notEqualRunner", () => {
 
   it("skips when reference missing", () => {
     expect(notEqualRunner(1, cfg(undefined, undefined, "qty"), {})).toBeNull();
+  });
+
+  it("passes when text values differ", () => {
+    expect(notEqualRunner("yes", cfg("no"), {})).toBeNull();
+  });
+
+  it("fails for case-insensitive text equality", () => {
+    expect(notEqualRunner("Yes", cfg("yes"), {})).toBe("Must not equal yes");
   });
 });
