@@ -7,6 +7,21 @@ Guidance for working in this repo. Use **pnpm** for everything — never `npm`.
 `sandbox` is the default base branch for pull requests — open PRs against it,
 not `dev`, unless the human explicitly asks otherwise.
 
+## What "clean up" means at the end of a session
+
+When the human says **"clean up"** (or "wrap up and clean up") after work is
+committed, run these steps in order:
+
+1. **Push** the current branch to the remote.
+2. **Open a PR against `sandbox`** (the default base). If a GitHub issue was
+   referenced, include its number in the PR body.
+3. **Automatically remove the worktree** once the branch is pushed — no need to
+   ask first.
+4. **Ask before deleting the plan file** (e.g. the `docs/plans/*.md` the session
+   worked from) — confirm with the human first.
+5. **Prompt the human to watch CI** — offer the PR checks / run link so they can
+   follow the build.
+
 ## When work is finished, close the related GitHub issue
 
 After completing a piece of work, check GitHub (`gh issue list` / `gh issue
