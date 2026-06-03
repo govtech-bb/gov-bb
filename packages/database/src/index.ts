@@ -8,6 +8,8 @@ import { FormSubmissionEntity } from "./entities/form-submission.entity";
 import { PaymentEntity } from "./entities/payment.entity";
 import { PaymentTransactionEntity } from "./entities/payment-transaction.entity";
 import { CustomComponent } from "./entities/custom-component.entity";
+import { MdaContactEntity } from "./entities/mda-contact.entity";
+import { FormConfigEntity } from "./entities/form-config.entity";
 
 // Migrations
 import { CreateFormsTables1774544962999 } from "./migrations/1774544962999-CreateFormsTables";
@@ -18,6 +20,7 @@ import { AddPendingPaymentSubmissionStatus1777896617226 } from "./migrations/177
 import { CreatePaymentTables1777896888080 } from "./migrations/1777896888080-CreatePaymentTables";
 import { AddAbandonedPaymentIndex1778195854282 } from "./migrations/1778195854282-AddAbandonedPaymentIndex";
 import { AddFormDefinitionUniqueConstraint1778500000000 } from "./migrations/1778500000000-AddFormDefinitionUniqueConstraint";
+import { CreateMdaContactAndFormConfig1780520220084 } from "./migrations/1780520220084-CreateMdaContactAndFormConfig";
 
 export const entities = [
   FormComponentEntity,
@@ -27,6 +30,8 @@ export const entities = [
   PaymentEntity,
   PaymentTransactionEntity,
   CustomComponent,
+  MdaContactEntity,
+  FormConfigEntity,
 ];
 
 export const migrations = [
@@ -38,6 +43,7 @@ export const migrations = [
   CreatePaymentTables1777896888080,
   AddAbandonedPaymentIndex1778195854282,
   AddFormDefinitionUniqueConstraint1778500000000,
+  CreateMdaContactAndFormConfig1780520220084,
 ];
 
 /**
