@@ -975,20 +975,25 @@ describe("UPDATE_PROCESSOR_CONFIG", () => {
   });
 
   it("replaces rather than merges, so a key-value editor can drop a key", () => {
-    // spreadsheet/opencrvs configs ARE the record: removing a row must remove
-    // the key. The editor emits the full remaining record; replace honours it.
+    // spreadsheet/opencrvs configs are edited as a key-value record: removing
+    // a row must remove the key. The editor emits the full remaining record;
+    // replace honours it.
     const start: RecipeDraft = {
       ...baseDraft(),
       processors: [
-        { id: "sp-1", type: "spreadsheet", config: { a: "1", b: "2" } },
+        {
+          id: "sp-1",
+          type: "spreadsheet",
+          config: { filename: "submissions" },
+        },
       ],
     };
     const next = recipeReducer(start, {
       type: "UPDATE_PROCESSOR_CONFIG",
       id: "sp-1",
-      config: { a: "1" },
+      config: {},
     });
-    expect(next.processors![0].config).toEqual({ a: "1" });
+    expect(next.processors![0].config).toEqual({});
   });
 
   it("leaves processors untouched when no id matches", () => {

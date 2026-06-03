@@ -11,15 +11,21 @@ const emailConfigAuthorSchema = z.object({
   label: z.string().min(1).optional(),
 });
 
-const opencrvsConfigAuthorSchema = z.record(
-  z.string(),
-  z.union([z.string(), z.number()]),
-);
+const opencrvsConfigAuthorSchema = z
+  .object({
+    endpoint: z
+      .url()
+      .refine((u) => u.startsWith("https://"), "endpoint must use https")
+      .optional(),
+    token: z.string().min(1).optional(),
+  })
+  .strict();
 
-const spreadsheetConfigAuthorSchema = z.record(
-  z.string(),
-  z.union([z.string(), z.number()]),
-);
+const spreadsheetConfigAuthorSchema = z
+  .object({
+    filename: z.string().min(1).optional(),
+  })
+  .strict();
 
 const paymentConfigAuthorSchema = z.object({
   provider: z.literal("ezpay"),

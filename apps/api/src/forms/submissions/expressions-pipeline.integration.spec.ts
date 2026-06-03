@@ -128,7 +128,7 @@ describe("Expressions pipeline integration", () => {
     const literalOnly: Processor[] = [
       {
         type: "spreadsheet",
-        config: { sheetId: "abc", sheetName: "Submissions" },
+        config: { filename: "abc" },
       },
     ];
 

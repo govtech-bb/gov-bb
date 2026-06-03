@@ -46,7 +46,7 @@ describe("ExpressionsService", () => {
       },
       {
         type: "spreadsheet",
-        config: { sheetId: "static-id" },
+        config: { filename: "static-name" },
       },
     ];
 
@@ -56,7 +56,7 @@ describe("ExpressionsService", () => {
 
     expect(out).toEqual([
       { type: "email", config: { recipientField: "personal.email" } },
-      { type: "spreadsheet", config: { sheetId: "static-id" } },
+      { type: "spreadsheet", config: { filename: "static-name" } },
     ]);
   });
 
