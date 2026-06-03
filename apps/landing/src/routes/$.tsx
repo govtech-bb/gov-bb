@@ -11,9 +11,10 @@ import {
   PAGES,
   startSubPageInPreview,
 } from '../content/registry'
-import type {ContentPage} from '../content/registry';
+import type { ContentPage } from '../content/registry'
 import { CATEGORY_BY_SLUG, getSubcategory } from '../content/categories'
-import type {Category, SubCategory} from '../content/categories';
+import type { Category, SubCategory } from '../content/categories'
+import { getAvailableForms } from '../lib/available-forms'
 
 interface CategoryListItem {
   title: string
@@ -22,7 +23,7 @@ interface CategoryListItem {
 }
 
 type LoaderData =
-  | { kind: 'page'; page: ContentPage }
+  | { kind: 'page'; page: ContentPage; availableForms: string[] }
   | { kind: 'category'; category: Category; items: CategoryListItem[] }
   | {
       kind: 'subcategory-index'
@@ -37,7 +38,7 @@ type LoaderData =
     }
 
 export const Route = createFileRoute('/$')({
-  loader: ({ params, context }): LoaderData => {
+  loader: async ({ params, context }): Promise<LoaderData> => {
     const { preview } = context
     const splat = (params._splat ?? '').replace(/^\/+|\/+$/g, '')
     const segments = splat.split('/').filter(Boolean)
@@ -69,7 +70,10 @@ export const Route = createFileRoute('/$')({
     const page = findPage(splat)
     if (page) {
       if (!isVisible(page, preview)) throw notFound()
-      return { kind: 'page', page }
+      // Only content pages render Start now buttons, so the forms list is
+      // resolved here (server-side, cached) and nowhere else.
+      const availableForms = await getAvailableForms()
+      return { kind: 'page', page, availableForms }
     }
 
     if (segments.length === 2) {
@@ -133,7 +137,13 @@ function ContentRoute() {
   const data = Route.useLoaderData()
   const { preview } = Route.useRouteContext()
   if (data.kind === 'page')
-    return <PageView page={data.page} inPreview={preview} />
+    return (
+      <PageView
+        page={data.page}
+        availableForms={data.availableForms}
+        inPreview={preview}
+      />
+    )
   if (data.kind === 'subcategory-index')
     return (
       <SubcategoryIndexView
@@ -142,17 +152,17 @@ function ContentRoute() {
       />
     )
   if (data.kind === 'subcategory')
-    return (
-      <SubcategoryView subcategory={data.subcategory} items={data.items} />
-    )
+    return <SubcategoryView subcategory={data.subcategory} items={data.items} />
   return <CategoryView category={data.category} items={data.items} />
 }
 
 function PageView({
   page,
+  availableForms,
   inPreview,
 }: {
   page: ContentPage
+  availableForms: string[]
   inPreview: boolean
 }) {
   // A public visitor on a page whose `/start` sub-page is in preview sees the
@@ -164,6 +174,7 @@ function PageView({
       <MarkdownContent
         body={page.body}
         frontmatter={page.frontmatter}
+        availableForms={new Set(availableForms)}
         hideStartLink={hideStartLink}
       />
     </Shell>
@@ -305,8 +316,8 @@ function PreviewBanner() {
         Under review — not public
       </Text>
       <Text as="p" size="caption" className="text-mid-grey-00">
-        This page is visible to you because you are in preview mode. It is hidden
-        from the public and search engines until it is published.
+        This page is visible to you because you are in preview mode. It is
+        hidden from the public and search engines until it is published.
       </Text>
     </div>
   )
