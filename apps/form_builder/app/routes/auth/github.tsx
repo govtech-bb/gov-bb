@@ -2,7 +2,10 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { createIsomorphicFn } from "@tanstack/react-start";
 import { setResponseHeader } from "@tanstack/react-start/server";
 import { randomBytes } from "node:crypto";
-import { serializeOAuthStateCookie } from "../../server/session";
+import {
+  normalizeOAuthBase,
+  serializeOAuthStateCookie,
+} from "../../server/session";
 
 // `randomBytes` comes from `node:crypto`, which Vite externalizes in the
 // client bundle (any property access on the stub throws). Wrapping the call
@@ -38,9 +41,12 @@ const setOAuthStateCookie = createIsomorphicFn()
 export const Route = createFileRoute("/auth/github")({
   beforeLoad: () => {
     const clientId = process.env.GITHUB_OAUTH_CLIENT_ID;
-    const base = process.env.OAUTH_REDIRECT_BASE;
+    const rawBase = process.env.OAUTH_REDIRECT_BASE;
     if (!clientId) throw new Error("GITHUB_OAUTH_CLIENT_ID is not set");
-    if (!base) throw new Error("OAUTH_REDIRECT_BASE is not set");
+    if (!rawBase) throw new Error("OAUTH_REDIRECT_BASE is not set");
+    // Strip a trailing slash so the redirect_uri can't become a doubled-slash
+    // path that won't match the registered GitHub OAuth callback.
+    const base = normalizeOAuthBase(rawBase);
 
     const state = generateStateHex(16);
     const secure = base.startsWith("https://");
@@ -49,7 +55,13 @@ export const Route = createFileRoute("/auth/github")({
     const params = new URLSearchParams({
       client_id: clientId,
       redirect_uri: `${base}/auth/github/callback`,
-      scope: "repo read:org read:user",
+      // Narrowest scope that still works: `public_repo` covers the
+      // collaborator-permission read and the Contents-API recipe writes
+      // (gov-bb is public), and `read:org` is required by the team-membership
+      // check. CAVEAT: if gov-bb is ever made private, `public_repo` will
+      // silently break the permission check and the publish flow — bump back
+      // to `repo`.
+      scope: "public_repo read:org",
       state,
       allow_signup: "false",
     });
