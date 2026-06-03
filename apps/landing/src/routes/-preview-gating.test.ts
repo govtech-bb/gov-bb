@@ -15,6 +15,13 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('../content/registry', () => mocks)
 
+// The `$` loader resolves the available-forms list via a server function; stub
+// it so the gating tests don't reach the network.
+const formMocks = vi.hoisted(() => ({
+  getAvailableForms: vi.fn(async () => ['get-birth-certificate']),
+}))
+vi.mock('../lib/available-forms', () => formMocks)
+
 const fakePage: ContentPage = {
   slug: 'secret-service',
   url: 'secret-service',
@@ -45,27 +52,31 @@ describe('$ route loader gating', () => {
     mocks.findPage.mockReturnValue(fakePage)
     mocks.isVisible.mockReturnValue(false)
 
-    const err = caught(() =>
-      (Route.options.loader as (a: unknown) => unknown)({
-        params: { _splat: 'secret-service' },
-        context: { preview: false },
-      }),
-    )
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    const err = await loader({
+      params: { _splat: 'secret-service' },
+      context: { preview: false },
+    }).catch((e: unknown) => e)
     expect(err).toBeDefined()
     expect((err as { isNotFound?: boolean }).isNotFound).toBe(true)
     expect(mocks.isVisible).toHaveBeenCalledWith(fakePage, false)
   })
 
-  it('returns the page when it is visible (preview mode)', async () => {
+  it('returns the page (with the available-forms list) when it is visible', async () => {
     const { Route } = await import('./$')
     mocks.findPage.mockReturnValue(fakePage)
     mocks.isVisible.mockReturnValue(true)
 
-    const data = (Route.options.loader as (a: unknown) => unknown)({
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    const data = await loader({
       params: { _splat: 'secret-service' },
       context: { preview: true },
     })
-    expect(data).toEqual({ kind: 'page', page: fakePage })
+    expect(data).toEqual({
+      kind: 'page',
+      page: fakePage,
+      availableForms: ['get-birth-certificate'],
+    })
   })
 })
 
