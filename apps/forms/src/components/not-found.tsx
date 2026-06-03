@@ -2,8 +2,8 @@ import React from "react";
 
 export default function NotFound() {
   return (
-    <div className="form-page form-page__message">
-      <div>
+    <div className="container py-8 lg:py-16">
+      <div className="form-page form-page__message form-width">
         {/* Header */}
         <div>
           <h1 className="govbb-text-h1">We couldn&lsquo;t find that page</h1>

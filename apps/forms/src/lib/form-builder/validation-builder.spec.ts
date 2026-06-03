@@ -8,7 +8,7 @@
  * own responsibilities:
  *  - buildValidation: defaults + per-field validation properties
  *  - buildFieldValidationProperties: show-hide / no-validation pass-through,
- *    onBlur date normalization, onChange delegating to the shared validator,
+ *    onBlur date normalization, onDynamic delegating to the shared validator,
  *    onChangeListenTo from behaviours, and cross-field rule resolution.
  */
 
@@ -56,7 +56,7 @@ function makeContract(
 }
 
 // The live form keys its value map by the composite `field.id`
-// (`stepId_fieldId`); `form.state.values` is what the onChange handler reads to
+// (`stepId_fieldId`); `form.state.values` is what the onDynamic handler reads to
 // assemble the cross-field value tree.
 function makeFieldApi(
   fieldValues: Record<string, unknown> = {},
@@ -126,7 +126,7 @@ describe("buildValidation", () => {
     expect(properties["step1_name"]).toBeDefined();
     expect(properties["step1_email"]).toBeDefined();
     expect(properties["step2_phone"]).toBeDefined();
-    expect(typeof properties["step1_name"].onChange).toBe("function");
+    expect(typeof properties["step1_name"].onDynamic).toBe("function");
   });
 
   it("handles an empty contract with no steps", () => {
@@ -144,34 +144,34 @@ describe("buildFieldValidationProperties", () => {
   // --- show-hide pass-through ---
 
   describe("show-hide field", () => {
-    it("returns no-op onBlur and onChange", () => {
+    it("returns no-op onBlur and onDynamic", () => {
       const field = makeField("toggle", "step1", {
         htmlType: "show-hide",
         validations: { required: { value: true, error: "Required." } },
       });
-      const { onBlur, onChange } = buildFieldValidationProperties(field);
+      const { onBlur, onDynamic } = buildFieldValidationProperties(field);
 
       expect(typeof onBlur).toBe("function");
-      expect(typeof onChange).toBe("function");
+      expect(typeof onDynamic).toBe("function");
       const fieldApi = makeFieldApi();
       expect(onBlur!({ value: true, fieldApi })).toBeUndefined();
-      expect(onChange!({ value: true, fieldApi })).toBeUndefined();
+      expect(onDynamic!({ value: true, fieldApi })).toBeUndefined();
     });
   });
 
   // --- No validations ---
 
   describe("when field has no validations", () => {
-    it("returns no-op onBlur and onChange", () => {
+    it("returns no-op onBlur and onDynamic", () => {
       const field = makeField("name", "step1");
-      const { onBlur, onChange } = buildFieldValidationProperties(field);
+      const { onBlur, onDynamic } = buildFieldValidationProperties(field);
 
       expect(typeof onBlur).toBe("function");
-      expect(typeof onChange).toBe("function");
+      expect(typeof onDynamic).toBe("function");
 
       const fieldApi = makeFieldApi();
       expect(onBlur!({ value: "any", fieldApi })).toBeUndefined();
-      expect(onChange!({ value: "any", fieldApi })).toBeUndefined();
+      expect(onDynamic!({ value: "any", fieldApi })).toBeUndefined();
     });
 
     it("does not include onChangeListenTo", () => {
@@ -286,41 +286,41 @@ describe("buildFieldValidationProperties", () => {
     });
   });
 
-  // --- date field onChange ---
+  // --- date field onDynamic ---
 
-  describe("date field onChange", () => {
+  describe("date field onDynamic", () => {
     const dateField = makeField("dob", "step1", {
       htmlType: "date",
       validations: { required: { value: true, error: "Required." } },
     });
 
     it("returns errors when date is undefined and field is required", () => {
-      const { onChange } = buildFieldValidationProperties(dateField);
+      const { onDynamic } = buildFieldValidationProperties(dateField);
       const fieldApi = makeFieldApi();
-      const result = onChange!({ value: undefined, fieldApi });
+      const result = onDynamic!({ value: undefined, fieldApi });
       // undefined is treated as empty → required field returns errors
       expect(Array.isArray(result)).toBe(true);
       expect(result).toEqual(["Required."]);
     });
 
     it("returns errors when value is empty and field is required", () => {
-      const { onChange } = buildFieldValidationProperties(dateField);
+      const { onDynamic } = buildFieldValidationProperties(dateField);
       const fieldApi = makeFieldApi();
-      const result = onChange!({ value: "", fieldApi });
+      const result = onDynamic!({ value: "", fieldApi });
       expect(Array.isArray(result)).toBe(true);
     });
 
     it("treats an incomplete date as empty (required fires)", () => {
-      const { onChange } = buildFieldValidationProperties(dateField);
+      const { onDynamic } = buildFieldValidationProperties(dateField);
       const fieldApi = makeFieldApi();
-      const result = onChange!({ value: { day: 15, month: 6 }, fieldApi });
+      const result = onDynamic!({ value: { day: 15, month: 6 }, fieldApi });
       expect(result).toEqual(["Required."]);
     });
 
-    it("returns undefined when onChange is called with a complete DateValue and no constraints", () => {
-      const { onChange } = buildFieldValidationProperties(dateField);
+    it("returns undefined when onDynamic is called with a complete DateValue and no constraints", () => {
+      const { onDynamic } = buildFieldValidationProperties(dateField);
       const fieldApi = makeFieldApi();
-      const result = onChange!({
+      const result = onDynamic!({
         value: { day: 15, month: 6, year: 2024 },
         fieldApi,
       });
@@ -335,13 +335,13 @@ describe("buildFieldValidationProperties", () => {
           past: { value: true, error: "Date must be in the past." },
         },
       });
-      const { onChange } = buildFieldValidationProperties(field);
+      const { onDynamic } = buildFieldValidationProperties(field);
       const fieldApi = makeFieldApi();
       // Compute a future date dynamically so the test does not become a
       // time bomb (e.g. a hardcoded year that ages out into the past).
       const future = new Date();
       future.setFullYear(future.getFullYear() + 1);
-      const result = onChange!({
+      const result = onDynamic!({
         value: {
           day: future.getDate(),
           month: future.getMonth() + 1,
@@ -353,9 +353,9 @@ describe("buildFieldValidationProperties", () => {
     });
   });
 
-  // --- checkbox field onChange ---
+  // --- checkbox field onDynamic ---
 
-  describe("checkbox field onChange", () => {
+  describe("checkbox field onDynamic", () => {
     const checkboxField = makeField("tags", "step1", {
       htmlType: "checkbox",
       validations: {
@@ -365,16 +365,16 @@ describe("buildFieldValidationProperties", () => {
     });
 
     it("returns errors when an array value has fewer than minSelection", () => {
-      const { onChange } = buildFieldValidationProperties(checkboxField);
+      const { onDynamic } = buildFieldValidationProperties(checkboxField);
       const fieldApi = makeFieldApi();
-      const result = onChange!({ value: ["a"], fieldApi });
+      const result = onDynamic!({ value: ["a"], fieldApi });
       expect(result).toEqual(["Pick at least 2."]);
     });
 
     it("returns undefined when selection meets minSelection", () => {
-      const { onChange } = buildFieldValidationProperties(checkboxField);
+      const { onDynamic } = buildFieldValidationProperties(checkboxField);
       const fieldApi = makeFieldApi();
-      const result = onChange!({ value: ["a", "b"], fieldApi });
+      const result = onDynamic!({ value: ["a", "b"], fieldApi });
       expect(result).toBeUndefined();
     });
 
@@ -383,33 +383,33 @@ describe("buildFieldValidationProperties", () => {
         htmlType: "checkbox",
         validations: { required: { value: true, error: "You must consent." } },
       });
-      const { onChange } = buildFieldValidationProperties(field);
+      const { onDynamic } = buildFieldValidationProperties(field);
       const fieldApi = makeFieldApi();
-      expect(onChange!({ value: false, fieldApi })).toEqual([
+      expect(onDynamic!({ value: false, fieldApi })).toEqual([
         "You must consent.",
       ]);
-      expect(onChange!({ value: true, fieldApi })).toBeUndefined();
+      expect(onDynamic!({ value: true, fieldApi })).toBeUndefined();
     });
 
     it("returns undefined when value is not a boolean or array", () => {
-      const { onChange } = buildFieldValidationProperties(checkboxField);
+      const { onDynamic } = buildFieldValidationProperties(checkboxField);
       const fieldApi = makeFieldApi();
       // Non-array, non-boolean value short-circuits as "unknown" → no error.
-      const result = onChange!({ value: { some: "object" }, fieldApi });
+      const result = onDynamic!({ value: { some: "object" }, fieldApi });
       expect(result).toBeUndefined();
     });
   });
 
-  // --- string field onChange ---
+  // --- string field onDynamic ---
 
-  describe("string field onChange", () => {
+  describe("string field onDynamic", () => {
     it("returns errors when required string field is empty", () => {
       const field = makeField("name", "step1", {
         validations: { required: { value: true, error: "Name is required." } },
       });
-      const { onChange } = buildFieldValidationProperties(field);
+      const { onDynamic } = buildFieldValidationProperties(field);
       const fieldApi = makeFieldApi();
-      const result = onChange!({ value: "", fieldApi });
+      const result = onDynamic!({ value: "", fieldApi });
       expect(Array.isArray(result)).toBe(true);
       expect(
         (result as string[]).some((e) => e.includes("Name is required.")),
@@ -418,9 +418,9 @@ describe("buildFieldValidationProperties", () => {
 
     it("returns undefined when optional string field is empty", () => {
       const field = makeField("name", "step1", { validations: {} });
-      const { onChange } = buildFieldValidationProperties(field);
+      const { onDynamic } = buildFieldValidationProperties(field);
       const fieldApi = makeFieldApi();
-      const result = onChange!({ value: "", fieldApi });
+      const result = onDynamic!({ value: "", fieldApi });
       expect(result).toBeUndefined();
     });
 
@@ -431,9 +431,9 @@ describe("buildFieldValidationProperties", () => {
           maxLength: { value: 5, error: "Too long." },
         },
       });
-      const { onChange } = buildFieldValidationProperties(field);
+      const { onDynamic } = buildFieldValidationProperties(field);
       const fieldApi = makeFieldApi();
-      const result = onChange!({ value: "hello world", fieldApi });
+      const result = onDynamic!({ value: "hello world", fieldApi });
       expect(result).toEqual(["Too long."]);
     });
 
@@ -444,9 +444,9 @@ describe("buildFieldValidationProperties", () => {
           pattern: { value: "^BB\\d{5}$", error: "Enter a valid postcode." },
         },
       });
-      const { onChange } = buildFieldValidationProperties(field);
+      const { onDynamic } = buildFieldValidationProperties(field);
       const fieldApi = makeFieldApi();
-      const result = onChange!({ value: "nope", fieldApi });
+      const result = onDynamic!({ value: "nope", fieldApi });
       expect(result).toEqual(["Enter a valid postcode."]);
     });
 
@@ -457,16 +457,16 @@ describe("buildFieldValidationProperties", () => {
           maxLength: { value: 100 },
         },
       });
-      const { onChange } = buildFieldValidationProperties(field);
+      const { onDynamic } = buildFieldValidationProperties(field);
       const fieldApi = makeFieldApi();
-      const result = onChange!({ value: "Hello", fieldApi });
+      const result = onDynamic!({ value: "Hello", fieldApi });
       expect(result).toBeUndefined();
     });
   });
 
-  // --- file field onChange ---
+  // --- file field onDynamic ---
 
-  describe("file field onChange", () => {
+  describe("file field onDynamic", () => {
     function makeFileList(...files: File[]): FileList {
       return Object.assign(files, {
         item: (i: number) => files[i] ?? null,
@@ -490,10 +490,10 @@ describe("buildFieldValidationProperties", () => {
           maxSize: { value: 100, error: "File too large." },
         },
       });
-      const { onChange } = buildFieldValidationProperties(field);
+      const { onDynamic } = buildFieldValidationProperties(field);
       const fieldApi = makeFieldApi();
       const files = makeFileList(makeFile("big.pdf", 500));
-      const result = onChange!({ value: files, fieldApi });
+      const result = onDynamic!({ value: files, fieldApi });
       expect(result).toEqual(["File too large."]);
     });
 
@@ -502,9 +502,9 @@ describe("buildFieldValidationProperties", () => {
         htmlType: "file",
         validations: { required: { value: true, error: "Upload a file." } },
       });
-      const { onChange } = buildFieldValidationProperties(field);
+      const { onDynamic } = buildFieldValidationProperties(field);
       const fieldApi = makeFieldApi();
-      const result = onChange!({ value: makeFileList(), fieldApi });
+      const result = onDynamic!({ value: makeFileList(), fieldApi });
       expect(result).toEqual(["Upload a file."]);
     });
 
@@ -513,9 +513,9 @@ describe("buildFieldValidationProperties", () => {
         htmlType: "file",
         validations: { required: { value: true, error: "Upload a file." } },
       });
-      const { onChange } = buildFieldValidationProperties(field);
+      const { onDynamic } = buildFieldValidationProperties(field);
       const fieldApi = makeFieldApi();
-      const result = onChange!({ value: null, fieldApi });
+      const result = onDynamic!({ value: null, fieldApi });
       expect(result).toEqual(["Upload a file."]);
     });
 
@@ -527,10 +527,10 @@ describe("buildFieldValidationProperties", () => {
           maxSize: { value: 10000 },
         },
       });
-      const { onChange } = buildFieldValidationProperties(field);
+      const { onDynamic } = buildFieldValidationProperties(field);
       const fieldApi = makeFieldApi();
       const files = makeFileList(makeFile("small.pdf", 100));
-      const result = onChange!({ value: files, fieldApi });
+      const result = onDynamic!({ value: files, fieldApi });
       expect(result).toBeUndefined();
     });
   });
@@ -550,13 +550,13 @@ describe("buildFieldValidationProperties", () => {
           },
         },
       });
-      const { onChange } = buildFieldValidationProperties(field);
+      const { onDynamic } = buildFieldValidationProperties(field);
       const fieldApi = makeFieldApi({ step1_minQty: 5 }, "step1_quantity");
 
-      expect(onChange!({ value: 3, fieldApi })).toEqual([
+      expect(onDynamic!({ value: 3, fieldApi })).toEqual([
         "Must be greater than the minimum.",
       ]);
-      expect(onChange!({ value: 9, fieldApi })).toBeUndefined();
+      expect(onDynamic!({ value: 9, fieldApi })).toBeUndefined();
     });
 
     it("resolves a strictEquality rule against another field", () => {
@@ -570,16 +570,16 @@ describe("buildFieldValidationProperties", () => {
           },
         },
       });
-      const { onChange } = buildFieldValidationProperties(field);
+      const { onDynamic } = buildFieldValidationProperties(field);
       const fieldApi = makeFieldApi(
         { step1_email: "me@example.com" },
         "step1_confirmEmail",
       );
 
-      expect(onChange!({ value: "other@example.com", fieldApi })).toEqual([
+      expect(onDynamic!({ value: "other@example.com", fieldApi })).toEqual([
         "Emails must match.",
       ]);
-      expect(onChange!({ value: "me@example.com", fieldApi })).toBeUndefined();
+      expect(onDynamic!({ value: "me@example.com", fieldApi })).toBeUndefined();
     });
 
     it("resolves a date 'after' rule against another field", () => {
@@ -593,17 +593,17 @@ describe("buildFieldValidationProperties", () => {
           },
         },
       });
-      const { onChange } = buildFieldValidationProperties(field);
+      const { onDynamic } = buildFieldValidationProperties(field);
       const fieldApi = makeFieldApi(
         { step1_startDate: { day: 10, month: 6, year: 2024 } },
         "step1_endDate",
       );
 
       expect(
-        onChange!({ value: { day: 1, month: 6, year: 2024 }, fieldApi }),
+        onDynamic!({ value: { day: 1, month: 6, year: 2024 }, fieldApi }),
       ).toEqual(["End date must be after the start date."]);
       expect(
-        onChange!({ value: { day: 20, month: 6, year: 2024 }, fieldApi }),
+        onDynamic!({ value: { day: 20, month: 6, year: 2024 }, fieldApi }),
       ).toBeUndefined();
     });
 
@@ -620,12 +620,12 @@ describe("buildFieldValidationProperties", () => {
           },
         },
       });
-      const { onChange } = buildFieldValidationProperties(field);
+      const { onDynamic } = buildFieldValidationProperties(field);
       const fieldApi = makeFieldApi(
         { step1_minQty: 5, loose: "stray" },
         "step1_quantity",
       );
-      expect(onChange!({ value: 3, fieldApi })).toEqual(["Too small."]);
+      expect(onDynamic!({ value: 3, fieldApi })).toEqual(["Too small."]);
     });
 
     it("resolves a reference to a field in another step via allValues", () => {
@@ -641,19 +641,19 @@ describe("buildFieldValidationProperties", () => {
           },
         },
       });
-      const { onChange } = buildFieldValidationProperties(field);
+      const { onDynamic } = buildFieldValidationProperties(field);
       const fieldApi = makeFieldApi({ step1_minQty: 100 }, "step2_quantity");
 
-      expect(onChange!({ value: 50, fieldApi })).toEqual([
+      expect(onDynamic!({ value: 50, fieldApi })).toEqual([
         "Must exceed the step 1 minimum.",
       ]);
-      expect(onChange!({ value: 150, fieldApi })).toBeUndefined();
+      expect(onDynamic!({ value: 150, fieldApi })).toBeUndefined();
     });
   });
 
-  // --- array of strings onChange ---
+  // --- array of strings onDynamic ---
 
-  describe("array of strings onChange", () => {
+  describe("array of strings onDynamic", () => {
     it("validates each element and errors when one violates a rule", () => {
       const field = makeField("tags", "step1", {
         validations: {
@@ -661,10 +661,10 @@ describe("buildFieldValidationProperties", () => {
           maxLength: { value: 3, error: "Too long." },
         },
       });
-      const { onChange } = buildFieldValidationProperties(field);
+      const { onDynamic } = buildFieldValidationProperties(field);
       const fieldApi = makeFieldApi();
       // "toolong" (7) exceeds maxLength 3 while "ok" (2) is fine — per-element.
-      expect(onChange!({ value: ["ok", "toolong"], fieldApi })).toEqual([
+      expect(onDynamic!({ value: ["ok", "toolong"], fieldApi })).toEqual([
         "Too long.",
       ]);
     });
@@ -676,10 +676,10 @@ describe("buildFieldValidationProperties", () => {
           maxLength: { value: 3, error: "Too long." },
         },
       });
-      const { onChange } = buildFieldValidationProperties(field);
+      const { onDynamic } = buildFieldValidationProperties(field);
       const fieldApi = makeFieldApi();
       // Joining would make "ab,cd" (len 5) and fail; per-element each is len 2.
-      expect(onChange!({ value: ["ab", "cd"], fieldApi })).toBeUndefined();
+      expect(onDynamic!({ value: ["ab", "cd"], fieldApi })).toBeUndefined();
     });
 
     it("returns undefined when an array of empty strings passes", () => {
@@ -689,9 +689,9 @@ describe("buildFieldValidationProperties", () => {
           maxLength: { value: 3, error: "Too long." },
         },
       });
-      const { onChange } = buildFieldValidationProperties(field);
+      const { onDynamic } = buildFieldValidationProperties(field);
       const fieldApi = makeFieldApi();
-      const result = onChange!({ value: ["", ""], fieldApi });
+      const result = onDynamic!({ value: ["", ""], fieldApi });
       expect(result).toBeUndefined();
     });
   });
@@ -707,11 +707,11 @@ describe("buildFieldValidationProperties", () => {
           pattern: { value: "^[0-9]+$", error: "Email format wrong" },
         },
       });
-      const { onChange } = buildFieldValidationProperties(field);
+      const { onDynamic } = buildFieldValidationProperties(field);
       const fieldApi = makeFieldApi();
       // "ab": fails minLength (<5) and pattern (non-numeric). The first error
       // is verbatim; the field name is stripped from subsequent ones.
-      expect(onChange!({ value: "ab", fieldApi })).toEqual([
+      expect(onDynamic!({ value: "ab", fieldApi })).toEqual([
         "Email too short",
         " format wrong",
       ]);
@@ -724,9 +724,9 @@ describe("buildFieldValidationProperties", () => {
           contains: { value: "ZZZ", error: "Bad" },
         },
       });
-      const { onChange } = buildFieldValidationProperties(field);
+      const { onDynamic } = buildFieldValidationProperties(field);
       const fieldApi = makeFieldApi();
-      expect(onChange!({ value: "ab", fieldApi })).toEqual(["Bad"]);
+      expect(onDynamic!({ value: "ab", fieldApi })).toEqual(["Bad"]);
     });
   });
 });

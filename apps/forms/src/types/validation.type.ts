@@ -10,7 +10,7 @@ export interface FieldValidationProperties<
   TValue = FieldValue,
   TFieldApi = AnyFieldApi,
 > {
-  onChange?(input: FieldValidationContext<TValue, TFieldApi>): void; // Method called when a field's value is changed. Set via validations.
+  onDynamic?(input: FieldValidationContext<TValue, TFieldApi>): void; // Validation method. revalidateLogic runs it on submit, then on change.
   onBlur?(input: FieldValidationContext<TValue, TFieldApi>): void; // Method called when a field loses focus.
   onChangeListenTo?: string[];
 }

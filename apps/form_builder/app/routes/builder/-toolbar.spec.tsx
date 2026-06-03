@@ -13,6 +13,7 @@ function renderToolbar(overrides: Partial<Parameters<typeof Toolbar>[0]> = {}) {
     version: "1.0.0",
     idError: null,
     isDirty: false,
+    hasUnsavedChanges: false,
     isValidating: false,
     isPreviewing: false,
     isSubmitting: false,
@@ -26,10 +27,11 @@ function renderToolbar(overrides: Partial<Parameters<typeof Toolbar>[0]> = {}) {
     onPreview: jest.fn(),
     onSubmit: jest.fn(),
     onPublish: jest.fn(),
+    onDiscard: jest.fn(),
     ...overrides,
   };
   render(<Toolbar {...props} />);
-  return { onFormIdChange: props.onFormIdChange };
+  return { onFormIdChange: props.onFormIdChange, onDiscard: props.onDiscard };
 }
 
 function formIdInput() {
@@ -82,5 +84,52 @@ describe("Toolbar — Form ID input", () => {
     ).not.toBeInTheDocument();
     expect(screen.queryByText(/form id is required/i)).not.toBeInTheDocument();
     expect(onFormIdChange).toHaveBeenCalledWith("birth-registration");
+  });
+});
+
+describe("Toolbar — unsaved changes + Discard", () => {
+  function discardButton() {
+    return screen.getByRole("button", { name: /discard/i });
+  }
+  function saveDraftButton() {
+    return screen.getByRole("button", { name: /save draft/i });
+  }
+
+  it("shows the 'Unsaved changes' indicator when there are unsaved changes", () => {
+    renderToolbar({ hasUnsavedChanges: true });
+
+    expect(screen.getByText(/unsaved changes/i)).toBeInTheDocument();
+  });
+
+  it("hides the 'Unsaved changes' indicator when the draft is clean", () => {
+    renderToolbar({ hasUnsavedChanges: false });
+
+    expect(screen.queryByText(/unsaved changes/i)).not.toBeInTheDocument();
+  });
+
+  it("enables Discard and calls onDiscard when there are unsaved changes", () => {
+    const { onDiscard } = renderToolbar({ hasUnsavedChanges: true });
+
+    expect(discardButton()).toBeEnabled();
+    fireEvent.click(discardButton());
+    expect(onDiscard).toHaveBeenCalledTimes(1);
+  });
+
+  it("disables Discard when the draft is clean", () => {
+    renderToolbar({ hasUnsavedChanges: false });
+
+    expect(discardButton()).toBeDisabled();
+  });
+
+  it("disables Save draft when the draft is clean", () => {
+    renderToolbar({ hasUnsavedChanges: false });
+
+    expect(saveDraftButton()).toBeDisabled();
+  });
+
+  it("enables Save draft when there are unsaved changes", () => {
+    renderToolbar({ hasUnsavedChanges: true });
+
+    expect(saveDraftButton()).toBeEnabled();
   });
 });

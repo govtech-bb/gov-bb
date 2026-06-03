@@ -161,7 +161,7 @@ export const buildFieldValidationProperties = (
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       onBlur(_input) {},
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      onChange(_input) {},
+      onDynamic(_input) {},
     };
   }
 
@@ -200,7 +200,7 @@ export const buildFieldValidationProperties = (
         return undefined;
       }
     },
-    onChange({ value, fieldApi }) {
+    onDynamic({ value, fieldApi }) {
       // Defensive: an unrecognised value shape (neither empty, nor a known
       // primitive/array/date) used to short-circuit as "unknownState" with no
       // error. Preserve that by skipping validation entirely.
