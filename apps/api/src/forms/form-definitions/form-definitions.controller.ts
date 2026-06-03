@@ -40,11 +40,17 @@ export class FormDefinitionsController {
       { formId: string; title: string; version: string; category?: string }[]
     >
   > {
-    // Known trade-off (PR 3): findAll does not filter disabled forms.
-    // Ops correlates the list with per-form GET responses. If filtering is
-    // needed later, it's a follow-up issue.
-    const data = await this.formDefinitionsService.findAll();
-    return AppApiResponse.success(data, {
+    // Exclude disabled (tombstoned) forms so the public list matches the 410
+    // Gone the single-form GET returns for them — otherwise a disabled form
+    // still shows on the forms index and as a landing "Start now" button
+    // (issue #615).
+    const [data, disabledFormIds] = await Promise.all([
+      this.formDefinitionsService.findAll(),
+      this.disabledOverridesService.findAllFormIds(),
+    ]);
+    const disabled = new Set(disabledFormIds);
+    const published = data.filter((form) => !disabled.has(form.formId));
+    return AppApiResponse.success(published, {
       message: "Form definitions retrieved",
     });
   }
