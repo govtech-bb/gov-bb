@@ -3,6 +3,25 @@ name: Deploy Sandbox
 on:
   push:
     branches: [sandbox]
+    # Skip the whole pipeline for changes that can't affect any deploy target.
+    # Keep the list conservative — when in doubt, let nx-affected gate the
+    # individual jobs (it already skips unchanged apps). The point of this
+    # block is to skip jobs even nx-affected would skip, so docs-only PRs
+    # don't burn ~12 min spinning up `setup` for nothing.
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - ".gitignore"
+      - ".gitattributes"
+      - ".husky/**"
+      - ".editorconfig"
+      - ".vscode/**"
+      - ".idea/**"
+      - "LICENSE"
+      - "CODEOWNERS"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/PULL_REQUEST_TEMPLATE.md"
+      - ".github/dependabot.yml"
   workflow_dispatch:
 
 permissions:
@@ -87,9 +106,13 @@ jobs:
 
           # amplify.yml is a workspace-root file nx affected can't attribute to
           # any app, but a change to it (e.g. security headers) must rebuild ALL
-          # Amplify apps. Force the frontend gates when it or this workflow changes.
-          if git diff --name-only "$NX_BASE" "$NX_HEAD" \
-              | grep -qE '^(amplify\.yml|\.github/workflows/deploy-sandbox\.yml)$'; then
+          # Amplify apps. Force the frontend gates only when amplify.yml itself
+          # changes — workflow-file changes (smoke tests, monitoring tweaks,
+          # comments) don't actually affect the Amplify build output, so
+          # forcing all four Amplify rebuilds on every CI tweak was wasteful.
+          # If a workflow change really does require an Amplify rebuild, use
+          # `workflow_dispatch` to trigger one explicitly.
+          if git diff --name-only "$NX_BASE" "$NX_HEAD" | grep -q '^amplify\.yml$'; then
             echo "amplify-config=true" >> "$GITHUB_OUTPUT"
           else
             echo "amplify-config=false" >> "$GITHUB_OUTPUT"

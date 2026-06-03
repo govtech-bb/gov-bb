@@ -5,11 +5,15 @@ import {
   FormValidation,
 } from "@forms/types";
 import type { AnyFieldApi } from "@tanstack/react-form";
-import { valueIsEmpty } from "./validation-methods";
+import { valueIsEmpty, evaluateCondition } from "./validation-methods";
 import { stepFieldIdConcactenator } from "./field-mapper";
 import { validate, validateDateField } from "@govtech-bb/form-validation";
 import type { StepScopedValues } from "@govtech-bb/form-validation";
-import type { FieldValue, Primitive } from "@govtech-bb/form-types";
+import type {
+  FieldValue,
+  OptionalIfBehaviour,
+  Primitive,
+} from "@govtech-bb/form-types";
 
 export const buildValidation = (
   contract: ClientServiceContract,
@@ -45,6 +49,53 @@ const clientPrimitiveToPrimitive = (field: ClientPrimitive): Primitive => {
     validations: field.validations,
     ...(field.options && { options: field.options }),
   } as Primitive;
+};
+
+// optionalIf: when a field's condition matches, its `required` rule is relaxed
+// (the field becomes optional) without affecting visibility — the field always
+// renders. Clone the primitive without its `required` validation; all other
+// (format) rules are preserved so they still fire when it is filled.
+const stripRequired = (primitive: Primitive): Primitive => {
+  if (!primitive.validations?.required) return primitive;
+  const validations = { ...primitive.validations };
+  delete validations.required;
+  return { ...primitive, validations };
+};
+
+// Resolve the controlling field's current value from the cross-field value
+// tree, which is keyed by stepId. Prefer the behaviour's explicit
+// `targetStepId`, falling back to the field's own step. (`optionalIf` inside a
+// repeatable step is not yet supported on the client — see #668 — so an
+// array-valued step resolves to `undefined`.)
+const resolveOptionalIfTarget = (
+  behaviour: OptionalIfBehaviour,
+  fieldStepId: string,
+  allValues: StepScopedValues,
+): FieldValue | undefined => {
+  const stepValues = allValues[behaviour.targetStepId ?? fieldStepId] as
+    | Record<string, unknown>
+    | undefined;
+  return stepValues?.[behaviour.targetFieldId] as FieldValue | undefined;
+};
+
+// The field is optional when it carries at least one `optionalIf` behaviour and
+// *every* one matches (AND semantics, consistent with `fieldConditionalOn`).
+const isOptionalNow = (
+  behaviours: ClientPrimitive["behaviours"],
+  fieldStepId: string,
+  allValues: StepScopedValues,
+): boolean => {
+  const optionalIfs = (behaviours ?? []).filter(
+    (b): b is OptionalIfBehaviour => b.type === "optionalIf",
+  );
+  if (optionalIfs.length === 0) return false;
+  return optionalIfs.every((b) =>
+    evaluateCondition(
+      b.value,
+      resolveOptionalIfTarget(b, fieldStepId, allValues),
+      b.operator,
+    ),
+  );
 };
 
 // Client form state is keyed by the composite `field.id` (`stepId_fieldId`),
@@ -178,8 +229,17 @@ export const buildFieldValidationProperties = (
       // { message, parts } error so the renderer can highlight failing parts.
       if (field.htmlType === "date") {
         const { stepValues, allValues } = valueTreesFor(fieldApi, value);
+        // optionalIf applies here too: relax `required` when its condition
+        // matches, exactly as the general path below does.
+        const datePrimitive = isOptionalNow(
+          field.behaviours,
+          field.stepId,
+          allValues,
+        )
+          ? stripRequired(primitive)
+          : primitive;
         const dateError = validateDateField(
-          primitive,
+          datePrimitive,
           value,
           allValues,
           stepValues,
@@ -198,8 +258,18 @@ export const buildFieldValidationProperties = (
 
       const { stepValues, allValues } = valueTreesFor(fieldApi, value);
 
+      // `optionalIf` relaxes `required` when its condition matches; the field
+      // is never hidden, so only the required rule is dropped before validating.
+      const primitiveToValidate = isOptionalNow(
+        field.behaviours,
+        field.stepId,
+        allValues,
+      )
+        ? stripRequired(primitive)
+        : primitive;
+
       const result = validate({
-        primitives: [primitive],
+        primitives: [primitiveToValidate],
         stepValues,
         allValues,
       });
