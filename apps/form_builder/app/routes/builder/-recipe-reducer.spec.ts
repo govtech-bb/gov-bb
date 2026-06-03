@@ -704,6 +704,84 @@ describe("per-instance field overrides (id-keyed)", () => {
     });
   });
 
+  describe("CHANGE_FIELD_REF", () => {
+    it("replaces the ref and overrides of only the targeted instance", () => {
+      const a = fieldWithId("id-a", "components/generic-text", {
+        label: "Keep me",
+      });
+      const b = fieldWithId("id-b", "components/generic-text", {
+        label: "Untouched",
+      });
+      const state = {
+        ...baseDraft(),
+        steps: [editableStep("step-1", [a, b]), ...EMPTY_DRAFT.steps],
+      };
+
+      const result = recipeReducer(state, {
+        type: "CHANGE_FIELD_REF",
+        stepId: "step-1",
+        fieldId: "id-a",
+        ref: "components/generic-textarea",
+        overrides: { label: "Keep me" },
+      });
+
+      const [resA, resB] = result.steps[0].fields;
+      expect(resA.id).toBe("id-a");
+      expect(resA.ref).toBe("components/generic-textarea");
+      expect(resA.overrides).toEqual({ label: "Keep me" });
+      // The other instance keeps its original ref and overrides.
+      expect(resB.ref).toBe("components/generic-text");
+      expect(resB.overrides).toEqual({ label: "Untouched" });
+    });
+
+    it("normalizes kind to 'component' (swaps always target a generic primitive)", () => {
+      const custom: RecipeFieldDraft = {
+        id: "id-c",
+        kind: "custom",
+        ref: "components/custom-widget",
+        overrides: {},
+      };
+      const state = {
+        ...baseDraft(),
+        steps: [editableStep("step-1", [custom]), ...EMPTY_DRAFT.steps],
+      };
+
+      const result = recipeReducer(state, {
+        type: "CHANGE_FIELD_REF",
+        stepId: "step-1",
+        fieldId: "id-c",
+        ref: "components/generic-text",
+        overrides: {},
+      });
+
+      expect(result.steps[0].fields[0].kind).toBe("component");
+      expect(result.steps[0].fields[0].ref).toBe("components/generic-text");
+    });
+
+    it("leaves other steps untouched", () => {
+      const a = fieldWithId("id-a", "components/generic-text", {});
+      const state = {
+        ...baseDraft(),
+        steps: [
+          editableStep("step-1", [a]),
+          editableStep("step-2", []),
+          ...EMPTY_DRAFT.steps,
+        ],
+      };
+
+      const result = recipeReducer(state, {
+        type: "CHANGE_FIELD_REF",
+        stepId: "step-1",
+        fieldId: "id-a",
+        ref: "components/generic-number",
+        overrides: {},
+      });
+
+      expect(result.steps[1].stepId).toBe("step-2");
+      expect(result.steps[0].fields[0].ref).toBe("components/generic-number");
+    });
+  });
+
   describe("REMOVE_FIELD", () => {
     it("removes only the targeted instance when two fields share a ref", () => {
       const a = fieldWithId("id-a", "components/text", { label: "A" });
