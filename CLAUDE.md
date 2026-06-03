@@ -20,6 +20,19 @@ name" step fails fast in CI, and a local PreToolUse hook
 (`.claude/hooks/block-dotted-branch.sh`) blocks branch-creating git commands
 with a dotted name.
 
+## Session plans live in `docs/plans/` but are never committed
+
+Session plans (`docs/plans/*.md`) are **not version-controlled**, but the
+directory is intentionally **not** gitignored — so plans stay reachable via the
+`@`-mention file picker (which respects `.gitignore`). The "don't commit them"
+rule is instead enforced by a local PreToolUse hook
+(`.claude/hooks/block-commit-plans.sh`): it denies `git commit` when a
+`docs/plans/` file is staged (or when an `add -A`/`add . && commit` one-liner
+would sweep one in), and denies an explicit `git add docs/plans/...`. A bare
+`git add -A` is still allowed — only the commit is blocked. If you need to
+commit other work, stage those files **by path** rather than relying on `git
+add -A` while a plan is dirty.
+
 ## What "clean up" means at the end of a session
 
 When the human says **"clean up"** (or "wrap up and clean up") after work is
@@ -34,8 +47,8 @@ committed, run these steps in order:
    from) — automatically, no need to ask. A plan exists only to drive the work
    up to the PR; once the PR is open it has served its purpose, and the
    end-of-session summary captures anything worth keeping. Plans are **not**
-   version-controlled (`docs/plans/` is gitignored), so there's nothing to keep
-   around after the PR is made.
+   version-controlled (see "Session plans live in `docs/plans/`" below), so
+   there's nothing to keep around after the PR is made.
 5. **Offer to watch CI yourself.** Ask the human whether you should watch the
    PR's CI. If they say yes, run `gh pr checks <n> --watch` and **block until it
    finishes** — do not hand the build back to the human to follow. Then:
