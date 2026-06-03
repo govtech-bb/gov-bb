@@ -95,11 +95,16 @@ Every `jest.config.*` in this repo bakes in a worker cap and a per-worker memory
 limit:
 
 ```ts
-maxWorkers: 10,
+import { cpus } from "node:os";
+// Cap at 10, but never above jest's default (cores − 1).
+const maxWorkers = Math.max(1, Math.min(10, cpus().length - 1));
+
+// …in the config:
+maxWorkers,
 workerIdleMemoryLimit: "512MB",
 ```
 
-Without these, Jest forks `numCpus − 1` workers (≈31 on a 32-core box), and each
+Without a cap, Jest forks `numCpus − 1` workers (≈31 on a 32-core box), and each
 worker runs `ts-jest` (in-memory TypeScript compiler) — plus, where
 `collectCoverage` is on, coverage instrumentation — and grows unbounded. ~31
 heavyweight workers blow past available RAM and crash the machine. The `api`
@@ -107,11 +112,15 @@ suite (64 specs, full coverage) was the worst offender, but the same failure
 mode hits any suite on a high-core host, so the cap lives in **every** config
 rather than as a manual flag you have to remember.
 
-`maxWorkers: 10` is a deliberate middle ground: the crash only shows up near the
-uncapped ~30-worker fork, so 10 stays comfortably clear of it while keeping the
-suites fast — a cap of 1–2 would be safe but painfully slow.
-`workerIdleMemoryLimit: "512MB"` recycles any worker that grows past 512 MB,
-which is the real backstop against runaway growth.
+**It must be a computed cap, not a hardcoded `maxWorkers: 10`.** `maxWorkers` is
+an absolute count, not a ceiling: hardcoding `10` on a 2-core CI runner forces
+10 workers onto 2 cores, and the resulting CPU oversubscription makes
+timing-sensitive suites (e.g. the `form_builder` React tests) so slow they blow
+their per-test timeouts. `Math.min(10, cores − 1)` caps high-core dev boxes at
+10 (clear of the ~30-worker crash, and far faster than a 1–2 cap) while leaving
+low-core CI at exactly jest's default — so the cap can never *raise* parallelism.
+`workerIdleMemoryLimit: "512MB"` recycles any worker that grows past 512 MB and
+is the real backstop against runaway growth.
 
 Because the cap is in the configs, the suites are safe to run however you invoke
 them — `pnpm exec nx run <project>:test`, `nx run-many`, or `jest` directly; no
@@ -122,9 +131,8 @@ Nest logger output so failures stay readable:
 cd apps/api && pnpm exec jest --config jest.config.ts --silent
 ```
 
-CI runs on low-core boxes where the default worker count is already at or below
-10, so the cap is effectively a no-op there. If you need to tune parallelism on a
-given box, override per-run with `--maxWorkers=<n>`.
+If you need to tune parallelism on a given box, override per-run with
+`--maxWorkers=<n>`.
 
 ## Monorepo build gotcha: new packages must be buildable AND referenced
 

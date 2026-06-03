@@ -1,10 +1,15 @@
 import type { Config } from "jest";
+import { cpus } from "node:os";
+
+// OOM guard (see CLAUDE.md): cap workers at 10 so this suite can't fork enough
+// heavyweight ts-jest / coverage workers to exhaust host RAM — yet never above
+// jest's default (cores - 1), or a fixed cap would oversubscribe low-core CI
+// runners and time out timing-sensitive tests.
+const maxWorkers = Math.max(1, Math.min(10, cpus().length - 1));
 
 const config: Config = {
   preset: "ts-jest",
-  // OOM guard (see CLAUDE.md): cap workers and recycle memory-heavy ts-jest /
-  // coverage workers so this suite can't exhaust host RAM, alone or in parallel.
-  maxWorkers: 10,
+  maxWorkers,
   workerIdleMemoryLimit: "512MB",
   testEnvironment: "node",
   rootDir: "scripts",
