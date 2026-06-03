@@ -5,10 +5,14 @@ import {
   FormValidation,
 } from "@forms/types";
 import type { AnyFieldApi } from "@tanstack/react-form";
-import { valueIsEmpty, evaluateCondition } from "./validation-methods";
-import { stepFieldIdConcactenator } from "./field-mapper";
+import { valueIsEmpty } from "./validation-methods";
+import { buildStepScopedValues } from "./helpers/value-tree";
 import { validate, validateDateField } from "@govtech-bb/form-validation";
 import type { StepScopedValues } from "@govtech-bb/form-validation";
+import {
+  evaluateCondition,
+  flattenStepValues,
+} from "@govtech-bb/form-conditions";
 import type {
   FieldValue,
   OptionalIfBehaviour,
@@ -62,24 +66,15 @@ const stripRequired = (primitive: Primitive): Primitive => {
   return { ...primitive, validations };
 };
 
-// Resolve the controlling field's current value from the cross-field value
-// tree, which is keyed by stepId. Prefer the behaviour's explicit
-// `targetStepId`, falling back to the field's own step. (`optionalIf` inside a
-// repeatable step is not yet supported on the client — see #668 — so an
-// array-valued step resolves to `undefined`.)
-const resolveOptionalIfTarget = (
-  behaviour: OptionalIfBehaviour,
-  fieldStepId: string,
-  allValues: StepScopedValues,
-): FieldValue | undefined => {
-  const stepValues = allValues[behaviour.targetStepId ?? fieldStepId] as
-    | Record<string, unknown>
-    | undefined;
-  return stepValues?.[behaviour.targetFieldId] as FieldValue | undefined;
-};
-
 // The field is optional when it carries at least one `optionalIf` behaviour and
 // *every* one matches (AND semantics, consistent with `fieldConditionalOn`).
+// Conditions are evaluated with the shared `@govtech-bb/form-conditions`
+// evaluator — the same one `apps/api` uses — so the client's optional verdict
+// matches the server's for the same values. A behaviour with no explicit
+// `targetStepId` resolves against the field's own step (the historical
+// fallback). Conditions inside a repeatable step resolve instance-locally
+// because `handleMissingTargetStepIds` has already rewritten their
+// `targetStepId` to the synthetic instance step.
 const isOptionalNow = (
   behaviours: ClientPrimitive["behaviours"],
   fieldStepId: string,
@@ -89,30 +84,11 @@ const isOptionalNow = (
     (b): b is OptionalIfBehaviour => b.type === "optionalIf",
   );
   if (optionalIfs.length === 0) return false;
-  return optionalIfs.every((b) =>
-    evaluateCondition(
-      b.value,
-      resolveOptionalIfTarget(b, fieldStepId, allValues),
-      b.operator,
-    ),
-  );
-};
-
-// Client form state is keyed by the composite `field.id` (`stepId_fieldId`),
-// while the shared validator keys by the bare `fieldId` (resolving references
-// through `referenceFieldId` + optional `targetStepId`). Split a composite id
-// back into its parts using the same last-separator convention the rest of the
-// app uses (`getStepIdFromFieldName`): the field id never contains the
-// separator, the step id may.
-const splitCompositeId = (
-  compositeId: string,
-): { stepId: string; fieldId: string } => {
-  const idx = compositeId.lastIndexOf(stepFieldIdConcactenator);
-  if (idx <= 0) return { stepId: "", fieldId: compositeId };
-  return {
-    stepId: compositeId.slice(0, idx),
-    fieldId: compositeId.slice(idx + stepFieldIdConcactenator.length),
-  };
+  const flatValues = flattenStepValues(allValues);
+  return optionalIfs.every((b) => {
+    const behaviour = b.targetStepId ? b : { ...b, targetStepId: fieldStepId };
+    return evaluateCondition(behaviour, allValues, flatValues);
+  });
 };
 
 // The shared file runners expect a plain `{ name, size, type }[]`; the live form
@@ -161,12 +137,10 @@ const buildValueTrees = (
   formValues: Record<string, unknown>,
   currentValue: unknown,
 ): { stepValues: Record<string, unknown>; allValues: StepScopedValues } => {
-  const tree: Record<string, Record<string, unknown>> = {};
-
-  for (const [compositeId, v] of Object.entries(formValues)) {
-    const { stepId, fieldId } = splitCompositeId(compositeId);
-    (tree[stepId] ??= {})[fieldId] = v;
-  }
+  const tree = buildStepScopedValues(formValues) as Record<
+    string,
+    Record<string, unknown>
+  >;
 
   (tree[field.stepId] ??= {})[field.fieldId] = adaptCurrentValue(
     field,

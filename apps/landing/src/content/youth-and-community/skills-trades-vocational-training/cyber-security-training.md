@@ -6,6 +6,7 @@ publish_date: 2026-05-20
 category: youth-and-community
 subcategory: skills-trades-vocational-training
 service_type: information
+form_id: cyber-security-training
 ---
 
 A workshop teaching young people the fundamentals of staying safe online and the basics of cyber security.
@@ -23,7 +24,7 @@ Cyber security training under the Youth Development Programme.
 
 Complete the short application form to register your interest. Your progress is saved automatically.
 
-<!-- [Apply now](https://alpha.gov.bb/youth-and-community/skills-trades-vocational-training/cyber-security-training/form) -->
+<a data-start-link>Start now</a>
 
 ## More information
 

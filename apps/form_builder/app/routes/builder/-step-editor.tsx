@@ -231,6 +231,10 @@ export function StepEditor({
             Fields ({step.fields.length})
           </div>
           <DndContext
+            // Stable id pins dnd-kit's `aria-describedby` (otherwise derived
+            // from a module-global counter) so it can never differ between a
+            // server and client render → hydration mismatch (#546).
+            id="step-fields-dnd"
             sensors={sensors}
             collisionDetection={closestCenter}
             onDragEnd={handleFieldDragEnd}

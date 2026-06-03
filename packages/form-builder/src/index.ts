@@ -17,9 +17,6 @@ export type {
   CustomComponentEntry,
 } from "./catalog";
 
-// Builtins
-export { BUILTIN_COMPONENTS, BUILTIN_BLOCKS } from "./builtins/index";
-
 // Behaviors
 export { BEHAVIOUR_TYPE_DESCRIPTORS } from "./behaviors/behaviour-builder";
 export type {

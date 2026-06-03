@@ -95,7 +95,7 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
           fields: [
             f({
               kind: "component",
-              ref: "components/text",
+              ref: "components/generic-text",
               overrides: {},
             }),
           ],
@@ -105,12 +105,12 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
     });
 
     const recipe = serializeRecipeDraft(draft, { version: "1.0.0" });
-    expect(recipe.steps[0].elements[0].ref).toBe("components/text");
+    expect(recipe.steps[0].elements[0].ref).toBe("components/generic-text");
     expect(recipe.steps[0].elements[0].overrides).toBeUndefined();
 
     const result = deserializeRecipe(recipe);
     expect(result.steps[0].fields[0].kind).toBe("component");
-    expect(result.steps[0].fields[0].ref).toBe("components/text");
+    expect(result.steps[0].fields[0].ref).toBe("components/generic-text");
     expect(result.steps[0].fields[0].overrides).toEqual({});
   });
 
@@ -123,7 +123,7 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
           fields: [
             f({
               kind: "component",
-              ref: "components/email",
+              ref: "components/generic-email",
               overrides: {
                 label: "Your Email",
                 hint: "Work address preferred",
@@ -139,7 +139,7 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
 
     const recipe = serializeRecipeDraft(draft, { version: "1.0.0" });
     const element = recipe.steps[0].elements[0];
-    expect(element.ref).toBe("components/email");
+    expect(element.ref).toBe("components/generic-email");
     expect(element.overrides).toEqual({
       label: "Your Email",
       hint: "Work address preferred",
@@ -167,7 +167,7 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
           fields: [
             f({
               kind: "block",
-              ref: "blocks/name",
+              ref: "blocks/personal-information",
               overrides: {},
               childOverrides: {},
             }),
@@ -179,13 +179,13 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
 
     const recipe = serializeRecipeDraft(draft, { version: "1.0.0" });
     const element = recipe.steps[0].elements[0];
-    expect(element.ref).toBe("blocks/name");
+    expect(element.ref).toBe("blocks/personal-information");
     expect(element.overrides).toBeUndefined();
 
     const result = deserializeRecipe(recipe);
     const field = result.steps[0].fields[0];
     expect(field.kind).toBe("block");
-    expect(field.ref).toBe("blocks/name");
+    expect(field.ref).toBe("blocks/personal-information");
     expect(field.childOverrides).toEqual({});
     expect(field.overrides).toEqual({});
   });
@@ -199,7 +199,7 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
           fields: [
             f({
               kind: "block",
-              ref: "blocks/name",
+              ref: "blocks/personal-information",
               overrides: {},
               childOverrides: {
                 "first-name": { label: "Given Name" },
@@ -386,12 +386,12 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
           fields: [
             f({
               kind: "component",
-              ref: "components/text",
+              ref: "components/generic-text",
               overrides: { label: "Full Name" },
             }),
             f({
               kind: "block",
-              ref: "blocks/name",
+              ref: "blocks/personal-information",
               overrides: {},
               childOverrides: {},
             }),
@@ -402,7 +402,11 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
           stepId: "step-2",
           title: "Contact",
           fields: [
-            f({ kind: "component", ref: "components/email", overrides: {} }),
+            f({
+              kind: "component",
+              ref: "components/generic-email",
+              overrides: {},
+            }),
           ],
           behaviours: [],
         },
@@ -413,10 +417,10 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
     const result = deserializeRecipe(recipe);
 
     expect(result.steps).toHaveLength(2);
-    expect(result.steps[0].fields[0].ref).toBe("components/text");
+    expect(result.steps[0].fields[0].ref).toBe("components/generic-text");
     expect(result.steps[0].fields[0].overrides).toEqual({ label: "Full Name" });
     expect(result.steps[0].fields[1].kind).toBe("block");
-    expect(result.steps[1].fields[0].ref).toBe("components/email");
+    expect(result.steps[1].fields[0].ref).toBe("components/generic-email");
   });
 
   it("deserializeRecipe stamps a unique editor-only id on every field", () => {
@@ -426,8 +430,16 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
           stepId: "step-1",
           title: "Step 1",
           fields: [
-            f({ kind: "component", ref: "components/text", overrides: {} }),
-            f({ kind: "component", ref: "components/text", overrides: {} }),
+            f({
+              kind: "component",
+              ref: "components/generic-text",
+              overrides: {},
+            }),
+            f({
+              kind: "component",
+              ref: "components/generic-text",
+              overrides: {},
+            }),
           ],
           behaviours: [],
         },
@@ -450,7 +462,11 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
           stepId: "step-1",
           title: "Step 1",
           fields: [
-            f({ kind: "component", ref: "components/text", overrides: {} }),
+            f({
+              kind: "component",
+              ref: "components/generic-text",
+              overrides: {},
+            }),
           ],
           behaviours: [],
         },
@@ -472,7 +488,7 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
           fields: [
             f({
               kind: "component",
-              ref: "components/text",
+              ref: "components/generic-text",
               overrides: { validations: { required: {} } },
             }),
           ],

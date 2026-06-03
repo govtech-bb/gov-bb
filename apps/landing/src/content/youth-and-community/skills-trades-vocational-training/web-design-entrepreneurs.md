@@ -6,6 +6,7 @@ publish_date: 2026-05-20
 category: youth-and-community
 subcategory: skills-trades-vocational-training
 service_type: information
+form_id: web-design-entrepreneurs
 ---
 
 A practical workshop where young entrepreneurs learn to design and maintain their own business websites.
@@ -23,7 +24,7 @@ Workshop teaching young entrepreneurs to design and maintain their own websites.
 
 Complete the short application form to register your interest. Your progress is saved automatically.
 
-<!-- [Apply now](https://alpha.gov.bb/youth-and-community/skills-trades-vocational-training/web-design-entrepreneurs/form) -->
+<a data-start-link>Start now</a>
 
 ## More information
 

@@ -149,7 +149,7 @@ describe("POST /builder/ai/convert", () => {
           title: "Step 1",
           elements: [
             { ref: "components/generic/text" }, // pre-migration slash ref
-            { ref: "components/text" }, // resolves against builtin catalog
+            { ref: "components/generic-text" }, // resolves against the registry
           ],
         },
       ],

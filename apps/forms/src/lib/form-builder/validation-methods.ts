@@ -1,17 +1,15 @@
-import {
-  EqualityOperations,
-  DateValueInput,
-  FieldValue,
-} from "@govtech-bb/form-types";
+import { DateValueInput, FieldValue } from "@govtech-bb/form-types";
 
 // Field rule-checking now lives in `@govtech-bb/form-validation` (the single
 // source of truth, also used by `apps/api`); `validation-builder` calls it via
-// `validate`. The helpers below are the pieces that are *not* rule checks and
-// are still consumed elsewhere:
+// `validate`. Conditional evaluation now lives in `@govtech-bb/form-conditions`
+// (also used by `apps/api`); `behavior-helper`/`validation-builder` call its
+// `evaluateCondition` (#668). The helpers below are the pieces that are *not*
+// rule checks and are still consumed elsewhere:
 //  - `valueIsEmpty` — emptiness semantics shared with the validation boundary
 //    and `apps/forms/src/lib/api/forms.ts`.
 //  - `isDateComplete` — the date-object emptiness check behind `valueIsEmpty`.
-//  - `evaluateCondition` / `RequiredState` — conditional visibility in
+//  - `RequiredState` — the required/visibility state enum returned by
 //    `helpers/behavior-helper.ts`.
 
 export type RequiredState =
@@ -58,80 +56,4 @@ export const isDateComplete = (value: DateValueInput): boolean => {
     value.month !== undefined &&
     value.year !== undefined
   );
-};
-
-export const evaluateCondition = (
-  conditionValue: FieldValue,
-  targetFieldValue: FieldValue | undefined,
-  operation: EqualityOperations | "gt" | "lt" | "contains" | "strictEquality",
-): boolean => {
-  switch (operation) {
-    case "in":
-    case "contains":
-      if (
-        targetFieldValue &&
-        conditionValue &&
-        (Array.isArray(conditionValue) || typeof conditionValue === "string") &&
-        (typeof targetFieldValue === "string" ||
-          typeof targetFieldValue === "boolean" ||
-          typeof targetFieldValue === "number") &&
-        conditionValue.includes(targetFieldValue.toString())
-      )
-        return true;
-      else return false;
-    case "equal": // Can be case insensitive
-      if (conditionValue && targetFieldValue) {
-        return (
-          conditionValue == targetFieldValue ||
-          (typeof conditionValue === "string" &&
-            typeof targetFieldValue === "string" &&
-            conditionValue.toLowerCase() === targetFieldValue.toLowerCase())
-        );
-      } else return false;
-    case "strictEquality":
-      if (
-        conditionValue &&
-        targetFieldValue &&
-        conditionValue === targetFieldValue
-      )
-        return true;
-      return false;
-    case "notEqual":
-      if (conditionValue && conditionValue != targetFieldValue) return true;
-      else return false;
-    case "exists":
-      if (targetFieldValue && !valueIsEmpty(targetFieldValue)) return true;
-      return false;
-    case "gt": {
-      if (conditionValue == null || targetFieldValue == null) return false;
-      if (typeof conditionValue === "string" && conditionValue.trim() === "")
-        return false;
-      if (
-        typeof targetFieldValue === "string" &&
-        targetFieldValue.trim() === ""
-      )
-        return false;
-      const cv = Number(conditionValue);
-      const tfv = Number(targetFieldValue);
-      if (!Number.isNaN(cv) && !Number.isNaN(tfv)) return cv > tfv;
-      return false;
-    }
-    case "lt": {
-      if (conditionValue == null || targetFieldValue == null) return false;
-      if (typeof conditionValue === "string" && conditionValue.trim() === "")
-        return false;
-      if (
-        typeof targetFieldValue === "string" &&
-        targetFieldValue.trim() === ""
-      )
-        return false;
-      const cv = Number(conditionValue);
-      const tfv = Number(targetFieldValue);
-      if (!Number.isNaN(cv) && !Number.isNaN(tfv)) return cv < tfv;
-      return false;
-    }
-
-    default:
-      return false;
-  }
 };

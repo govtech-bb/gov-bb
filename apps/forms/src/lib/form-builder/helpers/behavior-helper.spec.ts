@@ -27,6 +27,9 @@ import type { AnyFormApi } from "@tanstack/react-form";
 
 function makeFormApi(fieldValues: Record<string, unknown> = {}): AnyFormApi {
   return {
+    // checkConditionalOn now reads the full composite-keyed value map from
+    // `state.values` and builds the shared evaluator's step-scoped tree from it.
+    state: { values: fieldValues },
     getFieldValue: (fieldId: string) => fieldValues[fieldId],
   } as unknown as AnyFormApi;
 }
@@ -104,6 +107,24 @@ describe("checkConditionalOn", () => {
     };
     const result = checkConditionalOn("", [condition], formApi, "step1");
     expect(result).toBe("requiredAndEmpty");
+  });
+
+  it("does NOT match a mixed-case value against a lowercase condition (cross-path agreement with the API)", () => {
+    // Regression for #668: the retired local evaluator's `equal` was
+    // case-insensitive, so "No" matched `value: "no"` and the field was treated
+    // as required — but the case-sensitive API then 422'd the accepted input.
+    // The shared evaluator is case-sensitive, so the condition does NOT pass and
+    // the client now agrees with the API.
+    const formApi = makeFormApi({ step1_hasJob: "No" });
+    const condition: FieldConditionalOnBehaviour = {
+      type: "fieldConditionalOn",
+      targetStepId: "step1",
+      targetFieldId: "hasJob",
+      operator: "equal",
+      value: "no",
+    };
+    const result = checkConditionalOn("", [condition], formApi);
+    expect(result).toBe("notRequired");
   });
 
   it("treats null-ish currentFieldValue as empty string before length check", () => {

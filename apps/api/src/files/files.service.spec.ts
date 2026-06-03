@@ -1,7 +1,11 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { ConfigService } from "@nestjs/config";
 import { mockClient } from "aws-sdk-client-mock";
-import { S3Client, HeadObjectCommand } from "@aws-sdk/client-s3";
+import {
+  S3Client,
+  GetObjectCommand,
+  HeadObjectCommand,
+} from "@aws-sdk/client-s3";
 import { BadRequestException, NotFoundException } from "@nestjs/common";
 import type { ServiceContract } from "@govtech-bb/form-types";
 import { FilesService } from "./files.service";
@@ -299,6 +303,103 @@ describe("FilesService", () => {
           policeCertificate: ["Uploaded file not found"],
         },
       });
+    });
+  });
+
+  describe("collectFileEntries", () => {
+    const fileFields = () =>
+      FilesService.collectFileFieldsByStep(makeContract());
+
+    it("collects file entries with their stored metadata", () => {
+      const entries = FilesService.collectFileEntries(fileFields(), {
+        documents: {
+          policeCertificate: [
+            {
+              key: "uploads/passport-renewal/2026/06/u-cert.pdf",
+              name: "cert.pdf",
+              size: 1024,
+              type: "application/pdf",
+            },
+          ],
+          fullName: "Jane",
+        },
+      });
+
+      expect(entries).toEqual([
+        {
+          key: "uploads/passport-renewal/2026/06/u-cert.pdf",
+          name: "cert.pdf",
+          size: 1024,
+          type: "application/pdf",
+        },
+      ]);
+    });
+
+    it("walks repeatable-step instances", () => {
+      const entries = FilesService.collectFileEntries(fileFields(), {
+        documents: [
+          {
+            policeCertificate: [
+              { key: "k1", name: "a.pdf", size: 1, type: "application/pdf" },
+            ],
+          },
+          {
+            policeCertificate: [
+              { key: "k2", name: "b.pdf", size: 2, type: "application/pdf" },
+            ],
+          },
+        ],
+      });
+
+      expect(entries.map((e) => e.key)).toEqual(["k1", "k2"]);
+    });
+
+    it("skips keyless entries and defaults missing metadata", () => {
+      const entries = FilesService.collectFileEntries(fileFields(), {
+        documents: {
+          policeCertificate: [
+            { name: "no-key.pdf", size: 1, type: "application/pdf" },
+            { key: "uploads/f/2026/06/u-bare.pdf" },
+          ],
+        },
+      });
+
+      expect(entries).toEqual([
+        {
+          key: "uploads/f/2026/06/u-bare.pdf",
+          name: "u-bare.pdf",
+          size: 0,
+          type: "application/octet-stream",
+        },
+      ]);
+    });
+
+    it("returns [] when the step has no submitted values", () => {
+      expect(FilesService.collectFileEntries(fileFields(), {})).toEqual([]);
+    });
+  });
+
+  describe("getObjectBytes", () => {
+    it("returns the object's bytes as a Buffer", async () => {
+      s3Mock.on(GetObjectCommand).resolves({
+        Body: {
+          transformToByteArray: async () =>
+            new Uint8Array(Buffer.from("pdf-bytes")),
+        },
+      } as never);
+
+      const buf = await service.getObjectBytes("uploads/f/2026/06/u-x.pdf");
+
+      expect(Buffer.isBuffer(buf)).toBe(true);
+      expect(buf.toString("utf8")).toBe("pdf-bytes");
+    });
+
+    it("throws NotFoundException when the object has no body", async () => {
+      s3Mock.on(GetObjectCommand).resolves({} as never);
+
+      await expect(service.getObjectBytes("uploads/missing")).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

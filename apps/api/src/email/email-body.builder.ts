@@ -35,12 +35,22 @@ export interface EmailSection {
   fields: EmailField[];
 }
 
+/** An uploaded file delivered as a signed download link instead of an
+ * attachment (e.g. when it would push the message over the SES size limit). */
+export interface EmailFileLink {
+  name: string;
+  url: string;
+}
+
 export interface EmailTemplateContext {
   formTitle: string;
   submissionId: string;
   submittedAt: string;
   processedAt: string;
   sections: EmailSection[];
+  /** Set by the email processor, not by `build` — link delivery is a
+   * per-recipient decision the builder has no visibility into. */
+  fileLinks?: EmailFileLink[];
 }
 
 /**
@@ -151,7 +161,12 @@ export class EmailBodyBuilder {
     return contract.contactDetails;
   }
 
-  private async resolveContract(
+  /**
+   * Fetches the form's service contract through the same per-`formId:version`
+   * cache as `build`. Public so the email processor can walk the contract's
+   * file fields when gathering upload attachments.
+   */
+  async resolveContract(
     formId: string,
     version: string,
   ): Promise<ServiceContract> {
