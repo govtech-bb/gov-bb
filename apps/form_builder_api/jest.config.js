@@ -2,9 +2,19 @@
 // TypeScript-config loader silently falls back to defaults here without
 // ts-node — so a .js config is the reliable choice.
 
+const { cpus } = require("node:os");
+
+// OOM guard (see CLAUDE.md): cap workers at 10 so this suite can't fork enough
+// heavyweight ts-jest / coverage workers to exhaust host RAM — yet never above
+// jest's default (cores - 1), or a fixed cap would oversubscribe low-core CI
+// runners and time out timing-sensitive tests.
+const maxWorkers = Math.max(1, Math.min(10, cpus().length - 1));
+
 /** @type {import('jest').Config} */
 module.exports = {
   preset: "ts-jest",
+  maxWorkers,
+  workerIdleMemoryLimit: "512MB",
   testEnvironment: "node",
   rootDir: "src",
   testRegex: ".*\\.spec\\.ts$",
