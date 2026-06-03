@@ -25,6 +25,14 @@ import type {
   PresignUploadResponseDto,
 } from "./dto";
 
+/** A durable uploaded-file reference collected from submitted values. */
+export interface SubmissionFileEntry {
+  key: string;
+  name: string;
+  size: number;
+  type: string;
+}
+
 @Injectable()
 export class FilesService {
   private readonly s3: S3Client;
@@ -177,6 +185,60 @@ export class FilesService {
       if (ids.length > 0) out.set(step.stepId, new Set(ids));
     }
     return out;
+  }
+
+  /**
+   * Collects every uploaded-file entry from submitted values for the
+   * file-typed fields in `fileFieldsByStep` (see `collectFileFieldsByStep`).
+   * Walks repeatable-step instances; entries without a durable `key`
+   * (incomplete uploads) are skipped.
+   */
+  static collectFileEntries(
+    fileFieldsByStep: Map<string, Set<string>>,
+    values: SubmissionValues,
+  ): SubmissionFileEntry[] {
+    const entries: SubmissionFileEntry[] = [];
+    for (const [stepId, fieldIds] of fileFieldsByStep) {
+      const stepVal = values[stepId];
+      if (stepVal === undefined) continue;
+      const instances = Array.isArray(stepVal) ? stepVal : [stepVal];
+      for (const inst of instances) {
+        for (const fid of fieldIds) {
+          const arr = inst[fid];
+          if (!Array.isArray(arr)) continue;
+          for (const item of arr as Array<Record<string, unknown>>) {
+            if (typeof item?.key !== "string" || item.key.length === 0) {
+              continue;
+            }
+            entries.push({
+              key: item.key,
+              name:
+                typeof item.name === "string" && item.name.length > 0
+                  ? item.name
+                  : (item.key.split("/").pop() ?? item.key),
+              size: typeof item.size === "number" ? item.size : 0,
+              type:
+                typeof item.type === "string" && item.type.length > 0
+                  ? item.type
+                  : "application/octet-stream",
+            });
+          }
+        }
+      }
+    }
+    return entries;
+  }
+
+  /** Downloads an uploaded object's bytes (e.g. to attach to an email). */
+  async getObjectBytes(key: string): Promise<Buffer> {
+    this.assertConfigured();
+    const res = await this.s3.send(
+      new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+    );
+    if (!res.Body) {
+      throw new NotFoundException(`Uploaded object has no body: ${key}`);
+    }
+    return Buffer.from(await res.Body.transformToByteArray());
   }
 
   async verifySubmissionFiles(

@@ -1,8 +1,13 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
+import MailComposer from "nodemailer/lib/mail-composer";
 import { EmailTemplateService } from "../../../email/email-template.service";
-import { EmailBodyBuilder } from "../../../email/email-body.builder";
+import {
+  EmailBodyBuilder,
+  type EmailFileLink,
+} from "../../../email/email-body.builder";
+import { FilesService } from "../../../files/files.service";
 import type {
   ISubmissionProcessor,
   ProcessorOutput,
@@ -10,6 +15,26 @@ import type {
 import type { SubmissionCreatedEvent } from "../submissions.types";
 
 const CONFIRMATION_TEMPLATE = "submission-confirmation";
+
+// SESv2 SendEmail accepts messages up to 40 MB (after base64), but messages
+// over 10 MB are bandwidth-throttled. Base64 inflates attachment bytes by
+// 4/3, so a 7 MB raw budget (~9.3 MB encoded plus body and MIME framing)
+// keeps sends near the throttle-free tier with ample headroom under the hard
+// cap. Files beyond the budget are delivered as signed download links in the
+// body instead.
+const ATTACHMENT_BUDGET_BYTES = 7 * 1024 * 1024;
+
+// TTL for signed download links embedded in the email body. A presigned URL
+// is a bearer credential and email is forwardable and retained indefinitely,
+// so this is deliberately much shorter than the 7-day upload-flow default —
+// long enough to span a weekend before a reviewer opens the notification.
+const EMAIL_LINK_TTL_SECONDS = 72 * 60 * 60;
+
+interface EmailAttachment {
+  filename: string;
+  content: Buffer;
+  contentType: string;
+}
 
 // Reserved recipientField prefix. A recipientField of "contactDetails.<key>"
 // resolves against the form's service-contract contactDetails (e.g. the MDA
@@ -30,6 +55,7 @@ export class EmailProcessor implements ISubmissionProcessor {
     config: ConfigService,
     private readonly templateService: EmailTemplateService,
     private readonly emailBodyBuilder: EmailBodyBuilder,
+    private readonly filesService: FilesService,
   ) {
     this.from = config.get<string>("email.from") ?? "noreply@gov.bb";
     this.configurationSet = config.get<string>("email.configurationSet");
@@ -108,27 +134,50 @@ export class EmailProcessor implements ISubmissionProcessor {
         (cfg["subject"] as string | undefined) ??
         "Your form submission has been received";
 
-      const htmlBody = await this.resolveHtmlBody(payload);
+      // Uploaded files travel only on MDA/reviewer emails — a literal address
+      // or a contactDetails.* path. The citizen confirmation (stepId.fieldId
+      // recipient) stays lightweight: the citizen already has their own files.
+      const includeUploads =
+        recipientField.includes("@") ||
+        recipientField.startsWith(CONTACT_DETAILS_PREFIX);
+      const { attachments, fileLinks } = includeUploads
+        ? await this.collectUploads(payload)
+        : { attachments: [], fileLinks: [] };
+
+      const htmlBody = await this.resolveHtmlBody(payload, fileLinks);
+      const textBody = this.buildTextBody(payload, fileLinks);
+
+      // Content.Simple cannot carry attachments, so sends with attachments
+      // switch to a raw MIME message (issue #658). Attachment-free sends keep
+      // the simple path unchanged.
+      const content =
+        attachments.length > 0
+          ? {
+              Raw: {
+                Data: await this.buildRawMessage(
+                  recipient,
+                  subject,
+                  htmlBody,
+                  textBody,
+                  attachments,
+                ),
+              },
+            }
+          : {
+              Simple: {
+                Subject: { Data: subject, Charset: "UTF-8" },
+                Body: {
+                  Text: { Data: textBody, Charset: "UTF-8" },
+                  Html: { Data: htmlBody, Charset: "UTF-8" },
+                },
+              },
+            };
 
       await this.client.send(
         new SendEmailCommand({
           FromEmailAddress: this.from,
           Destination: { ToAddresses: [recipient] },
-          Content: {
-            Simple: {
-              Subject: { Data: subject, Charset: "UTF-8" },
-              Body: {
-                Text: {
-                  Data: this.buildTextBody(payload),
-                  Charset: "UTF-8",
-                },
-                Html: {
-                  Data: htmlBody,
-                  Charset: "UTF-8",
-                },
-              },
-            },
-          },
+          Content: content,
           // EmailTags are forwarded to the SES event destination (SNS/EventBridge).
           EmailTags: [{ Name: "submissionId", Value: payload.submissionId }],
           ...(this.configurationSet && {
@@ -189,6 +238,92 @@ export class EmailProcessor implements ISubmissionProcessor {
   }
 
   /**
+   * Gathers the submission's uploaded files for an MDA/reviewer email.
+   * Files are attached while their combined raw size stays within
+   * ATTACHMENT_BUDGET_BYTES (in submission order); the rest become signed
+   * download links so the message never exceeds the SES size limit. A file
+   * with unknown size (0) is linked rather than risking the budget.
+   *
+   * Failures here (contract fetch, S3 download) propagate — the entry fails
+   * loudly and the SQS retry path re-attempts, rather than silently sending
+   * the notification without the citizen's documents.
+   */
+  private async collectUploads(payload: SubmissionCreatedEvent): Promise<{
+    attachments: EmailAttachment[];
+    fileLinks: EmailFileLink[];
+  }> {
+    const contract = await this.emailBodyBuilder.resolveContract(
+      payload.formId,
+      payload.formVersion,
+    );
+    const entries = FilesService.collectFileEntries(
+      FilesService.collectFileFieldsByStep(contract),
+      payload.values,
+    );
+
+    // Uploaded keys are always issued under the submission's own form prefix
+    // (FilesService.buildKey). A submitted key outside it is forged — emailing
+    // its bytes (or a signed link) would let a submitter exfiltrate another
+    // form's object, so it is skipped entirely, never linked.
+    const keyPrefix = `uploads/${payload.formId}/`;
+
+    const attachments: EmailAttachment[] = [];
+    const fileLinks: EmailFileLink[] = [];
+    let used = 0;
+    for (const entry of entries) {
+      if (!entry.key.startsWith(keyPrefix)) {
+        this.logger.warn(
+          `[email] Skipping file with foreign key ${JSON.stringify(entry.key)} on submission ${payload.submissionId}`,
+        );
+        continue;
+      }
+      // entry.size is client-reported, so it only pre-filters files that
+      // can't fit; the budget itself is enforced on the actual downloaded
+      // byte count — a lying size cannot push the message over the SES limit.
+      if (entry.size > 0 && used + entry.size <= ATTACHMENT_BUDGET_BYTES) {
+        const content = await this.filesService.getObjectBytes(entry.key);
+        if (used + content.length <= ATTACHMENT_BUDGET_BYTES) {
+          attachments.push({
+            filename: entry.name,
+            content,
+            contentType: entry.type,
+          });
+          used += content.length;
+          continue;
+        }
+      }
+      fileLinks.push({
+        name: entry.name,
+        url: await this.filesService.getSignedReadUrl(
+          entry.key,
+          EMAIL_LINK_TTL_SECONDS,
+        ),
+      });
+    }
+    return { attachments, fileLinks };
+  }
+
+  /** Builds an RFC 2822 raw message — SES Content.Simple cannot carry
+   * attachments, so attachment sends go through Content.Raw. */
+  private async buildRawMessage(
+    to: string,
+    subject: string,
+    html: string,
+    text: string,
+    attachments: EmailAttachment[],
+  ): Promise<Uint8Array> {
+    const composer = new MailComposer({
+      from: this.from,
+      to,
+      subject,
+      text,
+      html,
+      attachments,
+    });
+    return composer.compile().build();
+  }
+
+  /**
    * Builds the HTML body for the confirmation email.
    *
    * Delegates to EmailBodyBuilder (which handles form contract fetching and
@@ -198,9 +333,11 @@ export class EmailProcessor implements ISubmissionProcessor {
    */
   private async resolveHtmlBody(
     payload: SubmissionCreatedEvent,
+    fileLinks: EmailFileLink[] = [],
   ): Promise<string> {
     try {
       const ctx = await this.emailBodyBuilder.build(payload);
+      if (fileLinks.length > 0) ctx.fileLinks = fileLinks;
       const rendered = this.templateService.render(
         CONFIRMATION_TEMPLATE,
         ctx as unknown as Record<string, unknown>,
@@ -216,27 +353,61 @@ export class EmailProcessor implements ISubmissionProcessor {
       );
     }
 
-    return this.buildHtmlBody(payload);
+    return this.buildHtmlBody(payload, fileLinks);
   }
 
-  private buildTextBody(payload: SubmissionCreatedEvent): string {
-    return [
+  private buildTextBody(
+    payload: SubmissionCreatedEvent,
+    fileLinks: EmailFileLink[] = [],
+  ): string {
+    const lines = [
       "Your submission has been received.",
       "",
       `Reference: ${payload.submissionId}`,
       `Form:      ${payload.formId}`,
       `Submitted: ${payload.meta.submittedAt}`,
-    ].join("\n");
+    ];
+    if (fileLinks.length > 0) {
+      lines.push(
+        "",
+        "Uploaded documents too large to attach (temporary download links):",
+        ...fileLinks.map((l) => `- ${l.name}: ${l.url}`),
+      );
+    }
+    return lines.join("\n");
   }
 
-  private buildHtmlBody(payload: SubmissionCreatedEvent): string {
+  private buildHtmlBody(
+    payload: SubmissionCreatedEvent,
+    fileLinks: EmailFileLink[] = [],
+  ): string {
+    const links =
+      fileLinks.length > 0
+        ? `\n      <p>Uploaded documents too large to attach (temporary download links):</p>
+      <ul>${fileLinks
+        .map(
+          (l) =>
+            `<li><a href="${escapeHtml(l.url)}">${escapeHtml(l.name)}</a></li>`,
+        )
+        .join("")}</ul>`
+        : "";
     return `
       <p>Your submission has been received.</p>
       <table>
         <tr><th>Reference</th><td>${payload.submissionId}</td></tr>
         <tr><th>Form</th><td>${payload.formId}</td></tr>
         <tr><th>Submitted</th><td>${payload.meta.submittedAt}</td></tr>
-      </table>
+      </table>${links}
     `.trim();
   }
+}
+
+/** Minimal escape for citizen-supplied filenames in the fallback HTML body
+ * (the Handlebars template escapes automatically; this path does not). */
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
