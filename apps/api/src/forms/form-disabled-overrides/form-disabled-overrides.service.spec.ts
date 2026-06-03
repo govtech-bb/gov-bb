@@ -16,6 +16,7 @@ function makeOverride(
 
 function makeMocks() {
   const repo = {
+    find: jest.fn(),
     findOne: jest.fn(),
     upsert: jest.fn(),
     delete: jest.fn(),
@@ -46,6 +47,30 @@ describe("FormDisabledOverridesService", () => {
       const result = await service.find("ghost");
 
       expect(result).toBeNull();
+    });
+  });
+
+  describe("findAllFormIds", () => {
+    it("returns the formId of every disabled row", async () => {
+      const { repo, service } = makeMocks();
+      (repo.find as jest.Mock).mockResolvedValue([
+        makeOverride({ formId: "old-form" }),
+        makeOverride({ formId: "retired-form" }),
+      ]);
+
+      const result = await service.findAllFormIds();
+
+      expect(repo.find).toHaveBeenCalledWith({ select: { formId: true } });
+      expect(result).toEqual(["old-form", "retired-form"]);
+    });
+
+    it("returns an empty array when no form is disabled", async () => {
+      const { repo, service } = makeMocks();
+      (repo.find as jest.Mock).mockResolvedValue([]);
+
+      const result = await service.findAllFormIds();
+
+      expect(result).toEqual([]);
     });
   });
 

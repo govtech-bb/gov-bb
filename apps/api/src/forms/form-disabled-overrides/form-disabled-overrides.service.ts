@@ -15,6 +15,16 @@ export class FormDisabledOverridesService {
   }
 
   /**
+   * Returns the formId of every currently-disabled form. The public list
+   * endpoint uses this to exclude disabled forms, mirroring the 410 Gone the
+   * single-form endpoint returns for them (issue #615).
+   */
+  async findAllFormIds(): Promise<string[]> {
+    const rows = await this.overrideRepo.find({ select: { formId: true } });
+    return rows.map((row) => row.formId);
+  }
+
+  /**
    * Disable the form. Idempotent — re-disabling overwrites the reason and
    * disabledBy fields. `disabled_at` is set by the DB default.
    */
