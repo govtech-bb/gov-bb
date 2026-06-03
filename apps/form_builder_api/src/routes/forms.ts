@@ -566,6 +566,15 @@ export async function rekeyFormHandler(
         `UPDATE form_definitions SET form_id = $1 WHERE form_id = $2`,
         [newFormId, oldFormId],
       );
+      // Move the per-form config (the MDA contact link) to the new ID too, so a
+      // re-key keeps its config.mdaEmail recipient instead of orphaning the
+      // form_config row under the old ID (#732). No-op when the form has no
+      // config row. form_config.form_id is unique and step 3 guarantees the new
+      // ID is otherwise unused, so this can't collide.
+      await manager.query(
+        `UPDATE form_config SET form_id = $1 WHERE form_id = $2`,
+        [newFormId, oldFormId],
+      );
       // 6. Persist the saved version's content under the new ID.
       const existing = await manager.query(
         `SELECT id FROM form_definitions WHERE form_id = $1 AND version = $2 LIMIT 1`,
