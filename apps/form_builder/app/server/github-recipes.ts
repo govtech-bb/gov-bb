@@ -11,7 +11,7 @@ const API_BASE = "https://api.github.com";
 // Colocated with the API form-definitions module so the API loader, the dump
 // script, the Dockerfile, the publish flow, and this read path all share one
 // canonical location. See plan/issue #145.
-const RECIPES_BASE = "apps/api/src/forms/form-definitions/recipes";
+export const RECIPES_BASE = "apps/api/src/forms/form-definitions/recipes";
 
 interface ContentsListEntry {
   name: string;
@@ -85,9 +85,18 @@ export async function getPublishedRecipe(
   return fetchRecipeFile(token, args.formId, version);
 }
 
-async function listVersions(token: string, formId: string): Promise<string[]> {
+/**
+ * List the on-disk recipe version names (no `.json` suffix) for a form. When
+ * `ref` is given the listing is read off that branch/ref; otherwise GitHub
+ * serves the repo's default branch. Returns `[]` when the folder is absent.
+ */
+export async function listVersions(
+  token: string,
+  formId: string,
+  ref?: string,
+): Promise<string[]> {
   const res = await ghGet(
-    `${API_BASE}/repos/${repoOwner()}/${REPO_NAME}/contents/${RECIPES_BASE}/${encodeURIComponent(formId)}`,
+    `${API_BASE}/repos/${repoOwner()}/${REPO_NAME}/contents/${RECIPES_BASE}/${encodeURIComponent(formId)}${ref ? `?ref=${encodeURIComponent(ref)}` : ""}`,
     token,
   );
   if (res.status === 404) return [];

@@ -22,6 +22,21 @@
   border-color: #b91c1c;
 }
 
+/* Erase is permanent (deletes the on-disk recipe via PR), so it reads stronger
+   than the reversible Disable: a darker, heavier red so the two destructive
+   actions on a live published row aren't confused. */
+.btnErase {
+  background: #7f1d1d;
+  color: white;
+  border-color: #7f1d1d;
+  font-weight: 600;
+}
+
+.btnErase:hover:not(:disabled) {
+  background: #5f1414;
+  border-color: #5f1414;
+}
+
 .btnSwitch {
   background: #7c3aed;
   color: white;

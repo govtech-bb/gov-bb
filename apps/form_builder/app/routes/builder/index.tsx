@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useReducer, useState, useMemo } from "react";
 import { getCatalogFn } from "../../server/registry";
 import { submitRecipe, updateRecipe, deleteForm, disableForm, enableForm } from "../../server/forms";
-import { publishRecipe, getPublishBaseBranch } from "../../server/publish";
+import { publishRecipe, getPublishBaseBranch, eraseRecipe } from "../../server/publish";
 import { validateRecipe, previewRecipe } from "../../server/registry";
 import { serializeRecipeDraft, findRecipeIdCollisions, formatCollisionIssues, resolveFieldIds } from "@govtech-bb/form-builder";
 import { bumpMinor, bumpPatch } from "../../lib/version";
@@ -29,6 +29,7 @@ import { checkFormUniqueness } from "./-form-uniqueness";
 import { useFormsList } from "./-use-forms-list";
 import { DeleteModal } from "./-delete-modal";
 import { DisableModal } from "./-disable-modal";
+import { EraseModal } from "./-erase-modal";
 import type { FormDefinitionSummary } from "../../types/index";
 
 import styles from "../../styles/builder.module.css";
@@ -94,6 +95,12 @@ function BuilderPage() {
   const [disableTarget, setDisableTarget] = useState<FormDefinitionSummary | null>(null);
   const [isDisabling, setIsDisabling] = useState(false);
   const [disableError, setDisableError] = useState<string | null>(null);
+  const [eraseTarget, setEraseTarget] = useState<FormDefinitionSummary | null>(null);
+  const [isErasing, setIsErasing] = useState(false);
+  const [eraseError, setEraseError] = useState<string | null>(null);
+  const [eraseSuccess, setEraseSuccess] = useState<
+    { prUrl: string; prNumber: number } | null
+  >(null);
 
   // Derived
   const selectedStep = draft.steps.find((s) => s.stepId === selectedStepId) ?? null;
@@ -628,6 +635,42 @@ function BuilderPage() {
     setDisableError(null);
   };
 
+  const handleRequestErase = (form: FormDefinitionSummary) => {
+    setEraseError(null);
+    setEraseSuccess(null);
+    setEraseTarget(form);
+    setIsPickerOpen(false);
+  };
+
+  const handleConfirmErase = async (reason: string) => {
+    if (!eraseTarget) return;
+    setIsErasing(true);
+    setEraseError(null);
+    try {
+      const result = await eraseRecipe({
+        data: {
+          formId: eraseTarget.formId,
+          title: eraseTarget.title,
+          reason,
+        },
+      });
+      // The recipe stays on disk until the PR merges, so the picker row is left
+      // as-is — we surface the PR link in the modal instead of refetching.
+      setEraseSuccess(result);
+    } catch (e) {
+      setEraseError(e instanceof Error ? e.message : "Erase failed");
+    } finally {
+      setIsErasing(false);
+    }
+  };
+
+  const handleCloseErase = () => {
+    if (isErasing) return;
+    setEraseTarget(null);
+    setEraseError(null);
+    setEraseSuccess(null);
+  };
+
   // Enable is a direct action (no modal) with an inline confirm: clearing a
   // tombstone restores the public service, so a single confirm is enough.
   const handleEnable = async (form: FormDefinitionSummary) => {
@@ -793,6 +836,7 @@ function BuilderPage() {
           onClose={() => setIsPickerOpen(false)}
           onRequestDelete={handleRequestDelete}
           onRequestDisable={handleRequestDisable}
+          onRequestErase={handleRequestErase}
           onEnable={handleEnable}
         />
       )}
@@ -853,6 +897,18 @@ function BuilderPage() {
           disableError={disableError}
           onConfirm={handleConfirmDisable}
           onClose={handleCloseDisable}
+        />
+      )}
+
+      {eraseTarget && (
+        <EraseModal
+          formId={eraseTarget.formId}
+          title={eraseTarget.title}
+          isErasing={isErasing}
+          eraseSuccess={eraseSuccess}
+          eraseError={eraseError}
+          onConfirm={handleConfirmErase}
+          onClose={handleCloseErase}
         />
       )}
       </div>

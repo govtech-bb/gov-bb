@@ -19,6 +19,8 @@ interface FormPickerProps {
   onRequestDelete: (form: FormDefinitionSummary) => void;
   /** Live published forms: write the tombstone (public site -> 410), reversible. */
   onRequestDisable: (form: FormDefinitionSummary) => void;
+  /** Live published forms: permanently erase the on-disk recipe folder via PR. */
+  onRequestErase: (form: FormDefinitionSummary) => void;
   /** Disabled published forms: clear the tombstone and restore the service. */
   onEnable: (form: FormDefinitionSummary) => void;
 }
@@ -29,7 +31,7 @@ function matches(query: string, ...fields: Array<string | undefined>) {
   return fields.some((f) => f !== undefined && f.toLowerCase().includes(q));
 }
 
-export function FormPicker({ forms, loadError, isDirty, catalog, onLoad, onClose, onRequestDelete, onRequestDisable, onEnable }: FormPickerProps) {
+export function FormPicker({ forms, loadError, isDirty, catalog, onLoad, onClose, onRequestDelete, onRequestDisable, onRequestErase, onEnable }: FormPickerProps) {
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -123,8 +125,10 @@ export function FormPicker({ forms, loadError, isDirty, catalog, onLoad, onClose
             </span>
             <span style={{ color: "#888", fontSize: "0.8rem" }}>{form.formId}</span>
             {loadingId === form.formId && <span> Loading…</span>}
-            {/* Per-row action follows intent: drafts delete (id freed), live
-                published forms disable (reversible 410), disabled forms enable. */}
+            {/* Per-row action follows intent: drafts delete (id freed),
+                disabled forms enable, and live published forms get both
+                Disable (reversible 410 tombstone) and Erase (permanent on-disk
+                recipe removal via PR). */}
             {!form.isPublished ? (
               <button
                 type="button"
@@ -151,18 +155,32 @@ export function FormPicker({ forms, loadError, isDirty, catalog, onLoad, onClose
                 Enable
               </button>
             ) : (
-              <button
-                type="button"
-                className={styles.btnDanger}
-                style={{ marginLeft: 8 }}
-                disabled={!!loadingId}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onRequestDisable(form);
-                }}
-              >
-                Disable
-              </button>
+              <>
+                <button
+                  type="button"
+                  className={styles.btnDanger}
+                  style={{ marginLeft: 8 }}
+                  disabled={!!loadingId}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRequestDisable(form);
+                  }}
+                >
+                  Disable
+                </button>
+                <button
+                  type="button"
+                  className={styles.btnErase}
+                  style={{ marginLeft: 8 }}
+                  disabled={!!loadingId}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRequestErase(form);
+                  }}
+                >
+                  Erase
+                </button>
+              </>
             )}
           </div>
         ))}
