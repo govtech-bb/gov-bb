@@ -1,7 +1,7 @@
 # 0005 — Cross-app link availability is sourced from the destination app's API at build time
 
 **Date:** 2026-05-21
-**Status:** Accepted
+**Status:** Superseded by [0030](./0030-landing-resolves-form-availability-at-runtime.md)
 **Supersedes:** [0004](./0004-form-scheme-for-cross-app-links.md)
 
 ## Context
