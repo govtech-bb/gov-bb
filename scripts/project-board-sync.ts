@@ -15,6 +15,7 @@ export type Action =
   | { type: "ensureOnBoard" }
   | { type: "setStatus"; status: Status }
   | { type: "removeLabel"; label: ExclusiveLabel }
+  | { type: "assignIfUnassigned"; login: string }
   | { type: "closeIssue" };
 
 export interface IssuePlan {
@@ -38,6 +39,8 @@ export type SyncInput =
       merged?: boolean;
       baseRef?: string;
       linkedIssues?: number[];
+      // PR author login; absent for bot authors, which we never assign.
+      prAuthor?: string;
     };
 
 const MERGE_TARGETS = new Set(["sandbox", "dev"]);
@@ -121,6 +124,7 @@ export function decideActions(input: SyncInput): IssuePlan[] {
     input.merged &&
     MERGE_TARGETS.has(input.baseRef ?? "")
   ) {
+    const prAuthor = input.prAuthor;
     return linked.map(
       (issue): IssuePlan => ({
         issue,
@@ -128,6 +132,9 @@ export function decideActions(input: SyncInput): IssuePlan[] {
           { type: "ensureOnBoard" },
           { type: "setStatus", status: "Done" },
           { type: "removeLabel", label: "progressing" },
+          ...(prAuthor
+            ? [{ type: "assignIfUnassigned", login: prAuthor } as const]
+            : []),
           { type: "closeIssue" },
         ],
       }),
@@ -318,6 +325,39 @@ export async function removeLabel(
     throw new Error(`removeLabel ${label} on #${issue}: HTTP ${res.status}`);
 }
 
+/** Assigns `login` to the issue, but only when it has no assignees yet. */
+export async function assignIfUnassigned(
+  owner: string,
+  repo: string,
+  issue: number,
+  login: string,
+  token: string,
+  f: FetchFn = fetch,
+): Promise<void> {
+  const res = await rest(
+    "GET",
+    `/repos/${owner}/${repo}/issues/${issue}`,
+    token,
+    undefined,
+    f,
+  );
+  if (!res.ok)
+    throw new Error(`assignIfUnassigned read #${issue}: HTTP ${res.status}`);
+  const data = (await res.json()) as { assignees?: { login: string }[] };
+  if (data.assignees && data.assignees.length > 0) return;
+  const add = await rest(
+    "POST",
+    `/repos/${owner}/${repo}/issues/${issue}/assignees`,
+    token,
+    { assignees: [login] },
+    f,
+  );
+  if (!add.ok)
+    throw new Error(
+      `assignIfUnassigned ${login} on #${issue}: HTTP ${add.status}`,
+    );
+}
+
 export async function closeIssue(
   owner: string,
   repo: string,
@@ -360,6 +400,16 @@ async function apply(
           break;
         case "removeLabel":
           await removeLabel(owner, repo, plan.issue, action.label, token, f);
+          break;
+        case "assignIfUnassigned":
+          await assignIfUnassigned(
+            owner,
+            repo,
+            plan.issue,
+            action.login,
+            token,
+            f,
+          );
           break;
         case "closeIssue":
           await closeIssue(owner, repo, plan.issue, token, f);
@@ -433,6 +483,7 @@ async function main(): Promise<void> {
       merged: pr.merged,
       baseRef: pr.base.ref,
       linkedIssues,
+      prAuthor: pr.user?.type === "Bot" ? undefined : pr.user?.login,
     };
   }
 
