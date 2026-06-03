@@ -49,6 +49,9 @@ import {
   contactDetailsSchema,
   KEBAB_ID_PATTERN,
   KEBAB_ID_ERROR,
+  classifyRecipientField,
+  CONTACT_DETAILS_PREFIX,
+  CONFIG_RECIPIENT_PREFIX,
 } from "./index";
 import { z } from "zod";
 
@@ -914,5 +917,29 @@ describe("validateFormContract", () => {
     if (!result.ok) {
       expect(result.issues.length).toBeGreaterThan(0);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// recipient-field exports (re-export path — detailed tests in recipient-field.spec.ts)
+// ---------------------------------------------------------------------------
+
+describe("classifyRecipientField (re-export)", () => {
+  it("classifies a literal, contact, config, and submitted recipient", () => {
+    expect(classifyRecipientField("a@b.bb")).toBe("literal");
+    expect(classifyRecipientField(`${CONTACT_DETAILS_PREFIX}email`)).toBe(
+      "contact",
+    );
+    expect(classifyRecipientField(`${CONFIG_RECIPIENT_PREFIX}mdaEmail`)).toBe(
+      "config",
+    );
+    expect(classifyRecipientField("step.field")).toBe("submitted");
+  });
+});
+
+describe("recipient prefix constants (re-export)", () => {
+  it("expose the reserved prefixes", () => {
+    expect(CONTACT_DETAILS_PREFIX).toBe("contactDetails.");
+    expect(CONFIG_RECIPIENT_PREFIX).toBe("config.");
   });
 });
