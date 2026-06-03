@@ -60,7 +60,15 @@ async function handlePost({
   try {
     const params = await chatParamsFromRequest(request);
     messages = params.messages as unknown as UIMessage[];
-    threadId = params.threadId;
+    // The client can't set the wire-level threadId (useChat doesn't forward
+    // one), so it sends its session-stable id via forwardedProps. Prefer it —
+    // it keeps the in-memory form session alive across page refreshes.
+    const bodyThreadId = (params.forwardedProps as Record<string, unknown>)
+      ?.threadId;
+    threadId =
+      typeof bodyThreadId === "string" && bodyThreadId
+        ? bodyThreadId
+        : params.threadId;
     runId = params.runId;
   } catch (err) {
     const reason =
