@@ -77,8 +77,8 @@ it("writes required:{value:false} when un-requiring a base-required field", asyn
   );
 });
 
-it("leaves an optional builtin field unchecked and adds no override when untouched", () => {
-  const field = makeField("components/text"); // builtin: no validations
+it("leaves an optional field unchecked and adds no override when untouched", () => {
+  const field = makeField("components/middle-name"); // registry: no required rule
   render(
     <FieldEditPanel
       field={field}
@@ -92,9 +92,9 @@ it("leaves an optional builtin field unchecked and adds no override when untouch
   expect(requiredCheckbox()).not.toBeChecked();
 });
 
-it("writes required:{value:true} when requiring an optional builtin field", async () => {
+it("writes required:{value:true} when requiring an optional field", async () => {
   const dispatch = jest.fn();
-  const field = makeField("components/text");
+  const field = makeField("components/middle-name");
   render(
     <FieldEditPanel
       field={field}
@@ -148,7 +148,7 @@ const lastOverrides = (dispatch: jest.Mock) =>
 it.each(["short", "medium"] as const)(
   "dispatches ui.width=%s when the width select is changed",
   async (width) => {
-    const dispatch = renderPanel(makeField("components/text"));
+    const dispatch = renderPanel(makeField("components/generic-text"));
     await userEvent.selectOptions(widthSelect(), width);
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(lastOverrides(dispatch)).toEqual({ ui: { width } });
@@ -156,7 +156,7 @@ it.each(["short", "medium"] as const)(
 );
 
 it("collapses ui to undefined when width is set back to the long default", async () => {
-  const dispatch = renderPanel(makeFieldWith("components/text", { ui: { width: "short" } }));
+  const dispatch = renderPanel(makeFieldWith("components/generic-text", { ui: { width: "short" } }));
   expect(widthSelect()).toHaveValue("short");
   await userEvent.selectOptions(widthSelect(), "long");
   await userEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -164,7 +164,7 @@ it("collapses ui to undefined when width is set back to the long default", async
 });
 
 it("collapses ui to undefined when hideLabel is unchecked as the last set key (#522 regression)", async () => {
-  const dispatch = renderPanel(makeFieldWith("components/text", { ui: { hideLabel: true } }));
+  const dispatch = renderPanel(makeFieldWith("components/generic-text", { ui: { hideLabel: true } }));
   expect(hideLabelCheckbox()).toBeChecked();
   await userEvent.click(hideLabelCheckbox());
   await userEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -172,7 +172,7 @@ it("collapses ui to undefined when hideLabel is unchecked as the last set key (#
 });
 
 it("preserves hideLabel when width is set alongside it", async () => {
-  const dispatch = renderPanel(makeFieldWith("components/text", { ui: { hideLabel: true } }));
+  const dispatch = renderPanel(makeFieldWith("components/generic-text", { ui: { hideLabel: true } }));
   await userEvent.selectOptions(widthSelect(), "short");
   await userEvent.click(screen.getByRole("button", { name: "Save" }));
   expect(lastOverrides(dispatch).ui).toEqual({ hideLabel: true, width: "short" });
@@ -182,7 +182,7 @@ it("defaults the width select to a value that is a real schema enum member", () 
   // Guards against `UI_FIELD_META.width.default` drifting from the schema: the
   // value shown when `ui.width` is unset must be a genuine enum member, or
   // re-selecting it would fail to clear the key (the collapse test above).
-  renderPanel(makeField("components/text"));
+  renderPanel(makeField("components/generic-text"));
   const enumOptions = primitiveUISchema.shape.width.unwrap().options;
   expect(enumOptions).toContain((widthSelect() as HTMLSelectElement).value);
 });
@@ -235,7 +235,7 @@ it("renders no Field type picker for a block field", () => {
   const field: RecipeFieldDraft = {
     id: "b1",
     kind: "block",
-    ref: "blocks/name",
+    ref: "blocks/personal-information",
     overrides: {},
   };
   render(

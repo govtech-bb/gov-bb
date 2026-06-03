@@ -11,7 +11,7 @@ describe("recipeFormStepFieldSchema", () => {
 
   it("accepts a block field with valid ref", () => {
     const result = recipeFormStepFieldSchema.safeParse({
-      ref: "blocks/name",
+      ref: "blocks/personal-information",
       overrides: { "first-name": { label: "Given" } },
     });
     expect(result.success).toBe(true);
@@ -19,7 +19,7 @@ describe("recipeFormStepFieldSchema", () => {
 
   it("accepts a component field without overrides", () => {
     const result = recipeFormStepFieldSchema.safeParse({
-      ref: "components/email",
+      ref: "components/generic-email",
     });
     expect(result.success).toBe(true);
   });
