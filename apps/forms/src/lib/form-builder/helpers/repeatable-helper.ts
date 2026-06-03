@@ -89,7 +89,10 @@ export const setupRepeatSteps = (
         );
 
         if (j == repeatBehaviour.min && j != repeatBehaviour.max) {
-          const addAnother = generateRepeatableAddAnotherField(nextStepId);
+          const addAnother = generateRepeatableAddAnotherField(
+            nextStepId,
+            repeatBehaviour.addAnotherLabel,
+          );
           nextStepFields.push(addAnother);
         }
 
@@ -113,7 +116,13 @@ export const setupRepeatSteps = (
         ...step,
         fields:
           totalInstances === 1 && canAddMore
-            ? [...sourceFields, generateRepeatableAddAnotherField(step.stepId)]
+            ? [
+                ...sourceFields,
+                generateRepeatableAddAnotherField(
+                  step.stepId,
+                  repeatBehaviour.addAnotherLabel,
+                ),
+              ]
             : sourceFields,
       };
 
@@ -136,7 +145,12 @@ export const setupRepeatSteps = (
         );
 
         if (j === totalInstances - 1 && canAddMore) {
-          nextStepFields.push(generateRepeatableAddAnotherField(nextStepId));
+          nextStepFields.push(
+            generateRepeatableAddAnotherField(
+              nextStepId,
+              repeatBehaviour.addAnotherLabel,
+            ),
+          );
         }
 
         const nextStep: ClientFormStep = {
@@ -148,7 +162,10 @@ export const setupRepeatSteps = (
         repeatConfig.orderedStepIds.push(nextStepId);
       }
     } else {
-      const addAnother = generateRepeatableAddAnotherField(step.stepId);
+      const addAnother = generateRepeatableAddAnotherField(
+        step.stepId,
+        repeatBehaviour.addAnotherLabel,
+      );
       const newStepFields = [...sourceFields, addAnother];
       updatedSteps[i] = {
         ...step,
@@ -187,13 +204,14 @@ export const generateRepeatStepFields = (
 
 export const generateRepeatableAddAnotherField = (
   stepId: string,
+  label?: string,
 ): ClientPrimitive => {
   const addAnotherField: ClientPrimitive = {
     id: getFullFieldId(stepId, "addAnother"),
     fieldId: "addAnother",
     stepId: stepId,
     name: "Add Another",
-    label: "Add another?",
+    label: label ?? "Add another?",
     htmlType: "radio",
     disabled: false,
     hidden: false,

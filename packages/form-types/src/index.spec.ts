@@ -517,6 +517,16 @@ describe("repeatableBehaviourSchema", () => {
         .success,
     ).toBe(false);
   });
+
+  it("accepts an optional addAnotherLabel", () => {
+    const result = repeatableBehaviourSchema.safeParse({
+      type: "repeatable",
+      min: 1,
+      max: 5,
+      addAnotherLabel: "Do you want to add another qualification?",
+    });
+    expect(result.success).toBe(true);
+  });
 });
 
 describe("fieldArrayBehaviourSchema", () => {

@@ -6,7 +6,7 @@ import {
 } from "@forms/types";
 import React, { JSX } from "react";
 import ErrorMessage from "./error-message";
-import { RequiredState, checkConditionalOn } from "@forms/lib";
+import { RequiredState, checkConditionalOn, parseDatePart } from "@forms/lib";
 import { DateValue, FieldArrayBehaviour } from "@govtech-bb/form-types";
 import FileUpload from "./file-upload";
 import { MaskedInput } from "./masked-input";
@@ -146,10 +146,9 @@ export default function FieldRenderer({
                         inputMode="numeric"
                         aria-invalid={invalid}
                         onChange={(e) => {
-                          const day = Number(e.target.value) ?? undefined;
                           commitChange({
                             ...value,
-                            day,
+                            day: parseDatePart(e.target.value),
                           });
                         }}
                       />
@@ -174,10 +173,9 @@ export default function FieldRenderer({
                         value={value?.month ?? ""}
                         aria-invalid={invalid}
                         onChange={(e) => {
-                          const month = Number(e.target.value) ?? undefined;
                           commitChange({
                             ...value,
-                            month,
+                            month: parseDatePart(e.target.value),
                           });
                         }}
                       />
@@ -202,10 +200,9 @@ export default function FieldRenderer({
                         value={value?.year ?? ""}
                         aria-invalid={invalid}
                         onChange={(e) => {
-                          const year = Number(e.target.value) ?? undefined;
                           commitChange({
                             ...value,
-                            year,
+                            year: parseDatePart(e.target.value),
                           });
                         }}
                       />

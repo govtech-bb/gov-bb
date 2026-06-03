@@ -159,7 +159,8 @@ test.describe("Temporary Teacher Application — Live Smoke", () => {
     step = expectStep(page, "educational-record");
     await fill(page, step, "institution", "University of the West Indies");
     await fill(page, step, "country", "Barbados");
-    await fill(page, step, "educational-dates", "2008-2012");
+    await fill(page, step, "from", "2008");
+    await fill(page, step, "to", "2012");
     await selectRadio(page, step, "addAnother", "no");
     await advance(page, step);
 
@@ -167,7 +168,8 @@ test.describe("Temporary Teacher Application — Live Smoke", () => {
     step = expectStep(page, "qualifications");
     await fill(page, step, "subject", "Mathematics");
     await fill(page, step, "examiningBody", "Caribbean Examinations Council");
-    await fill(page, step, "qualification-date", "2010");
+    await fill(page, step, "from", "2008");
+    await fill(page, step, "to", "2010");
     await fill(page, step, "level", "Grade 1");
     await selectRadio(page, step, "addAnother", "no");
     await advance(page, step);
@@ -186,12 +188,16 @@ test.describe("Temporary Teacher Application — Live Smoke", () => {
     step = expectStep(page, "other-related-information");
     await advance(page, step);
 
-    // ─── References ──────────────────────────────────────────────────────────
-    step = expectStep(page, "references");
+    // ─── Reference 1 ─────────────────────────────────────────────────────────
+    step = expectStep(page, "reference-1");
     await fill(page, step, "ref1Name", "John Principal");
     await fill(page, step, "ref1Address", "2 School Road, Bridgetown");
     await fill(page, step, "ref1Occupation", "School Principal");
     await fill(page, step, "ref1Contact", faker.string.numeric(10));
+    await advance(page, step);
+
+    // ─── Reference 2 ─────────────────────────────────────────────────────────
+    step = expectStep(page, "reference-2");
     await fill(page, step, "ref2Name", "Mary Supervisor");
     await fill(page, step, "ref2Address", "3 Office Lane, Bridgetown");
     await fill(page, step, "ref2Occupation", "Education Officer");
