@@ -7,16 +7,12 @@ import type { ServiceCode } from "./application-code";
  * webhook expects — the same mapping the frontend used
  * (frontend-alpha/src/data/youth-opportunity-service-codes.ts). Keep the two in
  * sync: an opportunity that submits but is absent here is not dispatched.
- *
- * NOTE: `spreading-joy-2025` (JOY) has no backend recipe yet but is retained so
- * adding the recipe needs no code change.
  */
 export const YOUTH_OPPORTUNITY_SERVICE_CODES: Record<string, ServiceCode> = {
   byac: "BYAC",
   ydp: "YDP",
   pathways: "PATH",
   "bright-sparks-2": "SPARKS",
-  "bridge-to-future-2025": "BRIDGE",
   cip: "CIP",
   btu: "BTU",
   "cyber-security-training": "CYBER",
@@ -30,7 +26,6 @@ export const YOUTH_OPPORTUNITY_SERVICE_CODES: Record<string, ServiceCode> = {
   "mission-barbados": "MISSION",
   "barbados-blooming-libraries": "BLOOM",
   cmc: "CMC",
-  "spreading-joy-2025": "JOY",
   "centre-access": "BOOKING",
 };
 

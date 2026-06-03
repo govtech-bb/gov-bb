@@ -5,14 +5,13 @@ import {
 } from "./youth-opportunity-codes";
 
 describe("youth-opportunity-codes", () => {
-  it("maps the 19 recipe formIds to their service codes", () => {
-    // formId = `youth-opportunity-<opportunityId>`; JOY has no recipe yet.
+  it("maps recipe formIds to their service codes", () => {
+    // formId = `youth-opportunity-<opportunityId>`.
     const cases: Array<[string, string]> = [
       ["youth-opportunity-byac", "BYAC"],
       ["youth-opportunity-ydp", "YDP"],
       ["youth-opportunity-pathways", "PATH"],
       ["youth-opportunity-bright-sparks-2", "SPARKS"],
-      ["youth-opportunity-bridge-to-future-2025", "BRIDGE"],
       ["youth-opportunity-cyber-security-training", "CYBER"],
       ["youth-opportunity-web-design-entrepreneurs", "WEBDEV"],
       ["youth-opportunity-national-summer-camp", "CAMP"],
@@ -39,7 +38,18 @@ describe("youth-opportunity-codes", () => {
     ).toBeNull();
   });
 
-  it("keeps a JOY mapping ready for when the recipe is added", () => {
-    expect(YOUTH_OPPORTUNITY_SERVICE_CODES["spreading-joy-2025"]).toBe("JOY");
+  it("does not map the retired BRIDGE and JOY forms", () => {
+    expect(
+      resolveServiceCodeFromFormId("youth-opportunity-bridge-to-future-2025"),
+    ).toBeNull();
+    expect(
+      resolveServiceCodeFromFormId("youth-opportunity-spreading-joy-2025"),
+    ).toBeNull();
+    expect(
+      YOUTH_OPPORTUNITY_SERVICE_CODES["bridge-to-future-2025"],
+    ).toBeUndefined();
+    expect(
+      YOUTH_OPPORTUNITY_SERVICE_CODES["spreading-joy-2025"],
+    ).toBeUndefined();
   });
 });

@@ -3,10 +3,14 @@ import { randomInt } from "node:crypto";
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"; // 36 chars
 
 /**
- * Catalogue of valid service prefixes. Ported verbatim from frontend-alpha
+ * Catalogue of valid service prefixes. Sourced from frontend-alpha
  * (src/lib/application-code.ts) so the reference codes this backend issues to
  * the case-management webhook stay byte-for-byte compatible with the codes the
  * frontend issued before the dispatch moved server-side.
+ *
+ * BRIDGE ("Bridge to the Future Workshop") and JOY ("Spreading Joy at
+ * Christmas") were dropped: those forms have been removed from staging and are
+ * no longer offered.
  *
  * Using a const object gives a compile-time-checked union type, so an invalid
  * prefix is a TypeScript error rather than a runtime surprise.
@@ -16,7 +20,6 @@ export const SERVICES = {
   YDP: "Youth Development Programme",
   PATH: "Pathways Employability Programme",
   SPARKS: "Bright Sparks Educational Project 2.0",
-  BRIDGE: "Bridge to the Future Workshop",
   CIP: "Community Impact Programme",
   BTU: "Block Transformation Unit (Project Dawn)",
   CYBER: "Cyber Security Training Workshop",
@@ -30,7 +33,6 @@ export const SERVICES = {
   MISSION: "Mission Barbados",
   BLOOM: "Barbados is Blooming (Little Libraries)",
   CMC: "Centre Management Committee",
-  JOY: "Spreading Joy at Christmas",
   BOOKING: "Book a Community Centre",
 } as const;
 
