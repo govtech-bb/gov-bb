@@ -102,51 +102,6 @@ a fully offline `build` fails on that package. When verifying locally without
 network, exclude it — `pnpm exec nx run-many -t build --exclude=landing` — then
 let CI (which has network) build everything.
 
-### Every Jest config caps workers, or the suite crashes the host
-
-Every `jest.config.*` in this repo bakes in a worker cap and a per-worker memory
-limit:
-
-```ts
-import { cpus } from "node:os";
-// Cap at 10, but never above jest's default (cores − 1).
-const maxWorkers = Math.max(1, Math.min(10, cpus().length - 1));
-
-// …in the config:
-maxWorkers,
-workerIdleMemoryLimit: "512MB",
-```
-
-Without a cap, Jest forks `numCpus − 1` workers (≈31 on a 32-core box), and each
-worker runs `ts-jest` (in-memory TypeScript compiler) — plus, where
-`collectCoverage` is on, coverage instrumentation — and grows unbounded. ~31
-heavyweight workers blow past available RAM and crash the machine. The `api`
-suite (64 specs, full coverage) was the worst offender, but the same failure
-mode hits any suite on a high-core host, so the cap lives in **every** config
-rather than as a manual flag you have to remember.
-
-**It must be a computed cap, not a hardcoded `maxWorkers: 10`.** `maxWorkers` is
-an absolute count, not a ceiling: hardcoding `10` on a 2-core CI runner forces
-10 workers onto 2 cores, and the resulting CPU oversubscription makes
-timing-sensitive suites (e.g. the `form_builder` React tests) so slow they blow
-their per-test timeouts. `Math.min(10, cores − 1)` caps high-core dev boxes at
-10 (clear of the ~30-worker crash, and far faster than a 1–2 cap) while leaving
-low-core CI at exactly jest's default — so the cap can never *raise* parallelism.
-`workerIdleMemoryLimit: "512MB"` recycles any worker that grows past 512 MB and
-is the real backstop against runaway growth.
-
-Because the cap is in the configs, the suites are safe to run however you invoke
-them — `pnpm exec nx run <project>:test`, `nx run-many`, or `jest` directly; no
-extra flags needed. For the `api` suite, add `--silent` to suppress its noisy
-Nest logger output so failures stay readable:
-
-```bash
-cd apps/api && pnpm exec jest --config jest.config.ts --silent
-```
-
-If you need to tune parallelism on a given box, override per-run with
-`--maxWorkers=<n>`.
-
 ## Monorepo build gotcha: new packages must be buildable AND referenced
 
 This is an nx + TypeScript project-references monorepo. Packages build with the
