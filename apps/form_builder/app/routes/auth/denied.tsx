@@ -1,10 +1,40 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
+import { z } from "zod";
+import { logoutSession } from "../../server/auth";
+import { REPO_NAME, REPO_OWNER } from "../../server/github-oauth";
+
+/**
+ * Optional `?reason=csrf` tells this page to render recovery-oriented copy for
+ * an expired/mismatched OAuth state (thrown from the callback route), instead
+ * of the default "no write access" message.
+ */
+const SearchSchema = z.object({
+  reason: z.enum(["csrf"]).optional(),
+});
 
 export const Route = createFileRoute("/auth/denied")({
+  validateSearch: (search) => SearchSchema.parse(search),
   component: DeniedPage,
 });
 
+/**
+ * Clear the session cookie (CSRF-safe POST RPC), then restart the OAuth flow.
+ *
+ * We use a full-page navigation (`window.location.assign`) rather than the
+ * router's client-side navigate: `/auth/github`'s `beforeLoad` sets the CSRF
+ * state cookie via a server-only `setResponseHeader`, which no-ops under
+ * client navigation. A hard navigation makes that `beforeLoad` run on the
+ * server so the cookie is actually written before we bounce to GitHub.
+ */
+async function logoutAndRestart() {
+  await logoutSession();
+  window.location.assign("/auth/github");
+}
+
 function DeniedPage() {
+  const { reason } = Route.useSearch();
+  const isCsrf = reason === "csrf";
+
   return (
     <div
       style={{
@@ -26,23 +56,43 @@ function DeniedPage() {
           padding: 32,
         }}
       >
-        <h1 style={{ marginTop: 0 }}>Access denied</h1>
+        {isCsrf ? (
+          <>
+            <h1 style={{ marginTop: 0 }}>Sign-in link expired</h1>
+            <p>
+              Your sign-in link expired or didn&rsquo;t match. Please sign in
+              again.
+            </p>
+          </>
+        ) : (
+          <>
+            <h1 style={{ marginTop: 0 }}>Access denied</h1>
+            <p>
+              You don&rsquo;t have write access to{" "}
+              <code>
+                {REPO_OWNER}/{REPO_NAME}
+              </code>
+              . Ask an admin to add you as a collaborator with at least{" "}
+              <strong>Write</strong> permission, then sign in again.
+            </p>
+          </>
+        )}
         <p>
-          You don't have write access to <code>govtech-bb/gov-bb</code>. Ask an
-          admin to add you as a collaborator with at least <strong>Write</strong>{" "}
-          permission, then sign in again.
-        </p>
-        <p>
-          {/*
-            Route through /auth/logout to clear any existing session cookie
-            before bouncing to /auth/github. Without this, a user who landed
-            here from a successful login that failed the permission check
-            would still have a valid session cookie, and the /builder guard
-            would never trigger the OAuth restart.
-          */}
-          <Link to="/auth/logout" search={{ next: "/auth/github" }}>
-            Try a different account
-          </Link>
+          <button
+            type="button"
+            onClick={() => void logoutAndRestart()}
+            style={{
+              border: "none",
+              background: "none",
+              padding: 0,
+              color: "#0969da",
+              font: "inherit",
+              textDecoration: "underline",
+              cursor: "pointer",
+            }}
+          >
+            {isCsrf ? "Sign in again" : "Try a different account"}
+          </button>
         </p>
       </div>
     </div>
