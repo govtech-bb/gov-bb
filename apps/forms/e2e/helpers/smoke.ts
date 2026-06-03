@@ -93,6 +93,16 @@ export async function fillDate(
   await page.locator(`input[id="${base}-year"]`).fill(String(year));
 }
 
+/** Choose an option in a native `<select>` dropdown addressed as `${stepId}_${suffix}`. */
+export async function selectDropdown(
+  page: Page,
+  stepId: string,
+  suffix: string,
+  value: string,
+): Promise<void> {
+  await page.locator(`select[id="${stepId}_${suffix}"]`).selectOption(value);
+}
+
 /** Select a radio option by its value suffix (`gender-female`, `addAnother-no`). */
 export async function selectRadio(
   page: Page,

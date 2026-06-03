@@ -471,6 +471,31 @@ jobs:
       spec: vendor-registration.smoke.spec.ts
       artifact_name: vendor-registration-smoke-trace
 
+  smoke-test-textbook-grant:
+    name: Smoke test forms (textbook-grant)
+    needs: amplify-forms
+    uses: ./.github/workflows/forms-smoke.yml
+    with:
+      base_url: https://forms.sandbox.alpha.gov.bb
+      spec: textbook-grant-application.smoke.spec.ts
+      artifact_name: textbook-grant-smoke-trace
+
+  smoke-test-duties-performed:
+    name: Smoke test forms (duties-performed)
+    needs: amplify-forms
+    uses: ./.github/workflows/forms-smoke.yml
+    with:
+      base_url: https://forms.sandbox.alpha.gov.bb
+      spec: duties-performed-exam-claim.smoke.spec.ts
+      artifact_name: duties-performed-smoke-trace
+
+  # NOTE: referral-student-support-services and homeschooling-application-2024
+  # smoke specs exist but are test.fixme (skipped) — their deployed forms have a
+  # required-checkbox-with-empty-options recipe bug that makes them unsubmittable
+  # (see the spec headers + ADR 0027). They are intentionally NOT wired here
+  # until the recipes are fixed; wiring a never-passing live smoke would just
+  # make every forms deploy red.
+
   amplify-landing:
     name: Amplify build (landing)
     needs: setup
