@@ -11,6 +11,40 @@ const parseDate = (v: unknown): Date | null => {
     return isNaN(d.getTime()) ? null : d;
   }
   if (typeof v !== "string") return null;
+  // A `/`-separated literal is the Barbados DD/MM/YYYY format author-typed in
+  // the form-builder threshold editor. Parse it day-first to match the old
+  // client (and the locale). ISO strings use `-`, so the two never collide;
+  // anything without `/` falls through to native parsing, preserving the ISO
+  // path that apps/api relies on for submitted/stored date values.
+  if (v.includes("/")) {
+    const parts = v.split("/");
+    if (parts.length !== 3) return null;
+    const [dayStr, monthStr, yearStr] = parts;
+    // Require plain digit runs (DD/MM/YYYY, year exactly 4 digits). This rejects
+    // the non-canonical numerics `Number` would otherwise swallow — hex
+    // (`0x10`), floats (`12.5`), whitespace-padded (` 5 `) — and short/typo
+    // years that would silently map into the 1900s.
+    if (
+      !/^\d{1,2}$/.test(dayStr!) ||
+      !/^\d{1,2}$/.test(monthStr!) ||
+      !/^\d{4}$/.test(yearStr!)
+    )
+      return null;
+    const day = Number(dayStr);
+    const month = Number(monthStr);
+    const year = Number(yearStr);
+    const d = new Date(Date.UTC(year, month - 1, day));
+    // `Date.UTC` normalises out-of-range components (`31/02` → 2 Mar), so a bad
+    // threshold would otherwise become a plausible-but-wrong boundary. Reject
+    // anything that doesn't round-trip.
+    if (
+      d.getUTCFullYear() !== year ||
+      d.getUTCMonth() !== month - 1 ||
+      d.getUTCDate() !== day
+    )
+      return null;
+    return d;
+  }
   const d = new Date(v);
   return isNaN(d.getTime()) ? null : d;
 };

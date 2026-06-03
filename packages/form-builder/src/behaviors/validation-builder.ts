@@ -5,6 +5,7 @@ export type ValidationRuleDescriptor = {
   label: string;
   hasValue: boolean; // whether the rule takes a `value` parameter
   hasReference: boolean; // whether the rule takes a `referenceFieldId`
+  valuePlaceholder?: string; // placeholder hint for the `value` input, e.g. "DD/MM/YYYY"
 };
 
 export const VALIDATION_RULE_DESCRIPTORS: Record<
@@ -146,24 +147,28 @@ export const VALIDATION_RULE_DESCRIPTORS: Record<
       label: "After",
       hasValue: true,
       hasReference: true,
+      valuePlaceholder: "DD/MM/YYYY",
     },
     {
       type: "before",
       label: "Before",
       hasValue: true,
       hasReference: true,
+      valuePlaceholder: "DD/MM/YYYY",
     },
     {
       type: "onOrAfter",
       label: "On or After",
       hasValue: true,
       hasReference: true,
+      valuePlaceholder: "DD/MM/YYYY",
     },
     {
       type: "onOrBefore",
       label: "On or Before",
       hasValue: true,
       hasReference: true,
+      valuePlaceholder: "DD/MM/YYYY",
     },
     {
       type: "minYear",

@@ -147,6 +147,7 @@ export function ValidationRulesEditor({
                 <label>Value</label>
                 <input
                   type="text"
+                  placeholder={descriptor?.valuePlaceholder}
                   value={(config.value as string) ?? ""}
                   onChange={(e) =>
                     handleUpdate(ruleType, { value: e.target.value })
