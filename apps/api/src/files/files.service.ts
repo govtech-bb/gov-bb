@@ -188,43 +188,66 @@ export class FilesService {
   }
 
   /**
+   * The single walk over `fileFieldsByStep × values` — one row per item in a
+   * file field's array, across repeatable-step instances. Keyless items
+   * (incomplete uploads) are yielded too; each consumer applies its own key
+   * policy (`collectFileEntries` skips them, `verifySubmissionFiles` reports
+   * them).
+   */
+  private static *walkFileItems(
+    fileFieldsByStep: Map<string, Set<string>>,
+    values: SubmissionValues,
+  ): Generator<{
+    stepId: string;
+    instanceIndex: number;
+    fieldId: string;
+    isRepeatable: boolean;
+    item: Record<string, unknown>;
+  }> {
+    for (const [stepId, fieldIds] of fileFieldsByStep) {
+      const stepVal = values[stepId];
+      if (stepVal === undefined) continue;
+      const isRepeatable = Array.isArray(stepVal);
+      const instances = isRepeatable ? stepVal : [stepVal];
+      for (const [instanceIndex, inst] of instances.entries()) {
+        for (const fieldId of fieldIds) {
+          const arr = inst[fieldId];
+          if (!Array.isArray(arr)) continue;
+          for (const item of arr as Array<Record<string, unknown>>) {
+            yield { stepId, instanceIndex, fieldId, isRepeatable, item };
+          }
+        }
+      }
+    }
+  }
+
+  /**
    * Collects every uploaded-file entry from submitted values for the
    * file-typed fields in `fileFieldsByStep` (see `collectFileFieldsByStep`).
-   * Walks repeatable-step instances; entries without a durable `key`
-   * (incomplete uploads) are skipped.
+   * Entries without a durable `key` (incomplete uploads) are skipped.
    */
   static collectFileEntries(
     fileFieldsByStep: Map<string, Set<string>>,
     values: SubmissionValues,
   ): SubmissionFileEntry[] {
     const entries: SubmissionFileEntry[] = [];
-    for (const [stepId, fieldIds] of fileFieldsByStep) {
-      const stepVal = values[stepId];
-      if (stepVal === undefined) continue;
-      const instances = Array.isArray(stepVal) ? stepVal : [stepVal];
-      for (const inst of instances) {
-        for (const fid of fieldIds) {
-          const arr = inst[fid];
-          if (!Array.isArray(arr)) continue;
-          for (const item of arr as Array<Record<string, unknown>>) {
-            if (typeof item?.key !== "string" || item.key.length === 0) {
-              continue;
-            }
-            entries.push({
-              key: item.key,
-              name:
-                typeof item.name === "string" && item.name.length > 0
-                  ? item.name
-                  : (item.key.split("/").pop() ?? item.key),
-              size: typeof item.size === "number" ? item.size : 0,
-              type:
-                typeof item.type === "string" && item.type.length > 0
-                  ? item.type
-                  : "application/octet-stream",
-            });
-          }
-        }
-      }
+    for (const { item } of FilesService.walkFileItems(
+      fileFieldsByStep,
+      values,
+    )) {
+      if (typeof item?.key !== "string" || item.key.length === 0) continue;
+      entries.push({
+        key: item.key,
+        name:
+          typeof item.name === "string" && item.name.length > 0
+            ? item.name
+            : (item.key.split("/").pop() ?? item.key),
+        size: typeof item.size === "number" ? item.size : 0,
+        type:
+          typeof item.type === "string" && item.type.length > 0
+            ? item.type
+            : "application/octet-stream",
+      });
     }
     return entries;
   }
@@ -247,10 +270,6 @@ export class FilesService {
   ): Promise<ValidationErrorBundle> {
     if (fileFieldsByStep.size === 0) return {};
 
-    type FileVal = { key?: string };
-    const toFileArray = (v: unknown): FileVal[] =>
-      Array.isArray(v) ? (v as FileVal[]) : [];
-
     interface Location {
       stepId: string;
       instanceIndex: number;
@@ -260,29 +279,15 @@ export class FilesService {
     const locations: Array<{ key: string; loc: Location }> = [];
     const keyless: Location[] = [];
 
-    for (const [stepId, fieldIds] of fileFieldsByStep) {
-      const stepVal = values[stepId];
-      if (stepVal === undefined) continue;
-      const isRepeatable = Array.isArray(stepVal);
-      const instances = isRepeatable ? stepVal : [stepVal];
-      instances.forEach((inst, idx) => {
-        for (const fid of fieldIds) {
-          const arr = toFileArray((inst as Record<string, unknown>)[fid]);
-          for (const item of arr) {
-            const loc = {
-              stepId,
-              instanceIndex: idx,
-              fieldId: fid,
-              isRepeatable,
-            };
-            if (typeof item.key === "string" && item.key.length > 0) {
-              locations.push({ key: item.key, loc });
-            } else {
-              keyless.push(loc);
-            }
-          }
-        }
-      });
+    for (const { item, ...loc } of FilesService.walkFileItems(
+      fileFieldsByStep,
+      values,
+    )) {
+      if (typeof item.key === "string" && item.key.length > 0) {
+        locations.push({ key: item.key, loc });
+      } else {
+        keyless.push(loc);
+      }
     }
 
     if (locations.length === 0 && keyless.length === 0) return {};

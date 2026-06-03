@@ -2,6 +2,8 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
 import MailComposer from "nodemailer/lib/mail-composer";
+import type Mail from "nodemailer/lib/mailer";
+import Handlebars from "handlebars";
 import { EmailTemplateService } from "../../../email/email-template.service";
 import {
   EmailBodyBuilder,
@@ -29,12 +31,6 @@ const ATTACHMENT_BUDGET_BYTES = 7 * 1024 * 1024;
 // so this is deliberately much shorter than the 7-day upload-flow default —
 // long enough to span a weekend before a reviewer opens the notification.
 const EMAIL_LINK_TTL_SECONDS = 72 * 60 * 60;
-
-interface EmailAttachment {
-  filename: string;
-  content: Buffer;
-  contentType: string;
-}
 
 // Reserved recipientField prefix. A recipientField of "contactDetails.<key>"
 // resolves against the form's service-contract contactDetails (e.g. the MDA
@@ -119,12 +115,21 @@ export class EmailProcessor implements ISubmissionProcessor {
       // A literal address (contains "@") is used verbatim — this is how a
       // recipe hardcodes a fixed internal recipient (e.g. "testing@govtech.bb").
       // Neither a "contactDetails." prefix nor a "stepId.fieldId" path contains
-      // "@", so the literal case is unambiguous and checked first.
-      const recipient = recipientField.includes("@")
-        ? recipientField
+      // "@", so the literal case is unambiguous and checked first. Classified
+      // once: recipient resolution and the uploads gate below both derive
+      // from `kind` so they can never disagree.
+      const kind = recipientField.includes("@")
+        ? "literal"
         : recipientField.startsWith(CONTACT_DETAILS_PREFIX)
-          ? await this.resolveContactRecipient(payload, recipientField)
-          : this.resolveSubmittedRecipient(payload, recipientField);
+          ? "contact"
+          : "submitted";
+
+      const recipient =
+        kind === "literal"
+          ? recipientField
+          : kind === "contact"
+            ? await this.resolveContactRecipient(payload, recipientField)
+            : this.resolveSubmittedRecipient(payload, recipientField);
 
       if (!recipient) {
         throw new Error(`Could not resolve recipient at "${recipientField}"`);
@@ -134,15 +139,13 @@ export class EmailProcessor implements ISubmissionProcessor {
         (cfg["subject"] as string | undefined) ??
         "Your form submission has been received";
 
-      // Uploaded files travel only on MDA/reviewer emails — a literal address
-      // or a contactDetails.* path. The citizen confirmation (stepId.fieldId
-      // recipient) stays lightweight: the citizen already has their own files.
-      const includeUploads =
-        recipientField.includes("@") ||
-        recipientField.startsWith(CONTACT_DETAILS_PREFIX);
-      const { attachments, fileLinks } = includeUploads
-        ? await this.collectUploads(payload)
-        : { attachments: [], fileLinks: [] };
+      // Uploaded files travel only on MDA/reviewer emails. The citizen
+      // confirmation ("submitted" recipient) stays lightweight: the citizen
+      // already has their own files.
+      const { attachments, fileLinks } =
+        kind !== "submitted"
+          ? await this.collectUploads(payload)
+          : { attachments: [], fileLinks: [] };
 
       const htmlBody = await this.resolveHtmlBody(payload, fileLinks);
       const textBody = this.buildTextBody(payload, fileLinks);
@@ -249,7 +252,7 @@ export class EmailProcessor implements ISubmissionProcessor {
    * the notification without the citizen's documents.
    */
   private async collectUploads(payload: SubmissionCreatedEvent): Promise<{
-    attachments: EmailAttachment[];
+    attachments: Mail.Attachment[];
     fileLinks: EmailFileLink[];
   }> {
     const contract = await this.emailBodyBuilder.resolveContract(
@@ -267,7 +270,7 @@ export class EmailProcessor implements ISubmissionProcessor {
     // form's object, so it is skipped entirely, never linked.
     const keyPrefix = `uploads/${payload.formId}/`;
 
-    const attachments: EmailAttachment[] = [];
+    const attachments: Mail.Attachment[] = [];
     const fileLinks: EmailFileLink[] = [];
     let used = 0;
     for (const entry of entries) {
@@ -310,7 +313,7 @@ export class EmailProcessor implements ISubmissionProcessor {
     subject: string,
     html: string,
     text: string,
-    attachments: EmailAttachment[],
+    attachments: Mail.Attachment[],
   ): Promise<Uint8Array> {
     const composer = new MailComposer({
       from: this.from,
@@ -381,14 +384,14 @@ export class EmailProcessor implements ISubmissionProcessor {
     payload: SubmissionCreatedEvent,
     fileLinks: EmailFileLink[] = [],
   ): string {
+    // Citizen-supplied names/URLs are escaped with Handlebars' own escaper —
+    // the same one the template path applies automatically.
+    const esc = Handlebars.escapeExpression;
     const links =
       fileLinks.length > 0
         ? `\n      <p>Uploaded documents too large to attach (temporary download links):</p>
       <ul>${fileLinks
-        .map(
-          (l) =>
-            `<li><a href="${escapeHtml(l.url)}">${escapeHtml(l.name)}</a></li>`,
-        )
+        .map((l) => `<li><a href="${esc(l.url)}">${esc(l.name)}</a></li>`)
         .join("")}</ul>`
         : "";
     return `
@@ -400,14 +403,4 @@ export class EmailProcessor implements ISubmissionProcessor {
       </table>${links}
     `.trim();
   }
-}
-
-/** Minimal escape for citizen-supplied filenames in the fallback HTML body
- * (the Handlebars template escapes automatically; this path does not). */
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
 }
