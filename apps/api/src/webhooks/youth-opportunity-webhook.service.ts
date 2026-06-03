@@ -3,6 +3,7 @@ import { Inject, Injectable, Logger } from "@nestjs/common";
 import { ConfigType } from "@nestjs/config";
 import { firstValueFrom } from "rxjs";
 import webhooksConfig from "../config/webhooks.config";
+import { sanitizeForLog } from "./log-sanitize";
 
 /**
  * Body posted to the case-management webhook. Field names are snake_case to
@@ -48,7 +49,7 @@ export class YouthOpportunityWebhookService {
   async dispatch(payload: FormSubmittedWebhookPayload): Promise<void> {
     if (!(this.config.url && this.config.secret)) {
       this.logger.warn(
-        `[case-management] Not configured (WEBHOOK_URL/WEBHOOK_SECRET) — skipping dispatch for ${payload.code}`,
+        `[case-management] Not configured (WEBHOOK_URL/WEBHOOK_SECRET) — skipping dispatch for ${sanitizeForLog(payload.code)}`,
       );
       return;
     }
@@ -77,11 +78,11 @@ export class YouthOpportunityWebhookService {
         }),
       );
       this.logger.log(
-        `[case-management] Delivered ${payload.code} (${payload.programmeCode}) — HTTP ${response.status}`,
+        `[case-management] Delivered ${sanitizeForLog(payload.code)} (${sanitizeForLog(payload.programmeCode)}) — HTTP ${response.status}`,
       );
     } catch (err) {
       this.logger.error(
-        `[case-management] Failed to deliver ${payload.code} (${payload.programmeCode}) to ${endpoint}`,
+        `[case-management] Failed to deliver ${sanitizeForLog(payload.code)} (${sanitizeForLog(payload.programmeCode)}) to ${endpoint}`,
         err instanceof Error ? err.stack : String(err),
       );
     }

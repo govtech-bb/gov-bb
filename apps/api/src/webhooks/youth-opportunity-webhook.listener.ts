@@ -3,6 +3,7 @@ import { OnEvent } from "@nestjs/event-emitter";
 import type { SubmissionCreatedEvent } from "../forms/submissions/submissions.types";
 import { generateApplicationCodeForService } from "./application-code";
 import { buildWebhookFormData, extractApplicant } from "./applicant-extractor";
+import { sanitizeForLog } from "./log-sanitize";
 import { resolveServiceCodeFromFormId } from "./youth-opportunity-codes";
 import { YouthOpportunityWebhookService } from "./youth-opportunity-webhook.service";
 
@@ -28,7 +29,7 @@ export class YouthOpportunityWebhookListener {
       // forms are silently ignored; an unmapped youth form is worth flagging.
       if (event.formId.startsWith("youth-opportunity-")) {
         this.logger.warn(
-          `[case-management] Unmapped youth-opportunity formId="${event.formId}" — no dispatch`,
+          `[case-management] Unmapped youth-opportunity formId="${sanitizeForLog(event.formId)}" — no dispatch`,
         );
       }
       return;
