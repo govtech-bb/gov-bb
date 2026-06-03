@@ -671,7 +671,7 @@
     }
   ],
   "title": "Register for Community Sports Training Programme",
-  "formId": "community-sports-training",
+  "formId": "sports-training-programme-form-schema",
   "version": "1.0.0",
   "createdAt": "2026-05-07T00:00:00Z",
   "updatedAt": "2026-05-07T00:00:00Z",

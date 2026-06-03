@@ -5,7 +5,7 @@ stage: "alpha"
 featured: false
 publish_date: 2026-02-06
 category: work-employment
-form_id: community-sports-training
+form_id: sports-training-programme-form-schema
 ---
 
 Anyone living in Barbados, aged 30 and under, can register for a place on government-run community sports programmes.
