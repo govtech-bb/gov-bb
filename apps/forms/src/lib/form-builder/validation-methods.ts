@@ -1,6 +1,5 @@
 import {
   EqualityOperations,
-  DateValue,
   DateValueInput,
   FieldValue,
 } from "@govtech-bb/form-types";
@@ -11,8 +10,7 @@ import {
 // are still consumed elsewhere:
 //  - `valueIsEmpty` — emptiness semantics shared with the validation boundary
 //    and `apps/forms/src/lib/api/forms.ts`.
-//  - `dateValueToDate` / `isDateComplete` — the onBlur date-overflow
-//    normalization in `validation-builder`.
+//  - `isDateComplete` — the date-object emptiness check behind `valueIsEmpty`.
 //  - `evaluateCondition` / `RequiredState` — conditional visibility in
 //    `helpers/behavior-helper.ts`.
 
@@ -52,17 +50,6 @@ export const valueIsEmpty = (value: FieldValue): boolean | undefined => {
 export const parseDatePart = (raw: string): number | undefined => {
   const digits = raw.replace(/\D/g, "");
   return digits === "" ? undefined : Number(digits);
-};
-
-export const dateValueToDate = (value: DateValue): Date | null => {
-  if (
-    value.day === undefined ||
-    value.month === undefined ||
-    value.year === undefined
-  ) {
-    return null;
-  }
-  return new Date(value.year, value.month - 1, value.day);
 };
 
 export const isDateComplete = (value: DateValueInput): boolean => {

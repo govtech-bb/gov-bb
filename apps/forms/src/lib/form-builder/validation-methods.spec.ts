@@ -7,7 +7,6 @@
  * Coverage:
  *  - valueIsEmpty: all FieldValue branches (string, boolean, number, array,
  *    DateValueInput, nullish, unknown)
- *  - dateValueToDate: complete, partial
  *  - isDateComplete: complete, partial
  *  - evaluateCondition: all operation branches (in/contains, equal,
  *    strictEquality, notEqual, exists, gt, lt, default)
@@ -15,7 +14,6 @@
 
 import {
   valueIsEmpty,
-  dateValueToDate,
   isDateComplete,
   evaluateCondition,
   parseDatePart,
@@ -72,38 +70,6 @@ describe("valueIsEmpty", () => {
 
   it("returns undefined for an unrecognised object shape", () => {
     expect(valueIsEmpty({ some: "object" } as never)).toBeUndefined();
-  });
-});
-
-// ---------------------------------------------------------------------------
-// dateValueToDate
-// ---------------------------------------------------------------------------
-
-describe("dateValueToDate", () => {
-  it("returns a Date for a complete DateValue", () => {
-    const d = dateValueToDate({ day: 15, month: 6, year: 2024 });
-    expect(d).toBeInstanceOf(Date);
-    expect(d?.getFullYear()).toBe(2024);
-    expect(d?.getMonth()).toBe(5); // month is 0-indexed
-    expect(d?.getDate()).toBe(15);
-  });
-
-  it("returns null when day is undefined", () => {
-    expect(
-      dateValueToDate({ day: undefined as never, month: 6, year: 2024 }),
-    ).toBeNull();
-  });
-
-  it("returns null when month is undefined", () => {
-    expect(
-      dateValueToDate({ day: 15, month: undefined as never, year: 2024 }),
-    ).toBeNull();
-  });
-
-  it("returns null when year is undefined", () => {
-    expect(
-      dateValueToDate({ day: 15, month: 6, year: undefined as never }),
-    ).toBeNull();
   });
 });
 

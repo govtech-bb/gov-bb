@@ -8,6 +8,7 @@ import FieldRenderer from "./field-renderer";
 import React from "react";
 import ErrorSummary from "./error-summary";
 import { useStore } from "@tanstack/react-form";
+import { isDateValidationError } from "@govtech-bb/form-validation";
 import { useStepGuard } from "../hooks/use-step-guard";
 import Review from "./review";
 import SubmissionConfirmation from "./submission-confirmation";
@@ -324,7 +325,11 @@ export default function FormRenderer({
     for (const field of currentStep.fields) {
       const fieldErrors = state.fieldMeta[field.id]?.errors ?? [];
       if (fieldErrors.length === 0) continue;
-      fieldValidationErrors[field.id] = fieldErrors;
+      // Date fields emit structured { message, parts } errors; the summary
+      // only needs the message text.
+      fieldValidationErrors[field.id] = fieldErrors.map((e: unknown) =>
+        isDateValidationError(e) ? e.message : String(e),
+      );
     }
     return fieldValidationErrors;
   });

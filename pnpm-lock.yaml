@@ -216,6 +216,9 @@ importers:
       '@govtech-bb/form-types':
         specifier: workspace:*
         version: link:../../packages/form-types
+      '@govtech-bb/form-validation':
+        specifier: workspace:*
+        version: link:../../packages/form-validation
       '@govtech-bb/registry':
         specifier: workspace:*
         version: link:../../packages/registry

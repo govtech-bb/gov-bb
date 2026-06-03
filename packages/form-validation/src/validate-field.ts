@@ -1,11 +1,8 @@
-import type {
-  Primitive,
-  ValidationType,
-  ValidationConfig,
-} from "@govtech-bb/form-types";
+import type { Primitive, ValidationType } from "@govtech-bb/form-types";
 import type { StepScopedValues } from "./types";
 import { RULE_REGISTRY } from "./rules";
-import { resolveReference, MISSING } from "./rules/resolve-reference";
+import { runRule } from "./rules/run-rule";
+import { validateDateField } from "./validate-date";
 
 const EMPTY_BY_TYPE: Partial<Record<string, unknown>> = {
   number: undefined,
@@ -24,40 +21,6 @@ function isEmpty(value: unknown, htmlType: string): boolean {
   return value === undefined || value === null || value === "";
 }
 
-// For cross-field rules (config.reference set), pre-resolves the reference using
-// stepValues as a fallback for the current step. Patches config so the runner
-// treats it as a literal-value rule — no change to RuleRunner's signature needed.
-function runRule(
-  runner: (
-    v: unknown,
-    c: ValidationConfig,
-    a: StepScopedValues,
-  ) => string | null,
-  value: unknown,
-  config: ValidationConfig,
-  allValues: StepScopedValues,
-  stepValues: Record<string, unknown>,
-): string | null {
-  if (config.referenceFieldId === undefined) {
-    return runner(value, config, allValues);
-  }
-
-  const resolved = resolveReference(config, allValues, stepValues);
-
-  // Reference not found anywhere (field hidden or not submitted) — skip rule
-  if (resolved === MISSING) return null;
-
-  // Patch: replace reference lookup with resolved literal so runner uses the right value
-  const patched: ValidationConfig = {
-    ...config,
-    value: resolved,
-    referenceFieldId: undefined,
-    referenceStepId: undefined,
-    targetStepId: undefined,
-  };
-  return runner(value, patched, allValues);
-}
-
 export function validateField(
   field: Primitive,
   value: unknown,
@@ -66,6 +29,13 @@ export function validateField(
 ): string[] {
   const { validations, htmlType } = field;
   if (!validations) return [];
+
+  // Date fields follow the GOV.UK date input error guidance: a single
+  // highest-priority message (missing/incomplete > impossible > other rules).
+  if (htmlType === "date") {
+    const dateError = validateDateField(field, value, allValues, stepValues);
+    return dateError ? [dateError.message] : [];
+  }
 
   const errors: string[] = [];
   const requiredConfig = validations["required"];

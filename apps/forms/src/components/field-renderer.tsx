@@ -8,6 +8,11 @@ import React, { JSX } from "react";
 import ErrorMessage from "./error-message";
 import { RequiredState, checkConditionalOn, parseDatePart } from "@forms/lib";
 import { DateValue, FieldArrayBehaviour } from "@govtech-bb/form-types";
+import { isDateValidationError } from "@govtech-bb/form-validation";
+import type {
+  DatePart,
+  DateValidationError,
+} from "@govtech-bb/form-validation";
 import FileUpload from "./file-upload";
 import { MaskedInput } from "./masked-input";
 
@@ -72,10 +77,24 @@ export default function FieldRenderer({
         // For each field type, be sure to establish...
         // const value = f.state.value as ValueType | undefined
         let errorMessage = "";
+        // Date fields surface a structured { message, parts } error so the
+        // failing day/month/year inputs can be highlighted individually.
+        let dateError: DateValidationError | undefined;
         if (!f.state.meta.isValid) {
-          errorMessage = f.state.meta.errors[0];
+          const rawError: unknown = f.state.meta.errors[0];
+          if (isDateValidationError(rawError)) {
+            dateError = rawError;
+            errorMessage = rawError.message;
+          } else if (typeof rawError === "string") {
+            errorMessage = rawError;
+          }
         }
         const invalid = errorMessage ? true : undefined;
+        // A plain string error carries no part information — highlight all.
+        const partInvalid = (part: DatePart) =>
+          invalid && (dateError?.parts.includes(part) ?? true)
+            ? true
+            : undefined;
 
         // revalidateLogic holds validation until a submit attempt, so typing in
         // a fresh field never nags. But once a field is showing an error (after
@@ -116,8 +135,15 @@ export default function FieldRenderer({
         switch (field.htmlType) {
           case "date": {
             const value = f.state.value as DateValue | undefined;
+            // The fieldset id is the ErrorSummary anchor target; the error is
+            // described at the group level per the GOV.UK date input markup.
             return (
-              <fieldset className="govbb-fieldset">
+              <fieldset
+                className="govbb-fieldset"
+                id={field.id}
+                role="group"
+                aria-describedby={describedBy}
+              >
                 <legend className={labelClass("govbb-fieldset__legend")}>
                   {field.label}
                 </legend>
@@ -140,11 +166,15 @@ export default function FieldRenderer({
                         {...sharedProps}
                         {...requiredProps}
                         id={`${field.id}-day`}
+                        name={`${field.name}-day`}
                         className="govbb-date-input__field"
                         value={value?.day ?? ""}
                         type="text"
                         inputMode="numeric"
-                        aria-invalid={invalid}
+                        // undefined overrides sharedProps — the group carries
+                        // the description, double announcements are noise
+                        aria-describedby={undefined}
+                        aria-invalid={partInvalid("day")}
                         onChange={(e) => {
                           commitChange({
                             ...value,
@@ -167,11 +197,13 @@ export default function FieldRenderer({
                         {...sharedProps}
                         {...requiredProps}
                         id={`${field.id}-month`}
+                        name={`${field.name}-month`}
                         className="govbb-date-input__field"
                         type="text"
                         inputMode="numeric"
                         value={value?.month ?? ""}
-                        aria-invalid={invalid}
+                        aria-describedby={undefined}
+                        aria-invalid={partInvalid("month")}
                         onChange={(e) => {
                           commitChange({
                             ...value,
@@ -194,11 +226,13 @@ export default function FieldRenderer({
                         {...sharedProps}
                         {...requiredProps}
                         id={`${field.id}-year`}
+                        name={`${field.name}-year`}
                         className="govbb-date-input__field"
                         type="text"
                         inputMode="numeric"
                         value={value?.year ?? ""}
-                        aria-invalid={invalid}
+                        aria-describedby={undefined}
+                        aria-invalid={partInvalid("year")}
                         onChange={(e) => {
                           commitChange({
                             ...value,
@@ -416,7 +450,7 @@ export default function FieldRenderer({
               const option = field.options[0];
               const value = (f.state.value as string | undefined) ?? "";
               return (
-                <fieldset className="govbb-fieldset">
+                <fieldset className="govbb-fieldset" id={field.id}>
                   <legend className={labelClass("govbb-fieldset__legend")}>
                     {field.label}
                   </legend>
@@ -464,7 +498,7 @@ export default function FieldRenderer({
             };
 
             return (
-              <fieldset className="govbb-fieldset">
+              <fieldset className="govbb-fieldset" id={field.id}>
                 <legend className={labelClass("govbb-fieldset__legend")}>
                   {field.label}
                 </legend>
@@ -501,7 +535,7 @@ export default function FieldRenderer({
           case "radio":
             const value: string = (f.state.value as string | undefined) ?? "";
             return (
-              <fieldset className="govbb-fieldset">
+              <fieldset className="govbb-fieldset" id={field.id}>
                 <legend className={labelClass("govbb-fieldset__legend")}>
                   {field.label}
                 </legend>

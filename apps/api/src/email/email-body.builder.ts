@@ -6,6 +6,10 @@ import type {
   Primitive,
   ServiceContract,
 } from "@govtech-bb/form-types";
+import {
+  isCompleteDateValue,
+  formatDateValue,
+} from "@govtech-bb/form-validation";
 import { FormDefinitionsService } from "../forms/form-definitions/form-definitions.service";
 import type {
   SubmissionAuditTrail,
@@ -56,6 +60,7 @@ export interface EmailTemplateContext {
  * **Field value formatting:**
  * - `radio` / single `select` — option label looked up from `options` list
  * - `checkbox` / multi `select` (`multiple: true`) — selected option labels joined with ", "
+ * - `date`      — `{ day, month, year }` object formatted as e.g. "5 June 2026"
  * - `file`      — skipped (binary; not shown in email)
  * - `show-hide` — skipped (layout-only; carries no user data)
  * - all others  — coerced to string
@@ -236,6 +241,14 @@ export class EmailBodyBuilder {
           field.options ?? [],
           Array.isArray(raw) ? raw : [raw],
         );
+
+      case "date": {
+        if (isCompleteDateValue(raw)) return formatDateValue(raw);
+        // Legacy submissions stored ISO strings — pass them through. Any
+        // other shape (partial/malformed object) would stringify to
+        // "[object Object]", so omit the row instead.
+        return typeof raw === "string" ? raw : "";
+      }
 
       default:
         return String(raw);

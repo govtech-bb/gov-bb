@@ -61,6 +61,7 @@ function makeContract(
               { label: "Spanish", value: "es" },
             ],
           },
+          { fieldId: "dob", label: "Date of birth", htmlType: "date" },
         ],
       },
       {
@@ -93,6 +94,7 @@ function makePayload(
         interests: ["sports", "art"],
         country: "bb",
         languages: ["en", "fr"],
+        dob: { day: 5, month: 6, year: 1990 },
       },
       contact: {
         email: "alice@example.com",
@@ -113,6 +115,7 @@ function makePayload(
           "interests",
           "country",
           "languages",
+          "dob",
         ],
         contact: ["email", "phone"],
       },
@@ -207,6 +210,51 @@ describe("EmailBodyBuilder", () => {
       const field = ctx.sections[0].fields.find((f) => f.label === "Languages");
 
       expect(field?.value).toBe("English, French");
+    });
+
+    it("formats object-shaped date values instead of '[object Object]'", async () => {
+      const ctx = await builder.build(makePayload());
+      const field = ctx.sections[0].fields.find(
+        (f) => f.label === "Date of birth",
+      );
+
+      expect(field?.value).toBe("5 June 1990");
+    });
+
+    it("passes through legacy string date values unchanged", async () => {
+      const payload = makePayload();
+      (payload.values.personal as Record<string, unknown>).dob = "1990-06-05";
+
+      const ctx = await builder.build(payload);
+      const field = ctx.sections[0].fields.find(
+        (f) => f.label === "Date of birth",
+      );
+
+      expect(field?.value).toBe("1990-06-05");
+    });
+
+    it("omits a malformed object-shaped date instead of stringifying it", async () => {
+      const payload = makePayload();
+      (payload.values.personal as Record<string, unknown>).dob = { day: 5 };
+
+      const ctx = await builder.build(payload);
+      const field = ctx.sections[0].fields.find(
+        (f) => f.label === "Date of birth",
+      );
+
+      expect(field).toBeUndefined();
+    });
+
+    it("omits an empty date field", async () => {
+      const payload = makePayload();
+      (payload.values.personal as Record<string, unknown>).dob = undefined;
+
+      const ctx = await builder.build(payload);
+      const field = ctx.sections[0].fields.find(
+        (f) => f.label === "Date of birth",
+      );
+
+      expect(field).toBeUndefined();
     });
 
     it("omits steps listed in hiddenStepIds", async () => {
