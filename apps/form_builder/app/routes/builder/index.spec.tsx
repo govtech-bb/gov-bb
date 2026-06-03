@@ -395,6 +395,13 @@ describe("BuilderPage — unsaved changes + Discard", () => {
     expect(saveDraftButton()).toBeEnabled();
   });
 
+  it("disables Deploy while the draft has unsaved changes (#331)", () => {
+    mockEmptyDraft = VALID_DRAFT; // dirty, never saved ⇒ unsaved changes
+    renderBuilder();
+
+    expect(screen.getByRole("button", { name: /deploy/i })).toBeDisabled();
+  });
+
   it("clears the form when Discard is confirmed and there is no saved baseline", () => {
     mockEmptyDraft = VALID_DRAFT; // dirty but never saved/loaded ⇒ no baseline
     renderBuilder();

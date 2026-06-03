@@ -426,6 +426,15 @@ function BuilderPage() {
   };
 
   const handlePublish = async (description: string) => {
+    // Deploy requires a saved draft (#331), and this is the one place the
+    // check holds: the toolbar's disabled gate goes stale the moment the
+    // author edits during the validate round-trip, while this handler is
+    // recreated each render so it reads the live hasUnsavedChanges right
+    // before the irreversible publishRecipe call.
+    if (hasUnsavedChanges) {
+      setPublishError("Save draft before deploying.");
+      return;
+    }
     setIsPublishing(true);
     setPublishError(null);
     try {
