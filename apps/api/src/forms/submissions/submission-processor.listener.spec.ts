@@ -65,17 +65,23 @@ function makeSqsConfig(enabled: boolean) {
   return { enabled };
 }
 
+function makeEmailConfig(qaNotifyRecipient?: string) {
+  return { qaNotifyRecipient } as any;
+}
+
 function makeListener(
   factory: ProcessorFactory,
   producer: jest.Mocked<SqsProducerService>,
   sqsEnabled: boolean,
   exprs: ExpressionsService = expressions,
+  emailConf: ReturnType<typeof makeEmailConfig> = makeEmailConfig(),
 ): SubmissionProcessorListener {
   return new SubmissionProcessorListener(
     factory,
     producer,
     makeSqsConfig(sqsEnabled) as any,
     exprs,
+    emailConf,
   );
 }
 
@@ -227,6 +233,7 @@ describe("SubmissionProcessorListener — expressions resolution", () => {
       makeProducer(),
       makeSqsConfig(false) as any,
       transformingExpressions,
+      makeEmailConfig(),
     );
 
     await l.handleSubmissionCreated({
@@ -266,11 +273,98 @@ describe("SubmissionProcessorListener — expressions resolution", () => {
       producer,
       makeSqsConfig(false) as any,
       failingExpressions,
+      makeEmailConfig(),
     );
 
     await expect(l.handleSubmissionCreated(EVENT)).resolves.toBeUndefined();
 
     expect(email.process).not.toHaveBeenCalled();
     expect(producer.enqueue).not.toHaveBeenCalled();
+  });
+});
+
+/* Tests — QA notify hook (non-prod scaffold) */
+
+describe("SubmissionProcessorListener — QA notify hook", () => {
+  function captureDispatched(email: ISubmissionProcessor) {
+    const captured: SubmissionCreatedEvent[] = [];
+    (email.process as jest.Mock).mockImplementation(
+      (p: SubmissionCreatedEvent) => {
+        captured.push(p);
+        return Promise.resolve({ kind: "completed" });
+      },
+    );
+    return captured;
+  }
+
+  it("appends one synthetic email entry per comma-separated QA recipient", async () => {
+    const email = makeProcessor("email");
+    const captured = captureDispatched(email);
+    const listener = makeListener(
+      makeFactory([], [email]),
+      makeProducer(),
+      false,
+      expressions,
+      makeEmailConfig("qa1@govtech.bb, qa2@govtech.bb"),
+    );
+
+    await listener.handleSubmissionCreated({ ...EVENT, processors: [] });
+
+    const emailEntries = captured[0].processors.filter(
+      (p) => p.type === "email",
+    );
+    expect(emailEntries).toHaveLength(2);
+    expect(
+      emailEntries.map(
+        (e) => (e.config as { recipientField: string }).recipientField,
+      ),
+    ).toEqual(["qa1@govtech.bb", "qa2@govtech.bb"]);
+  });
+
+  it("leaves the form's own recipients intact and only adds the QA entry", async () => {
+    const email = makeProcessor("email");
+    const captured = captureDispatched(email);
+    const listener = makeListener(
+      makeFactory([], [email]),
+      makeProducer(),
+      false,
+      expressions,
+      makeEmailConfig("qa@govtech.bb"),
+    );
+
+    await listener.handleSubmissionCreated({
+      ...EVENT,
+      processors: [
+        { type: "email", config: { recipientField: "applicant.email" } },
+      ],
+    });
+
+    const recipients = captured[0].processors
+      .filter((p) => p.type === "email")
+      .map((e) => (e.config as { recipientField: string }).recipientField);
+    expect(recipients).toEqual(["applicant.email", "qa@govtech.bb"]);
+  });
+
+  it("does not append anything when qaNotifyRecipient is unset", async () => {
+    const email = makeProcessor("email");
+    const captured = captureDispatched(email);
+    const listener = makeListener(
+      makeFactory([], [email]),
+      makeProducer(),
+      false,
+      expressions,
+      makeEmailConfig(),
+    );
+
+    await listener.handleSubmissionCreated({
+      ...EVENT,
+      processors: [
+        { type: "email", config: { recipientField: "applicant.email" } },
+      ],
+    });
+
+    expect(
+      captured[0].processors.filter((p) => p.type === "email"),
+    ).toHaveLength(1);
   });
 });
