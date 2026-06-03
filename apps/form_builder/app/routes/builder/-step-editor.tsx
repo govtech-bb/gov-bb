@@ -222,7 +222,9 @@ export function StepEditor({
         />
       </div>
 
-      {/* Fields — hidden for review/confirmation steps that accept no fields */}
+      {/* Fields list — hidden for review/confirmation steps that accept no
+          fields. The "Add field" picker is split into its own block below so
+          Step Behaviours can render between the list and the picker (#566). */}
       {!noFields && (
         <>
           <div className={styles.sectionTitle}>
@@ -252,14 +254,10 @@ export function StepEditor({
               ))}
             </SortableContext>
           </DndContext>
-
-          {/* Inline field picker palette */}
-          <div className={styles.sectionTitle}>Add field</div>
-          <FieldPicker catalog={catalog} onAddField={handleAddField} />
         </>
       )}
 
-      {/* Inline field edit panel */}
+      {/* Inline field edit panel — stays attached to the Fields list above. */}
       {editingField !== null && editingFieldId !== null && (
         <FieldEditPanel
           field={editingField}
@@ -280,6 +278,15 @@ export function StepEditor({
         stepRefs={stepRefs}
         onChange={handleSetBehaviours}
       />
+
+      {/* Inline field picker palette — renders below Step Behaviours (#566),
+          hidden for no-fields steps alongside the Fields list. */}
+      {!noFields && (
+        <>
+          <div className={styles.sectionTitle}>Add field</div>
+          <FieldPicker catalog={catalog} onAddField={handleAddField} />
+        </>
+      )}
     </div>
   );
 }
