@@ -156,3 +156,6 @@ amplify/#current-cloud-backend
 # Working/presentation files
 PRESENTATION-*.yml
 cicd-policy*.json
+
+# Session plans — drive work up to the PR, then deleted; not version-controlled
+docs/plans/
