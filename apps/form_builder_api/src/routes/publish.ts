@@ -1,7 +1,7 @@
 import { Router } from "express";
 import type { ServiceContractRecipe } from "@govtech-bb/form-types";
 
-export const publishRouter = Router();
+export const publishRouter: Router = Router();
 
 const REPO_OWNER = "govtech-bb";
 const REPO_NAME = "gov-bb";

@@ -5,7 +5,7 @@
 FROM node:20-alpine AS builder
 
 # Corepack must run as root — it writes to /usr/local/bin.
-RUN corepack enable && corepack prepare pnpm@10.33.4 --activate
+RUN corepack enable && corepack prepare pnpm@10.30.0 --activate
 
 # Create the app user up front so every COPY can use --chown=app:app.
 # Explicit UID/GID so we can match them in the cache-mount uid=/gid= options
@@ -44,6 +44,34 @@ COPY --chown=app:app packages/ packages/
 
 RUN pnpm exec nx build api
 
+# `pnpm deploy` produces a self-contained copy of the api project at
+# /app/deploy: project files plus a node_modules holding the full resolved
+# dependency graph, with workspace packages (@govtech-bb/*) physically
+# copied in. This replaces the old COPY-node_modules + symlink-loop runner
+# assembly, which only worked under the hoisted linker (ADR 0002/0003).
+# Dev deps are included on purpose — the ECS migrate-task runs
+# `pnpm migration:run` (typeorm-ts-node-commonjs), which needs ts-node and
+# typescript at runtime.
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,uid=1001,gid=1001 \
+    pnpm --filter=@govtech-bb/api deploy --legacy --ignore-scripts /app/deploy
+
+# Workspace packages declare `main: ./src/index.js`, but their src/ holds
+# .ts source — compiled output lands in /app/dist/packages/<name>/src by
+# nx. Overlay the compiled JS into every deployed physical copy under
+# .pnpm (transitive workspace deps don't appear at the top level of an
+# isolated node_modules, so we can't go through node_modules/@govtech-bb).
+RUN for d in /app/dist/packages/*/; do \
+      name=$(basename "$d"); \
+      found=""; \
+      for dest in /app/deploy/node_modules/.pnpm/@govtech-bb+"$name"@*/node_modules/@govtech-bb/"$name"; do \
+        [ -d "$dest/src" ] || continue; \
+        cp -RL "$d/src/." "$dest/src/"; \
+        found=1; \
+        echo "  overlaid compiled @govtech-bb/$name -> $dest"; \
+      done; \
+      [ -n "$found" ] || echo "  (no deployed copy of @govtech-bb/$name — not in api's graph)"; \
+    done
+
 # ---- dev ----------------------------------------------------------------
 # Hot-reload image used by docker-compose for local iteration. Reuses the
 # builder stage (deps already installed, source already copied, prod build
@@ -63,7 +91,7 @@ CMD ["pnpm", "exec", "nx", "dev", "api"]
 # (deploy-sandbox.yml) can shell into the container and run `pnpm migration:run`.
 FROM node:20-alpine AS runner
 
-RUN corepack enable && corepack prepare pnpm@10.33.4 --activate
+RUN corepack enable && corepack prepare pnpm@10.30.0 --activate
 
 # Closes #15 (CIS Docker Benchmark — no container should run as root).
 RUN addgroup -S -g 1001 app && adduser -S -u 1001 -G app app
@@ -77,43 +105,26 @@ RUN wget -O /app/rds-ca-bundle.pem https://truststore.pki.rds.amazonaws.com/glob
 RUN chown app:app /app
 USER app
 
-COPY --from=builder --chown=app:app /app/dist/apps/api/ ./dist/
-COPY --from=builder --chown=app:app /app/dist/packages/ ./packages/
-COPY --from=builder --chown=app:app /app/packages/form-types/src/ ./packages/form-types/src/
-COPY --from=builder --chown=app:app /app/node_modules/ ./node_modules/
-
-# pnpm (hoisted mode) keeps workspace-package symlinks in the consumer's
-# own node_modules (apps/api/node_modules/@govtech-bb/*). The runtime
-# entry is /app/dist/src/main.js, and Node's module-lookup walks up from
-# there — it never enters apps/api/. Expose the workspace packages at the
-# root so `require("@govtech-bb/form-types")` resolves.
-#
-# Symlinks are generated from whatever's actually in packages/ rather than
-# from a hand-maintained list. The previous hard-coded list silently broke
-# (#412) when `registry` was added without updating the Dockerfile — the
-# API crash-looped on MODULE_NOT_FOUND and ECS's circuit breaker rolled
-# back to the prior image, masking the failure as a "successful" deploy.
-RUN mkdir -p node_modules/@govtech-bb && \
-    for pkg_dir in packages/*/; do \
-      pkg_name=$(basename "$pkg_dir"); \
-      [ -f "$pkg_dir/package.json" ] || continue; \
-      ln -sfn "../../packages/$pkg_name" "node_modules/@govtech-bb/$pkg_name"; \
-      echo "  symlinked @govtech-bb/$pkg_name"; \
-    done
-COPY --from=builder --chown=app:app /app/package.json ./
-COPY --from=builder --chown=app:app /app/pnpm-lock.yaml ./
-COPY --from=builder --chown=app:app /app/pnpm-workspace.yaml ./
+# The deploy output is the whole runtime: api project files (src/,
+# typeorm.config.ts, package.json with the migration:* scripts) plus a
+# self-contained node_modules. Layout mirrors the monorepo (apps/api under
+# /app) so apps/api/tsconfig.json's `extends: ../../tsconfig.base.json`
+# still resolves for the ts-node-driven migrate-task.
 COPY --from=builder --chown=app:app /app/tsconfig.base.json ./
-COPY --from=builder --chown=app:app /app/apps/api/package.json ./apps/api/
-COPY --from=builder --chown=app:app /app/apps/api/tsconfig.json ./apps/api/
-COPY --from=builder --chown=app:app /app/apps/api/typeorm.config.ts ./apps/api/
-COPY --from=builder --chown=app:app /app/apps/api/src/database/ ./apps/api/src/database/
+COPY --from=builder --chown=app:app /app/deploy/ ./apps/api/
+COPY --from=builder --chown=app:app /app/dist/apps/api/ ./apps/api/dist/
 # Recipe files (.json) — read by RecipeFileLoaderService. tsc/nx don't bundle
 # non-`.ts` assets into dist/, so we copy them alongside the compiled output
 # (mirrors the email-templates COPY below).
-COPY --from=builder --chown=app:app /app/apps/api/src/forms/form-definitions/recipes/ ./dist/src/forms/form-definitions/recipes/
+COPY --from=builder --chown=app:app /app/apps/api/src/forms/form-definitions/recipes/ ./apps/api/dist/src/forms/form-definitions/recipes/
 # Email templates (.hbs files not copied by tsc build)
-COPY --from=builder --chown=app:app /app/apps/api/src/email/templates/ ./dist/src/email/templates/
+COPY --from=builder --chown=app:app /app/apps/api/src/email/templates/ ./apps/api/dist/src/email/templates/
+
+# Workdir is the api project itself: `node dist/src/main.js` resolves
+# modules by walking up into ./node_modules, and the ECS migrate-task's
+# `pnpm migration:run` override hits apps/api's own script (cwd-relative
+# typeorm.config.ts).
+WORKDIR /app/apps/api
 
 ENV NODE_ENV=production
 ENV NODE_EXTRA_CA_CERTS=/app/rds-ca-bundle.pem

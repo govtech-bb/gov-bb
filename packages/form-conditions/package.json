@@ -11,6 +11,13 @@
     "*.ts": "npx prettier --write"
   },
   "devDependencies": {
-    "lint-staged": "^16.4.0"
+    "@types/jest": "^30.0.0",
+    "jest": "^30.3.0",
+    "lint-staged": "^16.4.0",
+    "ts-jest": "^29.4.6"
+  },
+  "dependencies": {
+    "@govtech-bb/form-types": "workspace:*",
+    "tslib": "^2.8.1"
   }
 }

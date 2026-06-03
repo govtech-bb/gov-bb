@@ -12,7 +12,7 @@ import {
   type FormTitleRow,
 } from "./form-uniqueness.js";
 
-export const formsRouter = Router();
+export const formsRouter: Router = Router();
 
 // Upstream apps/api base URL for the published-recipe proxy. Falls back to the
 // sandbox API when API_BASE_URL is unset so the form_builder "Open" modal works

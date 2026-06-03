@@ -31,6 +31,7 @@
     "@nestjs/platform-express": "^11.1.0",
     "@nestjs/schedule": "^5.0.0",
     "@nestjs/swagger": "^11.0.0",
+    "@nestjs/throttler": "^6.5.0",
     "@nestjs/typeorm": "^11.0.0",
     "@opentelemetry/api": "^1.9.1",
     "@opentelemetry/auto-instrumentations-node": "^0.76.0",
@@ -40,15 +41,21 @@
     "@opentelemetry/sdk-node": "^0.218.0",
     "@smithy/core": "^3.24.3",
     "axios": "^1.15.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.15.1",
+    "dotenv": "^17.4.2",
     "exceljs": "^4.4.0",
     "express": "^4.18.0",
     "handlebars": "^4.7.9",
     "helmet": "^8.1.0",
     "joi": "^18.0.2",
+    "json-logic-js": "^2.0.5",
     "luxon": "^3.0.0",
     "node-cache": "^5.1.2",
     "nodemailer": "^8.0.5",
     "pg": "^8.20.0",
+    "rxjs": "^7.0.0",
+    "tslib": "^2.8.1",
     "typeorm": "^0.3.28",
     "uuid": "^11.1.1",
     "zod": "^4.4.3"
@@ -57,16 +64,21 @@
     "@nestjs/testing": "^11.1.17",
     "@types/express": "^4.17.21",
     "@types/jest": "^30.0.0",
+    "@types/json-logic-js": "^2.0.7",
     "@types/multer": "^1.4.12",
+    "@types/node": "^24.0.0",
     "@types/nodemailer": "^8.0.0",
     "@types/supertest": "^7.2.0",
     "@types/uuid": "^10.0.0",
     "aws-sdk-client-mock": "^4.1.0",
     "jest": "^30.3.0",
     "supertest": "^7.2.2",
-    "ts-jest": "^29.4.6"
+    "ts-jest": "^29.4.6",
+    "ts-node": "^10.9.2",
+    "typescript": "catalog:"
   },
   "lint-staged": {
     "*.{json,ts}": "npx prettier --write"
-  }
+  },
+  "packageManager": "pnpm@10.30.0"
 }

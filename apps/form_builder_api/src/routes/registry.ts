@@ -17,7 +17,7 @@ import type {
 } from "@govtech-bb/form-types";
 import { getFullCatalog } from "../catalog.js";
 
-export const registryRouter = Router();
+export const registryRouter: Router = Router();
 
 // GET /builder/registry/catalog
 registryRouter.get("/catalog", async (_req, res) => {

@@ -2,9 +2,6 @@ packages:
   - "apps/*"
   - "packages/*"
 
-# was .npmrc node-linker=hoisted; lives here so npm stops warning
-# about unknown config — see docs/decisions/0002
-nodeLinker: hoisted
 
 catalog:
   "@tanstack/ai": "^0.27.0"

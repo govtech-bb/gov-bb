@@ -7,6 +7,7 @@ applications:
         preBuild:
           commands:
             - npm install -g pnpm@10.30.0
+            - pnpm config set store-dir .pnpm-store
             - pnpm install --frozen-lockfile
         build:
           commands:
@@ -17,7 +18,11 @@ applications:
           - "**/*"
       cache:
         paths:
-          - node_modules/**/*
+          # Cache the pnpm store, not node_modules — under the isolated
+          # linker node_modules is a symlink forest into .pnpm and does
+          # not survive Amplify cache restore; install relinks from the
+          # store via --frozen-lockfile.
+          - .pnpm-store/**/*
           - .nx/cache/**/*
       customHeaders:
         - pattern: "**/*"
@@ -41,6 +46,7 @@ applications:
         preBuild:
           commands:
             - npm install -g pnpm@10.30.0
+            - pnpm config set store-dir .pnpm-store
             - pnpm install --frozen-lockfile
         build:
           commands:
@@ -51,7 +57,11 @@ applications:
           - "**/*"
       cache:
         paths:
-          - node_modules/**/*
+          # Cache the pnpm store, not node_modules — under the isolated
+          # linker node_modules is a symlink forest into .pnpm and does
+          # not survive Amplify cache restore; install relinks from the
+          # store via --frozen-lockfile.
+          - .pnpm-store/**/*
           - .nx/cache/**/*
       customHeaders:
         - pattern: "**/*"
@@ -75,6 +85,7 @@ applications:
         preBuild:
           commands:
             - npm install -g pnpm@10.30.0
+            - pnpm config set store-dir .pnpm-store
             - pnpm install --frozen-lockfile
         build:
           commands:
@@ -87,7 +98,11 @@ applications:
           - "**/*"
       cache:
         paths:
-          - node_modules/**/*
+          # Cache the pnpm store, not node_modules — under the isolated
+          # linker node_modules is a symlink forest into .pnpm and does
+          # not survive Amplify cache restore; install relinks from the
+          # store via --frozen-lockfile.
+          - .pnpm-store/**/*
           - .nx/cache/**/*
       customHeaders:
         - pattern: "**/*"
@@ -111,6 +126,7 @@ applications:
         preBuild:
           commands:
             - npm install -g pnpm@10.30.0
+            - pnpm config set store-dir .pnpm-store
             - pnpm install --frozen-lockfile
         build:
           commands:
@@ -121,7 +137,11 @@ applications:
           - "**/*"
       cache:
         paths:
-          - node_modules/**/*
+          # Cache the pnpm store, not node_modules — under the isolated
+          # linker node_modules is a symlink forest into .pnpm and does
+          # not survive Amplify cache restore; install relinks from the
+          # store via --frozen-lockfile.
+          - .pnpm-store/**/*
           - .nx/cache/**/*
       customHeaders:
         - pattern: "**/*"

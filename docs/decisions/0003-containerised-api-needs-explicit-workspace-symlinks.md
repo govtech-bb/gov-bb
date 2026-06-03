@@ -1,7 +1,7 @@
 # 0003 — Containerised api needs explicit workspace symlinks at root `node_modules`
 
 **Date:** 2026-05-21
-**Status:** Accepted
+**Status:** Superseded by [ADR 0032](./0032-pnpm-uses-isolated-node-linker.md) — `pnpm deploy` replaces the symlink assembly
 
 ## Context
 

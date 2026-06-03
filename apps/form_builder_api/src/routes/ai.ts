@@ -8,7 +8,7 @@ import { getSystemPrompt } from "../ai/system-prompt.js";
 import { chat, isAvailable } from "../ai/client.js";
 import { extractRecipe } from "../ai/recipe-extractor.js";
 
-export const aiRouter = Router();
+export const aiRouter: Router = Router();
 
 // The builder is stateless: every AI action is a single, self-contained turn.
 // There is no server-side conversation — the editor owns the live draft and
