@@ -321,6 +321,7 @@ describe("EmailProcessor", () => {
         makeConfig(),
         makeTemplateService(),
         bodyBuilder,
+        makeFilesService(),
       );
       const payload = makePayload();
       payload.processors = [
