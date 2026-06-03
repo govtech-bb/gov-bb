@@ -21,6 +21,12 @@ export const listForms = createServerFn({ method: "GET" })
       api.get<string[]>("/builder/forms/disabled"),
     ]);
 
+    // `isPublished` means "this formId appears in the published index" — derive
+    // it from the raw published response, independently of the merge loop below.
+    // The loop `continue`s when a draft outranks the published copy, so it can't
+    // be the source of truth for membership.
+    const publishedIds = new Set(published.map((p) => p.formId));
+
     const byFormId = new Map<string, FormDefinitionSummary>();
     for (const d of drafts) byFormId.set(d.formId, d);
     for (const p of published) {
@@ -38,17 +44,16 @@ export const listForms = createServerFn({ method: "GET" })
     // Mark disabled forms. A disabled published form is kept so it can be
     // re-enabled from the UI; a disabled non-published entry is an orphan
     // tombstone from the old draft-delete behaviour with no UI home, so it's
-    // dropped.
-    //
-    // Known, accepted edge: `isPublished` reflects which version won the merge
-    // above, not "appears in the published index". So a disabled published form
-    // that ALSO has a newer draft (draft version > published) is marked
-    // isPublished=false and drops out of the picker here — it can't be re-enabled
-    // via the UI until the newer draft is removed. The tombstone still keeps the
-    // public site at 410, so this is a UI-only gap we've chosen to live with.
+    // dropped. OR published-index membership into `isPublished` so a disabled
+    // published form with a newer draft (whose draft entry won the merge with
+    // isPublished=false) stays put with its Disabled badge and Enable button.
     const disabledIds = new Set(disabled);
     return Array.from(byFormId.values())
-      .map((f) => ({ ...f, isDisabled: disabledIds.has(f.formId) }))
+      .map((f) => ({
+        ...f,
+        isPublished: f.isPublished || publishedIds.has(f.formId),
+        isDisabled: disabledIds.has(f.formId),
+      }))
       .filter((f) => !f.isDisabled || f.isPublished);
   });
 

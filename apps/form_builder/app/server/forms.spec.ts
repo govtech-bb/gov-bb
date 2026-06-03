@@ -154,7 +154,7 @@ describe("listForms", () => {
     });
   });
 
-  it("keeps the draft when its version is newer than the published copy", async () => {
+  it("keeps the draft's version/title when newer, but stays isPublished from the index", async () => {
     apiGet.mockImplementation((path: string) => {
       if (path === "/builder/forms")
         return Promise.resolve([
@@ -181,10 +181,12 @@ describe("listForms", () => {
     const result = await listForms();
 
     expect(result).toHaveLength(1);
+    // The draft wins the merge for the displayed version/title, but the formId
+    // is in the published index so isPublished stays true.
     expect(result[0]).toMatchObject({
       formId: "passport-renewal",
       version: "1.2.0",
-      isPublished: false,
+      isPublished: true,
     });
   });
 
@@ -231,6 +233,78 @@ describe("listForms", () => {
     const result = await listForms();
 
     expect(result.map((f) => f.formId)).toEqual(["alive"]);
+  });
+
+  it("keeps isPublished: true for a published formId with a newer draft", async () => {
+    apiGet.mockImplementation((path: string) => {
+      if (path === "/builder/forms")
+        return Promise.resolve([
+          {
+            id: "uuid-1",
+            formId: "passport-renewal",
+            title: "Newer draft",
+            version: "2.0.0",
+            isPublished: false,
+          },
+        ]);
+      if (path === "/builder/forms/published")
+        return Promise.resolve([
+          {
+            formId: "passport-renewal",
+            title: "Passport Renewal",
+            version: "1.0.0",
+          },
+        ]);
+      if (path === "/builder/forms/disabled") return Promise.resolve([]);
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    const result = await listForms();
+
+    expect(result).toHaveLength(1);
+    // Draft wins the merge for title/version, but membership in the published
+    // index drives isPublished.
+    expect(result[0]).toMatchObject({
+      formId: "passport-renewal",
+      version: "2.0.0",
+      isPublished: true,
+    });
+  });
+
+  it("keeps a disabled published formId with a newer draft, marking it isDisabled: true", async () => {
+    apiGet.mockImplementation((path: string) => {
+      if (path === "/builder/forms")
+        return Promise.resolve([
+          {
+            id: "uuid-1",
+            formId: "passport-renewal",
+            title: "Newer draft",
+            version: "2.0.0",
+            isPublished: false,
+          },
+        ]);
+      if (path === "/builder/forms/published")
+        return Promise.resolve([
+          {
+            formId: "passport-renewal",
+            title: "Passport Renewal",
+            version: "1.0.0",
+          },
+        ]);
+      if (path === "/builder/forms/disabled")
+        return Promise.resolve(["passport-renewal"]);
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    const result = await listForms();
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      formId: "passport-renewal",
+      version: "2.0.0",
+      isPublished: true,
+      isDisabled: true,
+    });
   });
 
   it("leaves isDisabled falsy on entries not in the disabled list", async () => {
