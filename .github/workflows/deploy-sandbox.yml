@@ -494,14 +494,14 @@ jobs:
       spec: vendor-registration.smoke.spec.ts
       artifact_name: vendor-registration-smoke-trace
 
-  smoke-test-textbook-grant:
-    name: Smoke test forms (textbook-grant)
+  smoke-test-get-a-primary-school-textbook-grant:
+    name: Smoke test forms (get-a-primary-school-textbook-grant)
     needs: amplify-forms
     uses: ./.github/workflows/forms-smoke.yml
     with:
       base_url: https://forms.sandbox.alpha.gov.bb
-      spec: textbook-grant-application.smoke.spec.ts
-      artifact_name: textbook-grant-smoke-trace
+      spec: get-a-primary-school-textbook-grant.smoke.spec.ts
+      artifact_name: get-a-primary-school-textbook-grant-smoke-trace
 
   smoke-test-duties-performed:
     name: Smoke test forms (duties-performed)
