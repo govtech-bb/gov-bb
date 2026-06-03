@@ -7,6 +7,11 @@ import type {
 } from "@govtech-bb/form-types";
 import { evaluateCondition, flattenStepValues } from "./internals";
 
+// Re-export the low-level condition primitives so clients (e.g. apps/forms)
+// can evaluate a single condition against a value tree without going through
+// the full `evaluateFormConditions` contract walk.
+export { evaluateCondition, flattenStepValues } from "./internals";
+
 export type StepScopedValues = Record<
   string,
   Record<string, unknown> | Array<Record<string, unknown>>

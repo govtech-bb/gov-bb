@@ -775,5 +775,56 @@ describe("buildFieldValidationProperties", () => {
       );
       expect(onDynamic!({ value: "", fieldApi })).toBeUndefined();
     });
+
+    // --- repeatable instance-local resolution (#668) ---
+    // Inside a repeatable step, `handleMissingTargetStepIds` rewrites each
+    // optionalIf's `targetStepId` to the synthetic instance step
+    // (`reason~1`, `reason~2`, …). The field on instance N must therefore relax
+    // `required` based on instance N's OWN controlling value — not instance 1's.
+    const repeatableOptionalIfField = (
+      instanceStepId: string,
+    ): ClientPrimitive =>
+      makeField("reason", instanceStepId, {
+        validations: {
+          required: { value: true, error: "Reason is required." },
+        },
+        behaviours: [
+          {
+            type: "optionalIf",
+            // rewritten to the instance step by handleMissingTargetStepIds
+            targetStepId: instanceStepId,
+            targetFieldId: "skip",
+            operator: "equal",
+            value: "yes",
+          },
+        ],
+      });
+
+    // Form state: instance 1 NOT skipped, instance 2 skipped.
+    const repeatableState = {
+      reason_skip: "no",
+      "reason~1_skip": "yes",
+    };
+
+    it("enforces required on instance 1 when only instance 2 is skipped", () => {
+      const { onDynamic } = buildFieldValidationProperties(
+        repeatableOptionalIfField("reason"),
+      );
+      const fieldApi = makeFieldApi(repeatableState, "reason_reason");
+      // instance 1's `skip` is "no" → condition fails → required still enforced.
+      expect(onDynamic!({ value: "", fieldApi })).toEqual([
+        "Reason is required.",
+      ]);
+    });
+
+    it("relaxes required on instance 2 because it resolves against its OWN skip value", () => {
+      const { onDynamic } = buildFieldValidationProperties(
+        repeatableOptionalIfField("reason~1"),
+      );
+      const fieldApi = makeFieldApi(repeatableState, "reason~1_reason");
+      // instance 2's `skip` is "yes" → condition matches → required relaxed,
+      // independently of instance 1's value.
+      expect(onDynamic!({ value: "", fieldApi })).toBeUndefined();
+    });
   });
 });

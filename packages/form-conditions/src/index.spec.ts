@@ -1,5 +1,11 @@
 import { evaluateFormConditions } from "./index";
 import { evaluateCondition, flattenStepValues } from "./internals";
+// Also import via the package entry to exercise the public re-exports (#668):
+// `apps/forms` consumes these low-level primitives directly from the package.
+import {
+  evaluateCondition as evaluateConditionFromIndex,
+  flattenStepValues as flattenStepValuesFromIndex,
+} from "./index";
 import type { ConditionResult, StepScopedValues } from "./index";
 import type {
   FieldConditionalOnBehaviour,
@@ -1012,5 +1018,34 @@ describe("flattenStepValues — array safety", () => {
     } as unknown as StepScopedValues);
     expect(flat).toEqual({ name: "Marcus" });
     expect("employer" in flat).toBe(false);
+  });
+});
+
+// ─── public re-exports (#668) ───────────────────────────────────────────────
+// `apps/forms` evaluates single conditions client-side using these primitives
+// imported from the package entry, so the entry must surface them.
+
+describe("package entry re-exports evaluateCondition & flattenStepValues", () => {
+  it("re-exports the same evaluateCondition implementation", () => {
+    expect(evaluateConditionFromIndex).toBe(evaluateCondition);
+    const values: StepScopedValues = { step1: { colour: "red" } };
+    const flat = flattenStepValuesFromIndex(values);
+    expect(
+      evaluateConditionFromIndex(
+        {
+          type: "fieldConditionalOn",
+          targetStepId: "step1",
+          targetFieldId: "colour",
+          operator: "equal",
+          value: "red",
+        },
+        values,
+        flat,
+      ),
+    ).toBe(true);
+  });
+
+  it("re-exports the same flattenStepValues implementation", () => {
+    expect(flattenStepValuesFromIndex).toBe(flattenStepValues);
   });
 });
