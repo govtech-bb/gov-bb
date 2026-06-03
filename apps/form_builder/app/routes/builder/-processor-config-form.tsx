@@ -12,9 +12,11 @@ interface ProcessorConfigFormProps {
   // Receives the FULL replacement config. Each handler spreads the existing
   // config first, so unrendered keys (notably webhook `secret`) survive.
   onConfigChange: (config: Record<string, unknown>) => void;
-  // When the form carries contact details, the reserved `contactDetails.email`
-  // path becomes a selectable recipient for the email processor (issue #547).
-  hasContactDetails?: boolean;
+  // True when the form's contactDetails carries an `email` (issue #547). Since
+  // `contactDetails.email` is now optional (issue #607), this gates the
+  // `contactDetails.email` recipient option on the email actually being present
+  // — not merely on a contactDetails object existing.
+  hasContactEmail?: boolean;
 }
 
 const WEBHOOK_METHODS = ["POST", "PUT", "PATCH"] as const;
@@ -33,7 +35,7 @@ export function ProcessorConfigForm({
   processor,
   fields,
   onConfigChange,
-  hasContactDetails = false,
+  hasContactEmail = false,
 }: ProcessorConfigFormProps) {
   // Namespace ids by processor so labels associate correctly with several cards.
   const fid = (name: string) => `${name}-${processor.id}`;
@@ -50,6 +52,26 @@ export function ProcessorConfigForm({
       const recipientFields = fields.filter((f) =>
         f.fieldId.toLowerCase().includes("email"),
       );
+      // Reserved (non-field) recipient options offered alongside the form's
+      // fields. `config.mdaEmail` (issue #607) is the per-environment MDA
+      // notification address resolved server-side from `form_config`, so it is
+      // offered always — it doesn't depend on the recipe carrying contact
+      // details. `contactDetails.email` (issue #547) is only offered when the
+      // form actually has a contact email to resolve against.
+      const recipientExtraOptions = [
+        {
+          value: "config.mdaEmail",
+          label: "MDA notification email (per-environment)",
+        },
+        ...(hasContactEmail
+          ? [
+              {
+                value: "contactDetails.email",
+                label: "MDA contact email",
+              },
+            ]
+          : []),
+      ];
       return (
         <>
           <div className={styles.formGroup}>
@@ -74,16 +96,7 @@ export function ProcessorConfigForm({
               id={fid("recipientField")}
               value={asText(config.recipientField)}
               fields={recipientFields}
-              extraOptions={
-                hasContactDetails
-                  ? [
-                      {
-                        value: "contactDetails.email",
-                        label: "MDA contact email",
-                      },
-                    ]
-                  : undefined
-              }
+              extraOptions={recipientExtraOptions}
               onChange={(recipientField) =>
                 onConfigChange({ ...config, recipientField })
               }

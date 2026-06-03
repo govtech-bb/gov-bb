@@ -43,6 +43,12 @@ export interface RecipeDraft {
   // A single optional structured object — no editor-only id, unlike processors.
   // Round-tripped with the same `!== undefined` guard so absent stays distinct.
   contactDetails?: ContactDetails;
+  // The selected per-environment MDA contact (issue #607). DB-only: it is
+  // persisted to `form_config` and travels as a sibling field of the save
+  // request, NEVER inside the serialized recipe/ServiceContractRecipe — so
+  // serializeRecipeDraft must not emit it. `null` means "explicitly none";
+  // `undefined`/absent means "untouched".
+  mdaContactId?: string | null;
   steps: RecipeStepDraft[];
   // Carried through with an editor-only id per entry (issue #255). Serializer
   // drops the id; deserialize mints a fresh one. Authoring UI: Session 2.

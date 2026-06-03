@@ -97,9 +97,9 @@ it("populates the recipient-field picker with only email-like fields", async () 
   await addProcessor("email");
   const picker = screen.getByLabelText(/recipient field/i);
   // The email field is offered...
-  expect(within(picker).getByRole("option", { name: /Email/ })).toHaveValue(
-    "contact.email",
-  );
+  expect(
+    within(picker).getByRole("option", { name: "Email (contact.email)" }),
+  ).toHaveValue("contact.email");
   // ...but a non-email field (full-name) is filtered out.
   expect(
     within(picker).queryByRole("option", { name: /Full name/ }),
@@ -169,7 +169,7 @@ it("offers every email-like field (incl. mixed-case and applicant-email) and exc
   ).not.toBeInTheDocument();
 });
 
-it("shows only the placeholder when no field is email-like", async () => {
+it("shows only the placeholder and the always-on config.mdaEmail option when no field is email-like", async () => {
   const fields: ResolvedFieldId[] = [
     {
       fieldId: "full-name",
@@ -192,8 +192,11 @@ it("shows only the placeholder when no field is email-like", async () => {
   await addProcessor("email");
   const picker = screen.getByLabelText(/recipient field/i);
   const options = within(picker).getAllByRole("option");
-  expect(options).toHaveLength(1);
+  // Placeholder + the always-on config.mdaEmail option (issue #607); no
+  // email-like form field is offered.
+  expect(options).toHaveLength(2);
   expect(options[0]).toHaveTextContent(/select field/i);
+  expect(options[1]).toHaveValue("config.mdaEmail");
 });
 
 it("offers the MDA contact email as a recipient option when the draft has contact details", async () => {
@@ -224,6 +227,44 @@ it("does not offer the MDA contact email option when the draft has no contact de
   expect(
     within(picker).queryByRole("option", { name: /MDA contact email/ }),
   ).not.toBeInTheDocument();
+});
+
+it("does not offer the MDA contact email option when contactDetails has no email (issue #607)", async () => {
+  const initial: RecipeDraft = {
+    formId: "f",
+    title: "T",
+    steps: [],
+    // A contactDetails object that exists but carries no email — the gate must
+    // be on the email being present, not just the object existing.
+    contactDetails: { title: "Ministry of Health" },
+  };
+  render(<Harness initial={initial} />);
+  await addProcessor("email");
+  const picker = screen.getByLabelText(/recipient field/i);
+  expect(
+    within(picker).queryByRole("option", { name: /MDA contact email/ }),
+  ).not.toBeInTheDocument();
+});
+
+it("always offers config.mdaEmail (per-environment) as a recipient option (issue #607)", async () => {
+  render(<Harness initial={emptyDraft} />);
+  await addProcessor("email");
+  const picker = screen.getByLabelText(/recipient field/i);
+  expect(
+    within(picker).getByRole("option", {
+      name: "MDA notification email (per-environment) (config.mdaEmail)",
+    }),
+  ).toHaveValue("config.mdaEmail");
+});
+
+it("selects config.mdaEmail as the recipient path (issue #607)", async () => {
+  render(<Harness initial={emptyDraft} />);
+  await addProcessor("email");
+  await userEvent.selectOptions(
+    screen.getByLabelText(/recipient field/i),
+    "config.mdaEmail",
+  );
+  expect(state()[0].config.recipientField).toBe("config.mdaEmail");
 });
 
 it("selects the MDA contact email as the recipient path", async () => {
