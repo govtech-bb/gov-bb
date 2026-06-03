@@ -28,35 +28,20 @@ body {
   font-family: var(--font-family-base);
 }
 
-/* Local @utility keeps Tailwind's core container (max-width caps) suppressed;
-   the plain rules below sit outside @layer so they beat the duplicate
-   `@utility container` definitions shipped by @govtech-bb/design. */
-@utility container {
-  margin-inline: auto;
-  width: 100%;
-  padding-inline: var(--spacing-s);
-}
-
 .container {
   margin-inline: auto;
   width: 100%;
   padding-inline: var(--spacing-s); /* 16px */
-}
 
-@media (width >= 640px) {
-  .container {
+  @media (width >= 640px) {
     padding-inline: var(--spacing-m); /* 32px */
   }
-}
 
-@media (width >= 1280px) {
-  .container {
+  @media (width >= 1280px) {
     padding-inline: var(--spacing-l); /* 64px */
   }
-}
 
-@media (width >= 1512px) {
-  .container {
+  @media (width >= 1512px) {
     padding-inline: var(--spacing-xl); /* 128px */
   }
 }
