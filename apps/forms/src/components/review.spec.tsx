@@ -170,7 +170,7 @@ describe("Review", () => {
     render(
       <Review
         formMeta={baseFormMeta as FormMeta}
-        form={makeMockForm() as never}
+        form={makeMockForm({ "step-1.visible": "Answered" }) as never}
         visibleSteps={steps}
       />,
     );
@@ -203,7 +203,7 @@ describe("Review", () => {
     render(
       <Review
         formMeta={baseFormMeta as FormMeta}
-        form={makeMockForm() as never}
+        form={makeMockForm({ "step-1.shown": "Answered" }) as never}
         visibleSteps={steps}
       />,
     );
@@ -251,6 +251,215 @@ describe("Review", () => {
     // But the hidden fields should not render
     expect(screen.queryByText("Hidden field 1")).not.toBeInTheDocument();
     expect(screen.queryByText("Hidden field 2")).not.toBeInTheDocument();
+
+    // A section with no visible rows shows a "No values provided" message
+    expect(screen.getByText("No values provided")).toBeInTheDocument();
+  });
+
+  // -------------------------------------------------------------------------
+  // Empty values — omit the row entirely (issue #629)
+  // -------------------------------------------------------------------------
+
+  it("text/default field with no value renders no row", () => {
+    const steps: ClientFormStep[] = [
+      makeStep({
+        stepId: "step-1",
+        title: "Step One",
+        fields: [
+          makeField({
+            id: "step-1.name",
+            fieldId: "name",
+            label: "Full name",
+            htmlType: "text",
+          }),
+        ],
+      }),
+    ];
+    // no value supplied for the field
+    const form = makeMockForm({});
+
+    render(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={form as never}
+        visibleSteps={steps}
+      />,
+    );
+
+    expect(screen.queryByText("Full name")).not.toBeInTheDocument();
+    expect(screen.getByText("No values provided")).toBeInTheDocument();
+  });
+
+  it("select field with no matching option renders no row", () => {
+    const selectField = makeField({
+      id: "step-1.country",
+      fieldId: "country",
+      label: "Country",
+      htmlType: "select",
+      options: [
+        { value: "bb", label: "Barbados" },
+        { value: "tt", label: "Trinidad and Tobago" },
+      ],
+    });
+    const steps: ClientFormStep[] = [
+      makeStep({ stepId: "step-1", title: "Step One", fields: [selectField] }),
+    ];
+    // no value selected — nothing matches
+    const form = makeMockForm({});
+
+    render(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={form as never}
+        visibleSteps={steps}
+      />,
+    );
+
+    expect(screen.queryByText("Country")).not.toBeInTheDocument();
+  });
+
+  it("radio field with no selection renders no row", () => {
+    const radioField = makeField({
+      id: "step-1.gender",
+      fieldId: "gender",
+      label: "Gender",
+      htmlType: "radio",
+      options: [
+        { value: "m", label: "Male" },
+        { value: "f", label: "Female" },
+      ],
+    });
+    const steps: ClientFormStep[] = [
+      makeStep({ stepId: "step-1", title: "Step One", fields: [radioField] }),
+    ];
+    const form = makeMockForm({});
+
+    render(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={form as never}
+        visibleSteps={steps}
+      />,
+    );
+
+    expect(screen.queryByText("Gender")).not.toBeInTheDocument();
+  });
+
+  it("checkbox field with empty selection renders no row", () => {
+    const checkboxField = makeField({
+      id: "step-1.interests",
+      fieldId: "interests",
+      label: "Interests",
+      htmlType: "checkbox",
+      options: [
+        { value: "sport", label: "Sport" },
+        { value: "music", label: "Music" },
+      ],
+    });
+    const steps: ClientFormStep[] = [
+      makeStep({
+        stepId: "step-1",
+        title: "Step One",
+        fields: [checkboxField],
+      }),
+    ];
+    const form = makeMockForm({ "step-1.interests": [] });
+
+    render(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={form as never}
+        visibleSteps={steps}
+      />,
+    );
+
+    expect(screen.queryByText("Interests")).not.toBeInTheDocument();
+  });
+
+  it("date field with no value renders no row", () => {
+    const dateField = makeField({
+      id: "step-1.dob",
+      fieldId: "dob",
+      label: "Date of birth",
+      htmlType: "date",
+    });
+    const steps: ClientFormStep[] = [
+      makeStep({ stepId: "step-1", title: "Step One", fields: [dateField] }),
+    ];
+    const form = makeMockForm({});
+
+    render(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={form as never}
+        visibleSteps={steps}
+      />,
+    );
+
+    expect(screen.queryByText("Date of birth")).not.toBeInTheDocument();
+  });
+
+  it("omits only the empty fields, keeping populated ones in the same step", () => {
+    const steps: ClientFormStep[] = [
+      makeStep({
+        stepId: "step-1",
+        title: "Step One",
+        fields: [
+          makeField({
+            id: "step-1.first-name",
+            fieldId: "first-name",
+            label: "First name",
+          }),
+          makeField({
+            id: "step-1.last-name",
+            fieldId: "last-name",
+            label: "Last name",
+          }),
+        ],
+      }),
+    ];
+    // only first-name is filled in
+    const form = makeMockForm({ "step-1.first-name": "Alice" });
+
+    render(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={form as never}
+        visibleSteps={steps}
+      />,
+    );
+
+    expect(screen.getByText("First name")).toBeInTheDocument();
+    expect(screen.getByText("Alice")).toBeInTheDocument();
+    expect(screen.queryByText("Last name")).not.toBeInTheDocument();
+    // at least one row present, so no "No values provided" message
+    expect(screen.queryByText("No values provided")).not.toBeInTheDocument();
+  });
+
+  it("file field with no upload still renders its row (No file selected)", () => {
+    const fileField = makeField({
+      id: "step-1.attachment",
+      fieldId: "attachment",
+      label: "Attachment",
+      htmlType: "file",
+    });
+    const steps: ClientFormStep[] = [
+      makeStep({ stepId: "step-1", title: "Step One", fields: [fileField] }),
+    ];
+    const form = makeMockForm({ "step-1.attachment": [] });
+
+    render(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={form as never}
+        visibleSteps={steps}
+      />,
+    );
+
+    // file rows always survive the empty-value filter
+    expect(screen.getByText("Attachment")).toBeInTheDocument();
+    expect(screen.getByText("No file selected")).toBeInTheDocument();
+    expect(screen.queryByText("No values provided")).not.toBeInTheDocument();
   });
 
   // -------------------------------------------------------------------------
