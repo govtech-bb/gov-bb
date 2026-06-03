@@ -2,7 +2,8 @@ import "../../styles/builder.global.css";
 import { createFileRoute } from "@tanstack/react-router";
 import { useReducer, useState, useMemo } from "react";
 import { getCatalogFn } from "../../server/registry";
-import { submitRecipe, updateRecipe, rekeyRecipe, deleteForm, disableForm, enableForm } from "../../server/forms";
+import { submitRecipe, updateRecipe, rekeyRecipe, deleteForm, disableForm, enableForm, getFormConfig } from "../../server/forms";
+import { createMdaContact } from "../../server/mda-contacts";
 import { publishRecipe, getPublishBaseBranch, eraseRecipe } from "../../server/publish";
 import { validateRecipe, previewRecipe } from "../../server/registry";
 import { serializeRecipeDraft, findRecipeIdCollisions, formatCollisionIssues, resolveFieldIds } from "@govtech-bb/form-builder";
@@ -27,6 +28,8 @@ import { PublishModal } from "./-publish-modal";
 import { FormPicker } from "./-form-picker";
 import { checkFormUniqueness, checkRekeyPublished } from "./-form-uniqueness";
 import { useFormsList } from "./-use-forms-list";
+import { useMdaContacts } from "./-use-mda-contacts";
+import type { CreateMdaContactInput, MdaContact } from "../../types/index";
 import { DeleteModal } from "./-delete-modal";
 import { DisableModal } from "./-disable-modal";
 import { EraseModal } from "./-erase-modal";
@@ -59,6 +62,13 @@ function BuilderPage() {
     refetch: refetchForms,
     upsertForm,
   } = useFormsList();
+  // Per-environment MDA contact directory (issue #607), consumed by the
+  // contact-details dropdown.
+  const {
+    contacts: mdaContacts,
+    loadError: mdaContactsLoadError,
+    upsertContact: upsertMdaContact,
+  } = useMdaContacts();
   const [draft, dispatch] = useReducer(recipeReducer, EMPTY_DRAFT);
   // Snapshot of the last saved/loaded draft — the baseline that "unsaved
   // changes" is measured against. null for a brand-new form (no save/load yet);
@@ -366,13 +376,20 @@ function BuilderPage() {
         draft.formId === oldFormId &&
         !!currentVersion &&
         submitVersion === currentVersion;
+      // The selected per-environment MDA contact (issue #607). DB-only: it
+      // rides alongside the recipe as a sibling field on create/update so the
+      // API upserts it into form_config. Only sent when the draft carries a
+      // value (undefined → key omitted, so an untouched selection isn't cleared).
+      const mdaContactId = draft.mdaContactId;
       if (isRekey) {
         await rekeyRecipe({ data: { oldFormId, recipe } });
       } else if (isInPlaceUpdate) {
-        await updateRecipe({ data: { formId: oldFormId, recipe } });
+        await updateRecipe({
+          data: { formId: oldFormId, recipe, mdaContactId },
+        });
       } else {
         // Tells the API to enforce formId uniqueness for a genuine create.
-        await submitRecipe({ data: { recipe, isNew: isCreate } });
+        await submitRecipe({ data: { recipe, isNew: isCreate, mdaContactId } });
       }
       setSubmitSuccess(true);
       setLastSaveStatus("submitted");
@@ -770,6 +787,17 @@ function BuilderPage() {
     dispatch({ type: "SET_FORM_META", formId: draft.formId, title, description: draft.description });
   };
 
+  // Create an MDA contact via the API, patch it into the local directory so the
+  // dropdown shows it immediately, and hand the created row back to the editor
+  // (which selects it). Issue #607.
+  const handleCreateMdaContact = async (
+    input: CreateMdaContactInput,
+  ): Promise<MdaContact> => {
+    const created = await createMdaContact({ data: input });
+    upsertMdaContact(created);
+    return created;
+  };
+
   const handleSelectStep = (stepId: string) => {
     setSelectedStepId(stepId);
     setMainView("step");
@@ -851,7 +879,13 @@ function BuilderPage() {
         />
 
         {mainView === "contactDetails" ? (
-          <ContactDetailsEditor draft={draft} dispatch={dispatch} />
+          <ContactDetailsEditor
+            draft={draft}
+            dispatch={dispatch}
+            contacts={mdaContacts}
+            contactsLoadError={mdaContactsLoadError}
+            onCreateContact={handleCreateMdaContact}
+          />
         ) : mainView === "processors" ? (
           <ProcessorsEditor
             draft={draft}

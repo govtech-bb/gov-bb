@@ -96,17 +96,31 @@ export const getRecipe = createServerFn({ method: "GET", strict: false })
     throw new Error(`No recipe found for formId: ${data.formId}`);
   });
 
+// `mdaContactId` (issue #607) is a DB-only sibling of the recipe: the API
+// upserts it into `form_config`. `null` clears any selection; omitting it
+// leaves the stored value untouched. It is intentionally NOT inside the recipe.
+const mdaContactIdSchema = z.string().nullable().optional();
+
 export const submitRecipe = createServerFn({ method: "POST" })
   .middleware([requireSession])
   // `isNew` flags a brand-new form so the API enforces formId uniqueness; a new
   // version of an existing form omits it (defaults false).
   .inputValidator(
-    z.object({ recipe: z.unknown(), isNew: z.boolean().optional() }),
+    z.object({
+      recipe: z.unknown(),
+      isNew: z.boolean().optional(),
+      mdaContactId: mdaContactIdSchema,
+    }),
   )
   .handler(async ({ data }): Promise<void> => {
     await api.post("/builder/forms", {
       recipe: data.recipe,
       isNew: data.isNew ?? false,
+      // Only send the key when the caller supplied one, so a save that never
+      // touched the contact selection doesn't clobber a stored value with null.
+      ...(data.mdaContactId !== undefined
+        ? { mdaContactId: data.mdaContactId }
+        : {}),
     });
   });
 
@@ -116,12 +130,28 @@ export const updateRecipe = createServerFn({ method: "POST" })
     z.object({
       formId: z.string(),
       recipe: z.unknown(),
+      mdaContactId: mdaContactIdSchema,
     }),
   )
   .handler(async ({ data }): Promise<void> => {
     await api.put(`/builder/forms/${encodeURIComponent(data.formId)}`, {
       recipe: data.recipe,
+      ...(data.mdaContactId !== undefined
+        ? { mdaContactId: data.mdaContactId }
+        : {}),
     });
+  });
+
+// Read the DB-only per-environment config for a form (issue #607). Returns the
+// selected MDA contact id (or null). Distinct from getRecipe, which returns the
+// recipe content — this is the form_config sidecar the recipe never carries.
+export const getFormConfig = createServerFn({ method: "GET", strict: false })
+  .middleware([requireSession])
+  .inputValidator(z.object({ formId: z.string() }))
+  .handler(async ({ data }): Promise<{ mdaContactId: string | null }> => {
+    return api.get<{ mdaContactId: string | null }>(
+      `/builder/forms/${encodeURIComponent(data.formId)}/config`,
+    );
   });
 
 // Re-key a draft form: change its Form ID. The API moves every
