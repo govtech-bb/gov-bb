@@ -15,6 +15,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Bubble } from "#/components/chat/bubble";
 import { TridentAvatar } from "#/components/trident-avatar";
 import { extractText, hasAnyToolCall } from "#/lib/chat/messages";
+import {
+  chatPersistence,
+  citationsStore,
+  getSessionThreadId,
+} from "#/lib/chat/persistence";
 import type { Citation } from "#/lib/chat/types";
 import { presentChoicesDef, submitFormDef } from "#/lib/chat-tools";
 
@@ -52,7 +57,11 @@ function ChatPage() {
   // custom event the server emits right after TEXT_MESSAGE_START.
   const [citationsByMessageId, setCitationsByMessageId] = useState<
     Record<string, Citation[]>
-  >({});
+  >(citationsStore.load);
+
+  useEffect(() => {
+    citationsStore.save(citationsByMessageId);
+  }, [citationsByMessageId]);
 
   const connection = useMemo(() => fetchServerSentEvents("/api/chat"), []);
 
@@ -65,7 +74,13 @@ function ChatPage() {
     clear,
     addToolApprovalResponse,
   } = useChat({
+    id: "conversation",
     connection,
+    persistence: chatPersistence,
+    // useChat doesn't forward a `threadId` option to its ChatClient, so the
+    // session's stable threadId rides in `body` (the server reads it from
+    // forwardedProps) to keep the form session alive across refreshes.
+    body: { threadId: getSessionThreadId() },
     onCustomEvent: (eventType, data) => {
       if (eventType === "citations") {
         const payload = data as
