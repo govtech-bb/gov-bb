@@ -1,4 +1,4 @@
-// Generate SQL to insert all 20 youth opportunity forms
+// Generate SQL to insert the youth opportunity forms
 const { randomUUID } = require('crypto');
 
 const opportunities = [
@@ -11,11 +11,9 @@ const opportunities = [
   { id: "cyber-security-training", title: "Cyber Security Training Workshop" },
   { id: "web-design-entrepreneurs", title: "Web Page Design and Maintenance for Entrepreneurs" },
   { id: "bright-sparks-2", title: "Bright Sparks Educational Project 2.0" },
-  { id: "bridge-to-future-2025", title: "Bridge to the Future Workshop 2025" },
   { id: "barbados-blooming-libraries", title: "Barbados is Blooming (Little Libraries)" },
   { id: "community-canvas", title: "Community Canvas" },
   { id: "cmc", title: "Centre Management Committees (CMC)" },
-  { id: "spreading-joy-2025", title: "Spreading Joy at Christmas 2025" },
   { id: "centre-access", title: "Community Centre Access" },
   { id: "cip", title: "Community Impact Programme (CIP)" },
   { id: "cap", title: "Community Arts Programme (CAP)" },
@@ -101,7 +99,7 @@ const values = opportunities.map((opp) => {
   return `('${uuid}', 'youth-opportunity-${opp.id}', '1.0.0', '${jsonStr}', '${now}', '${now}', '${now}')`;
 });
 
-let sql = `-- Seed all 20 youth opportunity forms into form_definitions
+let sql = `-- Seed the youth opportunity forms into form_definitions
 -- Run against sandbox DB: modular-forms-db-sandbox
 -- Connection: modular-forms-db-sandbox.cl0sug2sklor.ca-central-1.rds.amazonaws.com
 
