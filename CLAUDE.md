@@ -87,6 +87,31 @@ a fully offline `build` fails on that package. When verifying locally without
 network, exclude it — `pnpm exec nx run-many -t build --exclude=landing` — then
 let CI (which has network) build everything.
 
+### The `api` suite needs a worker cap, or it crashes the host
+
+Do **not** run the `api` tests via `pnpm exec nx run-many -t test -p api` (or
+plain `npm test` in `apps/api`) on a high-core machine. With no `maxWorkers`
+set, Jest forks `numCpus − 1` workers (≈31 on a 32-core box), and each worker
+runs `ts-jest` (in-memory TypeScript compiler) **plus** coverage instrumentation
+(`collectCoverage: true`) and grows unbounded. ~31 heavyweight workers blow past
+available RAM and crash the machine.
+
+Run the `api` suite directly with a worker cap and a per-worker memory limit:
+
+```bash
+cd apps/api && pnpm exec jest --config jest.config.ts \
+  --maxWorkers=2 --workerIdleMemoryLimit=512MB --silent
+```
+
+`--maxWorkers=2` caps concurrent workers; `--workerIdleMemoryLimit=512MB`
+recycles any worker that grows past 512 MB; `--silent` suppresses the suite's
+noisy Nest logger output so failures are readable. Verified: the full 64-spec suite
+passes with coverage in ~27 s, peaking at ~3 GB above baseline (vs. crashing the
+host unbounded). This affects only the `api` suite — other projects' tests are
+not memory-problematic and run fine via the normal `nx run`/`nx run-many`
+commands above. CI runs `api` on low-core boxes where the default worker count
+is already small, so it is unaffected.
+
 ## Monorepo build gotcha: new packages must be buildable AND referenced
 
 This is an nx + TypeScript project-references monorepo. Packages build with the
