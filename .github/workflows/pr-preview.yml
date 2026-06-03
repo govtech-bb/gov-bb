@@ -49,13 +49,26 @@ jobs:
       # Defensive mirror of the teardown guard: refuse the whole preview
       # pipeline for a head branch named after a long-lived branch, so a
       # protected name never gets a create-branch in the preview jobs.
-      - name: Guard against protected branch names
+      # Also reject branch names containing a '.': Amplify's default-domain
+      # cert is a single-label wildcard (*.<appId>.amplifyapp.com), so a
+      # dotted branch produces a multi-label subdomain whose preview fails
+      # TLS with ERR_CERT_COMMON_NAME_INVALID — unreachable for humans and
+      # the smoke test alike. Fail fast with a clear message instead.
+      - name: Guard branch name
         env:
           BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
         run: |
           case "$BRANCH_NAME" in
             sandbox|main|staging|prod|production|dev)
               echo "❌ Refusing PR preview for protected branch name '$BRANCH_NAME' — these map to live Amplify environments."
+              exit 1 ;;
+          esac
+          case "$BRANCH_NAME" in
+            *.*)
+              echo "❌ Refusing PR preview for branch name '$BRANCH_NAME' — it contains a '.'."
+              echo "   Amplify's default-domain wildcard TLS cert only covers a single subdomain label,"
+              echo "   so a dotted preview URL fails with ERR_CERT_COMMON_NAME_INVALID. Rename the branch"
+              echo "   to use '-' instead of '.' (e.g. 'feature-v1-3-0')."
               exit 1 ;;
           esac
 
