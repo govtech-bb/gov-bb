@@ -202,7 +202,9 @@ describe("BuilderPage — validate on Save draft click", () => {
       // Pre-flight fails before the server is ever asked.
       expect(validateRecipe).not.toHaveBeenCalled();
     },
-    15_000,
+    // Heavy render + userEvent flow; 15s flakes under CI's concurrent test
+    // load (passes locally well under the limit). 30s gives headroom. See #625.
+    30_000,
   );
 
   it(
@@ -226,7 +228,9 @@ describe("BuilderPage — validate on Save draft click", () => {
         await screen.findByText("Submit Recipe", { selector: "strong" }),
       ).toBeInTheDocument();
     },
-    15_000,
+    // Heavy render + userEvent flow; 15s flakes under CI's concurrent test
+    // load (passes locally well under the limit). 30s gives headroom. See #625.
+    30_000,
   );
 
   it("opens the SubmitModal on click when validation passes, without prompting", async () => {
@@ -275,7 +279,9 @@ describe("BuilderPage — validate on Save draft click", () => {
       expect(validateRecipe).not.toHaveBeenCalled();
       expect(screen.queryByText("Submit Recipe")).not.toBeInTheDocument();
     },
-    15_000,
+    // Heavy render + userEvent flow; 15s flakes under CI's concurrent test
+    // load (passes locally well under the limit). 30s gives headroom. See #625.
+    30_000,
   );
 });
 

@@ -22,6 +22,24 @@ export type FieldConditionalOnBehaviour = z.infer<
   typeof fieldConditionalOnBehaviourSchema
 >;
 
+// Like `fieldConditionalOn`, but relaxes `required` instead of toggling
+// visibility: when the condition matches, the field becomes optional; the
+// field is never hidden. Format rules still apply whenever it is filled.
+export const optionalIfBehaviourSchema = z.object({
+  type: z.literal("optionalIf"),
+  targetFieldId: z.string(),
+  targetStepId: z.string().optional(),
+  operator: equalityOperationsSchema,
+  value: z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.array(z.string()),
+    z.array(z.number()),
+  ]),
+});
+export type OptionalIfBehaviour = z.infer<typeof optionalIfBehaviourSchema>;
+
 export const stepConditionalOnBehaviourSchema = z.object({
   type: z.literal("stepConditionalOn"),
   targetFieldId: z.string(),
@@ -65,6 +83,7 @@ export type SharedFieldsBehaviour = z.infer<typeof sharedFieldsBehaviourSchema>;
 
 export const behaviourSchema = z.discriminatedUnion("type", [
   fieldConditionalOnBehaviourSchema,
+  optionalIfBehaviourSchema,
   stepConditionalOnBehaviourSchema,
   repeatableBehaviourSchema,
   fieldArrayBehaviourSchema,

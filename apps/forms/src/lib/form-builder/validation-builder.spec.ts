@@ -729,4 +729,88 @@ describe("buildFieldValidationProperties", () => {
       expect(onDynamic!({ value: "ab", fieldApi })).toEqual(["Bad"]);
     });
   });
+
+  // --- optionalIf: relax required without hiding the field ---
+
+  describe("optionalIf field onDynamic", () => {
+    const optionalIfField = (
+      extraValidations: Record<string, unknown> = {},
+    ): ClientPrimitive =>
+      makeField("middle-name", "step1", {
+        validations: {
+          required: { value: true, error: "Middle name is required." },
+          ...extraValidations,
+        },
+        behaviours: [
+          {
+            type: "optionalIf",
+            targetStepId: "step1",
+            targetFieldId: "has-middle-name",
+            operator: "equal",
+            value: "no",
+          },
+        ],
+      });
+
+    it("skips required when the optionalIf condition matches and the field is empty", () => {
+      const { onDynamic } = buildFieldValidationProperties(optionalIfField());
+      const fieldApi = makeFieldApi(
+        { "step1_has-middle-name": "no" },
+        "step1_middle-name",
+      );
+      expect(onDynamic!({ value: "", fieldApi })).toBeUndefined();
+    });
+
+    it("still enforces required when the optionalIf condition does not match", () => {
+      const { onDynamic } = buildFieldValidationProperties(optionalIfField());
+      const fieldApi = makeFieldApi(
+        { "step1_has-middle-name": "yes" },
+        "step1_middle-name",
+      );
+      expect(onDynamic!({ value: "", fieldApi })).toEqual([
+        "Middle name is required.",
+      ]);
+    });
+
+    it("still applies format rules when filled even though optionalIf matches", () => {
+      const { onDynamic } = buildFieldValidationProperties(
+        optionalIfField({ minLength: { value: 3, error: "Too short." } }),
+      );
+      const fieldApi = makeFieldApi(
+        { "step1_has-middle-name": "no" }, // optional → required relaxed
+        "step1_middle-name",
+      );
+      // filled but too short → minLength still fires
+      expect(onDynamic!({ value: "ab", fieldApi })).toEqual(["Too short."]);
+    });
+
+    it("adds the optionalIf target to onChangeListenTo so the field re-validates", () => {
+      const { onChangeListenTo } =
+        buildFieldValidationProperties(optionalIfField());
+      expect(onChangeListenTo).toContain("has-middle-name");
+    });
+
+    it("resolves a same-step target when targetStepId is omitted", () => {
+      const field = makeField("middle-name", "step1", {
+        validations: {
+          required: { value: true, error: "Middle name is required." },
+        },
+        behaviours: [
+          {
+            type: "optionalIf",
+            // no targetStepId → resolves against the field's own step
+            targetFieldId: "has-middle-name",
+            operator: "equal",
+            value: "no",
+          },
+        ],
+      });
+      const { onDynamic } = buildFieldValidationProperties(field);
+      const fieldApi = makeFieldApi(
+        { "step1_has-middle-name": "no" },
+        "step1_middle-name",
+      );
+      expect(onDynamic!({ value: "", fieldApi })).toBeUndefined();
+    });
+  });
 });

@@ -1,11 +1,13 @@
 import type {
   FieldConditionalOnBehaviour,
+  OptionalIfBehaviour,
   StepConditionalOnBehaviour,
 } from "@govtech-bb/form-types";
 import type { StepScopedValues } from "./index";
 
 type ConditionalBehaviour =
   | FieldConditionalOnBehaviour
+  | OptionalIfBehaviour
   | StepConditionalOnBehaviour;
 
 /**
