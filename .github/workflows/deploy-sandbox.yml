@@ -445,48 +445,56 @@ jobs:
           echo "❌ Amplify $APP_LABEL build did not finish within 15 minutes"
           exit 1
 
-  # Live end-to-end smoke test of the deployed forms app: drives the real
-  # "temp-teacher-application-barbados" form on sandbox, uploads files via the
-  # presign → S3 → confirm flow, SUBMITS FOR REAL, and asserts the confirmation
-  # screen. `needs: amplify-forms` so it runs only after that build succeeds —
-  # and is skipped whenever forms wasn't deployed (a skipped/failed dependency
-  # skips this job too). No AWS creds: it drives a headless browser against the
-  # public deployed URL, and uploads use presigned URLs issued server-side.
-  smoke-test-forms:
+  # Live end-to-end smoke tests of the deployed forms app: each drives a real
+  # form on sandbox (uploading files via the presign → S3 → confirm flow where
+  # the form has uploads), SUBMITS FOR REAL, and asserts the confirmation
+  # screen. `needs: amplify-forms` so they run only after that build succeeds —
+  # and are skipped whenever forms wasn't deployed (a skipped/failed dependency
+  # skips these too). No AWS creds: the reusable workflow drives a headless
+  # browser against the public deployed URL, and uploads use presigned URLs
+  # issued server-side. Steps live in .github/workflows/forms-smoke.yml.
+  smoke-test-temp-teacher:
     name: Smoke test forms (temp-teacher)
     needs: amplify-forms
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v5
-        with:
-          node-version: "20"
-          cache: "pnpm"
-      - run: pnpm install --frozen-lockfile
-      - name: Install Playwright chromium
-        run: pnpm --filter @govtech-bb/forms exec playwright install --with-deps chromium
-      - name: Run temp-teacher live smoke test
-        env:
-          # Default in playwright.smoke.config.ts already, set explicitly so the
-          # target environment is obvious in the logs.
-          SMOKE_BASE_URL: https://forms.sandbox.alpha.gov.bb
-        # Run only the temp-teacher spec (not the whole e2e/smoke dir). Override
-        # the config's retries: 0 with 2 retries here to absorb post-deploy edge
-        # cache / network flakiness without masking a genuine failure.
-        run: >
-          pnpm --filter @govtech-bb/forms exec playwright test
-          --config playwright.smoke.config.ts
-          temp-teacher-application.smoke.spec.ts
-          --retries=2
-      - name: Upload Playwright trace on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: temp-teacher-smoke-trace
-          path: apps/forms/test-results/
-          retention-days: 7
+    uses: ./.github/workflows/forms-smoke.yml
+    with:
+      base_url: https://forms.sandbox.alpha.gov.bb
+      spec: temp-teacher-application.smoke.spec.ts
+      artifact_name: temp-teacher-smoke-trace
+
+  smoke-test-vendor-registration:
+    name: Smoke test forms (vendor-registration)
+    needs: amplify-forms
+    uses: ./.github/workflows/forms-smoke.yml
+    with:
+      base_url: https://forms.sandbox.alpha.gov.bb
+      spec: vendor-registration.smoke.spec.ts
+      artifact_name: vendor-registration-smoke-trace
+
+  smoke-test-textbook-grant:
+    name: Smoke test forms (textbook-grant)
+    needs: amplify-forms
+    uses: ./.github/workflows/forms-smoke.yml
+    with:
+      base_url: https://forms.sandbox.alpha.gov.bb
+      spec: textbook-grant-application.smoke.spec.ts
+      artifact_name: textbook-grant-smoke-trace
+
+  smoke-test-duties-performed:
+    name: Smoke test forms (duties-performed)
+    needs: amplify-forms
+    uses: ./.github/workflows/forms-smoke.yml
+    with:
+      base_url: https://forms.sandbox.alpha.gov.bb
+      spec: duties-performed-exam-claim.smoke.spec.ts
+      artifact_name: duties-performed-smoke-trace
+
+  # NOTE: referral-student-support-services and homeschooling-application-2024
+  # smoke specs exist but are test.fixme (skipped) — their deployed forms have a
+  # required-checkbox-with-empty-options recipe bug that makes them unsubmittable
+  # (see the spec headers + ADR 0027). They are intentionally NOT wired here
+  # until the recipes are fixed; wiring a never-passing live smoke would just
+  # make every forms deploy red.
 
   amplify-landing:
     name: Amplify build (landing)
