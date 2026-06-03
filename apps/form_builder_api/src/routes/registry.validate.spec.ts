@@ -43,7 +43,7 @@ describe("POST /builder/registry/validate — unknown ref check", () => {
 
   it("returns ok:false with an issue for an unknown ref", async () => {
     const recipe = makeRecipe([
-      { ref: "components/text" },
+      { ref: "components/generic-text" },
       { ref: "components/this-does-not-exist" },
     ]);
     const res = mockRes();
@@ -63,7 +63,7 @@ describe("POST /builder/registry/validate — unknown ref check", () => {
   });
 
   it("passes validation when every ref resolves", async () => {
-    const recipe = makeRecipe([{ ref: "components/text" }]);
+    const recipe = makeRecipe([{ ref: "components/generic-text" }]);
     const res = mockRes();
 
     await validateHandler({ body: { recipe } } as Request, res);

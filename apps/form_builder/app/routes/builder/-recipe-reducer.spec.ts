@@ -379,7 +379,7 @@ describe("REORDER_FIELDS", () => {
   const field = (id: string): RecipeFieldDraft => ({
     id,
     kind: "component",
-    ref: "components/text",
+    ref: "components/generic-text",
     overrides: {},
   });
 
@@ -663,12 +663,20 @@ describe("per-instance field overrides (id-keyed)", () => {
       const after1 = recipeReducer(state, {
         type: "ADD_FIELD",
         stepId: "step-1",
-        field: { kind: "component", ref: "components/text", overrides: {} },
+        field: {
+          kind: "component",
+          ref: "components/generic-text",
+          overrides: {},
+        },
       });
       const after2 = recipeReducer(after1, {
         type: "ADD_FIELD",
         stepId: "step-1",
-        field: { kind: "component", ref: "components/text", overrides: {} },
+        field: {
+          kind: "component",
+          ref: "components/generic-text",
+          overrides: {},
+        },
       });
 
       const fields = after2.steps[0].fields;
@@ -682,8 +690,8 @@ describe("per-instance field overrides (id-keyed)", () => {
 
   describe("UPDATE_FIELD_OVERRIDES", () => {
     it("updates only the targeted instance when two fields share a ref", () => {
-      const a = fieldWithId("id-a", "components/text", {});
-      const b = fieldWithId("id-b", "components/text", {});
+      const a = fieldWithId("id-a", "components/generic-text", {});
+      const b = fieldWithId("id-b", "components/generic-text", {});
       const state = {
         ...baseDraft(),
         steps: [editableStep("step-1", [a, b]), ...EMPTY_DRAFT.steps],
@@ -784,8 +792,8 @@ describe("per-instance field overrides (id-keyed)", () => {
 
   describe("REMOVE_FIELD", () => {
     it("removes only the targeted instance when two fields share a ref", () => {
-      const a = fieldWithId("id-a", "components/text", { label: "A" });
-      const b = fieldWithId("id-b", "components/text", { label: "B" });
+      const a = fieldWithId("id-a", "components/generic-text", { label: "A" });
+      const b = fieldWithId("id-b", "components/generic-text", { label: "B" });
       const state = {
         ...baseDraft(),
         steps: [editableStep("step-1", [a, b]), ...EMPTY_DRAFT.steps],
