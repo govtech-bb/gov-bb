@@ -55,7 +55,7 @@ describe("SqsProducerService", () => {
 
   it("sends a SendMessageCommand to the shared queue URL", async () => {
     const service = makeService();
-    await service.enqueue(EVENT, "email");
+    await service.enqueue(EVENT, "email", 0);
 
     expect(sendMock).toHaveBeenCalledTimes(1);
     const [command] = sendMock.mock.calls[0];
@@ -70,7 +70,7 @@ describe("SqsProducerService", () => {
       sendMock = jest.fn().mockResolvedValue({ MessageId: "msg-xyz" });
       MockedSQSClient.prototype.send = sendMock;
 
-      await service.enqueue(EVENT, type);
+      await service.enqueue(EVENT, type, 0);
 
       const [cmd] = MockedSendMessageCommand.mock.calls[0];
       expect(cmd.QueueUrl).toBe(QUEUE_URL);
@@ -79,7 +79,7 @@ describe("SqsProducerService", () => {
 
   it("serialises the full event payload into the message body", async () => {
     const service = makeService();
-    await service.enqueue(EVENT, "email");
+    await service.enqueue(EVENT, "email", 0);
 
     const [cmd] = MockedSendMessageCommand.mock.calls[0];
     const body = JSON.parse(cmd.MessageBody as string);
@@ -93,7 +93,7 @@ describe("SqsProducerService", () => {
 
   it("includes MessageAttributes for submissionId and processorType", async () => {
     const service = makeService();
-    await service.enqueue(EVENT, "spreadsheet");
+    await service.enqueue(EVENT, "spreadsheet", 0);
 
     const [cmd] = MockedSendMessageCommand.mock.calls[0];
     expect(cmd.MessageAttributes?.submissionId?.StringValue).toBe("sub-001");
@@ -104,11 +104,29 @@ describe("SqsProducerService", () => {
 
   it("embeds the processorType in the message body for consumer routing", async () => {
     const service = makeService();
-    await service.enqueue(EVENT, "opencrvs");
+    await service.enqueue(EVENT, "opencrvs", 0);
 
     const [cmd] = MockedSendMessageCommand.mock.calls[0];
     const body = JSON.parse(cmd.MessageBody as string);
     expect(body.processorType).toBe("opencrvs");
+  });
+
+  it("serialises the processorIndex into the message body", async () => {
+    const service = makeService();
+    await service.enqueue(EVENT, "email", 2);
+
+    const [cmd] = MockedSendMessageCommand.mock.calls[0];
+    const body = JSON.parse(cmd.MessageBody as string);
+    expect(body.processorIndex).toBe(2);
+  });
+
+  it("includes the processorIndex as a Number MessageAttribute", async () => {
+    const service = makeService();
+    await service.enqueue(EVENT, "email", 3);
+
+    const [cmd] = MockedSendMessageCommand.mock.calls[0];
+    expect(cmd.MessageAttributes?.processorIndex?.DataType).toBe("Number");
+    expect(cmd.MessageAttributes?.processorIndex?.StringValue).toBe("3");
   });
 
   it("constructs the SQS client with a custom endpoint when provided", () => {
@@ -127,7 +145,7 @@ describe("SqsProducerService", () => {
 
   it("serialises the full values and meta into the message body", async () => {
     const service = makeService();
-    await service.enqueue(EVENT, "email");
+    await service.enqueue(EVENT, "email", 0);
 
     const [cmd] = MockedSendMessageCommand.mock.calls[0];
     const body = JSON.parse(cmd.MessageBody as string);

@@ -61,38 +61,26 @@ export class EmailProcessor implements ISubmissionProcessor {
   }
 
   async process(payload: SubmissionCreatedEvent): Promise<ProcessorOutput> {
-    const entries = payload.processors.filter((p) => p.type === "email");
+    // Per-entry dispatch (issue #95): act on exactly the entry addressed by
+    // processorIndex. Defaults to 0 for direct single-entry invocation;
+    // production dispatch (listener/consumer) always sets it.
+    //
+    // Per-entry idempotency is solved by construction: a failed send throws and
+    // SQS retries only this entry's message, so a sibling email (e.g. the
+    // applicant confirmation vs. an MDA notification) is never re-sent on the
+    // other's retry. The single entry can still re-send itself on retry —
+    // inherent to SES at-least-once delivery, with no dedup available — which is
+    // out of scope here.
+    const index = payload.processorIndex ?? 0;
+    const entry = payload.processors[index];
 
-    // Attempt every entry before failing. A per-entry failure (e.g. an
-    // unresolvable MDA notification address) must not stop a sibling entry
-    // (e.g. the applicant confirmation) from sending — ADR 0006. But failures
-    // are no longer swallowed: they are collected here and re-thrown below so
-    // the batch fails loudly (SQS retry → DLQ, or an error log on the direct
-    // path) instead of silently dropping an undelivered email.
-    const failures: string[] = [];
-    for (const entry of entries) {
-      const cfg = (entry.config ?? {}) as Record<string, unknown>;
-      try {
-        await this.processEntry(payload, cfg);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        this.logger.error(
-          `[email] Entry failed for submission ${payload.submissionId}: ${message}`,
-        );
-        failures.push(message);
-      }
-    }
+    // Defensive: per-entry dispatch never invokes us without a matching entry,
+    // but a corrupted/out-of-range index should be a no-op, not a throw.
+    if (!entry) return { kind: "completed" };
 
-    if (failures.length > 0) {
-      // NOTE: email has no per-entry idempotency key, so an SQS retry re-sends
-      // already-delivered siblings — a pre-existing gap (ADR 0006), unchanged
-      // by this throw (the SES send already threw on delivery failure).
-      throw new Error(
-        `[email] ${failures.length}/${entries.length} email ` +
-          `entr${entries.length === 1 ? "y" : "ies"} failed for submission ` +
-          `${payload.submissionId}: ${failures.join("; ")}`,
-      );
-    }
+    const cfg = (entry.config ?? {}) as Record<string, unknown>;
+
+    await this.processEntry(payload, cfg);
 
     return { kind: "completed" };
   }

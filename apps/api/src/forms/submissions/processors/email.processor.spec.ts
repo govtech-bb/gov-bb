@@ -300,7 +300,43 @@ describe("EmailProcessor", () => {
       expect(getSentInput().Destination?.ToAddresses).toEqual(["mda@gov.bb"]);
     });
 
-    it("resolves two distinct recipients when an applicant and an MDA email are both configured", async () => {
+    it("is a no-op when no entry exists at processorIndex (defensive guard)", async () => {
+      // Per-entry dispatch never invokes us without a matching entry, but a
+      // corrupted/out-of-range index should be a no-op, not a throw.
+      const payload = makePayload();
+      payload.processors = [];
+
+      const result = await processor.process(payload);
+
+      expect(result).toEqual({ kind: "completed" });
+      expect(mockSend).not.toHaveBeenCalled();
+    });
+
+    it("acts only on the entry at processorIndex, ignoring siblings", async () => {
+      // Per-entry dispatch: each message addresses one entry by index. Index 1
+      // targets the MDA contactDetails recipient only — the applicant entry is
+      // a separate message.
+      const bodyBuilder = makeBodyBuilder(STUB_CTX, MDA_CONTACT);
+      processor = new EmailProcessor(
+        makeConfig(),
+        makeTemplateService(),
+        bodyBuilder,
+        makeFilesService(),
+      );
+      const payload = makePayload();
+      payload.processors = [
+        { type: "email", config: { recipientField: "personal.email" } },
+        { type: "email", config: { recipientField: "contactDetails.email" } },
+      ];
+      payload.processorIndex = 1;
+
+      await processor.process(payload);
+
+      expect(mockSend).toHaveBeenCalledTimes(1);
+      expect(getSentInput().Destination?.ToAddresses).toEqual(["mda@gov.bb"]);
+    });
+
+    it("dispatches an applicant and an MDA email as two independent indexed entries", async () => {
       const bodyBuilder = makeBodyBuilder(STUB_CTX, MDA_CONTACT);
       processor = new EmailProcessor(
         makeConfig(),
@@ -314,6 +350,9 @@ describe("EmailProcessor", () => {
         { type: "email", config: { recipientField: "contactDetails.email" } },
       ];
 
+      payload.processorIndex = 0;
+      await processor.process(payload);
+      payload.processorIndex = 1;
       await processor.process(payload);
 
       const recipients = (SendEmailCommand as unknown as jest.Mock).mock.calls
@@ -322,7 +361,7 @@ describe("EmailProcessor", () => {
       expect(recipients).toEqual(["jane@example.com", "mda@gov.bb"]);
     });
 
-    it("sends the applicant email but throws when the MDA contactDetails cannot be resolved", async () => {
+    it("throws in isolation for the entry whose contactDetails recipient cannot be resolved", async () => {
       const bodyBuilder = makeBodyBuilder(STUB_CTX, undefined); // no contactDetails
       processor = new EmailProcessor(
         makeConfig(),
@@ -336,15 +375,18 @@ describe("EmailProcessor", () => {
         { type: "email", config: { recipientField: "contactDetails.email" } },
       ];
 
-      // Sibling applicant email still sends (ADR 0006), but the batch fails
-      // loudly so the undelivered MDA email is surfaced rather than dropped.
+      // The applicant entry (index 0) sends fine on its own message.
+      payload.processorIndex = 0;
+      await expect(processor.process(payload)).resolves.toBeDefined();
+      expect(mockSend).toHaveBeenCalledTimes(1);
+
+      // The MDA entry (index 1) fails loudly in isolation and sends nothing —
+      // a retry re-runs only this entry, never re-sending the applicant email.
+      payload.processorIndex = 1;
       await expect(processor.process(payload)).rejects.toThrow(
         /Could not resolve recipient/,
       );
       expect(mockSend).toHaveBeenCalledTimes(1);
-      expect(getSentInput().Destination?.ToAddresses).toEqual([
-        "jane@example.com",
-      ]);
     });
 
     it("throws when the requested contactDetails key is absent", async () => {
