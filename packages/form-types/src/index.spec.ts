@@ -27,6 +27,7 @@ import {
   fieldValueSchema,
   dateValueInputSchema,
   fieldConditionalOnBehaviourSchema,
+  optionalIfBehaviourSchema,
   stepConditionalOnBehaviourSchema,
   repeatableBehaviourSchema,
   fieldArrayBehaviourSchema,
@@ -477,6 +478,40 @@ describe("fieldConditionalOnBehaviourSchema", () => {
   });
 });
 
+describe("optionalIfBehaviourSchema", () => {
+  const valid = {
+    type: "optionalIf" as const,
+    targetFieldId: "country",
+    operator: "equal" as const,
+    value: "BB",
+  };
+
+  it("accepts a valid optionalIf behaviour", () => {
+    expect(optionalIfBehaviourSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("accepts an optional targetStepId", () => {
+    expect(
+      optionalIfBehaviourSchema.safeParse({ ...valid, targetStepId: "step-2" })
+        .success,
+    ).toBe(true);
+  });
+
+  it("rejects when targetFieldId is missing", () => {
+    const { targetFieldId: _, ...rest } = valid;
+    expect(optionalIfBehaviourSchema.safeParse(rest).success).toBe(false);
+  });
+
+  it("rejects the wrong type discriminant", () => {
+    expect(
+      optionalIfBehaviourSchema.safeParse({
+        ...valid,
+        type: "fieldConditionalOn",
+      }).success,
+    ).toBe(false);
+  });
+});
+
 describe("stepConditionalOnBehaviourSchema", () => {
   const valid = {
     type: "stepConditionalOn" as const,
@@ -559,6 +594,17 @@ describe("behaviourSchema (discriminated union)", () => {
   it("accepts a repeatable behaviour", () => {
     expect(
       behaviourSchema.safeParse({ type: "repeatable", min: 1, max: 3 }).success,
+    ).toBe(true);
+  });
+
+  it("accepts an optionalIf behaviour", () => {
+    expect(
+      behaviourSchema.safeParse({
+        type: "optionalIf",
+        targetFieldId: "country",
+        operator: "equal",
+        value: "BB",
+      }).success,
     ).toBe(true);
   });
 

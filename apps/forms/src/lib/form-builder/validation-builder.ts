@@ -8,6 +8,7 @@ import {
   isDateComplete,
   dateValueToDate,
   valueIsEmpty,
+  evaluateCondition,
 } from "./validation-methods";
 import { stepFieldIdConcactenator } from "./field-mapper";
 import { validate } from "@govtech-bb/form-validation";
@@ -16,6 +17,7 @@ import type {
   DateValue,
   DateValueInput,
   FieldValue,
+  OptionalIfBehaviour,
   Primitive,
 } from "@govtech-bb/form-types";
 
@@ -53,6 +55,62 @@ const clientPrimitiveToPrimitive = (field: ClientPrimitive): Primitive => {
     validations: field.validations,
     ...(field.options && { options: field.options }),
   } as Primitive;
+};
+
+// optionalIf: when a field's condition matches, its `required` rule is relaxed
+// (the field becomes optional) without affecting visibility — the field always
+// renders. Clone the primitive without its `required` validation; all other
+// (format) rules are preserved so they still fire when it is filled.
+const stripRequired = (primitive: Primitive): Primitive => {
+  if (!primitive.validations?.required) return primitive;
+  const validations = { ...primitive.validations };
+  delete validations.required;
+  return { ...primitive, validations };
+};
+
+// Resolve the controlling field's current value from the cross-field value
+// trees: prefer the explicit `targetStepId` (falling back to the field's own
+// step), then fall back to a flat scan so a same-named field elsewhere still
+// resolves — mirroring how the shared `form-conditions` evaluator behaves.
+const resolveOptionalIfTarget = (
+  behaviour: OptionalIfBehaviour,
+  fieldStepId: string,
+  allValues: StepScopedValues,
+): FieldValue | undefined => {
+  const stepId = behaviour.targetStepId ?? fieldStepId;
+  const stepValues = allValues[stepId];
+  const fromStep = Array.isArray(stepValues)
+    ? stepValues[0]?.[behaviour.targetFieldId]
+    : stepValues?.[behaviour.targetFieldId];
+  if (fromStep !== undefined) return fromStep as FieldValue;
+
+  for (const values of Object.values(allValues)) {
+    if (Array.isArray(values)) continue;
+    if (behaviour.targetFieldId in values) {
+      return values[behaviour.targetFieldId] as FieldValue;
+    }
+  }
+  return undefined;
+};
+
+// The field is optional when it carries at least one `optionalIf` behaviour and
+// *every* one matches (AND semantics, consistent with `fieldConditionalOn`).
+const isOptionalNow = (
+  behaviours: ClientPrimitive["behaviours"],
+  fieldStepId: string,
+  allValues: StepScopedValues,
+): boolean => {
+  const optionalIfs = (behaviours ?? []).filter(
+    (b): b is OptionalIfBehaviour => b.type === "optionalIf",
+  );
+  if (optionalIfs.length === 0) return false;
+  return optionalIfs.every((b) =>
+    evaluateCondition(
+      b.value,
+      resolveOptionalIfTarget(b, fieldStepId, allValues),
+      b.operator,
+    ),
+  );
 };
 
 // Client form state is keyed by the composite `field.id` (`stepId_fieldId`),
@@ -221,8 +279,18 @@ export const buildFieldValidationProperties = (
         value,
       );
 
+      // `optionalIf` relaxes `required` when its condition matches; the field
+      // is never hidden, so only the required rule is dropped before validating.
+      const primitiveToValidate = isOptionalNow(
+        field.behaviours,
+        field.stepId,
+        allValues,
+      )
+        ? stripRequired(primitive)
+        : primitive;
+
       const result = validate({
-        primitives: [primitive],
+        primitives: [primitiveToValidate],
         stepValues,
         allValues,
       });
