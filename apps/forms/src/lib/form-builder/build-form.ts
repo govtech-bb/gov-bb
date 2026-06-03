@@ -12,9 +12,8 @@ import { getStepConditonalTargets, setupRepeatSteps } from "@forms/lib";
 import { v4 as uuidv4 } from "uuid";
 
 export const buildForm = (contract: ClientServiceContract): FormMeta => {
-  // Build the Validation Schema
-  const { schema, defaults, properties }: FormValidation =
-    buildValidation(contract);
+  // Build the per-field validation handlers and defaults.
+  const { defaults, properties }: FormValidation = buildValidation(contract);
 
   // Get fields with conditional on values to watch for changes.
   const stepConditionalTargets = getStepConditonalTargets(contract.steps);
@@ -61,7 +60,6 @@ export const buildForm = (contract: ClientServiceContract): FormMeta => {
     formTitle: contract.title,
     formDescription: contract.description,
     contactDetails: contract.contactDetails,
-    schema,
     steps,
     defaultValues: defaults,
     validationProperties: properties,

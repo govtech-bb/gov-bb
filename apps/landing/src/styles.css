@@ -28,20 +28,20 @@ body {
   font-family: var(--font-family-base);
 }
 
-@utility container {
+.container {
   margin-inline: auto;
   width: 100%;
   padding-inline: var(--spacing-s); /* 16px */
 
-  @media (min-width: 640px) {
+  @media (width >= 640px) {
     padding-inline: var(--spacing-m); /* 32px */
   }
 
-  @media (min-width: 1280px) {
+  @media (width >= 1280px) {
     padding-inline: var(--spacing-l); /* 64px */
   }
 
-  @media (min-width: 1512px) {
+  @media (width >= 1512px) {
     padding-inline: var(--spacing-xl); /* 128px */
   }
 }

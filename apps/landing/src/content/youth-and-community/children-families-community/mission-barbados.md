@@ -6,6 +6,7 @@ publish_date: 2026-05-20
 category: youth-and-community
 subcategory: children-families-community
 service_type: information
+form_id: mission-barbados
 ---
 
 A national initiative inviting individuals and organisations to take part in six 2030 missions, from sustainability to digital transformation.
@@ -22,7 +23,7 @@ National initiative around six 2030 missions: sustainability, social cohesion, f
 
 Complete the short application form to register your interest. Your progress is saved automatically.
 
-<!-- [Apply now](https://alpha.gov.bb/youth-and-community/children-families-community/mission-barbados/form) -->
+<a data-start-link>Start now</a>
 
 ## More information
 

@@ -376,7 +376,8 @@ describe("postFormSubmission", () => {
           {
             institution: "UWI",
             country: "Barbados",
-            "educational-dates": "2008-2012",
+            from: "2008",
+            to: "2012",
           },
         ],
         "upload-documents": {

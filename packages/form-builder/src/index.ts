@@ -17,9 +17,6 @@ export type {
   CustomComponentEntry,
 } from "./catalog";
 
-// Builtins
-export { BUILTIN_COMPONENTS, BUILTIN_BLOCKS } from "./builtins/index";
-
 // Behaviors
 export { BEHAVIOUR_TYPE_DESCRIPTORS } from "./behaviors/behaviour-builder";
 export type {
@@ -61,3 +58,12 @@ export type {
   FieldIdCollision,
   StepIdCollision,
 } from "./duplicate-ids";
+
+// Ref-swap: changing a field's registry ref to a similar type, migrating
+// compatible overrides (issue #642).
+export {
+  SWAP_GROUPS,
+  getSwappableRefs,
+  migrateOverridesForRef,
+} from "./ref-swap";
+export type { SwapGroup, SwappableRef } from "./ref-swap";

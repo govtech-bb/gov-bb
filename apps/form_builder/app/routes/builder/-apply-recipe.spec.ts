@@ -55,21 +55,21 @@ describe("draftsEqual", () => {
     ({ id, kind: "component", ref, overrides: {} }) as Field;
 
   it("treats two structurally identical drafts as equal despite differing field ids", () => {
-    const a = draft([field("id-aaa", "components/email")]);
-    const b = draft([field("id-bbb", "components/email")]);
+    const a = draft([field("id-aaa", "components/generic-email")]);
+    const b = draft([field("id-bbb", "components/generic-email")]);
     expect(draftsEqual(a, b)).toBe(true);
   });
 
   it("treats a changed field ref as not equal", () => {
-    const a = draft([field("id-aaa", "components/email")]);
+    const a = draft([field("id-aaa", "components/generic-email")]);
     const b = draft([field("id-aaa", "components/phone")]);
     expect(draftsEqual(a, b)).toBe(false);
   });
 
   it("treats a changed field override as not equal", () => {
-    const a = draft([field("id-aaa", "components/email")]);
+    const a = draft([field("id-aaa", "components/generic-email")]);
     const withReq = {
-      ...field("id-aaa", "components/email"),
+      ...field("id-aaa", "components/generic-email"),
       overrides: { required: true },
     } as Field;
     const b = draft([withReq]);

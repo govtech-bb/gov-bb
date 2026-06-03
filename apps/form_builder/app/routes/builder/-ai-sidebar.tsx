@@ -130,7 +130,9 @@ export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
     if (result.error) {
       setError(result.error);
     } else if (result.applied) {
-      pushStatus("✓ Applied the changes to your form.");
+      pushStatus(
+        "✓ Applied to the editor — not saved yet. Use Save draft to keep it, or Discard to undo.",
+      );
     } else if (result.reason === "unchanged") {
       pushStatus("The AI returned the form unchanged — nothing to apply.");
     }

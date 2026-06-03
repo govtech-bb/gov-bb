@@ -58,6 +58,7 @@ describe("GET /builder/forms/published", () => {
 
     expect(global.fetch).toHaveBeenCalledWith(
       "http://api.test/form-definitions",
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual(payload.data);
@@ -109,6 +110,7 @@ describe("GET /builder/forms/published", () => {
 
     expect(global.fetch).toHaveBeenCalledWith(
       "https://forms.api.sandbox.alpha.gov.bb/form-definitions",
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual(payload.data);
@@ -127,6 +129,7 @@ describe("GET /builder/forms/published", () => {
 
     expect(global.fetch).toHaveBeenCalledWith(
       "http://api.test/form-definitions",
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
   });
 
@@ -174,6 +177,7 @@ describe("GET /builder/forms/published", () => {
 
     expect(global.fetch).toHaveBeenCalledWith(
       "https://api.test/form-definitions",
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
     expect(res.statusCode).toBe(200);
   });

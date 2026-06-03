@@ -1,5 +1,10 @@
 import { useState, useMemo } from "react";
-import { getRegistryItem, fieldIdDuplicatesAnother } from "@govtech-bb/form-builder";
+import {
+  getRegistryItem,
+  fieldIdDuplicatesAnother,
+  getSwappableRefs,
+  migrateOverridesForRef,
+} from "@govtech-bb/form-builder";
 import type {
   RecipeFieldDraft,
   RegistryCatalog,
@@ -8,7 +13,7 @@ import type {
   RecipeDraft,
 } from "@govtech-bb/form-builder";
 import { primitiveUISchema } from "@govtech-bb/form-types";
-import type { FieldOverrides, HtmlTypes, Option, PrimitiveUI } from "@govtech-bb/form-types";
+import type { FieldOverrides, HtmlTypes, Option, PrimitiveUI, ValidationRule } from "@govtech-bb/form-types";
 import type { FieldRef, StepRef } from "./-recipe-refs";
 import { getFieldRefs, getStepRefs } from "./-recipe-refs";
 import type { RecipeAction } from "./-recipe-reducer";
@@ -47,6 +52,9 @@ interface OverrideFormProps {
   defaultOptions?: Option[];
   defaultMultiple?: boolean;
   defaultRequired?: boolean;
+  // Validations declared on the base primitive — surfaced by the validation
+  // editor as inherited, overridable rows (#618).
+  baseValidations?: ValidationRule;
 }
 
 const OPTIONS_HTML_TYPES: ReadonlySet<HtmlTypes> = new Set([
@@ -168,6 +176,7 @@ function OverrideForm({
   defaultOptions,
   defaultMultiple,
   defaultRequired = false,
+  baseValidations,
 }: OverrideFormProps) {
   const [fieldIdError, setFieldIdError] = useState("");
   const fieldIdDuplicate =
@@ -287,6 +296,7 @@ function OverrideForm({
       <ValidationRulesEditor
         htmlType={htmlType}
         rules={overrides.validations}
+        baseRules={baseValidations}
         fieldRefs={fieldRefs}
         onChange={(validations) => patch({ validations })}
       />
@@ -352,7 +362,17 @@ export function FieldEditPanel({
   );
   const stepRefs: StepRef[] = useMemo(() => getStepRefs(draft), [draft]);
 
-  const item = getRegistryItem(field.ref, catalog);
+  // These initializers only run on mount. Callers must unmount + remount the
+  // modal when switching to a different field — re-rendering with a new `field`
+  // prop would leave stale local state. `ref` is held locally too so a type
+  // swap re-derives htmlType and re-runs the rest of the form live (#642).
+  const [ref, setRef] = useState<string>(field.ref);
+  const [overrides, setOverrides] = useState<FieldOverrides>({ ...field.overrides });
+  const [childOverrides, setChildOverrides] = useState<ChildOverrides>(
+    field.childOverrides ? { ...field.childOverrides } : {},
+  );
+
+  const item = getRegistryItem(ref, catalog);
 
   // Determine htmlType for component/custom fields
   const htmlType: HtmlTypes = (() => {
@@ -362,22 +382,53 @@ export function FieldEditPanel({
     return "text";
   })();
 
-  // These initializers only run on mount. Callers must unmount + remount the
-  // modal when switching to a different field — re-rendering with a new `field`
-  // prop would leave stale local state.
-  const [overrides, setOverrides] = useState<FieldOverrides>({ ...field.overrides });
-  const [childOverrides, setChildOverrides] = useState<ChildOverrides>(
-    field.childOverrides ? { ...field.childOverrides } : {},
+  // Generic primitives the field can switch to (empty for singletons/blocks).
+  const swappableRefs = useMemo(
+    () => getSwappableRefs(ref, catalog),
+    [ref, catalog],
   );
 
-  function handleSave() {
-    dispatch({
-      type: "UPDATE_FIELD_OVERRIDES",
-      stepId,
-      fieldId: field.id,
-      overrides,
-      childOverrides: field.kind === "block" ? childOverrides : undefined,
+  // Swap the field's type: re-derive the target htmlType from the new ref and
+  // migrate the local overrides so incompatible ones drop before save.
+  function handleChangeRef(nextRef: string) {
+    const nextItem = getRegistryItem(nextRef, catalog);
+    const toHtmlType =
+      nextItem && "primitive" in nextItem ? nextItem.primitive.htmlType : htmlType;
+    setOverrides((prev) => {
+      // A field on its registry default fieldId would silently re-resolve to the
+      // new ref's default on swap, dangling any condition/validation that
+      // references the old id. Pin the current default as an explicit override
+      // first so the resolved id survives the type change (#642).
+      const pinned =
+        prev.fieldId === undefined && item && "primitive" in item
+          ? { ...prev, fieldId: item.primitive.fieldId }
+          : prev;
+      return migrateOverridesForRef(pinned, htmlType, toHtmlType);
     });
+    setRef(nextRef);
+  }
+
+  function handleSave() {
+    // A changed ref carries the new type + migrated overrides in one action;
+    // an unchanged ref is a plain override update (and the only path for blocks,
+    // which have no ref-swap control and own childOverrides).
+    if (field.kind !== "block" && ref !== field.ref) {
+      dispatch({
+        type: "CHANGE_FIELD_REF",
+        stepId,
+        fieldId: field.id,
+        ref,
+        overrides,
+      });
+    } else {
+      dispatch({
+        type: "UPDATE_FIELD_OVERRIDES",
+        stepId,
+        fieldId: field.id,
+        overrides,
+        childOverrides: field.kind === "block" ? childOverrides : undefined,
+      });
+    }
     onClose();
   }
 
@@ -401,7 +452,7 @@ export function FieldEditPanel({
             marginBottom: 12,
           }}
         >
-          <strong>Edit Field: {item?.displayName ?? field.ref}</strong>
+          <strong>Edit Field: {item?.displayName ?? ref}</strong>
           <button type="button" onClick={onClose}>Close</button>
         </div>
 
@@ -435,15 +486,41 @@ export function FieldEditPanel({
                     defaultOptions={element.options}
                     defaultMultiple={element.multiple}
                     defaultRequired={isRequiredRule(element.validations?.required)}
+                    baseValidations={element.validations}
                   />
                 </div>
               );
             })}
           </div>
         ) : (
-          <OverrideForm
-            overrides={overrides}
-            htmlType={htmlType}
+          <>
+            <div className={styles.formGroup}>
+              <label htmlFor="field-type-select">Field type</label>
+              <div>
+                <code>{ref}</code>
+              </div>
+              {swappableRefs.length > 0 ? (
+                <select
+                  id="field-type-select"
+                  value={ref}
+                  onChange={(e) => handleChangeRef(e.target.value)}
+                >
+                  <option value={ref}>{item?.displayName ?? ref}</option>
+                  {swappableRefs.map((s) => (
+                    <option key={s.ref} value={s.ref}>
+                      {s.displayName}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <span style={{ fontSize: "0.75rem", color: "#666" }}>
+                  No similar types to switch to
+                </span>
+              )}
+            </div>
+            <OverrideForm
+              overrides={overrides}
+              htmlType={htmlType}
             fieldRefs={fieldRefs}
             stepRefs={stepRefs}
             currentStepId={stepId}
@@ -458,7 +535,11 @@ export function FieldEditPanel({
                 ? isRequiredRule(item.primitive.validations?.required)
                 : false
             }
-          />
+            baseValidations={
+              item && "primitive" in item ? item.primitive.validations : undefined
+            }
+            />
+          </>
         )}
 
         <div style={{ marginTop: 16, display: "flex", gap: 8 }}>

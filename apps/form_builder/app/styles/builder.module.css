@@ -22,6 +22,21 @@
   border-color: #b91c1c;
 }
 
+/* Erase is permanent (deletes the on-disk recipe via PR), so it reads stronger
+   than the reversible Disable: a darker, heavier red so the two destructive
+   actions on a live published row aren't confused. */
+.btnErase {
+  background: #7f1d1d;
+  color: white;
+  border-color: #7f1d1d;
+  font-weight: 600;
+}
+
+.btnErase:hover:not(:disabled) {
+  background: #5f1414;
+  border-color: #5f1414;
+}
+
 .btnSwitch {
   background: #7c3aed;
   color: white;
@@ -399,6 +414,16 @@
   border-radius: 4px;
 }
 
+/* Unsaved-changes indicator — amber, distinct from the green/red save status
+   it sits beside, to read as "pending" rather than success or failure. */
+.statusUnsaved {
+  color: var(--color-warning-text);
+  font-size: 0.8rem;
+  padding: 2px 6px;
+  background: var(--color-warning-light);
+  border-radius: 4px;
+}
+
 /* ── Override indicators ──────────────────────────── */
 
 .overrideDot {
@@ -414,6 +439,23 @@
 .overrideField {
   border-left: 3px solid var(--color-accent, #1565c0);
   padding-left: 8px;
+}
+
+/* Inherited (base component) validation rule: read-only, visually muted to
+   distinguish it from author-set overrides (#618). */
+.inheritedRow {
+  border-left: 3px dashed var(--color-border, #d4d4d4);
+  padding-left: 8px;
+}
+
+.inheritedTag {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted, #6b7280);
+  background: var(--color-surface-muted, #f3f4f6);
+  border-radius: 4px;
+  padding: 2px 6px;
 }
 
 /* ── Select fields ────────────────────────────────── */

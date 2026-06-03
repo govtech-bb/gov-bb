@@ -53,6 +53,7 @@ function renderPicker(props: Partial<React.ComponentProps<typeof FormPicker>> = 
       onClose={jest.fn()}
       onRequestDelete={jest.fn()}
       onRequestDisable={jest.fn()}
+      onRequestErase={jest.fn()}
       onEnable={jest.fn()}
       {...props}
     />,
@@ -91,28 +92,35 @@ describe("FormPicker", () => {
 
     const deleteBtn = screen.getByRole("button", { name: /delete/i });
     expect(deleteBtn).toBeInTheDocument();
-    // A draft offers neither Disable nor Enable.
+    // A draft offers neither Disable nor Enable, and never Erase.
     expect(screen.queryByRole("button", { name: /disable/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /enable/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /erase/i })).not.toBeInTheDocument();
 
     await userEvent.click(deleteBtn);
     expect(onRequestDelete).toHaveBeenCalledWith(DRAFT);
   });
 
-  it("renders a Disable button (not Delete) for a live published form and calls onRequestDisable", async () => {
+  it("renders both Disable and Erase (not Delete) for a live published form and wires each", async () => {
     const onRequestDisable = jest.fn();
-    renderPicker({ forms: [LIVE_PUBLISHED], onRequestDisable });
+    const onRequestErase = jest.fn();
+    renderPicker({ forms: [LIVE_PUBLISHED], onRequestDisable, onRequestErase });
 
-    const disableBtn = screen.getByRole("button", { name: /disable/i });
+    const disableBtn = screen.getByRole("button", { name: /^disable$/i });
+    const eraseBtn = screen.getByRole("button", { name: /^erase$/i });
     expect(disableBtn).toBeInTheDocument();
-    // A live published form must NOT offer the destructive Delete.
+    expect(eraseBtn).toBeInTheDocument();
+    // A live published form must NOT offer the draft-only Delete.
     expect(screen.queryByRole("button", { name: /^delete$/i })).not.toBeInTheDocument();
 
     await userEvent.click(disableBtn);
     expect(onRequestDisable).toHaveBeenCalledWith(LIVE_PUBLISHED);
+
+    await userEvent.click(eraseBtn);
+    expect(onRequestErase).toHaveBeenCalledWith(LIVE_PUBLISHED);
   });
 
-  it("renders a Disabled badge + Enable button (no Delete/Disable) for a disabled published form and calls onEnable", async () => {
+  it("renders a Disabled badge + Enable button (no Delete/Disable/Erase) for a disabled published form and calls onEnable", async () => {
     const onEnable = jest.fn();
     renderPicker({ forms: [DISABLED_PUBLISHED], onEnable });
 
@@ -123,6 +131,9 @@ describe("FormPicker", () => {
     // The "Disable" action is gone once disabled (only Enable remains). The
     // Disabled badge text must not be matched as a Disable button.
     expect(screen.queryByRole("button", { name: /^disable$/i })).not.toBeInTheDocument();
+    // Erase is offered only on LIVE published forms — a disabled form must be
+    // Enabled first.
+    expect(screen.queryByRole("button", { name: /^erase$/i })).not.toBeInTheDocument();
 
     await userEvent.click(enableBtn);
     expect(onEnable).toHaveBeenCalledWith(DISABLED_PUBLISHED);

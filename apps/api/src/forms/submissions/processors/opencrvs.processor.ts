@@ -11,14 +11,19 @@ export class OpencrvsProcessor implements ISubmissionProcessor {
   private readonly logger = new Logger(OpencrvsProcessor.name);
 
   async process(payload: SubmissionCreatedEvent): Promise<ProcessorOutput> {
-    // Iterate over entries by position in payload.processors so the
-    // idempotency key index stays stable regardless of how same-type
-    // entries are ordered relative to other types.
-    for (let i = 0; i < payload.processors.length; i++) {
-      const entry = payload.processors[i];
-      if (entry.type !== "opencrvs") continue;
-      await this.processEntry(payload, entry.config ?? {}, i);
-    }
+    // Per-entry dispatch (issue #95): act on exactly the entry addressed by
+    // processorIndex. The index is the position within the frozen processors[]
+    // snapshot, so the `${submissionId}:${index}` idempotency key stays stable
+    // across retries. Defaults to 0 for direct single-entry invocation;
+    // production dispatch (listener/consumer) always sets it.
+    const index = payload.processorIndex ?? 0;
+    const entry = payload.processors[index];
+
+    // Defensive: per-entry dispatch never invokes us without a matching entry,
+    // but a corrupted/out-of-range index should be a no-op, not a throw.
+    if (!entry) return { kind: "completed" };
+
+    await this.processEntry(payload, entry.config ?? {}, index);
 
     return { kind: "completed" };
   }

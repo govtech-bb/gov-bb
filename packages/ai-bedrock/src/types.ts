@@ -3,6 +3,16 @@ import type {
   BedrockRuntimeClientConfig,
 } from "@aws-sdk/client-bedrock-runtime";
 
+/**
+ * Per-call provider options (`modelOptions` on `chat()`), mapped onto the
+ * Converse `inferenceConfig`.
+ */
+export interface BedrockModelOptions extends Record<string, unknown> {
+  temperature?: number;
+  topP?: number;
+  maxTokens?: number;
+}
+
 export interface BedrockTextAdapterConfig {
   region?: string;
   credentials?: BedrockRuntimeClientConfig["credentials"];

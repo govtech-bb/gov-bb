@@ -27,7 +27,7 @@ it("resolves a component ref to its primitive fieldId (not the registry ref)", (
     draftOf({
       stepId: "step-1",
       title: "Step 1",
-      fields: [field("f1", "components/text")],
+      fields: [field("f1", "components/generic-text")],
       behaviours: [],
     }),
     catalog,
@@ -35,7 +35,7 @@ it("resolves a component ref to its primitive fieldId (not the registry ref)", (
   expect(refs).toEqual([
     {
       stepId: "step-1",
-      fieldId: "text",
+      fieldId: "generic-text",
       displayName: "Text",
       isBoolean: false,
     },
@@ -47,23 +47,35 @@ it("expands a block ref into one entry per child fieldId with a prefixed label",
     draftOf({
       stepId: "step-1",
       title: "Step 1",
-      fields: [field("f1", "blocks/name")],
+      fields: [field("f1", "blocks/personal-information")],
       behaviours: [],
     }),
     catalog,
   );
-  expect(refs).toEqual([
+  // One entry per child, label prefixed with the block id, never boolean.
+  expect(refs.every((r) => r.stepId === "step-1" && !r.isBoolean)).toBe(true);
+  expect(
+    refs.map((r) => ({ fieldId: r.fieldId, displayName: r.displayName })),
+  ).toEqual([
+    { fieldId: "title", displayName: "personal-information › Title" },
+    { fieldId: "first-name", displayName: "personal-information › First name" },
     {
-      stepId: "step-1",
-      fieldId: "first-name",
-      displayName: "Name › First Name",
-      isBoolean: false,
+      fieldId: "middle-name",
+      displayName: "personal-information › Middle name",
+    },
+    { fieldId: "last-name", displayName: "personal-information › Last name" },
+    {
+      fieldId: "date-of-birth",
+      displayName: "personal-information › Date of birth",
+    },
+    { fieldId: "sex", displayName: "personal-information › Sex" },
+    {
+      fieldId: "nationality",
+      displayName: "personal-information › Nationality / Citizenship",
     },
     {
-      stepId: "step-1",
-      fieldId: "last-name",
-      displayName: "Name › Last Name",
-      isBoolean: false,
+      fieldId: "national-id-number",
+      displayName: "personal-information › National ID number",
     },
   ]);
 });
@@ -74,7 +86,9 @@ it("respects a component-level fieldId override", () => {
       stepId: "step-1",
       title: "Step 1",
       fields: [
-        field("f1", "components/text", { overrides: { fieldId: "nickname" } }),
+        field("f1", "components/generic-text", {
+          overrides: { fieldId: "nickname" },
+        }),
       ],
       behaviours: [],
     }),
@@ -96,7 +110,7 @@ it("respects a block child fieldId override", () => {
       stepId: "step-1",
       title: "Step 1",
       fields: [
-        field("f1", "blocks/name", {
+        field("f1", "blocks/personal-information", {
           childOverrides: { "first-name": { fieldId: "given-name" } },
         }),
       ],
@@ -104,7 +118,17 @@ it("respects a block child fieldId override", () => {
     }),
     catalog,
   );
-  expect(refs.map((r) => r.fieldId)).toEqual(["given-name", "last-name"]);
+  // first-name's id is overridden; the block's other children keep theirs.
+  expect(refs.map((r) => r.fieldId)).toEqual([
+    "title",
+    "given-name",
+    "middle-name",
+    "last-name",
+    "date-of-birth",
+    "sex",
+    "nationality",
+    "national-id-number",
+  ]);
 });
 
 it("tags each entry with the step it belongs to", () => {
@@ -113,13 +137,13 @@ it("tags each entry with the step it belongs to", () => {
       {
         stepId: "step-1",
         title: "Step 1",
-        fields: [field("f1", "components/text")],
+        fields: [field("f1", "components/generic-text")],
         behaviours: [],
       },
       {
         stepId: "step-2",
         title: "Step 2",
-        fields: [field("f2", "components/email")],
+        fields: [field("f2", "components/generic-email")],
         behaviours: [],
       },
     ),
@@ -128,13 +152,13 @@ it("tags each entry with the step it belongs to", () => {
   expect(refs).toEqual([
     {
       stepId: "step-1",
-      fieldId: "text",
+      fieldId: "generic-text",
       displayName: "Text",
       isBoolean: false,
     },
     {
       stepId: "step-2",
-      fieldId: "email",
+      fieldId: "generic-email",
       displayName: "Email",
       isBoolean: false,
     },
@@ -148,8 +172,8 @@ it("flags a show-hide toggle isBoolean, but not a checkbox (stores a string)", (
       title: "Step 1",
       fields: [
         field("f1", "components/show-hide"),
-        field("f2", "components/checkbox"),
-        field("f3", "components/text"),
+        field("f2", "components/generic-checkbox"),
+        field("f3", "components/generic-text"),
       ],
       behaviours: [],
     }),
@@ -159,18 +183,18 @@ it("flags a show-hide toggle isBoolean, but not a checkbox (stores a string)", (
     {
       stepId: "step-1",
       fieldId: "show-hide",
-      displayName: "Show / hide toggle",
+      displayName: "Show / hide",
       isBoolean: true,
     },
     {
       stepId: "step-1",
-      fieldId: "checkbox",
+      fieldId: "generic-checkbox",
       displayName: "Checkbox",
       isBoolean: false,
     },
     {
       stepId: "step-1",
-      fieldId: "text",
+      fieldId: "generic-text",
       displayName: "Text",
       isBoolean: false,
     },

@@ -1,0 +1,688 @@
+{
+  "steps": [
+    {
+      "title": "Tell us about yourself",
+      "stepId": "personal",
+      "elements": [
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "fieldId": "applicant-first-name",
+            "validations": {
+              "required": {
+                "error": "First name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "First name must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "fieldId": "applicant-last-name",
+            "validations": {
+              "required": {
+                "error": "Last name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Last name must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/date-of-birth",
+          "overrides": {
+            "hint": "For example, 27 03 2007",
+            "fieldId": "applicant-dob",
+            "validations": {
+              "required": {
+                "error": "Date of birth is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/sex",
+          "overrides": {
+            "fieldId": "applicant-sex",
+            "validations": {
+              "required": {
+                "error": "Sex is required",
+                "value": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "Which sport are you interested in?",
+      "stepId": "discipline",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "hint": "For example, football or gymnastics",
+            "label": "Discipline of interest",
+            "fieldId": "discipline-interest",
+            "validations": {
+              "required": {
+                "error": "Discipline of interest is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Discipline must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Do you have experience in this discipline?",
+            "fieldId": "has-experience",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Experience in this discipline is required",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "description": "We ask this to match you to a community sports training programme."
+    },
+    {
+      "title": "Tell us about your experience",
+      "stepId": "experience",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "What level of experience do you have?",
+            "fieldId": "level-of-experience",
+            "options": [
+              {
+                "label": "School",
+                "value": "school"
+              },
+              {
+                "label": "Club",
+                "value": "club"
+              },
+              {
+                "label": "National",
+                "value": "national"
+              },
+              {
+                "label": "Other",
+                "value": "other"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Experience level is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Please specify",
+            "fieldId": "other-experience",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "other",
+                "operator": "equal",
+                "targetFieldId": "level-of-experience"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Please specify your experience level",
+                "value": true
+              },
+              "minLength": {
+                "error": "Must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "Years of experience",
+            "fieldId": "years-of-experience",
+            "validations": {
+              "required": {
+                "error": "Years of experience is required",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "value": "yes",
+          "operator": "equal",
+          "targetStepId": "discipline",
+          "targetFieldId": "has-experience"
+        }
+      ],
+      "description": "What level of experience do you have in the sport you are interested in?"
+    },
+    {
+      "title": "What is your employment status?",
+      "stepId": "employment",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "What is your employment status?",
+            "fieldId": "employment-status",
+            "options": [
+              {
+                "label": "Studying",
+                "value": "studying"
+              },
+              {
+                "label": "Employed",
+                "value": "employed"
+              },
+              {
+                "label": "Unemployed",
+                "value": "unemployed"
+              },
+              {
+                "label": "Other",
+                "value": "other"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Employment status is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Name of institution or company",
+            "fieldId": "institution-name",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Please give details",
+            "fieldId": "employment-other-details",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "other",
+                "operator": "equal",
+                "targetFieldId": "employment-status"
+              }
+            ]
+          }
+        }
+      ],
+      "description": "We ask this to help with scheduling and to help us see the impact of the programme."
+    },
+    {
+      "title": "Do you belong to any organisations?",
+      "stepId": "membership",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Do you belong to any organisations?",
+            "fieldId": "belongs-to-organisations",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Organisational membership is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Organisation 1",
+            "fieldId": "organisation-1",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetFieldId": "belongs-to-organisations"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Organisation 2 (optional)",
+            "fieldId": "organisation-2",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetFieldId": "belongs-to-organisations"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Organisation 3 (optional)",
+            "fieldId": "organisation-3",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetFieldId": "belongs-to-organisations"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        }
+      ],
+      "description": "For example, a sports or social group, or a youth and community club."
+    },
+    {
+      "title": "Your contact details",
+      "stepId": "contact",
+      "elements": [
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address line 1",
+            "fieldId": "contact-address-1",
+            "validations": {
+              "required": {
+                "error": "Address line 1 is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Address must be at least 5 characters",
+                "value": 5
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address line 2",
+            "fieldId": "contact-address-2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "contact-parish",
+            "options": [
+              {
+                "label": "Christ Church",
+                "value": "christ-church"
+              },
+              {
+                "label": "St. Andrew",
+                "value": "st-andrew"
+              },
+              {
+                "label": "St. George",
+                "value": "st-george"
+              },
+              {
+                "label": "St. James",
+                "value": "st-james"
+              },
+              {
+                "label": "St. John",
+                "value": "st-john"
+              },
+              {
+                "label": "St. Joseph",
+                "value": "st-joseph"
+              },
+              {
+                "label": "St. Lucy",
+                "value": "st-lucy"
+              },
+              {
+                "label": "St. Michael",
+                "value": "st-michael"
+              },
+              {
+                "label": "St. Peter",
+                "value": "st-peter"
+              },
+              {
+                "label": "St. Philip",
+                "value": "st-philip"
+              },
+              {
+                "label": "St. Thomas",
+                "value": "st-thomas"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Parish is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "fieldId": "contact-email",
+            "validations": {
+              "required": {
+                "error": "Email address is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "fieldId": "contact-telephone",
+            "validations": {
+              "required": {
+                "error": "Telephone number is required",
+                "value": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "Emergency contact",
+      "stepId": "emergency",
+      "elements": [
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "fieldId": "emergency-first-name",
+            "validations": {
+              "required": {
+                "error": "Emergency contact first name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "First name must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "fieldId": "emergency-last-name",
+            "validations": {
+              "required": {
+                "error": "Emergency contact last name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Last name must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/name",
+          "overrides": {
+            "label": "Relationship",
+            "fieldId": "emergency-relationship",
+            "validations": {
+              "required": {
+                "error": "Relationship is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Relationship must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address line 1",
+            "fieldId": "emergency-address-1",
+            "validations": {
+              "required": {
+                "error": "Address line 1 is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Address must be at least 5 characters",
+                "value": 5
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address line 2",
+            "fieldId": "emergency-address-2"
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "emergency-parish",
+            "options": [
+              {
+                "label": "Christ Church",
+                "value": "christ-church"
+              },
+              {
+                "label": "St. Andrew",
+                "value": "st-andrew"
+              },
+              {
+                "label": "St. George",
+                "value": "st-george"
+              },
+              {
+                "label": "St. James",
+                "value": "st-james"
+              },
+              {
+                "label": "St. John",
+                "value": "st-john"
+              },
+              {
+                "label": "St. Joseph",
+                "value": "st-joseph"
+              },
+              {
+                "label": "St. Lucy",
+                "value": "st-lucy"
+              },
+              {
+                "label": "St. Michael",
+                "value": "st-michael"
+              },
+              {
+                "label": "St. Peter",
+                "value": "st-peter"
+              },
+              {
+                "label": "St. Philip",
+                "value": "st-philip"
+              },
+              {
+                "label": "St. Thomas",
+                "value": "st-thomas"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Parish is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "fieldId": "emergency-email",
+            "validations": {
+              "required": {
+                "error": "Email address is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "fieldId": "emergency-telephone",
+            "validations": {
+              "required": {
+                "error": "Telephone number is required",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "description": "If there is an emergency, who should we contact?"
+    },
+    {
+      "title": "Declaration",
+      "stepId": "declaration",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": "Declaration",
+            "fieldId": "declaration-confirmed",
+            "options": [
+              {
+                "label": "I confirm that my information is correct and I am happy for it to be verified. I understand that false details may lead to my application being rejected, and that the Government of Barbados will keep my information confidential.",
+                "value": "confirmed"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "You must confirm the declaration to continue",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/date-of-birth",
+          "overrides": {
+            "label": "Date of declaration",
+            "fieldId": "declaration-date",
+            "isHidden": true
+          }
+        }
+      ]
+    },
+    {
+      "title": "Application submitted",
+      "stepId": "submission-confirmation",
+      "elements": [],
+      "nextSteps": [
+        {
+          "title": "What happens next",
+          "content": "We have received your submission. You will receive a confirmation email at the address you provided."
+        }
+      ]
+    }
+  ],
+  "title": "Register for Community Sports Training Programme",
+  "formId": "sports-training-programme-form-schema",
+  "version": "1.0.0",
+  "createdAt": "2026-05-07T00:00:00Z",
+  "updatedAt": "2026-05-07T00:00:00Z",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "subject": "Your community sports training application has been received",
+        "recipientField": "contact.contact-email"
+      }
+    }
+  ],
+  "description": "Register your interest in a community sports training programme."
+}

@@ -294,27 +294,10 @@ describe("buildForm", () => {
   });
 
   // ---------------------------------------------------------------------------
-  // schema and defaultValues
+  // defaultValues
   // ---------------------------------------------------------------------------
 
-  describe("schema and defaultValues", () => {
-    it("schema contains keys for all fields", () => {
-      const contract = makeContract({
-        steps: [
-          makeStep("step1", [
-            makeField("firstName", "step1"),
-            makeField("lastName", "step1"),
-          ]),
-          makeStep("submission-confirmation", []),
-        ],
-      });
-
-      const result = buildForm(contract);
-      const keys = Object.keys(result.schema.shape);
-      expect(keys).toContain("step1_firstName");
-      expect(keys).toContain("step1_lastName");
-    });
-
+  describe("defaultValues", () => {
     it("defaultValues contains entries for fields with defaultValue", () => {
       const contract = makeContract({
         steps: [

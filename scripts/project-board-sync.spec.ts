@@ -3,6 +3,8 @@ import {
   gql,
   resolveProjectMeta,
   removeLabel,
+  assignIfUnassigned,
+  closeIssue,
 } from "./project-board-sync";
 
 describe("decideActions", () => {
@@ -79,7 +81,7 @@ describe("decideActions", () => {
     ]);
   });
 
-  it("issue closed as not planned → no actions", () => {
+  it("issue closed as not planned → ensure on board, set Closed", () => {
     expect(
       decideActions({
         eventName: "issues",
@@ -87,17 +89,52 @@ describe("decideActions", () => {
         issueNumber: 5,
         stateReason: "not_planned",
       }),
-    ).toEqual([]);
+    ).toEqual([
+      {
+        issue: 5,
+        actions: [
+          { type: "ensureOnBoard" },
+          { type: "setStatus", status: "Closed" },
+        ],
+      },
+    ]);
   });
 
-  it("issue closed with no state reason → no actions", () => {
+  it("issue closed as duplicate → ensure on board, set Closed", () => {
+    expect(
+      decideActions({
+        eventName: "issues",
+        action: "closed",
+        issueNumber: 5,
+        stateReason: "duplicate",
+      }),
+    ).toEqual([
+      {
+        issue: 5,
+        actions: [
+          { type: "ensureOnBoard" },
+          { type: "setStatus", status: "Closed" },
+        ],
+      },
+    ]);
+  });
+
+  it("issue closed with no state reason → ensure on board, set Closed", () => {
     expect(
       decideActions({
         eventName: "issues",
         action: "closed",
         issueNumber: 5,
       }),
-    ).toEqual([]);
+    ).toEqual([
+      {
+        issue: 5,
+        actions: [
+          { type: "ensureOnBoard" },
+          { type: "setStatus", status: "Closed" },
+        ],
+      },
+    ]);
   });
 
   it("an unrelated label → no actions", () => {
@@ -188,6 +225,30 @@ describe("decideActions", () => {
           { type: "ensureOnBoard" },
           { type: "setStatus", status: "Done" },
           { type: "removeLabel", label: "progressing" },
+          { type: "closeIssue" },
+        ],
+      },
+    ]);
+  });
+
+  it("PR merged with an author → assign before close", () => {
+    expect(
+      decideActions({
+        eventName: "pull_request",
+        action: "closed",
+        baseRef: "sandbox",
+        merged: true,
+        linkedIssues: [5],
+        prAuthor: "octocat",
+      }),
+    ).toEqual([
+      {
+        issue: 5,
+        actions: [
+          { type: "ensureOnBoard" },
+          { type: "setStatus", status: "Done" },
+          { type: "removeLabel", label: "progressing" },
+          { type: "assignIfUnassigned", login: "octocat" },
           { type: "closeIssue" },
         ],
       },
@@ -358,6 +419,92 @@ describe("removeLabel", () => {
         "tok",
         fetchMock as unknown as typeof fetch,
       ),
+    ).rejects.toThrow("HTTP 500");
+  });
+});
+
+describe("assignIfUnassigned", () => {
+  it("assigns when the issue has no assignees", async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ assignees: [] }), { status: 200 }),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 201 }));
+    await assignIfUnassigned(
+      "o",
+      "r",
+      5,
+      "octocat",
+      "tok",
+      fetchMock as unknown as typeof fetch,
+    );
+    const [url, init] = fetchMock.mock.calls[1];
+    expect(url).toBe("https://api.github.com/repos/o/r/issues/5/assignees");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body as string)).toEqual({
+      assignees: ["octocat"],
+    });
+  });
+
+  it("does nothing when the issue already has an assignee", async () => {
+    const fetchMock = jest.fn().mockResolvedValue(
+      new Response(JSON.stringify({ assignees: [{ login: "someone" }] }), {
+        status: 200,
+      }),
+    );
+    await assignIfUnassigned(
+      "o",
+      "r",
+      5,
+      "octocat",
+      "tok",
+      fetchMock as unknown as typeof fetch,
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("throws when the assignment fails", async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ assignees: [] }), { status: 200 }),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 422 }));
+    await expect(
+      assignIfUnassigned(
+        "o",
+        "r",
+        5,
+        "octocat",
+        "tok",
+        fetchMock as unknown as typeof fetch,
+      ),
+    ).rejects.toThrow("HTTP 422");
+  });
+});
+
+describe("closeIssue", () => {
+  it("closes the issue explicitly as completed", async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValue(new Response(null, { status: 200 }));
+    await closeIssue("o", "r", 5, "tok", fetchMock as unknown as typeof fetch);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("https://api.github.com/repos/o/r/issues/5");
+    expect(init.method).toBe("PATCH");
+    expect(JSON.parse(init.body as string)).toEqual({
+      state: "closed",
+      state_reason: "completed",
+    });
+  });
+
+  it("throws on a non-ok status", async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValue(new Response(null, { status: 500 }));
+    await expect(
+      closeIssue("o", "r", 5, "tok", fetchMock as unknown as typeof fetch),
     ).rejects.toThrow("HTTP 500");
   });
 });

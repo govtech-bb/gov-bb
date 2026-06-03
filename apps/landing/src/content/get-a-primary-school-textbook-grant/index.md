@@ -4,7 +4,7 @@ description: "Apply for the annual $100 BDD Primary School Textbook Grant for yo
 stage: "alpha"
 publish_date: 2026-02-06
 category: education
-form_id: primary-school-textbook-grant
+form_id: get-a-primary-school-textbook-grant
 ---
 
 Each academic year, every child is entitled to a $100 BDD textbook grant while they are a student at a public or private primary school. The aim of this initiative is to financially support parents and guardians so that their children have access to books which will support their learning.

@@ -58,18 +58,30 @@ export default function Review({
       : null;
   };
 
-  const getFieldDisplayValue = (field: ClientPrimitive) => {
+  // Normalise a raw scalar to a display string, or null when it is empty.
+  const emptyToNull = (value: unknown): string | null =>
+    value === undefined || value === null || value === ""
+      ? null
+      : String(value);
+
+  // Returns the formatted display value for a field, or null when the field
+  // has no answer. File fields are the deliberate exception — they always
+  // return a string (filenames or "No file selected") so their row always
+  // renders. Callers filter out null/"" rows so blank fields are omitted.
+  const getFieldDisplayValue = (field: ClientPrimitive): string | null => {
     const value = form.getFieldValue(field.id);
 
     switch (field.htmlType) {
       case "select": {
-        if (!field.options) return value as string | null;
-        return field.options
-          .find((option) => option.value === value)
-          ?.label.replace("Saint ", "St ");
+        if (!field.options) return emptyToNull(value);
+        return (
+          field.options
+            .find((option) => option.value === value)
+            ?.label.replace("Saint ", "St ") ?? null
+        );
       }
       case "date": {
-        if (!value) return value as string | null;
+        if (!value) return null;
         return formatDate(
           value as {
             day: number;
@@ -79,17 +91,21 @@ export default function Review({
         );
       }
       case "checkbox": {
-        if (!field.options) return value as string | null;
+        if (!field.options) return emptyToNull(value);
         const selectedOptions = field.options.filter(
           (option) =>
             option.value === value ||
             (Array.isArray(value) && value.includes(option.value)),
         );
-        return selectedOptions.map((option) => option.label).join(", ");
+        return selectedOptions.length > 0
+          ? selectedOptions.map((option) => option.label).join(", ")
+          : null;
       }
       case "radio": {
-        if (!field.options) return value as string | null;
-        return field.options.find((option) => option.value === value)?.label;
+        if (!field.options) return emptyToNull(value);
+        return (
+          field.options.find((option) => option.value === value)?.label ?? null
+        );
       }
       case "file": {
         const fileNames = Array.isArray(value)
@@ -105,7 +121,7 @@ export default function Review({
         return fileNames.join(", ");
       }
       default:
-        return value === undefined || value === null ? "" : String(value);
+        return emptyToNull(value);
     }
   };
 
@@ -113,33 +129,47 @@ export default function Review({
     <div className="form-page__review">
       {visibleSteps
         .filter((step) => !excludeStepIds.includes(step.stepId))
-        .map((step) => (
-          <section key={step.stepId} className="govbb-summary-section">
-            <h2 className="govbb-summary-section__title">{step.title}</h2>
-            <div className="govbb-summary-section__action">
-              <a
-                className="govbb-link"
-                href={`/forms/${formMeta.formId}?step=${step.stepId}`}
-                onClick={handleChangeClick(step.stepId)}
-              >
-                Change{" "}
-                <span className="govbb-visually-hidden">{step.title}</span>
-              </a>
-            </div>
-            <dl className="govbb-summary-list">
-              {step.fields
-                .filter((field) => !field.hidden && !field.conditionallyHidden)
-                .map((field: ClientPrimitive) => (
-                  <div key={field.id} className="govbb-summary-list__row">
-                    <dt className="govbb-summary-list__key">{field.label}</dt>
-                    <dd className="govbb-summary-list__value">
-                      {getFieldDisplayValue(field)}
-                    </dd>
-                  </div>
-                ))}
-            </dl>
-          </section>
-        ))}
+        .map((step) => {
+          // Compute each visible field's display value once, then drop the
+          // rows that have no answer so blank fields are omitted entirely.
+          const rows = step.fields
+            .filter((field) => !field.hidden && !field.conditionallyHidden)
+            .map((field: ClientPrimitive) => ({
+              field,
+              value: getFieldDisplayValue(field),
+            }))
+            .filter(({ value }) => value !== null && value !== "");
+
+          return (
+            <section key={step.stepId} className="govbb-summary-section">
+              <h2 className="govbb-summary-section__title">{step.title}</h2>
+              <div className="govbb-summary-section__action">
+                <a
+                  className="govbb-link"
+                  href={`/forms/${formMeta.formId}?step=${step.stepId}`}
+                  onClick={handleChangeClick(step.stepId)}
+                >
+                  Change{" "}
+                  <span className="govbb-visually-hidden">{step.title}</span>
+                </a>
+              </div>
+              {rows.length === 0 ? (
+                <p className="govbb-summary-section__empty">
+                  No values provided
+                </p>
+              ) : (
+                <dl className="govbb-summary-list">
+                  {rows.map(({ field, value }) => (
+                    <div key={field.id} className="govbb-summary-list__row">
+                      <dt className="govbb-summary-list__key">{field.label}</dt>
+                      <dd className="govbb-summary-list__value">{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+            </section>
+          );
+        })}
     </div>
   );
 }

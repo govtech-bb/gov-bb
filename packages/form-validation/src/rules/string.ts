@@ -5,18 +5,44 @@ import { resolveReference, MISSING } from "./resolve-reference";
 const str = (v: unknown): string =>
   typeof v === "string" ? v : String(v ?? "");
 
+// Apply a single-string check to a value that may be an array of strings.
+// Multi-value text inputs store an array; each non-empty element is validated
+// independently and empty elements are skipped (a blank entry is "absent", not
+// a rule violation). A non-array value is checked directly. Returns the first
+// failing element's message, or null when every element passes.
+//
+// (Previously array values were coerced with `String(value)`, comma-joining
+// them before the check — so e.g. `["ab","cd"]` against `maxLength: 3` became
+// `"ab,cd"` and spuriously failed. That join was a bug.)
+const forEachString = (
+  value: unknown,
+  check: (element: unknown) => string | null,
+): string | null => {
+  if (Array.isArray(value)) {
+    for (const element of value) {
+      if (typeof element === "string" && element.length === 0) continue;
+      const msg = check(element);
+      if (msg !== null) return msg;
+    }
+    return null;
+  }
+  return check(value);
+};
+
 export const minLengthRunner: RuleRunner = (value, config) => {
   const min = config.value as number;
   const msg = config.error ?? `Must be at least ${min} characters`;
-  const result = z.string().min(min, msg).safeParse(str(value));
-  return result.success ? null : msg;
+  return forEachString(value, (element) =>
+    z.string().min(min, msg).safeParse(str(element)).success ? null : msg,
+  );
 };
 
 export const maxLengthRunner: RuleRunner = (value, config) => {
   const max = config.value as number;
   const msg = config.error ?? `Must be at most ${max} characters`;
-  const result = z.string().max(max, msg).safeParse(str(value));
-  return result.success ? null : msg;
+  return forEachString(value, (element) =>
+    z.string().max(max, msg).safeParse(str(element)).success ? null : msg,
+  );
 };
 
 export const patternRunner: RuleRunner = (value, config) => {
@@ -31,23 +57,27 @@ export const patternRunner: RuleRunner = (value, config) => {
   } catch {
     return msg;
   }
-  return re.test(str(value)) ? null : msg;
+  return forEachString(value, (element) =>
+    re.test(str(element)) ? null : msg,
+  );
 };
 
 export const emailRunner: RuleRunner = (value, config) => {
   const msg = config.error ?? "Must be a valid email address";
-  const result = z.email(msg).safeParse(str(value));
-  return result.success ? null : msg;
+  return forEachString(value, (element) =>
+    z.email(msg).safeParse(str(element)).success ? null : msg,
+  );
 };
 
 export const containsRunner: RuleRunner = (value, config) => {
   const needle = config.value as string;
   const msg = config.error ?? `Must contain "${needle}"`;
-  const result = z
-    .string()
-    .includes(needle, { message: msg })
-    .safeParse(str(value));
-  return result.success ? null : msg;
+  return forEachString(value, (element) =>
+    z.string().includes(needle, { message: msg }).safeParse(str(element))
+      .success
+      ? null
+      : msg,
+  );
 };
 
 export const strictEqualityRunner: RuleRunner = (value, config, allValues) => {

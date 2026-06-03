@@ -2,6 +2,7 @@
 title: "Get a Primary School Textbook Grant"
 stage: "alpha"
 publish_date: 2026-01-13
+form_id: get-a-primary-school-textbook-grant
 ---
 
 You should complete your application in one go. At the moment, it is not possible to save your answers and come back to them later.
@@ -20,4 +21,4 @@ Before you start, you will need to know:
 4. The details of a bank account that is used regularly and has been used within the last 3 months. If your bank account is frozen, the funds will not reach you.
 
 
-<a data-start-link href="/money-financial-support/get-a-primary-school-textbook-grant/form">Start</a>
+<a data-start-link>Start</a>

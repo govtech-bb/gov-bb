@@ -1,10 +1,10 @@
 # 0027 — Live smoke tests run post-deploy, not per-PR
 
 **Date:** 2026-06-02
-**Status:** Accepted — amended by [0029](0029-per-pr-preview-smoke-tests-gate-the-frontend.md)
+**Status:** Accepted — amended by [0030](0030-per-pr-preview-smoke-tests-gate-the-frontend.md)
 **Related:** [#585](https://github.com/govtech-bb/gov-bb/issues/585). Builds on the on-demand live-smoke pattern established by the Smart Stream Vendor Registration smoke test (`docs/plans/vendor-registration-smoke-test.md`).
 
-> **Amended by [ADR 0029](0029-per-pr-preview-smoke-tests-gate-the-frontend.md):**
+> **Amended by [ADR 0030](0030-per-pr-preview-smoke-tests-gate-the-frontend.md):**
 > once per-PR Amplify previews existed, the "the PR's form isn't deployed"
 > premise below no longer held for the *frontend*. A live smoke **may** now gate
 > a PR against its own preview (frontend-only scope; real submissions still
@@ -80,3 +80,22 @@ live under `e2e/smoke/` and run solely via `playwright.smoke.config.ts`.
 - **Prod is out of scope here.** This record covers the sandbox post-deploy
   smoke. A prod post-deploy smoke, if wanted later, would follow the same shape
   against the prod deploy workflow.
+
+## Amendment (2026-06-03) — smoke jobs centralised in a reusable workflow ([#638](https://github.com/govtech-bb/gov-bb/issues/638))
+
+The trigger, scope, and separation decisions above are unchanged; only the
+wiring shape is. The per-job step boilerplate (checkout → pnpm → Playwright →
+run spec → upload trace) now lives once in a reusable workflow,
+`.github/workflows/forms-smoke.yml` (`on: workflow_call`, inputs `base_url` /
+`spec` / `artifact_name`), called via `uses:` from both the post-deploy and the
+[0029](0029-per-pr-preview-smoke-tests-gate-the-frontend.md) per-PR-preview
+workflows. Job-level `needs:` only resolves within one workflow file, so each
+caller keeps its dependency edge while sharing the steps.
+
+The single `smoke-test-forms` post-deploy job is now two caller jobs in
+`deploy-sandbox.yml` — `smoke-test-temp-teacher` and
+`smoke-test-vendor-registration`, both `needs: amplify-forms`. So a forms deploy
+now files **two** real submissions (temp-teacher + vendor-registration), not
+one; the cadence cost noted above applies per smoked form. The shared Playwright
+step/field helpers the three specs duplicated now live in
+`apps/forms/e2e/helpers/smoke.ts`.

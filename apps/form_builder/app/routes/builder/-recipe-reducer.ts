@@ -126,6 +126,16 @@ export type RecipeAction =
     }
   | { type: "REMOVE_FIELD"; stepId: string; fieldId: string }
   | {
+      // Change a field's registry ref (its type) in place, replacing its
+      // overrides with the migrated set the editor computed via
+      // migrateOverridesForRef. Keeps the field's id and position (#642).
+      type: "CHANGE_FIELD_REF";
+      stepId: string;
+      fieldId: string;
+      ref: string;
+      overrides: FieldOverrides;
+    }
+  | {
       type: "UPDATE_FIELD_OVERRIDES";
       stepId: string;
       fieldId: string;
@@ -262,6 +272,33 @@ export function recipeReducer(
             ? {
                 ...s,
                 fields: s.fields.filter((f) => f.id !== action.fieldId),
+              }
+            : s,
+        ),
+      };
+    }
+
+    case "CHANGE_FIELD_REF": {
+      return {
+        ...state,
+        steps: state.steps.map((s) =>
+          s.stepId === action.stepId
+            ? {
+                ...s,
+                fields: s.fields.map((f) =>
+                  f.id === action.fieldId
+                    ? // Swaps only ever target a generic primitive, so the
+                      // field's kind is always a plain component afterwards —
+                      // normalize it so a former custom/block kind can't linger
+                      // and disagree with the new ref.
+                      {
+                        ...f,
+                        kind: "component",
+                        ref: action.ref,
+                        overrides: action.overrides,
+                      }
+                    : f,
+                ),
               }
             : s,
         ),

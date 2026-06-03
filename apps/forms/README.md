@@ -37,10 +37,13 @@ pnpm --filter @govtech-bb/forms exec playwright test \
   --config playwright.smoke.config.ts temp-teacher-application.smoke.spec.ts
 ```
 
-**In CI:** the `temp-teacher-application` smoke spec runs automatically after a
-sandbox forms deploy — see the `smoke-test-forms` job in
-[`deploy-sandbox.yml`](../../.github/workflows/deploy-sandbox.yml). It submits a
-real application (recipient `testing@govtech.bb`) on every forms deploy.
+**In CI:** the `temp-teacher-application` and `vendor-registration` smoke specs
+run automatically after a sandbox forms deploy — see the `smoke-test-temp-teacher`
+and `smoke-test-vendor-registration` jobs in
+[`deploy-sandbox.yml`](../../.github/workflows/deploy-sandbox.yml), which call the
+reusable [`forms-smoke.yml`](../../.github/workflows/forms-smoke.yml) workflow.
+Each submits a real application (recipient `testing@govtech.bb`) on every forms
+deploy.
 
 ## Analytics (Umami)
 

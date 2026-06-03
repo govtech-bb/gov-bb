@@ -1,8 +1,15 @@
 import { evaluateFormConditions } from "./index";
 import { evaluateCondition, flattenStepValues } from "./internals";
+// Also import via the package entry to exercise the public re-exports (#668):
+// `apps/forms` consumes these low-level primitives directly from the package.
+import {
+  evaluateCondition as evaluateConditionFromIndex,
+  flattenStepValues as flattenStepValuesFromIndex,
+} from "./index";
 import type { ConditionResult, StepScopedValues } from "./index";
 import type {
   FieldConditionalOnBehaviour,
+  OptionalIfBehaviour,
   StepConditionalOnBehaviour,
   ServiceContract,
   ServiceContract as SC,
@@ -10,11 +17,13 @@ import type {
   RepeatableBehaviour,
 } from "@govtech-bb/form-types";
 
+type FieldBehaviour = FieldConditionalOnBehaviour | OptionalIfBehaviour;
+
 // ─── helpers ───────────────────────────────────────────────────────────────
 
 function makePrimitive(
   fieldId: string,
-  behaviours?: FieldConditionalOnBehaviour[],
+  behaviours?: FieldBehaviour[],
 ): Primitive {
   return {
     fieldId,
@@ -29,7 +38,7 @@ function makeContract(
     stepId: string;
     behaviours?: StepConditionalOnBehaviour[];
     fieldIds: string[];
-    fieldBehaviours?: Record<string, FieldConditionalOnBehaviour[]>;
+    fieldBehaviours?: Record<string, FieldBehaviour[]>;
   }>,
 ): ServiceContract {
   return {
@@ -55,6 +64,15 @@ const isActive = (result: ConditionResult, stepId: string, fieldId: string) =>
 
 const isHidden = (result: ConditionResult, stepId: string, fieldId: string) =>
   result.hiddenFieldIds.get(stepId)?.has(fieldId) ?? false;
+
+const isOptional = (
+  result: ConditionResult,
+  stepId: string,
+  fieldId: string,
+  instance = 0,
+) =>
+  result.optionalFieldsByInstance.get(stepId)?.[instance]?.has(fieldId) ??
+  false;
 
 const EMPTY_VALUES: StepScopedValues = {};
 
@@ -721,6 +739,245 @@ describe("evaluateFormConditions — repeatable steps", () => {
   });
 });
 
+// ─── optionalIf — relaxes required without hiding ───────────────────────────
+
+describe("evaluateFormConditions — optionalIf", () => {
+  const optionalIfStep = (
+    fieldId: string,
+    behaviour: OptionalIfBehaviour,
+  ): Parameters<typeof makeContract>[0] => [
+    { stepId: "gate", fieldIds: ["trigger"] },
+    {
+      stepId: "details",
+      fieldIds: [fieldId],
+      fieldBehaviours: { [fieldId]: [behaviour] },
+    },
+  ];
+
+  it("flags a field as optional when its optionalIf matches (equal)", () => {
+    const contract = makeContract(
+      optionalIfStep("middle-name", {
+        type: "optionalIf",
+        targetFieldId: "trigger",
+        targetStepId: "gate",
+        operator: "equal",
+        value: "skip",
+      }),
+    );
+    const values: StepScopedValues = {
+      gate: { trigger: "skip" },
+      details: { "middle-name": "" },
+    };
+
+    const result = evaluateFormConditions(contract, values);
+
+    expect(isOptional(result, "details", "middle-name")).toBe(true);
+    // never hidden — stays active
+    expect(isActive(result, "details", "middle-name")).toBe(true);
+    expect(isHidden(result, "details", "middle-name")).toBe(false);
+  });
+
+  it("does not flag the field when the optionalIf does not match", () => {
+    const contract = makeContract(
+      optionalIfStep("middle-name", {
+        type: "optionalIf",
+        targetFieldId: "trigger",
+        targetStepId: "gate",
+        operator: "equal",
+        value: "skip",
+      }),
+    );
+    const values: StepScopedValues = {
+      gate: { trigger: "no" },
+      details: { "middle-name": "" },
+    };
+
+    const result = evaluateFormConditions(contract, values);
+
+    expect(isOptional(result, "details", "middle-name")).toBe(false);
+    expect(isActive(result, "details", "middle-name")).toBe(true);
+  });
+
+  it("honours the notEqual operator", () => {
+    const contract = makeContract(
+      optionalIfStep("field", {
+        type: "optionalIf",
+        targetFieldId: "trigger",
+        targetStepId: "gate",
+        operator: "notEqual",
+        value: "required",
+      }),
+    );
+    expect(
+      isOptional(
+        evaluateFormConditions(contract, { gate: { trigger: "other" } }),
+        "details",
+        "field",
+      ),
+    ).toBe(true);
+    expect(
+      isOptional(
+        evaluateFormConditions(contract, { gate: { trigger: "required" } }),
+        "details",
+        "field",
+      ),
+    ).toBe(false);
+  });
+
+  it("honours the in operator", () => {
+    const contract = makeContract(
+      optionalIfStep("field", {
+        type: "optionalIf",
+        targetFieldId: "trigger",
+        targetStepId: "gate",
+        operator: "in",
+        value: ["a", "b"],
+      }),
+    );
+    expect(
+      isOptional(
+        evaluateFormConditions(contract, { gate: { trigger: "b" } }),
+        "details",
+        "field",
+      ),
+    ).toBe(true);
+    expect(
+      isOptional(
+        evaluateFormConditions(contract, { gate: { trigger: "c" } }),
+        "details",
+        "field",
+      ),
+    ).toBe(false);
+  });
+
+  it("honours the exists operator", () => {
+    const contract = makeContract(
+      optionalIfStep("field", {
+        type: "optionalIf",
+        targetFieldId: "trigger",
+        targetStepId: "gate",
+        operator: "exists",
+        value: "",
+      }),
+    );
+    expect(
+      isOptional(
+        evaluateFormConditions(contract, { gate: { trigger: "anything" } }),
+        "details",
+        "field",
+      ),
+    ).toBe(true);
+    expect(
+      isOptional(
+        evaluateFormConditions(contract, { gate: { trigger: "" } }),
+        "details",
+        "field",
+      ),
+    ).toBe(false);
+  });
+
+  it("AND semantics — optional only when every optionalIf matches", () => {
+    const contract = makeContract([
+      { stepId: "gate", fieldIds: ["a", "b"] },
+      {
+        stepId: "details",
+        fieldIds: ["field"],
+        fieldBehaviours: {
+          field: [
+            {
+              type: "optionalIf",
+              targetFieldId: "a",
+              targetStepId: "gate",
+              operator: "equal",
+              value: "yes",
+            },
+            {
+              type: "optionalIf",
+              targetFieldId: "b",
+              targetStepId: "gate",
+              operator: "equal",
+              value: "yes",
+            },
+          ],
+        },
+      },
+    ]);
+    expect(
+      isOptional(
+        evaluateFormConditions(contract, { gate: { a: "yes", b: "no" } }),
+        "details",
+        "field",
+      ),
+    ).toBe(false);
+    expect(
+      isOptional(
+        evaluateFormConditions(contract, { gate: { a: "yes", b: "yes" } }),
+        "details",
+        "field",
+      ),
+    ).toBe(true);
+  });
+
+  it("evaluates optionalIf per instance inside a repeatable step", () => {
+    const contract: SC = {
+      formId: "f",
+      title: "F",
+      version: "1",
+      createdAt: "",
+      updatedAt: "",
+      steps: [
+        {
+          stepId: "jobs",
+          title: "jobs",
+          behaviours: [
+            { type: "repeatable", min: 0, max: 5 } as RepeatableBehaviour,
+          ],
+          elements: [
+            { fieldId: "has-end-date", label: "x", htmlType: "text" },
+            {
+              fieldId: "end-date",
+              label: "x",
+              htmlType: "text",
+              behaviours: [
+                {
+                  type: "optionalIf",
+                  targetFieldId: "has-end-date",
+                  operator: "equal",
+                  value: "no",
+                },
+              ] as OptionalIfBehaviour[],
+            },
+          ] as SC["steps"][number]["elements"],
+        },
+      ],
+    } as SC;
+
+    const values = {
+      jobs: [{ "has-end-date": "no" }, { "has-end-date": "yes" }],
+    };
+
+    const result = evaluateFormConditions(contract, values);
+
+    expect(isOptional(result, "jobs", "end-date", 0)).toBe(true);
+    expect(isOptional(result, "jobs", "end-date", 1)).toBe(false);
+    // active in both instances regardless of optional state
+    expect(result.activeFieldsByInstance.get("jobs")?.[0]).toContain(
+      "end-date",
+    );
+    expect(result.activeFieldsByInstance.get("jobs")?.[1]).toContain(
+      "end-date",
+    );
+  });
+
+  it("leaves optionalFieldsByInstance empty for a field with no optionalIf", () => {
+    const contract = makeContract([{ stepId: "details", fieldIds: ["plain"] }]);
+    const result = evaluateFormConditions(contract, {
+      details: { plain: "x" },
+    });
+    expect(isOptional(result, "details", "plain")).toBe(false);
+  });
+});
+
 // ─── Edge cases ─────────────────────────────────────────────────────────────
 
 describe("evaluateFormConditions — edge cases", () => {
@@ -761,5 +1018,34 @@ describe("flattenStepValues — array safety", () => {
     } as unknown as StepScopedValues);
     expect(flat).toEqual({ name: "Marcus" });
     expect("employer" in flat).toBe(false);
+  });
+});
+
+// ─── public re-exports (#668) ───────────────────────────────────────────────
+// `apps/forms` evaluates single conditions client-side using these primitives
+// imported from the package entry, so the entry must surface them.
+
+describe("package entry re-exports evaluateCondition & flattenStepValues", () => {
+  it("re-exports the same evaluateCondition implementation", () => {
+    expect(evaluateConditionFromIndex).toBe(evaluateCondition);
+    const values: StepScopedValues = { step1: { colour: "red" } };
+    const flat = flattenStepValuesFromIndex(values);
+    expect(
+      evaluateConditionFromIndex(
+        {
+          type: "fieldConditionalOn",
+          targetStepId: "step1",
+          targetFieldId: "colour",
+          operator: "equal",
+          value: "red",
+        },
+        values,
+        flat,
+      ),
+    ).toBe(true);
+  });
+
+  it("re-exports the same flattenStepValues implementation", () => {
+    expect(flattenStepValuesFromIndex).toBe(flattenStepValues);
   });
 });

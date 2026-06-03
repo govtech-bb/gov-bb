@@ -12,7 +12,7 @@ export interface RecipeFieldDraft {
   // Editor-only; not persisted. Serializer drops it, deserialize mints a fresh one.
   id: string;
   kind: "component" | "block" | "custom";
-  ref: string; // e.g. "components/first-name", "blocks/name"
+  ref: string; // e.g. "components/first-name", "blocks/personal-information"
   overrides: FieldOverrides;
   childOverrides?: ChildOverrides; // for blocks only
 }

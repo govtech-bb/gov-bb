@@ -21,6 +21,12 @@ export const listForms = createServerFn({ method: "GET" })
       api.get<string[]>("/builder/forms/disabled"),
     ]);
 
+    // `isPublished` means "this formId appears in the published index" — derive
+    // it from the raw published response, independently of the merge loop below.
+    // The loop `continue`s when a draft outranks the published copy, so it can't
+    // be the source of truth for membership.
+    const publishedIds = new Set(published.map((p) => p.formId));
+
     const byFormId = new Map<string, FormDefinitionSummary>();
     for (const d of drafts) byFormId.set(d.formId, d);
     for (const p of published) {
@@ -38,17 +44,16 @@ export const listForms = createServerFn({ method: "GET" })
     // Mark disabled forms. A disabled published form is kept so it can be
     // re-enabled from the UI; a disabled non-published entry is an orphan
     // tombstone from the old draft-delete behaviour with no UI home, so it's
-    // dropped.
-    //
-    // Known, accepted edge: `isPublished` reflects which version won the merge
-    // above, not "appears in the published index". So a disabled published form
-    // that ALSO has a newer draft (draft version > published) is marked
-    // isPublished=false and drops out of the picker here — it can't be re-enabled
-    // via the UI until the newer draft is removed. The tombstone still keeps the
-    // public site at 410, so this is a UI-only gap we've chosen to live with.
+    // dropped. OR published-index membership into `isPublished` so a disabled
+    // published form with a newer draft (whose draft entry won the merge with
+    // isPublished=false) stays put with its Disabled badge and Enable button.
     const disabledIds = new Set(disabled);
     return Array.from(byFormId.values())
-      .map((f) => ({ ...f, isDisabled: disabledIds.has(f.formId) }))
+      .map((f) => ({
+        ...f,
+        isPublished: f.isPublished || publishedIds.has(f.formId),
+        isDisabled: disabledIds.has(f.formId),
+      }))
       .filter((f) => !f.isDisabled || f.isPublished);
   });
 
@@ -117,6 +122,27 @@ export const updateRecipe = createServerFn({ method: "POST" })
     await api.put(`/builder/forms/${encodeURIComponent(data.formId)}`, {
       recipe: data.recipe,
     });
+  });
+
+// Re-key a draft form: change its Form ID. The API moves every
+// form_definitions row from `oldFormId` to `recipe.formId` and writes the saved
+// version's content, atomically (issue #674). Distinct from updateRecipe (which
+// keeps the ID) and submitRecipe (which creates a brand-new form) — a re-key is
+// an identity change of an existing form, so the API can exclude the form's own
+// prior record from the title check instead of flagging a false self-collision.
+export const rekeyRecipe = createServerFn({ method: "POST" })
+  .middleware([requireSession])
+  .inputValidator(
+    z.object({
+      oldFormId: z.string().min(1),
+      recipe: z.unknown(),
+    }),
+  )
+  .handler(async ({ data }): Promise<void> => {
+    await api.post(
+      `/builder/forms/${encodeURIComponent(data.oldFormId)}/rekey`,
+      { recipe: data.recipe },
+    );
   });
 
 // Draft-delete a form: the API removes every form_definitions row for the

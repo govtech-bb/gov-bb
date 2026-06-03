@@ -5,8 +5,12 @@ import {
 } from "@govtech-bb/form-types";
 import { AnyFormApi } from "@tanstack/react-form";
 import { ClientFormStep } from "@forms/types";
-import { evaluateCondition, RequiredState } from "../validation-methods";
-import { getFullFieldId } from "../field-mapper";
+import {
+  evaluateCondition,
+  flattenStepValues,
+} from "@govtech-bb/form-conditions";
+import { RequiredState } from "../validation-methods";
+import { buildStepScopedValues } from "./value-tree";
 
 export const checkConditionalOn = (
   currentFieldValue: FieldValue,
@@ -16,21 +20,32 @@ export const checkConditionalOn = (
 ): RequiredState => {
   if (conditionalOns.length === 0) return "unknownState";
 
+  // Build the stepId → { fieldId: value } tree (and its flat projection) the
+  // shared evaluator consumes, from the form's composite-keyed state. This is
+  // the same evaluator `apps/api` uses, so a condition's verdict here matches
+  // the server's for the same values.
+  const formValues = (formApi.state?.values ?? {}) as Record<string, unknown>;
+  const values = buildStepScopedValues(formValues);
+  // `flatValues` is only consulted by the shared evaluator when a condition has
+  // no `targetStepId` AND no `fieldStep` fallback. Because `flattenStepValues`
+  // last-wins-merges synthetic repeatable instance steps (they share bare
+  // fieldIds), this flat lookup would be ambiguous inside a repeatable — but it
+  // is unreachable in practice: callers always pass the field's `fieldStep`, so
+  // resolution goes through `values[targetStepId][targetFieldId]` instead.
+  const flatValues = flattenStepValues(values);
+
   for (const condition of conditionalOns) {
-    const targetStepId: string | undefined =
-      condition.targetStepId ?? fieldStep;
-    let targetFieldId = condition.targetFieldId;
-    if (targetStepId) {
-      targetFieldId = getFullFieldId(targetStepId, condition.targetFieldId);
-    }
+    // Preserve the client's historical `targetStepId ?? fieldStep` resolution:
+    // a condition with no explicit target step resolves against the field's own
+    // step. The shared evaluator reads `values[targetStepId][targetFieldId]`
+    // (falling back to `flatValues[targetFieldId]` when there is no
+    // `targetStepId`), so default the behaviour's `targetStepId` to `fieldStep`.
+    const behaviour =
+      condition.targetStepId || !fieldStep
+        ? condition
+        : { ...condition, targetStepId: fieldStep };
 
-    const targetFieldValue = formApi.getFieldValue(targetFieldId);
-
-    const passesCondition = evaluateCondition(
-      condition.value,
-      targetFieldValue,
-      condition.operator,
-    );
+    const passesCondition = evaluateCondition(behaviour, values, flatValues);
 
     if (!currentFieldValue) currentFieldValue = "";
     if (passesCondition && currentFieldValue.toString().length == 0) {

@@ -42,20 +42,25 @@ describe("resolveFieldLabel", () => {
   it("override label wins even when a component primitive label is present", () => {
     const item = component("Text Field", "Primitive Label");
     expect(
-      resolveFieldLabel(field("components/text", { label: "Your name" }), item),
+      resolveFieldLabel(
+        field("components/generic-text", { label: "Your name" }),
+        item,
+      ),
     ).toBe("Your name");
   });
 
   it("component (no override): returns the primitive label", () => {
     const item = component("Text Field", "Primitive Label");
-    expect(resolveFieldLabel(field("components/text"), item)).toBe(
+    expect(resolveFieldLabel(field("components/generic-text"), item)).toBe(
       "Primitive Label",
     );
   });
 
   it("block (no override): no primitive → returns displayName", () => {
     const item = block("Name Block");
-    expect(resolveFieldLabel(field("blocks/name"), item)).toBe("Name Block");
+    expect(resolveFieldLabel(field("blocks/personal-information"), item)).toBe(
+      "Name Block",
+    );
   });
 
   it("custom-shaped item whose primitive has no label → falls through to displayName", () => {
@@ -74,7 +79,7 @@ describe("resolveFieldLabel", () => {
   it("empty-string override label is treated as not-set → falls through to primitive label", () => {
     const item = component("Text Field", "Primitive Label");
     expect(
-      resolveFieldLabel(field("components/text", { label: "" }), item),
+      resolveFieldLabel(field("components/generic-text", { label: "" }), item),
     ).toBe("Primitive Label");
   });
 
@@ -87,7 +92,10 @@ describe("resolveFieldLabel", () => {
 
   it("everything absent (empty override + undefined item) → returns field.ref", () => {
     expect(
-      resolveFieldLabel(field("components/text", { label: "" }), undefined),
-    ).toBe("components/text");
+      resolveFieldLabel(
+        field("components/generic-text", { label: "" }),
+        undefined,
+      ),
+    ).toBe("components/generic-text");
   });
 });
