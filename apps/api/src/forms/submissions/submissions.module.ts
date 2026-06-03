@@ -21,6 +21,7 @@ import { FilesModule } from "../../files/files.module";
 import { SqsProducerService } from "./sqs/sqs-producer.service";
 import { SqsConsumerService } from "./sqs/sqs-consumer.service";
 import sqsConfig from "../../config/sqs.config";
+import emailConfig from "../../config/email.config";
 import { ExpressionsModule } from "../../expressions/expressions.module";
 import { EmailTemplateService } from "../../email/email-template.service";
 import { EmailBodyBuilder } from "../../email/email-body.builder";
@@ -32,6 +33,7 @@ import { EmailBodyBuilder } from "../../email/email-body.builder";
     PaymentsModule,
     FilesModule,
     ConfigModule.forFeature(sqsConfig),
+    ConfigModule.forFeature(emailConfig),
     ExpressionsModule,
   ],
   controllers: [SubmissionsController],
