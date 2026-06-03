@@ -5,6 +5,7 @@ import {
 } from "@tanstack/react-start/server";
 import { clearSession, normalizeOAuthBase } from "./session";
 import { getSession } from "./session-cipher.server";
+import { getSessionSecret } from "./secrets";
 
 /**
  * Check the current session from the request cookie.
@@ -26,10 +27,7 @@ export const checkSession = createServerFn({ method: "GET" }).handler(
   async (): Promise<{ login: string } | null> => {
     const headers = getRequestHeaders();
     const cookie = headers.get("cookie") ?? null;
-    const secret = process.env.SESSION_SECRET;
-    if (!secret) {
-      throw new Error("SESSION_SECRET is not set");
-    }
+    const secret = await getSessionSecret();
     const session = getSession(cookie, secret);
     if (!session) return null;
     return { login: session.login };

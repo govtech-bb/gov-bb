@@ -6,6 +6,7 @@ import {
   normalizeOAuthBase,
   serializeOAuthStateCookie,
 } from "../../server/session";
+import { getGitHubOAuthCreds } from "../../server/secrets";
 
 // `randomBytes` comes from `node:crypto`, which Vite externalizes in the
 // client bundle (any property access on the stub throws). Wrapping the call
@@ -39,10 +40,9 @@ const setOAuthStateCookie = createIsomorphicFn()
   .client((_cookie: string) => {});
 
 export const Route = createFileRoute("/auth/github")({
-  beforeLoad: () => {
-    const clientId = process.env.GITHUB_OAUTH_CLIENT_ID;
+  beforeLoad: async () => {
+    const { clientId } = await getGitHubOAuthCreds();
     const rawBase = process.env.OAUTH_REDIRECT_BASE;
-    if (!clientId) throw new Error("GITHUB_OAUTH_CLIENT_ID is not set");
     if (!rawBase) throw new Error("OAUTH_REDIRECT_BASE is not set");
     // Strip a trailing slash so the redirect_uri can't become a doubled-slash
     // path that won't match the registered GitHub OAuth callback.

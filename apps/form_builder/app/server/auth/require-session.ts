@@ -1,6 +1,7 @@
 import { createMiddleware } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { getSession } from "../session-cipher.server";
+import { getSessionSecret } from "../secrets";
 import type { SessionPayload } from "../session";
 
 /**
@@ -27,8 +28,7 @@ export const requireSession = createMiddleware({ type: "function" }).server(
       (headers as { get?: (k: string) => string | null }).get?.("cookie") ??
       (headers as { cookie?: string }).cookie ??
       null;
-    const secret = process.env.SESSION_SECRET;
-    if (!secret) throw new Error("SESSION_SECRET is not set");
+    const secret = await getSessionSecret();
     const session: SessionPayload | null = getSession(cookie, secret);
     if (!session) throw new Error("Not authenticated");
     return next({ context: { session } });
