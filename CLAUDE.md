@@ -41,19 +41,31 @@ Every new issue should carry the labels that describe what it relates to. Run
 
 Pick labels from the issue's actual content, not just its title.
 
-## Always run the full build and tests before committing or pushing
+## Run the build, and the tests for what you touched, before committing or pushing
 
-CI runs these two commands. Run the same ones locally first — don't rely on CI to
-catch breakage:
+CI runs the full build and the full test suite. Run the build the same way
+locally first — don't rely on CI to catch breakage:
 
 ```bash
 pnpm exec nx run-many -t build   # all packages must compile
-pnpm exec nx run-many -t test    # all test suites must pass
 ```
 
-A green local build/test before push avoids the round-trip of a failed CI run.
-The CI build captures output and fails the job on any error, so a single
-TypeScript error in one package fails the whole "Build all packages" step.
+For tests, **only run the suites for the apps or packages you actually
+touched** — don't run the full `nx run-many -t test`. Target the affected
+projects instead:
+
+```bash
+pnpm exec nx run -t test <project>          # one project you changed
+pnpm exec nx run-many -t test -p p1,p2      # the specific projects you changed
+```
+
+The reason is **out-of-memory issues**: running the full test suite locally
+spawns too many parallel test processes and crashes the machine. Scoping tests
+to what you touched keeps memory in check. CI still runs the full test suite, so
+anything you didn't touch is covered there. This keeps the local loop fast while
+a green build before push avoids the round-trip of a failed CI run. The CI build captures output and fails the job on
+any error, so a single TypeScript error in one package fails the whole "Build
+all packages" step.
 
 **Local caveat:** `landing`'s prebuild fetches from a live external forms API, so
 a fully offline `build` fails on that package. When verifying locally without
