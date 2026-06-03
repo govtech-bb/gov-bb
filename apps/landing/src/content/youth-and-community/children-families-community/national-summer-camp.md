@@ -6,6 +6,7 @@ publish_date: 2026-05-20
 category: youth-and-community
 subcategory: children-families-community
 service_type: information
+form_id: national-summer-camp
 ---
 
 Summer camps for children aged 5 to 16, hosted in 46 locations across Barbados.
@@ -23,7 +24,7 @@ Summer camps across 46 locations island-wide. Hosted by the Ministry of Youth, S
 
 Complete the short application form to register your interest. Your progress is saved automatically.
 
-<!-- [Apply now](https://alpha.gov.bb/youth-and-community/children-families-community/national-summer-camp/form) -->
+<a data-start-link>Start now</a>
 
 ## More information
 
