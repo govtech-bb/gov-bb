@@ -279,6 +279,78 @@ describe("onOrBeforeRunner", () => {
   });
 });
 
+describe("parseDate — DD/MM/YYYY literal thresholds (#633)", () => {
+  // The comparison runners route the literal `config.value` threshold through
+  // parseDate. Barbados authors type thresholds as DD/MM/YYYY (day-first), so a
+  // `/`-separated string must parse day-first rather than as US MM/DD or
+  // Invalid Date.
+
+  it("parses a DD/MM/YYYY threshold day-first (31/12/2020 = 31 Dec 2020)", () => {
+    // 1 Jan 2021 is after 31 Dec 2020.
+    expect(afterRunner("2021-01-01", cfg("31/12/2020"), {})).toBeNull();
+    // 30 Dec 2020 is not after 31 Dec 2020.
+    expect(afterRunner("2020-12-30", cfg("31/12/2020"), {})).toBe(
+      "Date must be after 31/12/2020",
+    );
+  });
+
+  it("parses 01/02/2020 as 1 Feb (day-first), not 2 Jan (US MM/DD)", () => {
+    // 15 Jan 2020 is before 1 Feb 2020 (day-first) -> `before` passes.
+    // Were it misread as 2 Jan (US MM/DD), 15 Jan would be *after* -> `before`
+    // would fail. This asserts the day-first interpretation.
+    expect(beforeRunner("2020-01-15", cfg("01/02/2020"), {})).toBeNull();
+    expect(afterRunner("2020-01-15", cfg("01/02/2020"), {})).toBe(
+      "Date must be after 01/02/2020",
+    );
+  });
+
+  it("still parses ISO (YYYY-MM-DD) thresholds (apps/api regression guard)", () => {
+    expect(afterRunner("2020-06-01", cfg("2020-12-31"), {})).toBe(
+      "Date must be after 2020-12-31",
+    );
+    expect(afterRunner("2021-01-01", cfg("2020-12-31"), {})).toBeNull();
+  });
+
+  it("accepts single-digit day/month (1/2/2020 = 1 Feb 2020)", () => {
+    expect(beforeRunner("2020-01-15", cfg("1/2/2020"), {})).toBeNull();
+    expect(afterRunner("2020-01-15", cfg("1/2/2020"), {})).toBe(
+      "Date must be after 1/2/2020",
+    );
+  });
+
+  it.each([
+    // wrong shape
+    "31/12",
+    "1/2/3/4",
+    // non-numeric / non-canonical segments (Number() must not coerce these)
+    "aa/bb/cccc",
+    "0x10/01/2020",
+    "12.5/6/2020",
+    " 5 /6/2020",
+    // short / typo year
+    "1/2/3",
+    // out-of-range components Date.UTC would silently roll over
+    "31/02/2020",
+    "32/01/2020",
+    "31/13/2020",
+    "00/00/0000",
+  ])(
+    "treats malformed '/'-separated threshold %s as unparseable -> rule fires",
+    (bad) => {
+      expect(afterRunner("2021-01-01", cfg(bad), {})).toBe(
+        `Date must be after ${bad}`,
+      );
+    },
+  );
+
+  it("bare-year '2020' falls through to ISO parsing, not the DD/MM fork", () => {
+    // No '/', so parseDate uses new Date("2020") = 1 Jan 2020 UTC (a valid ISO
+    // year). The DD/MM/YYYY fork only governs '/'-separated input; the shared
+    // ISO path is left untouched so apps/api date values keep parsing.
+    expect(afterRunner("2021-01-01", cfg("2020"), {})).toBeNull();
+  });
+});
+
 describe("minYearRunner", () => {
   it("passes when year >= minYear", () => {
     expect(minYearRunner("2000-06-15", cfg(2000), {})).toBeNull();
