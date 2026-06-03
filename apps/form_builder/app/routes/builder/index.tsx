@@ -52,7 +52,12 @@ export const Route = createFileRoute("/builder/")({
 
 function BuilderPage() {
   const { catalog, baseBranch } = Route.useLoaderData();
-  const { forms, loadError: formsLoadError, refetch: refetchForms } = useFormsList();
+  const {
+    forms,
+    loadError: formsLoadError,
+    refetch: refetchForms,
+    upsertForm,
+  } = useFormsList();
   const [draft, dispatch] = useReducer(recipeReducer, EMPTY_DRAFT);
   // Snapshot of the last saved/loaded draft — the baseline that "unsaved
   // changes" is measured against. null for a brand-new form (no save/load yet);
@@ -322,14 +327,20 @@ function BuilderPage() {
     setSubmitError(null);
     try {
       const recipe = serializeRecipeDraft(draft, { version: submitVersion });
-      if (loadedFromId && currentVersion && submitVersion === currentVersion) {
+      // A create (vs. a new version of an existing form) is when the formId
+      // isn't the one we loaded. Capture it before setLoadedFromId below
+      // overwrites loadedFromId — the Open picker refresh branches on it too.
+      const isNew = draft.formId !== loadedFromId;
+      // A same-version save overwrites the current row in place (updateRecipe);
+      // any higher version creates a new draft row (submitRecipe). This split
+      // also decides the picker row's isPublished below.
+      const isInPlaceUpdate =
+        !!loadedFromId && !!currentVersion && submitVersion === currentVersion;
+      if (isInPlaceUpdate) {
         await updateRecipe({ data: { formId: loadedFromId, recipe } });
       } else {
-        // A create (vs. a new version of an existing form) is when the formId
-        // isn't the one we loaded. Tells the API to enforce formId uniqueness.
-        await submitRecipe({
-          data: { recipe, isNew: draft.formId !== loadedFromId },
-        });
+        // Tells the API to enforce formId uniqueness for a genuine create.
+        await submitRecipe({ data: { recipe, isNew } });
       }
       setSubmitSuccess(true);
       setLastSaveStatus("submitted");
@@ -337,6 +348,30 @@ function BuilderPage() {
       // clears immediately after a successful save.
       setSavedDraft(draft);
       setLoadedFromId(draft.formId);
+
+      // Keep the Open picker fresh without a reload. A new form needs the full
+      // refetch so its row carries the server's published/disabled merge; a
+      // re-save just patches the existing row from data we already hold,
+      // skipping the slow listForms() waterfall.
+      if (isNew) {
+        refetchForms();
+      } else {
+        // Mirror what a refetch's listForms() merge would produce for this row.
+        const existing = forms?.find((f) => f.formId === draft.formId);
+        upsertForm({
+          // Preserve the server-assigned id (distinct from formId for drafts);
+          // fall back to formId only when appending a row we've never seen.
+          id: existing?.id ?? draft.formId,
+          formId: draft.formId,
+          title: draft.title,
+          version: submitVersion,
+          // A version bump makes this draft the highest version, which the merge
+          // marks isPublished: false (per-row action becomes Delete). A
+          // same-version in-place update leaves the published row winning the
+          // version tie, so the existing published state must be preserved.
+          isPublished: isInPlaceUpdate ? (existing?.isPublished ?? false) : false,
+        });
+      }
 
       // The just-saved version becomes the new working/current version, so the
       // toolbar reflects it and the next Save-draft patch / Deploy minor bumps

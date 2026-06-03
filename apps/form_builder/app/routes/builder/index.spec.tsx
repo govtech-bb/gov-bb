@@ -51,9 +51,18 @@ jest.mock("../../server/ai-builder/convert", () => ({
 
 // The Open picker's forms list is a slow GitHub-API waterfall; stub it out.
 // `mockForms` is swappable per test so we can drive the uniqueness pre-flight.
+// `refetch`/`upsertForm` are stable spies so the save-flow tests can assert
+// which branch fired (full refetch for a new form, cheap upsert for a re-save).
 let mockForms: { id: string; formId: string; title: string; version: string; isPublished: boolean }[] = [];
+const mockRefetch = jest.fn();
+const mockUpsertForm = jest.fn();
 jest.mock("./-use-forms-list", () => ({
-  useFormsList: () => ({ forms: mockForms, loadError: null, refetch: jest.fn() }),
+  useFormsList: () => ({
+    forms: mockForms,
+    loadError: null,
+    refetch: mockRefetch,
+    upsertForm: mockUpsertForm,
+  }),
 }));
 
 // Keep the real reducer logic, but make EMPTY_DRAFT (the useReducer seed)
@@ -465,5 +474,157 @@ describe("BuilderPage — unsaved changes + Discard", () => {
     expect(await screen.findByDisplayValue("old-form")).toBeInTheDocument();
     // …a freshly loaded form has no unsaved changes.
     expect(screen.queryByText(/unsaved changes/i)).not.toBeInTheDocument();
+  });
+});
+
+describe("BuilderPage — Open picker freshness after save", () => {
+  beforeEach(() => {
+    mockForms = [];
+    validateRecipe.mockReset();
+    getRecipe.mockReset();
+    mockRefetch.mockClear();
+    mockUpsertForm.mockClear();
+  });
+
+  it("full-refetches the picker (no upsert) after saving a brand-new form", async () => {
+    mockEmptyDraft = VALID_DRAFT; // never loaded ⇒ a genuine create
+    validateRecipe.mockResolvedValue({ ok: true });
+    renderBuilder();
+
+    await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Submit Recipe" }),
+    );
+    await screen.findByText(/recipe submitted successfully/i);
+
+    // A new form needs the server-merged row, so the slow refetch is acceptable…
+    expect(mockRefetch).toHaveBeenCalledTimes(1);
+    // …and the cheap upsert path must not also fire.
+    expect(mockUpsertForm).not.toHaveBeenCalled();
+  });
+
+  it("upserts the picker row (no refetch) after re-saving an existing form", async () => {
+    mockEmptyDraft = INVALID_DRAFT;
+    mockForms = [
+      { id: "old", formId: "old-form", title: "Old Form", version: "2.0.0", isPublished: true },
+    ];
+    getRecipe.mockResolvedValue({
+      formId: "old-form",
+      title: "Old Form",
+      version: "2.0.0",
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          elements: [{ ref: "components/first-name" }],
+          behaviours: [],
+        },
+        { stepId: "check-your-answers", title: "Check your answers", elements: [], behaviours: [] },
+        { stepId: "declaration", title: "Declaration", elements: [], behaviours: [] },
+        {
+          stepId: "submission-confirmation",
+          title: "Submission Confirmation",
+          elements: [],
+          behaviours: [],
+        },
+      ],
+      createdAt: "2020-01-01T00:00:00.000Z",
+      updatedAt: "2020-01-01T00:00:00.000Z",
+    });
+    validateRecipe.mockResolvedValue({ ok: true });
+    renderBuilder();
+
+    // Load the existing form so the save reads as a re-save (formId unchanged).
+    await userEvent.click(screen.getByRole("button", { name: /^open$/i }));
+    await userEvent.click(await screen.findByText("Old Form"));
+    expect(await screen.findByDisplayValue("old-form")).toBeInTheDocument();
+
+    // Edit the title so the form is dirty (Save draft is gated on unsaved
+    // changes) and the upsert has a fresh title to carry into the picker row.
+    fireEvent.change(screen.getByLabelText(/title/i), {
+      target: { value: "Old Form (renamed)" },
+    });
+
+    // Save a new version (the default save-draft patch bump off 2.0.0). A loaded
+    // form's modal reads "Save Changes" rather than "Submit Recipe".
+    await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Save Changes" }),
+    );
+    await screen.findByText(/recipe submitted successfully/i);
+
+    // Re-save patches just this row client-side — no slow listForms() waterfall.
+    expect(mockRefetch).not.toHaveBeenCalled();
+    expect(mockUpsertForm).toHaveBeenCalledTimes(1);
+    expect(mockUpsertForm).toHaveBeenCalledWith({
+      // The server-assigned id ("old") is preserved, not replaced with formId.
+      id: "old",
+      formId: "old-form",
+      title: "Old Form (renamed)",
+      version: "2.0.1",
+      // A version bump (2.0.0 → 2.0.1) makes this the highest draft, which the
+      // merge marks unpublished.
+      isPublished: false,
+    });
+  });
+
+  it("preserves isPublished when re-saving an existing form in place at the same version", async () => {
+    mockEmptyDraft = INVALID_DRAFT;
+    mockForms = [
+      { id: "old", formId: "old-form", title: "Old Form", version: "2.0.0", isPublished: true },
+    ];
+    getRecipe.mockResolvedValue({
+      formId: "old-form",
+      title: "Old Form",
+      version: "2.0.0",
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          elements: [{ ref: "components/first-name" }],
+          behaviours: [],
+        },
+        { stepId: "check-your-answers", title: "Check your answers", elements: [], behaviours: [] },
+        { stepId: "declaration", title: "Declaration", elements: [], behaviours: [] },
+        {
+          stepId: "submission-confirmation",
+          title: "Submission Confirmation",
+          elements: [],
+          behaviours: [],
+        },
+      ],
+      createdAt: "2020-01-01T00:00:00.000Z",
+      updatedAt: "2020-01-01T00:00:00.000Z",
+    });
+    validateRecipe.mockResolvedValue({ ok: true });
+    renderBuilder();
+
+    await userEvent.click(screen.getByRole("button", { name: /^open$/i }));
+    await userEvent.click(await screen.findByText("Old Form"));
+    expect(await screen.findByDisplayValue("old-form")).toBeInTheDocument();
+
+    // Dirty the form so Save draft enables, then type the version back down to
+    // the current 2.0.0 so the save overwrites the published version in place.
+    fireEvent.change(screen.getByLabelText(/title/i), {
+      target: { value: "Old Form (tweaked)" },
+    });
+    await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
+    const versionField = await screen.findByDisplayValue("2.0.1");
+    fireEvent.change(versionField, { target: { value: "2.0.0" } });
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Save Changes" }),
+    );
+    await screen.findByText(/recipe submitted successfully/i);
+
+    // An in-place same-version save leaves the published row winning the version
+    // tie, so the badge must stay — mirroring what a refetch would show.
+    expect(mockRefetch).not.toHaveBeenCalled();
+    expect(mockUpsertForm).toHaveBeenCalledWith({
+      id: "old",
+      formId: "old-form",
+      title: "Old Form (tweaked)",
+      version: "2.0.0",
+      isPublished: true,
+    });
   });
 });
