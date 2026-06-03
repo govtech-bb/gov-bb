@@ -30,10 +30,18 @@ committed, run these steps in order:
    referenced, include its number in the PR body.
 3. **Automatically remove the worktree** once the branch is pushed — no need to
    ask first.
-4. **Ask before deleting the plan file** (e.g. the `docs/plans/*.md` the session
-   worked from) — confirm with the human first.
-5. **Prompt the human to watch CI** — offer the PR checks / run link so they can
-   follow the build.
+4. **Delete the plan file** (e.g. the `docs/plans/*.md` the session worked
+   from) — automatically, no need to ask. A plan exists only to drive the work
+   up to the PR; once the PR is open it has served its purpose, and the
+   end-of-session summary captures anything worth keeping. Plans are **not**
+   version-controlled (`docs/plans/` is gitignored), so there's nothing to keep
+   around after the PR is made.
+5. **Offer to watch CI yourself.** Ask the human whether you should watch the
+   PR's CI. If they say yes, run `gh pr checks <n> --watch` and **block until it
+   finishes** — do not hand the build back to the human to follow. Then:
+   - **All checks green** → merge the PR.
+   - **Any check fails** → investigate and fix the failures (push fixes to the
+     same branch and re-watch), rather than just reporting them back.
 
 ## When work is finished, close the related GitHub issue
 
