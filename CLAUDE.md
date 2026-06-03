@@ -7,6 +7,19 @@ Guidance for working in this repo. Use **pnpm** for everything — never `npm`.
 `sandbox` is the default base branch for pull requests — open PRs against it,
 not `dev`, unless the human explicitly asks otherwise.
 
+## Never put a `.` in a branch name
+
+Branch names must not contain a period. Each PR gets an Amplify preview at
+`<branch>.<appId>.amplifyapp.com`, and Amplify's default-domain cert is a
+**single-label wildcard** (`*.<appId>.amplifyapp.com`) — a dotted branch
+produces a multi-label subdomain whose HTTPS fails with
+`ERR_CERT_COMMON_NAME_INVALID`, breaking both the preview and the forms live
+smoke gate. Use `-` instead (e.g. `worktree-term-leave-v1-3-0`, not
+`…-v1.3.0`). This is enforced two ways: the `pr-preview.yml` "Guard branch
+name" step fails fast in CI, and a local PreToolUse hook
+(`.claude/hooks/block-dotted-branch.sh`) blocks branch-creating git commands
+with a dotted name.
+
 ## What "clean up" means at the end of a session
 
 When the human says **"clean up"** (or "wrap up and clean up") after work is
