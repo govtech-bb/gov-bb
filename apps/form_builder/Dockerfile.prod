@@ -12,7 +12,7 @@ WORKDIR /app
 RUN chown app:app /app
 USER app
 
-COPY --chown=app:app package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc nx.json tsconfig.base.json ./
+COPY --chown=app:app package.json pnpm-lock.yaml pnpm-workspace.yaml nx.json tsconfig.base.json ./
 COPY --chown=app:app apps/form_builder/package.json apps/form_builder/
 COPY --chown=app:app packages/content/package.json packages/content/
 COPY --chown=app:app packages/database/package.json packages/database/

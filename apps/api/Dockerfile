@@ -16,7 +16,7 @@ WORKDIR /app
 RUN chown app:app /app
 USER app
 
-COPY --chown=app:app package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc nx.json tsconfig.base.json ./
+COPY --chown=app:app package.json pnpm-lock.yaml pnpm-workspace.yaml nx.json tsconfig.base.json ./
 
 # Per-workspace manifests are required for pnpm to resolve the workspace graph.
 COPY --chown=app:app apps/api/package.json apps/api/
@@ -103,7 +103,6 @@ RUN mkdir -p node_modules/@govtech-bb && \
 COPY --from=builder --chown=app:app /app/package.json ./
 COPY --from=builder --chown=app:app /app/pnpm-lock.yaml ./
 COPY --from=builder --chown=app:app /app/pnpm-workspace.yaml ./
-COPY --from=builder --chown=app:app /app/.npmrc ./
 COPY --from=builder --chown=app:app /app/tsconfig.base.json ./
 COPY --from=builder --chown=app:app /app/apps/api/package.json ./apps/api/
 COPY --from=builder --chown=app:app /app/apps/api/tsconfig.json ./apps/api/
