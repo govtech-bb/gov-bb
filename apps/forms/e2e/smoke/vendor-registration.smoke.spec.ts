@@ -2,7 +2,7 @@
  * vendor-registration.smoke.spec.ts
  *
  * Live, on-demand smoke test for the Smart Stream Vendor Registration form
- * (formId `smart-stream-vendor-registration`, version 1.1.0).
+ * (formId `smart-stream-vendor-registration`).
  *
  * It drives the REAL deployed form (default: the sandbox environment), fills
  * every step with valid @faker-js/faker data, SUBMITS FOR REAL, and asserts the
@@ -12,19 +12,18 @@
  *  - It lives under e2e/smoke and is run via playwright.smoke.config.ts only.
  *  - playwright.config.ts (the CI/local suite) ignores the smoke directory, so
  *    this never runs in CI and never creates accidental real submissions.
+ * Shared step/field helpers live in ../helpers/smoke.
  *
  * Run it on demand:
  *   pnpm --filter @govtech-bb/forms test:smoke
  *   SMOKE_BASE_URL=https://forms.alpha.gov.bb pnpm --filter @govtech-bb/forms test:smoke
  *
- * Scheme-agnostic step IDs: the deployed sandbox form numbers its data steps
- * (`step-1-basic-info`, `step-2-classification`, …) while the local recipe JSON
- * uses bare IDs (`basic-info`, `classification`, …). The field-ID *suffixes*
+ * Step IDs are matched by substring (the smoke helper default): the deployed
+ * sandbox form numbers its data steps (`step-1-basic-info`, …) while the local
+ * recipe JSON uses bare IDs (`basic-info`, …). The field-ID *suffixes*
  * (`min-dept`, `vendor-name`, …) and the trailing steps (`check-your-answers`,
- * `declaration`, `submission-confirmation`) are identical in both. So rather
- * than hard-code either scheme, the spec reads the current step ID from the URL
- * at each step, matches it by substring, and builds field IDs from it
- * (`${stepId}_${suffix}`). It works against both deployments.
+ * `declaration`, `submission-confirmation`) are identical in both, so the spec
+ * reads the live step ID from the URL and builds field IDs from it.
  *
  * Other notes from the live walkthrough:
  *  - The masked NRN field must be typed character-by-character (fill() bypasses
@@ -34,51 +33,16 @@
  *  - declaration-date is isHidden and auto-populated — not interacted with.
  */
 import { faker } from "@faker-js/faker";
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "@playwright/test";
+import {
+  STEP_TIMEOUT,
+  advance,
+  expectStep,
+  fillField,
+  submitAndConfirm,
+} from "../helpers/smoke";
 
 const FORM_ID = "smart-stream-vendor-registration";
-const STEP_TIMEOUT = 15_000;
-
-/**
- * The primary action button advances the form ("Continue" on every step,
- * "Submit" on the declaration). Matched by role + accessible name so it stays
- * robust to design-system styling changes (e.g. the button markup dropping its
- * data-variant attribute), and so "Previous" is never matched.
- */
-const primaryButton = (page: Page) =>
-  page.getByRole("button", { name: /^(Continue|Submit)$/ });
-
-/** Read the current `?step=` param. */
-function currentStep(page: Page): string {
-  return new URL(page.url()).searchParams.get("step") ?? "";
-}
-
-/** Assert we're on the expected step (matched by substring) and return its ID. */
-function expectStep(page: Page, substring: string): string {
-  const step = currentStep(page);
-  expect(step, `expected to be on a step containing "${substring}"`).toContain(
-    substring,
-  );
-  return step;
-}
-
-/** Fill a text input addressed as `${stepId}_${suffix}`. */
-async function fillField(
-  page: Page,
-  stepId: string,
-  suffix: string,
-  value: string,
-): Promise<void> {
-  await page.locator(`input[id="${stepId}_${suffix}"]`).fill(value);
-}
-
-/** Click Continue and wait until the `?step=` param changes. */
-async function advance(page: Page, fromStep: string): Promise<void> {
-  await primaryButton(page).click();
-  await page.waitForURL((url) => url.searchParams.get("step") !== fromStep, {
-    timeout: STEP_TIMEOUT,
-  });
-}
 
 /**
  * Build a complete, valid set of vendor-registration answers from faker.
@@ -194,37 +158,10 @@ test.describe("Smart Stream Vendor Registration — Live Smoke", () => {
       .getByRole("checkbox", { name: /I confirm that my information/ })
       .check();
 
-    // Assert the real submission API call succeeds (HTTP 2xx) when we submit.
-    const submissionResponse = page.waitForResponse(
-      (res) =>
-        res.url().includes("/submissions") && res.request().method() === "POST",
-    );
-    await primaryButton(page).click();
-
-    const response = await submissionResponse;
-    expect(
-      response.ok(),
-      `POST /submissions failed with ${response.status()}`,
-    ).toBe(true);
-
-    // ─── Submission Confirmation ─────────────────────────────────────────────
-    await page.waitForURL(
-      (url) => url.searchParams.get("step") === "submission-confirmation",
-      { timeout: STEP_TIMEOUT },
-    );
-    await expect(page.locator("h1")).toContainText("Application Submitted");
-    await expect(
-      page.getByText("Your submission has been saved"),
-    ).toBeVisible();
-    await expect(page.getByText("Reference Number")).toBeVisible();
-
-    // The API returns the reference as a UUID — assert it is rendered.
-    const body = await response.json();
-    const referenceId = body?.data?.id ?? body?.id;
-    expect(
-      referenceId,
-      "submission response should include a reference id",
-    ).toBeTruthy();
-    await expect(page.getByText(String(referenceId))).toBeVisible();
+    // ─── Submit + Submission Confirmation ────────────────────────────────────
+    await submitAndConfirm(page, {
+      heading: "Application Submitted",
+      referenceLabel: "Reference Number",
+    });
   });
 });

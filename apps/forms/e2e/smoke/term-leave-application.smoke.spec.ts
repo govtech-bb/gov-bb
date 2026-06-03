@@ -19,19 +19,16 @@
  *  - playwright.config.ts (the CI/local mocked suite) ignores the smoke
  *    directory, so this never runs in `test:e2e` and never creates accidental
  *    real submissions.
+ * Shared step/field helpers live in ../helpers/smoke.
  *
  * Run it on demand:
  *   pnpm --filter @govtech-bb/forms test:smoke
  *   SMOKE_BASE_URL=https://forms.sandbox.alpha.gov.bb pnpm --filter @govtech-bb/forms test:smoke
  *
- * Field-ID scheme (confirmed against the deployed sandbox renderer):
- *   text/textarea : `${stepId}_${fieldId}`
- *   radio option  : `${stepId}_${fieldId}-${optionValue}`  (previousLeaveGranted-no)
- *
- * Step IDs are matched by substring (as in vendor-registration.smoke.spec.ts)
- * so the spec stays robust if a deployment ever renumbers its data steps; the
- * field-ID suffixes and the trailing steps (`check-your-answers`,
- * `declaration`, `submission-confirmation`) are stable.
+ * Step IDs are matched by substring (the smoke helper default) so the spec stays
+ * robust if a deployment ever renumbers its data steps; the field-ID suffixes
+ * and the trailing steps (`check-your-answers`, `declaration`,
+ * `submission-confirmation`) are stable.
  *
  * Notes from the live walkthrough:
  *  - `leave-details.comments` is REQUIRED on the deployed form (the recipe marks
@@ -44,62 +41,17 @@
  *  - Dates are plain text inputs, not three-part date widgets.
  */
 import { faker } from "@faker-js/faker";
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "@playwright/test";
+import {
+  STEP_TIMEOUT,
+  advance,
+  expectStep,
+  fillField,
+  selectRadio,
+  submitAndConfirm,
+} from "../helpers/smoke";
 
 const FORM_ID = "term-leave-application";
-const STEP_TIMEOUT = 15_000;
-
-/**
- * The primary action button advances the form ("Continue" on every step,
- * "Submit" on the declaration). Matched by role + accessible name so it stays
- * robust to design-system styling changes, and so "Previous" is never matched.
- */
-const primaryButton = (page: Page) =>
-  page.getByRole("button", { name: /^(Continue|Submit)$/ });
-
-/** Read the current `?step=` param. */
-function currentStep(page: Page): string {
-  return new URL(page.url()).searchParams.get("step") ?? "";
-}
-
-/** Assert we're on a step whose ID contains `substring` and return its ID. */
-function expectStep(page: Page, substring: string): string {
-  const step = currentStep(page);
-  expect(step, `expected to be on a step containing "${substring}"`).toContain(
-    substring,
-  );
-  return step;
-}
-
-/** Fill a text/textarea input addressed as `${stepId}_${suffix}`. */
-async function fillField(
-  page: Page,
-  stepId: string,
-  suffix: string,
-  value: string,
-): Promise<void> {
-  await page.locator(`[id="${stepId}_${suffix}"]`).fill(value);
-}
-
-/** Check a radio option addressed as `${stepId}_${suffix}-${optionValue}`. */
-async function selectRadio(
-  page: Page,
-  stepId: string,
-  suffix: string,
-  optionValue: string,
-): Promise<void> {
-  await page
-    .locator(`input[type=radio][id="${stepId}_${suffix}-${optionValue}"]`)
-    .check();
-}
-
-/** Click the primary button and wait until the `?step=` param changes. */
-async function advance(page: Page, fromStep: string): Promise<void> {
-  await primaryButton(page).click();
-  await page.waitForURL((url) => url.searchParams.get("step") !== fromStep, {
-    timeout: STEP_TIMEOUT,
-  });
-}
 
 test.describe("Term Leave Application — Live Smoke", () => {
   test("submits the real form end-to-end and reaches the confirmation screen", async ({
@@ -174,38 +126,10 @@ test.describe("Term Leave Application — Live Smoke", () => {
     await expect(applicant).toContainText(`${firstName} ${lastName}`);
     await expect(applicant).toContainText(/\b\d{2}\/\d{2}\/\d{4}\b/);
 
-    // Assert the real submission API call succeeds (HTTP 2xx) on submit.
-    const submissionResponse = page.waitForResponse(
-      (res) =>
-        res.url().includes("/submissions") && res.request().method() === "POST",
-      { timeout: STEP_TIMEOUT },
-    );
-    await primaryButton(page).click();
-
-    const response = await submissionResponse;
-    expect(
-      response.ok(),
-      `POST /submissions failed with ${response.status()}`,
-    ).toBe(true);
-
-    // ─── Submission Confirmation ─────────────────────────────────────────────
-    await page.waitForURL(
-      (url) => url.searchParams.get("step") === "submission-confirmation",
-      { timeout: STEP_TIMEOUT },
-    );
-    await expect(page.locator("h1")).toContainText("Submission Confirmation");
-    await expect(
-      page.getByText("Your submission has been saved"),
-    ).toBeVisible();
-    await expect(page.getByText("Reference number")).toBeVisible();
-
-    // The API returns the reference as a UUID — assert it is rendered.
-    const body = await response.json();
-    const referenceId = body?.data?.id ?? body?.id;
-    expect(
-      referenceId,
-      "submission response should include a reference id",
-    ).toBeTruthy();
-    await expect(page.getByText(String(referenceId))).toBeVisible();
+    // ─── Submit + Submission Confirmation ────────────────────────────────────
+    await submitAndConfirm(page, {
+      heading: "Submission Confirmation",
+      referenceLabel: "Reference number",
+    });
   });
 });
