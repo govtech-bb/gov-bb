@@ -174,6 +174,29 @@ describe("rekeyFormHandler — POST /builder/forms/:formId/rekey", () => {
     expect(save).not.toHaveBeenCalled();
   });
 
+  it("moves the form_config MDA-contact link to the new ID (#732)", async () => {
+    const { ds, query } = fakeDataSource({
+      oldRows: [{ id: "row1", version: "1.0.0", published_at: null }],
+      existingNewVersion: [{ id: "row1" }],
+    });
+    getDataSourceMock.mockResolvedValue(ds);
+    const res = mockRes();
+
+    await rekeyFormHandler(
+      mockReq({ formId: "birth-reg-old" }, { recipe: recipe() }),
+      res,
+    );
+
+    expect(res.statusCode).toBe(200);
+    // The config row (keyed by form_id) must follow the re-key, else the new ID
+    // loses its config.mdaEmail recipient. Asserts params, not just presence.
+    const configMove = query.mock.calls.find((c) =>
+      /UPDATE form_config SET form_id/i.test(c[0] as string),
+    );
+    expect(configMove).toBeDefined();
+    expect(configMove?.[1]).toEqual(["birth-registration", "birth-reg-old"]);
+  });
+
   it("allows a re-key whose title matches only the form's own prior record", async () => {
     const { ds } = fakeDataSource({
       oldRows: [{ id: "row1", version: "1.0.0", published_at: null }],
