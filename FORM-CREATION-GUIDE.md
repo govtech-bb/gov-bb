@@ -843,6 +843,26 @@ VALUES (
   email is skipped with a warning; other email processors (e.g. the applicant
   confirmation) still send.
 
+#### Reserved `config.` prefix (per-environment MDA recipient)
+- A `recipientField` beginning with `config.` is **reserved**: it resolves the
+  recipient from the **database** (`form_config` → `mda_contact.mda_email`),
+  per environment, **not** from the recipe or submitted values.
+- Use `"recipientField": "config.mdaEmail"` so the production MDA notification
+  address lives in the production DB (and can be rotated without a code change)
+  instead of being hardcoded in the committed recipe.
+- **Sandbox/test never emails a real MDA.** On a *resolved miss* — no
+  `form_config` row (sandbox has none, or a freshly-migrated recipe has no row
+  yet), no/deleted contact, or a blank address — the send degrades to the
+  default test inbox (`SES_DEFAULT_RECIPIENT`, default `testing@govtech.bb`)
+  rather than failing the submission. (A genuine DB outage is not a resolved
+  miss: it retries via SQS rather than silently misrouting to the default.)
+- Because the prefix is reserved, **`config` cannot be used as a step id**.
+- **Creating the production row:** rows are authored in the form builder (it
+  writes `form_config` + `mda_contact` directly to the production DB — added in
+  a later session). Until a row exists for a migrated recipe, production
+  behaves exactly as before the migration: the notification goes to the default
+  inbox.
+
 #### Optional per-instance `label`
 - An email config may carry an optional `label` (e.g. `"Applicant Email"`,
   `"MDA Email"`) to distinguish multiple email processors on the same form. It

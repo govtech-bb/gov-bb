@@ -12,4 +12,9 @@ export default registerAs("email", () => ({
   // SES configuration set for bounce/complaint tracking via SNS/EventBridge.
   // Optional — omit to send without telemetry.
   configurationSet: process.env.SES_CONFIGURATION_SET,
+
+  // Fallback recipient for the "config.*" recipient kind when no form_config
+  // row resolves (e.g. sandbox, which has no rows). Keeps test/sandbox
+  // submissions away from real MDA inboxes. Defaults to a shared test inbox.
+  defaultRecipient: process.env.SES_DEFAULT_RECIPIENT ?? "testing@govtech.bb",
 }));

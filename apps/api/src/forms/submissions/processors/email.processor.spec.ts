@@ -11,6 +11,7 @@ import type {
   EmailTemplateContext,
 } from "../../../email/email-body.builder";
 import type { FilesService } from "../../../files/files.service";
+import type { FormConfigService } from "../../form-config/form-config.service";
 import type { ContactDetails, ServiceContract } from "@govtech-bb/form-types";
 import type { SubmissionCreatedEvent } from "../submissions.types";
 
@@ -24,6 +25,7 @@ function makeConfig(overrides: Record<string, unknown> = {}): ConfigService {
     "email.region": "ap-southeast-1",
     "email.from": "noreply@test.gov",
     "email.configurationSet": undefined,
+    "email.defaultRecipient": "testing@govtech.bb",
     ...overrides,
   };
   return { get: (key: string) => defaults[key] } as unknown as ConfigService;
@@ -127,6 +129,16 @@ function makeFilesService(): jest.Mocked<FilesService> {
   } as unknown as jest.Mocked<FilesService>;
 }
 
+/** FormConfigService stub. `mdaEmail` is what resolveMdaEmail returns — null
+ * models "no row / no contact" (sandbox, or a freshly-migrated recipe). */
+function makeFormConfigService(
+  mdaEmail: string | null = null,
+): jest.Mocked<FormConfigService> {
+  return {
+    resolveMdaEmail: jest.fn().mockResolvedValue(mdaEmail),
+  } as unknown as jest.Mocked<FormConfigService>;
+}
+
 describe("EmailProcessor", () => {
   let processor: EmailProcessor;
 
@@ -137,6 +149,7 @@ describe("EmailProcessor", () => {
       makeTemplateService(),
       makeBodyBuilder(),
       makeFilesService(),
+      makeFormConfigService(),
     );
   });
 
@@ -209,6 +222,7 @@ describe("EmailProcessor", () => {
         makeTemplateService(),
         makeBodyBuilder(),
         makeFilesService(),
+        makeFormConfigService(),
       );
       await processor.process(makePayload());
 
@@ -267,6 +281,7 @@ describe("EmailProcessor", () => {
         makeTemplateService(),
         makeBodyBuilder(),
         makeFilesService(),
+        makeFormConfigService(),
       );
 
       await processor.process(makePayload());
@@ -289,6 +304,7 @@ describe("EmailProcessor", () => {
         makeTemplateService(),
         bodyBuilder,
         makeFilesService(),
+        makeFormConfigService(),
       );
       const payload = makePayload({ recipientField: "contactDetails.email" });
 
@@ -322,6 +338,7 @@ describe("EmailProcessor", () => {
         makeTemplateService(),
         bodyBuilder,
         makeFilesService(),
+        makeFormConfigService(),
       );
       const payload = makePayload();
       payload.processors = [
@@ -343,6 +360,7 @@ describe("EmailProcessor", () => {
         makeTemplateService(),
         bodyBuilder,
         makeFilesService(),
+        makeFormConfigService(),
       );
       const payload = makePayload();
       payload.processors = [
@@ -368,6 +386,7 @@ describe("EmailProcessor", () => {
         makeTemplateService(),
         bodyBuilder,
         makeFilesService(),
+        makeFormConfigService(),
       );
       const payload = makePayload();
       payload.processors = [
@@ -396,6 +415,7 @@ describe("EmailProcessor", () => {
         makeTemplateService(),
         bodyBuilder,
         makeFilesService(),
+        makeFormConfigService(),
       );
       // contactDetails has no `fax` key.
       const payload = makePayload({ recipientField: "contactDetails.fax" });
@@ -416,6 +436,7 @@ describe("EmailProcessor", () => {
         makeTemplateService(),
         bodyBuilder,
         makeFilesService(),
+        makeFormConfigService(),
       );
       const payload = makePayload({ recipientField: "contactDetails.address" });
 
@@ -424,6 +445,79 @@ describe("EmailProcessor", () => {
       );
       expect(mockSend).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe("EmailProcessor — config.* recipient resolution", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("resolves the recipient from form_config (config.mdaEmail), not submission values", async () => {
+    const formConfig = makeFormConfigService("mda-notify@gov.bb");
+    const processor = new EmailProcessor(
+      makeConfig(),
+      makeTemplateService(),
+      makeBodyBuilder(),
+      makeFilesService(),
+      formConfig,
+    );
+    const payload = makePayload({ recipientField: "config.mdaEmail" });
+
+    await processor.process(payload);
+
+    expect(formConfig.resolveMdaEmail).toHaveBeenCalledWith("passport-renewal");
+    expect(getSentInput().Destination?.ToAddresses).toEqual([
+      "mda-notify@gov.bb",
+    ]);
+  });
+
+  it("falls back to the default test inbox when no form_config row resolves (sandbox)", async () => {
+    const processor = new EmailProcessor(
+      makeConfig(),
+      makeTemplateService(),
+      makeBodyBuilder(),
+      makeFilesService(),
+      makeFormConfigService(null),
+    );
+    const payload = makePayload({ recipientField: "config.mdaEmail" });
+
+    await processor.process(payload);
+
+    expect(getSentInput().Destination?.ToAddresses).toEqual([
+      "testing@govtech.bb",
+    ]);
+  });
+
+  it("falls back to a configured override default recipient", async () => {
+    const processor = new EmailProcessor(
+      makeConfig({ "email.defaultRecipient": "ops@gov.bb" }),
+      makeTemplateService(),
+      makeBodyBuilder(),
+      makeFilesService(),
+      makeFormConfigService(null),
+    );
+    const payload = makePayload({ recipientField: "config.mdaEmail" });
+
+    await processor.process(payload);
+
+    expect(getSentInput().Destination?.ToAddresses).toEqual(["ops@gov.bb"]);
+  });
+
+  it("degrades to the default on a resolved miss — the send still happens, no throw", async () => {
+    const processor = new EmailProcessor(
+      makeConfig(),
+      makeTemplateService(),
+      makeBodyBuilder(),
+      makeFilesService(),
+      makeFormConfigService(null),
+    );
+    const payload = makePayload({ recipientField: "config.mdaEmail" });
+
+    await expect(processor.process(payload)).resolves.toEqual({
+      kind: "completed",
+    });
+    expect(mockSend).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -440,6 +534,7 @@ describe("EmailProcessor — dynamic template rendering", () => {
       makeTemplateService(html),
       makeBodyBuilder(),
       makeFilesService(),
+      makeFormConfigService(),
     );
   }
 
@@ -450,6 +545,7 @@ describe("EmailProcessor — dynamic template rendering", () => {
       templateSvc,
       makeBodyBuilder(),
       makeFilesService(),
+      makeFormConfigService(),
     );
 
     await processor.process(makePayload());
@@ -473,6 +569,7 @@ describe("EmailProcessor — dynamic template rendering", () => {
       makeTemplateService(),
       bodyBuilder,
       makeFilesService(),
+      makeFormConfigService(),
     );
 
     await processor.process(makePayload());
@@ -493,6 +590,7 @@ describe("EmailProcessor — dynamic template rendering", () => {
       makeTemplateService(),
       bodyBuilder,
       makeFilesService(),
+      makeFormConfigService(),
     );
 
     await processor.process(makePayload());
@@ -521,6 +619,7 @@ describe("EmailProcessor — dynamic template rendering", () => {
       makeTemplateService(),
       bodyBuilder,
       makeFilesService(),
+      makeFormConfigService(),
     );
 
     await processor.process(makePayload());
@@ -591,6 +690,7 @@ describe("EmailProcessor — uploaded file attachments (issue #658)", () => {
       templateService,
       makeBodyBuilder(STUB_CTX, undefined, FILE_CONTRACT),
       filesService,
+      makeFormConfigService(),
     );
   });
 
@@ -626,6 +726,7 @@ describe("EmailProcessor — uploaded file attachments (issue #658)", () => {
         FILE_CONTRACT,
       ),
       filesService,
+      makeFormConfigService(),
     );
 
     await processor.process(
@@ -635,6 +736,24 @@ describe("EmailProcessor — uploaded file attachments (issue #658)", () => {
     expect(filesService.getObjectBytes).toHaveBeenCalledWith(SMALL_FILE.key);
     expect(getSentInput().Content?.Raw?.Data).toBeDefined();
     expect(getSentInput().Destination?.ToAddresses).toEqual(["mda@gov.bb"]);
+  });
+
+  it("attaches uploaded files for a config.* (MDA) recipient", async () => {
+    processor = new EmailProcessor(
+      makeConfig(),
+      templateService,
+      makeBodyBuilder(STUB_CTX, undefined, FILE_CONTRACT),
+      filesService,
+      makeFormConfigService("mda-notify@gov.bb"),
+    );
+
+    await processor.process(makeFilePayload("config.mdaEmail", [SMALL_FILE]));
+
+    expect(filesService.getObjectBytes).toHaveBeenCalledWith(SMALL_FILE.key);
+    expect(getSentInput().Content?.Raw?.Data).toBeDefined();
+    expect(getSentInput().Destination?.ToAddresses).toEqual([
+      "mda-notify@gov.bb",
+    ]);
   });
 
   it("does NOT attach files on the citizen confirmation (field-path recipient)", async () => {
@@ -652,6 +771,7 @@ describe("EmailProcessor — uploaded file attachments (issue #658)", () => {
       templateService,
       makeBodyBuilder(STUB_CTX, undefined, makeContract()),
       filesService,
+      makeFormConfigService(),
     );
 
     await processor.process(makePayload({ recipientField: "mda@govtech.bb" }));

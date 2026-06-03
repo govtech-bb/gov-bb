@@ -106,6 +106,13 @@ export type {
   ResolvedPaymentProcessorConfig,
 } from "./processor.type";
 
+export {
+  CONTACT_DETAILS_PREFIX,
+  CONFIG_RECIPIENT_PREFIX,
+  classifyRecipientField,
+} from "./recipient-field";
+export type { RecipientKind } from "./recipient-field";
+
 export { KEBAB_ID_PATTERN, KEBAB_ID_ERROR } from "./id-pattern";
 
 export { dynamic } from "./dynamic";
