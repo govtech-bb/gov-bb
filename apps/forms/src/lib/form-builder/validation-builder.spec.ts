@@ -789,5 +789,28 @@ describe("buildFieldValidationProperties", () => {
         buildFieldValidationProperties(optionalIfField());
       expect(onChangeListenTo).toContain("has-middle-name");
     });
+
+    it("resolves a same-step target when targetStepId is omitted", () => {
+      const field = makeField("middle-name", "step1", {
+        validations: {
+          required: { value: true, error: "Middle name is required." },
+        },
+        behaviours: [
+          {
+            type: "optionalIf",
+            // no targetStepId → resolves against the field's own step
+            targetFieldId: "has-middle-name",
+            operator: "equal",
+            value: "no",
+          },
+        ],
+      });
+      const { onDynamic } = buildFieldValidationProperties(field);
+      const fieldApi = makeFieldApi(
+        { "step1_has-middle-name": "no" },
+        "step1_middle-name",
+      );
+      expect(onDynamic!({ value: "", fieldApi })).toBeUndefined();
+    });
   });
 });

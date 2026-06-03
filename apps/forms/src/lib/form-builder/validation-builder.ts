@@ -69,28 +69,19 @@ const stripRequired = (primitive: Primitive): Primitive => {
 };
 
 // Resolve the controlling field's current value from the cross-field value
-// trees: prefer the explicit `targetStepId` (falling back to the field's own
-// step), then fall back to a flat scan so a same-named field elsewhere still
-// resolves — mirroring how the shared `form-conditions` evaluator behaves.
+// tree, which is keyed by stepId. Prefer the behaviour's explicit
+// `targetStepId`, falling back to the field's own step. (`optionalIf` inside a
+// repeatable step is not yet supported on the client — see #668 — so an
+// array-valued step resolves to `undefined`.)
 const resolveOptionalIfTarget = (
   behaviour: OptionalIfBehaviour,
   fieldStepId: string,
   allValues: StepScopedValues,
 ): FieldValue | undefined => {
-  const stepId = behaviour.targetStepId ?? fieldStepId;
-  const stepValues = allValues[stepId];
-  const fromStep = Array.isArray(stepValues)
-    ? stepValues[0]?.[behaviour.targetFieldId]
-    : stepValues?.[behaviour.targetFieldId];
-  if (fromStep !== undefined) return fromStep as FieldValue;
-
-  for (const values of Object.values(allValues)) {
-    if (Array.isArray(values)) continue;
-    if (behaviour.targetFieldId in values) {
-      return values[behaviour.targetFieldId] as FieldValue;
-    }
-  }
-  return undefined;
+  const stepValues = allValues[behaviour.targetStepId ?? fieldStepId] as
+    | Record<string, unknown>
+    | undefined;
+  return stepValues?.[behaviour.targetFieldId] as FieldValue | undefined;
 };
 
 // The field is optional when it carries at least one `optionalIf` behaviour and
