@@ -1,4 +1,22 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(gh issue *)",
+      "Bash(git push *)",
+      "Bash(gh pr *)",
+      "Bash(gh label *)",
+      "Bash(gh repo view *)",
+      "Bash(git fetch *)",
+      "Bash(git show *)",
+      "Bash(git diff *)"
+    ]
+  },
+  "worktree": {
+    "baseRef": "head"
+  },
+  "enabledPlugins": {
+    "bb@team-skills": true
+  },
   "extraKnownMarketplaces": {
     "team-skills": {
       "source": {
@@ -7,11 +25,5 @@
       },
       "autoUpdate": true
     }
-  },
-  "enabledPlugins": {
-    "bb@team-skills": true
-  },
-  "worktree": {
-    "baseRef": "head"
   }
 }
