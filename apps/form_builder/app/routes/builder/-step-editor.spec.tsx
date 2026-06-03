@@ -65,3 +65,21 @@ it("omits Fields and Add field for a no-fields step, leaving Step Behaviours", (
     "Step Behaviours",
   ]);
 });
+
+// #546: dnd-kit's id generator uses a module-global counter (not React's
+// useId), so its draggable `aria-describedby` ("DndDescribedBy-N") can differ
+// between server and client renders → a hydration mismatch. Passing a stable
+// `id` to the DndContext hits dnd-kit's escape hatch and pins the value, so the
+// draggable rows describe-by a deterministic id rather than a counter.
+it("pins a stable dnd-kit id so draggable aria-describedby is deterministic", () => {
+  const { container } = renderEditor(
+    makeStep({
+      fields: [
+        { id: "field-1", kind: "component", ref: "components/first-name", overrides: {} },
+      ],
+    }),
+  );
+  const handle = container.querySelector("[aria-describedby]");
+  expect(handle).not.toBeNull();
+  expect(handle).toHaveAttribute("aria-describedby", "step-fields-dnd");
+});
