@@ -1,7 +1,11 @@
 # 0006 — Submission processors iterate over their own matching configs
 
 **Date:** 2026-05-22
-**Status:** Accepted
+**Status:** Accepted — the **dispatch** decision (one message per type, handlers
+iterate internally) is **superseded** by
+[ADR 0031](0031-submission-processors-dispatch-per-entry.md), which dispatches
+one message per entry addressed by a positional `processorIndex`. The gating
+exceptions below (payment first-wins) still stand.
 
 ## Context
 
