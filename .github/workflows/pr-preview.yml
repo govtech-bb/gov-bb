@@ -213,7 +213,7 @@ jobs:
   # and gated on its SUCCEED status, so it runs only once the preview build is
   # live — and is skipped whenever forms wasn't previewed. No AWS creds: it
   # drives a headless browser against the public preview URL. The form has no
-  # uploads, so no presign/S3 flow is exercised. See ADR 0029 — this is the
+  # uploads, so no presign/S3 flow is exercised. See ADR 0030 — this is the
   # per-PR-preview counterpart to the post-deploy smoke in deploy-sandbox.yml.
   smoke-test-forms-preview:
     name: Smoke test forms preview (term-leave)
