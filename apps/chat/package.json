@@ -17,7 +17,8 @@
     "db:studio": "drizzle-kit studio",
     "db:reset": "tsx --env-file-if-exists=.env.local --env-file-if-exists=.env src/lib/db/reset.ts",
     "ingest": "tsx --env-file-if-exists=.env.local --env-file-if-exists=.env src/ingest/cli.ts",
-    "eval:sweep": "tsx --env-file-if-exists=.env.local --env-file-if-exists=.env eval/sweep.ts"
+    "eval:sweep": "tsx --env-file-if-exists=.env.local --env-file-if-exists=.env eval/sweep.ts",
+    "eval:responses": "tsx --env-file-if-exists=.env.local --env-file-if-exists=.env eval/responses/run.ts"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.1057.0",
@@ -46,6 +47,7 @@
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.19",
+    "@tanstack/ai-client": "^0.16.2",
     "@tanstack/devtools-vite": "catalog:",
     "@tanstack/react-devtools": "catalog:",
     "@tanstack/react-router-devtools": "catalog:",
