@@ -1,5 +1,5 @@
 ---
-title: "Apply for a position as a temporary teacher"
+title: "Apply to be a temporary teacher"
 description: "Apply for a temporary teaching position in the Government of Barbados school system."
 featured: false
 stage: "alpha"
@@ -10,7 +10,7 @@ form_id: temp-teacher-application-barbados
 
 If you want to be a temporary teacher in a government-funded primary school in Barbados, you must apply. If your application meets the requirements and a suitable position becomes available, you may be contacted for an interview.
 
-## Who is eligible to apply?
+## Who can apply?
 
 To apply, you need to:
 
@@ -32,13 +32,13 @@ Job vacancies are advertised all year round but the number increases over the su
 
 At the moment, you can only apply online by completing the [Application for registration as temporary/acting teacher form](https://barbados.seamlessdocs.com/f/pvyf07u3v0j2). You can find it on the Ministry of Educational Transformation website under the ‘resources’ tab in the menu, and then the ‘download forms’ option.
 
-### Gather your supporting information
+### What you'll need
 
 You’ll also need to share:
 
-1. Your curriculum vitae (CV).
+- Your curriculum vitae (CV).
 
-2. The name and contact details of 2 referees and their short letters of recommendation (a paragraph is enough).
+- The name and contact details of 2 referees and their short letters of recommendation (a paragraph is enough).
 
 You can upload these and submit them with your online application.
 
@@ -46,12 +46,10 @@ You can upload these and submit them with your online application.
 
 If you meet the qualification requirements and a suitable position becomes available, you will be invited for an interview. At this point you will need to share:
 
-1. Certified copies of your academic and teaching qualifications. You can get them certified by a Justice of the peace.
+- Certified copies of your academic and teaching qualifications. You can get them certified by a Justice of the Peace.
 
-2. Proof of citizenship, for example, your passport or ID card. Or, proof of your immigration status and your work permit.
+- Proof of citizenship, for example, your passport or ID card. Or, proof of your immigration status and your work permit.
 
-3. A recent Police Certificate of Character. You can [apply for one here](https://forms.gov.bb/CertificateOfCharacter). The fee is BBD $20.
-
-## Successful applicants
+- A recent Police Certificate of Character. You can [apply for a Police Certificate of Character](https://forms.gov.bb/CertificateOfCharacter). The fee is BBD $20.
 
 If you are successful, you will receive a letter of appointment.

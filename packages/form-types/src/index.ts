@@ -59,6 +59,7 @@ export type {
 
 export {
   fieldConditionalOnBehaviourSchema,
+  optionalIfBehaviourSchema,
   stepConditionalOnBehaviourSchema,
   repeatableBehaviourSchema,
   fieldArrayBehaviourSchema,
@@ -70,6 +71,7 @@ export {
 export type {
   Behaviour,
   FieldConditionalOnBehaviour,
+  OptionalIfBehaviour,
   StepConditionalOnBehaviour,
   RepeatableBehaviour,
   FieldArrayBehaviour,

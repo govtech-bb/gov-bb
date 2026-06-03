@@ -4,6 +4,7 @@ import { validate as validateFields } from "@govtech-bb/form-validation";
 import type {
   ServiceContract,
   RepeatableBehaviour,
+  Primitive,
 } from "@govtech-bb/form-types";
 import type { FormDraftEntity } from "../../database/entities/form-draft.entity";
 import { FormDefinitionsService } from "../form-definitions/form-definitions.service";
@@ -28,6 +29,16 @@ export interface PipelineResult {
   contract: ServiceContract;
   auditTrail: SubmissionAuditTrailV2;
   normalizedValues: SubmissionValues;
+}
+
+// `optionalIf`: when a field's condition matches, its `required` rule is relaxed
+// so the field may be left empty — but it is never hidden, and all other
+// (format) rules are preserved so they still fire when it is filled. Clone the
+// primitive without its `required` validation; everything else is untouched.
+function relaxRequired(primitive: Primitive): Primitive {
+  if (!primitive.validations?.required) return primitive;
+  const { required: _required, ...rest } = primitive.validations;
+  return { ...primitive, validations: rest };
 }
 
 @Injectable()
@@ -157,9 +168,12 @@ export class SubmissionPipelineService {
       const activeIds =
         cond.activeFieldsByInstance.get(instance.stepId)?.[instance.index] ??
         new Set<string>();
-      const activePrimitives = step.elements.filter((p) =>
-        activeIds.has(p.fieldId),
-      );
+      const optionalIds =
+        cond.optionalFieldsByInstance.get(instance.stepId)?.[instance.index] ??
+        new Set<string>();
+      const activePrimitives = step.elements
+        .filter((p) => activeIds.has(p.fieldId))
+        .map((p) => (optionalIds.has(p.fieldId) ? relaxRequired(p) : p));
 
       const result = validateFields({
         primitives: activePrimitives,

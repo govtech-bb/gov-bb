@@ -12,12 +12,13 @@
  * `GET /builder/forms`; `latestVersionPerFormSql` is the single source of that
  * ordering so the list endpoint and the title check can't drift apart.
  *
- * Scope: these checks see only the drafts in `form_definitions`, not forms
- * published to the upstream apps/api. The builder UI mirror compares against
- * the merged drafts+published list, so a collision against a *published-only*
- * form is caught client-side but not here. Extending the API check to the
- * published set is tracked in #556 (it would add an upstream dependency to the
- * write path).
+ * Scope: `findTitleCollision` itself only compares the rows it's handed. The
+ * write handlers in `forms.ts` feed it both the drafts in `form_definitions`
+ * *and* the upstream published set (via `fetchPublishedForms`), so a collision
+ * against a published-only form is now blocked at the API too — matching the
+ * builder UI mirror, which compares against the merged drafts+published list
+ * (#556, closing the asymmetry deferred from #545). The upstream consult fails
+ * open, so a flaky apps/api falls back to the drafts-only check.
  */
 
 /**

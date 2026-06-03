@@ -159,6 +159,19 @@ describe("generateRepeatableAddAnotherField", () => {
     ]);
     expect(field.validations?.required?.value).toBe(true);
   });
+
+  it("defaults the label to 'Add another?' when none is given", () => {
+    const field = generateRepeatableAddAnotherField("personalInfo");
+    expect(field.label).toBe("Add another?");
+  });
+
+  it("uses a custom label when provided", () => {
+    const field = generateRepeatableAddAnotherField(
+      "qualifications",
+      "Do you want to add another qualification?",
+    );
+    expect(field.label).toBe("Do you want to add another qualification?");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -326,6 +339,76 @@ describe("setupRepeatSteps", () => {
     // Nothing should be added for a step that already has a repeat suffix
     expect(result).toHaveLength(1);
     expect(Object.keys(repeatSettings)).toHaveLength(0);
+  });
+
+  it("rewrites optionalIf targetStepId to the instance step so it resolves instance-locally (#668)", () => {
+    // A field with an `optionalIf` controlled by another field in the SAME
+    // (instance) step, with no explicit targetStepId. Previously only
+    // `fieldConditionalOn` was rewritten, so `optionalIf` inside a repeatable
+    // step never resolved instance-locally (it fell back to undefined).
+    const repeatBehaviour = makeRepeatableBehaviour(2, 5);
+    const step = makeStep(
+      "personalInfo",
+      ["firstName", "reason"],
+      [repeatBehaviour],
+    );
+    const reason = step.fields.find((f) => f.fieldId === "reason")!;
+    reason.behaviours = [
+      {
+        type: "optionalIf",
+        targetFieldId: "firstName",
+        operator: "equal",
+        value: "skip",
+      },
+    ];
+    const repeatSettings: RepeatableStepSettings = {};
+
+    const result = setupRepeatSteps([step], repeatSettings);
+
+    expect(result).toHaveLength(2);
+    // Source step (instance 1) → rewritten to its own step id.
+    const sourceOptionalIf = result[0].fields
+      .find((f) => f.fieldId === "reason")
+      ?.behaviours?.find((b) => b.type === "optionalIf");
+    expect(sourceOptionalIf?.targetStepId).toBe("personalInfo");
+    // Generated instance (~1) → rewritten to the instance step id, so it
+    // resolves against THIS instance's controlling field (matching the server).
+    const instanceOptionalIf = result[1].fields
+      .find((f) => f.fieldId === "reason")
+      ?.behaviours?.find((b) => b.type === "optionalIf");
+    expect(instanceOptionalIf?.targetStepId).toBe("personalInfo~1");
+  });
+
+  it("rewrites optionalIf targetStepId to the SOURCE step when it targets a shared field (#668)", () => {
+    // When the optionalIf targets a shared field, it must resolve against the
+    // source (shared-values) step — the same rule fieldConditionalOn uses.
+    const repeatBehaviour = makeRepeatableBehaviour(1, 3);
+    const sharedBehaviour = makeSharedFieldsBehaviour(["firstName"]);
+    const step = makeStep(
+      "personalInfo",
+      ["firstName", "reason"],
+      [repeatBehaviour, sharedBehaviour],
+    );
+    const reason = step.fields.find((f) => f.fieldId === "reason")!;
+    reason.behaviours = [
+      {
+        type: "optionalIf",
+        targetFieldId: "firstName",
+        operator: "equal",
+        value: "skip",
+      },
+    ];
+    const repeatSettings: RepeatableStepSettings = {};
+
+    const result = setupRepeatSteps([step], repeatSettings);
+
+    // With shared fields the instance is materialised as personalInfo~1; its
+    // optionalIf targets the shared `firstName`, which lives once on the source
+    // (shared-values) step, so it must point at the source step, not ~1.
+    const instanceOptionalIf = result[1].fields
+      .find((f) => f.fieldId === "reason")
+      ?.behaviours?.find((b) => b.type === "optionalIf");
+    expect(instanceOptionalIf?.targetStepId).toBe("personalInfo");
   });
 
   it("does NOT append addAnother to the last instance when min === max (no shared fields)", () => {

@@ -6,6 +6,10 @@ import type {
   Primitive,
   ServiceContract,
 } from "@govtech-bb/form-types";
+import {
+  isCompleteDateValue,
+  formatDateValue,
+} from "@govtech-bb/form-validation";
 import { FormDefinitionsService } from "../forms/form-definitions/form-definitions.service";
 import type {
   SubmissionAuditTrail,
@@ -31,12 +35,22 @@ export interface EmailSection {
   fields: EmailField[];
 }
 
+/** An uploaded file delivered as a signed download link instead of an
+ * attachment (e.g. when it would push the message over the SES size limit). */
+export interface EmailFileLink {
+  name: string;
+  url: string;
+}
+
 export interface EmailTemplateContext {
   formTitle: string;
   submissionId: string;
   submittedAt: string;
   processedAt: string;
   sections: EmailSection[];
+  /** Set by the email processor, not by `build` — link delivery is a
+   * per-recipient decision the builder has no visibility into. */
+  fileLinks?: EmailFileLink[];
 }
 
 /**
@@ -56,6 +70,7 @@ export interface EmailTemplateContext {
  * **Field value formatting:**
  * - `radio` / single `select` — option label looked up from `options` list
  * - `checkbox` / multi `select` (`multiple: true`) — selected option labels joined with ", "
+ * - `date`      — `{ day, month, year }` object formatted as e.g. "5 June 2026"
  * - `file`      — skipped (binary; not shown in email)
  * - `show-hide` — skipped (layout-only; carries no user data)
  * - all others  — coerced to string
@@ -146,7 +161,12 @@ export class EmailBodyBuilder {
     return contract.contactDetails;
   }
 
-  private async resolveContract(
+  /**
+   * Fetches the form's service contract through the same per-`formId:version`
+   * cache as `build`. Public so the email processor can walk the contract's
+   * file fields when gathering upload attachments.
+   */
+  async resolveContract(
     formId: string,
     version: string,
   ): Promise<ServiceContract> {
@@ -236,6 +256,14 @@ export class EmailBodyBuilder {
           field.options ?? [],
           Array.isArray(raw) ? raw : [raw],
         );
+
+      case "date": {
+        if (isCompleteDateValue(raw)) return formatDateValue(raw);
+        // Legacy submissions stored ISO strings — pass them through. Any
+        // other shape (partial/malformed object) would stringify to
+        // "[object Object]", so omit the row instead.
+        return typeof raw === "string" ? raw : "";
+      }
 
       default:
         return String(raw);

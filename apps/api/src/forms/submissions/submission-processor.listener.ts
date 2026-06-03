@@ -50,34 +50,50 @@ export class SubmissionProcessorListener {
     }
 
     // QA test scaffold (non-prod only): append a synthetic email entry per
-    // configured QA recipient BEFORE the split, so every submission also
+    // configured QA recipient BEFORE dispatch, so every submission also
     // notifies the QA inbox(es) — even for forms that declare no recipient.
-    // Done before resolveSplit so the synthetic entry materialises an email
-    // handler on forms that otherwise have none.
+    // Done before the dispatch loop so the synthetic entry materialises an
+    // email handler on forms that otherwise have none, and is picked up as a
+    // normal positional entry by the per-entry dispatch below.
     this.appendQaNotifyRecipients(resolvedPayload);
 
-    const { nonGating } = this.processorFactory.resolveSplit(
-      resolvedPayload.processors,
-    );
+    /* Per-entry dispatch — one message (or one direct invocation) per entry in
+     * the frozen processors[] snapshot, addressed by its positional index. This
+     * isolates retry/DLQ to the single entry that failed (issue #95). Indices
+     * are the snapshot positions, so unregistered/gating entries are skipped
+     * without compacting — keeping `${submissionId}:${index}` keys stable.
+     * Gating processors (payment) run synchronously in submissions.service.ts
+     * and are never enqueued here. */
+    for (let index = 0; index < resolvedPayload.processors.length; index++) {
+      const entry = resolvedPayload.processors[index];
+      const handler = this.processorFactory.resolveByType(entry.type);
 
-    for (const processor of nonGating) {
+      if (!handler) {
+        this.logger.warn(
+          `No processor registered for type "${entry.type}" — skipping (submissionId="${payload.submissionId}", index=${index})`,
+        );
+        continue;
+      }
+
+      if (handler.gatesPipeline) continue;
+
       if (this.sqsConf.enabled) {
         /* SQS path — enqueue for durable async processing with automatic retry and DLQ. */
         try {
-          await this.sqsProducer.enqueue(resolvedPayload, processor.type);
+          await this.sqsProducer.enqueue(resolvedPayload, entry.type, index);
         } catch (err) {
           this.logger.error(
-            `Failed to enqueue processor="${processor.type}" for submissionId="${payload.submissionId}"`,
+            `Failed to enqueue processor="${entry.type}" index=${index} for submissionId="${payload.submissionId}"`,
             err,
           );
         }
       } else {
-        /* Direct path (fallback) — in-process execution. */
+        /* Direct path (fallback) — in-process execution of the indexed entry. */
         try {
-          await processor.process(resolvedPayload);
+          await handler.process({ ...resolvedPayload, processorIndex: index });
         } catch (err) {
           this.logger.error(
-            `Processor "${processor.type}" failed for submission ${payload.submissionId}`,
+            `Processor "${entry.type}" index=${index} failed for submission ${payload.submissionId}`,
             err,
           );
         }

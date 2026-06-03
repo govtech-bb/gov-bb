@@ -67,6 +67,14 @@ export interface SubmissionCreatedEvent {
   processors: Processor[];
   values: SubmissionValues;
   meta: SubmissionAuditTrail;
+  /**
+   * Position of the single `processors[]` entry this event addresses. Set on
+   * every dispatch path (SQS + direct) under per-entry dispatch — a handler
+   * acts on exactly `processors[processorIndex]`. Optional only for the type:
+   * the full snapshot stays on the payload so the index keeps
+   * `${submissionId}:${index}` idempotency keys meaningful.
+   */
+  processorIndex?: number;
 }
 
 export interface SubmitDto {

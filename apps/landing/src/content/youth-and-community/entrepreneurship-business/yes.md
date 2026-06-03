@@ -6,6 +6,7 @@ publish_date: 2026-05-20
 category: youth-and-community
 subcategory: entrepreneurship-business
 service_type: information
+form_id: yes
 ---
 
 One-to-one support and access to funding to help young people turn a business idea into a working enterprise.
@@ -22,7 +23,7 @@ From idea to enterprise. Direct technical assistance from Youth Enterprise Offic
 
 Complete the short application form to register your interest. Your progress is saved automatically.
 
-<!-- [Apply now](https://alpha.gov.bb/youth-and-community/entrepreneurship-business/yes/form) -->
+<a data-start-link>Start now</a>
 
 ## More information
 

@@ -129,6 +129,24 @@
             </table>
           </div>
         {{/each}}
+
+        {{#if fileLinks}}
+          <div class='section'>
+            <div class='section-title'>Uploaded Documents</div>
+            <p class='intro'>
+              The following uploaded files were too large to attach and are
+              available through temporary download links.
+            </p>
+            <table>
+              {{#each fileLinks}}
+                <tr>
+                  <td class='field-label'>{{name}}</td>
+                  <td class='field-value'><a href='{{url}}'>Download</a></td>
+                </tr>
+              {{/each}}
+            </table>
+          </div>
+        {{/if}}
       </div>
 
       <div class='footer'>

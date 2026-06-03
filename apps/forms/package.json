@@ -8,6 +8,7 @@
     "@govtech-bb/design": "^1.0.0-alpha.14",
     "@govtech-bb/form-conditions": "workspace:*",
     "@govtech-bb/form-types": "workspace:*",
+    "@govtech-bb/form-validation": "workspace:*",
     "@govtech-bb/react": "^1.0.0-alpha.14",
     "@govtech-bb/styles": "^1.0.0-alpha.16",
     "@maskito/core": "^5.2.2",

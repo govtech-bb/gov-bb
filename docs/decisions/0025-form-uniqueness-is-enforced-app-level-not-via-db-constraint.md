@@ -48,10 +48,13 @@ DB-level uniqueness and stays as-is.
   explicitly via an `isNew` flag on the request — the formId-existence check
   only fires when `isNew` is set. Future endpoints touching form creation should
   carry intent explicitly rather than guessing from `formId`/`version`.
-- **The app-level check sees only drafts (`form_definitions`), not forms
-  published to the upstream apps/api.** The UI mirror compares against the
-  merged drafts+published list, so a collision against a published-only form is
-  caught client-side but not by the API. Closing that asymmetry is deferred to
-  #556 because it adds an upstream dependency to the write path; the trade-off
-  was taken deliberately to keep create/update independent of upstream
-  availability.
+- **The app-level check consults both drafts (`form_definitions`) and the
+  upstream published set.** Originally the API saw only drafts, so a collision
+  against a published-only form was caught by the UI mirror but accepted by the
+  API. #556 closed that asymmetry: `createFormHandler` / `updateFormHandler`
+  fold the upstream published `{formId, title}` entries (fetched via the shared
+  `fetchPublishedForms` helper that also backs `GET /builder/forms/published`)
+  into the title and create-formId checks. The upstream consult **fails open**
+  on error/timeout — a flaky or slow apps/api falls back to the drafts-only
+  check rather than blocking all form creation, so create/update stay resilient
+  to upstream availability while being at least as strong a backstop as the UI.

@@ -12,8 +12,9 @@ import type {
   SubmissionValues,
 } from "../submissions.types";
 
-/** Column index (1-based) where the submission ID is stored — used for dedup checks. */
-const SUBMISSION_ID_COL = 1;
+/** Column index (1-based) holding the per-entry dedup token
+ *  `${submissionId}:${index}` — scanned for idempotency checks. */
+const SUBMISSION_REF_COL = 1;
 
 @Injectable()
 export class SpreadsheetProcessor implements ISubmissionProcessor {
@@ -28,15 +29,19 @@ export class SpreadsheetProcessor implements ISubmissionProcessor {
   }
 
   async process(payload: SubmissionCreatedEvent): Promise<ProcessorOutput> {
-    const entries = payload.processors.filter((p) => p.type === "spreadsheet");
+    // Per-entry dispatch (issue #95): act on exactly the entry addressed by
+    // processorIndex. Defaults to 0 for direct single-entry invocation;
+    // production dispatch (listener/consumer) always sets it.
+    const index = payload.processorIndex ?? 0;
+    const entry = payload.processors[index];
 
-    if (entries.length === 0) return { kind: "completed" };
+    // Defensive: per-entry dispatch never invokes us without a matching entry,
+    // but a corrupted/out-of-range index should be a no-op, not a throw.
+    if (!entry) return { kind: "completed" };
 
     mkdirSync(this.exportDir, { recursive: true });
 
-    for (const entry of entries) {
-      await this.processEntry(payload, entry.config ?? {});
-    }
+    await this.processEntry(payload, entry.config ?? {}, index);
 
     return { kind: "completed" };
   }
@@ -44,6 +49,7 @@ export class SpreadsheetProcessor implements ISubmissionProcessor {
   private async processEntry(
     payload: SubmissionCreatedEvent,
     cfg: Record<string, unknown>,
+    index: number,
   ): Promise<void> {
     // basename strips any directory segments so a recipe-supplied filename like
     // "../../etc/passwd" can't escape exportDir (path traversal).
@@ -69,14 +75,24 @@ export class SpreadsheetProcessor implements ISubmissionProcessor {
       sheet = workbook.addWorksheet(sheetName);
     }
 
-    // Idempotency: scan column 1 for the submissionId. If already present,
-    // this is a duplicate invocation — bail out without writing.
+    // Per-entry idempotency: the dedup token is `${submissionId}:${index}`, not
+    // the bare submissionId. Two spreadsheet entries writing the same file
+    // therefore dedup against their own prior write — entry #2 no longer sees
+    // entry #1's row and wrongly skips, and a *retry* of one entry won't
+    // double-write. NOTE: this addresses dedup correctness only, not concurrent
+    // writes — two entries (or two submissions) appending to the same file race
+    // on read-modify-writeFile and can lose a row. That shared-file write race
+    // pre-dates per-entry dispatch; tracked in #702.
+    const dedupToken = `${payload.submissionId}:${index}`;
+
+    // Scan column 1 for this entry's token. If already present, this is a
+    // duplicate invocation — bail out without writing.
     const rowCount = sheet!.rowCount;
     for (let r = 2; r <= rowCount; r++) {
-      const existingId = sheet!.getRow(r).getCell(SUBMISSION_ID_COL).value;
-      if (existingId === payload.submissionId) {
+      const existingRef = sheet!.getRow(r).getCell(SUBMISSION_REF_COL).value;
+      if (existingRef === dedupToken) {
         this.logger.warn(
-          `[spreadsheet] Submission ${payload.submissionId} already recorded in ${filePath} — skipping`,
+          `[spreadsheet] Submission ${dedupToken} already recorded in ${filePath} — skipping`,
         );
         return;
       }
@@ -87,6 +103,7 @@ export class SpreadsheetProcessor implements ISubmissionProcessor {
     // Write header row only for brand-new sheets.
     if (isNew) {
       sheet!.addRow([
+        "submissionRef",
         "submissionId",
         "formId",
         "formVersion",
@@ -96,6 +113,7 @@ export class SpreadsheetProcessor implements ISubmissionProcessor {
     }
 
     sheet!.addRow([
+      dedupToken,
       payload.submissionId,
       payload.formId,
       payload.formVersion,
@@ -106,7 +124,7 @@ export class SpreadsheetProcessor implements ISubmissionProcessor {
     await workbook.xlsx.writeFile(filePath);
 
     this.logger.log(
-      `[spreadsheet] Recorded submission ${payload.submissionId} → ${filePath}`,
+      `[spreadsheet] Recorded submission ${dedupToken} → ${filePath}`,
     );
   }
 }

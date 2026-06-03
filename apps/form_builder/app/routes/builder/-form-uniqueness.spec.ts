@@ -1,4 +1,4 @@
-import { checkFormUniqueness } from "./-form-uniqueness";
+import { checkFormUniqueness, checkRekeyPublished } from "./-form-uniqueness";
 import type { FormDefinitionSummary } from "../../types/index";
 
 function form(over: Partial<FormDefinitionSummary>): FormDefinitionSummary {
@@ -86,5 +86,78 @@ describe("checkFormUniqueness — title", () => {
       null,
     );
     expect(r.titleError).toBeNull();
+  });
+
+  it("does not self-collide when re-keying a form while keeping its own title", () => {
+    // Re-key: a loaded form changes its id to a fresh, unused one but keeps its
+    // title. The title still belongs to the form's own (old-id) record, which is
+    // excluded by loadedFromId — so neither check fires (issue #674).
+    const r = checkFormUniqueness(
+      forms,
+      { formId: "birth-reg-new", title: "Birth Registration" },
+      "birth-registration",
+    );
+    expect(r.idError).toBeNull();
+    expect(r.titleError).toBeNull();
+  });
+});
+
+describe("checkRekeyPublished", () => {
+  const publishedForms: FormDefinitionSummary[] = [
+    form({
+      formId: "birth-registration",
+      title: "Birth Registration",
+      isPublished: true,
+    }),
+    form({
+      formId: "death-certificate",
+      title: "Death Certificate",
+      isPublished: false,
+    }),
+  ];
+
+  it("blocks re-keying a published form", () => {
+    const r = checkRekeyPublished(
+      publishedForms,
+      { formId: "birth-reg-new" },
+      "birth-registration",
+    );
+    expect(r).toMatch(/published form/i);
+  });
+
+  it("allows re-keying a draft-only form", () => {
+    const r = checkRekeyPublished(
+      publishedForms,
+      { formId: "death-cert-new" },
+      "death-certificate",
+    );
+    expect(r).toBeNull();
+  });
+
+  it("does not block when the id is unchanged (a new version, not a re-key)", () => {
+    const r = checkRekeyPublished(
+      publishedForms,
+      { formId: "birth-registration" },
+      "birth-registration",
+    );
+    expect(r).toBeNull();
+  });
+
+  it("does not block a brand-new form (nothing loaded)", () => {
+    const r = checkRekeyPublished(
+      publishedForms,
+      { formId: "brand-new" },
+      null,
+    );
+    expect(r).toBeNull();
+  });
+
+  it("does not block when the new id is empty (id-required handles that)", () => {
+    const r = checkRekeyPublished(
+      publishedForms,
+      { formId: "" },
+      "birth-registration",
+    );
+    expect(r).toBeNull();
   });
 });

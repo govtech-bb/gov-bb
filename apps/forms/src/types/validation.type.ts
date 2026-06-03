@@ -1,6 +1,13 @@
-import { FieldValue, ValidationRule } from "@govtech-bb/form-types";
+import { FieldValue } from "@govtech-bb/form-types";
+import type { DateValidationError } from "@govtech-bb/form-validation";
 import { AnyFieldApi } from "@tanstack/react-form";
-import { ZodObject, ZodType } from "zod";
+
+/**
+ * One entry in a field's TanStack error array: plain message strings for most
+ * fields, a structured { message, parts } object for date fields (so the
+ * renderer can highlight the failing day/month/year inputs).
+ */
+export type FieldError = string | DateValidationError;
 
 interface FieldValidationContext<TValue = unknown, TFieldApi = unknown> {
   value: TValue;
@@ -11,34 +18,21 @@ export interface FieldValidationProperties<
   TValue = FieldValue,
   TFieldApi = AnyFieldApi,
 > {
-  onDynamic?(input: FieldValidationContext<TValue, TFieldApi>): void; // Validation method. revalidateLogic runs it on submit, then on change.
+  /**
+   * Validation method. revalidateLogic runs it on submit, then on change.
+   * Returns the field's errors, or undefined when valid.
+   */
+  onDynamic?(
+    input: FieldValidationContext<TValue, TFieldApi>,
+  ): FieldError[] | undefined;
   onBlur?(input: FieldValidationContext<TValue, TFieldApi>): void; // Method called when a field loses focus.
   onChangeListenTo?: string[];
 }
 
-export interface FieldValidation {
-  fieldSchema: ZodType<unknown>;
-  properties: FieldValidationProperties;
-}
-
 type stepId = string;
 export interface FormValidation {
-  schema: ZodObject<Record<string, ZodType<unknown>>>;
   properties: Record<string, FieldValidationProperties>;
   defaults: Record<stepId, FieldValue>;
-}
-
-export interface ValidationResults {
-  hasError: boolean; // Whether any errors were picked up.
-  errors: string[]; // Filtered list of results with errors.
-}
-
-export interface ValidationArgs<TValueType = unknown> {
-  fieldId: string;
-  fieldName: string;
-  value: TValueType;
-  validations: ValidationRule;
-  results: ValidationResults;
 }
 
 export type FieldValidationErrors = Record<string, string[]>;

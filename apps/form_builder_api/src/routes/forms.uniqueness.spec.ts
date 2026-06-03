@@ -80,6 +80,42 @@ function recipe(over: Record<string, unknown> = {}) {
   };
 }
 
+// The write handlers now also consult the upstream published set (issue #556)
+// via global.fetch. Default it to "no published forms" so the drafts-only cases
+// behave exactly as before; individual tests override it.
+const originalFetch = global.fetch;
+const originalApiBaseUrl = process.env.API_BASE_URL;
+
+beforeEach(() => {
+  process.env.API_BASE_URL = "http://api.test";
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: true,
+    status: 200,
+    json: jest.fn().mockResolvedValue({ data: [] }),
+  }) as unknown as typeof fetch;
+});
+
+afterEach(() => {
+  global.fetch = originalFetch;
+  if (originalApiBaseUrl === undefined) delete process.env.API_BASE_URL;
+  else process.env.API_BASE_URL = originalApiBaseUrl;
+  jest.useRealTimers();
+});
+
+// Make global.fetch resolve as the published-forms proxy would (apps/api wraps
+// the list in `{ data: [...] }`).
+function mockPublishedForms(
+  forms: { formId: string; title: string; version?: string }[],
+): void {
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: true,
+    status: 200,
+    json: jest.fn().mockResolvedValue({
+      data: forms.map((f) => ({ version: "1.0.0", ...f })),
+    }),
+  }) as unknown as typeof fetch;
+}
+
 describe("createFormHandler — uniqueness", () => {
   it("rejects a create whose formId already exists (isNew)", async () => {
     const { ds } = fakeDataSource({ idExists: true });
@@ -155,6 +191,120 @@ describe("createFormHandler — uniqueness", () => {
     expect(res.statusCode).toBe(201);
     expect(save).toHaveBeenCalled();
   });
+
+  it("rejects a create whose title collides with a published-only form (no draft row)", async () => {
+    // No draft rows at all — the only collision is against the published set.
+    const { ds } = fakeDataSource({ titleRows: [] });
+    getDataSourceMock.mockResolvedValue(ds);
+    mockPublishedForms([
+      { formId: "birth-registration", title: "Birth Registration" },
+    ]);
+
+    const res = mockRes();
+    await createFormHandler(
+      mockReq({
+        recipe: recipe({ formId: "new-form", title: "  birth registration " }),
+        isNew: true,
+      }),
+      res,
+    );
+
+    expect(res.statusCode).toBe(409);
+    expect((res.body as { error: string }).error).toMatch(
+      /already exists. Choose a different title/,
+    );
+  });
+
+  it("rejects a create whose formId collides with a published-only form (isNew)", async () => {
+    // formId not in drafts, but it belongs to a published form.
+    const { ds } = fakeDataSource({ idExists: false });
+    getDataSourceMock.mockResolvedValue(ds);
+    mockPublishedForms([
+      { formId: "marriage-license", title: "A Different Title" },
+    ]);
+
+    const res = mockRes();
+    await createFormHandler(mockReq({ recipe: recipe(), isNew: true }), res);
+
+    expect(res.statusCode).toBe(409);
+    expect((res.body as { error: string }).error).toMatch(
+      /ID "marriage-license" already exists/,
+    );
+  });
+
+  it("fails open (201) when the upstream published fetch rejects", async () => {
+    const { ds, save } = fakeDataSource();
+    getDataSourceMock.mockResolvedValue(ds);
+    global.fetch = jest
+      .fn()
+      .mockRejectedValue(new Error("ECONNREFUSED")) as unknown as typeof fetch;
+
+    const res = mockRes();
+    await createFormHandler(mockReq({ recipe: recipe(), isNew: true }), res);
+
+    expect(res.statusCode).toBe(201);
+    expect(save).toHaveBeenCalled();
+  });
+
+  it("fails open (201) when the upstream published fetch returns non-OK", async () => {
+    const { ds, save } = fakeDataSource();
+    getDataSourceMock.mockResolvedValue(ds);
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      text: jest.fn().mockResolvedValue("Service Unavailable"),
+    }) as unknown as typeof fetch;
+
+    const res = mockRes();
+    await createFormHandler(mockReq({ recipe: recipe(), isNew: true }), res);
+
+    expect(res.statusCode).toBe(201);
+    expect(save).toHaveBeenCalled();
+  });
+
+  it("fails open (201) when the upstream returns 200 with no data array", async () => {
+    // Contract drift / degraded upstream: HTTP 200 but the body lacks the
+    // `{ data: [...] }` envelope. Must fall back to drafts-only, not 500.
+    const { ds, save } = fakeDataSource();
+    getDataSourceMock.mockResolvedValue(ds);
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: jest.fn().mockResolvedValue({}),
+    }) as unknown as typeof fetch;
+
+    const res = mockRes();
+    await createFormHandler(mockReq({ recipe: recipe(), isNew: true }), res);
+
+    expect(res.statusCode).toBe(201);
+    expect(save).toHaveBeenCalled();
+  });
+
+  it("fails open (201) when the upstream published fetch times out", async () => {
+    jest.useFakeTimers();
+    const { ds, save } = fakeDataSource();
+    getDataSourceMock.mockResolvedValue(ds);
+    // A hanging upstream: only ever settles when its abort signal fires.
+    global.fetch = jest.fn(
+      (_url: unknown, opts: { signal: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          opts.signal.addEventListener("abort", () =>
+            reject(new Error("aborted")),
+          );
+        }),
+    ) as unknown as typeof fetch;
+
+    const res = mockRes();
+    const pending = createFormHandler(
+      mockReq({ recipe: recipe(), isNew: true }),
+      res,
+    );
+    await jest.advanceTimersByTimeAsync(3000);
+    await pending;
+
+    expect(res.statusCode).toBe(201);
+    expect(save).toHaveBeenCalled();
+  });
 });
 
 describe("updateFormHandler — title uniqueness on rename", () => {
@@ -212,6 +362,87 @@ describe("updateFormHandler — title uniqueness on rename", () => {
 
     expect(res.statusCode).toBe(200);
     expect((res.body as { ok: boolean }).ok).toBe(true);
+    expect(query).toHaveBeenCalledWith(
+      expect.stringMatching(/UPDATE form_definitions/),
+      expect.anything(),
+    );
+  });
+
+  it("rejects renaming into a published-only form's title (no draft row)", async () => {
+    const { ds } = fakeDataSource({ putLatest, titleRows: [] });
+    getDataSourceMock.mockResolvedValue(ds);
+    mockPublishedForms([
+      { formId: "birth-registration", title: "Birth Registration" },
+    ]);
+
+    const res = mockRes();
+    await updateFormHandler(
+      mockReq(
+        {
+          recipe: recipe({
+            formId: "marriage-license",
+            title: "Birth Registration",
+          }),
+        },
+        { formId: "marriage-license" },
+      ),
+      res,
+    );
+
+    expect(res.statusCode).toBe(409);
+    expect((res.body as { error: string }).error).toMatch(
+      /Choose a different title/,
+    );
+  });
+
+  it("allows keeping its own title when the form is also published (self-exclusion)", async () => {
+    const { ds, query } = fakeDataSource({ putLatest, titleRows: [] });
+    getDataSourceMock.mockResolvedValue(ds);
+    // The form under edit is itself published — keeping its title must not
+    // collide with its own published entry.
+    mockPublishedForms([
+      { formId: "marriage-license", title: "Marriage License" },
+    ]);
+
+    const res = mockRes();
+    await updateFormHandler(
+      mockReq(
+        {
+          recipe: recipe({
+            formId: "marriage-license",
+            title: "Marriage License",
+          }),
+        },
+        { formId: "marriage-license" },
+      ),
+      res,
+    );
+
+    expect(res.statusCode).toBe(200);
+    expect((res.body as { ok: boolean }).ok).toBe(true);
+    expect(query).toHaveBeenCalledWith(
+      expect.stringMatching(/UPDATE form_definitions/),
+      expect.anything(),
+    );
+  });
+
+  it("fails open (200) when the upstream published fetch rejects", async () => {
+    const { ds, query } = fakeDataSource({ putLatest, titleRows: [] });
+    getDataSourceMock.mockResolvedValue(ds);
+    global.fetch = jest
+      .fn()
+      .mockRejectedValue(new Error("ECONNREFUSED")) as unknown as typeof fetch;
+
+    const res = mockRes();
+    await updateFormHandler(
+      mockReq(
+        { recipe: recipe({ formId: "marriage-license" }) },
+        { formId: "marriage-license" },
+      ),
+      res,
+    );
+
+    expect(res.statusCode).toBe(200);
     expect(query).toHaveBeenCalledWith(
       expect.stringMatching(/UPDATE form_definitions/),
       expect.anything(),

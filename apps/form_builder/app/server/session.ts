@@ -1,8 +1,8 @@
 // Pure cookie helpers and session metadata. This module is intentionally
 // crypto-free so it stays safe for the client bundle — route files
-// (`auth/github.tsx`, `auth/logout.tsx`, `auth/github_.callback.tsx`) pull
-// in helpers from here, and they get bundled into client code even though
-// their `beforeLoad` only runs server-side. Crypto-using counterparts
+// (`auth/github.tsx`, `auth/github_.callback.tsx`) and the `logoutSession`
+// server fn pull in helpers from here, and they get bundled into client code
+// even though their `beforeLoad` only runs server-side. Crypto-using counterparts
 // (encrypt/decrypt, getSession, setSession, safeEqual) live in
 // `./session-cipher.server.ts`, which the import-protection plugin keeps
 // out of client bundles.
@@ -86,6 +86,17 @@ function parseNamedCookie(header: string | null, name: string): string | null {
     }
   }
   return null;
+}
+
+/**
+ * Normalize an `OAUTH_REDIRECT_BASE` value by stripping a single trailing
+ * slash. A trailing slash (`https://x.com/`) would otherwise yield a
+ * doubled-slash `redirect_uri` (`https://x.com//auth/github/callback`) that
+ * won't match the registered GitHub OAuth callback. Crypto-free and
+ * client-safe, so it can live alongside the other pure cookie helpers.
+ */
+export function normalizeOAuthBase(raw: string): string {
+  return raw.replace(/\/$/, "");
 }
 
 /** Build the `Set-Cookie` header value that clears the session. */

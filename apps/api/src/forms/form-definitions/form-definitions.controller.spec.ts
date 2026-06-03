@@ -8,6 +8,8 @@ const mockService = {
 const mockOverridesService = {
   // Default: no override → short-circuit never fires.
   find: jest.fn().mockResolvedValue(null),
+  // Default: nothing disabled → getAll filters nothing out.
+  findAllFormIds: jest.fn().mockResolvedValue([]),
   disable: jest.fn(),
   enable: jest.fn(),
 };
@@ -23,6 +25,7 @@ describe("FormDefinitionsController", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockOverridesService.find.mockResolvedValue(null);
+    mockOverridesService.findAllFormIds.mockResolvedValue([]);
     // Default: feature disabled (empty token) so existing tests exercise non-preview path.
     mockConfigService.get.mockReturnValue("");
     res = { setHeader: jest.fn() };
@@ -48,6 +51,28 @@ describe("FormDefinitionsController", () => {
 
       expect(mockService.findAll).toHaveBeenCalled();
       expect(result).toMatchObject({ status: "success", data: list });
+    });
+
+    it("excludes forms that have been disabled (tombstoned)", async () => {
+      mockService.findAll.mockResolvedValue([
+        {
+          formId: "passport-renewal",
+          title: "Passport Renewal",
+          version: "1.0.0",
+        },
+        { formId: "retired-form", title: "Retired Form", version: "2.0.0" },
+      ]);
+      mockOverridesService.findAllFormIds.mockResolvedValue(["retired-form"]);
+
+      const result = await controller.getAll();
+
+      expect(result.data).toEqual([
+        {
+          formId: "passport-renewal",
+          title: "Passport Renewal",
+          version: "1.0.0",
+        },
+      ]);
     });
 
     it("passes each form's category through unchanged", async () => {

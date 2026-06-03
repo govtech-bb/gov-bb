@@ -6,6 +6,7 @@ publish_date: 2026-05-20
 category: youth-and-community
 subcategory: arts-culture
 service_type: information
+form_id: yar
 ---
 
 An arts-focused initiative for young people aged 17 to 30, run under the Youth Development Programme.
@@ -23,7 +24,7 @@ Arts-focused initiative under the Youth Development Programme.
 
 Complete the short application form to register your interest. Your progress is saved automatically.
 
-<!-- [Apply now](https://alpha.gov.bb/youth-and-community/arts-culture/yar/form) -->
+<a data-start-link>Start now</a>
 
 ## More information
 

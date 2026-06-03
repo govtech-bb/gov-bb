@@ -45,7 +45,11 @@ describe("resolveFieldIds", () => {
           stepId: "step-1",
           title: "Step 1",
           fields: [
-            f({ kind: "component", ref: "components/text", overrides: {} }),
+            f({
+              kind: "component",
+              ref: "components/generic-text",
+              overrides: {},
+            }),
           ],
           behaviours: [],
         },
@@ -54,7 +58,7 @@ describe("resolveFieldIds", () => {
 
     const resolved = resolveFieldIds(draft, catalog);
     expect(resolved).toHaveLength(1);
-    expect(resolved[0].fieldId).toBe("text");
+    expect(resolved[0].fieldId).toBe("generic-text");
     expect(resolved[0].stepId).toBe("step-1");
   });
 
@@ -67,7 +71,7 @@ describe("resolveFieldIds", () => {
           fields: [
             f({
               kind: "block",
-              ref: "blocks/name",
+              ref: "blocks/personal-information",
               overrides: {},
               childOverrides: {},
             }),
@@ -78,10 +82,19 @@ describe("resolveFieldIds", () => {
     });
 
     const resolved = resolveFieldIds(draft, catalog);
-    expect(resolved).toHaveLength(2);
-    expect(resolved.map((r) => r.fieldId)).toEqual(["first-name", "last-name"]);
-    expect(resolved[0].childFieldId).toBe("first-name");
-    expect(resolved[1].childFieldId).toBe("last-name");
+    expect(resolved.map((r) => r.fieldId)).toEqual([
+      "title",
+      "first-name",
+      "middle-name",
+      "last-name",
+      "date-of-birth",
+      "sex",
+      "nationality",
+      "national-id-number",
+    ]);
+    // childFieldId echoes the catalog child's id for each expanded element.
+    expect(resolved[0].childFieldId).toBe("title");
+    expect(resolved[1].childFieldId).toBe("first-name");
   });
 
   it("applies a block child override to the resolved child id", () => {
@@ -93,7 +106,7 @@ describe("resolveFieldIds", () => {
           fields: [
             f({
               kind: "block",
-              ref: "blocks/name",
+              ref: "blocks/personal-information",
               overrides: {},
               childOverrides: { "first-name": { fieldId: "given-name" } },
             }),
@@ -104,9 +117,18 @@ describe("resolveFieldIds", () => {
     });
 
     const resolved = resolveFieldIds(draft, catalog);
-    expect(resolved.map((r) => r.fieldId)).toEqual(["given-name", "last-name"]);
+    expect(resolved.map((r) => r.fieldId)).toEqual([
+      "title",
+      "given-name",
+      "middle-name",
+      "last-name",
+      "date-of-birth",
+      "sex",
+      "nationality",
+      "national-id-number",
+    ]);
     // childFieldId still keys the catalog child, not the override
-    expect(resolved[0].childFieldId).toBe("first-name");
+    expect(resolved[1].childFieldId).toBe("first-name");
   });
 
   it("applies a component fieldId override over the primitive default", () => {
@@ -118,7 +140,7 @@ describe("resolveFieldIds", () => {
           fields: [
             f({
               kind: "component",
-              ref: "components/text",
+              ref: "components/generic-text",
               overrides: { fieldId: "custom-id" },
             }),
           ],
@@ -144,7 +166,11 @@ describe("resolveFieldIds", () => {
               ref: "components/nonexistent",
               overrides: {},
             }),
-            f({ kind: "component", ref: "components/text", overrides: {} }),
+            f({
+              kind: "component",
+              ref: "components/generic-text",
+              overrides: {},
+            }),
           ],
           behaviours: [],
         },
@@ -153,7 +179,7 @@ describe("resolveFieldIds", () => {
 
     const resolved = resolveFieldIds(draft, catalog);
     expect(resolved).toHaveLength(1);
-    expect(resolved[0].fieldId).toBe("text");
+    expect(resolved[0].fieldId).toBe("generic-text");
   });
 
   it("skips a component whose primitive has no resolvable fieldId and no override", () => {
@@ -235,10 +261,10 @@ describe("resolveFieldIds", () => {
     // Only show-hide stores a real boolean at runtime. A checkbox stores its
     // selected option value (a string / string array), so it is not boolean.
     ["components/show-hide", true],
-    ["components/checkbox", false],
-    ["components/text", false],
-    ["components/number", false],
-    ["components/select", false],
+    ["components/generic-checkbox", false],
+    ["components/generic-text", false],
+    ["components/generic-number", false],
+    ["components/generic-select", false],
   ])("flags %s isBoolean=%s from its primitive htmlType", (ref, isBoolean) => {
     const draft = makeBaseDraft({
       steps: [
@@ -257,13 +283,19 @@ describe("resolveFieldIds", () => {
   });
 
   it("flags block child elements isBoolean from each element's htmlType", () => {
-    // blocks/name elements are all text → none boolean.
+    // personal-information has no show-hide element → none boolean.
     const draft = makeBaseDraft({
       steps: [
         {
           stepId: "step-1",
           title: "Step 1",
-          fields: [f({ kind: "block", ref: "blocks/name", overrides: {} })],
+          fields: [
+            f({
+              kind: "block",
+              ref: "blocks/personal-information",
+              overrides: {},
+            }),
+          ],
           behaviours: [],
         },
       ],
@@ -291,8 +323,16 @@ describe("findDuplicateFieldIds", () => {
           stepId: "step-1",
           title: "Step 1",
           fields: [
-            f({ kind: "component", ref: "components/text", overrides: {} }),
-            f({ kind: "component", ref: "components/text", overrides: {} }),
+            f({
+              kind: "component",
+              ref: "components/generic-text",
+              overrides: {},
+            }),
+            f({
+              kind: "component",
+              ref: "components/generic-text",
+              overrides: {},
+            }),
           ],
           behaviours: [],
         },
@@ -301,7 +341,7 @@ describe("findDuplicateFieldIds", () => {
 
     const collisions = findDuplicateFieldIds(draft, catalog);
     expect(collisions).toHaveLength(1);
-    expect(collisions[0].id).toBe("text");
+    expect(collisions[0].id).toBe("generic-text");
     expect(collisions[0].locations).toHaveLength(2);
   });
 
@@ -312,11 +352,15 @@ describe("findDuplicateFieldIds", () => {
           stepId: "step-1",
           title: "Step 1",
           fields: [
-            f({ kind: "component", ref: "components/text", overrides: {} }),
             f({
               kind: "component",
-              ref: "components/email",
-              overrides: { fieldId: "text" },
+              ref: "components/generic-text",
+              overrides: {},
+            }),
+            f({
+              kind: "component",
+              ref: "components/generic-email",
+              overrides: { fieldId: "generic-text" },
             }),
           ],
           behaviours: [],
@@ -326,7 +370,7 @@ describe("findDuplicateFieldIds", () => {
 
     const collisions = findDuplicateFieldIds(draft, catalog);
     expect(collisions).toHaveLength(1);
-    expect(collisions[0].id).toBe("text");
+    expect(collisions[0].id).toBe("generic-text");
     expect(collisions[0].locations).toHaveLength(2);
   });
 
@@ -339,13 +383,13 @@ describe("findDuplicateFieldIds", () => {
           fields: [
             f({
               kind: "block",
-              ref: "blocks/name",
+              ref: "blocks/personal-information",
               overrides: {},
               childOverrides: {},
             }),
             f({
               kind: "block",
-              ref: "blocks/name",
+              ref: "blocks/personal-information",
               overrides: {},
               childOverrides: {},
             }),
@@ -357,7 +401,16 @@ describe("findDuplicateFieldIds", () => {
 
     const collisions = findDuplicateFieldIds(draft, catalog);
     const ids = collisions.map((c) => c.id).sort();
-    expect(ids).toEqual(["first-name", "last-name"]);
+    expect(ids).toEqual([
+      "date-of-birth",
+      "first-name",
+      "last-name",
+      "middle-name",
+      "national-id-number",
+      "nationality",
+      "sex",
+      "title",
+    ]);
     for (const c of collisions) {
       expect(c.locations).toHaveLength(2);
     }
@@ -372,12 +425,12 @@ describe("findDuplicateFieldIds", () => {
           fields: [
             f({
               kind: "component",
-              ref: "components/text",
+              ref: "components/generic-text",
               overrides: { fieldId: "first-name" },
             }),
             f({
               kind: "block",
-              ref: "blocks/name",
+              ref: "blocks/personal-information",
               overrides: {},
               childOverrides: {},
             }),
@@ -400,7 +453,11 @@ describe("findDuplicateFieldIds", () => {
           stepId: "step-1",
           title: "Step 1",
           fields: [
-            f({ kind: "component", ref: "components/text", overrides: {} }),
+            f({
+              kind: "component",
+              ref: "components/generic-text",
+              overrides: {},
+            }),
           ],
           behaviours: [],
         },
@@ -408,7 +465,11 @@ describe("findDuplicateFieldIds", () => {
           stepId: "step-2",
           title: "Step 2",
           fields: [
-            f({ kind: "component", ref: "components/text", overrides: {} }),
+            f({
+              kind: "component",
+              ref: "components/generic-text",
+              overrides: {},
+            }),
           ],
           behaviours: [],
         },
@@ -417,7 +478,7 @@ describe("findDuplicateFieldIds", () => {
 
     const collisions = findDuplicateFieldIds(draft, catalog);
     expect(collisions).toHaveLength(1);
-    expect(collisions[0].id).toBe("text");
+    expect(collisions[0].id).toBe("generic-text");
   });
 
   it("returns no collisions for a clean recipe", () => {
@@ -427,11 +488,19 @@ describe("findDuplicateFieldIds", () => {
           stepId: "step-1",
           title: "Step 1",
           fields: [
-            f({ kind: "component", ref: "components/text", overrides: {} }),
-            f({ kind: "component", ref: "components/email", overrides: {} }),
+            f({
+              kind: "component",
+              ref: "components/generic-text",
+              overrides: {},
+            }),
+            f({
+              kind: "component",
+              ref: "components/generic-email",
+              overrides: {},
+            }),
             f({
               kind: "block",
-              ref: "blocks/name",
+              ref: "blocks/personal-information",
               overrides: {},
               childOverrides: {},
             }),
@@ -502,8 +571,16 @@ describe("findRecipeIdCollisions", () => {
           stepId: "dup-step",
           title: "One",
           fields: [
-            f({ kind: "component", ref: "components/text", overrides: {} }),
-            f({ kind: "component", ref: "components/text", overrides: {} }),
+            f({
+              kind: "component",
+              ref: "components/generic-text",
+              overrides: {},
+            }),
+            f({
+              kind: "component",
+              ref: "components/generic-text",
+              overrides: {},
+            }),
           ],
           behaviours: [],
         },
@@ -513,7 +590,7 @@ describe("findRecipeIdCollisions", () => {
 
     const result = findRecipeIdCollisions(draft, catalog);
     expect(result.fieldIdCollisions).toHaveLength(1);
-    expect(result.fieldIdCollisions[0].id).toBe("text");
+    expect(result.fieldIdCollisions[0].id).toBe("generic-text");
     expect(result.stepIdCollisions).toHaveLength(1);
     expect(result.stepIdCollisions[0].stepId).toBe("dup-step");
   });
@@ -525,7 +602,11 @@ describe("findRecipeIdCollisions", () => {
           stepId: "step-1",
           title: "One",
           fields: [
-            f({ kind: "component", ref: "components/text", overrides: {} }),
+            f({
+              kind: "component",
+              ref: "components/generic-text",
+              overrides: {},
+            }),
           ],
           behaviours: [],
         },
@@ -557,13 +638,13 @@ describe("fieldIdDuplicatesAnother", () => {
             {
               id: "editor-A",
               kind: "component",
-              ref: "components/text",
+              ref: "components/generic-text",
               overrides: {},
             },
             {
               id: "editor-B",
               kind: "component",
-              ref: "components/email",
+              ref: "components/generic-email",
               overrides: {},
             },
           ],
@@ -575,18 +656,18 @@ describe("fieldIdDuplicatesAnother", () => {
 
   it("returns true when candidate matches another field's resolved id", () => {
     const draft = twoFieldDraft();
-    // editing field B, typing "text" which is field A's id
-    expect(fieldIdDuplicatesAnother(draft, catalog, "editor-B", "text")).toBe(
-      true,
-    );
+    // editing field B, typing "generic-text" which is field A's id
+    expect(
+      fieldIdDuplicatesAnother(draft, catalog, "editor-B", "generic-text"),
+    ).toBe(true);
   });
 
   it("returns false when candidate matches only the field being edited", () => {
     const draft = twoFieldDraft();
-    // editing field A whose own resolved id is "text"
-    expect(fieldIdDuplicatesAnother(draft, catalog, "editor-A", "text")).toBe(
-      false,
-    );
+    // editing field A whose own resolved id is "generic-text"
+    expect(
+      fieldIdDuplicatesAnother(draft, catalog, "editor-A", "generic-text"),
+    ).toBe(false);
   });
 
   it("returns false for a blank candidate id", () => {
@@ -636,13 +717,16 @@ describe("findRecipeIdCollisionsFromRecipe", () => {
       {
         stepId: "step-1",
         title: "Step 1",
-        elements: [{ ref: "components/text" }, { ref: "components/text" }],
+        elements: [
+          { ref: "components/generic-text" },
+          { ref: "components/generic-text" },
+        ],
       },
     ]);
 
     const result = findRecipeIdCollisionsFromRecipe(recipe, catalog);
     expect(result.fieldIdCollisions).toHaveLength(1);
-    expect(result.fieldIdCollisions[0].id).toBe("text");
+    expect(result.fieldIdCollisions[0].id).toBe("generic-text");
     expect(result.fieldIdCollisions[0].locations).toHaveLength(2);
     expect(result.stepIdCollisions).toEqual([]);
   });
@@ -652,13 +736,25 @@ describe("findRecipeIdCollisionsFromRecipe", () => {
       {
         stepId: "step-1",
         title: "Step 1",
-        elements: [{ ref: "blocks/name" }, { ref: "blocks/name" }],
+        elements: [
+          { ref: "blocks/personal-information" },
+          { ref: "blocks/personal-information" },
+        ],
       },
     ]);
 
     const result = findRecipeIdCollisionsFromRecipe(recipe, catalog);
     const ids = result.fieldIdCollisions.map((c) => c.id).sort();
-    expect(ids).toEqual(["first-name", "last-name"]);
+    expect(ids).toEqual([
+      "date-of-birth",
+      "first-name",
+      "last-name",
+      "middle-name",
+      "national-id-number",
+      "nationality",
+      "sex",
+      "title",
+    ]);
   });
 
   it("flags a block child id colliding with a top-level element", () => {
@@ -667,8 +763,11 @@ describe("findRecipeIdCollisionsFromRecipe", () => {
         stepId: "step-1",
         title: "Step 1",
         elements: [
-          { ref: "components/text", overrides: { fieldId: "first-name" } },
-          { ref: "blocks/name" },
+          {
+            ref: "components/generic-text",
+            overrides: { fieldId: "first-name" },
+          },
+          { ref: "blocks/personal-information" },
         ],
       },
     ]);
@@ -696,9 +795,9 @@ describe("findRecipeIdCollisionsFromRecipe", () => {
         stepId: "step-1",
         title: "Step 1",
         elements: [
-          { ref: "components/text" },
-          { ref: "components/email" },
-          { ref: "blocks/name" },
+          { ref: "components/generic-text" },
+          { ref: "components/generic-email" },
+          { ref: "blocks/personal-information" },
         ],
       },
     ]);
