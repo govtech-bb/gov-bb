@@ -512,6 +512,21 @@ jobs:
       spec: duties-performed-exam-claim.smoke.spec.ts
       artifact_name: duties-performed-smoke-trace
 
+  # term-leave-application is smoked here post-deploy (not only per-PR preview):
+  # the per-PR preview smoke can't validate a term-leave recipe change, because
+  # the preview frontend reads contracts from the sandbox API and so serves the
+  # PREVIOUS version until the new one ships (ADR 0029). This job runs against
+  # the deployed sandbox once the API is serving the new recipe, so a recipe
+  # bump is actually validated end-to-end after it goes live.
+  smoke-test-term-leave:
+    name: Smoke test forms (term-leave)
+    needs: amplify-forms
+    uses: ./.github/workflows/forms-smoke.yml
+    with:
+      base_url: https://forms.sandbox.alpha.gov.bb
+      spec: term-leave-application.smoke.spec.ts
+      artifact_name: term-leave-smoke-trace
+
   # NOTE: referral-student-support-services and homeschooling-application-2024
   # smoke specs exist but are test.fixme (skipped) — their deployed forms have a
   # required-checkbox-with-empty-options recipe bug that makes them unsubmittable
