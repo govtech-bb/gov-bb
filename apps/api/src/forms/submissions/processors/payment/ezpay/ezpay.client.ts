@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, Logger } from "@nestjs/common";
 import { HttpService } from "@nestjs/axios";
 import { firstValueFrom } from "rxjs";
 import { EZPAY_CONFIG, EzpayConfig } from "./ezpay.config";
@@ -11,6 +11,8 @@ import {
 
 @Injectable()
 export class EzpayClient {
+  private readonly logger = new Logger(EzpayClient.name);
+
   constructor(
     private readonly http: HttpService,
     @Inject(EZPAY_CONFIG) private readonly config: EzpayConfig,
@@ -106,7 +108,7 @@ export class EzpayClient {
     apiKey: string,
   ): Promise<QueryTransactionItem[]> {
     const resp = await firstValueFrom(
-      this.http.post<Array<Record<string, unknown>>>(
+      this.http.post<unknown>(
         `${this.config.baseUrl}/transactions_api`,
         {},
         {
@@ -116,7 +118,7 @@ export class EzpayClient {
       ),
     );
 
-    return (resp.data ?? []).map((tx) => {
+    return this.coerceTransactionList(resp.data).map((tx) => {
       const cart = tx.Cart as Array<Array<{ reference?: string }>> | undefined;
       const reference = cart?.[0]?.[0]?.reference ?? "";
       return {
@@ -128,5 +130,39 @@ export class EzpayClient {
         amount: Number(tx.Amount ?? 0),
       };
     });
+  }
+
+  /**
+   * EzPay's /transactions_api returns the transaction array directly on a
+   * normal success, but other shapes occur in practice — an error/access
+   * object (e.g. when the caller IP isn't whitelisted) or the list wrapped
+   * under a property. The previous code assumed a bare array and crashed
+   * (`.map is not a function`) on anything else, which broke the
+   * reconciliation cron entirely. Coerce defensively: pass arrays through,
+   * dig out the first array-valued property of an object, otherwise log the
+   * shape (so the real response can be diagnosed) and treat as no
+   * transactions rather than throwing.
+   */
+  private coerceTransactionList(data: unknown): Array<Record<string, unknown>> {
+    if (Array.isArray(data)) {
+      return data as Array<Record<string, unknown>>;
+    }
+    if (data && typeof data === "object") {
+      for (const value of Object.values(data as Record<string, unknown>)) {
+        if (Array.isArray(value)) {
+          return value as Array<Record<string, unknown>>;
+        }
+      }
+      this.logger.warn(
+        `[ezpay] /transactions_api returned a non-array body (keys: ${
+          Object.keys(data as object).join(", ") || "none"
+        }) — treating as no transactions. If unexpected, check the EzPay IP allowlist for the NAT egress EIP.`,
+      );
+    } else if (data != null) {
+      this.logger.warn(
+        `[ezpay] /transactions_api returned a ${typeof data} body — treating as no transactions`,
+      );
+    }
+    return [];
   }
 }

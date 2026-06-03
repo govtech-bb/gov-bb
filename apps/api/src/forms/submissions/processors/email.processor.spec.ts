@@ -1,4 +1,3 @@
-import { Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import {
   SESv2Client,
@@ -146,6 +145,16 @@ describe("EmailProcessor", () => {
       expect(getSentInput().FromEmailAddress).toBe("noreply@test.gov");
     });
 
+    it("uses a literal recipientField (contains @) verbatim — e.g. an MDA/department address", async () => {
+      await processor.process(
+        makePayload({ recipientField: "mda-registration@govtech.bb" }),
+      );
+
+      expect(getSentInput().Destination?.ToAddresses).toEqual([
+        "mda-registration@govtech.bb",
+      ]);
+    });
+
     it("uses the subject from processor config when provided", async () => {
       await processor.process(
         makePayload({ subject: "Passport renewal received" }),
@@ -188,47 +197,43 @@ describe("EmailProcessor", () => {
       expect(getSentInput().ConfigurationSetName).toBeUndefined();
     });
 
-    it("skips and warns when recipientField is missing from processor config", async () => {
-      const warn = jest.spyOn(Logger.prototype, "warn").mockImplementation();
+    it("throws when recipientField is missing from processor config", async () => {
       const payload = makePayload();
       payload.processors = [{ type: "email", config: {} as never }];
 
-      await processor.process(payload);
-
-      expect(mockSend).not.toHaveBeenCalled();
-      expect(warn).toHaveBeenCalledWith(
-        expect.stringContaining("No recipientField"),
+      await expect(processor.process(payload)).rejects.toThrow(
+        /No recipientField/,
       );
-      warn.mockRestore();
+      expect(mockSend).not.toHaveBeenCalled();
     });
 
-    it("skips and warns when the field value cannot be resolved from submission values", async () => {
-      const warn = jest.spyOn(Logger.prototype, "warn").mockImplementation();
+    it("throws when the field value cannot be resolved from submission values", async () => {
       const payload = makePayload({}, { personal: {} }); // email field missing
 
-      await processor.process(payload);
-
-      expect(mockSend).not.toHaveBeenCalled();
-      expect(warn).toHaveBeenCalledWith(
-        expect.stringContaining("Could not resolve recipient"),
+      await expect(processor.process(payload)).rejects.toThrow(
+        /Could not resolve recipient/,
       );
-      warn.mockRestore();
+      expect(mockSend).not.toHaveBeenCalled();
     });
 
-    it("skips when recipientField resolves to a repeatable (array) step — unsupported", async () => {
+    it("throws when recipientField resolves to a repeatable (array) step — unsupported", async () => {
       // Branch: `stepValues && !Array.isArray(stepValues)` — the Array.isArray arm
-      const warn = jest.spyOn(Logger.prototype, "warn").mockImplementation();
       const payload = makePayload({ recipientField: "jobs.email" }, {
         jobs: [{ email: "jane@example.com" }],
       } as unknown as Record<string, Record<string, unknown>>);
 
-      await processor.process(payload);
-
-      expect(mockSend).not.toHaveBeenCalled();
-      expect(warn).toHaveBeenCalledWith(
-        expect.stringContaining("Could not resolve recipient"),
+      await expect(processor.process(payload)).rejects.toThrow(
+        /Could not resolve recipient/,
       );
-      warn.mockRestore();
+      expect(mockSend).not.toHaveBeenCalled();
+    });
+
+    it("throws when the SES send fails so the failure is not silently swallowed", async () => {
+      mockSend.mockRejectedValueOnce(new Error("SES throttled"));
+
+      await expect(processor.process(makePayload())).rejects.toThrow(
+        /Failed to send email/,
+      );
     });
 
     it("falls back to noreply@gov.bb when email.from is not configured", async () => {
@@ -290,8 +295,7 @@ describe("EmailProcessor", () => {
       expect(recipients).toEqual(["jane@example.com", "mda@gov.bb"]);
     });
 
-    it("skips and warns when the contract has no contactDetails, leaving the applicant email to send", async () => {
-      const warn = jest.spyOn(Logger.prototype, "warn").mockImplementation();
+    it("sends the applicant email but throws when the MDA contactDetails cannot be resolved", async () => {
       const bodyBuilder = makeBodyBuilder(STUB_CTX, undefined); // no contactDetails
       processor = new EmailProcessor(
         makeConfig(),
@@ -304,21 +308,18 @@ describe("EmailProcessor", () => {
         { type: "email", config: { recipientField: "contactDetails.email" } },
       ];
 
-      await processor.process(payload);
-
-      // Applicant email still sent; MDA email skipped with a warning.
+      // Sibling applicant email still sends (ADR 0006), but the batch fails
+      // loudly so the undelivered MDA email is surfaced rather than dropped.
+      await expect(processor.process(payload)).rejects.toThrow(
+        /Could not resolve recipient/,
+      );
       expect(mockSend).toHaveBeenCalledTimes(1);
       expect(getSentInput().Destination?.ToAddresses).toEqual([
         "jane@example.com",
       ]);
-      expect(warn).toHaveBeenCalledWith(
-        expect.stringContaining("Could not resolve recipient"),
-      );
-      warn.mockRestore();
     });
 
-    it("skips and warns when the requested contactDetails key is absent", async () => {
-      const warn = jest.spyOn(Logger.prototype, "warn").mockImplementation();
+    it("throws when the requested contactDetails key is absent", async () => {
       const bodyBuilder = makeBodyBuilder(STUB_CTX, MDA_CONTACT);
       processor = new EmailProcessor(
         makeConfig(),
@@ -328,17 +329,13 @@ describe("EmailProcessor", () => {
       // contactDetails has no `fax` key.
       const payload = makePayload({ recipientField: "contactDetails.fax" });
 
-      await processor.process(payload);
-
-      expect(mockSend).not.toHaveBeenCalled();
-      expect(warn).toHaveBeenCalledWith(
-        expect.stringContaining("Could not resolve recipient"),
+      await expect(processor.process(payload)).rejects.toThrow(
+        /Could not resolve recipient/,
       );
-      warn.mockRestore();
+      expect(mockSend).not.toHaveBeenCalled();
     });
 
-    it("skips and warns when the requested contactDetails key is a non-string (e.g. address object)", async () => {
-      const warn = jest.spyOn(Logger.prototype, "warn").mockImplementation();
+    it("throws when the requested contactDetails key is a non-string (e.g. address object)", async () => {
       const bodyBuilder = makeBodyBuilder(STUB_CTX, {
         ...MDA_CONTACT,
         address: { line1: "1 Bay St", city: "Bridgetown" },
@@ -350,13 +347,10 @@ describe("EmailProcessor", () => {
       );
       const payload = makePayload({ recipientField: "contactDetails.address" });
 
-      await processor.process(payload);
-
-      expect(mockSend).not.toHaveBeenCalled();
-      expect(warn).toHaveBeenCalledWith(
-        expect.stringContaining("Could not resolve recipient"),
+      await expect(processor.process(payload)).rejects.toThrow(
+        /Could not resolve recipient/,
       );
-      warn.mockRestore();
+      expect(mockSend).not.toHaveBeenCalled();
     });
   });
 });
