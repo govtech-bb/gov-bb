@@ -202,7 +202,9 @@ export const buildFieldValidationProperties = (
   if (field.htmlType === "show-hide" || !field.validations) {
     return {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      onDynamic(_input) {},
+      onDynamic(_input) {
+        return undefined;
+      },
     };
   }
 
