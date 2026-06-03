@@ -1,5 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestHeaders } from "@tanstack/react-start/server";
+import {
+  getRequestHeaders,
+  setResponseHeader,
+} from "@tanstack/react-start/server";
+import { clearSession, normalizeOAuthBase } from "./session";
 import { getSession } from "./session-cipher.server";
 import { getSessionSecret } from "./secrets";
 
@@ -27,5 +31,30 @@ export const checkSession = createServerFn({ method: "GET" }).handler(
     const session = getSession(cookie, secret);
     if (!session) return null;
     return { login: session.login };
+  },
+);
+
+/**
+ * Log the user out by clearing the session cookie.
+ *
+ * This is a POST `createServerFn` (not the old GET `/auth/logout` route) to
+ * close a CSRF/DoS vector: a GET route could be triggered cross-origin by a
+ * `<img src=".../auth/logout">` because `SameSite=Lax` sends the cookie on
+ * top-level navigation. A TanStack RPC POST uses a non-simple content-type,
+ * which a cross-origin `<img>` or simple form cannot reproduce, so the attack
+ * no longer fires.
+ *
+ * Unlike the OAuth flows, this clears the cookie via `setResponseHeader` on the
+ * RPC response itself — no redirect is thrown here, so the Set-Cookie rides the
+ * same-origin RPC fetch response and the browser honors it. The caller (the
+ * denied page) navigates afterward on the client. `secure` is derived from the
+ * normalized `OAUTH_REDIRECT_BASE` the same way the other flows do, so the
+ * clearing cookie's attributes match the session cookie that was set.
+ */
+export const logoutSession = createServerFn({ method: "POST" }).handler(
+  async (): Promise<void> => {
+    const base = normalizeOAuthBase(process.env.OAUTH_REDIRECT_BASE ?? "");
+    const secure = base.startsWith("https://");
+    setResponseHeader("Set-Cookie", clearSession({ secure }));
   },
 );

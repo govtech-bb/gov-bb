@@ -74,6 +74,10 @@ export function decrypt(blob: string, secretBase64: string): SessionPayload {
 /**
  * Constant-time string compare. Used for CSRF state comparison.
  * Returns false (without throwing) if lengths differ.
+ *
+ * The length short-circuit isn't strictly constant-time, but the only caller
+ * compares fixed-length hex CSRF tokens, so the early return is unobservable
+ * in practice — leaving it as-is keeps the timing-safe path for equal lengths.
  */
 export function safeEqual(a: string, b: string): boolean {
   const ab = Buffer.from(a, "utf8");

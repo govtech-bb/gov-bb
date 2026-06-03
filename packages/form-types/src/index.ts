@@ -59,6 +59,7 @@ export type {
 
 export {
   fieldConditionalOnBehaviourSchema,
+  optionalIfBehaviourSchema,
   stepConditionalOnBehaviourSchema,
   repeatableBehaviourSchema,
   fieldArrayBehaviourSchema,
@@ -70,6 +71,7 @@ export {
 export type {
   Behaviour,
   FieldConditionalOnBehaviour,
+  OptionalIfBehaviour,
   StepConditionalOnBehaviour,
   RepeatableBehaviour,
   FieldArrayBehaviour,
@@ -103,6 +105,8 @@ export type {
   PaymentProcessorConfig,
   ResolvedPaymentProcessorConfig,
 } from "./processor.type";
+
+export { KEBAB_ID_PATTERN, KEBAB_ID_ERROR } from "./id-pattern";
 
 export { dynamic } from "./dynamic";
 

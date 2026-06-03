@@ -22,6 +22,24 @@ export type FieldConditionalOnBehaviour = z.infer<
   typeof fieldConditionalOnBehaviourSchema
 >;
 
+// Like `fieldConditionalOn`, but relaxes `required` instead of toggling
+// visibility: when the condition matches, the field becomes optional; the
+// field is never hidden. Format rules still apply whenever it is filled.
+export const optionalIfBehaviourSchema = z.object({
+  type: z.literal("optionalIf"),
+  targetFieldId: z.string(),
+  targetStepId: z.string().optional(),
+  operator: equalityOperationsSchema,
+  value: z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.array(z.string()),
+    z.array(z.number()),
+  ]),
+});
+export type OptionalIfBehaviour = z.infer<typeof optionalIfBehaviourSchema>;
+
 export const stepConditionalOnBehaviourSchema = z.object({
   type: z.literal("stepConditionalOn"),
   targetFieldId: z.string(),
@@ -43,6 +61,10 @@ export const repeatableBehaviourSchema = z.object({
   type: z.literal("repeatable"),
   min: z.number(),
   max: z.number(),
+  // Optional override for the auto-generated "Add another?" radio label, so a
+  // recipe can phrase it per step (e.g. "Do you want to add another
+  // qualification?"). Falls back to "Add another?" when omitted.
+  addAnotherLabel: z.string().optional(),
 });
 export type RepeatableBehaviour = z.infer<typeof repeatableBehaviourSchema>;
 
@@ -61,6 +83,7 @@ export type SharedFieldsBehaviour = z.infer<typeof sharedFieldsBehaviourSchema>;
 
 export const behaviourSchema = z.discriminatedUnion("type", [
   fieldConditionalOnBehaviourSchema,
+  optionalIfBehaviourSchema,
   stepConditionalOnBehaviourSchema,
   repeatableBehaviourSchema,
   fieldArrayBehaviourSchema,

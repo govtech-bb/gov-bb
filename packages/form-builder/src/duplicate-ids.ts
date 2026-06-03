@@ -15,7 +15,17 @@ export interface ResolvedFieldId {
   stepTitle: string;
   display: string;
   childFieldId?: string;
+  // True when the resolved field holds a real boolean at runtime (a show-hide
+  // toggle). The behaviours editor uses this to capture a conditional value as
+  // a boolean rather than a string. (#565)
+  isBoolean: boolean;
 }
+
+// htmlTypes whose runtime value is a real boolean. Only `show-hide` qualifies:
+// its value is `true`/`false` (see apps/forms field-renderer). A `checkbox`
+// stores its selected option *value* (a string, or a string array for
+// multi-option), so it is NOT boolean despite the name.
+const BOOLEAN_HTML_TYPES = new Set(["show-hide"]);
 
 export interface FieldIdCollision {
   id: string;
@@ -167,6 +177,7 @@ export function resolveFieldIds(
           stepId: step.stepId,
           stepTitle: step.title,
           display: componentDef.displayName,
+          isBoolean: BOOLEAN_HTML_TYPES.has(componentDef.primitive.htmlType),
         });
       } else if (field.ref.startsWith("blocks/")) {
         const blockDef = item as BlockDefinition;
@@ -181,6 +192,7 @@ export function resolveFieldIds(
             stepTitle: step.title,
             display: `${blockDef.displayName} › ${element.label ?? element.fieldId}`,
             childFieldId: element.fieldId,
+            isBoolean: BOOLEAN_HTML_TYPES.has(element.htmlType),
           });
         }
       }

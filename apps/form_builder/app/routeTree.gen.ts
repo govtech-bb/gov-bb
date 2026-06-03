@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as BuilderRouteImport } from './routes/builder'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BuilderIndexRouteImport } from './routes/builder/index'
-import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
 import { Route as AuthGithubRouteImport } from './routes/auth/github'
 import { Route as AuthDeniedRouteImport } from './routes/auth/denied'
 import { Route as AuthGithubCallbackRouteImport } from './routes/auth/github_.callback'
@@ -31,11 +30,6 @@ const BuilderIndexRoute = BuilderIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => BuilderRoute,
-} as any)
-const AuthLogoutRoute = AuthLogoutRouteImport.update({
-  id: '/auth/logout',
-  path: '/auth/logout',
-  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthGithubRoute = AuthGithubRouteImport.update({
   id: '/auth/github',
@@ -58,7 +52,6 @@ export interface FileRoutesByFullPath {
   '/builder': typeof BuilderRouteWithChildren
   '/auth/denied': typeof AuthDeniedRoute
   '/auth/github': typeof AuthGithubRoute
-  '/auth/logout': typeof AuthLogoutRoute
   '/builder/': typeof BuilderIndexRoute
   '/auth/github/callback': typeof AuthGithubCallbackRoute
 }
@@ -66,7 +59,6 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth/denied': typeof AuthDeniedRoute
   '/auth/github': typeof AuthGithubRoute
-  '/auth/logout': typeof AuthLogoutRoute
   '/builder': typeof BuilderIndexRoute
   '/auth/github/callback': typeof AuthGithubCallbackRoute
 }
@@ -76,7 +68,6 @@ export interface FileRoutesById {
   '/builder': typeof BuilderRouteWithChildren
   '/auth/denied': typeof AuthDeniedRoute
   '/auth/github': typeof AuthGithubRoute
-  '/auth/logout': typeof AuthLogoutRoute
   '/builder/': typeof BuilderIndexRoute
   '/auth/github_/callback': typeof AuthGithubCallbackRoute
 }
@@ -87,7 +78,6 @@ export interface FileRouteTypes {
     | '/builder'
     | '/auth/denied'
     | '/auth/github'
-    | '/auth/logout'
     | '/builder/'
     | '/auth/github/callback'
   fileRoutesByTo: FileRoutesByTo
@@ -95,7 +85,6 @@ export interface FileRouteTypes {
     | '/'
     | '/auth/denied'
     | '/auth/github'
-    | '/auth/logout'
     | '/builder'
     | '/auth/github/callback'
   id:
@@ -104,7 +93,6 @@ export interface FileRouteTypes {
     | '/builder'
     | '/auth/denied'
     | '/auth/github'
-    | '/auth/logout'
     | '/builder/'
     | '/auth/github_/callback'
   fileRoutesById: FileRoutesById
@@ -114,7 +102,6 @@ export interface RootRouteChildren {
   BuilderRoute: typeof BuilderRouteWithChildren
   AuthDeniedRoute: typeof AuthDeniedRoute
   AuthGithubRoute: typeof AuthGithubRoute
-  AuthLogoutRoute: typeof AuthLogoutRoute
   AuthGithubCallbackRoute: typeof AuthGithubCallbackRoute
 }
 
@@ -140,13 +127,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/builder/'
       preLoaderRoute: typeof BuilderIndexRouteImport
       parentRoute: typeof BuilderRoute
-    }
-    '/auth/logout': {
-      id: '/auth/logout'
-      path: '/auth/logout'
-      fullPath: '/auth/logout'
-      preLoaderRoute: typeof AuthLogoutRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/auth/github': {
       id: '/auth/github'
@@ -188,7 +168,6 @@ const rootRouteChildren: RootRouteChildren = {
   BuilderRoute: BuilderRouteWithChildren,
   AuthDeniedRoute: AuthDeniedRoute,
   AuthGithubRoute: AuthGithubRoute,
-  AuthLogoutRoute: AuthLogoutRoute,
   AuthGithubCallbackRoute: AuthGithubCallbackRoute,
 }
 export const routeTree = rootRouteImport

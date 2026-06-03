@@ -6,8 +6,13 @@ import {
 } from "@forms/types";
 import React, { JSX } from "react";
 import ErrorMessage from "./error-message";
-import { RequiredState, checkConditionalOn } from "@forms/lib";
+import { RequiredState, checkConditionalOn, parseDatePart } from "@forms/lib";
 import { DateValue, FieldArrayBehaviour } from "@govtech-bb/form-types";
+import { isDateValidationError } from "@govtech-bb/form-validation";
+import type {
+  DatePart,
+  DateValidationError,
+} from "@govtech-bb/form-validation";
 import FileUpload from "./file-upload";
 import { MaskedInput } from "./masked-input";
 
@@ -72,10 +77,33 @@ export default function FieldRenderer({
         // For each field type, be sure to establish...
         // const value = f.state.value as ValueType | undefined
         let errorMessage = "";
+        // Date fields surface a structured { message, parts } error so the
+        // failing day/month/year inputs can be highlighted individually.
+        let dateError: DateValidationError | undefined;
         if (!f.state.meta.isValid) {
-          errorMessage = f.state.meta.errors[0];
+          const rawError: unknown = f.state.meta.errors[0];
+          if (isDateValidationError(rawError)) {
+            dateError = rawError;
+            errorMessage = rawError.message;
+          } else if (typeof rawError === "string") {
+            errorMessage = rawError;
+          }
         }
         const invalid = errorMessage ? true : undefined;
+        // A plain string error carries no part information — highlight all.
+        const partInvalid = (part: DatePart) =>
+          invalid && (dateError?.parts.includes(part) ?? true)
+            ? true
+            : undefined;
+
+        // revalidateLogic holds validation until a submit attempt, so typing in
+        // a fresh field never nags. But once a field is showing an error (after
+        // Continue/Submit), re-run validation on every change so the message
+        // clears the moment the value becomes valid.
+        const commitChange = (next: unknown) => {
+          f.handleChange(next as never);
+          if (!f.state.meta.isValid) void f.validate("submit");
+        };
 
         const hintId = field.hint ? `${field.id}-hint` : undefined;
         const errorId = errorMessage ? `${field.id}-error` : undefined;
@@ -107,8 +135,15 @@ export default function FieldRenderer({
         switch (field.htmlType) {
           case "date": {
             const value = f.state.value as DateValue | undefined;
+            // The fieldset id is the ErrorSummary anchor target; the error is
+            // described at the group level per the GOV.UK date input markup.
             return (
-              <fieldset className="govbb-fieldset">
+              <fieldset
+                className="govbb-fieldset"
+                id={field.id}
+                role="group"
+                aria-describedby={describedBy}
+              >
                 <legend className={labelClass("govbb-fieldset__legend")}>
                   {field.label}
                 </legend>
@@ -131,17 +166,19 @@ export default function FieldRenderer({
                         {...sharedProps}
                         {...requiredProps}
                         id={`${field.id}-day`}
+                        name={`${field.name}-day`}
                         className="govbb-date-input__field"
                         value={value?.day ?? ""}
-                        type="number"
-                        min={1}
-                        max={31}
-                        aria-invalid={invalid}
+                        type="text"
+                        inputMode="numeric"
+                        // undefined overrides sharedProps — the group carries
+                        // the description, double announcements are noise
+                        aria-describedby={undefined}
+                        aria-invalid={partInvalid("day")}
                         onChange={(e) => {
-                          const day = Number(e.target.value) ?? undefined;
-                          f.handleChange({
+                          commitChange({
                             ...value,
-                            day,
+                            day: parseDatePart(e.target.value),
                           });
                         }}
                       />
@@ -160,17 +197,17 @@ export default function FieldRenderer({
                         {...sharedProps}
                         {...requiredProps}
                         id={`${field.id}-month`}
+                        name={`${field.name}-month`}
                         className="govbb-date-input__field"
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
                         value={value?.month ?? ""}
-                        min={1}
-                        max={12}
-                        aria-invalid={invalid}
+                        aria-describedby={undefined}
+                        aria-invalid={partInvalid("month")}
                         onChange={(e) => {
-                          const month = Number(e.target.value) ?? undefined;
-                          f.handleChange({
+                          commitChange({
                             ...value,
-                            month,
+                            month: parseDatePart(e.target.value),
                           });
                         }}
                       />
@@ -189,15 +226,17 @@ export default function FieldRenderer({
                         {...sharedProps}
                         {...requiredProps}
                         id={`${field.id}-year`}
+                        name={`${field.name}-year`}
                         className="govbb-date-input__field"
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
                         value={value?.year ?? ""}
-                        aria-invalid={invalid}
+                        aria-describedby={undefined}
+                        aria-invalid={partInvalid("year")}
                         onChange={(e) => {
-                          const year = Number(e.target.value) ?? undefined;
-                          f.handleChange({
+                          commitChange({
                             ...value,
-                            year,
+                            year: parseDatePart(e.target.value),
                           });
                         }}
                       />
@@ -237,7 +276,7 @@ export default function FieldRenderer({
                       className="govbb-textarea"
                       value={value ?? ""}
                       aria-invalid={invalid}
-                      onChange={(e) => f.handleChange(e.target.value)}
+                      onChange={(e) => commitChange(e.target.value)}
                     />
                   </div>
                 </div>
@@ -263,7 +302,7 @@ export default function FieldRenderer({
                     className="govbb-input"
                     value={value ?? ""}
                     aria-invalid={invalid}
-                    onChange={(e) => f.handleChange(e.target.value)}
+                    onChange={(e) => commitChange(e.target.value)}
                   />
                 </div>
               );
@@ -271,12 +310,12 @@ export default function FieldRenderer({
               const addAnotherField = (values: string[]) => {
                 // Pushes a new empty field, that a user can fill in
                 values.push("");
-                f.handleChange(values);
+                commitChange(values);
               };
 
               const removeField = (values: string[]) => {
                 values.pop();
-                f.handleChange(values);
+                commitChange(values);
               };
 
               const updateField = (
@@ -285,7 +324,7 @@ export default function FieldRenderer({
                 value: string,
               ) => {
                 values[index] = value;
-                f.handleChange(values);
+                commitChange(values);
               };
 
               const values = (f.state.value as string[] | undefined) ?? [
@@ -389,7 +428,7 @@ export default function FieldRenderer({
                     multiple={isMultiple}
                     value={selectValue ? selectValue : isMultiple ? [] : ""}
                     aria-invalid={invalid}
-                    onChange={(e) => f.handleChange(e.target.value)}
+                    onChange={(e) => commitChange(e.target.value)}
                   >
                     <option value=""></option>
                     {field.options?.map((option) => (
@@ -411,7 +450,7 @@ export default function FieldRenderer({
               const option = field.options[0];
               const value = (f.state.value as string | undefined) ?? "";
               return (
-                <fieldset className="govbb-fieldset">
+                <fieldset className="govbb-fieldset" id={field.id}>
                   <legend className={labelClass("govbb-fieldset__legend")}>
                     {field.label}
                   </legend>
@@ -431,7 +470,7 @@ export default function FieldRenderer({
                         checked={option.value === value}
                         aria-invalid={invalid}
                         onChange={() =>
-                          f.handleChange(
+                          commitChange(
                             option.value === value ? "" : option.value,
                           )
                         }
@@ -455,11 +494,11 @@ export default function FieldRenderer({
               const next = checkboxValues.includes(item)
                 ? checkboxValues.filter((cv) => cv !== item)
                 : [...checkboxValues, item];
-              f.handleChange(next);
+              commitChange(next);
             };
 
             return (
-              <fieldset className="govbb-fieldset">
+              <fieldset className="govbb-fieldset" id={field.id}>
                 <legend className={labelClass("govbb-fieldset__legend")}>
                   {field.label}
                 </legend>
@@ -496,7 +535,7 @@ export default function FieldRenderer({
           case "radio":
             const value: string = (f.state.value as string | undefined) ?? "";
             return (
-              <fieldset className="govbb-fieldset">
+              <fieldset className="govbb-fieldset" id={field.id}>
                 <legend className={labelClass("govbb-fieldset__legend")}>
                   {field.label}
                 </legend>
@@ -520,7 +559,7 @@ export default function FieldRenderer({
                             className="govbb-radio"
                             checked={isSelected}
                             aria-invalid={invalid}
-                            onChange={() => f.handleChange(option.value)}
+                            onChange={() => commitChange(option.value)}
                           />
                           <label
                             className="govbb-radio-item__label"
@@ -563,7 +602,7 @@ export default function FieldRenderer({
                 field={field}
                 sharedProps={sharedProps}
                 value={f.state.value as UploadedFile[] | null | undefined}
-                onFileChange={(files) => f.handleChange(files)}
+                onFileChange={(files) => commitChange(files)}
                 errorMessage={errorMessage}
                 errorId={errorId}
                 validationRules={field.validations}
@@ -585,7 +624,7 @@ export default function FieldRenderer({
                   type="button"
                   className="form-page__show-hide-toggle"
                   aria-expanded={isOpen}
-                  onClick={() => f.handleChange(!isOpen)}
+                  onClick={() => commitChange(!isOpen)}
                 >
                   <span
                     className="form-page__show-hide-arrow"

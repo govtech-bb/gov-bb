@@ -27,6 +27,7 @@ jest.mock("@tanstack/react-router", () => ({
 jest.mock("@tanstack/react-form", () => ({
   useForm: jest.fn(),
   useStore: jest.fn(),
+  revalidateLogic: jest.fn(() => jest.fn()),
 }));
 
 jest.mock("@forms/lib", () => ({
@@ -401,6 +402,10 @@ describe("RouteComponent onSubmit handler", () => {
       },
     });
     await expect(onSubmit({ value: {} })).resolves.not.toThrow();
+    expect(mockTrackEvent).toHaveBeenCalledWith(
+      "form-submit-success",
+      expect.objectContaining({ form_id: "test-form" }),
+    );
   });
 
   it("commits a payment-init error state on 'pending_payment' without deferred meta", async () => {
@@ -432,9 +437,19 @@ describe("RouteComponent onSubmit handler", () => {
     expect(
       mockFormRendererProps.current.submissionState.paymentUrl,
     ).toBeUndefined();
+    // Payment could not be initiated — this must not register as a success
+    // in analytics (issue #318); it reports a payment-init error instead.
+    expect(mockTrackEvent).not.toHaveBeenCalledWith(
+      "form-submit-success",
+      expect.anything(),
+    );
+    expect(mockTrackEvent).toHaveBeenCalledWith(
+      "form-submit-error",
+      expect.objectContaining({ form_id: "test-form", reason: "payment-init" }),
+    );
   });
 
-  it("handles 'failed' status without throwing", async () => {
+  it("commits a failed state and fires a server error event on 'failed' status", async () => {
     const onSubmit = renderAndExtractOnSubmit();
     (postFormSubmission as jest.Mock).mockResolvedValue({
       status: "failed",
@@ -444,7 +459,19 @@ describe("RouteComponent onSubmit handler", () => {
         formId: "test-form",
       },
     });
-    await expect(onSubmit({ value: {} })).resolves.not.toThrow();
+    await act(async () => {
+      await onSubmit({ value: {} });
+    });
+    // submissionSuccess: false routes the confirmation step to the
+    // "Something went wrong" panel with a retry — the citizen must not be
+    // left frozen with no feedback.
+    expect(mockFormRendererProps.current.submissionState).toEqual(
+      expect.objectContaining({ submissionSuccess: false }),
+    );
+    expect(mockTrackEvent).toHaveBeenCalledWith("form-submit-error", {
+      form_id: "test-form",
+      reason: "server",
+    });
   });
 
   it("calls formatDataForSubmission before postFormSubmission", async () => {
@@ -528,9 +555,9 @@ describe("RouteComponent onSubmit handler", () => {
     (postFormSubmission as jest.Mock).mockRejectedValue(
       new Error("network failure"),
     );
-    await expect(onSubmit({ value: {} })).resolves.not.toThrow();
-    // Verify the catch block fires the analytics event AND short-circuits
-    // before any setSubmissionState/success tracking can happen.
+    await act(async () => {
+      await onSubmit({ value: {} });
+    });
     expect(mockTrackEvent).toHaveBeenCalledWith("form-submit-error", {
       form_id: "test-form",
       reason: "network",
@@ -538,6 +565,11 @@ describe("RouteComponent onSubmit handler", () => {
     expect(mockTrackEvent).not.toHaveBeenCalledWith(
       "form-submit-success",
       expect.anything(),
+    );
+    // The catch must still commit a failed state so the confirmation step
+    // shows the "Something went wrong" panel instead of silently bouncing.
+    expect(mockFormRendererProps.current.submissionState).toEqual(
+      expect.objectContaining({ submissionSuccess: false }),
     );
   });
 

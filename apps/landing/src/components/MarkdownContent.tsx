@@ -11,7 +11,6 @@ import rehypeHideStartLinks from '../lib/rehype-hide-start-links'
 import rehypeSectionise from '../lib/rehype-sectionise'
 import type { Frontmatter } from '../lib/frontmatter'
 import { MigrationBanner } from './MigrationBanner'
-import { AVAILABLE_FORMS } from '../content/available-forms.gen'
 
 const FORMS_BASE_URL =
   import.meta.env.VITE_FORMS_URL ?? 'https://forms.sandbox.alpha.gov.bb'
@@ -22,6 +21,15 @@ const FORMS_BASE_URL =
  * a Start now button when it sees `<a data-start-link>`.
  */
 const PageFormIdContext = createContext<string | undefined>(undefined)
+
+/**
+ * The set of form IDs available right now, resolved server-side from the forms
+ * API and threaded down through the route loader (see
+ * `lib/available-forms.ts`). The anchor handler checks a page's
+ * `form_id` against this set to decide whether the Start now button renders.
+ * Empty by default so a render without a provider simply suppresses buttons.
+ */
+const AvailableFormsContext = createContext<ReadonlySet<string>>(new Set())
 
 type StartLinkProps = {
   formId: string
@@ -230,13 +238,14 @@ function StartLinkFromContext({
   children: ReactNode
 }) {
   const formId = useContext(PageFormIdContext)
+  const availableForms = useContext(AvailableFormsContext)
 
   if (formId) {
-    if (!AVAILABLE_FORMS.has(formId)) {
+    if (!availableForms.has(formId)) {
       if (import.meta.env.DEV) {
         console.warn(
-          `[MarkdownContent] form_id "${formId}" is not in the build-time ` +
-            'manifest (see src/content/available-forms.gen.ts) — Start now ' +
+          `[MarkdownContent] form_id "${formId}" is not in the forms API's ` +
+            'available list (see lib/available-forms.ts) — Start now ' +
             'button suppressed.',
         )
       }
@@ -269,38 +278,44 @@ function StartLinkFromContext({
 export function MarkdownBody({
   body,
   formId,
+  availableForms = new Set(),
   hideStartLink = false,
 }: {
   body: string
   formId?: string
+  availableForms?: ReadonlySet<string>
   hideStartLink?: boolean
 }) {
   return (
-    <PageFormIdContext.Provider value={formId}>
-      <ReactMarkdown
-        components={markdownComponents}
-        rehypePlugins={[
-          rehypeRaw,
-          [rehypeHideStartLinks, { hideStartLink }],
-          rehypeSectionise,
-        ]}
-        remarkPlugins={[remarkGfm]}
-      >
-        {body}
-      </ReactMarkdown>
-    </PageFormIdContext.Provider>
+    <AvailableFormsContext.Provider value={availableForms}>
+      <PageFormIdContext.Provider value={formId}>
+        <ReactMarkdown
+          components={markdownComponents}
+          rehypePlugins={[
+            rehypeRaw,
+            [rehypeHideStartLinks, { hideStartLink }],
+            rehypeSectionise,
+          ]}
+          remarkPlugins={[remarkGfm]}
+        >
+          {body}
+        </ReactMarkdown>
+      </PageFormIdContext.Provider>
+    </AvailableFormsContext.Provider>
   )
 }
 
 export type MarkdownContentProps = {
   frontmatter: Frontmatter
   body: string
+  availableForms?: ReadonlySet<string>
   hideStartLink?: boolean
 }
 
 export function MarkdownContent({
   frontmatter,
   body,
+  availableForms,
   hideStartLink = false,
 }: MarkdownContentProps) {
   return (
@@ -326,6 +341,7 @@ export function MarkdownContent({
         <MarkdownBody
           body={body}
           formId={frontmatter.form_id}
+          availableForms={availableForms}
           hideStartLink={hideStartLink}
         />
       </div>

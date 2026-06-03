@@ -6,6 +6,15 @@ import { sql } from "drizzle-orm";
 import { getDb } from "./index";
 
 async function main() {
+  if (!process.argv.includes("--force")) {
+    console.error(
+      "[db] reset DROPS all chat tables (chunks, documents, ingest_runs,\n" +
+        "rag_documents) and the drizzle schema. This is irreversible.\n" +
+        "Confirm DATABASE_URL points at the right database, then re-run:\n" +
+        "  pnpm db:reset --force",
+    );
+    process.exit(1);
+  }
   const db = await getDb();
   await db.execute(sql`DROP TABLE IF EXISTS chunks CASCADE`);
   await db.execute(sql`DROP TABLE IF EXISTS documents CASCADE`);

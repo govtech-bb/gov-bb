@@ -12,6 +12,7 @@ import {
   userIsTeamMember,
 } from "../../server/github-oauth";
 import {
+  normalizeOAuthBase,
   parseOAuthStateCookie,
   serializeOAuthStateCookie,
   SESSION_TTL_SECONDS,
@@ -78,12 +79,15 @@ const issueSessionCookie = createIsomorphicFn()
 export const Route = createFileRoute("/auth/github_/callback")({
   validateSearch: (search) => QuerySchema.parse(search),
   beforeLoad: async ({ search }) => {
-    const base = process.env.OAUTH_REDIRECT_BASE;
+    const rawBase = process.env.OAUTH_REDIRECT_BASE;
     const org = process.env.GITHUB_ORG;
     const teamSlug = process.env.GITHUB_TEAM_SLUG;
-    if (!base) throw new Error("OAUTH_REDIRECT_BASE is not set");
+    if (!rawBase) throw new Error("OAUTH_REDIRECT_BASE is not set");
     if (!org) throw new Error("GITHUB_ORG is not set");
     if (!teamSlug) throw new Error("GITHUB_TEAM_SLUG is not set");
+    // Strip a trailing slash so the redirect_uri matches the one we sent to
+    // GitHub on the authorize request (see auth/github.tsx).
+    const base = normalizeOAuthBase(rawBase);
 
     // Fetch secrets from Secrets Manager (cached per warm Lambda; falls back
     // to process.env.* for local dev). See ../../server/secrets.ts.
@@ -92,11 +96,13 @@ export const Route = createFileRoute("/auth/github_/callback")({
       getSessionSecret(),
     ]);
 
-    // CSRF state check (read-only on the cookie).
+    // CSRF state check (read-only on the cookie). A genuine mismatch (or a
+    // stale/expired state cookie) redirects to the denied page with a
+    // recovery CTA instead of throwing a raw 500.
     const cookie = readCookieHeader();
     const storedState = parseOAuthStateCookie(cookie);
     if (!storedState || !verifyStateMatches(storedState, search.state)) {
-      throw new Error("OAuth state mismatch — possible CSRF attempt");
+      throw redirect({ to: "/auth/denied", search: { reason: "csrf" } });
     }
 
     const secure = base.startsWith("https://");

@@ -54,8 +54,7 @@ export async function rewriteRetrievalQuery(
       }),
       messages: [{ role: "user", content: prompt }],
       outputSchema: Schema,
-      maxTokens: 100,
-      temperature: 0,
+      modelOptions: { maxTokens: 100, temperature: 0 },
       abortController: childController(signal, 3000),
     });
     const out = result.rewrittenQuery.trim();

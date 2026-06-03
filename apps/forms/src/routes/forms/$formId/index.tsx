@@ -11,19 +11,19 @@ import {
   formSearchParamSchema,
   type FormSearchParams,
 } from "../../../types/form-search-param.type";
-import { useForm, useStore } from "@tanstack/react-form";
+import { useForm, useStore, revalidateLogic } from "@tanstack/react-form";
 import {
   RepeatableStepSettings,
   FormValues,
   FormMeta,
   SubmissionState,
-  FormSubmissionResponseBody,
   FormValuesByStep,
 } from "@forms/types";
 import React from "react";
 import { getFormData, storeFormData } from "../../../lib/session-storage";
 import { formatDataForSubmission, postFormSubmission } from "@forms/form-api";
 import { trackEvent } from "../../../lib/analytics";
+import { resolveSubmissionOutcome } from "../../../lib/submission-outcome";
 
 export const Route = createFileRoute("/forms/$formId/")({
   component: RouteComponent,
@@ -113,6 +113,13 @@ function RouteComponent() {
   }
 
   const form = useForm({
+    // Reward early, punish late: hold validation until a submit attempt
+    // (each step's Continue triggers validateField(…, "submit")), then
+    // revalidate on change so errors clear as the user fixes them.
+    validationLogic: revalidateLogic({
+      mode: "submit",
+      modeAfterSubmission: "change",
+    }),
     defaultValues: {
       ...(formMeta.defaultValues as FormValues),
       ...(savedFormData ?? {}),
@@ -136,78 +143,33 @@ function RouteComponent() {
           form_id: formMeta.formId,
           reason: "network",
         });
+        // Commit a failed state so the confirmation step shows the
+        // "Something went wrong" panel with a retry, instead of leaving the
+        // citizen frozen with no feedback. No response means no reference data.
+        setSubmissionState({
+          submissionSuccess: false,
+          hasPayment: false,
+          referenceNumber: "",
+          date: "",
+          serviceName: formMeta.formId,
+        });
         return;
       }
-      const responseData: FormSubmissionResponseBody = response.data;
 
-      let subState: SubmissionState;
-      const baseSubState = {
-        referenceNumber: responseData.id,
-        date: responseData.submittedAt,
-        serviceName: responseData.formId,
-      };
-
-      switch (response.status) {
-        case "submitted":
-        case "success":
-        case "complete":
-          // No-payment forms return `submitted`; the backend never attaches
-          // payment to these responses, so hasPayment is correctly false here.
-          subState = {
-            submissionSuccess: true,
-            hasPayment: false,
-            ...baseSubState,
-          };
-          setSubmissionState(subState);
-          trackEvent("form-submit-success", {
-            form_id: formMeta.formId,
-            step_count: visibleSteps.length,
-          });
-          break;
-        case "processing":
-          break;
-        case "draft":
-          break;
-        case "pending_payment":
-          if (response.meta?.deferred) {
-            const { amount, paymentUrl, paymentId, description } =
-              response.meta?.deferred;
-            subState = {
-              ...baseSubState,
-              submissionSuccess: true,
-              hasPayment: true,
-              amount: amount.toString(),
-              paymentUrl,
-              paymentId,
-              paymentDescription: description,
-            };
-          } else {
-            // Payment was expected but the gateway details are missing — commit
-            // a payment-init error state (no paymentUrl) so the confirmation
-            // step renders "Payment could not be initiated" with the reference
-            // number, rather than leaving state undefined and bouncing away.
-            subState = {
-              ...baseSubState,
-              submissionSuccess: true,
-              hasPayment: true,
-            };
-          }
-          setSubmissionState(subState);
-          trackEvent("form-submit-success", {
-            form_id: formMeta.formId,
-            step_count: visibleSteps.length,
-          });
-          break;
-        case "failed":
-        case "error":
-          //TODO: Add state handling for errors
-          trackEvent("form-submit-error", {
-            form_id: formMeta.formId,
-            reason: "server",
-          });
-          break;
-        default:
-          console.error("Have no idea what to do here");
+      const { subState, event } = resolveSubmissionOutcome(response);
+      if (subState) {
+        setSubmissionState(subState);
+      }
+      if (event?.name === "form-submit-success") {
+        trackEvent(event.name, {
+          form_id: formMeta.formId,
+          step_count: visibleSteps.length,
+        });
+      } else if (event) {
+        trackEvent(event.name, {
+          form_id: formMeta.formId,
+          reason: event.reason,
+        });
       }
     },
   });

@@ -1,15 +1,22 @@
 import { useState } from "react";
 import styles from "../../styles/builder.module.css";
+import { KEBAB_ID_PATTERN, KEBAB_ID_ERROR } from "./-id-validation";
 
-const FORM_ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
-const FORM_ID_ERROR =
-  "Use lowercase letters, numbers, and hyphens only (e.g. birth-registration)";
+const FORM_ID_REQUIRED_ERROR = "Form ID is required";
 
 interface ToolbarProps {
   formId: string;
   title: string;
   version: string;
+  /** Uniqueness error for the formId (e.g. id already taken), computed by the
+   *  parent against the forms list. Shown alongside the local format error. */
+  idError?: string | null;
   isDirty: boolean;
+  /** Whether the live draft differs from the last saved/loaded baseline.
+   *  Drives the "Unsaved changes" indicator and gates Save draft / Discard.
+   *  Unlike `isDirty` ("the form is non-empty"), this goes clean right after
+   *  a successful save. */
+  hasUnsavedChanges: boolean;
   isValidating: boolean;
   isPreviewing: boolean;
   isSubmitting: boolean;
@@ -23,13 +30,18 @@ interface ToolbarProps {
   onPreview: () => void;
   onSubmit: () => void;
   onPublish: () => void;
+  /** Revert the draft to the last saved baseline (or empty for a new form).
+   *  Confirm-gating lives in the parent. */
+  onDiscard: () => void;
 }
 
 export function Toolbar({
   formId,
   title,
   version,
+  idError,
   isDirty,
+  hasUnsavedChanges,
   isValidating,
   isPreviewing,
   isSubmitting,
@@ -43,8 +55,13 @@ export function Toolbar({
   onPreview,
   onSubmit,
   onPublish,
+  onDiscard,
 }: ToolbarProps) {
   const [formIdError, setFormIdError] = useState<string>("");
+
+  // The local format error (bad characters in the current input) takes
+  // precedence over the parent's uniqueness error (id already taken).
+  const shownFormIdError = formIdError || idError || "";
 
   function handleNew() {
     if (isDirty && !window.confirm("Unsaved changes will be lost. Continue?")) return;
@@ -62,25 +79,31 @@ export function Toolbar({
             value={formId}
             onChange={(e) => {
               const raw = e.target.value.toLowerCase().replace(/\s+/g, "-");
-              if (raw.length > 0 && !FORM_ID_PATTERN.test(raw)) {
-                setFormIdError(FORM_ID_ERROR);
+              // Always propagate so the controlled input reflects what the
+              // author typed (even mid-edit / invalid). The error is surfaced
+              // independently — empty is "required", anything else is checked
+              // against the shared kebab pattern the server validator uses.
+              onFormIdChange(raw);
+              if (raw === "") {
+                setFormIdError(FORM_ID_REQUIRED_ERROR);
+              } else if (!KEBAB_ID_PATTERN.test(raw)) {
+                setFormIdError(KEBAB_ID_ERROR);
               } else {
                 setFormIdError("");
-                onFormIdChange(raw);
               }
             }}
             style={{ marginLeft: 4 }}
-            aria-describedby={formIdError ? "form-id-error" : undefined}
-            aria-invalid={formIdError ? true : undefined}
+            aria-describedby={shownFormIdError ? "form-id-error" : undefined}
+            aria-invalid={shownFormIdError ? true : undefined}
           />
         </label>
-        {formIdError && (
+        {shownFormIdError && (
           <span
             id="form-id-error"
             role="alert"
             style={{ fontSize: "0.75rem", color: "red" }}
           >
-            {formIdError}
+            {shownFormIdError}
           </span>
         )}
       </div>
@@ -112,9 +135,16 @@ export function Toolbar({
       </button>
       <button
         type="button"
+        onClick={onDiscard}
+        disabled={!hasUnsavedChanges}
+      >
+        Discard
+      </button>
+      <button
+        type="button"
         className={styles.btnPrimary}
         onClick={onSubmit}
-        disabled={isValidating || isSubmitting}
+        disabled={isValidating || isSubmitting || !hasUnsavedChanges}
       >
         {isSubmitting ? "Submitting…" : "Save draft"}
       </button>
@@ -122,10 +152,16 @@ export function Toolbar({
         type="button"
         className={styles.btnPrimary}
         onClick={onPublish}
-        disabled={isValidating || isPublishing}
+        // Deploy requires a saved draft (#331): publishing an unsaved draft
+        // opens a PR for a recipe the draft API has never seen.
+        disabled={isValidating || isPublishing || hasUnsavedChanges}
+        title={hasUnsavedChanges ? "Save draft before deploying" : undefined}
       >
         {isPublishing ? "Opening PR…" : "Deploy"}
       </button>
+      {hasUnsavedChanges && (
+        <span className={styles.statusUnsaved}>● Unsaved changes</span>
+      )}
       {lastSaveStatus !== "idle" && (
         <span
           className={

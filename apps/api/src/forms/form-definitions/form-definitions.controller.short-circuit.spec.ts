@@ -8,6 +8,7 @@ const mockFormDefinitionsService = {
 
 const mockDisabledOverridesService = {
   find: jest.fn(),
+  findAllFormIds: jest.fn().mockResolvedValue([]),
   disable: jest.fn(),
   enable: jest.fn(),
 };

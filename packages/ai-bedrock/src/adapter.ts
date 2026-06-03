@@ -26,14 +26,14 @@ import {
   translateBedrockStreamEvent,
   translateConverseOutput,
 } from "./stream.js";
-import type { BedrockTextAdapterConfig } from "./types.js";
+import type { BedrockModelOptions, BedrockTextAdapterConfig } from "./types.js";
 
 const DEFAULT_REGION =
   process.env.BEDROCK_REGION ?? process.env.AWS_REGION ?? "ca-central-1";
 
 export class BedrockTextAdapter extends BaseTextAdapter<
   string,
-  Record<string, unknown>,
+  BedrockModelOptions,
   ReadonlyArray<Modality>,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- adapter does not narrow per-modality metadata
   any
@@ -41,10 +41,12 @@ export class BedrockTextAdapter extends BaseTextAdapter<
   readonly name = "bedrock" as const;
   private readonly client: BedrockRuntimeClient;
   private readonly resolvedModelId: string;
+  private readonly cacheSystemPrompt: boolean;
 
   constructor(config: BedrockTextAdapterConfig, model: string) {
     super({}, model);
     this.resolvedModelId = resolveBedrockModelId(model);
+    this.cacheSystemPrompt = config.cacheSystemPrompt ?? false;
     if (config.client) {
       this.client = config.client;
     } else {
@@ -56,23 +58,21 @@ export class BedrockTextAdapter extends BaseTextAdapter<
   }
 
   async *chatStream(
-    options: TextOptions<Record<string, unknown>>,
+    options: TextOptions<BedrockModelOptions>,
   ): AsyncIterable<StreamChunk> {
-    const {
-      messages,
-      tools,
-      systemPrompts,
-      temperature,
-      topP,
-      maxTokens,
-      request,
-      logger,
-    } = options;
+    const { messages, tools, systemPrompts, modelOptions, request, logger } =
+      options;
 
     const bedrockMessages = modelMessagesToBedrock(messages);
-    const system = systemPromptsToBedrock(systemPrompts);
+    const system = systemPromptsToBedrock(systemPrompts, {
+      cacheFirstBlock: this.cacheSystemPrompt,
+    });
     const toolConfig = toolsToBedrockToolConfig(tools);
-    const inferenceConfig = buildInferenceConfig(temperature, topP, maxTokens);
+    const inferenceConfig = buildInferenceConfig(
+      modelOptions?.temperature,
+      modelOptions?.topP,
+      modelOptions?.maxTokens,
+    );
 
     const baseInput: ConverseCommandInput = {
       modelId: this.resolvedModelId,
@@ -169,16 +169,16 @@ export class BedrockTextAdapter extends BaseTextAdapter<
   }
 
   async structuredOutput(
-    options: StructuredOutputOptions<Record<string, unknown>>,
+    options: StructuredOutputOptions<BedrockModelOptions>,
   ): Promise<StructuredOutputResult<unknown>> {
     const { chatOptions, outputSchema } = options;
-    const { logger } = chatOptions;
+    const { logger, modelOptions } = chatOptions;
     const bedrockMessages = modelMessagesToBedrock(chatOptions.messages);
     const system = systemPromptsToBedrock(chatOptions.systemPrompts);
     const inferenceConfig = buildInferenceConfig(
-      chatOptions.temperature,
-      chatOptions.topP,
-      chatOptions.maxTokens,
+      modelOptions?.temperature,
+      modelOptions?.topP,
+      modelOptions?.maxTokens,
     );
     const { toolConfig, toolName } =
       jsonSchemaToBedrockStructuredTool(outputSchema);

@@ -1,7 +1,7 @@
 /**
  * @jest-environment jsdom
  */
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { useFormsList } from "./-use-forms-list";
 import { listForms } from "../../server/forms";
 import type { FormDefinitionSummary } from "../../types/index";
@@ -63,5 +63,62 @@ describe("useFormsList", () => {
     mockListForms.mockReturnValue(new Promise<FormDefinitionSummary[]>(() => {}));
     renderHook(() => useFormsList());
     expect(mockListForms).toHaveBeenCalledTimes(1);
+  });
+
+  describe("upsertForm", () => {
+    it("replaces the matching formId entry in place without refetching", async () => {
+      mockListForms.mockResolvedValue(FORMS);
+      const { result } = renderHook(() => useFormsList());
+      await waitFor(() => expect(result.current.forms).toEqual(FORMS));
+
+      const updated: FormDefinitionSummary = {
+        id: "passport",
+        formId: "passport",
+        title: "Passport (renamed)",
+        version: "2.0.0",
+        isPublished: false,
+      };
+      act(() => result.current.upsertForm(updated));
+
+      expect(result.current.forms).toEqual([updated]);
+      // The cheap upsert must not trigger another slow listForms waterfall.
+      expect(mockListForms).toHaveBeenCalledTimes(1);
+    });
+
+    it("appends when no entry with that formId exists yet", async () => {
+      mockListForms.mockResolvedValue(FORMS);
+      const { result } = renderHook(() => useFormsList());
+      await waitFor(() => expect(result.current.forms).toEqual(FORMS));
+
+      const added: FormDefinitionSummary = {
+        id: "licence",
+        formId: "licence",
+        title: "Driving Licence",
+        version: "1.0.0",
+        isPublished: false,
+      };
+      act(() => result.current.upsertForm(added));
+
+      expect(result.current.forms).toEqual([...FORMS, added]);
+    });
+
+    it("no-ops while the list is still loading (forms is null)", () => {
+      mockListForms.mockReturnValue(new Promise<FormDefinitionSummary[]>(() => {}));
+      const { result } = renderHook(() => useFormsList());
+      expect(result.current.forms).toBeNull();
+
+      act(() =>
+        result.current.upsertForm({
+          id: "licence",
+          formId: "licence",
+          title: "Driving Licence",
+          version: "1.0.0",
+          isPublished: false,
+        }),
+      );
+
+      // Nothing to patch yet; the pending mount fetch still owns the eventual list.
+      expect(result.current.forms).toBeNull();
+    });
   });
 });

@@ -11,9 +11,36 @@
   --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
 }
 
+/* Page wrapper used by every section (header, banner, page content, footer):
+ * capped at the design's 1512px frame, centred. Side gutters step from 16px on
+ * mobile up to the --xl (128px) token on large screens. */
 .container {
-  width: min(1080px, calc(100% - 2rem));
+  width: 100%;
+  max-width: 1512px;
   margin-inline: auto;
+  padding-inline: var(--spacing-s); /* 16px — mobile */
+}
+
+@media (min-width: 48rem) {
+  .container {
+    padding-inline: var(--spacing-l); /* 64px — tablet */
+  }
+}
+
+@media (min-width: 64rem) {
+  .container {
+    padding-inline: var(--spacing-xl); /* 128px — desktop */
+  }
+}
+
+.form-width {
+  width: 100%;
+}
+
+@media (min-width: 48rem) {
+  .form-width {
+    width: calc(100% * 2 / 3);
+  }
 }
 
 /* ---------------------------------------------------------------------------
@@ -28,20 +55,23 @@
   font-family: var(--font-family-base), sans-serif;
   font-size: var(--font-size-body);
   line-height: var(--line-height-body);
-  padding: var(--spacing-s);
+}
+
+.form-page__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  padding-block: var(--spacing-l) var(--spacing-m);
+}
+
+.form-page__header h1 {
+  margin: 0;
 }
 
 .form-page__step {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-s);
-}
-
-/* Headings use the styles package's govbb-text-* classes for the type scale
- * (single source of truth). The step title is a direct child of .form-page and
- * needs separation from the step body; preflight zeroes all other margins. */
-.form-page > h1 {
-  margin-bottom: var(--spacing-s);
 }
 
 .form-page__service-title {
@@ -134,15 +164,55 @@
 }
 
 /* ---- Submission confirmation panels -------------------------------------- */
+/* Full-width wrapper for the confirmation step — no container/padding so the
+ * banner can bleed to the viewport edges; inner sections supply their own
+ * .container. */
+.form-page-confirmation {
+  font-family: var(--font-family-base), sans-serif;
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+
 .form-page__confirmation {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xs);
 }
 
+/* Payment confirmation header (composed with .form-page__header). Adds a fixed
+ * banner height so the title block is a consistent height across payment
+ * states. The no-payment state uses the teal banner panel below instead. */
+.form-page__confirmation-header {
+  min-height: 16.75rem;
+}
+
+.form-page__reference {
+  display: flex;
+  gap: var(--spacing-s);
+  margin: var(--spacing-s) 0 var(--spacing-m);
+}
+
+.form-page__reference dt {
+  font-weight: var(--font-weight-bold);
+}
+
+.form-page__reference dd {
+  margin: 0;
+}
+
+/* Full-bleed banner. The panel is a full-width child of <main> (no container),
+ * so its teal background reaches the viewport edges; the inner .container keeps
+ * the text aligned with the rest of the page. Fixed banner height with a 64px
+ * top / 32px bottom inset. */
 .form-page__panel {
-  padding: var(--spacing-m);
-  margin-bottom: var(--spacing-m);
+  min-height: 16.75rem;
+  padding-block: var(--spacing-l) var(--spacing-m);
+}
+
+.form-page__panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s);
 }
 
 .form-page__panel--success {
@@ -174,60 +244,104 @@
   font-weight: var(--font-weight-normal);
 }
 
-/* ---- Payment summary ----------------------------------------------------- */
-.form-page__payment {
-  background-color: var(--color-blue-10);
-  padding: var(--spacing-m);
-  border-radius: 0.25rem;
-  margin-bottom: var(--spacing-m);
-  max-width: 100%;
+/* ---- Payment block (GOV.BB design system: govbb-payment) ----------------- */
+/* Canonical payment summary card. Not shipped in @govtech-bb/styles, so its
+ * markup + CSS are copied here per the design-system block spec:
+ * https://govtech-bb.github.io/design-system/llm/blocks/payment.md
+ * `--color-text` is not defined in @govtech-bb/design, so fall back to black. */
+.govbb-payment {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xm);
+  padding: var(--spacing-xm);
+  border-radius: var(--spacing-xxs);
+  background: var(--color-blue-10);
+  color: var(--color-text, var(--color-black-00));
 }
 
-.form-page__payment--success {
-  background-color: var(--color-green-00);
+.govbb-payment--success {
+  background: var(--color-green-00);
   color: var(--color-white-00);
 }
 
-.form-page__payment h2 {
-  margin-top: 0;
-  margin-bottom: var(--spacing-xs);
+.govbb-payment--failed {
+  background: var(--color-red-00);
+  color: var(--color-white-00);
 }
 
-.form-page__payment > p {
-  margin: 0 0 var(--spacing-m) 0;
+.govbb-payment__header {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-bottom: var(--spacing-xm);
+  border-bottom: 1px solid var(--color-mid-grey-00);
 }
 
-.form-page__payment-table {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+.govbb-payment--success .govbb-payment__header,
+.govbb-payment--failed .govbb-payment__header {
+  border-bottom-color: var(--color-grey-00);
+}
+
+.govbb-payment__title {
+  font-size: var(--font-size-h2);
+  line-height: var(--line-height-h2);
+  font-weight: var(--font-weight-bold);
+  margin: 0;
+}
+
+.govbb-payment__description {
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  margin: 0;
+}
+
+.govbb-payment__items {
+  display: flex;
+  flex-direction: column;
   gap: var(--spacing-s);
-  margin: var(--spacing-m) 0;
-  padding-top: var(--spacing-m);
-  border-top: 0.1rem solid var(--color-grey-00);
 }
 
-.form-page__payment--success .form-page__payment-table {
-  border-top-color: var(--color-white-00);
+.govbb-payment__item {
+  display: flex;
+  gap: var(--spacing-s);
+  align-items: flex-start;
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
 }
 
-.form-page__payment-hint {
-  font-size: var(--font-size-caption);
-  color: var(--color-mid-grey-00);
-  padding-top: var(--spacing-xs);
+.govbb-payment__item-label {
+  flex: 1 0 0;
+  min-width: 0;
+  margin: 0;
+  font-weight: var(--font-weight-bold);
+}
+
+.govbb-payment__item-value {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.govbb-payment__note {
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  margin: 0;
   font-style: italic;
+  color: var(--color-mid-grey-00);
 }
 
-/* ---- Feedback callout (mirrors the govbb feedback-box block) -------------- */
+.govbb-payment--success .govbb-payment__note,
+.govbb-payment--failed .govbb-payment__note {
+  color: inherit;
+  font-style: normal;
+}
+
+/* ---- Feedback section (plain — no callout box, per the confirmation design) */
 .form-page__feedback {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: var(--spacing-xs);
-  width: 100%;
-  padding: var(--spacing-xm) var(--spacing-s);
   margin-top: var(--spacing-m);
-  background: var(--color-yellow-40);
-  border: 4px solid var(--color-yellow-100);
 }
 
 .form-page__feedback h3 {
@@ -378,14 +492,5 @@
 
   .govbb-form-group[data-field-width="medium"] {
     width: 50%;
-  }
-
-  .form-page__review {
-    width: calc(100% * 2 / 3);
-  }
-
-  .form-page__payment,
-  .form-page__payment--success {
-    max-width: 60%;
   }
 }

@@ -1,7 +1,16 @@
 import type { Config } from "jest";
+import { cpus } from "node:os";
+
+// OOM guard: cap workers at 8 so this suite can't fork enough
+// heavyweight ts-jest / coverage workers to exhaust host RAM — yet never above
+// jest's default (cores - 1), or a fixed cap would oversubscribe low-core CI
+// runners and time out timing-sensitive tests.
+const maxWorkers = Math.max(1, Math.min(8, cpus().length - 1));
 
 const config: Config = {
   preset: "ts-jest",
+  maxWorkers,
+  workerIdleMemoryLimit: "512MB",
   testEnvironment: "jsdom",
   rootDir: "src",
   testRegex: ".*\\.spec\\.tsx?$",
@@ -60,7 +69,12 @@ const config: Config = {
   ],
   coverageReporters: ["text-summary", "lcov", "html"],
   coverageThreshold: {
-    global: { branches: 89, functions: 90, lines: 95, statements: 94 },
+    // `functions` was lowered 90 -> 89 when field rule-checking moved out of
+    // this app into `@govtech-bb/form-validation` (issue #433): ~22 fully
+    // covered pure validation functions were deleted here (their logic, and
+    // coverage, now live in that package), shrinking the function pool enough
+    // to drop the global ratio. Branches/lines/statements are unaffected.
+    global: { branches: 89, functions: 89, lines: 95, statements: 94 },
   },
 };
 

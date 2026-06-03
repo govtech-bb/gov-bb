@@ -35,12 +35,38 @@ describe("collectUnknownRefs", () => {
         {
           stepId: "step-1",
           title: "Step 1",
-          elements: [{ ref: "components/text" }, { ref: "blocks/name" }],
+          elements: [
+            { ref: "components/generic-text" },
+            { ref: "blocks/personal-information" },
+          ],
         },
       ],
     });
 
     expect(collectUnknownRefs(recipe, catalog)).toEqual([]);
+  });
+
+  // Regression (#515): the retired builtin catalog used to resolve refs like
+  // `components/text` / `blocks/name` that exist in no runtime registry, so a
+  // recipe authored against them passed the builder but died at the API. They
+  // must now resolve nowhere — flagged as unknown, same as the live runtime.
+  it("flags a retired builtin ref that the live registry cannot resolve", () => {
+    const recipe = makeRecipe({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          elements: [{ ref: "components/text" }, { ref: "blocks/name" }],
+        },
+      ],
+    });
+
+    expect(getRegistryItem("components/text", catalog)).toBeUndefined();
+    expect(getRegistryItem("blocks/name", catalog)).toBeUndefined();
+    expect(collectUnknownRefs(recipe, catalog)).toEqual([
+      { ref: "components/text", path: "steps[step-1].elements[0].ref" },
+      { ref: "blocks/name", path: "steps[step-1].elements[1].ref" },
+    ]);
   });
 
   it("reports an unknown ref with its recipe path", () => {
@@ -51,7 +77,7 @@ describe("collectUnknownRefs", () => {
           title: "Step 1",
           elements: [
             { ref: "components/unknown-widget" },
-            { ref: "components/text" },
+            { ref: "components/generic-text" },
           ],
         },
       ],
@@ -72,7 +98,7 @@ describe("collectUnknownRefs", () => {
           stepId: "step-1",
           title: "Step 1",
           elements: [
-            { ref: "components/text" },
+            { ref: "components/generic-text" },
             { ref: "components/nope-one" },
           ],
         },
@@ -167,7 +193,7 @@ describe("hydrateForm", () => {
         {
           stepId: "step-1",
           title: "Step 1",
-          elements: [{ ref: "components/text" }],
+          elements: [{ ref: "components/generic-text" }],
         },
       ],
     });
@@ -175,7 +201,7 @@ describe("hydrateForm", () => {
     const contract = hydrateForm(recipe, catalog);
     expect(contract.steps[0].elements).toHaveLength(1);
     const field = contract.steps[0].elements[0];
-    expect(field.fieldId).toBe("text");
+    expect(field.fieldId).toBe("generic-text");
     expect(field.htmlType).toBe("text");
     expect(field.label).toBe("Text");
   });
@@ -187,7 +213,10 @@ describe("hydrateForm", () => {
           stepId: "step-1",
           title: "Step 1",
           elements: [
-            { ref: "components/text", overrides: { label: "Full Name" } },
+            {
+              ref: "components/generic-text",
+              overrides: { label: "Full Name" },
+            },
           ],
         },
       ],
@@ -195,7 +224,7 @@ describe("hydrateForm", () => {
 
     const contract = hydrateForm(recipe, catalog);
     expect(contract.steps[0].elements[0].label).toBe("Full Name");
-    expect(contract.steps[0].elements[0].fieldId).toBe("text");
+    expect(contract.steps[0].elements[0].fieldId).toBe("generic-text");
   });
 
   it("applies overrides on a component field (hint override)", () => {
@@ -205,7 +234,10 @@ describe("hydrateForm", () => {
           stepId: "step-1",
           title: "Step 1",
           elements: [
-            { ref: "components/email", overrides: { hint: "Use work email" } },
+            {
+              ref: "components/generic-email",
+              overrides: { hint: "Use work email" },
+            },
           ],
         },
       ],
@@ -222,7 +254,7 @@ describe("hydrateForm", () => {
           stepId: "step-1",
           title: "Step 1",
           elements: [
-            { ref: "components/text", overrides: { isDisabled: true } },
+            { ref: "components/generic-text", overrides: { isDisabled: true } },
           ],
         },
       ],
@@ -240,7 +272,7 @@ describe("hydrateForm", () => {
           title: "Step 1",
           elements: [
             {
-              ref: "components/text",
+              ref: "components/generic-text",
               overrides: { validations: { required: { error: "Required" } } },
             },
           ],
@@ -249,6 +281,8 @@ describe("hydrateForm", () => {
     });
 
     const contract = hydrateForm(recipe, catalog);
+    // The override's `required` object replaces the base rule wholesale (the
+    // deep-merge stops at the rule level), so only the supplied error remains.
     expect(contract.steps[0].elements[0].validations?.required).toEqual({
       error: "Required",
     });
@@ -292,15 +326,17 @@ describe("hydrateForm", () => {
         {
           stepId: "step-1",
           title: "Step 1",
-          elements: [{ ref: "blocks/name" }],
+          elements: [{ ref: "blocks/personal-information" }],
         },
       ],
     });
 
     const contract = hydrateForm(recipe, catalog);
-    expect(contract.steps[0].elements).toHaveLength(2);
-    expect(contract.steps[0].elements[0].fieldId).toBe("first-name");
-    expect(contract.steps[0].elements[1].fieldId).toBe("last-name");
+    // personal-information expands to its 8 registry children, in order.
+    expect(contract.steps[0].elements).toHaveLength(8);
+    expect(contract.steps[0].elements[0].fieldId).toBe("title");
+    expect(contract.steps[0].elements[1].fieldId).toBe("first-name");
+    expect(contract.steps[0].elements[3].fieldId).toBe("last-name");
   });
 
   it("applies per-child overrides on a block field", () => {
@@ -311,7 +347,7 @@ describe("hydrateForm", () => {
           title: "Step 1",
           elements: [
             {
-              ref: "blocks/name",
+              ref: "blocks/personal-information",
               overrides: {
                 "first-name": { label: "Given Name" },
                 "last-name": { label: "Family Name", isDisabled: true },
@@ -323,14 +359,14 @@ describe("hydrateForm", () => {
     });
 
     const contract = hydrateForm(recipe, catalog);
-    const [firstName, lastName] = contract.steps[0].elements;
+    const elements = contract.steps[0].elements;
+    const firstName = elements.find((e) => e.fieldId === "first-name");
+    const lastName = elements.find((e) => e.fieldId === "last-name");
 
-    expect(firstName.fieldId).toBe("first-name");
-    expect(firstName.label).toBe("Given Name");
+    expect(firstName?.label).toBe("Given Name");
 
-    expect(lastName.fieldId).toBe("last-name");
-    expect(lastName.label).toBe("Family Name");
-    expect(lastName.isDisabled).toBe(true);
+    expect(lastName?.label).toBe("Family Name");
+    expect(lastName?.isDisabled).toBe(true);
   });
 
   it("leaves un-overridden children at their original values in a block", () => {
@@ -341,7 +377,7 @@ describe("hydrateForm", () => {
           title: "Step 1",
           elements: [
             {
-              ref: "blocks/name",
+              ref: "blocks/personal-information",
               overrides: {
                 "first-name": { label: "Given Name" },
                 // last-name: no override
@@ -353,8 +389,10 @@ describe("hydrateForm", () => {
     });
 
     const contract = hydrateForm(recipe, catalog);
-    const lastName = contract.steps[0].elements[1];
-    expect(lastName.label).toBe("Last Name");
+    const lastName = contract.steps[0].elements.find(
+      (e) => e.fieldId === "last-name",
+    );
+    expect(lastName?.label).toBe("Last name");
   });
 
   it("throws UnknownRefError pointing at an unknown ref's recipe path", () => {
@@ -365,7 +403,7 @@ describe("hydrateForm", () => {
           title: "Step 1",
           elements: [
             { ref: "components/unknown-widget" },
-            { ref: "components/text" },
+            { ref: "components/generic-text" },
           ],
         },
       ],
@@ -394,7 +432,7 @@ describe("hydrateForm", () => {
           stepId: "step-1",
           title: "Step 1",
           elements: [
-            { ref: "components/text" },
+            { ref: "components/generic-text" },
             { ref: "components/nope-one" },
           ],
         },
@@ -558,16 +596,20 @@ describe("hydrateForm", () => {
         {
           stepId: "step-1",
           title: "Step 1",
-          elements: [{ ref: "components/email" }, { ref: "blocks/name" }],
+          elements: [
+            { ref: "components/generic-email" },
+            { ref: "blocks/personal-information" },
+          ],
         },
       ],
     });
 
     const contract = hydrateForm(recipe, catalog);
-    expect(contract.steps[0].elements).toHaveLength(3);
-    expect(contract.steps[0].elements[0].fieldId).toBe("email");
-    expect(contract.steps[0].elements[1].fieldId).toBe("first-name");
-    expect(contract.steps[0].elements[2].fieldId).toBe("last-name");
+    // the leading component, then the block's 8 children, all flattened.
+    expect(contract.steps[0].elements).toHaveLength(9);
+    expect(contract.steps[0].elements[0].fieldId).toBe("generic-email");
+    expect(contract.steps[0].elements[1].fieldId).toBe("title");
+    expect(contract.steps[0].elements[2].fieldId).toBe("first-name");
   });
 
   it("carries contactDetails through to the hydrated contract (issue #452)", () => {

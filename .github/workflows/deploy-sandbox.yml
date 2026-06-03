@@ -3,6 +3,25 @@ name: Deploy Sandbox
 on:
   push:
     branches: [sandbox]
+    # Skip the whole pipeline for changes that can't affect any deploy target.
+    # Keep the list conservative — when in doubt, let nx-affected gate the
+    # individual jobs (it already skips unchanged apps). The point of this
+    # block is to skip jobs even nx-affected would skip, so docs-only PRs
+    # don't burn ~12 min spinning up `setup` for nothing.
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - ".gitignore"
+      - ".gitattributes"
+      - ".husky/**"
+      - ".editorconfig"
+      - ".vscode/**"
+      - ".idea/**"
+      - "LICENSE"
+      - "CODEOWNERS"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/PULL_REQUEST_TEMPLATE.md"
+      - ".github/dependabot.yml"
   workflow_dispatch:
 
 permissions:
@@ -87,9 +106,13 @@ jobs:
 
           # amplify.yml is a workspace-root file nx affected can't attribute to
           # any app, but a change to it (e.g. security headers) must rebuild ALL
-          # Amplify apps. Force the frontend gates when it or this workflow changes.
-          if git diff --name-only "$NX_BASE" "$NX_HEAD" \
-              | grep -qE '^(amplify\.yml|\.github/workflows/deploy-sandbox\.yml)$'; then
+          # Amplify apps. Force the frontend gates only when amplify.yml itself
+          # changes — workflow-file changes (smoke tests, monitoring tweaks,
+          # comments) don't actually affect the Amplify build output, so
+          # forcing all four Amplify rebuilds on every CI tweak was wasteful.
+          # If a workflow change really does require an Amplify rebuild, use
+          # `workflow_dispatch` to trigger one explicitly.
+          if git diff --name-only "$NX_BASE" "$NX_HEAD" | grep -q '^amplify\.yml$'; then
             echo "amplify-config=true" >> "$GITHUB_OUTPUT"
           else
             echo "amplify-config=false" >> "$GITHUB_OUTPUT"
@@ -238,31 +261,6 @@ jobs:
             exit 1
           fi
           echo "✅ Running image matches the build output"
-
-      # Lightweight smoke check that the new image is actually serving traffic
-      # with the schema we expect. Hits a known recipe endpoint; if the API
-      # returns 5xx or null data, fail the deploy so the rollback is visible.
-      # This is the second line of defense after the image-tag check — catches
-      # cases where the new task definition is running but the API is
-      # mis-configured (wrong env, broken DB connection, etc).
-      - name: Smoke test deployed API
-        run: |
-          set -e
-          URL="https://forms.api.sandbox.alpha.gov.bb/form-definitions/passport-renewal"
-          echo "GET $URL"
-          # Allow a few retries — the target group can briefly serve from the
-          # old task while the new one drains.
-          for i in 1 2 3 4 5; do
-            BODY=$(curl -fsS --max-time 10 "$URL" 2>/dev/null || echo "")
-            if [ -n "$BODY" ] && echo "$BODY" | jq -e '.data.steps | length > 0' >/dev/null 2>&1; then
-              echo "✅ Smoke test passed: $(echo "$BODY" | jq -c '{formId: .data.formId, version: .data.version, steps: (.data.steps | length)}')"
-              exit 0
-            fi
-            echo "[$i/5] not ready yet, retrying in 10s..."
-            sleep 10
-          done
-          echo "❌ Smoke test failed after 5 attempts — API responded but recipe schema is empty/missing"
-          exit 1
 
       # Task definition revision cleanup removed — old revisions don't consume
       # resources and deregistering them causes OpenTofu state drift (the revision
@@ -444,6 +442,72 @@ jobs:
           done
           echo "❌ Amplify $APP_LABEL build did not finish within 15 minutes"
           exit 1
+
+  # Live end-to-end smoke tests of the deployed forms app: each drives a real
+  # form on sandbox (uploading files via the presign → S3 → confirm flow where
+  # the form has uploads), SUBMITS FOR REAL, and asserts the confirmation
+  # screen. `needs: amplify-forms` so they run only after that build succeeds —
+  # and are skipped whenever forms wasn't deployed (a skipped/failed dependency
+  # skips these too). No AWS creds: the reusable workflow drives a headless
+  # browser against the public deployed URL, and uploads use presigned URLs
+  # issued server-side. Steps live in .github/workflows/forms-smoke.yml.
+  smoke-test-temp-teacher:
+    name: Smoke test forms (temp-teacher)
+    needs: amplify-forms
+    uses: ./.github/workflows/forms-smoke.yml
+    with:
+      base_url: https://forms.sandbox.alpha.gov.bb
+      spec: temp-teacher-application.smoke.spec.ts
+      artifact_name: temp-teacher-smoke-trace
+
+  smoke-test-vendor-registration:
+    name: Smoke test forms (vendor-registration)
+    needs: amplify-forms
+    uses: ./.github/workflows/forms-smoke.yml
+    with:
+      base_url: https://forms.sandbox.alpha.gov.bb
+      spec: vendor-registration.smoke.spec.ts
+      artifact_name: vendor-registration-smoke-trace
+
+  smoke-test-get-a-primary-school-textbook-grant:
+    name: Smoke test forms (get-a-primary-school-textbook-grant)
+    needs: amplify-forms
+    uses: ./.github/workflows/forms-smoke.yml
+    with:
+      base_url: https://forms.sandbox.alpha.gov.bb
+      spec: get-a-primary-school-textbook-grant.smoke.spec.ts
+      artifact_name: get-a-primary-school-textbook-grant-smoke-trace
+
+  smoke-test-duties-performed:
+    name: Smoke test forms (duties-performed)
+    needs: amplify-forms
+    uses: ./.github/workflows/forms-smoke.yml
+    with:
+      base_url: https://forms.sandbox.alpha.gov.bb
+      spec: duties-performed-exam-claim.smoke.spec.ts
+      artifact_name: duties-performed-smoke-trace
+
+  # term-leave-application is smoked here post-deploy (not only per-PR preview):
+  # the per-PR preview smoke can't validate a term-leave recipe change, because
+  # the preview frontend reads contracts from the sandbox API and so serves the
+  # PREVIOUS version until the new one ships (ADR 0029). This job runs against
+  # the deployed sandbox once the API is serving the new recipe, so a recipe
+  # bump is actually validated end-to-end after it goes live.
+  smoke-test-term-leave:
+    name: Smoke test forms (term-leave)
+    needs: amplify-forms
+    uses: ./.github/workflows/forms-smoke.yml
+    with:
+      base_url: https://forms.sandbox.alpha.gov.bb
+      spec: term-leave-application.smoke.spec.ts
+      artifact_name: term-leave-smoke-trace
+
+  # NOTE: referral-student-support-services and homeschooling-application-2024
+  # smoke specs exist but are test.fixme (skipped) — their deployed forms have a
+  # required-checkbox-with-empty-options recipe bug that makes them unsubmittable
+  # (see the spec headers + ADR 0027). They are intentionally NOT wired here
+  # until the recipes are fixed; wiring a never-passing live smoke would just
+  # make every forms deploy red.
 
   amplify-landing:
     name: Amplify build (landing)

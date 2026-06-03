@@ -6,6 +6,7 @@ publish_date: 2026-05-20
 category: youth-and-community
 subcategory: children-families-community
 service_type: information
+form_id: youth-opportunity-barbados-blooming-libraries
 ---
 
 Donate new or lightly used children's books at participating Massy Stores and Farm and Garden to stock free little libraries across the island.
@@ -22,7 +23,7 @@ Free little libraries placed across the island to revive reading post-COVID. Don
 
 Complete the short application form to register your interest. Your progress is saved automatically.
 
-<!-- [Apply now](https://alpha.gov.bb/youth-and-community/children-families-community/barbados-blooming-libraries/form) -->
+<a data-start-link>Start now</a>
 
 ## More information
 

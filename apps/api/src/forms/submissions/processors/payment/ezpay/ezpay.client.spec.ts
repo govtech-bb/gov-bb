@@ -1,4 +1,5 @@
 import { Test, TestingModule } from "@nestjs/testing";
+import { Logger } from "@nestjs/common";
 import { HttpService } from "@nestjs/axios";
 import { of } from "rxjs";
 import { EzpayClient } from "./ezpay.client";
@@ -195,5 +196,50 @@ describe("EzpayClient", () => {
       "key-1",
     );
     expect(result).toEqual([]);
+  });
+
+  it("queryTransactions extracts the list when EzPay wraps it under a property", async () => {
+    http.post.mockReturnValue(
+      of({
+        data: {
+          transactions: [
+            {
+              TransactionCode: "tx-201",
+              Status: "Success",
+              Amount: 30,
+              Cart: [[{ reference: "ref-201" }]],
+            },
+          ],
+        },
+      }),
+    );
+    const result = await client.queryTransactions("s", "e", "key");
+    expect(result).toEqual([
+      {
+        reference: "ref-201",
+        transactionNumber: "tx-201",
+        status: "Success",
+        amount: 30,
+      },
+    ]);
+  });
+
+  it("queryTransactions returns [] (no throw) when EzPay returns a non-array error/access object", async () => {
+    // e.g. the body returned when the caller IP is not whitelisted
+    const warn = jest.spyOn(Logger.prototype, "warn").mockImplementation();
+    http.post.mockReturnValue(
+      of({ data: { error: "Access denied", code: "E-IP" } }),
+    );
+    const result = await client.queryTransactions("s", "e", "key");
+    expect(result).toEqual([]);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("non-array body"),
+    );
+    warn.mockRestore();
+  });
+
+  it("queryTransactions returns [] when EzPay returns null/non-object", async () => {
+    http.post.mockReturnValue(of({ data: null }));
+    expect(await client.queryTransactions("s", "e", "key")).toEqual([]);
   });
 });

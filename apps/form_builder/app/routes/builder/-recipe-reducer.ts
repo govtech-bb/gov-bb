@@ -26,6 +26,16 @@ export function isRequiredStep(stepId: string): stepId is RequiredStepId {
   return (REQUIRED_STEP_IDS as readonly string[]).includes(stepId);
 }
 
+// The step a freshly-loaded form should open in the editor. Mirrors the
+// LOAD_DRAFT normalization ([...editable, ...required]) so it stays correct
+// against the *pre*-normalization draft the load handlers receive: prefer the
+// first editable (non-required) step, fall back to the first step overall, then
+// null when there are no steps at all.
+export function firstStepId(draft: RecipeDraft): string | null {
+  const editable = draft.steps.filter((s) => !isRequiredStep(s.stepId));
+  return (editable[0] ?? draft.steps[0])?.stepId ?? null;
+}
+
 // Required steps that accept no author-added fields. `check-your-answers` is a
 // pure review screen and `submission-confirmation` renders only its nextSteps
 // copy — neither should expose the FieldPicker. `declaration` is intentionally
@@ -66,31 +76,25 @@ function makeRequiredSteps(): RecipeStepDraft[] {
 }
 
 /**
- * The two email processors every new form seeds with (issue #501). Both share
- * the email template; the role distinction is the configured `recipientField`
- * plus the per-instance `label`:
+ * The single email processor every new form seeds with (issue #572).
  *
- * - **Applicant Email** — `recipientField` is left blank for the author to point
- *   at the applicant's email field (a brand-new form has no fields yet, and
- *   there's no canonical applicant-email path). The server Validate flow still
- *   catches a recipientField left blank at deploy time.
  * - **MDA Email** — `recipientField` is the reserved `contactDetails.email`,
- *   resolved at runtime from the form's contact details (see Plan 2).
+ *   resolved at runtime from the form's contact details. A non-empty recipient,
+ *   so a brand-new form is valid out of the box.
+ *
+ * We deliberately do *not* seed an applicant-email processor: a fieldless new
+ * form has no email field to point at and no canonical applicant-email path, so
+ * a seeded one would ship with a blank `recipientField` and fail author-time
+ * Validate before the author does anything wrong (issue #572). Authors add an
+ * applicant-email processor on demand via **+ Add Processor** once a suitable
+ * field exists — that one starts blank and is *correctly* flagged until
+ * configured.
  *
  * Fresh `crypto.randomUUID()` ids per call so RESET / new-form flows re-seed
  * with distinct editor ids, mirroring makeRequiredSteps().
  */
 function makeDefaultProcessors(): RecipeProcessorDraft[] {
   return [
-    {
-      id: crypto.randomUUID(),
-      type: "email",
-      config: {
-        recipientField: "",
-        label: "Applicant Email",
-        subject: "Your application has been received",
-      },
-    },
     {
       id: crypto.randomUUID(),
       type: "email",
@@ -121,6 +125,16 @@ export type RecipeAction =
       field: Omit<RecipeFieldDraft, "id">;
     }
   | { type: "REMOVE_FIELD"; stepId: string; fieldId: string }
+  | {
+      // Change a field's registry ref (its type) in place, replacing its
+      // overrides with the migrated set the editor computed via
+      // migrateOverridesForRef. Keeps the field's id and position (#642).
+      type: "CHANGE_FIELD_REF";
+      stepId: string;
+      fieldId: string;
+      ref: string;
+      overrides: FieldOverrides;
+    }
   | {
       type: "UPDATE_FIELD_OVERRIDES";
       stepId: string;
@@ -264,6 +278,33 @@ export function recipeReducer(
       };
     }
 
+    case "CHANGE_FIELD_REF": {
+      return {
+        ...state,
+        steps: state.steps.map((s) =>
+          s.stepId === action.stepId
+            ? {
+                ...s,
+                fields: s.fields.map((f) =>
+                  f.id === action.fieldId
+                    ? // Swaps only ever target a generic primitive, so the
+                      // field's kind is always a plain component afterwards —
+                      // normalize it so a former custom/block kind can't linger
+                      // and disagree with the new ref.
+                      {
+                        ...f,
+                        kind: "component",
+                        ref: action.ref,
+                        overrides: action.overrides,
+                      }
+                    : f,
+                ),
+              }
+            : s,
+        ),
+      };
+    }
+
     case "UPDATE_FIELD_OVERRIDES": {
       return {
         ...state,
@@ -307,10 +348,12 @@ export function recipeReducer(
         ...state,
         steps: state.steps.map((s) => {
           if (s.stepId !== action.stepId) return s;
+          // Move (remove + insert) rather than swap, so drag-and-drop across
+          // several positions lands correctly. Adjacent moves (the ▲/▼ arrow
+          // buttons) are the single-step case and behave identically.
           const fields = [...s.fields];
-          const tmp = fields[action.fromIndex];
-          fields[action.fromIndex] = fields[action.toIndex];
-          fields[action.toIndex] = tmp;
+          const [moved] = fields.splice(action.fromIndex, 1);
+          fields.splice(action.toIndex, 0, moved);
           return { ...s, fields };
         }),
       };

@@ -6,6 +6,7 @@ publish_date: 2026-05-20
 category: youth-and-community
 subcategory: children-families-community
 service_type: information
+form_id: youth-opportunity-cmc
 ---
 
 Volunteer with a Centre Management Committee to help review programme proposals and run your local community centre.
@@ -22,7 +23,7 @@ Volunteer to review requests for use of community centres, review programme prop
 
 Complete the short application form to register your interest. Your progress is saved automatically.
 
-<!-- [Apply now](https://alpha.gov.bb/youth-and-community/children-families-community/cmc/form) -->
+<a data-start-link>Start now</a>
 
 ## More information
 

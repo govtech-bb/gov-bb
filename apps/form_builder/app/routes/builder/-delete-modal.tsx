@@ -1,4 +1,3 @@
-import { useState } from "react";
 import styles from "../../styles/builder.module.css";
 
 interface DeleteModalProps {
@@ -6,10 +5,14 @@ interface DeleteModalProps {
   title: string;
   isDeleting: boolean;
   deleteError: string | null;
-  onConfirm: (reason: string) => void;
+  onConfirm: () => void;
   onClose: () => void;
 }
 
+// A light confirm for deleting a *draft* form: the API removes the draft's
+// form_definitions rows. No tombstone is written, so the form ID stays
+// available for reuse. No reason is collected — this only ever applies to
+// unpublished drafts (published forms use Disable instead).
 export function DeleteModal({
   formId,
   title,
@@ -18,19 +21,6 @@ export function DeleteModal({
   onConfirm,
   onClose,
 }: DeleteModalProps) {
-  const [reason, setReason] = useState("");
-  const [clientError, setClientError] = useState<string | null>(null);
-
-  function handleConfirm() {
-    setClientError(null);
-    const trimmed = reason.trim();
-    if (!trimmed) {
-      setClientError("A reason is required to delete a form.");
-      return;
-    }
-    onConfirm(trimmed);
-  }
-
   return (
     <div className={styles.modal} onClick={onClose}>
       <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
@@ -41,36 +31,18 @@ export function DeleteModal({
             marginBottom: 12,
           }}
         >
-          <strong>Delete Form</strong>
+          <strong>Delete Draft</strong>
           <button type="button" onClick={onClose}>
             Close
           </button>
         </div>
 
         <p>
-          Permanently delete <strong>{title || formId}</strong> (
-          <code>{formId}</code>)? Every version is removed and the form ID is
-          retired — the public site will return “Gone”. Submitted data is kept.
-          This cannot be undone.
+          Delete the draft <strong>{title || formId}</strong> (
+          <code>{formId}</code>)? This removes it from the builder. The form ID
+          stays available for reuse.
         </p>
 
-        <div className={styles.formGroup}>
-          <label>Reason</label>
-          <textarea
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            rows={3}
-            maxLength={2000}
-            placeholder="Why is this form being deleted?"
-            autoFocus
-          />
-        </div>
-
-        {clientError && (
-          <div className={styles.validationErrors} style={{ marginBottom: 8 }}>
-            {clientError}
-          </div>
-        )}
         {deleteError && (
           <div className={styles.validationErrors} style={{ marginBottom: 8 }}>
             {deleteError}
@@ -81,10 +53,10 @@ export function DeleteModal({
           <button
             type="button"
             className={styles.btnDanger}
-            onClick={handleConfirm}
+            onClick={onConfirm}
             disabled={isDeleting}
           >
-            {isDeleting ? "Deleting…" : "Delete Form"}
+            {isDeleting ? "Deleting…" : "Delete Draft"}
           </button>
           <button type="button" onClick={onClose} disabled={isDeleting}>
             Cancel

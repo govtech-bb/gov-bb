@@ -7,6 +7,7 @@ import type {
 import {
   EMPTY_DRAFT,
   REQUIRED_STEP_IDS,
+  firstStepId,
   isNoFieldsStep,
   isRequiredStep,
   nextStepId,
@@ -83,6 +84,62 @@ describe("isNoFieldsStep", () => {
   });
 });
 
+// ── firstStepId ──────────────────────────────────────────────────────────────
+
+describe("firstStepId", () => {
+  // A required-step fixture, used to assert the helper applies the reducer's
+  // [...editable, ...required] ordering rather than naively reading steps[0].
+  const requiredStep = (
+    id: (typeof REQUIRED_STEP_IDS)[number],
+  ): RecipeStepDraft => ({
+    stepId: id,
+    title: `Title ${id}`,
+    description: undefined,
+    fields: [],
+    behaviours: [],
+  });
+
+  it("returns the first editable step's id when editable steps exist", () => {
+    const draft = {
+      ...baseDraft(),
+      steps: [editableStep("step-1"), editableStep("step-2")],
+    };
+    expect(firstStepId(draft)).toBe("step-1");
+  });
+
+  it("returns the first editable step even when a required step precedes it in the array", () => {
+    // Mirrors the pre-normalization draft handed to the load handlers: a
+    // required step can appear before the editable ones. The helper must use
+    // the editable-first ordering rule, not steps[0].
+    const draft = {
+      ...baseDraft(),
+      steps: [
+        requiredStep("check-your-answers"),
+        editableStep("step-1"),
+        editableStep("step-2"),
+      ],
+    };
+    expect(firstStepId(draft)).toBe("step-1");
+  });
+
+  it("falls back to the first step overall when only required steps exist", () => {
+    const draft = {
+      ...baseDraft(),
+      steps: [
+        requiredStep("check-your-answers"),
+        requiredStep("declaration"),
+        requiredStep("submission-confirmation"),
+      ],
+    };
+    expect(firstStepId(draft)).toBe("check-your-answers");
+  });
+
+  it("returns null when the draft has no steps", () => {
+    const draft = { ...baseDraft(), steps: [] };
+    expect(firstStepId(draft)).toBeNull();
+  });
+});
+
 // ── EMPTY_DRAFT ──────────────────────────────────────────────────────────────
 
 describe("EMPTY_DRAFT", () => {
@@ -110,20 +167,19 @@ describe("EMPTY_DRAFT", () => {
     );
   });
 
-  it("seeds exactly two email processors", () => {
-    expect(EMPTY_DRAFT.processors).toHaveLength(2);
+  it("seeds exactly one email processor", () => {
+    expect(EMPTY_DRAFT.processors).toHaveLength(1);
     expect(EMPTY_DRAFT.processors!.every((p) => p.type === "email")).toBe(true);
   });
 
-  it("seeds an Applicant Email with a blank recipient", () => {
-    const config = emailConfig(EMPTY_DRAFT.processors![0]);
-    expect(config.label).toBe("Applicant Email");
-    expect(config.recipientField).toBe("");
-    expect(config.subject).toBeTruthy();
+  it("does not seed a blank-recipient processor", () => {
+    for (const p of EMPTY_DRAFT.processors!) {
+      expect(emailConfig(p).recipientField).not.toBe("");
+    }
   });
 
   it("seeds an MDA Email targeting contactDetails.email", () => {
-    const config = emailConfig(EMPTY_DRAFT.processors![1]);
+    const config = emailConfig(EMPTY_DRAFT.processors![0]);
     expect(config.label).toBe("MDA Email");
     expect(config.recipientField).toBe("contactDetails.email");
     expect(config.subject).toBeTruthy();
@@ -173,14 +229,13 @@ describe("RESET", () => {
     expect(first.steps).not.toBe(second.steps);
   });
 
-  it("re-seeds the two labelled email processors", () => {
+  it("re-seeds the labelled MDA Email processor", () => {
     const result = recipeReducer(
       { ...baseDraft(), steps: [...EMPTY_DRAFT.steps] },
       { type: "RESET" },
     );
-    expect(result.processors).toHaveLength(2);
+    expect(result.processors).toHaveLength(1);
     expect(result.processors!.map((p) => emailConfig(p).label)).toEqual([
-      "Applicant Email",
       "MDA Email",
     ]);
   });
@@ -192,7 +247,6 @@ describe("RESET", () => {
     const firstIds = first.processors!.map((p) => p.id);
     const secondIds = second.processors!.map((p) => p.id);
     expect(firstIds[0]).not.toBe(secondIds[0]);
-    expect(firstIds[1]).not.toBe(secondIds[1]);
   });
 });
 
@@ -313,6 +367,88 @@ describe("REORDER_STEPS", () => {
     expect(result.steps[2].stepId).toBe("check-your-answers");
     expect(result.steps[3].stepId).toBe("declaration");
     expect(result.steps[4].stepId).toBe("submission-confirmation");
+  });
+});
+
+// ── REORDER_FIELDS ────────────────────────────────────────────────────────────
+// Drag-and-drop performs multi-position moves, not just adjacent swaps, so the
+// reducer must splice (remove + insert), preserving the order of every other
+// field. The arrow buttons dispatch adjacent moves, which splice handles too.
+
+describe("REORDER_FIELDS", () => {
+  const field = (id: string): RecipeFieldDraft => ({
+    id,
+    kind: "component",
+    ref: "components/generic-text",
+    overrides: {},
+  });
+
+  // step-1 fields: [a(0), b(1), c(2), d(3), e(4)]
+  const stateWith = (...ids: string[]) => ({
+    ...baseDraft(),
+    steps: [editableStep("step-1", ids.map(field)), ...EMPTY_DRAFT.steps],
+  });
+
+  const order = (result: RecipeDraft) =>
+    result.steps[0].fields.map((f) => f.id);
+
+  it("moves a field forward across several positions (e at 4 → 0)", () => {
+    const result = recipeReducer(stateWith("a", "b", "c", "d", "e"), {
+      type: "REORDER_FIELDS",
+      stepId: "step-1",
+      fromIndex: 4,
+      toIndex: 0,
+    });
+    expect(order(result)).toEqual(["e", "a", "b", "c", "d"]);
+  });
+
+  it("moves a field backward across several positions (a at 0 → 4)", () => {
+    const result = recipeReducer(stateWith("a", "b", "c", "d", "e"), {
+      type: "REORDER_FIELDS",
+      stepId: "step-1",
+      fromIndex: 0,
+      toIndex: 4,
+    });
+    expect(order(result)).toEqual(["b", "c", "d", "e", "a"]);
+  });
+
+  it("moves a field to a middle position (b at 1 → 3)", () => {
+    const result = recipeReducer(stateWith("a", "b", "c", "d", "e"), {
+      type: "REORDER_FIELDS",
+      stepId: "step-1",
+      fromIndex: 1,
+      toIndex: 3,
+    });
+    expect(order(result)).toEqual(["a", "c", "d", "b", "e"]);
+  });
+
+  it("still handles an adjacent move (arrow-button behaviour preserved)", () => {
+    const result = recipeReducer(stateWith("a", "b", "c"), {
+      type: "REORDER_FIELDS",
+      stepId: "step-1",
+      fromIndex: 1,
+      toIndex: 0,
+    });
+    expect(order(result)).toEqual(["b", "a", "c"]);
+  });
+
+  it("only reorders the targeted step, leaving others untouched", () => {
+    const state = {
+      ...baseDraft(),
+      steps: [
+        editableStep("step-1", ["a", "b"].map(field)),
+        editableStep("step-2", ["x", "y"].map(field)),
+        ...EMPTY_DRAFT.steps,
+      ],
+    };
+    const result = recipeReducer(state, {
+      type: "REORDER_FIELDS",
+      stepId: "step-1",
+      fromIndex: 0,
+      toIndex: 1,
+    });
+    expect(result.steps[0].fields.map((f) => f.id)).toEqual(["b", "a"]);
+    expect(result.steps[1].fields.map((f) => f.id)).toEqual(["x", "y"]);
   });
 });
 
@@ -527,12 +663,20 @@ describe("per-instance field overrides (id-keyed)", () => {
       const after1 = recipeReducer(state, {
         type: "ADD_FIELD",
         stepId: "step-1",
-        field: { kind: "component", ref: "components/text", overrides: {} },
+        field: {
+          kind: "component",
+          ref: "components/generic-text",
+          overrides: {},
+        },
       });
       const after2 = recipeReducer(after1, {
         type: "ADD_FIELD",
         stepId: "step-1",
-        field: { kind: "component", ref: "components/text", overrides: {} },
+        field: {
+          kind: "component",
+          ref: "components/generic-text",
+          overrides: {},
+        },
       });
 
       const fields = after2.steps[0].fields;
@@ -546,8 +690,8 @@ describe("per-instance field overrides (id-keyed)", () => {
 
   describe("UPDATE_FIELD_OVERRIDES", () => {
     it("updates only the targeted instance when two fields share a ref", () => {
-      const a = fieldWithId("id-a", "components/text", {});
-      const b = fieldWithId("id-b", "components/text", {});
+      const a = fieldWithId("id-a", "components/generic-text", {});
+      const b = fieldWithId("id-b", "components/generic-text", {});
       const state = {
         ...baseDraft(),
         steps: [editableStep("step-1", [a, b]), ...EMPTY_DRAFT.steps],
@@ -568,10 +712,88 @@ describe("per-instance field overrides (id-keyed)", () => {
     });
   });
 
+  describe("CHANGE_FIELD_REF", () => {
+    it("replaces the ref and overrides of only the targeted instance", () => {
+      const a = fieldWithId("id-a", "components/generic-text", {
+        label: "Keep me",
+      });
+      const b = fieldWithId("id-b", "components/generic-text", {
+        label: "Untouched",
+      });
+      const state = {
+        ...baseDraft(),
+        steps: [editableStep("step-1", [a, b]), ...EMPTY_DRAFT.steps],
+      };
+
+      const result = recipeReducer(state, {
+        type: "CHANGE_FIELD_REF",
+        stepId: "step-1",
+        fieldId: "id-a",
+        ref: "components/generic-textarea",
+        overrides: { label: "Keep me" },
+      });
+
+      const [resA, resB] = result.steps[0].fields;
+      expect(resA.id).toBe("id-a");
+      expect(resA.ref).toBe("components/generic-textarea");
+      expect(resA.overrides).toEqual({ label: "Keep me" });
+      // The other instance keeps its original ref and overrides.
+      expect(resB.ref).toBe("components/generic-text");
+      expect(resB.overrides).toEqual({ label: "Untouched" });
+    });
+
+    it("normalizes kind to 'component' (swaps always target a generic primitive)", () => {
+      const custom: RecipeFieldDraft = {
+        id: "id-c",
+        kind: "custom",
+        ref: "components/custom-widget",
+        overrides: {},
+      };
+      const state = {
+        ...baseDraft(),
+        steps: [editableStep("step-1", [custom]), ...EMPTY_DRAFT.steps],
+      };
+
+      const result = recipeReducer(state, {
+        type: "CHANGE_FIELD_REF",
+        stepId: "step-1",
+        fieldId: "id-c",
+        ref: "components/generic-text",
+        overrides: {},
+      });
+
+      expect(result.steps[0].fields[0].kind).toBe("component");
+      expect(result.steps[0].fields[0].ref).toBe("components/generic-text");
+    });
+
+    it("leaves other steps untouched", () => {
+      const a = fieldWithId("id-a", "components/generic-text", {});
+      const state = {
+        ...baseDraft(),
+        steps: [
+          editableStep("step-1", [a]),
+          editableStep("step-2", []),
+          ...EMPTY_DRAFT.steps,
+        ],
+      };
+
+      const result = recipeReducer(state, {
+        type: "CHANGE_FIELD_REF",
+        stepId: "step-1",
+        fieldId: "id-a",
+        ref: "components/generic-number",
+        overrides: {},
+      });
+
+      expect(result.steps[1].stepId).toBe("step-2");
+      expect(result.steps[0].fields[0].ref).toBe("components/generic-number");
+    });
+  });
+
   describe("REMOVE_FIELD", () => {
     it("removes only the targeted instance when two fields share a ref", () => {
-      const a = fieldWithId("id-a", "components/text", { label: "A" });
-      const b = fieldWithId("id-b", "components/text", { label: "B" });
+      const a = fieldWithId("id-a", "components/generic-text", { label: "A" });
+      const b = fieldWithId("id-b", "components/generic-text", { label: "B" });
       const state = {
         ...baseDraft(),
         steps: [editableStep("step-1", [a, b]), ...EMPTY_DRAFT.steps],
@@ -753,20 +975,25 @@ describe("UPDATE_PROCESSOR_CONFIG", () => {
   });
 
   it("replaces rather than merges, so a key-value editor can drop a key", () => {
-    // spreadsheet/opencrvs configs ARE the record: removing a row must remove
-    // the key. The editor emits the full remaining record; replace honours it.
+    // spreadsheet/opencrvs configs are edited as a key-value record: removing
+    // a row must remove the key. The editor emits the full remaining record;
+    // replace honours it.
     const start: RecipeDraft = {
       ...baseDraft(),
       processors: [
-        { id: "sp-1", type: "spreadsheet", config: { a: "1", b: "2" } },
+        {
+          id: "sp-1",
+          type: "spreadsheet",
+          config: { filename: "submissions" },
+        },
       ],
     };
     const next = recipeReducer(start, {
       type: "UPDATE_PROCESSOR_CONFIG",
       id: "sp-1",
-      config: { a: "1" },
+      config: {},
     });
-    expect(next.processors![0].config).toEqual({ a: "1" });
+    expect(next.processors![0].config).toEqual({});
   });
 
   it("leaves processors untouched when no id matches", () => {

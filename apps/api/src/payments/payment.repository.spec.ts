@@ -1,6 +1,9 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { DataSource } from "typeorm";
-import { PaymentRepository } from "./payment.repository";
+import { DataSource, In } from "typeorm";
+import {
+  PaymentRepository,
+  RECONCILIATION_MAX_AGE_HOURS,
+} from "./payment.repository";
 import {
   PaymentEntity,
   PaymentStatus,
@@ -11,13 +14,15 @@ describe("PaymentRepository.findOrCreate", () => {
   let repo: PaymentRepository;
   let module: TestingModule;
   const findOne = jest.fn();
+  const find = jest.fn();
   const save = jest.fn();
   const dataSource = {
-    getRepository: () => ({ findOne, save }),
+    getRepository: () => ({ findOne, find, save }),
   } as unknown as DataSource;
 
   beforeEach(async () => {
     findOne.mockReset();
+    find.mockReset();
     save.mockReset();
     module = await Test.createTestingModule({
       providers: [
@@ -84,5 +89,26 @@ describe("PaymentRepository.findOrCreate", () => {
     const result = await repo.save(entity);
     expect(save).toHaveBeenCalledWith(entity);
     expect(result).toBe(entity);
+  });
+
+  it("findReconcilable() queries PENDING+INITIATED bounded to the age window", async () => {
+    const rows = [{ id: "p-1" }] as PaymentEntity[];
+    find.mockResolvedValue(rows);
+
+    const lower = Date.now() - RECONCILIATION_MAX_AGE_HOURS * 60 * 60 * 1000;
+    const result = await repo.findReconcilable();
+    const upper = Date.now() - RECONCILIATION_MAX_AGE_HOURS * 60 * 60 * 1000;
+
+    expect(result).toBe(rows);
+    expect(find).toHaveBeenCalledTimes(1);
+    const arg = find.mock.calls[0][0];
+    expect(arg.where.status).toEqual(
+      In([PaymentStatus.PENDING, PaymentStatus.INITIATED]),
+    );
+    // createdAt is a MoreThanOrEqual(cutoff) FindOperator; the cutoff must sit
+    // ~RECONCILIATION_MAX_AGE_HOURS in the past (bracketed by the run above).
+    const cutoff = (arg.where.createdAt.value as Date).getTime();
+    expect(cutoff).toBeGreaterThanOrEqual(lower);
+    expect(cutoff).toBeLessThanOrEqual(upper);
   });
 });

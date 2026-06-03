@@ -3,8 +3,9 @@ import { getCatalog, getRegistryItem } from "@govtech-bb/form-builder";
 
 // Guards the embedded AI system prompt against drift from the registry.
 // Every component/block ref the prompt tells the model to emit must resolve
-// against the builtin catalog, or the AI will generate recipes that fail ref
-// resolution at publish time. See plan docs/plans/427-ai-prompt-embed-and-fix.md.
+// against the registry (getRegistryItem's registry fallback), or the AI will
+// generate recipes that fail ref resolution at publish time. See plan
+// docs/plans/427-ai-prompt-embed-and-fix.md.
 
 const prompt = getSystemPrompt();
 const catalog = getCatalog();
@@ -47,9 +48,9 @@ const GENERIC_PRIMITIVES = [
   "components/generic-number",
 ];
 
-// The 8 composite blocks the registry exposes (the UI block palette). Note
-// getCatalog().blocks is form-builder's small legacy *builtin* set, not these —
-// getRegistryItem resolves both, but the prompt must surface the registry set.
+// The 8 composite blocks the registry exposes (the UI block palette). Since
+// the vestigial builtin catalog was retired (#515), getCatalog().blocks is
+// empty and getRegistryItem resolves these straight from the registry.
 const REGISTRY_BLOCKS = [
   "blocks/personal-information",
   "blocks/contact-information",
@@ -100,5 +101,13 @@ describe("AI system prompt", () => {
   it("uses the resolving contact-telephone ref, not contact-number", () => {
     expect(prompt).not.toContain("components/contact-number");
     expect(prompt).toContain("components/contact-telephone");
+  });
+
+  it("instructs a distinct fieldId override when the same component is reused across steps", () => {
+    expect(prompt).toContain("same component across different steps");
+  });
+
+  it("requires every stepId to be unique across the form", () => {
+    expect(prompt).toContain("EVERY stepId MUST be unique");
   });
 });

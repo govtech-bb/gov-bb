@@ -2,17 +2,18 @@ import "../../styles/builder.global.css";
 import { createFileRoute } from "@tanstack/react-router";
 import { useReducer, useState, useMemo } from "react";
 import { getCatalogFn } from "../../server/registry";
-import { submitRecipe, updateRecipe, deleteForm } from "../../server/forms";
-import { publishRecipe, getPublishBaseBranch } from "../../server/publish";
+import { submitRecipe, updateRecipe, rekeyRecipe, deleteForm, disableForm, enableForm } from "../../server/forms";
+import { publishRecipe, getPublishBaseBranch, eraseRecipe } from "../../server/publish";
 import { validateRecipe, previewRecipe } from "../../server/registry";
 import { serializeRecipeDraft, findRecipeIdCollisions, formatCollisionIssues, resolveFieldIds } from "@govtech-bb/form-builder";
 import { bumpMinor, bumpPatch } from "../../lib/version";
 import type { ServiceContract, ServiceContractRecipe } from "@govtech-bb/form-types";
-import type { RecipeDraft, ValidationResult, RecipeValidateResponse, UnknownRef } from "@govtech-bb/form-builder";
+import { KEBAB_ID_PATTERN, KEBAB_ID_ERROR } from "@govtech-bb/form-types";
+import type { RecipeDraft, ValidationResult, RecipeValidateResponse, ValidationIssue, UnknownRef } from "@govtech-bb/form-builder";
 
 import { buildLoadArgs, draftsEqual } from "./-apply-recipe";
 import { AiSidebar, type ApplyRecipeResult } from "./-ai-sidebar";
-import { recipeReducer, EMPTY_DRAFT, nextStepId, REQUIRED_STEP_IDS, isRequiredStep } from "./-recipe-reducer";
+import { recipeReducer, EMPTY_DRAFT, nextStepId, REQUIRED_STEP_IDS, isRequiredStep, firstStepId } from "./-recipe-reducer";
 import { Toolbar } from "./-toolbar";
 import { StepList } from "./-step-list";
 import { StepEditor } from "./-step-editor";
@@ -24,8 +25,11 @@ import { formPreviewUrl } from "../../lib/form-url";
 import { SubmitModal } from "./-submit-modal";
 import { PublishModal } from "./-publish-modal";
 import { FormPicker } from "./-form-picker";
+import { checkFormUniqueness, checkRekeyPublished } from "./-form-uniqueness";
 import { useFormsList } from "./-use-forms-list";
 import { DeleteModal } from "./-delete-modal";
+import { DisableModal } from "./-disable-modal";
+import { EraseModal } from "./-erase-modal";
 import type { FormDefinitionSummary } from "../../types/index";
 
 import styles from "../../styles/builder.module.css";
@@ -49,8 +53,17 @@ export const Route = createFileRoute("/builder/")({
 
 function BuilderPage() {
   const { catalog, baseBranch } = Route.useLoaderData();
-  const { forms, loadError: formsLoadError, refetch: refetchForms } = useFormsList();
+  const {
+    forms,
+    loadError: formsLoadError,
+    refetch: refetchForms,
+    upsertForm,
+  } = useFormsList();
   const [draft, dispatch] = useReducer(recipeReducer, EMPTY_DRAFT);
+  // Snapshot of the last saved/loaded draft — the baseline that "unsaved
+  // changes" is measured against. null for a brand-new form (no save/load yet);
+  // set on load, on save-success, and back to null on New.
+  const [savedDraft, setSavedDraft] = useState<RecipeDraft | null>(null);
 
   // UI state
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
@@ -84,6 +97,15 @@ function BuilderPage() {
   const [deleteTarget, setDeleteTarget] = useState<FormDefinitionSummary | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [disableTarget, setDisableTarget] = useState<FormDefinitionSummary | null>(null);
+  const [isDisabling, setIsDisabling] = useState(false);
+  const [disableError, setDisableError] = useState<string | null>(null);
+  const [eraseTarget, setEraseTarget] = useState<FormDefinitionSummary | null>(null);
+  const [isErasing, setIsErasing] = useState(false);
+  const [eraseError, setEraseError] = useState<string | null>(null);
+  const [eraseSuccess, setEraseSuccess] = useState<
+    { prUrl: string; prNumber: number } | null
+  >(null);
 
   // Derived
   const selectedStep = draft.steps.find((s) => s.stepId === selectedStepId) ?? null;
@@ -91,6 +113,12 @@ function BuilderPage() {
     draft.steps.length > REQUIRED_STEP_IDS.length ||
     draft.formId !== "" ||
     draft.title !== "";
+  // The honest "has unsaved work" flag: compare the live draft against the
+  // saved baseline. Before any save/load there's no baseline, so a brand-new
+  // form falls back to isDirty ("is the form non-empty"). draftsEqual ignores
+  // version/timestamps/editor-only ids, so it goes clean right after a save.
+  const hasUnsavedChanges =
+    savedDraft === null ? isDirty : !draftsEqual(draft, savedDraft);
   const editableSteps = draft.steps.filter((s) => !isRequiredStep(s.stepId));
   const hasEditableSteps = editableSteps.length > 0;
   // Live recipe-wide uniqueness check over resolved field ids + step ids. Drives
@@ -109,6 +137,24 @@ function BuilderPage() {
   const resolvedFieldIds = useMemo(
     () => resolveFieldIds(draft, catalog),
     [draft, catalog],
+  );
+
+  // Form-level uniqueness mirror of the API checks (#545): a new form's formId
+  // and the title must not collide with another form. Drives the live formId
+  // error in the toolbar and hard-gates Save draft / Deploy below. `forms` is
+  // null until useFormsList resolves; treat that as "nothing to collide with"
+  // and let the API re-check on save.
+  const uniqueness = useMemo(
+    () => checkFormUniqueness(forms ?? [], draft, loadedFromId),
+    [forms, draft, loadedFromId],
+  );
+
+  // Re-key published guard (#674): a published form's ID can't be changed.
+  // Mirror the API's 409 so the user is pre-blocked at save time rather than
+  // only seeing the failure after the round-trip.
+  const rekeyError = useMemo(
+    () => checkRekeyPublished(forms ?? [], draft, loadedFromId),
+    [forms, draft, loadedFromId],
   );
 
   // Versioning is deterministic and client-side — no async round-trip on the
@@ -177,6 +223,29 @@ function BuilderPage() {
         return result;
       }
 
+      // Pre-flight: Form ID and Title identify the form before deploy. The
+      // schema rejects an empty/malformed formId or empty title too, but a
+      // friendly message beats Zod's raw "String must contain at least 1
+      // character(s)". Reported together so the author fixes both at once.
+      const identityIssues: ValidationIssue[] = [];
+      if (draft.formId.trim() === "") {
+        identityIssues.push({ path: "formId", message: "Form ID is required" });
+      } else if (!KEBAB_ID_PATTERN.test(draft.formId)) {
+        identityIssues.push({ path: "formId", message: KEBAB_ID_ERROR });
+      }
+      if (draft.title.trim() === "") {
+        identityIssues.push({ path: "title", message: "Title is required" });
+      }
+      if (identityIssues.length > 0) {
+        const result: RecipeValidateResponse = {
+          valid: false,
+          issues: identityIssues,
+        };
+        setValidateResult(result);
+        setLastSaveStatus("error");
+        return result;
+      }
+
       const recipe = serializeRecipeDraft(draft, { version });
       const raw = (await validateRecipe({ data: { recipe } })) as ValidationResult;
       const result: RecipeValidateResponse = {
@@ -210,7 +279,25 @@ function BuilderPage() {
   // user confirms, so an in-progress form can be shared for review. The errors
   // stay lit in the validation panel either way; the SubmitModal still collects
   // (and semver-validates) the version. Deploy stays hard-gated on validity.
+  // Hard gate for both Save draft and Deploy: form-level formId/title
+  // collisions can never be saved (unlike contract errors, which Save draft can
+  // override). Lights the always-visible validation panel and returns true when
+  // blocked. The API re-checks draft collisions on save (it does not yet see
+  // published forms — see -form-uniqueness.ts).
+  const blockedByUniqueness = (): boolean => {
+    const issues = [
+      uniqueness.idError && { path: "formId", message: uniqueness.idError },
+      rekeyError && { path: "formId", message: rekeyError },
+      uniqueness.titleError && { path: "title", message: uniqueness.titleError },
+    ].filter((i): i is { path: string; message: string } => Boolean(i));
+    if (issues.length === 0) return false;
+    setValidateResult({ valid: false, issues });
+    setLastSaveStatus("error");
+    return true;
+  };
+
   const handleSaveDraftClick = async () => {
+    if (blockedByUniqueness()) return;
     const result = await runValidation();
     if (
       !result.valid &&
@@ -226,6 +313,7 @@ function BuilderPage() {
   };
 
   const handleDeployClick = async () => {
+    if (blockedByUniqueness()) return;
     const result = await runValidation();
     if (result.valid) handleOpenPublish();
   };
@@ -255,14 +343,69 @@ function BuilderPage() {
     setSubmitError(null);
     try {
       const recipe = serializeRecipeDraft(draft, { version: submitVersion });
-      if (loadedFromId && currentVersion && submitVersion === currentVersion) {
-        await updateRecipe({ data: { formId: loadedFromId, recipe } });
+      // Three save shapes, branching on the loaded id (captured before
+      // setLoadedFromId below overwrites loadedFromId — the picker refresh
+      // branches on these too):
+      //  - create: nothing was loaded, so this is a brand-new form.
+      //  - re-key (#674): a loaded form whose id was changed — an atomic
+      //    identity move, not a create (which would self-collide on title and
+      //    leave a stale old-id row).
+      //  - in-place / new version: the loaded id is unchanged.
+      const oldFormId = loadedFromId;
+      const isCreate = oldFormId === null;
+      // An empty id is never a re-key — it's left to the "Form ID is required"
+      // gate (mirrors checkRekeyPublished, which excludes empties too), so a
+      // cleared id on a save-anyway doesn't round-trip to the rekey endpoint.
+      const isRekey =
+        oldFormId !== null && draft.formId !== "" && draft.formId !== oldFormId;
+      // A same-version save of the same form overwrites its row in place
+      // (updateRecipe); any higher version creates a new draft row
+      // (submitRecipe). This split also decides the picker row's isPublished.
+      const isInPlaceUpdate =
+        !!oldFormId &&
+        draft.formId === oldFormId &&
+        !!currentVersion &&
+        submitVersion === currentVersion;
+      if (isRekey) {
+        await rekeyRecipe({ data: { oldFormId, recipe } });
+      } else if (isInPlaceUpdate) {
+        await updateRecipe({ data: { formId: oldFormId, recipe } });
       } else {
-        await submitRecipe({ data: { recipe } });
+        // Tells the API to enforce formId uniqueness for a genuine create.
+        await submitRecipe({ data: { recipe, isNew: isCreate } });
       }
       setSubmitSuccess(true);
       setLastSaveStatus("submitted");
+      // The just-saved draft is now the baseline, so the unsaved indicator
+      // clears immediately after a successful save.
+      setSavedDraft(draft);
       setLoadedFromId(draft.formId);
+
+      // Keep the Open picker fresh without a reload. A new form needs the full
+      // refetch so its row carries the server's published/disabled merge; a
+      // re-key needs it too so the old-id row disappears and the new one
+      // appears (a one-row upsert can't drop the stale row). A plain re-save
+      // just patches the existing row from data we already hold, skipping the
+      // slow listForms() waterfall.
+      if (isCreate || isRekey) {
+        refetchForms();
+      } else {
+        // Mirror what a refetch's listForms() merge would produce for this row.
+        const existing = forms?.find((f) => f.formId === draft.formId);
+        upsertForm({
+          // Preserve the server-assigned id (distinct from formId for drafts);
+          // fall back to formId only when appending a row we've never seen.
+          id: existing?.id ?? draft.formId,
+          formId: draft.formId,
+          title: draft.title,
+          version: submitVersion,
+          // A version bump makes this draft the highest version, which the merge
+          // marks isPublished: false (per-row action becomes Delete). A
+          // same-version in-place update leaves the published row winning the
+          // version tie, so the existing published state must be preserved.
+          isPublished: isInPlaceUpdate ? (existing?.isPublished ?? false) : false,
+        });
+      }
 
       // The just-saved version becomes the new working/current version, so the
       // toolbar reflects it and the next Save-draft patch / Deploy minor bumps
@@ -283,6 +426,15 @@ function BuilderPage() {
   };
 
   const handlePublish = async (description: string) => {
+    // Deploy requires a saved draft (#331), and this is the one place the
+    // check holds: the toolbar's disabled gate goes stale the moment the
+    // author edits during the validate round-trip, while this handler is
+    // recreated each render so it reads the live hasUnsavedChanges right
+    // before the irreversible publishRecipe call.
+    if (hasUnsavedChanges) {
+      setPublishError("Save draft before deploying.");
+      return;
+    }
     setIsPublishing(true);
     setPublishError(null);
     try {
@@ -309,11 +461,22 @@ function BuilderPage() {
   };
 
   const handleLoad = (loadedDraft: RecipeDraft, formId: string, ver: string) => {
-    dispatch({ type: "LOAD_DRAFT", draft: loadedDraft });
+    const loadAction = { type: "LOAD_DRAFT" as const, draft: loadedDraft };
+    dispatch(loadAction);
+    // Snapshot the *normalized* draft the reducer produces — LOAD_DRAFT
+    // back-fills any missing required steps and reorders them — not the raw
+    // input. Snapshotting the raw draft would make a freshly loaded recipe that
+    // predates a required step (e.g. check-your-answers) read as already having
+    // unsaved changes. LOAD_DRAFT ignores prior state, so `draft` here is just
+    // the reducer's required first arg.
+    setSavedDraft(recipeReducer(draft, loadAction));
     setLoadedFromId(formId);
     setCurrentVersion(ver);
     setVersion(ver);
-    setSelectedStepId(null);
+    // Open the first step straight away so the author lands in an editable
+    // state. firstStepId mirrors LOAD_DRAFT's [...editable, ...required]
+    // ordering, so it picks the step the reducer puts first (not loadedDraft[0]).
+    setSelectedStepId(firstStepId(loadedDraft));
     setMainView("step");
     setValidateResult(null);
     setSubmitSuccess(false);
@@ -351,7 +514,7 @@ function BuilderPage() {
     // unchanged. Don't validate, don't prompt, don't bump — there's nothing to
     // apply. (Equality ignores version, timestamps, and editor-only ids.)
     if (draftsEqual(draft, incoming)) {
-      return { applied: false };
+      return { applied: false, reason: "unchanged" };
     }
 
     // Uniqueness pre-flight — the same resolved-id check Save draft / Deploy
@@ -395,18 +558,23 @@ function BuilderPage() {
       }
     }
 
-    // Guard against silently discarding manual edits already in the editor.
+    // Guard against silently discarding unsaved work already in the editor.
+    // Gate on hasUnsavedChanges (not isDirty): replacing a clean, just-loaded
+    // form loses nothing (Discard reverts to the saved baseline), so only the
+    // presence of unsaved edits warrants a prompt. The message is explicit that
+    // the apply only updates the editor and isn't saved.
     if (
-      isDirty &&
+      hasUnsavedChanges &&
       !window.confirm(
-        "Apply the AI changes? This replaces the current form in the editor.",
+        "Apply the AI changes to the editor? This replaces the current form and isn't saved — you can Discard to undo, or Save draft to keep it.",
       )
     ) {
-      return { applied: false };
+      return { applied: false, reason: "cancelled" };
     }
 
     dispatch({ type: "LOAD_DRAFT", draft: incoming });
-    setSelectedStepId(null);
+    // Mirror handleLoad: open the first step of the freshly applied recipe.
+    setSelectedStepId(firstStepId(incoming));
     setMainView("step");
     // Surface unresolvable refs as a non-blocking warning in the existing
     // validation panel; otherwise clear it.
@@ -432,6 +600,9 @@ function BuilderPage() {
 
   const handleNew = () => {
     dispatch({ type: "RESET" });
+    // No saved baseline for a fresh form — unsaved tracking falls back to
+    // isDirty until the first save/load.
+    setSavedDraft(null);
     setSelectedStepId(null);
     setMainView("step");
     setVersion("1.0.0");
@@ -450,19 +621,45 @@ function BuilderPage() {
     setPreviewError(null);
   };
 
+  // Throw away unsaved work. With a saved baseline, revert the editor to it
+  // (and its version); with none (brand-new form), clear the form — same as
+  // New. Confirm-gated; the toolbar already disables this when there's nothing
+  // unsaved.
+  const handleDiscard = () => {
+    const message =
+      savedDraft === null
+        ? "Discard unsaved changes and clear the form?"
+        : "Discard unsaved changes and revert to the last saved version?";
+    if (!window.confirm(message)) return;
+    if (savedDraft === null) {
+      handleNew();
+      return;
+    }
+    dispatch({ type: "LOAD_DRAFT", draft: savedDraft });
+    setSelectedStepId(firstStepId(savedDraft));
+    setMainView("step");
+    setVersion(currentVersion ?? "1.0.0");
+    setValidateResult(null);
+    setSubmitSuccess(false);
+    setSubmitError(null);
+    setPreviewData(null);
+    setPreviewError(null);
+    setLastSaveStatus("idle");
+  };
+
   const handleRequestDelete = (form: FormDefinitionSummary) => {
     setDeleteError(null);
     setDeleteTarget(form);
     setIsPickerOpen(false);
   };
 
-  const handleConfirmDelete = async (reason: string) => {
+  const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
     setIsDeleting(true);
     setDeleteError(null);
     try {
-      await deleteForm({ data: { formId: deleteTarget.formId, reason } });
-      // If the deleted form is the one open in the editor, clear it.
+      await deleteForm({ data: { formId: deleteTarget.formId } });
+      // If the deleted draft is the one open in the editor, clear it.
       if (loadedFromId === deleteTarget.formId) handleNew();
       setDeleteTarget(null);
       // The forms list lives in useFormsList (no longer route-loader data), so
@@ -479,6 +676,90 @@ function BuilderPage() {
     if (isDeleting) return;
     setDeleteTarget(null);
     setDeleteError(null);
+  };
+
+  const handleRequestDisable = (form: FormDefinitionSummary) => {
+    setDisableError(null);
+    setDisableTarget(form);
+    setIsPickerOpen(false);
+  };
+
+  const handleConfirmDisable = async (reason: string) => {
+    if (!disableTarget) return;
+    setIsDisabling(true);
+    setDisableError(null);
+    try {
+      await disableForm({ data: { formId: disableTarget.formId, reason } });
+      setDisableTarget(null);
+      // Refetch so the row flips to the Disabled badge + Enable button.
+      refetchForms();
+    } catch (e) {
+      setDisableError(e instanceof Error ? e.message : "Disable failed");
+    } finally {
+      setIsDisabling(false);
+    }
+  };
+
+  const handleCloseDisable = () => {
+    if (isDisabling) return;
+    setDisableTarget(null);
+    setDisableError(null);
+  };
+
+  const handleRequestErase = (form: FormDefinitionSummary) => {
+    setEraseError(null);
+    setEraseSuccess(null);
+    setEraseTarget(form);
+    setIsPickerOpen(false);
+  };
+
+  const handleConfirmErase = async (reason: string) => {
+    if (!eraseTarget) return;
+    setIsErasing(true);
+    setEraseError(null);
+    try {
+      const result = await eraseRecipe({
+        data: {
+          formId: eraseTarget.formId,
+          title: eraseTarget.title,
+          reason,
+        },
+      });
+      // The recipe stays on disk until the PR merges, so the picker row is left
+      // as-is — we surface the PR link in the modal instead of refetching.
+      setEraseSuccess(result);
+    } catch (e) {
+      setEraseError(e instanceof Error ? e.message : "Erase failed");
+    } finally {
+      setIsErasing(false);
+    }
+  };
+
+  const handleCloseErase = () => {
+    if (isErasing) return;
+    setEraseTarget(null);
+    setEraseError(null);
+    setEraseSuccess(null);
+  };
+
+  // Enable is a direct action (no modal) with an inline confirm: clearing a
+  // tombstone restores the public service, so a single confirm is enough.
+  const handleEnable = async (form: FormDefinitionSummary) => {
+    if (
+      !window.confirm(
+        `Re-enable ${form.title || form.formId}? The public service will be restored.`,
+      )
+    ) {
+      return;
+    }
+    try {
+      await enableForm({ data: { formId: form.formId } });
+      refetchForms();
+    } catch (e) {
+      // Surface in the picker's load-error slot via the forms list is overkill;
+      // a window.alert keeps the inline action simple and visible.
+      window.alert(e instanceof Error ? e.message : "Enable failed");
+    }
   };
 
   const handleFormIdChange = (id: string) => {
@@ -533,7 +814,9 @@ function BuilderPage() {
         formId={draft.formId}
         title={draft.title}
         version={version}
+        idError={uniqueness.idError}
         isDirty={isDirty}
+        hasUnsavedChanges={hasUnsavedChanges}
         isValidating={isValidating}
         isPreviewing={isPreviewing}
         isSubmitting={isSubmitting}
@@ -547,6 +830,7 @@ function BuilderPage() {
         onPreview={handlePreview}
         onSubmit={handleSaveDraftClick}
         onPublish={handleDeployClick}
+        onDiscard={handleDiscard}
       />
 
       <div className={styles.builderBody}>
@@ -622,6 +906,9 @@ function BuilderPage() {
           onLoad={handleLoad}
           onClose={() => setIsPickerOpen(false)}
           onRequestDelete={handleRequestDelete}
+          onRequestDisable={handleRequestDisable}
+          onRequestErase={handleRequestErase}
+          onEnable={handleEnable}
         />
       )}
 
@@ -670,6 +957,29 @@ function BuilderPage() {
           deleteError={deleteError}
           onConfirm={handleConfirmDelete}
           onClose={handleCloseDelete}
+        />
+      )}
+
+      {disableTarget && (
+        <DisableModal
+          formId={disableTarget.formId}
+          title={disableTarget.title}
+          isDisabling={isDisabling}
+          disableError={disableError}
+          onConfirm={handleConfirmDisable}
+          onClose={handleCloseDisable}
+        />
+      )}
+
+      {eraseTarget && (
+        <EraseModal
+          formId={eraseTarget.formId}
+          title={eraseTarget.title}
+          isErasing={isErasing}
+          eraseSuccess={eraseSuccess}
+          eraseError={eraseError}
+          onConfirm={handleConfirmErase}
+          onClose={handleCloseErase}
         />
       )}
       </div>

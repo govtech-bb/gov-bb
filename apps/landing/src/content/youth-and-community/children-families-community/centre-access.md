@@ -6,6 +6,7 @@ publish_date: 2026-05-20
 category: youth-and-community
 subcategory: children-families-community
 service_type: information
+form_id: youth-opportunity-centre-access
 ---
 
 Book a community centre near you to host an event, class or community activity.
@@ -22,7 +23,7 @@ Access community centres for events and activities.
 
 Complete the short application form to register your interest. Your progress is saved automatically.
 
-<!-- [Apply now](https://alpha.gov.bb/youth-and-community/children-families-community/centre-access/form) -->
+<a data-start-link>Start now</a>
 
 ## More information
 

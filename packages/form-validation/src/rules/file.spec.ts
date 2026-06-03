@@ -86,6 +86,32 @@ describe("fileTypesRunner", () => {
   it("handles non-array value gracefully (returns null for empty file list)", () => {
     expect(fileTypesRunner("not-an-array", cfg([".pdf"]), {})).toBeNull();
   });
+
+  // The allowlist may be authored as dotted extensions, bare extensions, or
+  // MIME types; a file is accepted by extension or by verbatim MIME type.
+  it("accepts a dotless extension allowlist", () => {
+    expect(
+      fileTypesRunner([file("doc.pdf", 100)], cfg(["pdf", "jpg"]), {}),
+    ).toBeNull();
+  });
+
+  it("accepts a MIME-type allowlist even when the file has no reported type", () => {
+    expect(
+      fileTypesRunner([file("doc.pdf", 100, "")], cfg(["application/pdf"]), {}),
+    ).toBeNull();
+  });
+
+  it("accepts a file by verbatim MIME type when it has no extension", () => {
+    expect(
+      fileTypesRunner([file("logo", 100, "image/png")], cfg(["image/png"]), {}),
+    ).toBeNull();
+  });
+
+  it("still rejects a disallowed file under a dotless allowlist", () => {
+    expect(fileTypesRunner([file("virus.exe", 100)], cfg(["pdf"]), {})).toBe(
+      "Allowed file types: pdf",
+    );
+  });
 });
 
 describe("itemMaxSizeRunner", () => {

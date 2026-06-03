@@ -25,9 +25,11 @@ export class ProcessorFactory {
   /** Resolve the set of distinct handlers for these configs.
    *
    * Returns at most one handler per registered type, preserving first-seen
-   * order. Same-type configs (e.g. two `email` entries) collapse to a single
-   * handler instance — each handler iterates over its own matching entries
-   * internally, and the dispatcher enqueues one message per type. */
+   * order. Used by the **gating** path (`submissions.service.ts`), where
+   * single-instance, first-wins semantics are wanted (e.g. payment). Non-gating
+   * dispatch no longer goes through here — it iterates `processors[]` by index
+   * and resolves each entry via `resolveByType` (per-entry dispatch, issue #95).
+   */
   resolve(processorConfigs: Processor[]): ISubmissionProcessor[] {
     const seen = new Set<string>();
     const handlers: ISubmissionProcessor[] = [];

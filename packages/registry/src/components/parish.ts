@@ -19,7 +19,7 @@ export const Parish: SelectPrimitive = {
   ],
   multiple: false,
   ui: {
-    width: "short",
+    width: "long",
   },
   validations: {
     required: {

@@ -1,6 +1,7 @@
 import {
   serializeSessionCookie,
   parseSessionCookie,
+  normalizeOAuthBase,
   SESSION_COOKIE_NAME,
   SESSION_TTL_SECONDS,
   type SessionPayload,
@@ -103,6 +104,26 @@ describe("serializeSessionCookie", () => {
 
   it("uses the configured cookie name", () => {
     expect(SESSION_COOKIE_NAME).toBe("fb_session");
+  });
+});
+
+describe("normalizeOAuthBase", () => {
+  it("strips a single trailing slash", () => {
+    expect(normalizeOAuthBase("https://x.com/")).toBe("https://x.com");
+  });
+
+  it("leaves a base without a trailing slash unchanged", () => {
+    expect(normalizeOAuthBase("https://x.com")).toBe("https://x.com");
+  });
+
+  it("strips only one trailing slash when several are present", () => {
+    expect(normalizeOAuthBase("https://x.com//")).toBe("https://x.com/");
+  });
+
+  it("preserves a path segment, stripping only the trailing slash", () => {
+    expect(normalizeOAuthBase("https://x.com/base/")).toBe(
+      "https://x.com/base",
+    );
   });
 });
 

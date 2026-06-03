@@ -13,6 +13,16 @@ export interface FormsListState {
    * removing a form so the Open picker drops the deleted entry.
    */
   refetch: () => void;
+  /**
+   * Patch a single entry in the local list without a server round-trip,
+   * replacing the row with the matching `formId` (or appending if absent). The
+   * save flow uses this after re-saving an existing form so the picker shows the
+   * fresh version/title without paying for the slow `listForms()` waterfall that
+   * `refetch()` runs. No-op while the mount fetch is still in flight (`forms`
+   * is `null`): there is nothing to patch, and the pending fetch will bring the
+   * authoritative list.
+   */
+  upsertForm: (summary: FormDefinitionSummary) => void;
 }
 
 /**
@@ -42,6 +52,17 @@ export function useFormsList(): FormsListState {
       });
   }, []);
 
+  const upsertForm = useCallback((summary: FormDefinitionSummary) => {
+    setForms((current) => {
+      if (current === null) return current;
+      const index = current.findIndex((f) => f.formId === summary.formId);
+      if (index === -1) return [...current, summary];
+      const next = current.slice();
+      next[index] = summary;
+      return next;
+    });
+  }, []);
+
   useEffect(() => {
     let active = true;
     load(() => active);
@@ -50,5 +71,5 @@ export function useFormsList(): FormsListState {
     };
   }, [load]);
 
-  return { forms, loadError, refetch: () => load() };
+  return { forms, loadError, refetch: () => load(), upsertForm };
 }

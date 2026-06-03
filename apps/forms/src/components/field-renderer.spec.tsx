@@ -9,6 +9,11 @@ import type { ClientPrimitive } from "@forms/types";
 // ---------------------------------------------------------------------------
 jest.mock("@forms/lib", () => ({
   checkConditionalOn: jest.fn(),
+  // Mirror the real helper: digits only, empty -> undefined, never NaN.
+  parseDatePart: (raw: string) => {
+    const digits = raw.replace(/\D/g, "");
+    return digits === "" ? undefined : Number(digits);
+  },
 }));
 
 import { checkConditionalOn } from "@forms/lib";
@@ -139,10 +144,13 @@ describe("FieldRenderer", () => {
     expect(inputs.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("date → renders three number inputs (day/month/year)", () => {
+  it("date → renders three text inputs with numeric inputmode (day/month/year)", () => {
     const { container } = renderField(primitive("date"));
-    const inputs = container.querySelectorAll('input[type="number"]');
+    const inputs = container.querySelectorAll('input[type="text"]');
     expect(inputs).toHaveLength(3);
+    inputs.forEach((input) => {
+      expect(input).toHaveAttribute("inputmode", "numeric");
+    });
   });
 
   it("file → renders a file input", () => {
@@ -513,6 +521,24 @@ describe("FieldRenderer", () => {
       expect(mockFieldApi.handleChange).toHaveBeenCalled();
     });
 
+    it("typing a non-numeric character never stores NaN", async () => {
+      const user = userEvent.setup();
+      mockState = {
+        value: { day: 1, month: 6, year: 2024 },
+        meta: { isValid: true, errors: [] },
+      };
+      const { container } = renderField(primitive("date"));
+      const dateParts = container.querySelectorAll(".govbb-date-input__part");
+      const dayInput = dateParts[0].querySelector("input") as HTMLInputElement;
+      await user.clear(dayInput);
+      await user.type(dayInput, "a");
+      // Regression: non-numeric input must never be coerced to NaN (which used
+      // to render as the literal "NaN" in the field).
+      for (const [arg] of mockFieldApi.handleChange.mock.calls) {
+        expect(Number.isNaN((arg as { day: number }).day)).toBe(false);
+      }
+    });
+
     it("changing the month input calls handleChange with updated month", async () => {
       const user = userEvent.setup();
       mockState = {
@@ -546,9 +572,97 @@ describe("FieldRenderer", () => {
     it("renders with empty inputs when value is undefined", () => {
       mockState = { value: undefined, meta: { isValid: true, errors: [] } };
       const { container } = renderField(primitive("date"));
-      const inputs = container.querySelectorAll('input[type="number"]');
+      const inputs = container.querySelectorAll('input[type="text"]');
       inputs.forEach((input) => {
         expect((input as HTMLInputElement).value).toBe("");
+      });
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Date field error highlighting (GOV.UK guidance: highlight failing parts)
+  // -------------------------------------------------------------------------
+  describe("date field error highlighting", () => {
+    const partInputs = (container: HTMLElement) =>
+      Array.from(
+        container.querySelectorAll(".govbb-date-input__field"),
+      ) as HTMLInputElement[];
+
+    it("renders the structured error's message and highlights only its parts", () => {
+      mockState = {
+        value: { day: 5, year: 1990 },
+        meta: {
+          isValid: false,
+          errors: [
+            { message: "Date of birth must include a month", parts: ["month"] },
+          ],
+        },
+      };
+      const { container } = renderField(primitive("date"));
+
+      expect(
+        screen.getByText("Date of birth must include a month"),
+      ).toBeTruthy();
+      const [day, month, year] = partInputs(container);
+      expect(day.getAttribute("aria-invalid")).toBeNull();
+      expect(month.getAttribute("aria-invalid")).toBe("true");
+      expect(year.getAttribute("aria-invalid")).toBeNull();
+    });
+
+    it("highlights the whole input when all parts are listed", () => {
+      mockState = {
+        value: undefined,
+        meta: {
+          isValid: false,
+          errors: [
+            {
+              message: "Enter date of birth",
+              parts: ["day", "month", "year"],
+            },
+          ],
+        },
+      };
+      const { container } = renderField(primitive("date"));
+      partInputs(container).forEach((input) => {
+        expect(input.getAttribute("aria-invalid")).toBe("true");
+      });
+    });
+
+    it("falls back to highlighting every part for a plain string error", () => {
+      mockState = {
+        value: undefined,
+        meta: { isValid: false, errors: ["Some error"] },
+      };
+      const { container } = renderField(primitive("date"));
+      expect(screen.getByText("Some error")).toBeTruthy();
+      partInputs(container).forEach((input) => {
+        expect(input.getAttribute("aria-invalid")).toBe("true");
+      });
+    });
+
+    it("anchors the fieldset with the field id and describes errors at group level", () => {
+      mockState = {
+        value: undefined,
+        meta: {
+          isValid: false,
+          errors: [
+            { message: "Enter date of birth", parts: ["day", "month", "year"] },
+          ],
+        },
+      };
+      const field = primitive("date");
+      const { container } = renderField(field);
+
+      // The ErrorSummary links to #field.id — the fieldset must carry it.
+      const fieldset = container.querySelector(`[id="${field.id}"]`);
+      expect(fieldset?.tagName).toBe("FIELDSET");
+      expect(fieldset?.getAttribute("role")).toBe("group");
+      expect(fieldset?.getAttribute("aria-describedby")).toBe(
+        `${field.id}-error`,
+      );
+      // Inputs are described at the group level, not individually.
+      partInputs(container as HTMLElement).forEach((input) => {
+        expect(input.getAttribute("aria-describedby")).toBeNull();
       });
     });
   });

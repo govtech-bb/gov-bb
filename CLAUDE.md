@@ -7,6 +7,55 @@ Guidance for working in this repo. Use **pnpm** for everything — never `npm`.
 `sandbox` is the default base branch for pull requests — open PRs against it,
 not `dev`, unless the human explicitly asks otherwise.
 
+## Never put a `.` in a branch name
+
+Branch names must not contain a period. Each PR gets an Amplify preview at
+`<branch>.<appId>.amplifyapp.com`, and Amplify's default-domain cert is a
+**single-label wildcard** (`*.<appId>.amplifyapp.com`) — a dotted branch
+produces a multi-label subdomain whose HTTPS fails with
+`ERR_CERT_COMMON_NAME_INVALID`, breaking both the preview and the forms live
+smoke gate. Use `-` instead (e.g. `worktree-term-leave-v1-3-0`, not
+`…-v1.3.0`). This is enforced two ways: the `pr-preview.yml` "Guard branch
+name" step fails fast in CI, and a local PreToolUse hook
+(`.claude/hooks/block-dotted-branch.sh`) blocks branch-creating git commands
+with a dotted name.
+
+## Session plans live in `docs/plans/` but are never committed
+
+Session plans (`docs/plans/*.md`) are **not version-controlled**, but the
+directory is intentionally **not** gitignored — so plans stay reachable via the
+`@`-mention file picker (which respects `.gitignore`). The "don't commit them"
+rule is instead enforced by a local PreToolUse hook
+(`.claude/hooks/block-commit-plans.sh`): it denies `git commit` when a
+`docs/plans/` file is staged (or when an `add -A`/`add . && commit` one-liner
+would sweep one in), and denies an explicit `git add docs/plans/...`. A bare
+`git add -A` is still allowed — only the commit is blocked. If you need to
+commit other work, stage those files **by path** rather than relying on `git
+add -A` while a plan is dirty.
+
+## What "clean up" means at the end of a session
+
+When the human says **"clean up"** (or "wrap up and clean up") after work is
+committed, run these steps in order:
+
+1. **Push** the current branch to the remote.
+2. **Open a PR against `sandbox`** (the default base). If a GitHub issue was
+   referenced, include its number in the PR body.
+3. **Automatically remove the worktree** once the branch is pushed — no need to
+   ask first.
+4. **Delete the plan file** (e.g. the `docs/plans/*.md` the session worked
+   from) — automatically, no need to ask. A plan exists only to drive the work
+   up to the PR; once the PR is open it has served its purpose, and the
+   end-of-session summary captures anything worth keeping. Plans are **not**
+   version-controlled (see "Session plans live in `docs/plans/`" below), so
+   there's nothing to keep around after the PR is made.
+5. **Offer to watch CI yourself.** Ask the human whether you should watch the
+   PR's CI. If they say yes, run `gh pr checks <n> --watch` and **block until it
+   finishes** — do not hand the build back to the human to follow. Then:
+   - **All checks green** → merge the PR.
+   - **Any check fails** → investigate and fix the failures (push fixes to the
+     same branch and re-watch), rather than just reporting them back.
+
 ## When work is finished, close the related GitHub issue
 
 After completing a piece of work, check GitHub (`gh issue list` / `gh issue
@@ -41,17 +90,31 @@ Every new issue should carry the labels that describe what it relates to. Run
 
 Pick labels from the issue's actual content, not just its title.
 
-## Always run the full build and tests before committing or pushing
+## Run the build, and the tests for what you touched, before committing or pushing
 
-CI runs these two commands. Run the same ones locally first — don't rely on CI to
-catch breakage:
+CI runs the full build and the full test suite. Run the build the same way
+locally first — don't rely on CI to catch breakage:
 
 ```bash
 pnpm exec nx run-many -t build   # all packages must compile
-pnpm exec nx run-many -t test    # all test suites must pass
 ```
 
-A green local build/test before push avoids the round-trip of a failed CI run.
+For tests, **only run the suites for the apps or packages you actually
+touched** — don't run the full `nx run-many -t test`. Target the affected
+projects instead:
+
+```bash
+pnpm exec nx run <project>:test             # one project you changed
+pnpm exec nx run-many -t test -p p1,p2      # the specific projects you changed
+```
+
+The reason is **out-of-memory issues**: running the full test suite locally
+spawns too many parallel test processes and crashes the machine. Every Jest
+config now caps its own workers and recycles memory (see below), which removes
+the single-suite crash risk — but scoping still keeps the full run's total
+parallelism, and its wall-clock time, in check. CI still runs the full test
+suite, so anything you didn't touch is covered there. This keeps the local loop
+fast while a green build before push avoids the round-trip of a failed CI run.
 The CI build captures output and fails the job on any error, so a single
 TypeScript error in one package fails the whole "Build all packages" step.
 

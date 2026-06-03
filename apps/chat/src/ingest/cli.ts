@@ -18,6 +18,7 @@ interface Args {
   dryRun: boolean;
   report: boolean;
   resetEmbeddings: boolean;
+  force: boolean;
   contentDir?: string;
   limit?: number;
 }
@@ -28,6 +29,7 @@ function parseArgs(argv: string[]): Args {
     dryRun: argv.includes("--dry-run"),
     report: argv.includes("--report"),
     resetEmbeddings: argv.includes("--reset-embeddings"),
+    force: argv.includes("--force"),
     contentDir: argv.find((a) => a.startsWith("--content-dir="))?.split("=")[1],
     limit: limitStr ? Number(limitStr) : undefined,
   };
@@ -44,6 +46,7 @@ function modelId(): string {
 async function preflight(
   model: string,
   resetEmbeddings: boolean,
+  force: boolean,
 ): Promise<void> {
   const db = await getDb();
   const rows = await db
@@ -55,6 +58,12 @@ async function preflight(
     throw new Error(
       `Embedding model mismatch: DB has [${others.join(", ")}], CLI is using "${model}". ` +
         `Re-run with --reset-embeddings to drop and rebuild (will re-embed everything).`,
+    );
+  }
+  if (!force) {
+    throw new Error(
+      `--reset-embeddings will DROP all chunks and documents (DB has model(s) ` +
+        `[${others.join(", ")}]). This is irreversible. Re-run with --force to confirm.`,
     );
   }
   console.log(
@@ -93,7 +102,7 @@ async function main() {
   const model = modelId();
   console.log(`[ingest] embedding_model=${model}`);
 
-  await preflight(model, args.resetEmbeddings);
+  await preflight(model, args.resetEmbeddings, args.force);
 
   const content = await loadContent({ contentDir: args.contentDir });
   if (content.warnings.length) {
@@ -108,6 +117,18 @@ async function main() {
   }
 
   const plan = await buildPlan(planned, model);
+  // --limit / --content-dir diff a SUBSET of content against the whole DB, so
+  // every out-of-scope row looks orphaned. Deleting those would wipe the rest
+  // of the store. Never prune on a scoped run; only a full reconcile deletes.
+  if (args.limit !== undefined || args.contentDir !== undefined) {
+    if (plan.documents.orphans.length || plan.chunks.orphans.length) {
+      console.log(
+        `[ingest] scoped run: keeping ${plan.documents.orphans.length} doc / ${plan.chunks.orphans.length} chunk(s) that look orphaned (run a full ingest to prune)`,
+      );
+    }
+    plan.documents.orphans = [];
+    plan.chunks.orphans = [];
+  }
   const summary = summarise(plan);
   console.log("[ingest] plan:");
   console.log(

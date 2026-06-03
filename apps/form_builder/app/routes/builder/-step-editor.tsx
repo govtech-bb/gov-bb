@@ -1,11 +1,22 @@
 import { useState, useMemo, useEffect } from "react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import type {
   RecipeDraft,
   RecipeStepDraft,
   RecipeFieldDraft,
   RegistryCatalog,
 } from "@govtech-bb/form-builder";
-import { getRegistryItem } from "@govtech-bb/form-builder";
 import type { Behaviour } from "@govtech-bb/form-types";
 import type { RecipeAction } from "./-recipe-reducer";
 import { isNoFieldsStep, isRequiredStep } from "./-recipe-reducer";
@@ -14,7 +25,7 @@ import { getFieldRefs, getStepRefs } from "./-recipe-refs";
 import { BehavioursEditor } from "./-behaviours-editor";
 import { FieldPicker } from "./-field-picker";
 import { FieldEditPanel } from "./-field-edit-panel";
-import { resolveFieldLabel } from "./-field-label";
+import { SortableFieldRow } from "./-sortable-field-row";
 import styles from "../../styles/builder.module.css";
 
 const STEP_ID_ERROR =
@@ -121,6 +132,26 @@ export function StepEditor({
     dispatch({ type: "SET_STEP_BEHAVIOURS", stepId: step.stepId, behaviours });
   }
 
+  // Require a small drag before activating so a click on the handle doesn't
+  // start a drag — keeps the row's other buttons clickable.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+  );
+
+  function handleFieldDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const fromIndex = step.fields.findIndex((f) => f.id === active.id);
+    const toIndex = step.fields.findIndex((f) => f.id === over.id);
+    if (fromIndex === -1 || toIndex === -1) return;
+    dispatch({
+      type: "REORDER_FIELDS",
+      stepId: step.stepId,
+      fromIndex,
+      toIndex,
+    });
+  }
+
   return (
     <div className={styles.stepEditor}>
       {/* Step Metadata */}
@@ -191,79 +222,46 @@ export function StepEditor({
         />
       </div>
 
-      {/* Fields — hidden for review/confirmation steps that accept no fields */}
+      {/* Fields list — hidden for review/confirmation steps that accept no
+          fields. The "Add field" picker is split into its own block below so
+          Step Behaviours can render between the list and the picker (#566). */}
       {!noFields && (
         <>
           <div className={styles.sectionTitle}>
             Fields ({step.fields.length})
           </div>
-          {step.fields.map((field, idx) => {
-            const item = getRegistryItem(field.ref, catalog);
-            const label = resolveFieldLabel(field, item);
-            const displayName = item?.displayName ?? field.ref;
-            const showSecondary = displayName !== label;
-            const hasOverrides =
-              Object.keys(field.overrides ?? {}).length > 0 ||
-              (field.kind === "block" &&
-                Object.keys(field.childOverrides ?? {}).length > 0);
-            return (
-              <div key={field.id} className={styles.fieldRow}>
-                <div style={{ flex: 1 }}>
-                  <div>
-                    {hasOverrides && (
-                      <span
-                        className={styles.overrideDot}
-                        title="Has overrides"
-                      />
-                    )}
-                    {label}
-                  </div>
-                  {showSecondary && (
-                    <div className={styles.fieldRowSecondary}>
-                      {displayName}
-                    </div>
-                  )}
-                </div>
-                <span className={styles.badge}>{field.kind}</span>
-                <button
-                  type="button"
-                  title="Move up"
-                  disabled={idx === 0}
-                  onClick={() => handleMoveFieldUp(idx)}
-                >
-                  ▲
-                </button>
-                <button
-                  type="button"
-                  title="Move down"
-                  disabled={idx === step.fields.length - 1}
-                  onClick={() => handleMoveFieldDown(idx)}
-                >
-                  ▼
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEditingFieldId(field.id)}
-                >
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleRemoveField(field.id)}
-                >
-                  ×
-                </button>
-              </div>
-            );
-          })}
-
-          {/* Inline field picker palette */}
-          <div className={styles.sectionTitle}>Add field</div>
-          <FieldPicker catalog={catalog} onAddField={handleAddField} />
+          <DndContext
+            // Stable id pins dnd-kit's `aria-describedby` (otherwise derived
+            // from a module-global counter) so it can never differ between a
+            // server and client render → hydration mismatch (#546).
+            id="step-fields-dnd"
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleFieldDragEnd}
+          >
+            <SortableContext
+              items={step.fields.map((f) => f.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {step.fields.map((field, idx) => (
+                <SortableFieldRow
+                  key={field.id}
+                  field={field}
+                  catalog={catalog}
+                  isFirst={idx === 0}
+                  isLast={idx === step.fields.length - 1}
+                  onMoveUp={() => handleMoveFieldUp(idx)}
+                  onMoveDown={() => handleMoveFieldDown(idx)}
+                  onEdit={() => setEditingFieldId(field.id)}
+                  onRemove={() => handleRemoveField(field.id)}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
         </>
       )}
 
-      {/* Inline field edit panel */}
+      {/* Inline field edit panel — stays attached to the Fields list above. */}
       {editingField !== null && editingFieldId !== null && (
         <FieldEditPanel
           field={editingField}
@@ -284,6 +282,15 @@ export function StepEditor({
         stepRefs={stepRefs}
         onChange={handleSetBehaviours}
       />
+
+      {/* Inline field picker palette — renders below Step Behaviours (#566),
+          hidden for no-fields steps alongside the Fields list. */}
+      {!noFields && (
+        <>
+          <div className={styles.sectionTitle}>Add field</div>
+          <FieldPicker catalog={catalog} onAddField={handleAddField} />
+        </>
+      )}
     </div>
   );
 }

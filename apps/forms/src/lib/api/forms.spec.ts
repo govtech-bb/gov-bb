@@ -357,6 +357,46 @@ describe("postFormSubmission", () => {
     expect(result?.data).toMatchObject({ formId: "test-form" });
   });
 
+  // Regression for #606: a successful submission whose `values` contain
+  // repeatable-step arrays and file-upload objects must NOT make
+  // postFormSubmission throw. The client never reads these values back from the
+  // response (the confirmation needs only id/submittedAt/formId), and the real
+  // shape is sanctioned by FormValuesByStep (Record<stepId, FormValues |
+  // Array<FormValues>>). Over-strict parsing here caused the submit flow to
+  // bounce off the confirmation screen back to check-your-answers.
+  it("accepts repeatable-step arrays and file-upload objects in values (#606)", async () => {
+    const bodyWithRichValues = {
+      ...minimalSubmissionBody,
+      values: {
+        "personal-data": {
+          firstName: "Edgardo",
+          dateOfBirth: { day: 15, month: 6, year: 1990 },
+        },
+        "educational-record": [
+          {
+            institution: "UWI",
+            country: "Barbados",
+            from: "2008",
+            to: "2012",
+          },
+        ],
+        "upload-documents": {
+          certificatesUpload: [
+            {
+              key: "uploads/x.png",
+              name: "x.png",
+              size: 69,
+              type: "image/png",
+            },
+          ],
+        },
+      },
+    };
+    mockFetch.mockResolvedValue(makeOkResponse(bodyWithRichValues));
+    const result = await postFormSubmission(minimalFormMeta as FormMeta, {});
+    expect(result?.data).toMatchObject({ formId: "test-form" });
+  });
+
   it("sends a POST request with the idempotency-key header, correct URL, and {formId, formVersion, values} body", async () => {
     mockFetch.mockResolvedValue(makeOkResponse(minimalSubmissionBody));
     const valuesBySteps = {
