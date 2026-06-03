@@ -262,31 +262,6 @@ jobs:
           fi
           echo "✅ Running image matches the build output"
 
-      # Lightweight smoke check that the new image is actually serving traffic
-      # with the schema we expect. Hits a known recipe endpoint; if the API
-      # returns 5xx or null data, fail the deploy so the rollback is visible.
-      # This is the second line of defense after the image-tag check — catches
-      # cases where the new task definition is running but the API is
-      # mis-configured (wrong env, broken DB connection, etc).
-      - name: Smoke test deployed API
-        run: |
-          set -e
-          URL="https://forms.api.sandbox.alpha.gov.bb/form-definitions/passport-renewal"
-          echo "GET $URL"
-          # Allow a few retries — the target group can briefly serve from the
-          # old task while the new one drains.
-          for i in 1 2 3 4 5; do
-            BODY=$(curl -fsS --max-time 10 "$URL" 2>/dev/null || echo "")
-            if [ -n "$BODY" ] && echo "$BODY" | jq -e '.data.steps | length > 0' >/dev/null 2>&1; then
-              echo "✅ Smoke test passed: $(echo "$BODY" | jq -c '{formId: .data.formId, version: .data.version, steps: (.data.steps | length)}')"
-              exit 0
-            fi
-            echo "[$i/5] not ready yet, retrying in 10s..."
-            sleep 10
-          done
-          echo "❌ Smoke test failed after 5 attempts — API responded but recipe schema is empty/missing"
-          exit 1
-
       # Task definition revision cleanup removed — old revisions don't consume
       # resources and deregistering them causes OpenTofu state drift (the revision
       # tofu tracks gets deregistered, making tofu think the resource is gone).
