@@ -9,6 +9,11 @@ import type { ClientPrimitive } from "@forms/types";
 // ---------------------------------------------------------------------------
 jest.mock("@forms/lib", () => ({
   checkConditionalOn: jest.fn(),
+  // Mirror the real helper: digits only, empty -> undefined, never NaN.
+  parseDatePart: (raw: string) => {
+    const digits = raw.replace(/\D/g, "");
+    return digits === "" ? undefined : Number(digits);
+  },
 }));
 
 import { checkConditionalOn } from "@forms/lib";
@@ -514,6 +519,24 @@ describe("FieldRenderer", () => {
       await user.clear(dayInput);
       await user.type(dayInput, "15");
       expect(mockFieldApi.handleChange).toHaveBeenCalled();
+    });
+
+    it("typing a non-numeric character never stores NaN", async () => {
+      const user = userEvent.setup();
+      mockState = {
+        value: { day: 1, month: 6, year: 2024 },
+        meta: { isValid: true, errors: [] },
+      };
+      const { container } = renderField(primitive("date"));
+      const dateParts = container.querySelectorAll(".govbb-date-input__part");
+      const dayInput = dateParts[0].querySelector("input") as HTMLInputElement;
+      await user.clear(dayInput);
+      await user.type(dayInput, "a");
+      // Regression: non-numeric input must never be coerced to NaN (which used
+      // to render as the literal "NaN" in the field).
+      for (const [arg] of mockFieldApi.handleChange.mock.calls) {
+        expect(Number.isNaN((arg as { day: number }).day)).toBe(false);
+      }
     });
 
     it("changing the month input calls handleChange with updated month", async () => {

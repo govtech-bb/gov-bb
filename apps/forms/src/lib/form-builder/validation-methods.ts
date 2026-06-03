@@ -40,6 +40,20 @@ export const valueIsEmpty = (value: FieldValue): boolean | undefined => {
   }
 };
 
+/**
+ * Parse a raw date-part input string (day/month/year) into a number for
+ * storage in the field's DateValueInput.
+ *
+ * Strips non-digit characters and returns `undefined` for empty input, so the
+ * value is never `NaN` (which would render as the literal "NaN" in the field)
+ * and never a stray `0` from `Number("")`. Coercion happens here on input only
+ * to keep the stored shape numeric; date *validation* still runs on submit.
+ */
+export const parseDatePart = (raw: string): number | undefined => {
+  const digits = raw.replace(/\D/g, "");
+  return digits === "" ? undefined : Number(digits);
+};
+
 export const dateValueToDate = (value: DateValue): Date | null => {
   if (
     value.day === undefined ||

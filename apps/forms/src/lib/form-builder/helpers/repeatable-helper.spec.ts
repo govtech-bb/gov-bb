@@ -159,6 +159,19 @@ describe("generateRepeatableAddAnotherField", () => {
     ]);
     expect(field.validations?.required?.value).toBe(true);
   });
+
+  it("defaults the label to 'Add another?' when none is given", () => {
+    const field = generateRepeatableAddAnotherField("personalInfo");
+    expect(field.label).toBe("Add another?");
+  });
+
+  it("uses a custom label when provided", () => {
+    const field = generateRepeatableAddAnotherField(
+      "qualifications",
+      "Do you want to add another qualification?",
+    );
+    expect(field.label).toBe("Do you want to add another qualification?");
+  });
 });
 
 // ---------------------------------------------------------------------------

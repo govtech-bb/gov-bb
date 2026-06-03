@@ -1,0 +1,902 @@
+{
+  "formId": "temp-teacher-application-barbados",
+  "title": "Apply to be a temporary teacher",
+  "version": "1.3.0",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "personal-data.email",
+        "subject": "Your Application for the Post of Temporary Teacher has been received"
+      }
+    },
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "testing@govtech.bb",
+        "subject": "Apply to be a temporary teacher"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "stepId": "personal-data",
+      "title": "Personal Data",
+      "elements": [
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "fieldId": "firstName",
+            "label": "First Name",
+            "validations": {
+              "required": {
+                "error": "First Name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "First Name must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "fieldId": "lastName",
+            "label": "Last Name",
+            "validations": {
+              "required": {
+                "error": "Last Name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Last Name must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "otherNames",
+            "label": "Other Names",
+            "hint": "Optional. Provide only if known",
+            "validations": {
+              "required": {
+                "value": false
+              },
+              "pattern": {
+                "value": "^\\s*[A-Za-zÀ-ÖØ-öø-ÿ](?:[A-Za-zÀ-ÖØ-öø-ÿ\\s'-]*[A-Za-zÀ-ÖØ-öø-ÿ])?\\s*$",
+                "error": "Other Names must contain only letters, hyphens, or apostrophes"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/national-id-number",
+          "overrides": {
+            "fieldId": "idNumber",
+            "label": "ID Number",
+            "validations": {
+              "required": {
+                "error": "ID Number is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/date-of-birth",
+          "overrides": {
+            "fieldId": "dateOfBirth",
+            "label": "Date of birth",
+            "hint": "For example, 30 12 1986",
+            "validations": {
+              "required": {
+                "error": "Date of birth is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "gender",
+            "label": "Gender",
+            "validations": {
+              "required": {
+                "error": "Gender is required",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Male",
+                "value": "male"
+              },
+              {
+                "label": "Female",
+                "value": "female"
+              },
+              {
+                "label": "Other",
+                "value": "other"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/national-insurance-number",
+          "overrides": {
+            "fieldId": "nisNumber",
+            "label": "NIS No",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "address",
+            "label": "Address",
+            "validations": {
+              "required": {
+                "error": "Address is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Address must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "parish",
+            "label": "Parish",
+
+            "validations": {
+              "required": {
+                "error": "Parish is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Parish must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "fieldId": "email",
+            "label": "Email",
+            "validations": {
+              "required": {
+                "error": "Email is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "fieldId": "telHome",
+            "label": "Tel Home",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "fieldId": "telCell",
+            "label": "Tel Cell",
+            "validations": {
+              "required": {
+                "error": "Tel Cell is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Tel Cell must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/country",
+          "overrides": {
+            "fieldId": "placeOfBirth",
+            "label": "Place of birth",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Marital status",
+            "fieldId": "marital-status",
+            "options": [
+              {
+                "label": "Single",
+                "value": "single"
+              },
+              {
+                "label": "Married",
+                "value": "married"
+              },
+              {
+                "label": "Divorced",
+                "value": "divorced"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Marital Status is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/country",
+          "overrides": {
+            "fieldId": "citizenship",
+            "label": "Citizenship",
+            "validations": {
+              "required": {
+                "error": "Citizenship is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Citizenship must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "periodResidingBarbados",
+            "label": "Period Residing in Barbados",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "educational-record",
+      "title": "Educational Record",
+      "description": "Details of institutions at which you have received your Academic/Technical/Professional Education",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "institution",
+            "label": "Name of Institution",
+            "validations": {
+              "required": {
+                "error": "Name of Institution is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Name of Institution must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/country",
+          "overrides": {
+            "fieldId": "country",
+            "label": "Country",
+            "validations": {
+              "required": {
+                "error": "Country is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Country must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "education-start-year",
+            "label": "Start Year",
+            "hint": "For example, 2008",
+            "ui": {
+              "width": "short"
+            },
+            "validations": {
+              "required": {
+                "error": "Start Year is required",
+                "value": true
+              },
+              "pattern": {
+                "error": "Start Year must be a 4-digit year, for example 2008",
+                "value": "^\\d{4}$"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "education-end-year",
+            "label": "End Year",
+            "hint": "For example, 2012",
+            "ui": {
+              "width": "short"
+            },
+            "validations": {
+              "required": {
+                "error": "End Year is required",
+                "value": true
+              },
+              "pattern": {
+                "error": "End Year must be a 4-digit year, for example 2012",
+                "value": "^\\d{4}$"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 1,
+          "max": 6,
+          "addAnotherLabel": "Do you want to add another educational record?"
+        }
+      ]
+    },
+    {
+      "stepId": "qualifications",
+      "title": "Qualifications",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "subject",
+            "label": "Subject Passed",
+            "hint": "Academic/Technical/Professional",
+            "validations": {
+              "required": {
+                "error": "Subject Passed is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Subject Passed must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "examiningBody",
+            "label": "Examining Body",
+            "validations": {
+              "required": {
+                "error": "Examining Body is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Examining Body must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "qualification-year",
+            "label": "Year",
+            "validations": {
+              "required": {
+                "error": "End Year is required",
+                "value": true
+              },
+              "pattern": {
+                "error": "End Year must be a 4-digit year, for example 2012",
+                "value": "^\\d{4}$"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "level",
+            "label": "Level/Grade at which passed",
+            "validations": {
+              "required": {
+                "error": "Level/Grade at which passed is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Level/Grade at which passed must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 1,
+          "max": 10,
+          "addAnotherLabel": "Do you want to add another qualification?"
+        }
+      ]
+    },
+    {
+      "stepId": "work-experience",
+      "title": "Work Experience",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "employer",
+            "label": "Name of Employer",
+            "validations": {
+              "required": {
+                "error": "Name of Employer is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Name of Employer must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "position",
+            "label": "Position Held",
+            "validations": {
+              "required": {
+                "error": "Position Held is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Position Held must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "from",
+            "label": "Start Year",
+            "hint": "For example, 2013",
+            "ui": {
+              "width": "short"
+            },
+            "validations": {
+              "required": {
+                "error": "Start Year is required",
+                "value": true
+              },
+              "pattern": {
+                "error": "Start Year must be a 4-digit year, for example 2013",
+                "value": "^\\d{4}$"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "to",
+            "label": "End Year",
+            "hint": "For example, 2020",
+            "ui": {
+              "width": "short"
+            },
+            "validations": {
+              "required": {
+                "error": "End Year is required",
+                "value": true
+              },
+              "pattern": {
+                "error": "End Year must be a 4-digit year, for example 2020",
+                "value": "^\\d{4}$"
+              }
+            }
+          }
+        },
+
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "duties",
+            "label": "Brief Description of duties",
+            "validations": {
+              "required": {
+                "error": "Brief Description of duties is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Brief Description of duties must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 1,
+          "max": 6,
+          "addAnotherLabel": "Do you want to add another work experience?"
+        }
+      ]
+    },
+    {
+      "stepId": "other-related-information",
+      "title": "Other Related Information",
+      "elements": [
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "skillsAthletics",
+            "label": "Skills possessed in athletics/games/crafts/etc. (Please specify)",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "youthCommunityExperience",
+            "label": "Experience in Youth/Community Organisations (Specify indicating any positions of responsibility held)",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "positionsResponsibility",
+            "label": "Positions of responsibility held at School/College/University (Specify indicating any positions of responsibility held)",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "otherRelevantInfo",
+            "label": "Any other relevant information not covered by the foregoing",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "reference-1",
+      "title": "Tell us about your reference",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "ref1Name",
+            "label": "Name",
+            "validations": {
+              "required": {
+                "error": "Name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Name must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "ref1Address",
+            "label": "Address",
+            "validations": {
+              "required": {
+                "error": "Address is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Address must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "ref1Occupation",
+            "label": "Occupation/Profession",
+            "validations": {
+              "required": {
+                "error": "Occupation/Profession is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Occupation/Profession must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "fieldId": "ref1Contact",
+            "label": "Contact No",
+            "validations": {
+              "required": {
+                "error": "Contact No is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "fieldId": "ref1Email",
+            "label": "Email",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "reference-2",
+      "title": "Tell us about your second reference",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "ref2Name",
+            "label": "Name",
+            "validations": {
+              "required": {
+                "error": "Name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Name must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "ref2Address",
+            "label": "Address",
+            "validations": {
+              "required": {
+                "error": "Address is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Address must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "ref2Occupation",
+            "label": "Occupation/Profession",
+            "validations": {
+              "required": {
+                "error": "Occupation/Profession is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Occupation/Profession must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "fieldId": "ref2Contact",
+            "label": "Contact No",
+            "validations": {
+              "required": {
+                "error": "Contact No is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "fieldId": "ref2Email",
+            "label": "Email",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "upload-documents",
+      "title": "Upload your documents",
+      "elements": [
+        {
+          "ref": "components/generic-file",
+          "overrides": {
+            "fieldId": "certificatesUpload",
+            "label": "Upload your certificates, diplomas, and transcripts",
+            "validations": {
+              "required": {
+                "error": "Please upload your certificates, diplomas, and transcripts",
+                "value": true
+              },
+              "fileTypes": {
+                "error": "Upload a .pdf, .docx, or .png file",
+                "value": [".pdf", ".docx", ".png"]
+              },
+              "maxSize": {
+                "error": "The file must be 25MB or smaller",
+                "value": 26214400
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-file",
+          "overrides": {
+            "fieldId": "testimonialsUpload",
+            "label": "Upload your two testimonials",
+            "validations": {
+              "required": {
+                "error": "Please upload your two testimonials",
+                "value": true
+              },
+              "minItems": {
+                "error": "Upload both of your testimonials (2 files)",
+                "value": 2
+              },
+              "maxItems": {
+                "error": "Upload exactly two testimonials",
+                "value": 2
+              },
+              "fileTypes": {
+                "error": "Upload a .pdf, .docx, or .png file",
+                "value": [".pdf", ".docx", ".png"]
+              },
+              "maxSize": {
+                "error": "The files must be 25MB or smaller in total",
+                "value": 26214400
+              }
+            },
+            "multiple": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "check-your-answers",
+      "title": "Check your answers",
+      "description": "Review all the information you have provided before submitting your application.",
+      "elements": [],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "fieldId": "declaration-confirmed",
+            "label": "",
+            "validations": {
+              "required": {
+                "error": "You must confirm the declaration to continue",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "I confirm that my information is correct and I am happy for it to be verified. I understand that false details may lead to my application being rejected, and that the Government of Barbados will keep my information confidential.",
+                "value": "confirmed"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/date-of-birth",
+          "overrides": {
+            "fieldId": "declaration-date",
+            "label": "Date of declaration",
+            "isHidden": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Submission Confirmation",
+      "elements": [],
+      "behaviours": []
+    }
+  ],
+  "createdAt": "2026-06-02T14:40:22.941Z",
+  "updatedAt": "2026-06-02T14:40:22.941Z"
+}

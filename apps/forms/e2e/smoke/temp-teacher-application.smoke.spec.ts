@@ -79,7 +79,8 @@ test.describe("Temporary Teacher Application — Live Smoke", () => {
     step = expectStep(page, "educational-record", { exact: true });
     await fillField(page, step, "institution", "University of the West Indies");
     await fillField(page, step, "country", "Barbados");
-    await fillField(page, step, "educational-dates", "2008-2012");
+    await fillField(page, step, "education-start-year", "2008");
+    await fillField(page, step, "education-end-year", "2012");
     await selectRadio(page, step, "addAnother", "no");
     await advance(page, step);
 
@@ -92,7 +93,7 @@ test.describe("Temporary Teacher Application — Live Smoke", () => {
       "examiningBody",
       "Caribbean Examinations Council",
     );
-    await fillField(page, step, "qualification-date", "2010");
+    await fillField(page, step, "qualification-year", "2010");
     await fillField(page, step, "level", "Grade 1");
     await selectRadio(page, step, "addAnother", "no");
     await advance(page, step);
@@ -111,12 +112,16 @@ test.describe("Temporary Teacher Application — Live Smoke", () => {
     step = expectStep(page, "other-related-information", { exact: true });
     await advance(page, step);
 
-    // ─── References ──────────────────────────────────────────────────────────
-    step = expectStep(page, "references", { exact: true });
+    // ─── Reference 1 ─────────────────────────────────────────────────────────
+    step = expectStep(page, "reference-1", { exact: true });
     await fillField(page, step, "ref1Name", "John Principal");
     await fillField(page, step, "ref1Address", "2 School Road, Bridgetown");
     await fillField(page, step, "ref1Occupation", "School Principal");
     await fillField(page, step, "ref1Contact", faker.string.numeric(10));
+    await advance(page, step);
+
+    // ─── Reference 2 ─────────────────────────────────────────────────────────
+    step = expectStep(page, "reference-2", { exact: true });
     await fillField(page, step, "ref2Name", "Mary Supervisor");
     await fillField(page, step, "ref2Address", "3 Office Lane, Bridgetown");
     await fillField(page, step, "ref2Occupation", "Education Officer");

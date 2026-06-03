@@ -18,6 +18,7 @@ import {
   dateValueToDate,
   isDateComplete,
   evaluateCondition,
+  parseDatePart,
 } from "./validation-methods";
 
 // ---------------------------------------------------------------------------
@@ -299,5 +300,37 @@ describe("evaluateCondition", () => {
     it("returns false for an unknown operation", () => {
       expect(evaluateCondition("a", "a", "unknownOp" as never)).toBe(false);
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// parseDatePart
+// ---------------------------------------------------------------------------
+
+describe("parseDatePart", () => {
+  it("parses a numeric string to a number", () => {
+    expect(parseDatePart("12")).toBe(12);
+    expect(parseDatePart("2008")).toBe(2008);
+  });
+
+  it("returns undefined for an empty string (never 0)", () => {
+    expect(parseDatePart("")).toBeUndefined();
+  });
+
+  it("returns undefined for non-numeric input (never NaN)", () => {
+    expect(parseDatePart("abc")).toBeUndefined();
+  });
+
+  it("strips non-digit characters rather than producing NaN", () => {
+    expect(parseDatePart("1a")).toBe(1);
+    expect(parseDatePart("a1")).toBe(1);
+    expect(parseDatePart("1.5")).toBe(15);
+  });
+
+  it("never returns NaN for any string input", () => {
+    for (const input of ["", " ", "abc", "-", ".", "NaN", "1a", "e5"]) {
+      const result = parseDatePart(input);
+      expect(Number.isNaN(result)).toBe(false);
+    }
   });
 });
