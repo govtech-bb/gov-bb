@@ -56,3 +56,30 @@ export function checkFormUniqueness(
 
   return { idError, titleError };
 }
+
+/**
+ * Client-side mirror of the API's re-key published guard (issue #674): a
+ * published form's ID can't be changed, because published forms live upstream
+ * and aren't ours to move. This gives the editor immediate feedback at save
+ * time instead of only surfacing the API's 409.
+ *
+ * A re-key is a *loaded* form whose `formId` field has been changed to a new,
+ * non-empty value. An empty new id is left to the id-required check, and an
+ * unchanged id is a new version (not a re-key). Returns an error string to
+ * surface, or `null` when the save isn't a blocked re-key.
+ */
+export function checkRekeyPublished(
+  forms: FormDefinitionSummary[],
+  draft: { formId: string },
+  loadedFromId: string | null,
+): string | null {
+  const isRekey =
+    loadedFromId !== null &&
+    draft.formId !== "" &&
+    draft.formId !== loadedFromId;
+  if (!isRekey) return null;
+  const loaded = forms.find((f) => f.formId === loadedFromId);
+  return loaded?.isPublished
+    ? "Cannot change the ID of a published form."
+    : null;
+}
