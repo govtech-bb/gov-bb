@@ -8,14 +8,15 @@
  *  - valueIsEmpty: all FieldValue branches (string, boolean, number, array,
  *    DateValueInput, nullish, unknown)
  *  - isDateComplete: complete, partial
- *  - evaluateCondition: all operation branches (in/contains, equal,
- *    strictEquality, notEqual, exists, gt, lt, default)
+ *
+ * Conditional evaluation moved to `@govtech-bb/form-conditions` (#668); its
+ * coverage lives in that package and at the migrated call sites
+ * (`behavior-helper.spec.ts`, `validation-builder.spec.ts`).
  */
 
 import {
   valueIsEmpty,
   isDateComplete,
-  evaluateCondition,
   parseDatePart,
 } from "./validation-methods";
 
@@ -96,176 +97,6 @@ describe("isDateComplete", () => {
 
   it("returns false for an empty object", () => {
     expect(isDateComplete({})).toBe(false);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// evaluateCondition
-// ---------------------------------------------------------------------------
-
-describe("evaluateCondition", () => {
-  describe("in / contains", () => {
-    it("returns true when string conditionValue includes the target string", () => {
-      expect(evaluateCondition("hello world", "hello", "contains")).toBe(true);
-    });
-
-    it("returns true when array conditionValue includes the target value", () => {
-      expect(evaluateCondition(["yes", "no"], "yes", "in")).toBe(true);
-    });
-
-    it("returns false when conditionValue does not include the target", () => {
-      expect(evaluateCondition("hello", "xyz", "contains")).toBe(false);
-    });
-
-    it("returns false when conditionValue or targetFieldValue is falsy", () => {
-      expect(evaluateCondition("", "yes", "contains")).toBe(false);
-      expect(evaluateCondition("hello", undefined, "contains")).toBe(false);
-    });
-
-    it("returns false when target is not string/boolean/number", () => {
-      // array as target
-      expect(evaluateCondition("abc", ["a", "b"] as never, "in")).toBe(false);
-    });
-  });
-
-  describe("equal", () => {
-    it("returns true for case-insensitive string match", () => {
-      expect(evaluateCondition("Hello", "hello", "equal")).toBe(true);
-    });
-
-    it("returns true for exact numeric match via ==", () => {
-      expect(evaluateCondition(42, 42, "equal")).toBe(true);
-    });
-
-    it("returns false when values are different", () => {
-      expect(evaluateCondition("yes", "no", "equal")).toBe(false);
-    });
-
-    it("returns false when either value is falsy", () => {
-      expect(evaluateCondition("", "yes", "equal")).toBe(false);
-      expect(evaluateCondition("yes", undefined, "equal")).toBe(false);
-    });
-  });
-
-  describe("strictEquality", () => {
-    it("returns true for strictly equal values", () => {
-      expect(evaluateCondition("yes", "yes", "strictEquality")).toBe(true);
-    });
-
-    it("returns false when values are loosely equal but not strictly", () => {
-      // 1 == true but 1 !== true
-      expect(
-        evaluateCondition(1 as never, true as never, "strictEquality"),
-      ).toBe(false);
-    });
-
-    it("returns false when either value is falsy", () => {
-      expect(evaluateCondition("", "yes", "strictEquality")).toBe(false);
-    });
-  });
-
-  describe("notEqual", () => {
-    it("returns true when values are different", () => {
-      expect(evaluateCondition("yes", "no", "notEqual")).toBe(true);
-    });
-
-    it("returns false when values are equal", () => {
-      expect(evaluateCondition("yes", "yes", "notEqual")).toBe(false);
-    });
-
-    it("returns false when conditionValue is falsy", () => {
-      expect(evaluateCondition("", "anything", "notEqual")).toBe(false);
-    });
-  });
-
-  describe("exists", () => {
-    it("returns true when targetFieldValue is a non-empty string", () => {
-      expect(evaluateCondition("anything", "populated", "exists")).toBe(true);
-    });
-
-    it("returns false when targetFieldValue is empty string", () => {
-      expect(evaluateCondition("anything", "", "exists")).toBe(false);
-    });
-
-    it("returns false when targetFieldValue is undefined", () => {
-      expect(evaluateCondition("anything", undefined, "exists")).toBe(false);
-    });
-  });
-
-  describe("gt", () => {
-    it("returns true when conditionValue is greater than target", () => {
-      expect(evaluateCondition(10, 5, "gt")).toBe(true);
-    });
-
-    it("returns false when conditionValue equals target", () => {
-      expect(evaluateCondition(5, 5, "gt")).toBe(false);
-    });
-
-    it("returns false when conditionValue is less than target", () => {
-      expect(evaluateCondition(3, 5, "gt")).toBe(false);
-    });
-
-    it("returns false when either value is non-numeric", () => {
-      expect(evaluateCondition("abc", 5, "gt")).toBe(false);
-      expect(evaluateCondition(5, "abc", "gt")).toBe(false);
-    });
-
-    it("returns true when conditionValue > 0 and target is 0", () => {
-      expect(evaluateCondition(5, 0, "gt")).toBe(true);
-    });
-
-    it("returns false when conditionValue is 0 and target is positive", () => {
-      expect(evaluateCondition(0, 5, "gt")).toBe(false);
-    });
-
-    it("returns false when conditionValue is an empty/whitespace string", () => {
-      expect(evaluateCondition("  ", 5, "gt")).toBe(false);
-    });
-
-    it("returns false when targetFieldValue is an empty/whitespace string", () => {
-      expect(evaluateCondition(5, "  ", "gt")).toBe(false);
-    });
-  });
-
-  describe("lt", () => {
-    it("returns true when conditionValue is less than target", () => {
-      expect(evaluateCondition(3, 5, "lt")).toBe(true);
-    });
-
-    it("returns false when conditionValue equals target", () => {
-      expect(evaluateCondition(5, 5, "lt")).toBe(false);
-    });
-
-    it("returns false when conditionValue is greater than target", () => {
-      expect(evaluateCondition(10, 5, "lt")).toBe(false);
-    });
-
-    it("returns false when either value is non-numeric", () => {
-      expect(evaluateCondition("abc", 5, "lt")).toBe(false);
-      expect(evaluateCondition(5, "abc", "lt")).toBe(false);
-    });
-
-    it("returns true when conditionValue is 0 and target is positive", () => {
-      expect(evaluateCondition(0, 5, "lt")).toBe(true);
-    });
-
-    it("returns false when conditionValue > 0 and target is 0", () => {
-      expect(evaluateCondition(5, 0, "lt")).toBe(false);
-    });
-
-    it("returns false when conditionValue is an empty/whitespace string", () => {
-      expect(evaluateCondition("  ", 5, "lt")).toBe(false);
-    });
-
-    it("returns false when targetFieldValue is an empty/whitespace string", () => {
-      expect(evaluateCondition(5, "  ", "lt")).toBe(false);
-    });
-  });
-
-  describe("default (unknown operation)", () => {
-    it("returns false for an unknown operation", () => {
-      expect(evaluateCondition("a", "a", "unknownOp" as never)).toBe(false);
-    });
   });
 });
 

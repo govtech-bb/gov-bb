@@ -74,7 +74,7 @@ export const setupRepeatSteps = (
         const nextStepId = getRepeatStepId(step.stepId, repeatStepCount);
         let currentFields = structuredClone(step.fields);
 
-        // Need to ensure that each fieldConditionalOn in a repeatable behaviour has a `targetStepId`
+        // Need to ensure that each fieldConditionalOn / optionalIf in a repeatable behaviour has a `targetStepId`
         currentFields = handleMissingTargetStepIds(
           currentFields,
           sharedFieldsIds,
@@ -130,7 +130,7 @@ export const setupRepeatSteps = (
         const nextStepId = getRepeatStepId(step.stepId, j);
         let currentFields = structuredClone(step.fields);
 
-        // Need to ensure that each fieldConditionalOn in a repeatable behaviour has a `targetStepId`
+        // Need to ensure that each fieldConditionalOn / optionalIf in a repeatable behaviour has a `targetStepId`
         currentFields = handleMissingTargetStepIds(
           currentFields,
           sharedFieldsIds,
@@ -454,7 +454,13 @@ const handleMissingTargetStepIds = (
   currentFields = currentFields.map((field) => {
     field.behaviours = field.behaviours?.map((b) => {
       // If it does not have a targetStepId...
-      if (b.type === "fieldConditionalOn" && !b.targetStepId) {
+      // `optionalIf` is rewritten with the same rules as `fieldConditionalOn`
+      // (#668) so it resolves instance-locally inside a repeatable step,
+      // matching the server's per-instance evaluation.
+      if (
+        (b.type === "fieldConditionalOn" || b.type === "optionalIf") &&
+        !b.targetStepId
+      ) {
         // If no shared fields, then set it to "nextStepId"
         if (sharedFields.length === 0) b.targetStepId = nextStepId;
         //  And it's not a shared field, then it can have the id of its repeat step.
