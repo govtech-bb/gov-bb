@@ -128,4 +128,26 @@ describe("AI system prompt", () => {
       "Never leave the primary field unconditionally required next to a reveal toggle",
     );
   });
+
+  it("directs relationship fields to components/relationship, not a text input", () => {
+    expect(prompt).toContain("Relationship fields use components/relationship");
+    // The component reference must surface it as a select with baked-in options.
+    expect(prompt).toContain("components/relationship — select (HAS options");
+    // The old guidance steered relationship fields to generic-text — must not return.
+    expect(prompt).not.toContain("free-text relationship fields");
+  });
+
+  it("makes address line 2 and similar continuation lines optional by default", () => {
+    // Explicit never-infer-required rule for continuation lines.
+    expect(prompt).toContain('"address line 2"');
+    expect(prompt).toContain("optional by default");
+    // The inferred-required list must name line 1 specifically, not bare
+    // "address" (which would sweep line 2 into required-by-default).
+    expect(prompt).toMatch(
+      /common required fields \([^)]*\baddress line 1\b[^)]*\)/,
+    );
+    expect(prompt).not.toMatch(
+      /common required fields \([^)]*\baddress\b(?! line 1)[^)]*\)/,
+    );
+  });
 });
