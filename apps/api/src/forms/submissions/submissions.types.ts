@@ -61,6 +61,10 @@ export type SubmissionAuditTrail =
 
 export interface SubmissionCreatedEvent {
   submissionId: string;
+  /** Human-readable reference code (e.g. "JPP-20260604-130732-9JZRZC").
+   *  Prefer this over `submissionId` wherever a citizen-visible reference is
+   *  displayed or emailed. */
+  referenceCode: string;
   formId: string;
   formVersion: string;
   idempotencyKey: string;

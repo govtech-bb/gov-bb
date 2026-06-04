@@ -427,6 +427,66 @@ describe("SqsConsumerService", () => {
       expect(event.formVersion).toBe("2.0.0");
       expect(event.idempotencyKey).toBe("idem-001");
     });
+
+    it("passes referenceCode from the message onto the reconstructed event", async () => {
+      const processor = makeProcessor();
+      factory.resolveByType.mockReturnValue(processor);
+      sendMock.mockResolvedValue({});
+
+      await service.processMessage(
+        QUEUE_URL,
+        sqsMessage({ referenceCode: "JPP-20260604-130732-9JZRZC" }),
+      );
+
+      const event = (processor.process as jest.Mock).mock.calls[0][0];
+      expect(event.referenceCode).toBe("JPP-20260604-130732-9JZRZC");
+    });
+
+    it("falls back referenceCode to submissionId when absent (legacy message)", async () => {
+      // Messages enqueued before the referenceCode field was added omit it.
+      // The consumer must fall back to submissionId so downstream handlers
+      // still have a usable reference string.
+      const processor = makeProcessor();
+      factory.resolveByType.mockReturnValue(processor);
+      sendMock.mockResolvedValue({});
+
+      const legacyBody: Omit<SubmissionSqsMessage, "referenceCode"> = {
+        submissionId: "sub-legacy-001",
+        processorType: "email",
+        processorIndex: 0,
+        formId: "form-1",
+        formVersion: "1.0.0",
+        idempotencyKey: "idem-legacy",
+        values: {},
+        processors: [
+          { type: "email", config: { recipientField: "test@gov.bb" } },
+        ],
+        meta: {
+          schemaVersion: 1,
+          pinnedFormVersion: "1.0.0",
+          draftId: null,
+          activeStepIds: [],
+          hiddenStepIds: [],
+          activeFieldIds: {},
+          hiddenFieldIds: {},
+          visitedPages: [],
+          submittedAt: "2026-01-01T00:00:00.000Z",
+        },
+        enqueuedAt: "2026-01-01T00:00:00.000Z",
+      };
+
+      const legacyMsg: Message = {
+        MessageId: "msg-legacy",
+        ReceiptHandle: "receipt-legacy",
+        Body: JSON.stringify(legacyBody),
+        Attributes: { ApproximateReceiveCount: "1" },
+      };
+
+      await service.processMessage(QUEUE_URL, legacyMsg);
+
+      const event = (processor.process as jest.Mock).mock.calls[0][0];
+      expect(event.referenceCode).toBe("sub-legacy-001");
+    });
   });
 
   // ── lifecycle ───────────────────────────────────────────────────────────

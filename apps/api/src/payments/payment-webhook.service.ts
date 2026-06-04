@@ -180,6 +180,7 @@ export class PaymentWebhookService {
 
       const event: SubmissionCreatedEvent = {
         submissionId: submission.id,
+        referenceCode: submission.referenceCode,
         formId: submission.formId,
         formVersion: submission.formVersion,
         idempotencyKey: submission.idempotencyKey,

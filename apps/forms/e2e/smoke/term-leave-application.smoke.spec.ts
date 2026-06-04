@@ -123,7 +123,7 @@ test.describe("Term Leave Application — Live Smoke", () => {
     // ─── Submit + Submission Confirmation ────────────────────────────────────
     await submitAndConfirm(page, {
       heading: "Submission Confirmation",
-      referenceLabel: "Reference number",
+      referenceLabel: "Submission ID",
     });
   });
 });

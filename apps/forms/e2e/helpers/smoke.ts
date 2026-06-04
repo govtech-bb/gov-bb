@@ -189,14 +189,26 @@ export async function submitAndConfirm(
 
   if (opts.referenceLabel) {
     await expect(page.getByText(opts.referenceLabel)).toBeVisible();
-    // The API returns the reference as a UUID — assert it is rendered.
+    // The API returns a human-readable referenceCode (e.g.
+    // "JPP-20260604-130732-9JZRZC"). Fall back to `id` (UUID) for older API
+    // deploys that don't yet include referenceCode (see issue #791).
     const body = await response.json();
-    const referenceId = body?.data?.id ?? body?.id;
+    const referenceCode: string | undefined =
+      body?.data?.referenceCode ?? body?.referenceCode;
+    const referenceId: string | undefined = body?.data?.id ?? body?.id;
+    const renderedReference = referenceCode ?? referenceId;
     expect(
-      referenceId,
-      "submission response should include a reference id",
+      renderedReference,
+      "submission response should include a reference code or id",
     ).toBeTruthy();
-    await expect(page.getByText(String(referenceId))).toBeVisible();
+    if (referenceCode) {
+      // When the API returns a referenceCode, it should match the expected shape.
+      expect(
+        referenceCode,
+        "referenceCode should match the expected pattern",
+      ).toMatch(/^[A-Z]+-\d{8}-\d{6}-[A-Z2-9]{6}$/);
+    }
+    await expect(page.getByText(String(renderedReference))).toBeVisible();
   }
 
   return response;

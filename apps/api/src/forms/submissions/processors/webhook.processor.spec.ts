@@ -11,6 +11,7 @@ function makePayload(
 ): SubmissionCreatedEvent {
   return {
     submissionId: "sub-100",
+    referenceCode: "PRM-20260604-130732-000100",
     formId: "permit-application",
     formVersion: "1.4.0",
     idempotencyKey: "idem-webhook-1",

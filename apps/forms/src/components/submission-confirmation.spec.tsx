@@ -415,6 +415,84 @@ describe("SubmissionConfirmation — contactDetails address branches", () => {
   });
 });
 
+describe("SubmissionConfirmation — Submission ID label", () => {
+  it("renders 'Submission ID' label in the no-payment success block", () => {
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Passport"
+        stepTitle="Submitted"
+        submissionState={{
+          hasPayment: false,
+          serviceName: "Passport Renewal",
+          submissionSuccess: true,
+          paymentSuccess: false,
+          referenceNumber: "JPP-20260604-130732-9JZRZC",
+          date: "19/05/2026",
+        }}
+      />,
+    );
+    expect(screen.getByText("Submission ID")).toBeInTheDocument();
+    expect(screen.getByText("JPP-20260604-130732-9JZRZC")).toBeInTheDocument();
+  });
+
+  it("does not render the old 'Reference number' label in the no-payment block", () => {
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Passport"
+        stepTitle="Submitted"
+        submissionState={{
+          hasPayment: false,
+          serviceName: "Passport Renewal",
+          submissionSuccess: true,
+          paymentSuccess: false,
+          referenceNumber: "JPP-20260604-130732-9JZRZC",
+          date: "19/05/2026",
+        }}
+      />,
+    );
+    expect(screen.queryByText("Reference number")).not.toBeInTheDocument();
+  });
+
+  it("renders 'Submission ID:' label in the payment success block", () => {
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Vehicles"
+        stepTitle="Payment Complete"
+        submissionState={{
+          hasPayment: true,
+          serviceName: "Vehicle Registration",
+          amount: "$50.00",
+          submissionSuccess: true,
+          paymentSuccess: true,
+          referenceNumber: "JPP-20260604-130732-9JZRZC",
+          date: "19/05/2026",
+        }}
+      />,
+    );
+    expect(screen.getByText("Submission ID:")).toBeInTheDocument();
+    expect(screen.getByText("JPP-20260604-130732-9JZRZC")).toBeInTheDocument();
+  });
+
+  it("does not render the old 'Reference number:' label in the payment block", () => {
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Vehicles"
+        stepTitle="Payment Complete"
+        submissionState={{
+          hasPayment: true,
+          serviceName: "Vehicle Registration",
+          amount: "$50.00",
+          submissionSuccess: true,
+          paymentSuccess: true,
+          referenceNumber: "JPP-20260604-130732-9JZRZC",
+          date: "19/05/2026",
+        }}
+      />,
+    );
+    expect(screen.queryByText("Reference number:")).not.toBeInTheDocument();
+  });
+});
+
 describe("SubmissionConfirmation — undefined submissionState", () => {
   it("renders nothing payment-related when submissionState is not provided", () => {
     const { container } = render(
