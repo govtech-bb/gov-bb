@@ -1,4 +1,4 @@
-import type { ServiceContract } from "@govtech-bb/form-types";
+import type { ServiceContract, ServiceContractRecipe } from "@govtech-bb/form-types";
 import styles from "../../styles/builder.module.css";
 
 interface PreviewModalProps {
@@ -12,10 +12,31 @@ interface PreviewModalProps {
    * Note: this previews the *last saved* version, which may lag in-memory edits.
    */
   previewUrl?: string | null;
+  /**
+   * The serialized in-memory recipe captured when Preview was pressed — the
+   * exact payload Save draft / Deploy would persist (#744). When set, the
+   * modal offers a "View recipe JSON" action that opens it in a new tab.
+   */
+  recipe?: ServiceContractRecipe | null;
   onClose: () => void;
 }
 
-export function PreviewModal({ contract, isLoading, error, previewUrl, onClose }: PreviewModalProps) {
+export function PreviewModal({ contract, isLoading, error, previewUrl, recipe, onClose }: PreviewModalProps) {
+  // Opens the captured recipe as pretty-printed JSON in a new tab via a blob
+  // URL — purely client-side, since the draft may never have been saved. The
+  // blob URL is revoked on a delay: the new tab reads it at open time, after
+  // which the URL is no longer needed, but revoking synchronously would race
+  // the navigation.
+  const handleViewRecipeJson = () => {
+    if (!recipe) return;
+    const blob = new Blob([JSON.stringify(recipe, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank", "noopener,noreferrer");
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  };
+
   return (
     <div className={styles.modal} onClick={onClose}>
       <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
@@ -24,7 +45,7 @@ export function PreviewModal({ contract, isLoading, error, previewUrl, onClose }
           <button type="button" onClick={onClose}>Close</button>
         </div>
 
-        <div className={styles.formGroup}>
+        <div className={styles.formGroup} style={{ display: "flex", gap: 16, alignItems: "center" }}>
           {previewUrl ? (
             <a href={previewUrl} target="_blank" rel="noopener noreferrer">
               🔗 Preview saved form
@@ -33,6 +54,23 @@ export function PreviewModal({ contract, isLoading, error, previewUrl, onClose }
             <span style={{ color: "#888", fontSize: "0.85rem" }}>
               Save this recipe to enable a live preview link.
             </span>
+          )}
+          {recipe && (
+            <button
+              type="button"
+              onClick={handleViewRecipeJson}
+              style={{
+                background: "none",
+                border: "none",
+                padding: 0,
+                color: "#0066cc",
+                cursor: "pointer",
+                textDecoration: "underline",
+                fontSize: "inherit",
+              }}
+            >
+              {"{} "}View recipe JSON
+            </button>
           )}
         </div>
 

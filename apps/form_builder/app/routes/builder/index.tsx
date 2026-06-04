@@ -95,6 +95,10 @@ function BuilderPage() {
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [previewData, setPreviewData] = useState<ServiceContract | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  // The serialized draft captured when Preview is pressed (#744) — set before
+  // the preview request so the "View recipe JSON" action works even while the
+  // contract is loading or the request failed.
+  const [previewRecipeJson, setPreviewRecipeJson] = useState<ServiceContractRecipe | null>(null);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [isSubmitOpen, setIsSubmitOpen] = useState(false);
   const [isPublishOpen, setIsPublishOpen] = useState(false);
@@ -339,6 +343,9 @@ function BuilderPage() {
     setPreviewError(null);
     try {
       const recipe = serializeRecipeDraft(draft, { version });
+      // Captured before the request so the JSON is inspectable even when the
+      // preview request fails — failure is exactly when you want to see it.
+      setPreviewRecipeJson(recipe);
       const contract = await previewRecipe({ data: { recipe } }) as ServiceContract;
       setPreviewData(contract as ServiceContract);
     } catch (e) {
@@ -499,6 +506,7 @@ function BuilderPage() {
     setSubmitSuccess(false);
     setSubmitError(null);
     setPreviewData(null);
+    setPreviewRecipeJson(null);
     setPreviewError(null);
     setLastSaveStatus("idle");
   };
@@ -629,6 +637,7 @@ function BuilderPage() {
     setSubmitSuccess(false);
     setSubmitError(null);
     setPreviewData(null);
+    setPreviewRecipeJson(null);
     setLastSaveStatus("idle");
     // Close all open panels/modals
     setIsPickerOpen(false);
@@ -660,6 +669,7 @@ function BuilderPage() {
     setSubmitSuccess(false);
     setSubmitError(null);
     setPreviewData(null);
+    setPreviewRecipeJson(null);
     setPreviewError(null);
     setLastSaveStatus("idle");
   };
@@ -952,7 +962,8 @@ function BuilderPage() {
           isLoading={isPreviewing}
           error={previewError}
           previewUrl={loadedFromId ? formPreviewUrl(loadedFromId) : null}
-          onClose={() => { setIsPreviewOpen(false); setPreviewData(null); setPreviewError(null); }}
+          recipe={previewRecipeJson}
+          onClose={() => { setIsPreviewOpen(false); setPreviewData(null); setPreviewError(null); setPreviewRecipeJson(null); }}
         />
       )}
 
