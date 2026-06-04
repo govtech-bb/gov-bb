@@ -29,7 +29,10 @@ import {
   getFirstIncompleteStepIndex,
   getFirstIncompleteActiveStep,
   isStepAccessible,
+  storeSubmissionState,
+  getSubmissionState,
 } from "./session-storage";
+import { SubmissionState } from "@forms/types";
 
 const FORM_ID = "form_abc";
 
@@ -122,6 +125,47 @@ describe("clearFormState", () => {
     expect(getFormData(FORM_ID)).toBeNull();
     expect(getFormData("other-form")).toEqual({ step1_name: "Bob" });
     expect(getCompletedSteps("other-form")).toEqual(["step1"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// storeSubmissionState / getSubmissionState
+// ---------------------------------------------------------------------------
+
+describe("storeSubmissionState / getSubmissionState", () => {
+  const state: SubmissionState = {
+    hasPayment: true,
+    serviceName: "Passport renewal",
+    amount: "150",
+    submissionSuccess: true,
+    paymentSuccess: true,
+    referenceNumber: "REF-123",
+    date: "2026-06-04T10:00:00.000Z",
+  };
+
+  it("round-trips a submission state correctly", () => {
+    storeSubmissionState(FORM_ID, state);
+    expect(getSubmissionState(FORM_ID)).toEqual(state);
+  });
+
+  it("returns undefined when no submission state has been stored", () => {
+    expect(getSubmissionState(FORM_ID)).toBeUndefined();
+  });
+
+  it("overwrites a previously stored state on the same form id", () => {
+    storeSubmissionState(FORM_ID, state);
+    const next: SubmissionState = {
+      ...state,
+      referenceNumber: "REF-456",
+      paymentSuccess: false,
+    };
+    storeSubmissionState(FORM_ID, next);
+    expect(getSubmissionState(FORM_ID)).toEqual(next);
+  });
+
+  it("scopes stored state to its form id", () => {
+    storeSubmissionState(FORM_ID, state);
+    expect(getSubmissionState("other-form")).toBeUndefined();
   });
 });
 

@@ -24,6 +24,8 @@ import {
   clearFormState,
   getFormData,
   storeFormData,
+  storeSubmissionState,
+  getSubmissionState,
 } from "../../../lib/session-storage";
 import { formatDataForSubmission, postFormSubmission } from "@forms/form-api";
 import { trackEvent } from "../../../lib/analytics";
@@ -85,9 +87,11 @@ export const Route = createFileRoute("/forms/$formId/")({
 function RouteComponent() {
   const formMeta = Route.useLoaderData();
   const { step } = Route.useSearch();
+  // Rehydrate from session storage so a refresh on the confirmation step keeps
+  // the committed outcome instead of bouncing the citizen to check-your-answers.
   const [submissionState, setSubmissionState] = React.useState<
     SubmissionState | undefined
-  >(undefined);
+  >(() => getSubmissionState(formMeta.formId));
 
   React.useEffect(() => {
     trackEvent("form-open", { form_id: formMeta.formId });
@@ -191,6 +195,14 @@ function RouteComponent() {
   React.useEffect(() => {
     storeFormData(formMeta.formId, formValues);
   }, [formMeta.formId, formValues]);
+
+  // Persist the committed submission outcome so the confirmation step survives
+  // a refresh. Each new submission overwrites it under the same form id.
+  React.useEffect(() => {
+    if (submissionState) {
+      storeSubmissionState(formMeta.formId, submissionState);
+    }
+  }, [formMeta.formId, submissionState]);
 
   const targetStores = [];
 

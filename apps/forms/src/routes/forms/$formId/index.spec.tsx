@@ -54,6 +54,8 @@ jest.mock("../../../lib/session-storage", () => ({
   getFormData: jest.fn(() => null),
   storeFormData: jest.fn(),
   clearFormState: jest.fn(),
+  storeSubmissionState: jest.fn(),
+  getSubmissionState: jest.fn(() => undefined),
 }));
 
 jest.mock("@forms/form-api", () => ({
@@ -68,13 +70,14 @@ jest.mock("../../../lib/analytics", () => ({
 import { Route } from "./index";
 import { useForm, useStore } from "@tanstack/react-form";
 import { getVisibleSteps, restoreRepeatableStepsFromStorage } from "@forms/lib";
-import { getFormData } from "../../../lib/session-storage";
+import { getFormData, getSubmissionState } from "../../../lib/session-storage";
 import { trackEvent } from "../../../lib/analytics";
 
 const mockUseForm = useForm as jest.Mock;
 const mockUseStore = useStore as jest.Mock;
 const mockGetVisibleSteps = getVisibleSteps as jest.Mock;
 const mockGetFormData = getFormData as jest.Mock;
+const mockGetSubmissionState = getSubmissionState as jest.Mock;
 const mockRestoreRepeatableStepsFromStorage =
   restoreRepeatableStepsFromStorage as jest.Mock;
 
@@ -128,6 +131,7 @@ beforeEach(() => {
   });
   mockGetVisibleSteps.mockReturnValue([mockVisibleStep]);
   mockGetFormData.mockReturnValue(null);
+  mockGetSubmissionState.mockReturnValue(undefined);
 });
 
 afterEach(() => {
@@ -205,6 +209,31 @@ describe("RouteComponent", () => {
     jest.spyOn(Route, "useSearch").mockReturnValue({ step: undefined });
     render(<Route.component />);
     expect(screen.getByTestId("form-renderer")).toBeInTheDocument();
+  });
+
+  // Refresh on the confirmation step (issue #783): the in-memory state would
+  // otherwise be gone on remount, bouncing the citizen to check-your-answers.
+  // Rehydrating from session storage keeps the committed outcome present, so
+  // the renderer's redirect guard never fires.
+  it("rehydrates submissionState from session storage on mount", () => {
+    const stored = {
+      hasPayment: true,
+      serviceName: "Passport renewal",
+      submissionSuccess: true,
+      paymentSuccess: true,
+      referenceNumber: "REF-123",
+      date: "2026-06-04T10:00:00.000Z",
+    };
+    mockGetSubmissionState.mockReturnValue(stored);
+    render(<Route.component />);
+    expect(mockGetSubmissionState).toHaveBeenCalledWith("test-form");
+    expect(mockFormRendererProps.current.submissionState).toEqual(stored);
+  });
+
+  it("passes undefined submissionState when none is stored", () => {
+    mockGetSubmissionState.mockReturnValue(undefined);
+    render(<Route.component />);
+    expect(mockFormRendererProps.current.submissionState).toBeUndefined();
   });
 });
 
@@ -714,6 +743,51 @@ describe("RouteComponent onSubmit handler", () => {
         await onSubmit({ value: {} });
       });
       expect(clearFormState).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("persists the committed submission state for refresh survival", () => {
+    const { storeSubmissionState } = jest.requireMock(
+      "../../../lib/session-storage",
+    );
+
+    const okData = {
+      id: "ref-001",
+      submittedAt: "2026-05-22T00:00:00Z",
+      formId: "test-form",
+    };
+
+    it("stores the submission state once it is committed on a success", async () => {
+      const onSubmit = renderAndExtractOnSubmit();
+      (postFormSubmission as jest.Mock).mockResolvedValue({
+        status: "submitted",
+        data: okData,
+      });
+      await act(async () => {
+        await onSubmit({ value: {} });
+      });
+      expect(storeSubmissionState).toHaveBeenCalledWith(
+        "test-form",
+        expect.objectContaining({
+          submissionSuccess: true,
+          referenceNumber: "ref-001",
+        }),
+      );
+    });
+
+    it("stores a failed submission state too, so the error panel survives a refresh", async () => {
+      const onSubmit = renderAndExtractOnSubmit();
+      (postFormSubmission as jest.Mock).mockResolvedValue({
+        status: "failed",
+        data: okData,
+      });
+      await act(async () => {
+        await onSubmit({ value: {} });
+      });
+      expect(storeSubmissionState).toHaveBeenCalledWith(
+        "test-form",
+        expect.objectContaining({ submissionSuccess: false }),
+      );
     });
   });
 

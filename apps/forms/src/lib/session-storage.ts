@@ -1,4 +1,4 @@
-import { FormValues } from "@forms/types";
+import { FormValues, SubmissionState } from "@forms/types";
 
 function stripNonSerializableValues(value: unknown): unknown {
   if (typeof File !== "undefined" && value instanceof File) {
@@ -52,6 +52,23 @@ export function getFormData(formId: string) {
 export function clearFormState(formId: string) {
   sessionStorage.removeItem(`formData_${formId}`);
   sessionStorage.removeItem(`completedSteps_${formId}`);
+}
+
+// Persist the committed submission outcome so the confirmation step survives a
+// page refresh (the state otherwise lives only in React memory and is lost on
+// reload, bouncing the citizen back to check-your-answers). SubmissionState is
+// plain serializable data — no File/Blob stripping needed. Not cleared on
+// success: each new submission overwrites it under the same form id.
+export function storeSubmissionState(formId: string, state: SubmissionState) {
+  sessionStorage.setItem(`submissionState_${formId}`, JSON.stringify(state));
+}
+
+// Retrieve a persisted submission state, or undefined when none is stored.
+export function getSubmissionState(
+  formId: string,
+): SubmissionState | undefined {
+  const data = sessionStorage.getItem(`submissionState_${formId}`);
+  return data ? JSON.parse(data) : undefined;
 }
 
 // Get completed steps from session storage

@@ -36,8 +36,11 @@ export default function SubmissionConfirmation({
   submissionState,
 }: SubmissionConfirmationProps) {
   // Without a committed submissionState there is nothing genuine to confirm.
-  // The form-renderer redirects away from this step when state is absent, so
-  // rendering null here avoids ever fabricating a fake payment receipt.
+  // The state is rehydrated from session storage so it survives a refresh; the
+  // form-renderer still redirects away from this step when it is genuinely
+  // absent, so rendering null here avoids ever fabricating a fake payment
+  // receipt. Note the session-storage value is display-only — the real
+  // submission and payment outcome are authoritative server-side.
   if (!submissionState) {
     return null;
   }

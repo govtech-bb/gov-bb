@@ -148,10 +148,11 @@ export default function FormRenderer({
     });
   }, [currentStep?.stepId, formMeta.formId, stepIndex, visibleSteps.length]);
 
-  // On a refresh at the confirmation step the in-memory submissionState is
-  // lost, so there is nothing genuine to confirm. Bounce back to
-  // check-your-answers (the same target as "Try again") rather than render an
-  // empty confirmation.
+  // submissionState is rehydrated from session storage, so a refresh on the
+  // confirmation step normally keeps the committed outcome. If it is still
+  // absent (e.g. the step was reached without a submission), there is nothing
+  // genuine to confirm — bounce back to check-your-answers (the same target as
+  // "Try again") rather than render an empty confirmation.
   React.useEffect(() => {
     if (currentStep?.stepId === "submission-confirmation" && !submissionState) {
       navigateToStep("check-your-answers");
