@@ -194,5 +194,36 @@ describe("validateFormContract", () => {
         expect(paths).toContain("steps.0.behaviours.0.max");
       }
     });
+
+    it("does not false-positive on a non-repeatable behaviour alongside a valid repeatable", () => {
+      const recipe = {
+        ...validRecipe,
+        steps: [
+          {
+            ...repeatableStep,
+            behaviours: [
+              {
+                type: "optionalIf" as const,
+                targetFieldId: "some-field",
+                operator: "equal" as const,
+                value: "yes",
+              },
+              { type: "repeatable" as const, min: 1, max: 5 },
+            ],
+          },
+        ],
+      };
+      const result = validateFormContract(recipe);
+      expect(result.ok).toBe(true);
+    });
+
+    it("rejects repeatable with a float max (max=4.5)", () => {
+      const result = validateFormContract(recipeWithRepeatable(1, 4.5));
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        const paths = result.issues.map((i) => i.path);
+        expect(paths).toContain("steps.0.behaviours.0.max");
+      }
+    });
   });
 });

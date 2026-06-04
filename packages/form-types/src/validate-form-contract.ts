@@ -13,7 +13,7 @@ export type ValidationResult =
   | { ok: false; issues: ValidationIssue[] };
 
 // Validate an author-time service contract recipe before it's persisted.
-// Not wired — call from whatever ingest point lands.
+// Called from POST /builder/registry/validate in form_builder_api.
 export function validateFormContract(input: unknown): ValidationResult {
   const parsed = serviceContractRecipeSchema.safeParse(input);
   if (!parsed.success) {
