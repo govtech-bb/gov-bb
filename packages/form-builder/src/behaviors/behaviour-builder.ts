@@ -6,13 +6,17 @@ export type ParamKind =
   | "operator" // renders an operator dropdown
   | "value" // renders a value input
   | "number" // renders a number input
-  | "stringArray"; // renders a comma-separated string input (for sharedFields.fieldIds)
+  | "stringArray" // renders a comma-separated string input (for sharedFields.fieldIds)
+  | "text"; // renders a plain text input (free text, e.g. addAnotherLabel)
 
 export interface BehaviourParamDescriptor {
   name: string; // parameter key in the behaviour object
   label: string; // display label
   kind: ParamKind;
   optional?: boolean;
+  // For "text" params: shown as the input placeholder, so authors can see the
+  // runtime default they'd be overriding (e.g. "Add another?").
+  placeholder?: string;
 }
 
 export interface BehaviourTypeDescriptor {
@@ -59,6 +63,17 @@ export const BEHAVIOUR_TYPE_DESCRIPTORS: BehaviourTypeDescriptor[] = [
     params: [
       { name: "min", label: "Min", kind: "number" },
       { name: "max", label: "Max", kind: "number" },
+      // Optional override for the runtime's auto-generated "Add another?"
+      // radio label (form-types repeatableBehaviourSchema.addAnotherLabel).
+      // Blank means absent: the editor deletes the key so the runtime
+      // fallback applies — it must never store "".
+      {
+        name: "addAnotherLabel",
+        label: "Add another label",
+        kind: "text",
+        optional: true,
+        placeholder: "Add another?",
+      },
     ],
   },
   {
