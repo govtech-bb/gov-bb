@@ -461,11 +461,13 @@ For paired range fields ("start"/"end", "from"/"to"), put the reference validati
 \`\`\`
 Operators: "equal", "notEqual", "in", "exists". targetFieldId must match the watched field's fieldId — so it is kebab-case too (Rule 16). operator is REQUIRED.
 
+The compared \`value\` is ALWAYS lowercased and kebab-cased: it must equal the watched field's submitted option \`value\` (which is kebab-case by convention), NEVER the display label. Watch for \`"christ-church"\`, not \`"Christ Church"\`; \`"yes"\`, not \`"Yes"\`. With \`"in"\`, every entry in the array follows the same rule.
+
 ## Optional Fields (optionalIf)
 \`\`\`json
 "behaviours": [{"type": "optionalIf", "targetFieldId": "field-to-watch", "operator": "equal", "value": true}]
 \`\`\`
-Relaxes the field's required validation while the condition matches — the field stays VISIBLE but becomes optional. Format validations (pattern, minLength, ...) still apply if the user fills it in. Same operators as fieldConditionalOn. operator is REQUIRED.
+Relaxes the field's required validation while the condition matches — the field stays VISIBLE but becomes optional. Format validations (pattern, minLength, ...) still apply if the user fills it in. Same operators as fieldConditionalOn, and the same \`value\` rule: string values are always lowercased and kebab-cased to match the watched field's option \`value\`, never its label. operator is REQUIRED.
 
 ## Alternative Identity Pattern (e.g. passport instead of National ID)
 When a form lets the applicant supply one identifier in place of another ("Use passport number instead" or any either/or pattern), ALWAYS emit all three parts:
