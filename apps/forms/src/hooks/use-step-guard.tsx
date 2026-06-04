@@ -94,6 +94,12 @@ export function useStepGuard({
   useEffect(() => {
     if (activeSteps.length === 0) return;
 
+    // Terminal step: completed-step records are cleared on a successful
+    // submission, so its prerequisites no longer look complete. The renderer
+    // gates this step on submissionState, so the guard must not bounce the
+    // citizen off their confirmation here.
+    if (currentStepId === "submission-confirmation") return;
+
     // Rule 1 — no step in URL
     if (!currentStepId) {
       const target =

@@ -20,7 +20,11 @@ import {
   FormValuesByStep,
 } from "@forms/types";
 import React from "react";
-import { getFormData, storeFormData } from "../../../lib/session-storage";
+import {
+  clearFormState,
+  getFormData,
+  storeFormData,
+} from "../../../lib/session-storage";
 import { formatDataForSubmission, postFormSubmission } from "@forms/form-api";
 import { trackEvent } from "../../../lib/analytics";
 import { resolveSubmissionOutcome } from "../../../lib/submission-outcome";
@@ -161,6 +165,10 @@ function RouteComponent() {
         setSubmissionState(subState);
       }
       if (event?.name === "form-submit-success") {
+        // Submission saved server-side — drop the local draft so the next visit
+        // starts fresh. Gated on the success event (not submissionSuccess) so
+        // the payment-init error path keeps the answers for its Try again flow.
+        clearFormState(formMeta.formId);
         trackEvent(event.name, {
           form_id: formMeta.formId,
           step_count: visibleSteps.length,
