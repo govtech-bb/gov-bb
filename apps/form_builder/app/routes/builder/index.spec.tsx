@@ -820,6 +820,12 @@ describe("BuilderPage — Preview modal recipe JSON (#744)", () => {
     mockForms = [];
   });
 
+  // This block is the only one that arms previewRecipe; reset on the way out
+  // so a future preview-triggering test can't inherit a stale armed mock.
+  afterEach(() => {
+    previewRecipe.mockReset();
+  });
+
   it("offers View recipe JSON even when the preview request fails", async () => {
     mockEmptyDraft = VALID_DRAFT;
     previewRecipe.mockRejectedValue(new Error("preview boom"));
