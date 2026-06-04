@@ -56,6 +56,7 @@ import {
   expectStep,
   fillDate,
   fillField,
+  selectDropdown,
   selectRadio,
   submitAndConfirm,
 } from "../helpers/smoke";
@@ -77,7 +78,10 @@ test.describe("Term Leave Application — Live Smoke", () => {
     // ─── Applicant Information ───────────────────────────────────────────────
     let step = expectStep(page, "applicant-info");
     await expect(page.locator("h1")).toContainText("Applicant Information");
-    await fillField(page, step, "school", "Bridgetown Secondary School");
+    // The published 1.3.0 recipe swapped `school` from a free-text input to a
+    // school select (PrimarySchool registry component) — drive it by option
+    // value, not fill().
+    await selectDropdown(page, step, "school", "bay-primary-school");
     await fillField(page, step, "first-name", firstName);
     await fillField(page, step, "last-name", lastName);
     // `components/telephone` — phone-format validation.
