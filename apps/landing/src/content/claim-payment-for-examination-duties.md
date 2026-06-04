@@ -7,40 +7,53 @@ category: education
 form_id: duties-performed-exam-claim
 ---
 
-If you performed duties during a recent examination period, you can claim payment for them. Use this service if you worked as an invigilator, supervisor, examination assessor, door marshal, centre clerk, or as a reader, writer, interpreter, model, moderator or dictator, or helped with practical exam setup.
-
 ## Who can claim
 
-This service is for people who carried out examination duties, including invigilation, supervision, assessment, practical exam setup, and reader, writer or interpreter services.
+If you performed duties during a recent examination period, you can claim payment for your work.
+
+Use this service if you worked as an:
+- invigilator
+- supervisor
+- examination assessor
+- door marshal
+- centre clerk
+- reader
+- writer
+- interpreter
+- model
+- moderator
+- dictator
+
+You can also use this service if you helped with practical examination setup.
+
 
 ## Before you start
 
-There is no fee to make a claim. All amounts are in Barbados dollars (BBD).
+There is no fee to make a claim. All amounts are in Barbados dollars.
 
-You’ll need:
+You will need:
 
-1. The exam period and the dates your duties covered.
-2. The details of each duty, including the centre, your role and the rate.
-3. Your bank or credit union account details so payment can be made.
-
-The form takes about 15 to 45 minutes, depending on how many duties you are claiming for.
+- the examination period and the dates your duties covered
+- the details of each duty, including the centre, your role and the rate
+- your bank or credit union account details for payment
 
 ## How to claim
+
+You can apply online. It takes about 15 to 45 minutes, depending on how many duties you are claiming for.
 
 <a data-start-link href="/education/claim-payment-for-examination-duties/start">Start now</a>
 
 ## What the form asks for
 
-1. Your personal details: name, National ID number, address, parish, telephone number and email address, and the name of your supervisor.
-2. The exam period and the date range your claim covers.
-3. For invigilation, supervision or assessment duties: the date, centre, your role, the rate and any overtime hours.
-4. For practical exam setup: the date, centre, subject, number of candidates and the rate per candidate.
-5. For reader, writer or interpreter sessions: the date, centre, subject, the duties you performed, and the hours or passages and rate.
-6. Your payment details: bank or credit union, branch, account number, account type and the name on the account.
-7. A declaration confirming the duties and amounts are accurate, that your supervisor will verify the claim, and that providing false information may have consequences.
+- your personal details (name, National ID number, contact details and supervisor’s name)
+- exam period and date range covered
+- details of duties (date, centre, role, rate, and any relevant subject or candidates)
+- payment details (bank or credit union, branch, account number and type, and name on the account)
+- a declaration confirming the information is correct
+
 
 ## After you claim
 
-Your supervisor verifies your claim. Once approved, payment is made directly into your account, typically within 4 to 6 weeks of the exam period ending. An email is sent to you once the payment is processed.
+Once your supervisor approves your claim, payment will be made directly to your account within 4 to 6 weeks after the examination period ends. You will get an email when the payment has been processed. 
 
-If your claim is still unpaid after 6 weeks, you can contact the Examinations Section by phone on +1 (246) 535-0600.
+If your claim has not been paid after 6 weeks, contact the Examinations Section at 535-0600.
