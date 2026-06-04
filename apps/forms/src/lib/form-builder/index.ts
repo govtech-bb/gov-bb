@@ -15,6 +15,7 @@ export {
   repeatStepConcactenator,
   getRepeatStepId,
   getRepeatStepCount,
+  getInstanceMarker,
   removeRepeatableStep,
   addRepeatableStep,
   restoreRepeatableStepsFromStorage,

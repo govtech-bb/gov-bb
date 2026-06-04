@@ -88,6 +88,7 @@ jest.mock("@forms/lib", () => ({
   stepFieldIdConcactenator: "_",
   repeatStepConcactenator: "~",
   getRepeatStepCount: jest.fn(() => undefined),
+  getInstanceMarker: jest.fn(() => undefined),
   buildFieldValidationProperties: jest.fn(() => ({
     onDynamic: jest.fn(),
     onBlur: jest.fn(),
@@ -909,5 +910,89 @@ describe("FormRenderer", () => {
     );
 
     expect(stepData["step-1"]).toEqual({ "step-1_field": "hello" });
+  });
+
+  // #801: distinguish repeatable-step instances beyond the first.
+  it("repeat instance marker: a non-repeat step renders the plain title with no caption", () => {
+    const { getInstanceMarker } = jest.requireMock("@forms/lib");
+    (getInstanceMarker as jest.Mock).mockReturnValue(undefined);
+    const step = makeStep("step-1");
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="step-1"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    const heading = screen.getByRole("heading", { name: /Step step-1/ });
+    expect(heading).toHaveTextContent("Step step-1");
+    expect(heading.textContent).not.toContain("—");
+    expect(
+      screen.queryByTestId("repeat-instance-marker"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("repeat instance marker: an auto-numbered instance suffixes the title with ' — N' and renders no caption", () => {
+    const { getInstanceMarker } = jest.requireMock("@forms/lib");
+    (getInstanceMarker as jest.Mock).mockReturnValue({
+      text: "2",
+      hasLabel: false,
+    });
+    const repeatableBehaviour = { type: "repeatable", min: 1 };
+    const step = makeStep("step-1~1", [], [repeatableBehaviour]);
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="step-1~1"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    const heading = screen.getByRole("heading", { name: /Step step-1~1/ });
+    expect(heading).toHaveTextContent("Step step-1~1 — 2");
+    expect(
+      screen.queryByTestId("repeat-instance-marker"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("repeat instance marker: a labelled instance renders a caption above the unchanged h1", () => {
+    const { getInstanceMarker } = jest.requireMock("@forms/lib");
+    (getInstanceMarker as jest.Mock).mockReturnValue({
+      text: "Dependent 2",
+      hasLabel: true,
+    });
+    const repeatableBehaviour = {
+      type: "repeatable",
+      min: 1,
+      instanceLabel: "Dependent",
+    };
+    const step = makeStep("step-1~1", [], [repeatableBehaviour]);
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="step-1~1"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    const caption = screen.getByTestId("repeat-instance-marker");
+    expect(caption).toHaveTextContent("Dependent 2");
+    const heading = screen.getByRole("heading", { name: /Step step-1~1/ });
+    // The h1 text stays unchanged (no suffix) when a caption is shown.
+    expect(heading).toHaveTextContent("Step step-1~1");
+    expect(heading.textContent).not.toContain("—");
+    expect(heading.textContent).not.toContain("Dependent");
+    // Caption sits above the heading in the DOM.
+    expect(
+      caption.compareDocumentPosition(heading) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 });

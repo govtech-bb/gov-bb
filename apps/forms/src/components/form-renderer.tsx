@@ -20,6 +20,7 @@ import {
   stepFieldIdConcactenator,
   repeatStepConcactenator,
   getRepeatStepCount,
+  getInstanceMarker,
   buildFieldValidationProperties,
 } from "@forms/lib";
 import { trackEvent } from "../lib/analytics";
@@ -162,6 +163,10 @@ export default function FormRenderer({
   if (!currentStep) return null;
 
   const currentFields = [...currentStep.fields];
+
+  // #801: distinguish repeat instances beyond the first. undefined for base
+  // steps / first instances (renders exactly as before).
+  const instanceMarker = getInstanceMarker(currentStep);
 
   // Resolve the validators for a field. Pre-built validators live in
   // formMeta.validationProperties (keyed by field id), but repeat-instance
@@ -382,7 +387,19 @@ export default function FormRenderer({
       <div className="form-page form-width">
         <div className="form-page__header">
           <p className="form-page__service-title"> {formMeta.formTitle} </p>
-          <h1 className="govbb-text-h1">{currentStep.title}</h1>
+          {instanceMarker?.hasLabel && (
+            <span
+              data-testid="repeat-instance-marker"
+              className="block text-caption text-mid-grey-00"
+            >
+              {instanceMarker.text}
+            </span>
+          )}
+          <h1 className="govbb-text-h1">
+            {instanceMarker && !instanceMarker.hasLabel
+              ? `${currentStep.title} — ${instanceMarker.text}`
+              : currentStep.title}
+          </h1>
           {currentStep.description && (
             <p className="form-page__step-description">
               {currentStep.description}
