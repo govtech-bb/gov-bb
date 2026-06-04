@@ -3,6 +3,7 @@ import { Heading, Search, Text, linkVariants } from '@govtech-bb/react'
 import { ChatAssistant } from '../components/ChatAssistant'
 import { HelpfulBox } from '../components/HelpfulBox'
 import { CATEGORIES } from '../content/categories'
+import { isCategoryVisible } from '../content/registry'
 import { trackEvent } from '../lib/analytics'
 
 export const Route = createFileRoute('/')({
@@ -20,6 +21,9 @@ export const Route = createFileRoute('/')({
 })
 
 function Home() {
+  const { preview } = Route.useRouteContext()
+  const categories = CATEGORIES.filter((cat) => isCategoryVisible(cat, preview))
+
   const handleSearch = (q: string) => {
     trackEvent('search-submit', { query: q, source: 'home' })
     if (q === '') {
@@ -68,7 +72,7 @@ function Home() {
           <div className="space-y-m py-m lg:py-l">
             <Heading as="h2" className="text-balance">All government services</Heading>
             <ul className="m-0 flex list-none flex-col p-0">
-              {CATEGORIES.map((cat) => (
+              {categories.map((cat) => (
                 <li
                   key={cat.slug}
                   className="border-b-2 border-grey-00 py-s lg:py-xm"
