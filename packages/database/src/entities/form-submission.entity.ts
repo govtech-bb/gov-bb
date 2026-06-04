@@ -20,6 +20,15 @@ export class FormSubmissionEntity extends TimestampedEntity {
   })
   idempotencyKey!: string;
 
+  /** Human-readable submission reference (e.g. PR-20260515-104530-A3B7K9). */
+  @Column({
+    name: "reference_code",
+    type: "varchar",
+    length: 64,
+    unique: true,
+  })
+  referenceCode!: string;
+
   @Column({ name: "form_id", type: "varchar", length: 100 })
   formId!: string;
 
