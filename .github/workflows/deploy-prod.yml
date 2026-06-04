@@ -17,10 +17,10 @@ concurrency:
 
 env:
   AWS_REGION: ca-central-1
-  ECR_REPOSITORY: simple-service-builder-api
+  ECR_REPOSITORY: ssb-api
   ECS_CLUSTER: simple-service-builder-prod
-  ECS_SERVICE: simple-service-builder-prod-api
-  TASK_FAMILY: simple-service-builder-prod-api
+  ECS_SERVICE: ssb-api-prod
+  TASK_FAMILY: ssb-api-prod
 
 jobs:
   # Same affected-detection pattern as sandbox, based on the last successful
