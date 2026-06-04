@@ -499,7 +499,15 @@
                 "error": "ID Number is required",
                 "value": true
               }
-            }
+            },
+            "behaviours": [
+              {
+                "type": "optionalIf",
+                "targetFieldId": "applicant-passport-toggle",
+                "operator": "equal",
+                "value": true
+              }
+            ]
           }
         },
         {
