@@ -82,8 +82,8 @@ test.describe("Temporary Teacher Application — Live Smoke", () => {
     await selectDropdown(page, step, "parish", "saint-michael");
     await fillField(page, step, "email", "testing@govtech.bb");
     await fillField(page, step, "tel-cell", faker.string.numeric(10));
-    // marital-status is a required radio.
-    await selectRadio(page, step, "marital-status", "single");
+    // marital-status is a required <select> (components/marital-status).
+    await selectDropdown(page, step, "marital-status", "single");
     await selectDropdown(page, step, "citizenship", "barbados");
     await advance(page, step);
 
