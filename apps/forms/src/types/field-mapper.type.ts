@@ -38,6 +38,8 @@ export interface ClientFormStep {
   fields: ClientPrimitive[];
   behaviours?: Behaviour[];
   nextSteps?: { title: string; content?: string; items?: string[] }[];
+  /** Raw markdown rendered on the submission-confirmation page. */
+  markdownContent?: string;
 }
 
 export interface ClientServiceContract {

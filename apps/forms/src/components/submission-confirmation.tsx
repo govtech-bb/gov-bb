@@ -1,4 +1,7 @@
 import React from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { markdownComponents } from "./markdown-components";
 import { isSafePaymentUrl } from "../lib/security/safe-payment-url";
 import { SubmissionConfirmationProps } from "../types/props.type";
 
@@ -27,6 +30,7 @@ export default function SubmissionConfirmation({
   stepTitle,
   processingMessage,
   nextSteps,
+  markdownContent,
   contactDetails,
   onTryAgain,
   submissionState,
@@ -86,6 +90,20 @@ export default function SubmissionConfirmation({
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {markdownContent && (
+        <div className="form-page__markdown-content">
+          {/* Recipe-authored copy (e.g. "What you need to know"). react-markdown
+              escapes raw HTML by default and we deliberately omit rehype-raw, so
+              recipe content cannot inject markup. */}
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={markdownComponents}
+          >
+            {markdownContent}
+          </ReactMarkdown>
         </div>
       )}
 

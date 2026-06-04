@@ -91,6 +91,13 @@ export interface SubmissionConfirmationProps {
    */
   processingMessage?: string;
   nextSteps?: { title: string; content?: string; items?: string[] }[];
+  /**
+   * Raw markdown rendered on the confirmation page (e.g. a "What you need to
+   * know" section). Sourced from the confirmation step's `markdownContent`,
+   * letting a recipe drive form-specific copy. Parsed by react-markdown with
+   * HTML escaping (no raw HTML), so recipe-authored content is XSS-safe.
+   */
+  markdownContent?: string;
   contactDetails?: ContactDetails;
   onTryAgain?: () => void;
   submissionState?: SubmissionState;

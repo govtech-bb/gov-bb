@@ -937,8 +937,10 @@
     },
     {
       "stepId": "submission-confirmation",
-      "title": "Submission Confirmation",
+      "title": "Your application to be a temporary teacher has been submitted.",
+      "description": "Thank you. We have received your application.",
       "elements": [],
+      "markdownContent": "## What you need to know\n\nFor questions, contact the Ministry of Education, Technological and Vocational Training (METVT):\n\n**Phone:** (246) 535-0600\n\n**Email:** info@mes.gov.bb",
       "behaviours": []
     }
   ],

@@ -190,6 +190,9 @@
   display: flex;
   gap: var(--spacing-s);
   margin: var(--spacing-s) 0 var(--spacing-m);
+  padding: var(--spacing-s);
+  background-color: var(--color-grey-00);
+  border-radius: var(--radius-sm);
 }
 
 .form-page__reference dt {
@@ -373,6 +376,24 @@
 
 .form-page__contact-label {
   font-weight: var(--font-weight-bold);
+}
+
+/* ---- Markdown content (recipe-authored confirmation copy) ---------------- *
+ * react-markdown emits bare <p> elements, which Tailwind's preflight resets to
+ * zero margin — collapsing paragraphs together. Restore vertical rhythm between
+ * them (matching body spacing), and align the block with the next-steps panel. */
+.form-page__markdown-content {
+  margin-top: var(--spacing-m);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+
+.form-page__markdown-content p {
+  margin: 0 0 var(--spacing-s);
+}
+
+.form-page__markdown-content p:last-child {
+  margin-bottom: 0;
 }
 
 /* ---- Applicant name (declaration step) ----------------------------------- */

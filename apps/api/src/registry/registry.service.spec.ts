@@ -184,6 +184,35 @@ describe("hydrateStep", () => {
       ),
     ).rejects.toThrow(UnresolvableComponentError);
   });
+
+  it("carries markdownContent through to the served step", async () => {
+    const resolver = jest.fn().mockResolvedValue(primitiveEntry);
+    const result = await hydrateStep(
+      {
+        stepId: "submission-confirmation",
+        title: "Done",
+        elements: [],
+        markdownContent: "## What you need to know\n\nContact us.",
+      },
+      resolver,
+    );
+    expect(result.markdownContent).toBe(
+      "## What you need to know\n\nContact us.",
+    );
+  });
+
+  it("leaves markdownContent undefined when the step has none", async () => {
+    const resolver = jest.fn().mockResolvedValue(primitiveEntry);
+    const result = await hydrateStep(
+      {
+        stepId: "step-1",
+        title: "Step 1",
+        elements: [{ ref: "components/first-name" }],
+      },
+      resolver,
+    );
+    expect(result.markdownContent).toBeUndefined();
+  });
 });
 
 // ─── hydrateForm ───────────────────────────────────────────────────────────

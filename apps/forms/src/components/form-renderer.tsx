@@ -367,6 +367,7 @@ export default function FormRenderer({
           stepTitle={currentStep.title}
           processingMessage={currentStep.description}
           nextSteps={currentStep.nextSteps}
+          markdownContent={currentStep.markdownContent}
           contactDetails={formMeta.contactDetails}
           onTryAgain={() => navigateToStep("check-your-answers")}
           submissionState={submissionState}
