@@ -85,7 +85,19 @@ USER app
 
 COPY --from=builder --chown=app:app /app/dist/apps/api/ ./dist/
 COPY --from=builder --chown=app:app /app/dist/packages/ ./packages/
+# Workspace-package SOURCE overlays for ts-node. The migrate-task runs
+# `pnpm migration:run`, which ts-node-compiles apps/api/typeorm.config.ts →
+# data-source.ts and typechecks every `@govtech-bb/*` import against the
+# tsconfig.base.json `paths` mapping — `packages/<pkg>/src/index.ts`. The
+# compiled packages copied above contain only .js/.d.ts, and a missing paths
+# target makes TypeScript crash with a bare "Debug Failure" (it asserts while
+# building the module-not-found diagnostic). Any package imported from the
+# ts-node-compiled graph needs its src/ overlaid here; runtime require()
+# still resolves to the compiled .js via the package.json `main`.
+#   - form-types: imported (type-only) by the entity declarations
+#   - database: imported by data-source.ts since #721
 COPY --from=builder --chown=app:app /app/packages/form-types/src/ ./packages/form-types/src/
+COPY --from=builder --chown=app:app /app/packages/database/src/ ./packages/database/src/
 COPY --from=builder --chown=app:app /app/node_modules/ ./node_modules/
 
 # pnpm (hoisted mode) keeps workspace-package symlinks in the consumer's
