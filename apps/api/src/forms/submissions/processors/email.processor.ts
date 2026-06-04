@@ -402,10 +402,10 @@ export class EmailProcessor implements ISubmissionProcessor {
         .map((l) => `<li><a href="${esc(l.url)}">${esc(l.name)}</a></li>`)
         .join("")}</ul>`
         : "";
+    // referenceCode is required on the event; ?? is defensive for payloads predating the field.
     return `
       <p>Your submission has been received.</p>
       <table>
-        // referenceCode is required on the event; ?? is defensive for payloads predating the field.
         <tr><th>Reference</th><td>${payload.referenceCode ?? payload.submissionId}</td></tr>
         <tr><th>Form</th><td>${payload.formId}</td></tr>
         <tr><th>Submitted</th><td>${payload.meta.submittedAt}</td></tr>

@@ -664,6 +664,9 @@ describe("EmailProcessor — reference code in plain-text and fallback HTML bodi
     expect(text).toContain("PPT-20260604-130732-9JZRZC");
     expect(text).not.toContain("Reference: sub-001");
     expect(html).toContain("PPT-20260604-130732-9JZRZC");
+    // Ensure no stray JS comment leaks into the HTML body as literal text
+    expect(html).not.toContain("referenceCode is required on the event");
+    expect(html).not.toContain("// ");
   });
 
   it("renders referenceCode in the text body when consumer has coalesced it to submissionId (legacy-event path)", async () => {
