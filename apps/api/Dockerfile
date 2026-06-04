@@ -22,6 +22,7 @@ COPY --chown=app:app package.json pnpm-lock.yaml pnpm-workspace.yaml nx.json tsc
 COPY --chown=app:app apps/api/package.json apps/api/
 COPY --chown=app:app apps/landing/package.json apps/landing/
 COPY --chown=app:app apps/forms/package.json apps/forms/
+COPY --chown=app:app packages/database/package.json packages/database/
 COPY --chown=app:app packages/expressions/package.json packages/expressions/
 COPY --chown=app:app packages/form-conditions/package.json packages/form-conditions/
 COPY --chown=app:app packages/form-types/package.json packages/form-types/
