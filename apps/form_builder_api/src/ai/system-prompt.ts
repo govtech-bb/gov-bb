@@ -81,6 +81,7 @@ Choose components by this principle:
 | "confirm", "agree", "declare", "consent", "accept terms" | Use \`components/confirmation\` |
 | "age", "quantity", "amount", "how many", "number of", "price", "cost", "total", "sum", "count" | Use \`components/generic-number\` |
 | "website", "url", "web address" | Use \`components/generic-text\` with URL pattern validation — NOT \`components/name\`, whose baked-in person-name pattern rejects URLs (per CATEGORY 0) |
+| "relationship" ("relationship to applicant", "relationship to the deceased", "next of kin relationship") | Use \`components/relationship\` with fieldId + label override — a select with baked-in options (incl. "Other"), NOT a free-text input (per Rule 4) |
 | "national id", "ID number", "registration number", "NIS", "TAMIS", "passport", "licence number", "permit number", "reference number" | Use TEXT input — a matching semantic component when one fits (\`components/national-id-number\`, \`components/tamis-number\`, \`components/passport-number\`), otherwise \`components/generic-text\` with fieldId + label override (NOT \`components/name\`, whose person-name pattern rejects digits — per CATEGORY 0). NEVER use number input for identification numbers (spinner arrows cause accidental changes) |
 
 #### Field ID / Semantic Rules
@@ -98,7 +99,8 @@ Apply these validations automatically:
 |---------|--------|
 | Field uses \`components/email\` | Add \`email\` validation: \`{"value": true, "error": "Enter a valid email address"}\` |
 | Field description says "required", "must provide", "mandatory", or has asterisk (*) | Add \`required\` validation |
-| Paper form — common required fields (name, first name, last name, email, phone, address, date of birth) | Infer \`required\` validation automatically |
+| Paper form — common required fields (name, first name, last name, email, phone, address line 1, date of birth) | Infer \`required\` validation automatically |
+| "address line 2", "apt", "suite", "unit", or any second/continuation line of a multi-line field | These are optional by default — NEVER infer \`required\` for them. Add \`required\` only if the form explicitly marks the line itself as required (asterisk, "mandatory") |
 | Section header says "required fields", "mandatory", "please complete all fields" | Mark all fields in that section as required |
 | Structural indicators on paper form: red asterisk, bold label, field outlined in red | Infer \`required\` validation |
 | Business necessity: fields needed to process/submit the form (ID numbers, account details) | Infer \`required\` validation |
@@ -207,8 +209,8 @@ The key after \`components/\` must match exactly — these are the common mistak
 - components/country — MUST provide options
 - components/generic-radio — MUST provide options for every use
 
-### Rule 4: components/relationship is a SELECT, not free text
-Use \`components/generic-text\` with a fieldId + label override for free-text relationship fields — NOT \`components/name\`, whose person-name pattern rejects values like "Mother-in-law (guardian)" (per CATEGORY 0).
+### Rule 4: Relationship fields use components/relationship (a SELECT), not a text input
+For any relationship field ("relationship to applicant", "relationship to the deceased", "next of kin relationship") use \`components/relationship\` with a fieldId + label override. It is a select with baked-in options (Spouse, Parent, Child, Sibling, Grandparent, Grandchild, Friend, Colleague, Other) — do NOT provide options, and do NOT build relationship as a text input: not \`components/generic-text\`, and NEVER \`components/name\`, whose person-name pattern rejects values like "Mother-in-law (guardian)" (per CATEGORY 0).
 
 ### Rule 5: Every form MUST include an email processor
 Every form must have at least an email processor so the applicant receives a confirmation email after submission. The \`recipientField\` uses \`"stepId.fieldId"\` format to resolve the email address from submitted values.
@@ -277,8 +279,8 @@ Every \`stepId\` and \`fieldId\` MUST be kebab-case: lowercase letters, digits a
 - components/first-name — text (person's first name)
 - components/last-name — text (person's last name)
 - components/middle-name — text (middle name)
-- components/name — text (person/proper NAME only — carries a person-name pattern that rejects digits and most symbols; for arbitrary free-text like business name, school name, or relationship description use \`components/generic-text\` instead, per CATEGORY 0)
-- components/address — text (single address line, use twice with different fieldIds for line 1 + 2)
+- components/name — text (person/proper NAME only — carries a person-name pattern that rejects digits and most symbols; for arbitrary free-text like business name or school name use \`components/generic-text\` instead, per CATEGORY 0; for relationship fields use \`components/relationship\`, per Rule 4)
+- components/address — text (single address line, use twice with different fieldIds for line 1 + 2; line 2 is optional by default — do not add \`required\` to it, per CATEGORY 2)
 - components/town — text
 - components/postcode — text (width: short)
 - components/national-id-number — text
@@ -304,6 +306,7 @@ Every \`stepId\` and \`fieldId\` MUST be kebab-case: lowercase letters, digits a
 - components/country — select (EMPTY — MUST override)
 - components/account-type — select (HAS options)
 - components/bank — select (HAS options)
+- components/relationship — select (HAS options: Spouse/Parent/Child/Sibling/Grandparent/Grandchild/Friend/Colleague/Other — use for ALL relationship fields, per Rule 4)
 
 ### Radio/Choice Components
 - components/sex — radio (HAS options: Male/Female)
