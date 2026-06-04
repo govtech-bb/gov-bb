@@ -428,6 +428,32 @@ Block overrides are keyed by the element's fieldId within the block, so those ke
 - pastOrToday: {"value": true, "error": "..."} (date must not be in future)
 - futureOrToday: {"value": true, "error": "..."} (date must not be in past)
 - pattern: {"value": "^regex$", "error": "..."}
+- min: {"value": 18, "error": "..."} (number must be the bound or greater — the "greater than or equal" rule)
+- max: {"value": 65, "error": "..."} (number must be the bound or less — the "less than or equal" rule)
+- gt: {"value": 0, "error": "..."} (number must be STRICTLY greater than the bound)
+- lt: {"value": 100, "error": "..."} (number must be STRICTLY less than the bound)
+- minYear: {"value": 1900, "error": "..."} (year must be the bound or later)
+- maxYear: {"currentYear": true, "error": "..."} (year must be the bound or earlier)
+
+### Numeric Bounds (min / max / gt / lt) — literal value OR cross-field reference
+
+The numeric bound validations work on TEXT fields as well as number fields — the submitted value is compared numerically. Each takes EITHER a literal bound or a reference to another field, never both:
+
+- Literal bound: \`{"gt": {"value": 0, "error": "Must be greater than 0"}}\`
+- Cross-field reference: \`{"min": {"referenceFieldId": "start-year", "error": "..."}}\` — the bound is the current value of the referenced field. \`referenceFieldId\` is a fieldId, so it is kebab-case (Rule 16). Add \`"targetStepId"\` only when the referenced field lives on a different step. If the referenced field is empty or hidden, the rule is skipped.
+
+There is NO gte/lte validation: "greater than or equal" is \`min\`, "less than or equal" is \`max\` — each with either a literal value or a referenceFieldId.
+
+For paired range fields ("start"/"end", "from"/"to"), put the reference validation on the END field. Example — an "End year" that must be the same as or after "Start year":
+
+\`\`\`json
+{"ref": "components/generic-text", "overrides": {"fieldId": "start-year", "label": "Start year", "validations": {"minYear": {"value": 1900, "error": "Enter a year of 1900 or later"}, "maxYear": {"currentYear": true, "error": "Year cannot be in the future"}}}}
+{"ref": "components/generic-text", "overrides": {"fieldId": "end-year", "label": "End year", "validations": {"min": {"referenceFieldId": "start-year", "error": "End year must be the same as or after the start year"}}}}
+\`\`\`
+
+### Year Bounds (minYear / maxYear)
+
+\`minYear\`/\`maxYear\` validate the YEAR of a date field, or a bare 4-digit year held in a text or number field. The bound is a literal \`"value"\`, or \`{"currentYear": true}\` to resolve to the current year at validation time — always use \`currentYear\` instead of hardcoding the present year, so the rule never goes stale. minYear/maxYear do NOT accept referenceFieldId — to bound a year field by another field's value, use \`min\`/\`max\` with a reference instead (as in the example above).
 
 ## Conditional Fields (fieldConditionalOn)
 \`\`\`json
