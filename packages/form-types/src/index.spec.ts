@@ -41,6 +41,9 @@ import {
   recipeFormStepSchema,
   processorSchema,
   resolvedProcessorSchema,
+  paymentConfigAuthorSchema,
+  formConfigBlobSchema,
+  parseFormConfigBlob,
   dynamic,
   validateFormContract,
   dateTimeFormatSchema,
@@ -754,6 +757,50 @@ describe("resolvedProcessorSchema (re-export)", () => {
       resolvedProcessorSchema.safeParse({ type: "unknown", config: {} })
         .success,
     ).toBe(false);
+  });
+});
+
+describe("paymentConfigAuthorSchema (re-export)", () => {
+  it("accepts a valid ezpay payment config", () => {
+    expect(
+      paymentConfigAuthorSchema.safeParse({
+        provider: "ezpay",
+        department: "civil-registry",
+        paymentCode: "BIRTH-CERT",
+        amount: 50,
+        description: "Birth certificate",
+        customerEmailPath: "personal.email",
+        customerNamePath: "personal.name",
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects a non-ezpay provider", () => {
+    expect(
+      paymentConfigAuthorSchema.safeParse({ provider: "stripe" }).success,
+    ).toBe(false);
+  });
+});
+
+describe("formConfigBlobSchema (re-export)", () => {
+  it("accepts an empty blob", () => {
+    expect(formConfigBlobSchema.safeParse({}).success).toBe(true);
+  });
+
+  it("rejects a non-array processors key", () => {
+    expect(formConfigBlobSchema.safeParse({ processors: {} }).success).toBe(
+      false,
+    );
+  });
+});
+
+describe("parseFormConfigBlob (re-export)", () => {
+  it("maps null to an empty blob", () => {
+    expect(parseFormConfigBlob(null)).toEqual({});
+  });
+
+  it("throws on an invalid blob", () => {
+    expect(() => parseFormConfigBlob({ processors: "nope" })).toThrow();
   });
 });
 

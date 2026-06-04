@@ -12,7 +12,8 @@ import type { AuthorableProcessorType } from "./types";
  * `url`): the author fills them in, and the existing server Validate flow
  * catches anything still missing. The webhook `secret` is never seeded — a
  * plaintext HMAC key does not belong in the git-committed recipe (issue #255).
- * `payment` is deliberately not authorable (see {@link AuthorableProcessorType}).
+ * `payment` is now authorable too (#716): its provider is fixed to `ezpay` and
+ * the path/amount fields start blank for the author to fill in.
  */
 export function makeDefaultProcessor(type: AuthorableProcessorType): Processor {
   switch (type) {
@@ -32,5 +33,20 @@ export function makeDefaultProcessor(type: AuthorableProcessorType): Processor {
       return { type: "spreadsheet", config: {} };
     case "opencrvs":
       return { type: "opencrvs", config: {} };
+    case "payment":
+      return {
+        type: "payment",
+        config: {
+          provider: "ezpay",
+          department: "",
+          paymentCode: "",
+          // `amount` is templatable (dynamic()) but a numeric literal here; 0 is
+          // a valid nonnegative default the author overrides.
+          amount: 0,
+          description: "",
+          customerEmailPath: "",
+          customerNamePath: "",
+        },
+      };
   }
 }

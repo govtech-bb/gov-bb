@@ -37,7 +37,7 @@ const submitRecipe = jest.fn();
 // Always resolve to "no selection" by default so the picker's Promise.all
 // load path works; individual tests can override per case.
 const getFormConfig = jest.fn((..._args: unknown[]) =>
-  Promise.resolve({ mdaContactId: null }),
+  Promise.resolve({ mdaContactId: null, processors: null }),
 );
 jest.mock("../../server/forms", () => ({
   submitRecipe: (...args: unknown[]) => submitRecipe(...args),
@@ -186,6 +186,44 @@ const VALID_DRAFT: RecipeDraft = {
   ],
 };
 
+// A complete author-time payment config — every required field filled.
+const COMPLETE_PAYMENT_CONFIG = {
+  provider: "ezpay" as const,
+  department: "Treasury",
+  paymentCode: "FEE-001",
+  amount: 50,
+  description: "Application fee",
+  customerEmailPath: "applicant.email",
+  customerNamePath: "applicant.fullName",
+};
+
+// VALID_DRAFT carrying a payment processor whose config is incomplete (the empty
+// strings makeDefaultProcessor seeds) — the save must be blocked.
+const DRAFT_WITH_INCOMPLETE_PAYMENT: RecipeDraft = {
+  ...VALID_DRAFT,
+  processors: [
+    {
+      id: "pay-1",
+      type: "payment",
+      config: {
+        provider: "ezpay",
+        department: "",
+        paymentCode: "",
+        amount: 0,
+        description: "",
+        customerEmailPath: "",
+        customerNamePath: "",
+      },
+    },
+  ],
+} as RecipeDraft;
+
+// Same draft but with a complete payment config — the save must proceed.
+const DRAFT_WITH_COMPLETE_PAYMENT: RecipeDraft = {
+  ...VALID_DRAFT,
+  processors: [{ id: "pay-1", type: "payment", config: COMPLETE_PAYMENT_CONFIG }],
+} as RecipeDraft;
+
 function renderBuilder() {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { Route } = require("./index") as {
@@ -306,6 +344,69 @@ describe("BuilderPage — validate on Save draft click", () => {
     },
     // Heavy render + userEvent flow; 15s flakes under CI's concurrent test
     // load (passes locally well under the limit). 30s gives headroom. See #625.
+    30_000,
+  );
+});
+
+describe("BuilderPage — incomplete payment config blocks save", () => {
+  let confirmSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    validateRecipe.mockReset();
+    submitRecipe.mockReset();
+    mockForms = [];
+    confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(true);
+  });
+
+  afterEach(() => {
+    confirmSpy.mockRestore();
+  });
+
+  it(
+    "blocks Save draft, surfaces an inline error, and sends no request when a payment processor is incomplete",
+    async () => {
+      mockEmptyDraft = DRAFT_WITH_INCOMPLETE_PAYMENT;
+      validateRecipe.mockResolvedValue({ ok: true });
+      renderBuilder();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: /save draft/i }),
+      );
+
+      // Inline error surfaces in the always-visible validation panel...
+      expect(
+        await screen.findByText(/payment processor is incomplete/i),
+      ).toBeInTheDocument();
+      // ...the modal never opens, no save-anyway prompt fires (hard gate)...
+      expect(screen.queryByText("Submit Recipe")).not.toBeInTheDocument();
+      expect(confirmSpy).not.toHaveBeenCalled();
+      // ...and the server is never asked to validate or save.
+      expect(validateRecipe).not.toHaveBeenCalled();
+      expect(submitRecipe).not.toHaveBeenCalled();
+    },
+    30_000,
+  );
+
+  it(
+    "lets Save draft proceed when every payment processor is complete",
+    async () => {
+      mockEmptyDraft = DRAFT_WITH_COMPLETE_PAYMENT;
+      validateRecipe.mockResolvedValue({ ok: true });
+      renderBuilder();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: /save draft/i }),
+      );
+
+      // No payment error, and the save flow reaches the modal + server validate.
+      expect(
+        screen.queryByText(/payment processor is incomplete/i),
+      ).not.toBeInTheDocument();
+      expect(
+        await screen.findByText("Submit Recipe", { selector: "strong" }),
+      ).toBeInTheDocument();
+      expect(validateRecipe).toHaveBeenCalledTimes(1);
+    },
     30_000,
   );
 });

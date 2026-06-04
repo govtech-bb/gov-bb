@@ -75,21 +75,22 @@ afterEach(() => {
 
 it("adds a processor of each authorable type", async () => {
   render(<Harness initial={emptyDraft} />);
-  for (const type of ["email", "webhook", "spreadsheet", "opencrvs"]) {
+  for (const type of ["email", "webhook", "payment", "spreadsheet", "opencrvs"]) {
     await addProcessor(type);
   }
   expect(state().map((p) => p.type)).toEqual([
     "email",
     "webhook",
+    "payment",
     "spreadsheet",
     "opencrvs",
   ]);
 });
 
-it("does not offer payment as an addable type", () => {
+it("offers payment as an addable type (#716)", () => {
   render(<Harness initial={emptyDraft} />);
   const select = screen.getByLabelText(/processor type/i);
-  expect(within(select).queryByText(/payment/i)).not.toBeInTheDocument();
+  expect(within(select).queryByText(/payment/i)).toBeInTheDocument();
 });
 
 it("populates the recipient-field picker with only email-like fields", async () => {
@@ -413,7 +414,7 @@ it("prunes the label key when cleared", async () => {
   expect(state()[0].config).not.toHaveProperty("label");
 });
 
-it("shows an existing payment processor read-only, not editable", () => {
+it("renders an existing payment processor as an editable form (#716)", () => {
   const initial: RecipeDraft = {
     formId: "f",
     title: "T",
@@ -435,6 +436,40 @@ it("shows an existing payment processor read-only, not editable", () => {
     ],
   };
   render(<Harness initial={initial} />);
-  expect(screen.getByText("Payment")).toBeInTheDocument();
-  expect(screen.getByRole("note")).toHaveTextContent(/recipe json/i);
+  // No read-only note now — the config is editable.
+  expect(screen.queryByRole("note")).not.toBeInTheDocument();
+  // Editable inputs are present and pre-populated from the config.
+  expect(screen.getByLabelText(/department/i)).toHaveValue("Treasury");
+  expect(screen.getByLabelText(/payment code/i)).toHaveValue("FEE-001");
+  expect(screen.getByLabelText(/amount/i)).toHaveValue(50);
+  // Provider is fixed (ezpay) and not user-editable.
+  expect(screen.getByLabelText(/provider/i)).toBeDisabled();
+});
+
+it("edits a payment processor's department field in place (#716)", async () => {
+  const initial: RecipeDraft = {
+    formId: "f",
+    title: "T",
+    steps: [],
+    processors: [
+      {
+        id: "pay-1",
+        type: "payment",
+        config: {
+          provider: "ezpay",
+          department: "Treasury",
+          paymentCode: "FEE-001",
+          amount: 50,
+          description: "Fee",
+          customerEmailPath: "contact.email",
+          customerNamePath: "applicant.full-name",
+        },
+      },
+    ],
+  };
+  render(<Harness initial={initial} />);
+  const dept = screen.getByLabelText(/department/i);
+  await userEvent.clear(dept);
+  await userEvent.type(dept, "Registry");
+  expect(state()[0].config.department).toBe("Registry");
 });

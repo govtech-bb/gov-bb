@@ -2,7 +2,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import {
   serviceContractRecipeSchema,
+  processorSchema,
   type ServiceContractRecipe,
+  type Processor,
 } from "@govtech-bb/form-types";
 import { api, ApiError } from "./api-client";
 import { getPublishedRecipe } from "./github-recipes";
@@ -101,6 +103,12 @@ export const getRecipe = createServerFn({ method: "GET", strict: false })
 // leaves the stored value untouched. It is intentionally NOT inside the recipe.
 const mdaContactIdSchema = z.string().nullable().optional();
 
+// `processors` (issue #716) is a DB-only sibling too: the API merges it into
+// `form_config.config.processors`. Carries payment (and any future DB-owned)
+// processors that must never enter the committed recipe. `null` clears the key;
+// an array sets it; omitting it leaves the stored value untouched.
+const processorsSiblingSchema = z.array(processorSchema).nullable().optional();
+
 export const submitRecipe = createServerFn({ method: "POST" })
   .middleware([requireSession])
   // `isNew` flags a brand-new form so the API enforces formId uniqueness; a new
@@ -110,6 +118,7 @@ export const submitRecipe = createServerFn({ method: "POST" })
       recipe: z.unknown(),
       isNew: z.boolean().optional(),
       mdaContactId: mdaContactIdSchema,
+      processors: processorsSiblingSchema,
     }),
   )
   .handler(async ({ data }): Promise<void> => {
@@ -121,6 +130,7 @@ export const submitRecipe = createServerFn({ method: "POST" })
       ...(data.mdaContactId !== undefined
         ? { mdaContactId: data.mdaContactId }
         : {}),
+      ...(data.processors !== undefined ? { processors: data.processors } : {}),
     });
   });
 
@@ -131,6 +141,7 @@ export const updateRecipe = createServerFn({ method: "POST" })
       formId: z.string(),
       recipe: z.unknown(),
       mdaContactId: mdaContactIdSchema,
+      processors: processorsSiblingSchema,
     }),
   )
   .handler(async ({ data }): Promise<void> => {
@@ -139,20 +150,30 @@ export const updateRecipe = createServerFn({ method: "POST" })
       ...(data.mdaContactId !== undefined
         ? { mdaContactId: data.mdaContactId }
         : {}),
+      ...(data.processors !== undefined ? { processors: data.processors } : {}),
     });
   });
 
-// Read the DB-only per-environment config for a form (issue #607). Returns the
-// selected MDA contact id (or null). Distinct from getRecipe, which returns the
-// recipe content — this is the form_config sidecar the recipe never carries.
+// Read the DB-only per-environment config for a form (issue #607, #716).
+// Returns the selected MDA contact id (or null) and the DB-resident payment
+// processors (or null). Distinct from getRecipe, which returns the recipe
+// content — this is the form_config sidecar the recipe never carries.
 export const getFormConfig = createServerFn({ method: "GET", strict: false })
   .middleware([requireSession])
   .inputValidator(z.object({ formId: z.string() }))
-  .handler(async ({ data }): Promise<{ mdaContactId: string | null }> => {
-    return api.get<{ mdaContactId: string | null }>(
-      `/builder/forms/${encodeURIComponent(data.formId)}/config`,
-    );
-  });
+  .handler(
+    async ({
+      data,
+    }): Promise<{
+      mdaContactId: string | null;
+      processors: Processor[] | null;
+    }> => {
+      return api.get<{
+        mdaContactId: string | null;
+        processors: Processor[] | null;
+      }>(`/builder/forms/${encodeURIComponent(data.formId)}/config`);
+    },
+  );
 
 // Re-key a draft form: change its Form ID. The API moves every
 // form_definitions row from `oldFormId` to `recipe.formId` and writes the saved

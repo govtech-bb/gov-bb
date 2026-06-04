@@ -39,6 +39,21 @@ describe("makeDefaultProcessor", () => {
     });
   });
 
+  it("seeds a payment processor with provider fixed to ezpay and blank path/amount fields (#716)", () => {
+    expect(makeDefaultProcessor("payment")).toEqual({
+      type: "payment",
+      config: {
+        provider: "ezpay",
+        department: "",
+        paymentCode: "",
+        amount: 0,
+        description: "",
+        customerEmailPath: "",
+        customerNamePath: "",
+      },
+    });
+  });
+
   // Guards against typo'd/stray keys: a default completed with its required
   // fields must parse cleanly through the author-time processorSchema, proving
   // every seeded key is a real schema key with a valid default value.
@@ -47,6 +62,16 @@ describe("makeDefaultProcessor", () => {
     ["webhook", { url: "https://example.gov.bb/hook" }],
     ["spreadsheet", {}],
     ["opencrvs", {}],
+    [
+      "payment",
+      {
+        department: "Treasury",
+        paymentCode: "FEE-001",
+        description: "Application fee",
+        customerEmailPath: "applicant.email",
+        customerNamePath: "applicant.fullName",
+      },
+    ],
   ])("a completed %s default parses through processorSchema", (type, fill) => {
     const base = makeDefaultProcessor(type);
     const parsed = processorSchema.safeParse({

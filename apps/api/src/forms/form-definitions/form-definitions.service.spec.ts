@@ -5,6 +5,7 @@ import type { FormDefinitionEntity } from "../../database/entities/form-definiti
 import { FormDefinitionRepository } from "./form-definition.repository";
 import { RegistryService } from "../../registry/registry.service";
 import { RecipeFileLoaderService } from "./recipe-file-loader.service";
+import { FormConfigService } from "../form-config/form-config.service";
 import { FormDefinitionsService } from "./form-definitions.service";
 
 // ---------------------------------------------------------------------------
@@ -53,11 +54,16 @@ function makeFindAllMocks(entities: FormDefinitionEntity[]) {
     }),
   } as unknown as jest.Mocked<ConfigService>;
 
+  const formConfig = {
+    resolveProcessors: jest.fn().mockResolvedValue([]),
+  } as unknown as jest.Mocked<FormConfigService>;
+
   const service = new FormDefinitionsService(
     repo,
     registry,
     fileLoader,
     config,
+    formConfig,
   );
   return { repo, registry, service };
 }
@@ -126,13 +132,18 @@ function makeMocks(
     }),
   } as unknown as jest.Mocked<ConfigService>;
 
+  const formConfig = {
+    resolveProcessors: jest.fn().mockResolvedValue([]),
+  } as unknown as jest.Mocked<FormConfigService>;
+
   const service = new FormDefinitionsService(
     repo,
     registry,
     fileLoader,
     config,
+    formConfig,
   );
-  return { repo, registry, fileLoader, config, service };
+  return { repo, registry, fileLoader, config, formConfig, service };
 }
 
 describe("FormDefinitionsService", () => {
@@ -358,6 +369,148 @@ describe("FormDefinitionsService", () => {
         });
 
         expect(result.processors).toEqual(HYDRATED_WITH_PROCESSORS.processors);
+      });
+    });
+
+    describe("findByFormId — DB processors from form_config (#716)", () => {
+      const RECIPE_EMAIL = { type: "email", config: { to: "ops@example.com" } };
+      const RECIPE_PAYMENT = {
+        type: "payment",
+        config: { paymentCode: "RECIPE", amount: 10 },
+      };
+      const DB_PAYMENT = {
+        type: "payment",
+        config: { paymentCode: "DB", amount: 25 },
+      };
+
+      function hydratedWith(processors: unknown[]) {
+        return { ...MOCK_HYDRATED, processors };
+      }
+
+      it("appends DB processors after the recipe processors when includeProcessors:true", async () => {
+        const { repo, registry, formConfig, service } = makeMocks({
+          source: "db",
+          nodeEnv: "development",
+        });
+        (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
+        (registry.hydrateForm as jest.Mock).mockResolvedValue(
+          hydratedWith([RECIPE_EMAIL]),
+        );
+        (formConfig.resolveProcessors as jest.Mock).mockResolvedValue([
+          DB_PAYMENT,
+        ]);
+
+        const result = await service.findByFormId({
+          formId: "passport-renewal",
+          includeProcessors: true,
+        });
+
+        expect(formConfig.resolveProcessors).toHaveBeenCalledWith(
+          "passport-renewal",
+        );
+        expect(result.processors).toEqual([RECIPE_EMAIL, DB_PAYMENT]);
+      });
+
+      it("drops recipe payment processors when the DB set has a payment (DB wins)", async () => {
+        const { repo, registry, formConfig, service } = makeMocks({
+          source: "db",
+          nodeEnv: "development",
+        });
+        (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
+        (registry.hydrateForm as jest.Mock).mockResolvedValue(
+          hydratedWith([RECIPE_EMAIL, RECIPE_PAYMENT]),
+        );
+        (formConfig.resolveProcessors as jest.Mock).mockResolvedValue([
+          DB_PAYMENT,
+        ]);
+
+        const result = await service.findByFormId({
+          formId: "passport-renewal",
+          includeProcessors: true,
+        });
+
+        // The recipe payment is gone; the non-payment recipe entry stays.
+        expect(result.processors).toEqual([RECIPE_EMAIL, DB_PAYMENT]);
+      });
+
+      it("leaves the recipe untouched when the DB set is empty", async () => {
+        const { repo, registry, formConfig, service } = makeMocks({
+          source: "db",
+          nodeEnv: "development",
+        });
+        (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
+        (registry.hydrateForm as jest.Mock).mockResolvedValue(
+          hydratedWith([RECIPE_EMAIL, RECIPE_PAYMENT]),
+        );
+        (formConfig.resolveProcessors as jest.Mock).mockResolvedValue([]);
+
+        const result = await service.findByFormId({
+          formId: "passport-renewal",
+          includeProcessors: true,
+        });
+
+        expect(result.processors).toEqual([RECIPE_EMAIL, RECIPE_PAYMENT]);
+      });
+
+      it("does not drop recipe payments when the DB set has only non-payment processors", async () => {
+        const { repo, registry, formConfig, service } = makeMocks({
+          source: "db",
+          nodeEnv: "development",
+        });
+        (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
+        (registry.hydrateForm as jest.Mock).mockResolvedValue(
+          hydratedWith([RECIPE_PAYMENT]),
+        );
+        const dbEmail = { type: "email", config: { to: "db@example.com" } };
+        (formConfig.resolveProcessors as jest.Mock).mockResolvedValue([
+          dbEmail,
+        ]);
+
+        const result = await service.findByFormId({
+          formId: "passport-renewal",
+          includeProcessors: true,
+        });
+
+        expect(result.processors).toEqual([RECIPE_PAYMENT, dbEmail]);
+      });
+
+      it("propagates when resolveProcessors throws on an invalid blob", async () => {
+        const { repo, registry, formConfig, service } = makeMocks({
+          source: "db",
+          nodeEnv: "development",
+        });
+        (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
+        (registry.hydrateForm as jest.Mock).mockResolvedValue(
+          hydratedWith([RECIPE_EMAIL]),
+        );
+        (formConfig.resolveProcessors as jest.Mock).mockRejectedValue(
+          new Error("invalid blob"),
+        );
+
+        await expect(
+          service.findByFormId({
+            formId: "passport-renewal",
+            includeProcessors: true,
+          }),
+        ).rejects.toThrow("invalid blob");
+      });
+
+      it("does not call resolveProcessors on the client path (includeProcessors:false)", async () => {
+        const { repo, registry, formConfig, service } = makeMocks({
+          source: "db",
+          nodeEnv: "development",
+        });
+        (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
+        (registry.hydrateForm as jest.Mock).mockResolvedValue(
+          hydratedWith([RECIPE_EMAIL]),
+        );
+
+        await service.findByFormId({
+          formId: "passport-renewal",
+          includeProcessors: false,
+        });
+
+        expect(formConfig.resolveProcessors).not.toHaveBeenCalled();
       });
     });
   });

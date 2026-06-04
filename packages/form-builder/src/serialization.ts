@@ -74,11 +74,19 @@ export function serializeRecipeDraft(
       : {}),
     version: opts.version,
     // Carry processors through, stripping the editor-only id (never persisted,
-    // per ADR 0009). `!== undefined` (not a truthiness/length check) keeps
-    // "absent" distinct from an explicit `[]`.
+    // per ADR 0009) AND every `payment` processor: payment config is now a
+    // per-environment DB sibling living in `form_config.config` (#716, ADR
+    // 0033), never in the committed recipe — so it must never reach the wire
+    // here. `!== undefined` (not a truthiness/length check) keeps "absent"
+    // distinct from an explicit `[]`. The filter can collapse a non-empty draft
+    // array to `[]` (a form whose only processor was payment) — that's the
+    // correct wire shape, and the editor still holds the payment entry to send
+    // in the DB sibling field.
     ...(draft.processors !== undefined
       ? {
-          processors: draft.processors.map(({ id: _id, ...rest }) => rest),
+          processors: draft.processors
+            .filter((p) => p.type !== "payment")
+            .map(({ id: _id, ...rest }) => rest),
         }
       : {}),
     steps,
