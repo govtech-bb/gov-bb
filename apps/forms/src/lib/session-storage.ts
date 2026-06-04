@@ -48,6 +48,12 @@ export function getFormData(formId: string) {
   return data ? JSON.parse(data) : null;
 }
 
+// Clear a form's persisted progress (field values + completed steps)
+export function clearFormState(formId: string) {
+  sessionStorage.removeItem(`formData_${formId}`);
+  sessionStorage.removeItem(`completedSteps_${formId}`);
+}
+
 // Get completed steps from session storage
 export function getCompletedSteps(formId: string): string[] {
   const steps = sessionStorage.getItem(`completedSteps_${formId}`);
