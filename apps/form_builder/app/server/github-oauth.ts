@@ -7,17 +7,10 @@
  * route's navigation response, not on a server-function's RPC response.
  */
 
+import { REPO_NAME } from "./github-repo";
+
 const GITHUB_TOKEN_URL = "https://github.com/login/oauth/access_token";
 const GITHUB_USER_URL = "https://api.github.com/user";
-
-/**
- * Canonical owner/name of the repository this builder publishes to. Exported
- * for display (e.g. the access-denied page) so the `owner/name` string isn't
- * hard-coded in more than one place. The runtime API calls below scope to the
- * org via the `GITHUB_ORG` env var, not this display constant.
- */
-export const REPO_OWNER = "govtech-bb";
-export const REPO_NAME = "gov-bb";
 
 /**
  * Exchange an OAuth `code` for an access token.

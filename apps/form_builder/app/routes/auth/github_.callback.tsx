@@ -11,6 +11,7 @@ import {
   userHasRepoWriteAccess,
   userIsTeamMember,
 } from "../../server/github-oauth";
+import { repoOwner } from "../../server/github-repo";
 import {
   normalizeOAuthBase,
   parseOAuthStateCookie,
@@ -80,10 +81,9 @@ export const Route = createFileRoute("/auth/github_/callback")({
   validateSearch: (search) => QuerySchema.parse(search),
   beforeLoad: async ({ search }) => {
     const rawBase = process.env.OAUTH_REDIRECT_BASE;
-    const org = process.env.GITHUB_ORG;
     const teamSlug = process.env.GITHUB_TEAM_SLUG;
     if (!rawBase) throw new Error("OAUTH_REDIRECT_BASE is not set");
-    if (!org) throw new Error("GITHUB_ORG is not set");
+    const org = repoOwner();
     if (!teamSlug) throw new Error("GITHUB_TEAM_SLUG is not set");
     // Strip a trailing slash so the redirect_uri matches the one we sent to
     // GitHub on the authorize request (see auth/github.tsx).
