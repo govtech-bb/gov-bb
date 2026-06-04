@@ -1,0 +1,105 @@
+name: Deploy Payload CMS (sandbox)
+
+# Standalone deploy for the gov.bb Payload CMS. Carved out of the broader
+# deploy-sandbox.yml on feat/cms-content-collections so the CMS image can ship
+# to ECR without waiting on the full PR #250 to rebase. Once #250 lands and
+# deploy-sandbox.yml gains a deploy-cms job, this file can be deleted (or kept
+# as the manual-dispatch path).
+#
+# Resources referenced (provisioned in alpha-infra payload-cms-ecs.tf):
+#   ECR repo:        gov-bb-payload-cms
+#   ECS cluster:     modular-forms-sandbox
+#   ECS service:     payload-cms-sandbox
+#   Task family:     payload-cms-sandbox
+#   Container name:  payload-cms
+
+on:
+  push:
+    branches: [sandbox]
+    paths:
+      - 'apps/cms/**'
+      - 'packages/content/**'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - '.github/workflows/deploy-payload-cms.yml'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+# Never cancel a deploy mid-flight; serialise on the branch ref.
+concurrency:
+  group: deploy-payload-cms-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ca-central-1
+  ECS_CLUSTER: modular-forms-sandbox
+
+jobs:
+  deploy-cms:
+    name: Build, Push & Deploy CMS
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.build.outputs.image }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push CMS image
+        id: build
+        env:
+          REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          IMAGE_URI="$REGISTRY/gov-bb-payload-cms:$IMAGE_TAG"
+          LATEST_URI="$REGISTRY/gov-bb-payload-cms:latest"
+
+          docker build --platform linux/amd64 -f apps/cms/Dockerfile -t "$IMAGE_URI" -t "$LATEST_URI" .
+          docker push "$IMAGE_URI"
+          docker push "$LATEST_URI"
+
+          echo "image=$IMAGE_URI" >> "$GITHUB_OUTPUT"
+          echo "Pushed $IMAGE_URI"
+
+      - name: Get current task definition
+        id: task-def
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition payload-cms-sandbox \
+            --region $AWS_REGION \
+            --query taskDefinition \
+            --output json > cms-task-def.json
+
+      - name: Update task definition with new image
+        id: new-task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: cms-task-def.json
+          container-name: payload-cms
+          image: ${{ steps.build.outputs.image }}
+
+      - name: Deploy to ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.new-task-def.outputs.task-definition }}
+          service: payload-cms-sandbox
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
+
+      # NOTE: migration handling deferred to PR #250's full deploy-sandbox.yml.
+      # For the image-only carve, migrations are run manually per the runbook
+      # at docs/cms-production-deploy.md (which ships with PR #250). Until then
+      # there are no pending app-side migrations beyond what Payload runs at
+      # boot from src/migrations/.
