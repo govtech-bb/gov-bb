@@ -86,7 +86,9 @@
   margin-bottom: var(--spacing-s);
 }
 
-/* Per-field width hints carried on the govbb-form-group wrapper */
+/* Per-field width hints carried on the govbb-form-group wrapper. Full width on
+ * mobile; capped to a fixed measure at >=768px (see the media query near the
+ * end of this file). */
 .govbb-form-group[data-field-width="short"],
 .govbb-form-group[data-field-width="medium"] {
   width: 100%;
@@ -485,12 +487,19 @@
   gap: var(--spacing-s);
 }
 
+/* Fixed-measure field widths (GOV.UK style). `ch` units size the cap to the
+ * field's own type, not its container, so a short field inside a show-hide
+ * inset renders the same as a standalone one — percentage widths compounded
+ * against every wrapper (.form-width 2/3 column × inset padding × 33%) and
+ * left inset fields tiny. `width: 100%` from the base rule above remains the
+ * floor, so fields still shrink inside containers narrower than the cap.
+ * `long` (or no hint) stays unstyled: full width of the form column. */
 @media (min-width: 768px) {
   .govbb-form-group[data-field-width="short"] {
-    width: 33%;
+    max-width: 24ch;
   }
 
   .govbb-form-group[data-field-width="medium"] {
-    width: 50%;
+    max-width: 38ch;
   }
 }
