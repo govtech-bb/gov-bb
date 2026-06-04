@@ -568,6 +568,16 @@ describe("repeatableBehaviourSchema", () => {
     });
     expect(result.success).toBe(true);
   });
+
+  it("rejects an empty addAnotherLabel", () => {
+    const result = repeatableBehaviourSchema.safeParse({
+      type: "repeatable",
+      min: 1,
+      max: 5,
+      addAnotherLabel: "",
+    });
+    expect(result.success).toBe(false);
+  });
 });
 
 describe("fieldArrayBehaviourSchema", () => {
