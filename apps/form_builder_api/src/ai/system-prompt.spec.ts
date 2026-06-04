@@ -150,4 +150,24 @@ describe("AI system prompt", () => {
       /common required fields \([^)]*\baddress\b(?! line 1)[^)]*\)/,
     );
   });
+
+  it("documents the numeric bound validations with literal or cross-field reference", () => {
+    // min/max are the or-equal forms, gt/lt the strict forms — all four listed.
+    for (const rule of ["min", "max", "gt", "lt"]) {
+      expect(prompt).toMatch(new RegExp(`^- ${rule}: `, "m"));
+    }
+    // The literal-or-reference shape and the kebab-case reference id.
+    expect(prompt).toContain('"referenceFieldId": "start-year"');
+    // No gte/lte exists — or-equal comparisons must route through min/max.
+    expect(prompt).toContain("There is NO gte/lte");
+    // The worked start-year/end-year range example.
+    expect(prompt).toContain('"fieldId": "end-year"');
+  });
+
+  it("documents minYear/maxYear with literal value or currentYear, never a reference", () => {
+    expect(prompt).toMatch(/^- minYear: /m);
+    expect(prompt).toMatch(/^- maxYear: /m);
+    expect(prompt).toContain('"currentYear": true');
+    expect(prompt).toContain("do NOT accept referenceFieldId");
+  });
 });
