@@ -119,9 +119,11 @@ it("writes required:{value:true} when requiring an optional field", async () => 
 
 // --- Schema-driven `ui` properties editor (#533) -------------------------
 // The width control (enum) and the hide-label control (boolean) are both
-// rendered by introspecting `primitiveUISchema`. `width` defaults to `long`
-// (unset); choosing `long` clears the key, mirroring the boolean "unchecked ⇒
-// undefined" behaviour. `ui` collapses to `undefined` when it holds no set keys.
+// rendered by introspecting `primitiveUISchema`. `width` falls back to the
+// base primitive's registry `ui` value when declared, else the global `long`
+// (#789); choosing the fallback clears the key, mirroring the boolean
+// "back-to-default ⇒ undefined" behaviour. `ui` collapses to `undefined` when
+// it holds no set keys.
 
 const widthSelect = () =>
   screen.getByRole("combobox", { name: /field width/i });
@@ -176,6 +178,35 @@ it("preserves hideLabel when width is set alongside it", async () => {
   await userEvent.selectOptions(widthSelect(), "short");
   await userEvent.click(screen.getByRole("button", { name: "Save" }));
   expect(lastOverrides(dispatch).ui).toEqual({ hideLabel: true, width: "short" });
+});
+
+// --- Registry ui defaults (#789) ------------------------------------------
+// A component can declare its own `ui` defaults in the registry (National ID
+// hard-codes `width: "short"`). The panel's fallback must be that registry
+// value, not the global `long` — otherwise selecting "Long" collapses to
+// undefined, the registry `short` wins on resolution, and "Long" renders
+// *narrower* than "Medium".
+
+it("shows the registry ui.width default for an untouched component", () => {
+  renderPanel(makeField("components/national-id-number")); // registry: width "short"
+  expect(widthSelect()).toHaveValue("short");
+});
+
+it("persists ui.width=long when it differs from the registry default (#789)", async () => {
+  const dispatch = renderPanel(makeField("components/national-id-number"));
+  await userEvent.selectOptions(widthSelect(), "long");
+  await userEvent.click(screen.getByRole("button", { name: "Save" }));
+  expect(lastOverrides(dispatch)).toEqual({ ui: { width: "long" } });
+});
+
+it("collapses ui when width is set back to the registry default", async () => {
+  const dispatch = renderPanel(
+    makeFieldWith("components/national-id-number", { ui: { width: "long" } }),
+  );
+  expect(widthSelect()).toHaveValue("long");
+  await userEvent.selectOptions(widthSelect(), "short");
+  await userEvent.click(screen.getByRole("button", { name: "Save" }));
+  expect(lastOverrides(dispatch).ui).toBeUndefined();
 });
 
 it("defaults the width select to a value that is a real schema enum member", () => {

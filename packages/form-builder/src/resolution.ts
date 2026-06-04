@@ -3,6 +3,7 @@ import type {
   ServiceContractRecipe,
   Primitive,
   FieldOverrides,
+  PrimitiveUI,
   ValidationRule,
 } from "@govtech-bb/form-types";
 import type { RegistryCatalog } from "./catalog";
@@ -24,25 +25,52 @@ function mergeValidations(
 }
 
 /**
- * Merge FieldOverrides onto a Primitive (shallow merge, deep merge for validations).
+ * Deep-merge ui hints: override keys win, absent keys keep the registry
+ * default. Without this an override touching one `ui` key (e.g. `hideLabel`)
+ * would clobber the registry's others (e.g. National ID's `width: "short"`)
+ * (#789).
+ */
+function mergeUi(
+  base: PrimitiveUI | undefined,
+  override: PrimitiveUI | undefined,
+): PrimitiveUI | undefined {
+  if (!base && !override) return undefined;
+  if (!base) return override;
+  if (!override) return base;
+  return { ...base, ...override };
+}
+
+/**
+ * Merge FieldOverrides onto a Primitive (shallow merge, deep merge for
+ * validations and ui).
  */
 function applyOverrides(
   primitive: Primitive,
   overrides: FieldOverrides,
 ): Primitive {
-  const { validations: baseValidations, ...restPrimitive } = primitive;
-  const { validations: overrideValidations, ...restOverrides } = overrides;
+  const {
+    validations: baseValidations,
+    ui: baseUi,
+    ...restPrimitive
+  } = primitive;
+  const {
+    validations: overrideValidations,
+    ui: overrideUi,
+    ...restOverrides
+  } = overrides;
 
   const mergedValidations = mergeValidations(
     baseValidations,
     overrideValidations,
   );
+  const mergedUi = mergeUi(baseUi, overrideUi);
   return {
     ...restPrimitive,
     ...restOverrides,
     ...(mergedValidations !== undefined
       ? { validations: mergedValidations }
       : {}),
+    ...(mergedUi !== undefined ? { ui: mergedUi } : {}),
   } as Primitive;
 }
 
