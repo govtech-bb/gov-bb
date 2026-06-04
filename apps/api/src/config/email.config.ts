@@ -32,6 +32,13 @@ export default registerAs("email", () => {
     configurationSet: process.env.SES_CONFIGURATION_SET,
 
     // Comma-separated QA notification recipient(s). Undefined in production.
+    // STAGING-ONLY QA_MDA_NOTIFY hook — preserved verbatim from staging; QA
+    // testers depend on this for live MDA testing, so it must not change.
     qaNotifyRecipient: isNonProd ? process.env.QA_MDA_NOTIFY : undefined,
+
+    // Fallback recipient for the "config.*" recipient kind when no form_config
+    // row resolves (e.g. sandbox, which has no rows). Keeps test/sandbox
+    // submissions away from real MDA inboxes. Defaults to a shared test inbox.
+    defaultRecipient: process.env.SES_DEFAULT_RECIPIENT ?? "testing@govtech.bb",
   };
 });

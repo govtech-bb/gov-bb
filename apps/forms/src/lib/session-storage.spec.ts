@@ -21,6 +21,7 @@
 import {
   storeFormData,
   getFormData,
+  clearFormState,
   getCompletedSteps,
   markStepCompleted,
   isStepCompleted,
@@ -28,7 +29,11 @@ import {
   getFirstIncompleteStepIndex,
   getFirstIncompleteActiveStep,
   isStepAccessible,
+  storeSubmissionState,
+  getSubmissionState,
+  clearSubmissionState,
 } from "./session-storage";
+import type { SubmissionState } from "@forms/types";
 
 const FORM_ID = "form_abc";
 
@@ -86,6 +91,41 @@ describe("storeFormData / getFormData", () => {
     const result = getFormData(FORM_ID);
     // The File is stripped; the array retains only non-undefined entries
     expect(result.step1_items).toEqual(["kept"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// clearFormState
+// ---------------------------------------------------------------------------
+
+describe("clearFormState", () => {
+  it("removes both the stored field values and the completed steps", () => {
+    storeFormData(FORM_ID, { step1_name: "Alice" });
+    markStepCompleted(FORM_ID, "step1");
+
+    clearFormState(FORM_ID);
+
+    expect(getFormData(FORM_ID)).toBeNull();
+    expect(getCompletedSteps(FORM_ID)).toEqual([]);
+  });
+
+  it("is a no-op when nothing has been stored", () => {
+    expect(() => clearFormState(FORM_ID)).not.toThrow();
+    expect(getFormData(FORM_ID)).toBeNull();
+    expect(getCompletedSteps(FORM_ID)).toEqual([]);
+  });
+
+  it("does not touch state stored under a different form id", () => {
+    storeFormData(FORM_ID, { step1_name: "Alice" });
+    markStepCompleted(FORM_ID, "step1");
+    storeFormData("other-form", { step1_name: "Bob" });
+    markStepCompleted("other-form", "step1");
+
+    clearFormState(FORM_ID);
+
+    expect(getFormData(FORM_ID)).toBeNull();
+    expect(getFormData("other-form")).toEqual({ step1_name: "Bob" });
+    expect(getCompletedSteps("other-form")).toEqual(["step1"]);
   });
 });
 
@@ -280,5 +320,43 @@ describe("isStepAccessible", () => {
 
   it("returns false for any step when activeSteps is empty", () => {
     expect(isStepAccessible(FORM_ID, "step1", [])).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// submissionState persistence — lets the confirmation step survive a refresh
+// ---------------------------------------------------------------------------
+describe("submissionState persistence", () => {
+  const state: SubmissionState = {
+    hasPayment: false,
+    serviceName: "Test Service",
+    submissionSuccess: true,
+    referenceNumber: "REF-001",
+    date: "01/01/2026",
+  };
+
+  it("round-trips a stored submissionState", () => {
+    storeSubmissionState(FORM_ID, state);
+    expect(getSubmissionState(FORM_ID)).toEqual(state);
+  });
+
+  it("returns null when no submissionState is stored", () => {
+    expect(getSubmissionState(FORM_ID)).toBeNull();
+  });
+
+  it("clearSubmissionState removes the stored submissionState", () => {
+    storeSubmissionState(FORM_ID, state);
+    clearSubmissionState(FORM_ID);
+    expect(getSubmissionState(FORM_ID)).toBeNull();
+  });
+
+  it("clearFormState leaves submissionState intact (it must survive submit success)", () => {
+    storeSubmissionState(FORM_ID, state);
+    storeFormData(FORM_ID, { firstName: "Ada" });
+    clearFormState(FORM_ID);
+    // Draft is dropped, but the committed outcome persists so a refresh on the
+    // confirmation step can still render it.
+    expect(getFormData(FORM_ID)).toBeNull();
+    expect(getSubmissionState(FORM_ID)).toEqual(state);
   });
 });

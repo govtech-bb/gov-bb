@@ -53,6 +53,10 @@ jest.mock("@forms/components", () => ({
 jest.mock("../../../lib/session-storage", () => ({
   getFormData: jest.fn(() => null),
   storeFormData: jest.fn(),
+  clearFormState: jest.fn(),
+  getSubmissionState: jest.fn(() => null),
+  storeSubmissionState: jest.fn(),
+  clearSubmissionState: jest.fn(),
 }));
 
 jest.mock("@forms/form-api", () => ({
@@ -67,13 +71,19 @@ jest.mock("../../../lib/analytics", () => ({
 import { Route } from "./index";
 import { useForm, useStore } from "@tanstack/react-form";
 import { getVisibleSteps, restoreRepeatableStepsFromStorage } from "@forms/lib";
-import { getFormData } from "../../../lib/session-storage";
+import {
+  getFormData,
+  getSubmissionState,
+  clearSubmissionState,
+} from "../../../lib/session-storage";
 import { trackEvent } from "../../../lib/analytics";
 
 const mockUseForm = useForm as jest.Mock;
 const mockUseStore = useStore as jest.Mock;
 const mockGetVisibleSteps = getVisibleSteps as jest.Mock;
 const mockGetFormData = getFormData as jest.Mock;
+const mockGetSubmissionState = getSubmissionState as jest.Mock;
+const mockClearSubmissionState = clearSubmissionState as jest.Mock;
 const mockRestoreRepeatableStepsFromStorage =
   restoreRepeatableStepsFromStorage as jest.Mock;
 
@@ -127,6 +137,7 @@ beforeEach(() => {
   });
   mockGetVisibleSteps.mockReturnValue([mockVisibleStep]);
   mockGetFormData.mockReturnValue(null);
+  mockGetSubmissionState.mockReturnValue(null);
 });
 
 afterEach(() => {
@@ -204,6 +215,46 @@ describe("RouteComponent", () => {
     jest.spyOn(Route, "useSearch").mockReturnValue({ step: undefined });
     render(<Route.component />);
     expect(screen.getByTestId("form-renderer")).toBeInTheDocument();
+  });
+
+  // Refreshing the browser on the confirmation step must keep the user there.
+  // submissionState lives in React state (lost on reload), so it is persisted to
+  // session storage and rehydrated on mount — otherwise the renderer's
+  // "no submissionState → bounce to check-your-answers" guard fires on refresh.
+  it("rehydrates submissionState from storage when reloading on submission-confirmation", () => {
+    jest
+      .spyOn(Route, "useSearch")
+      .mockReturnValue({ step: "submission-confirmation" });
+    const persisted = {
+      hasPayment: false,
+      serviceName: "test-form",
+      submissionSuccess: true,
+      referenceNumber: "REF-9",
+      date: "01/01/2026",
+    };
+    mockGetSubmissionState.mockReturnValue(persisted);
+
+    render(<Route.component />);
+
+    expect(mockFormRendererProps.current.submissionState).toEqual(persisted);
+  });
+
+  it("ignores and clears any persisted submissionState on a fresh non-confirmation load", () => {
+    jest.spyOn(Route, "useSearch").mockReturnValue({ step: "step1" });
+    // A stale outcome from an earlier submission this session must not leak into
+    // a brand-new form session.
+    mockGetSubmissionState.mockReturnValue({
+      hasPayment: false,
+      serviceName: "test-form",
+      submissionSuccess: true,
+      referenceNumber: "STALE",
+      date: "01/01/2026",
+    });
+
+    render(<Route.component />);
+
+    expect(mockFormRendererProps.current.submissionState).toBeUndefined();
+    expect(mockClearSubmissionState).toHaveBeenCalledWith("test-form");
   });
 });
 
@@ -402,6 +453,10 @@ describe("RouteComponent onSubmit handler", () => {
       },
     });
     await expect(onSubmit({ value: {} })).resolves.not.toThrow();
+    expect(mockTrackEvent).toHaveBeenCalledWith(
+      "form-submit-success",
+      expect.objectContaining({ form_id: "test-form" }),
+    );
   });
 
   it("commits a payment-init error state on 'pending_payment' without deferred meta", async () => {
@@ -433,9 +488,19 @@ describe("RouteComponent onSubmit handler", () => {
     expect(
       mockFormRendererProps.current.submissionState.paymentUrl,
     ).toBeUndefined();
+    // Payment could not be initiated — this must not register as a success
+    // in analytics (issue #318); it reports a payment-init error instead.
+    expect(mockTrackEvent).not.toHaveBeenCalledWith(
+      "form-submit-success",
+      expect.anything(),
+    );
+    expect(mockTrackEvent).toHaveBeenCalledWith(
+      "form-submit-error",
+      expect.objectContaining({ form_id: "test-form", reason: "payment-init" }),
+    );
   });
 
-  it("handles 'failed' status without throwing", async () => {
+  it("commits a failed state and fires a server error event on 'failed' status", async () => {
     const onSubmit = renderAndExtractOnSubmit();
     (postFormSubmission as jest.Mock).mockResolvedValue({
       status: "failed",
@@ -445,7 +510,19 @@ describe("RouteComponent onSubmit handler", () => {
         formId: "test-form",
       },
     });
-    await expect(onSubmit({ value: {} })).resolves.not.toThrow();
+    await act(async () => {
+      await onSubmit({ value: {} });
+    });
+    // submissionSuccess: false routes the confirmation step to the
+    // "Something went wrong" panel with a retry — the citizen must not be
+    // left frozen with no feedback.
+    expect(mockFormRendererProps.current.submissionState).toEqual(
+      expect.objectContaining({ submissionSuccess: false }),
+    );
+    expect(mockTrackEvent).toHaveBeenCalledWith("form-submit-error", {
+      form_id: "test-form",
+      reason: "server",
+    });
   });
 
   it("calls formatDataForSubmission before postFormSubmission", async () => {
@@ -529,9 +606,9 @@ describe("RouteComponent onSubmit handler", () => {
     (postFormSubmission as jest.Mock).mockRejectedValue(
       new Error("network failure"),
     );
-    await expect(onSubmit({ value: {} })).resolves.not.toThrow();
-    // Verify the catch block fires the analytics event AND short-circuits
-    // before any setSubmissionState/success tracking can happen.
+    await act(async () => {
+      await onSubmit({ value: {} });
+    });
     expect(mockTrackEvent).toHaveBeenCalledWith("form-submit-error", {
       form_id: "test-form",
       reason: "network",
@@ -539,6 +616,11 @@ describe("RouteComponent onSubmit handler", () => {
     expect(mockTrackEvent).not.toHaveBeenCalledWith(
       "form-submit-success",
       expect.anything(),
+    );
+    // The catch must still commit a failed state so the confirmation step
+    // shows the "Something went wrong" panel instead of silently bouncing.
+    expect(mockFormRendererProps.current.submissionState).toEqual(
+      expect.objectContaining({ submissionSuccess: false }),
     );
   });
 
@@ -609,6 +691,80 @@ describe("RouteComponent onSubmit handler", () => {
     );
     expect(hiddenIds.sort()).toEqual(["step1_f1", "step1_f2"]);
     expect(hiddenIds).not.toContain("step1_f3");
+  });
+
+  describe("clears persisted state on a successful submission", () => {
+    const { clearFormState } = jest.requireMock("../../../lib/session-storage");
+
+    const okData = {
+      id: "ref-001",
+      submittedAt: "2026-05-22T00:00:00Z",
+      formId: "test-form",
+    };
+
+    it("clears form state on a 'submitted' success", async () => {
+      const onSubmit = renderAndExtractOnSubmit();
+      (postFormSubmission as jest.Mock).mockResolvedValue({
+        status: "submitted",
+        data: okData,
+      });
+      await onSubmit({ value: {} });
+      expect(clearFormState).toHaveBeenCalledWith("test-form");
+    });
+
+    it("clears form state on a 'pending_payment' with payment details (success)", async () => {
+      const onSubmit = renderAndExtractOnSubmit();
+      (postFormSubmission as jest.Mock).mockResolvedValue({
+        status: "pending_payment",
+        meta: {
+          deferred: {
+            amount: 100,
+            paymentUrl: "https://pay.example.com",
+            paymentId: "pay-001",
+            description: "Fee",
+          },
+        },
+        data: okData,
+      });
+      await onSubmit({ value: {} });
+      expect(clearFormState).toHaveBeenCalledWith("test-form");
+    });
+
+    it("does NOT clear form state on a 'failed' submission", async () => {
+      const onSubmit = renderAndExtractOnSubmit();
+      (postFormSubmission as jest.Mock).mockResolvedValue({
+        status: "failed",
+        data: okData,
+      });
+      await act(async () => {
+        await onSubmit({ value: {} });
+      });
+      expect(clearFormState).not.toHaveBeenCalled();
+    });
+
+    it("does NOT clear form state when payment could not be initiated (answers kept for retry)", async () => {
+      const onSubmit = renderAndExtractOnSubmit();
+      (postFormSubmission as jest.Mock).mockResolvedValue({
+        status: "pending_payment",
+        // No meta.deferred — payment-init error, which keeps a Try again path.
+        data: okData,
+      });
+      await act(async () => {
+        await onSubmit({ value: {} });
+      });
+      expect(clearFormState).not.toHaveBeenCalled();
+    });
+
+    it("does NOT clear form state when the request rejects (network error)", async () => {
+      const onSubmit = renderAndExtractOnSubmit();
+      (postFormSubmission as jest.Mock).mockRejectedValue(
+        new Error("network failure"),
+      );
+      await act(async () => {
+        await onSubmit({ value: {} });
+      });
+      expect(clearFormState).not.toHaveBeenCalled();
+    });
   });
 
   void storeFormData;

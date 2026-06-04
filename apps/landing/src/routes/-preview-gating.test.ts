@@ -6,6 +6,8 @@ import type { ContentPage } from '../content/registry'
 const mocks = vi.hoisted(() => ({
   findPage: vi.fn(),
   isVisible: vi.fn(),
+  isCategoryVisible: vi.fn(() => true),
+  categoryServices: vi.fn(() => [] as ContentPage[]),
   isPreview: vi.fn(() => false),
   isSubPage: vi.fn(() => false),
   startSubPageInPreview: vi.fn(() => false),
@@ -40,6 +42,8 @@ function caught(fn: () => unknown): unknown {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mocks.isCategoryVisible.mockReturnValue(true)
+  mocks.categoryServices.mockReturnValue([])
   mocks.isPreview.mockReturnValue(false)
   mocks.isSubPage.mockReturnValue(false)
   mocks.startSubPageInPreview.mockReturnValue(false)
@@ -77,6 +81,37 @@ describe('$ route loader gating', () => {
       page: fakePage,
       availableForms: ['get-birth-certificate'],
     })
+  })
+})
+
+describe('$ route category gating', () => {
+  it('throws notFound for a category with no visible service when not in preview', async () => {
+    const { Route } = await import('./$')
+    mocks.isCategoryVisible.mockReturnValue(false)
+
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    const err = await loader({
+      params: { _splat: 'pensions-and-gratuities' },
+      context: { preview: false },
+    }).catch((e: unknown) => e)
+    expect((err as { isNotFound?: boolean }).isNotFound).toBe(true)
+    expect(mocks.isCategoryVisible).toHaveBeenCalledWith(
+      expect.objectContaining({ slug: 'pensions-and-gratuities' }),
+      false,
+    )
+  })
+
+  it('renders the category for a reviewer in preview mode', async () => {
+    const { Route } = await import('./$')
+    mocks.isCategoryVisible.mockReturnValue(true)
+
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    const data = (await loader({
+      params: { _splat: 'pensions-and-gratuities' },
+      context: { preview: true },
+    })) as { kind: string; category: { slug: string } }
+    expect(data.kind).toBe('category')
+    expect(data.category.slug).toBe('pensions-and-gratuities')
   })
 })
 

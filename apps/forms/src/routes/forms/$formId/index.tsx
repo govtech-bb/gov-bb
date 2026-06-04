@@ -17,13 +17,20 @@ import {
   FormValues,
   FormMeta,
   SubmissionState,
-  FormSubmissionResponseBody,
   FormValuesByStep,
 } from "@forms/types";
 import React from "react";
-import { getFormData, storeFormData } from "../../../lib/session-storage";
+import {
+  clearFormState,
+  getFormData,
+  storeFormData,
+  storeSubmissionState,
+  getSubmissionState,
+  clearSubmissionState,
+} from "../../../lib/session-storage";
 import { formatDataForSubmission, postFormSubmission } from "@forms/form-api";
 import { trackEvent } from "../../../lib/analytics";
+import { resolveSubmissionOutcome } from "../../../lib/submission-outcome";
 
 export const Route = createFileRoute("/forms/$formId/")({
   component: RouteComponent,
@@ -81,13 +88,43 @@ export const Route = createFileRoute("/forms/$formId/")({
 function RouteComponent() {
   const formMeta = Route.useLoaderData();
   const { step } = Route.useSearch();
+  // Rehydrate the committed submission outcome on a confirmation-step reload so
+  // the renderer doesn't bounce the citizen off it (submissionState is React
+  // state and is otherwise lost on refresh). A lazy initialiser — not an effect
+  // — so the value is present on the first render, before the renderer's
+  // "no submissionState → redirect" effect runs. On any other step this is a
+  // fresh session: ignore (and later clear) any stale persisted outcome.
   const [submissionState, setSubmissionState] = React.useState<
     SubmissionState | undefined
-  >(undefined);
+  >(() =>
+    step === "submission-confirmation"
+      ? (getSubmissionState(formMeta.formId) ?? undefined)
+      : undefined,
+  );
 
   React.useEffect(() => {
     trackEvent("form-open", { form_id: formMeta.formId });
   }, [formMeta.formId]);
+
+  // Mount-only: a fresh load on any step other than the confirmation means we
+  // are not viewing a committed outcome, so discard any submissionState left in
+  // storage by an earlier submission this session — it must not resurface as a
+  // stale confirmation. In-app navigation to the confirmation step does not
+  // remount, so the freshly-set state is unaffected.
+  React.useEffect(() => {
+    if (step !== "submission-confirmation") {
+      clearSubmissionState(formMeta.formId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount only; reads the initial step
+  }, []);
+
+  // Persist the committed outcome so a refresh on the confirmation step can
+  // rehydrate it (see the submissionState initialiser above).
+  React.useEffect(() => {
+    if (submissionState) {
+      storeSubmissionState(formMeta.formId, submissionState);
+    }
+  }, [formMeta.formId, submissionState]);
 
   const repeatableStepSettingsRef = React.useRef<RepeatableStepSettings>(
     formMeta.repeatSettings,
@@ -143,78 +180,37 @@ function RouteComponent() {
           form_id: formMeta.formId,
           reason: "network",
         });
+        // Commit a failed state so the confirmation step shows the
+        // "Something went wrong" panel with a retry, instead of leaving the
+        // citizen frozen with no feedback. No response means no reference data.
+        setSubmissionState({
+          submissionSuccess: false,
+          hasPayment: false,
+          referenceNumber: "",
+          date: "",
+          serviceName: formMeta.formId,
+        });
         return;
       }
-      const responseData: FormSubmissionResponseBody = response.data;
 
-      let subState: SubmissionState;
-      const baseSubState = {
-        referenceNumber: responseData.id,
-        date: responseData.submittedAt,
-        serviceName: responseData.formId,
-      };
-
-      switch (response.status) {
-        case "submitted":
-        case "success":
-        case "complete":
-          // No-payment forms return `submitted`; the backend never attaches
-          // payment to these responses, so hasPayment is correctly false here.
-          subState = {
-            submissionSuccess: true,
-            hasPayment: false,
-            ...baseSubState,
-          };
-          setSubmissionState(subState);
-          trackEvent("form-submit-success", {
-            form_id: formMeta.formId,
-            step_count: visibleSteps.length,
-          });
-          break;
-        case "processing":
-          break;
-        case "draft":
-          break;
-        case "pending_payment":
-          if (response.meta?.deferred) {
-            const { amount, paymentUrl, paymentId, description } =
-              response.meta?.deferred;
-            subState = {
-              ...baseSubState,
-              submissionSuccess: true,
-              hasPayment: true,
-              amount: amount.toString(),
-              paymentUrl,
-              paymentId,
-              paymentDescription: description,
-            };
-          } else {
-            // Payment was expected but the gateway details are missing — commit
-            // a payment-init error state (no paymentUrl) so the confirmation
-            // step renders "Payment could not be initiated" with the reference
-            // number, rather than leaving state undefined and bouncing away.
-            subState = {
-              ...baseSubState,
-              submissionSuccess: true,
-              hasPayment: true,
-            };
-          }
-          setSubmissionState(subState);
-          trackEvent("form-submit-success", {
-            form_id: formMeta.formId,
-            step_count: visibleSteps.length,
-          });
-          break;
-        case "failed":
-        case "error":
-          //TODO: Add state handling for errors
-          trackEvent("form-submit-error", {
-            form_id: formMeta.formId,
-            reason: "server",
-          });
-          break;
-        default:
-          console.error("Have no idea what to do here");
+      const { subState, event } = resolveSubmissionOutcome(response);
+      if (subState) {
+        setSubmissionState(subState);
+      }
+      if (event?.name === "form-submit-success") {
+        // Submission saved server-side — drop the local draft so the next visit
+        // starts fresh. Gated on the success event (not submissionSuccess) so
+        // the payment-init error path keeps the answers for its Try again flow.
+        clearFormState(formMeta.formId);
+        trackEvent(event.name, {
+          form_id: formMeta.formId,
+          step_count: visibleSteps.length,
+        });
+      } else if (event) {
+        trackEvent(event.name, {
+          form_id: formMeta.formId,
+          reason: event.reason,
+        });
       }
     },
   });

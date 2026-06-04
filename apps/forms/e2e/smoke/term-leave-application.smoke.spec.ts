@@ -44,6 +44,9 @@
  *    auto-rendered applicant name + today's date (`.form-page__applicant`).
  *  - `leave-details.comments` is genuinely optional, but is still filled here
  *    to exercise the textarea.
+ *
+ * Field-id suffixes are kebab-case (`first-name`, not `firstName`) since the
+ * #741/#745 recipe id migration kebab-cased every checked-in recipe version.
  */
 import { faker } from "@faker-js/faker";
 import { test, expect } from "@playwright/test";
@@ -75,23 +78,23 @@ test.describe("Term Leave Application — Live Smoke", () => {
     let step = expectStep(page, "applicant-info");
     await expect(page.locator("h1")).toContainText("Applicant Information");
     await fillField(page, step, "school", "Bridgetown Secondary School");
-    await fillField(page, step, "firstName", firstName);
-    await fillField(page, step, "lastName", lastName);
+    await fillField(page, step, "first-name", firstName);
+    await fillField(page, step, "last-name", lastName);
     // `components/telephone` — phone-format validation.
-    await fillField(page, step, "contactNo", "246-555-0123");
+    await fillField(page, step, "contact-no", "246-555-0123");
     // Send the confirmation email to the monitored test inbox, not a real person.
     await fillField(page, step, "email", "testing@govtech.bb");
     await fillField(page, step, "post", "Mathematics Teacher");
     // `components/national-id-number` — masked `999999-9999`.
-    await fillField(page, step, "idNumber", "850101-0001");
+    await fillField(page, step, "id-number", "850101-0001");
     await advance(page, step);
 
     // ─── Leave Details ───────────────────────────────────────────────────────
     step = expectStep(page, "leave-details");
-    await fillDate(page, step, "leaveStartDate", 1, 9, 2026);
-    await fillDate(page, step, "leaveEndDate", 15, 12, 2026);
-    // Answer "No" so the conditional `previousLeaveDetails` field stays hidden.
-    await selectRadio(page, step, "previousLeaveGranted", "no");
+    await fillDate(page, step, "leave-start-date", 1, 9, 2026);
+    await fillDate(page, step, "leave-end-date", 15, 12, 2026);
+    // Answer "No" so the conditional `previous-leave-details` field stays hidden.
+    await selectRadio(page, step, "previous-leave-granted", "no");
     // Optional in v1.3.0; filled anyway to exercise the textarea.
     await fillField(page, step, "comments", "No additional comments.");
     await advance(page, step);

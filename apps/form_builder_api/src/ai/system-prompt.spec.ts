@@ -110,4 +110,22 @@ describe("AI system prompt", () => {
   it("requires every stepId to be unique across the form", () => {
     expect(prompt).toContain("EVERY stepId MUST be unique");
   });
+
+  it("teaches the kebab-case id rule and that snake_case/camelCase are rejected", () => {
+    expect(prompt).toContain("EVERY id MUST be kebab-case");
+    expect(prompt).toContain("^[a-z][a-z0-9]*(-[a-z0-9]+)*$");
+    expect(prompt).toContain("snake_case");
+    expect(prompt).toContain("camelCase");
+  });
+
+  it("documents the optionalIf behaviour", () => {
+    expect(prompt).toContain('"type": "optionalIf"');
+    expect(prompt).toContain("stays VISIBLE but becomes optional");
+  });
+
+  it("guards the alternative-identity pattern (reveal toggle + optionalIf)", () => {
+    expect(prompt).toContain(
+      "Never leave the primary field unconditionally required next to a reveal toggle",
+    );
+  });
 });

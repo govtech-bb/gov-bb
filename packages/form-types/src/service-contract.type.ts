@@ -17,10 +17,19 @@ const titleSchema = z.string().min(1, "Title is required");
 export const dateTimeFormatSchema = z.string().datetime({ offset: true });
 export type DateTimeFormat = z.infer<typeof dateTimeFormatSchema>;
 
+// Per-environment MDA contacts (issue #607) carry the public contact fields,
+// but a contact may legitimately have only some of them (e.g. an email-only
+// MDA, or a directory entry awaiting a phone number). So `title`,
+// `telephoneNumber` and `email` are all optional — when present they must still
+// be well-formed (non-empty / a valid email). `address` was already optional.
+// Consumers must treat every field as possibly-absent: the citizen-facing
+// confirmation hides a missing line, and the email processor's
+// `contactDetails.email` recipient resolves to undefined, failing that entry
+// loudly (surfaced via SQS retry/DLQ, not silently dropped).
 export const contactDetailsSchema = z.object({
-  title: z.string().min(1),
-  telephoneNumber: z.string().min(1),
-  email: z.string().email(),
+  title: z.string().min(1).optional(),
+  telephoneNumber: z.string().min(1).optional(),
+  email: z.string().email().optional(),
   address: z
     .object({
       line1: z.string().min(1),

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { kebabIdSchema } from "./id-pattern";
 
 const operationValues = ["equal", "notEqual", "in", "exists"] as const;
 
@@ -7,8 +8,9 @@ export type EqualityOperations = z.infer<typeof equalityOperationsSchema>;
 
 export const fieldConditionalOnBehaviourSchema = z.object({
   type: z.literal("fieldConditionalOn"),
-  targetFieldId: z.string(),
-  targetStepId: z.string().optional(),
+  // Targets name a fieldId/stepId, so they inherit the kebab-case id rule.
+  targetFieldId: kebabIdSchema,
+  targetStepId: kebabIdSchema.optional(),
   operator: equalityOperationsSchema,
   value: z.union([
     z.string(),
@@ -27,8 +29,8 @@ export type FieldConditionalOnBehaviour = z.infer<
 // field is never hidden. Format rules still apply whenever it is filled.
 export const optionalIfBehaviourSchema = z.object({
   type: z.literal("optionalIf"),
-  targetFieldId: z.string(),
-  targetStepId: z.string().optional(),
+  targetFieldId: kebabIdSchema,
+  targetStepId: kebabIdSchema.optional(),
   operator: equalityOperationsSchema,
   value: z.union([
     z.string(),
@@ -42,8 +44,8 @@ export type OptionalIfBehaviour = z.infer<typeof optionalIfBehaviourSchema>;
 
 export const stepConditionalOnBehaviourSchema = z.object({
   type: z.literal("stepConditionalOn"),
-  targetFieldId: z.string(),
-  targetStepId: z.string(),
+  targetFieldId: kebabIdSchema,
+  targetStepId: kebabIdSchema,
   operator: equalityOperationsSchema,
   value: z.union([
     z.string(),
@@ -64,7 +66,7 @@ export const repeatableBehaviourSchema = z.object({
   // Optional override for the auto-generated "Add another?" radio label, so a
   // recipe can phrase it per step (e.g. "Do you want to add another
   // qualification?"). Falls back to "Add another?" when omitted.
-  addAnotherLabel: z.string().optional(),
+  addAnotherLabel: z.string().min(1).optional(),
 });
 export type RepeatableBehaviour = z.infer<typeof repeatableBehaviourSchema>;
 
@@ -77,7 +79,7 @@ export type FieldArrayBehaviour = z.infer<typeof fieldArrayBehaviourSchema>;
 
 export const sharedFieldsBehaviourSchema = z.object({
   type: z.literal("sharedFields"),
-  fieldIds: z.array(z.string()),
+  fieldIds: z.array(kebabIdSchema),
 });
 export type SharedFieldsBehaviour = z.infer<typeof sharedFieldsBehaviourSchema>;
 

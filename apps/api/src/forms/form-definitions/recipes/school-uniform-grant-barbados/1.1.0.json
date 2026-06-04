@@ -8,7 +8,7 @@
       "type": "email",
       "config": {
         "subject": "Your School Uniform Grant application has been received",
-        "recipientField": "applicant-info.candidate_email"
+        "recipientField": "applicant-info.candidate-email"
       }
     }
   ],
@@ -21,7 +21,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Name of School/Institution",
-            "fieldId": "school_name",
+            "fieldId": "school-name",
             "placeholder": "A. DACOSTA EDWARDS PRIMARY",
             "validations": {
               "required": {
@@ -39,7 +39,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Candidate Full Name",
-            "fieldId": "candidate_full_name",
+            "fieldId": "candidate-full-name",
             "validations": {
               "required": {
                 "error": "Candidate Full Name is required",
@@ -56,7 +56,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Candidate ID",
-            "fieldId": "candidate_id",
+            "fieldId": "candidate-id",
             "validations": {
               "required": {
                 "error": "Candidate ID is required",
@@ -74,7 +74,7 @@
           "overrides": {
             "type": "email",
             "label": "Candidate Email",
-            "fieldId": "candidate_email",
+            "fieldId": "candidate-email",
             "validations": {
               "required": {
                 "error": "Candidate Email is required",
@@ -94,7 +94,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "First Name",
-            "fieldId": "parent_first_name",
+            "fieldId": "parent-first-name",
             "validations": {
               "required": {
                 "error": "First Name is required",
@@ -111,7 +111,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Last Name",
-            "fieldId": "parent_last_name",
+            "fieldId": "parent-last-name",
             "validations": {
               "required": {
                 "error": "Last Name is required",
@@ -128,7 +128,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Address",
-            "fieldId": "parent_address",
+            "fieldId": "parent-address",
             "validations": {
               "required": {
                 "error": "Address is required",
@@ -145,7 +145,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Parish",
-            "fieldId": "parent_parish",
+            "fieldId": "parent-parish",
             "validations": {
               "required": {
                 "error": "Parish is required",
@@ -163,7 +163,7 @@
           "overrides": {
             "type": "tel",
             "label": "Main Phone",
-            "fieldId": "parent_main_phone",
+            "fieldId": "parent-main-phone",
             "validations": {
               "required": {
                 "error": "Main Phone is required",
@@ -181,14 +181,14 @@
           "overrides": {
             "type": "tel",
             "label": "Cell Phone",
-            "fieldId": "parent_cell_phone"
+            "fieldId": "parent-cell-phone"
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "National ID",
-            "fieldId": "parent_national_id",
+            "fieldId": "parent-national-id",
             "validations": {
               "required": {
                 "error": "National ID is required",
@@ -205,14 +205,14 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "N.I.S NO",
-            "fieldId": "parent_nlis_no"
+            "fieldId": "parent-nlis-no"
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "TAMIS NO",
-            "fieldId": "parent_tamis_no"
+            "fieldId": "parent-tamis-no"
           }
         }
       ],
@@ -226,7 +226,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Name of Bank",
-            "fieldId": "bank_name",
+            "fieldId": "bank-name",
             "validations": {
               "required": {
                 "error": "Name of Bank is required",
@@ -243,7 +243,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Name on Account",
-            "fieldId": "bank_account_name",
+            "fieldId": "bank-account-name",
             "validations": {
               "required": {
                 "error": "Name on Account is required",
@@ -260,7 +260,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Bank Number",
-            "fieldId": "bank_number",
+            "fieldId": "bank-number",
             "validations": {
               "required": {
                 "error": "Bank Number is required",
@@ -277,7 +277,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Bank Account Type",
-            "fieldId": "bank_account_type",
+            "fieldId": "bank-account-type",
             "validations": {
               "required": {
                 "error": "Bank Account Type is required",
@@ -294,7 +294,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Branch",
-            "fieldId": "bank_branch",
+            "fieldId": "bank-branch",
             "validations": {
               "required": {
                 "error": "Branch is required",
@@ -311,7 +311,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Bank Account No",
-            "fieldId": "bank_account_no",
+            "fieldId": "bank-account-no",
             "validations": {
               "required": {
                 "error": "Bank Account No is required",
@@ -328,7 +328,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Bank Address",
-            "fieldId": "bank_address",
+            "fieldId": "bank-address",
             "validations": {
               "required": {
                 "error": "Bank Address is required",
@@ -345,7 +345,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "BIC/SWIFT CODE",
-            "fieldId": "bic_swift_code",
+            "fieldId": "bic-swift-code",
             "validations": {
               "required": {
                 "error": "BIC/SWIFT CODE is required",
@@ -369,7 +369,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Signature of Parent/Guardian",
-            "fieldId": "parent_guardian_signature",
+            "fieldId": "parent-guardian-signature",
             "validations": {
               "required": {
                 "error": "Signature of Parent/Guardian is required",
@@ -386,7 +386,7 @@
           "ref": "components/generic-date",
           "overrides": {
             "label": "Date",
-            "fieldId": "submission_date",
+            "fieldId": "submission-date",
             "validations": {
               "required": {
                 "error": "Date is required",

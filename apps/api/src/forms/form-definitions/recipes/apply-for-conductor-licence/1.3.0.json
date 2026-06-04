@@ -78,7 +78,15 @@
                 "error": "National ID Number is required",
                 "value": true
               }
-            }
+            },
+            "behaviours": [
+              {
+                "type": "optionalIf",
+                "targetFieldId": "passport-toggle",
+                "operator": "equal",
+                "value": true
+              }
+            ]
           }
         },
         {
@@ -538,6 +546,14 @@
               "required": {
                 "error": "Police Certificate of Character is required",
                 "value": true
+              },
+              "fileTypes": {
+                "error": "Upload a .pdf, .docx, or .png file",
+                "value": [".pdf", ".docx", ".png"]
+              },
+              "maxSize": {
+                "error": "The file must be 25MB or smaller",
+                "value": 26214400
               }
             }
           }

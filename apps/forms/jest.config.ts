@@ -16,6 +16,10 @@ const config: Config = {
   testRegex: ".*\\.spec\\.tsx?$",
   setupFilesAfterEnv: ["<rootDir>/test/setup.ts"],
   moduleNameMapper: {
+    // react-markdown / remark-gfm are ESM-only; mock them so ts-jest (CJS)
+    // doesn't choke on their untransformed ESM. See test/__mocks__/.
+    "^react-markdown$": "<rootDir>/test/__mocks__/react-markdown.tsx",
+    "^remark-gfm$": "<rootDir>/test/__mocks__/remark-gfm.ts",
     // Internal workspace packages
     "^@govtech-bb/form-types$":
       "<rootDir>/../../../packages/form-types/src/index.ts",

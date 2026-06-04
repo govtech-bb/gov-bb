@@ -4,6 +4,7 @@ import type { Request, Response } from "express";
 // Stub it so loading the module doesn't drag in the full TypeORM entity graph.
 jest.mock("@govtech-bb/database", () => ({
   FormDefinitionEntity: class FormDefinitionEntity {},
+  FormConfigEntity: class FormConfigEntity {},
 }));
 
 jest.mock("../db.js", () => ({ getDataSource: jest.fn() }));
@@ -67,8 +68,22 @@ function fakeDataSource(rows: FakeRows = {}) {
     if (/UPDATE form_definitions/i.test(sql)) return [];
     return [];
   });
-  const ds = { getRepository: jest.fn(() => repo), query };
-  return { ds, repo, save, query };
+  // The create/update handlers now wrap their recipe write (and the optional
+  // form_config upsert) in ds.transaction. Run the callback against a manager
+  // that reuses the same repo + query mocks so existing save/UPDATE assertions
+  // still hold; FormConfigEntity gets its own upsert stub.
+  const configUpsert = jest.fn(async () => undefined);
+  const manager = {
+    getRepository: jest.fn((entity: any) =>
+      entity?.name === "FormConfigEntity" ? { upsert: configUpsert } : repo,
+    ),
+    query,
+  };
+  const transaction = jest.fn(async (cb: (m: typeof manager) => unknown) =>
+    cb(manager),
+  );
+  const ds = { getRepository: jest.fn(() => repo), query, transaction };
+  return { ds, repo, save, query, configUpsert };
 }
 
 function recipe(over: Record<string, unknown> = {}) {

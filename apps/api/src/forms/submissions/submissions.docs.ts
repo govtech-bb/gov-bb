@@ -1,8 +1,7 @@
 import { applyDecorators } from "@nestjs/common";
 import { ApiBody, ApiHeader, ApiOperation, ApiResponse } from "@nestjs/swagger";
-import { FormSubmissionEntity } from "../../database/entities/form-submission.entity";
 import { ApiWrappedResponse } from "../../common/swagger";
-import { CreateSubmissionDto } from "./dto";
+import { CreateSubmissionDto, FormSubmissionResponseDto } from "./dto";
 
 export function CreateSubmissionDocs() {
   return applyDecorators(
@@ -23,7 +22,7 @@ export function CreateSubmissionDocs() {
     ApiBody({ type: CreateSubmissionDto }),
     ApiWrappedResponse({
       status: 201,
-      type: FormSubmissionEntity,
+      type: FormSubmissionResponseDto,
       description: "Submission created",
     }),
     ApiResponse({

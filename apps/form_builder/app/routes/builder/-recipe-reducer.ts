@@ -168,6 +168,14 @@ export type RecipeAction =
       type: "UPDATE_CONTACT_DETAILS";
       contactDetails: ContactDetails | undefined;
     }
+  | {
+      // Record (or clear) the selected per-environment MDA contact (issue
+      // #607). `null` clears the selection ("none"); a string id selects one.
+      // DB-only — serializeRecipeDraft never puts this in the recipe; it
+      // travels as a sibling of the save request.
+      type: "SET_MDA_CONTACT";
+      mdaContactId: string | null;
+    }
   | { type: "LOAD_DRAFT"; draft: RecipeDraft }
   | { type: "RESET" }
   | {
@@ -406,6 +414,10 @@ export function recipeReducer(
         return rest;
       }
       return { ...state, contactDetails: action.contactDetails };
+    }
+
+    case "SET_MDA_CONTACT": {
+      return { ...state, mdaContactId: action.mdaContactId };
     }
 
     case "ADD_PROCESSOR": {

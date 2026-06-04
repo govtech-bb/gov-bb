@@ -15,6 +15,7 @@ import {
 } from "./processors";
 import { PaymentProcessor } from "./processors/payment/payment.processor";
 import { FormDefinitionsModule } from "../form-definitions/form-definitions.module";
+import { FormConfigModule } from "../form-config/form-config.module";
 import { FormDraftsModule } from "../form-drafts/form-drafts.module";
 import { PaymentsModule } from "../../payments/payments.module";
 import { FilesModule } from "../../files/files.module";
@@ -29,6 +30,7 @@ import { EmailBodyBuilder } from "../../email/email-body.builder";
 @Module({
   imports: [
     FormDefinitionsModule,
+    FormConfigModule,
     FormDraftsModule,
     PaymentsModule,
     FilesModule,

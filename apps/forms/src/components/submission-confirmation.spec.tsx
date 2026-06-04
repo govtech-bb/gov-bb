@@ -43,6 +43,22 @@ describe("SubmissionConfirmation", () => {
     expect(screen.getByText("help@example.com")).toBeInTheDocument();
   });
 
+  it("renders only the present lines for a partial contactDetails (issue #607)", () => {
+    // An email-only contact: no title, no telephone. The panel still renders,
+    // but the missing lines (heading + Telephone) must be absent.
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Passport"
+        stepTitle="Submitted"
+        submissionState={baseState}
+        contactDetails={{ email: "help@example.com" }}
+      />,
+    );
+    expect(screen.getByText("help@example.com")).toBeInTheDocument();
+    expect(screen.queryByText(/Telephone:/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Immigration Dept")).not.toBeInTheDocument();
+  });
+
   it("does not render contact panel when contactDetails is absent", () => {
     render(
       <SubmissionConfirmation
@@ -278,6 +294,66 @@ describe("SubmissionConfirmation — nextSteps rendering", () => {
     expect(screen.getByText("Section B")).toBeInTheDocument();
     expect(screen.getByText("Some content")).toBeInTheDocument();
     expect(screen.getByText("Item B1")).toBeInTheDocument();
+  });
+});
+
+describe("SubmissionConfirmation — markdownContent rendering", () => {
+  const successState: SubmissionState = {
+    hasPayment: false,
+    serviceName: "Test Service",
+    submissionSuccess: true,
+    paymentSuccess: false,
+    referenceNumber: "MD-REF-001",
+    date: "19/05/2026",
+  };
+
+  // react-markdown is mocked with a passthrough renderer (see
+  // test/__mocks__/react-markdown.tsx), so these assert that the component wires
+  // markdownContent into the renderer and shows it — the markdown→HTML parsing
+  // itself is the library's responsibility, exercised by the build/smoke runs.
+  it("renders markdownContent through the markdown renderer", () => {
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Test"
+        stepTitle="Done"
+        submissionState={successState}
+        markdownContent={
+          "## What you need to know\n\nFor questions, contact us.\n\n**Phone:** (246) 535-0600"
+        }
+      />,
+    );
+    const md = screen.getByTestId("react-markdown");
+    expect(md).toHaveTextContent("What you need to know");
+    expect(md).toHaveTextContent("For questions, contact us.");
+    expect(md).toHaveTextContent("Phone:");
+    // Wrapper class is the styling hook for paragraph spacing (govtech.css).
+    expect(md.closest(".form-page__markdown-content")).not.toBeNull();
+  });
+
+  it("does not render a markdown block when markdownContent is absent", () => {
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Test"
+        stepTitle="Done"
+        submissionState={successState}
+      />,
+    );
+    expect(screen.queryByTestId("react-markdown")).not.toBeInTheDocument();
+  });
+
+  it("renders the reference number alongside markdownContent", () => {
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Test"
+        stepTitle="Done"
+        submissionState={successState}
+        markdownContent={"## What you need to know\n\nContact us."}
+      />,
+    );
+    expect(screen.getByText("MD-REF-001")).toBeInTheDocument();
+    expect(screen.getByTestId("react-markdown")).toHaveTextContent(
+      "What you need to know",
+    );
   });
 });
 

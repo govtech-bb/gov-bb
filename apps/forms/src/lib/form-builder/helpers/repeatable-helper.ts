@@ -14,6 +14,19 @@ import {
   SharedFieldsBehaviour,
 } from "@govtech-bb/form-types";
 
+// #771: min/max are 1-based totals. Legacy recipes may carry min: 0 (old
+// "base step only" semantics — renders identically to min: 1), a missing
+// max ("unlimited"), or junk; normalise once so the branch logic only ever
+// sees min >= 1 and a usable cap.
+export const getEffectiveRepeatBounds = (
+  behaviour: RepeatableBehaviour,
+): { min: number; max: number } => {
+  const min = Math.max(1, Math.floor(behaviour.min) || 1);
+  const max =
+    Math.floor(behaviour.max) >= min ? Math.floor(behaviour.max) : Infinity;
+  return { min, max };
+};
+
 export const setupRepeatSteps = (
   formSteps: ClientFormStep[],
   repeatSettings: RepeatableStepSettings,
@@ -40,10 +53,13 @@ export const setupRepeatSteps = (
     // If not the original, just skip
     if (repeatStepCount === undefined || repeatStepCount > 0) continue;
 
+    // Normalise bounds once: min >= 1, max is a usable finite cap or Infinity.
+    const { min, max } = getEffectiveRepeatBounds(repeatBehaviour);
+
     // We can setup the config first.
     const repeatConfig: RepeatableConfig = {
-      minRepeats: repeatBehaviour.min,
-      maxRepeats: repeatBehaviour.max,
+      minRepeats: min,
+      maxRepeats: max,
       orderedStepIds: [step.stepId],
       stepData: {},
       sharedData,
@@ -58,7 +74,7 @@ export const setupRepeatSteps = (
 
     const hasSharedFields = sharedFieldsIds.length > 0;
 
-    if (repeatBehaviour.min && hasSharedFields) {
+    if (hasSharedFields) {
       // Shared-fields steps: the source step is a separate "shared values" page
       // (it holds the shared fields, filled once) and the minimum repeat
       // instances are materialised as ~1..~min. The "Add another?" control sits
@@ -69,7 +85,7 @@ export const setupRepeatSteps = (
       };
 
       // Start at 1 to account for source step
-      for (let j = 1; j <= repeatBehaviour.min; j++) {
+      for (let j = 1; j <= min; j++) {
         const repeatStepCount = j;
         const nextStepId = getRepeatStepId(step.stepId, repeatStepCount);
         let currentFields = structuredClone(step.fields);
@@ -88,7 +104,7 @@ export const setupRepeatSteps = (
           sharedBehaviour,
         );
 
-        if (j == repeatBehaviour.min && j != repeatBehaviour.max) {
+        if (j == min && j != max) {
           const addAnother = generateRepeatableAddAnotherField(
             nextStepId,
             repeatBehaviour.addAnotherLabel,
@@ -104,13 +120,13 @@ export const setupRepeatSteps = (
         updatedSteps.splice(i + repeatStepCount, 0, nextStep);
         repeatConfig.orderedStepIds.push(nextStepId);
       }
-    } else if (repeatBehaviour.min) {
+    } else {
       // No shared fields: the source step IS the first instance. Render
-      // max(min, 1) instances total (so min=1 shows a single instance, not a
+      // min instances total (so min=1 shows a single instance, not a
       // duplicate pair) and put the "Add another?" control on the last one
       // when the user can still add more.
-      const totalInstances = repeatBehaviour.min;
-      const canAddMore = totalInstances < repeatBehaviour.max;
+      const totalInstances = min;
+      const canAddMore = totalInstances < max;
 
       updatedSteps[i] = {
         ...step,
@@ -161,16 +177,6 @@ export const setupRepeatSteps = (
         updatedSteps.splice(i + j, 0, nextStep);
         repeatConfig.orderedStepIds.push(nextStepId);
       }
-    } else {
-      const addAnother = generateRepeatableAddAnotherField(
-        step.stepId,
-        repeatBehaviour.addAnotherLabel,
-      );
-      const newStepFields = [...sourceFields, addAnother];
-      updatedSteps[i] = {
-        ...step,
-        fields: newStepFields,
-      };
     }
     repeatSettings[step.stepId] = repeatConfig;
   }
@@ -266,8 +272,9 @@ export const addRepeatableStep = ({
   if (!repeatableBehaviour) return visibleSteps;
   const repeatableStepCount = currentRepeatConfig.orderedStepIds.length;
 
-  if (repeatableBehaviour.max && repeatableStepCount >= repeatableBehaviour.max)
-    return visibleSteps;
+  const { max } = getEffectiveRepeatBounds(repeatableBehaviour);
+
+  if (repeatableStepCount >= max) return visibleSteps;
 
   const nextStepId = getRepeatStepId(baseStepId, stepRepeatId + 1);
 
@@ -280,11 +287,13 @@ export const addRepeatableStep = ({
     getFullFieldId(currentStep.stepId, "addAnother"),
     sharedFieldsBehaviour,
   );
-  if (
-    repeatableBehaviour.max &&
-    repeatableStepCount < repeatableBehaviour.max - 1
-  ) {
-    nextStepFields.push(generateRepeatableAddAnotherField(nextStepId));
+  if (repeatableStepCount < max - 1) {
+    nextStepFields.push(
+      generateRepeatableAddAnotherField(
+        nextStepId,
+        repeatableBehaviour.addAnotherLabel,
+      ),
+    );
   }
 
   currentRepeatConfig.orderedStepIds.push(nextStepId);

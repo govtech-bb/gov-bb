@@ -4,11 +4,11 @@ import { Breadcrumbs } from '../components/Breadcrumbs'
 import { HelpfulBox } from '../components/HelpfulBox'
 import { MarkdownContent } from '../components/MarkdownContent'
 import {
+  categoryServices,
   findPage,
+  isCategoryVisible,
   isPreview,
-  isSubPage,
   isVisible,
-  PAGES,
   startSubPageInPreview,
 } from '../content/registry'
 import type { ContentPage } from '../content/registry'
@@ -21,6 +21,12 @@ interface CategoryListItem {
   description?: string
   href: string
 }
+
+const toListItem = (p: ContentPage): CategoryListItem => ({
+  title: p.frontmatter.title,
+  description: p.frontmatter.description,
+  href: `/${p.url}`,
+})
 
 type LoaderData =
   | { kind: 'page'; page: ContentPage; availableForms: string[] }
@@ -46,6 +52,7 @@ export const Route = createFileRoute('/$')({
     if (segments.length === 1) {
       const cat = CATEGORY_BY_SLUG[segments[0]]
       if (cat) {
+        if (!isCategoryVisible(cat, preview)) throw notFound()
         if (cat.subcategories && cat.subcategories.length > 0) {
           return {
             kind: 'subcategory-index',
@@ -53,16 +60,7 @@ export const Route = createFileRoute('/$')({
             subcategories: cat.subcategories,
           }
         }
-        const items = PAGES.filter(
-          (p) =>
-            p.frontmatter.categories.includes(cat.slug) &&
-            !isSubPage(p) &&
-            isVisible(p, preview),
-        ).map((p) => ({
-          title: p.frontmatter.title,
-          description: p.frontmatter.description,
-          href: `/${p.url}`,
-        }))
+        const items = categoryServices(cat.slug, preview).map(toListItem)
         return { kind: 'category', category: cat, items }
       }
     }
@@ -80,17 +78,9 @@ export const Route = createFileRoute('/$')({
       const cat = CATEGORY_BY_SLUG[segments[0]]
       const sub = cat ? getSubcategory(cat.slug, segments[1]) : undefined
       if (cat && sub) {
-        const items = PAGES.filter(
-          (p) =>
-            p.frontmatter.categories.includes(cat.slug) &&
-            p.frontmatter.subcategory === sub.slug &&
-            !isSubPage(p) &&
-            isVisible(p, preview),
-        ).map((p) => ({
-          title: p.frontmatter.title,
-          description: p.frontmatter.description,
-          href: `/${p.url}`,
-        }))
+        const items = categoryServices(cat.slug, preview)
+          .filter((p) => p.frontmatter.subcategory === sub.slug)
+          .map(toListItem)
         return { kind: 'subcategory', category: cat, subcategory: sub, items }
       }
     }
@@ -151,9 +141,16 @@ function ContentRoute() {
         subcategories={data.subcategories}
       />
     )
-  if (data.kind === 'subcategory')
-    return <SubcategoryView subcategory={data.subcategory} items={data.items} />
-  return <CategoryView category={data.category} items={data.items} />
+  // `category` and `subcategory` are the same listing; they differ only in
+  // which heading the page carries.
+  const heading = data.kind === 'subcategory' ? data.subcategory : data.category
+  return (
+    <ServiceListView
+      title={heading.title}
+      description={heading.description}
+      items={data.items}
+    />
+  )
 }
 
 function PageView({
@@ -181,22 +178,35 @@ function PageView({
   )
 }
 
-function CategoryView({
-  category,
+function PageHeader({
+  title,
+  description,
+}: {
+  title: string
+  description?: string
+}) {
+  return (
+    <div className="space-y-4 lg:space-y-6">
+      <Heading as="h1">{title}</Heading>
+      {description ? <Text as="p">{description}</Text> : null}
+    </div>
+  )
+}
+
+/** A category or sub-category page: a heading and its alphabetised services. */
+function ServiceListView({
+  title,
+  description,
   items,
 }: {
-  category: Category
+  title: string
+  description?: string
   items: CategoryListItem[]
 }) {
   const sorted = [...items].sort((a, b) => a.title.localeCompare(b.title))
   return (
     <Shell>
-      <div className="space-y-4 lg:space-y-6">
-        <Heading as="h1">{category.title}</Heading>
-        {category.description ? (
-          <Text as="p">{category.description}</Text>
-        ) : null}
-      </div>
+      <PageHeader title={title} description={description} />
       {sorted.length === 0 ? (
         <Text as="p" className="mt-6 text-mid-grey-00">
           No services yet.
@@ -231,12 +241,7 @@ function SubcategoryIndexView({
 }) {
   return (
     <Shell>
-      <div className="space-y-4 lg:space-y-6">
-        <Heading as="h1">{category.title}</Heading>
-        {category.description ? (
-          <Text as="p">{category.description}</Text>
-        ) : null}
-      </div>
+      <PageHeader title={category.title} description={category.description} />
       <ul className="m-0 mt-6 flex list-none flex-col p-0">
         {subcategories.map((sub) => (
           <li
@@ -257,47 +262,6 @@ function SubcategoryIndexView({
           </li>
         ))}
       </ul>
-    </Shell>
-  )
-}
-
-function SubcategoryView({
-  subcategory,
-  items,
-}: {
-  subcategory: SubCategory
-  items: CategoryListItem[]
-}) {
-  const sorted = [...items].sort((a, b) => a.title.localeCompare(b.title))
-  return (
-    <Shell>
-      <div className="space-y-4 lg:space-y-6">
-        <Heading as="h1">{subcategory.title}</Heading>
-        {subcategory.description ? (
-          <Text as="p">{subcategory.description}</Text>
-        ) : null}
-      </div>
-      {sorted.length === 0 ? (
-        <Text as="p" className="mt-6 text-mid-grey-00">
-          No services yet.
-        </Text>
-      ) : (
-        <div className="mt-6 flex flex-col">
-          {sorted.map((item) => (
-            <div
-              key={item.href}
-              className="border-grey-00 border-t-2 py-4 first:border-0 lg:py-8"
-            >
-              <a
-                href={item.href}
-                className={`${linkVariants()} text-[20px] leading-normal lg:text-3xl`}
-              >
-                {item.title}
-              </a>
-            </div>
-          ))}
-        </div>
-      )}
     </Shell>
   )
 }

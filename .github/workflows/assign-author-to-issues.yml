@@ -1,0 +1,83 @@
+name: Assign PR author to linked issues
+
+# When a PR is merged, assign its author to every issue the PR closes or
+# mentions. Two sources are unioned:
+#   1. closingIssuesReferences (GraphQL) — GitHub's authoritative set of
+#      issues the merge closed via closing keywords (incl. commit messages).
+#   2. `#N` references parsed from the PR title + body — "mentions".
+# References that resolve to a pull request (not an issue) are skipped, so a
+# PR that links a sibling PR doesn't assign the author to that PR.
+#
+# No fork handling: this repo's PRs are branch-based (same repo), so the
+# default GITHUB_TOKEN with `issues: write` can assign. Fork PRs would get a
+# read-only token here and silently no-op.
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  issues: write
+
+jobs:
+  assign-author:
+    name: Assign author to linked issues
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const pr = context.payload.pull_request;
+            const author = pr.user.login;
+
+            // 1. Authoritative closing references (closing keywords, incl. commits).
+            const closing = await github.graphql(
+              `query($owner:String!, $repo:String!, $number:Int!) {
+                 repository(owner:$owner, name:$repo) {
+                   pullRequest(number:$number) {
+                     closingIssuesReferences(first:50) { nodes { number } }
+                   }
+                 }
+               }`,
+              { owner, repo, number: pr.number }
+            );
+            const closingNums = closing.repository.pullRequest
+              .closingIssuesReferences.nodes.map((n) => n.number);
+
+            // 2. `#N` mentions in the PR title + body (same-repo references only).
+            const text = `${pr.title || ""}\n${pr.body || ""}`;
+            const mentionNums = [...text.matchAll(/(?:^|\s)#(\d+)\b/g)]
+              .map((m) => Number(m[1]));
+
+            const candidates = [...new Set([...closingNums, ...mentionNums])];
+            if (candidates.length === 0) {
+              core.info("No linked issues found; nothing to assign.");
+              return;
+            }
+
+            for (const number of candidates) {
+              // Skip self and anything that's actually a PR.
+              if (number === pr.number) continue;
+              let issue;
+              try {
+                issue = await github.rest.issues.get({ owner, repo, issue_number: number });
+              } catch (e) {
+                core.info(`#${number}: not found in this repo (${e.status}); skipping.`);
+                continue;
+              }
+              if (issue.data.pull_request) {
+                core.info(`#${number}: is a pull request; skipping.`);
+                continue;
+              }
+              if (issue.data.state === "closed" && issue.data.assignees.length) {
+                // Already closed with assignees — leave it alone.
+                core.info(`#${number}: already closed and assigned; skipping.`);
+                continue;
+              }
+              await github.rest.issues.addAssignees({
+                owner, repo, issue_number: number, assignees: [author],
+              });
+              core.info(`#${number}: assigned ${author}.`);
+            }

@@ -20,11 +20,13 @@
  *    required (recipe-vs-deployed drift), so the spec fills them all.
  *  - Sections B, C and D are repeatable steps rendered inline with an
  *    "Add another?" radio — fill one row and answer "No".
- *  - The per-section total steps (`sectionBTotal` etc.) and `claimAmount` are
- *    `number` inputs that the deployed form serves as required + editable
+ *  - The per-section total steps (`section-b-total` etc.) and `claim-amount`
+ *    are `number` inputs that the deployed form serves as required + editable
  *    (despite the recipe marking them readonly), so the spec fills them.
- *  - `section-b` has a field whose id is literally `#`, addressed as
- *    `section-b_#`.
+ *  - `section-b`'s row-number field (formerly the literal id `#`) is `row-no`
+ *    since the #741/#745 migration kebab-cased every recipe field id — which
+ *    also renamed the camelCase ids this spec fills (`firstName` →
+ *    `first-name` etc.).
  */
 import { faker } from "@faker-js/faker";
 import { test, expect } from "@playwright/test";
@@ -54,37 +56,37 @@ test.describe("Duties Performed Exam Claim — Live Smoke", () => {
 
     // ─── Section A: Claimant Details ─────────────────────────────────────────
     let step = expectStep(page, "applicant-info");
-    await fillField(page, step, "firstName", firstName);
-    await fillField(page, step, "lastName", lastName);
-    await fillField(page, step, "otherNames", faker.person.middleName());
-    await fillField(page, step, "idNumber", faker.string.numeric(9));
+    await fillField(page, step, "first-name", firstName);
+    await fillField(page, step, "last-name", lastName);
+    await fillField(page, step, "other-names", faker.person.middleName());
+    await fillField(page, step, "id-number", faker.string.numeric(9));
     await fillField(page, step, "address", faker.location.streetAddress());
     await fillField(page, step, "parish", "St. Michael");
     await fillField(page, step, "email", "testing@govtech.bb");
     await fillField(page, step, "telephone", faker.string.numeric(10));
-    await fillField(page, step, "tamisNo", faker.string.numeric(9));
+    await fillField(page, step, "tamis-no", faker.string.numeric(9));
     await fillField(page, step, "supervisor", faker.person.fullName());
-    await fillField(page, step, "nisNo", faker.string.numeric(9));
-    await fillField(page, step, "examPeriod", "May/June 2026");
-    await fillField(page, step, "claimPeriodFrom", "2026-05-01");
-    await fillField(page, step, "claimPeriodTo", "2026-06-30");
+    await fillField(page, step, "nis-no", faker.string.numeric(9));
+    await fillField(page, step, "exam-period", "May/June 2026");
+    await fillField(page, step, "claim-period-from", "2026-05-01");
+    await fillField(page, step, "claim-period-to", "2026-06-30");
     await advance(page, step);
 
     // ─── Section B: Duties Performed (repeatable) ────────────────────────────
     step = expectStep(page, "section-b", { exact: true });
-    await fillField(page, step, "#", "01");
+    await fillField(page, step, "row-no", "01");
     await fillField(page, step, "date", "2026-05-10");
     await fillField(page, step, "centre", "Bridgetown Centre");
     await fillField(page, step, "role", "Invigilator");
     await fillField(page, step, "rate", "50");
-    await fillField(page, step, "overtimeHrs", "10");
+    await fillField(page, step, "overtime-hrs", "10");
     await fillField(page, step, "subtotal", "100");
     await selectRadio(page, step, "addAnother", "no");
     await advance(page, step);
 
     // ─── Section B: Total ────────────────────────────────────────────────────
     step = expectStep(page, "section-b-total");
-    await fillField(page, step, "sectionBTotal", "100");
+    await fillField(page, step, "section-b-total", "100");
     await advance(page, step);
 
     // ─── Section C: Practical Examination Setup (repeatable) ─────────────────
@@ -92,15 +94,15 @@ test.describe("Duties Performed Exam Claim — Live Smoke", () => {
     await fillField(page, step, "date", "2026-05-12");
     await fillField(page, step, "centre", "Bridgetown Centre");
     await fillField(page, step, "subject", "Chemistry");
-    await fillField(page, step, "totalCandidates", "30");
-    await fillField(page, step, "totalPersonnel", "10");
+    await fillField(page, step, "total-candidates", "30");
+    await fillField(page, step, "total-personnel", "10");
     await fillField(page, step, "subtotal", "200");
     await selectRadio(page, step, "addAnother", "no");
     await advance(page, step);
 
     // ─── Section C: Total ────────────────────────────────────────────────────
     step = expectStep(page, "section-c-total");
-    await fillField(page, step, "sectionCTotal", "200");
+    await fillField(page, step, "section-c-total", "200");
     await advance(page, step);
 
     // ─── Section D: Reader/Writer/etc Duties (repeatable) ────────────────────
@@ -109,45 +111,50 @@ test.describe("Duties Performed Exam Claim — Live Smoke", () => {
     await fillField(page, step, "centre", "Bridgetown Centre");
     await fillField(page, step, "subject", "English A");
     await fillField(page, step, "duties", "Reader");
-    await fillField(page, step, "noHoursPassages", "03");
+    await fillField(page, step, "no-hours-passages", "03");
     await fillField(page, step, "subtotal", "150");
     await selectRadio(page, step, "addAnother", "no");
     await advance(page, step);
 
     // ─── Section D: Total ────────────────────────────────────────────────────
     step = expectStep(page, "section-d-total");
-    await fillField(page, step, "sectionDTotal", "150");
+    await fillField(page, step, "section-d-total", "150");
     await advance(page, step);
 
     // ─── Section E: Payee Information ────────────────────────────────────────
     step = expectStep(page, "section-e");
-    await fillField(page, step, "bankBranch", "Republic Bank / Broad St");
-    await fillField(page, step, "nameOnAccount", `${firstName} ${lastName}`);
-    await fillField(page, step, "accountNo", faker.finance.accountNumber(10));
-    await fillField(page, step, "bicSwiftNo", faker.finance.bic());
-    await fillField(page, step, "accountType", "Savings");
+    await fillField(page, step, "bank-branch", "Republic Bank / Broad St");
+    await fillField(page, step, "name-on-account", `${firstName} ${lastName}`);
+    await fillField(page, step, "account-no", faker.finance.accountNumber(10));
+    await fillField(page, step, "bic-swift-no", faker.finance.bic());
+    await fillField(page, step, "account-type", "Savings");
     await advance(page, step);
 
     // ─── Section F: Payment Declaration ──────────────────────────────────────
     step = expectStep(page, "section-f");
-    await fillField(page, step, "claimAmount", "450");
+    await fillField(page, step, "claim-amount", "450");
     await fillField(
       page,
       step,
-      "claimantSignature",
+      "claimant-signature",
       `${firstName} ${lastName}`,
     );
-    await fillField(page, step, "claimantDate", "2026-06-02");
+    await fillField(page, step, "claimant-date", "2026-06-02");
     await advance(page, step);
 
     // ─── For Official Use Only ───────────────────────────────────────────────
     step = expectStep(page, "section-official");
-    await fillField(page, step, "supervisorSignature", "I. M. Supervisor");
-    await fillField(page, step, "supervisorDate", "2026-06-02");
-    await fillField(page, step, "examVerifierSignature", "E. X. Verifier");
-    await fillField(page, step, "examVerifierDate", "2026-06-02");
-    await fillField(page, step, "accountingOfficerSignature", "A. C. Officer");
-    await fillField(page, step, "accountingOfficerDate", "2026-06-02");
+    await fillField(page, step, "supervisor-signature", "I. M. Supervisor");
+    await fillField(page, step, "supervisor-date", "2026-06-02");
+    await fillField(page, step, "exam-verifier-signature", "E. X. Verifier");
+    await fillField(page, step, "exam-verifier-date", "2026-06-02");
+    await fillField(
+      page,
+      step,
+      "accounting-officer-signature",
+      "A. C. Officer",
+    );
+    await fillField(page, step, "accounting-officer-date", "2026-06-02");
     await advance(page, step);
 
     // ─── Check your answers (auto-injected by the renderer, if present) ──────

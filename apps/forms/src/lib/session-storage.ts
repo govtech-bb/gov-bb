@@ -1,4 +1,4 @@
-import { FormValues } from "@forms/types";
+import { FormValues, SubmissionState } from "@forms/types";
 
 function stripNonSerializableValues(value: unknown): unknown {
   if (typeof File !== "undefined" && value instanceof File) {
@@ -46,6 +46,31 @@ export function storeFormData(formId: string, data: FormValues) {
 export function getFormData(formId: string) {
   const data = sessionStorage.getItem(`formData_${formId}`);
   return data ? JSON.parse(data) : null;
+}
+
+// Clear a form's persisted progress (field values + completed steps).
+// Note: this deliberately does NOT touch the persisted submissionState — it is
+// called on submit success, and the committed outcome must survive so a refresh
+// on the confirmation step can still render it. See clearSubmissionState.
+export function clearFormState(formId: string) {
+  sessionStorage.removeItem(`formData_${formId}`);
+  sessionStorage.removeItem(`completedSteps_${formId}`);
+}
+
+// The submission outcome lives in React state, which is lost on a browser
+// refresh. Persisting it lets the confirmation step re-render after a reload
+// instead of bouncing the citizen back to check-your-answers.
+export function storeSubmissionState(formId: string, state: SubmissionState) {
+  sessionStorage.setItem(`submissionState_${formId}`, JSON.stringify(state));
+}
+
+export function getSubmissionState(formId: string): SubmissionState | null {
+  const raw = sessionStorage.getItem(`submissionState_${formId}`);
+  return raw ? JSON.parse(raw) : null;
+}
+
+export function clearSubmissionState(formId: string) {
+  sessionStorage.removeItem(`submissionState_${formId}`);
 }
 
 // Get completed steps from session storage

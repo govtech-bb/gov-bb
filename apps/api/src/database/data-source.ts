@@ -1,4 +1,5 @@
 import { DataSource } from "typeorm";
+import { entities, migrations } from "@govtech-bb/database";
 import * as dotenv from "dotenv";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -30,6 +31,8 @@ export const AppDataSource = new DataSource({
   synchronize: process.env.DB_SYNCHRONIZE === "true",
   logging: process.env.DB_LOGGING === "true",
   ssl: buildSslConfig(),
-  entities: [__dirname + "/../**/*.entity{.ts,.js}"],
-  migrations: [__dirname + "/migrations/!(*.spec){.ts,.js}"],
+  // The shared package is the single source of truth for entities and
+  // migrations (#721) — explicit arrays, no globs.
+  entities,
+  migrations,
 });

@@ -6,6 +6,11 @@ export const validationConfigSchema = z.object({
   targetStepId: z.string().optional(),
   referenceFieldId: z.string().optional(),
   referenceStepId: z.string().optional(),
+  // When true on a `minYear`/`maxYear` rule, the bound resolves to the current
+  // year at validation time instead of a literal `value` — e.g. a "Year" field
+  // that must not be in the future. Resolved fresh on every run, so it never
+  // goes stale the way a hardcoded year would.
+  currentYear: z.boolean().optional(),
 });
 export type ValidationConfig = z.infer<typeof validationConfigSchema>;
 
