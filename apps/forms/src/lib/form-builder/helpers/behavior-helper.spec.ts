@@ -374,6 +374,43 @@ describe("getVisibleFields", () => {
     expect(getVisibleFields(step, makeFormApi({}))).toHaveLength(0);
   });
 
+  it("keeps a field visible when its condition passes but the field itself is empty (requiredAndEmpty)", () => {
+    const step = makeStep("step1");
+    step.fields = [
+      makeField("step1", "employer", { behaviours: [conditionalOn()] }),
+    ];
+    // hasJob = yes reveals employer; the user hasn't typed anything yet —
+    // the field is required-and-empty, which is still visible.
+    const formApi = makeFormApi({ step1_hasJob: "yes" });
+    expect(getVisibleFields(step, formApi)).toHaveLength(1);
+  });
+
+  it("treats multiple fieldConditionalOn behaviours as OR — visible when any one passes", () => {
+    const step = makeStep("step1");
+    step.fields = [
+      makeField("step1", "details", {
+        behaviours: [
+          conditionalOn({ targetFieldId: "hasJob", value: "yes" }),
+          conditionalOn({ targetFieldId: "hadJobBefore", value: "yes" }),
+        ],
+      }),
+    ];
+    // Second condition passes, first fails → visible.
+    expect(
+      getVisibleFields(
+        step,
+        makeFormApi({ step1_hasJob: "no", step1_hadJobBefore: "yes" }),
+      ),
+    ).toHaveLength(1);
+    // Neither passes → hidden.
+    expect(
+      getVisibleFields(
+        step,
+        makeFormApi({ step1_hasJob: "no", step1_hadJobBefore: "no" }),
+      ),
+    ).toHaveLength(0);
+  });
+
   it("ignores non-conditional behaviours (e.g. fieldArray)", () => {
     const step = makeStep("step1");
     step.fields = [
