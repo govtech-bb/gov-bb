@@ -67,7 +67,6 @@ function renderComponent(overrides: Partial<FileUploadProps> = {}) {
     onFileChange,
     value: null,
     errorMessage: "",
-    validationRules: undefined,
     ...overrides,
   };
   const result = render(<FileUpload {...props} />);
@@ -186,19 +185,36 @@ describe("FileUpload", () => {
 
     await user.upload(fileInput, makeFile("bad.pdf", "application/pdf", 100));
 
-    expect(await screen.findByText(/file upload failed/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/file upload failed/i, {
+        selector: ".govbb-file-upload__status--error",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      /bad\.pdf:.*file upload failed/i,
+    );
     expect(onFileChange).not.toHaveBeenCalled();
   });
 
   it("rejects an oversize file client-side without calling the upload API", async () => {
     const user = userEvent.setup();
     const { onFileChange, fileInput } = renderComponent({
-      validationRules: { maxSize: { value: 1024 } }, // 1KB cap
+      field: {
+        ...baseField,
+        validations: { maxSize: { value: 1024 } }, // 1KB cap
+      },
     });
 
     await user.upload(fileInput, makeFile("huge.pdf", "application/pdf", 5000));
 
-    expect(await screen.findByText(/larger than/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/larger than/i, {
+        selector: ".govbb-file-upload__status--error",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      /huge\.pdf:.*larger than/i,
+    );
     expect(mockUploadFile).not.toHaveBeenCalled();
     expect(onFileChange).not.toHaveBeenCalled();
   });
@@ -390,15 +406,18 @@ describe("FileUpload", () => {
   // -------------------------------------------------------------------------
   // 9. Max-size display
   // -------------------------------------------------------------------------
-  it("renders the formatted max-size when validationRules.maxSize is provided", () => {
+  it("renders the formatted max-size when validations.maxSize is provided", () => {
     renderComponent({
-      validationRules: { maxSize: { value: 5 * 1024 * 1024 } }, // 5 MB
+      field: {
+        ...baseField,
+        validations: { maxSize: { value: 5 * 1024 * 1024 } }, // 5 MB
+      },
     });
     expect(screen.getByText(/5\.0 MB/i)).toBeInTheDocument();
   });
 
-  it("renders '--' for max size when validationRules has no maxSize", () => {
-    renderComponent({ validationRules: {} });
+  it("renders '--' for max size when validations has no maxSize", () => {
+    renderComponent({ field: { ...baseField, validations: {} } });
     expect(screen.getByText(/Max Size:.*--/i)).toBeInTheDocument();
   });
 

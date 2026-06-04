@@ -22,7 +22,6 @@ export default function FileUpload({
   value,
   errorMessage,
   errorId,
-  validationRules,
   formId,
   formVersion,
 }: FileUploadProps) {
@@ -39,13 +38,14 @@ export default function FileUpload({
   const [pending, setPending] = React.useState<PendingUpload[]>([]);
   const idRef = React.useRef(0);
 
-  // Announced to screen readers when the file selection changes (WCAG 4.1.3).
+  // Single live region announcing every terminal change to screen readers —
+  // added, removed, rejected, or failed (WCAG 4.1.3).
   const [statusMessage, setStatusMessage] = React.useState("");
 
   // presign's stepId is slug-validated, so strip any repeatable suffix
   // ("qualifications~1" → "qualifications") — the base step carries the policy.
   const presignStepId = field.stepId.split("~")[0];
-  const maxSize = validationRules?.maxSize?.value as number | undefined;
+  const maxSize = field.validations?.maxSize?.value as number | undefined;
 
   const appendConfirmed = (uploaded: UploadedFile) => {
     // Store the reference WITHOUT the expiring preview url (kept in memory only).
@@ -85,15 +85,12 @@ export default function FileUpload({
 
         // Short-circuit oversize files before hitting the network.
         if (maxSize && file.size > maxSize) {
+          const error = `This file is larger than the ${formatMb(maxSize)} limit.`;
           setPending((prev) => [
             ...prev,
-            {
-              id,
-              name: file.name,
-              status: "error",
-              error: `This file is larger than the ${formatMb(maxSize)} limit.`,
-            },
+            { id, name: file.name, status: "error", error },
           ]);
+          setStatusMessage(`${file.name}: ${error}`);
           return;
         }
 
@@ -122,6 +119,7 @@ export default function FileUpload({
               p.id === id ? { ...p, status: "error", error: message } : p,
             ),
           );
+          setStatusMessage(`${file.name}: ${message}`);
         }
       }),
     );
@@ -210,9 +208,7 @@ export default function FileUpload({
             >
               <span className="govbb-file-upload__name">{p.name}</span>
               {p.status === "uploading" ? (
-                <span className="govbb-file-upload__status" aria-live="polite">
-                  Uploading…
-                </span>
+                <span className="govbb-file-upload__status">Uploading…</span>
               ) : (
                 <span className="govbb-file-upload__status govbb-file-upload__status--error">
                   {p.error}{" "}
