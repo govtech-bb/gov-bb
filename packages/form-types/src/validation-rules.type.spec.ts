@@ -175,7 +175,7 @@ describe("minRuleSchema", () => {
 
   it("accepts referenceFieldId", () => {
     expect(
-      minRuleSchema.safeParse({ referenceFieldId: "startAmount" }).success,
+      minRuleSchema.safeParse({ referenceFieldId: "start-amount" }).success,
     ).toBe(true);
   });
 
@@ -201,7 +201,7 @@ describe("maxRuleSchema", () => {
 
   it("accepts referenceFieldId", () => {
     expect(
-      maxRuleSchema.safeParse({ referenceFieldId: "endAmount" }).success,
+      maxRuleSchema.safeParse({ referenceFieldId: "end-amount" }).success,
     ).toBe(true);
   });
 
@@ -227,7 +227,7 @@ describe("gtRuleSchema", () => {
 
   it("accepts referenceFieldId", () => {
     expect(
-      gtRuleSchema.safeParse({ referenceFieldId: "ageField" }).success,
+      gtRuleSchema.safeParse({ referenceFieldId: "age-field" }).success,
     ).toBe(true);
   });
 
@@ -254,7 +254,7 @@ describe("ltRuleSchema", () => {
 
   it("accepts referenceFieldId", () => {
     expect(
-      ltRuleSchema.safeParse({ referenceFieldId: "retirementAge" }).success,
+      ltRuleSchema.safeParse({ referenceFieldId: "retirement-age" }).success,
     ).toBe(true);
   });
 
@@ -343,7 +343,7 @@ describe("afterRuleSchema", () => {
   it("accepts referenceFieldId alongside targetStepId", () => {
     expect(
       afterRuleSchema.safeParse({
-        referenceFieldId: "startDate",
+        referenceFieldId: "start-date",
         targetStepId: "dates-step",
       }).success,
     ).toBe(true);
@@ -368,7 +368,7 @@ describe("beforeRuleSchema", () => {
   it("accepts referenceFieldId alongside targetStepId", () => {
     expect(
       beforeRuleSchema.safeParse({
-        referenceFieldId: "endDate",
+        referenceFieldId: "end-date",
         targetStepId: "dates-step",
       }).success,
     ).toBe(true);
