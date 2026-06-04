@@ -1,5 +1,8 @@
 import { Router } from "express";
-import type { ServiceContractRecipe } from "@govtech-bb/form-types";
+import {
+  deployBranchName,
+  type ServiceContractRecipe,
+} from "@govtech-bb/form-types";
 
 export const publishRouter = Router();
 
@@ -45,7 +48,7 @@ publishRouter.post("/", async (req, res) => {
     const baseSha = refJson.object.sha;
 
     // Create branch
-    const branch = `form-builder/${typedRecipe.formId}-${typedRecipe.version}-${Date.now()}`;
+    const branch = deployBranchName(typedRecipe.formId, typedRecipe.version);
     const createRefRes = await fetch(repoUrl("/git/refs"), {
       method: "POST",
       headers: { ...authHeaders(token), "Content-Type": "application/json" },
