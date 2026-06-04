@@ -21,10 +21,14 @@ RUN corepack enable
 # long as the lockfile + manifests haven't changed.
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY apps/cms/package.json apps/cms/
+COPY packages/ai-bedrock/package.json packages/ai-bedrock/
 COPY packages/content/package.json packages/content/
-COPY packages/design/package.json packages/design/
-COPY packages/react/package.json packages/react/
+COPY packages/database/package.json packages/database/
+COPY packages/expressions/package.json packages/expressions/
+COPY packages/form-builder/package.json packages/form-builder/
+COPY packages/form-conditions/package.json packages/form-conditions/
 COPY packages/form-types/package.json packages/form-types/
+COPY packages/form-validation/package.json packages/form-validation/
 COPY packages/registry/package.json packages/registry/
 
 RUN pnpm install --frozen-lockfile
