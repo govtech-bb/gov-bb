@@ -619,6 +619,42 @@ describe("addRepeatableStep", () => {
     );
   });
 
+  it("carries addAnotherLabel onto the new instance's addAnother control", () => {
+    const repeatBehaviour: RepeatableBehaviour = {
+      ...makeRepeatableBehaviour(1, 4),
+      addAnotherLabel: "Add another teacher?",
+    };
+    const step = makeStep("personalInfo", ["firstName"], [repeatBehaviour]);
+    const repeatStep1 = makeStep(
+      "personalInfo~1",
+      ["firstName"],
+      [repeatBehaviour],
+    );
+    const repeatSettings: RepeatableStepSettings = {
+      personalInfo: {
+        minRepeats: 1,
+        maxRepeats: 4,
+        orderedStepIds: ["personalInfo", "personalInfo~1"],
+        stepData: {},
+      },
+    };
+    const formMeta = makeFormMeta([step, repeatStep1]);
+    const visibleSteps = [step, repeatStep1];
+
+    const result = addRepeatableStep({
+      currentStep: repeatStep1,
+      repeatableStepSettings: repeatSettings,
+      repeatableBehaviour: repeatBehaviour,
+      visibleSteps,
+      formMeta,
+    });
+
+    // The dynamically added instance (~2) must keep the custom label,
+    // not fall back to the "Add another?" default.
+    const addAnother = result[2].fields.find((f) => f.fieldId === "addAnother");
+    expect(addAnother?.label).toBe("Add another teacher?");
+  });
+
   it("returns visibleSteps unchanged when at max", () => {
     const repeatBehaviour = makeRepeatableBehaviour(2, 2);
     const step = makeStep("personalInfo", ["firstName"]);

@@ -288,7 +288,12 @@ export const addRepeatableStep = ({
     sharedFieldsBehaviour,
   );
   if (repeatableStepCount < max - 1) {
-    nextStepFields.push(generateRepeatableAddAnotherField(nextStepId));
+    nextStepFields.push(
+      generateRepeatableAddAnotherField(
+        nextStepId,
+        repeatableBehaviour.addAnotherLabel,
+      ),
+    );
   }
 
   currentRepeatConfig.orderedStepIds.push(nextStepId);
