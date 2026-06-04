@@ -10,8 +10,8 @@ import type {
 } from "@govtech-bb/form-types";
 import { api } from "./api-client";
 import { listVersions, RECIPES_BASE } from "./github-recipes";
+import { REPO_NAME, repoOwner } from "./github-repo";
 
-const REPO_NAME = "gov-bb";
 const DEFAULT_BASE_BRANCH = "dev";
 const GH_API = "https://api.github.com";
 
@@ -36,12 +36,6 @@ function resolveBaseBranch(): string {
   const runtime = process.env["PUBLISH_BASE_BRANCH"]?.trim();
   if (runtime) return runtime;
   return process.env.PUBLISH_BASE_BRANCH_DEFAULT?.trim() || DEFAULT_BASE_BRANCH;
-}
-
-function repoOwner(): string {
-  const v = process.env.GITHUB_ORG;
-  if (!v) throw new Error("GITHUB_ORG is not set");
-  return v;
 }
 
 function repoUrl(suffix: string): string {
