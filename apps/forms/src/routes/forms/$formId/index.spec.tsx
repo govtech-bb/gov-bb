@@ -54,6 +54,9 @@ jest.mock("../../../lib/session-storage", () => ({
   getFormData: jest.fn(() => null),
   storeFormData: jest.fn(),
   clearFormState: jest.fn(),
+  getSubmissionState: jest.fn(() => null),
+  storeSubmissionState: jest.fn(),
+  clearSubmissionState: jest.fn(),
 }));
 
 jest.mock("@forms/form-api", () => ({
@@ -68,13 +71,19 @@ jest.mock("../../../lib/analytics", () => ({
 import { Route } from "./index";
 import { useForm, useStore } from "@tanstack/react-form";
 import { getVisibleSteps, restoreRepeatableStepsFromStorage } from "@forms/lib";
-import { getFormData } from "../../../lib/session-storage";
+import {
+  getFormData,
+  getSubmissionState,
+  clearSubmissionState,
+} from "../../../lib/session-storage";
 import { trackEvent } from "../../../lib/analytics";
 
 const mockUseForm = useForm as jest.Mock;
 const mockUseStore = useStore as jest.Mock;
 const mockGetVisibleSteps = getVisibleSteps as jest.Mock;
 const mockGetFormData = getFormData as jest.Mock;
+const mockGetSubmissionState = getSubmissionState as jest.Mock;
+const mockClearSubmissionState = clearSubmissionState as jest.Mock;
 const mockRestoreRepeatableStepsFromStorage =
   restoreRepeatableStepsFromStorage as jest.Mock;
 
@@ -128,6 +137,7 @@ beforeEach(() => {
   });
   mockGetVisibleSteps.mockReturnValue([mockVisibleStep]);
   mockGetFormData.mockReturnValue(null);
+  mockGetSubmissionState.mockReturnValue(null);
 });
 
 afterEach(() => {
@@ -205,6 +215,46 @@ describe("RouteComponent", () => {
     jest.spyOn(Route, "useSearch").mockReturnValue({ step: undefined });
     render(<Route.component />);
     expect(screen.getByTestId("form-renderer")).toBeInTheDocument();
+  });
+
+  // Refreshing the browser on the confirmation step must keep the user there.
+  // submissionState lives in React state (lost on reload), so it is persisted to
+  // session storage and rehydrated on mount — otherwise the renderer's
+  // "no submissionState → bounce to check-your-answers" guard fires on refresh.
+  it("rehydrates submissionState from storage when reloading on submission-confirmation", () => {
+    jest
+      .spyOn(Route, "useSearch")
+      .mockReturnValue({ step: "submission-confirmation" });
+    const persisted = {
+      hasPayment: false,
+      serviceName: "test-form",
+      submissionSuccess: true,
+      referenceNumber: "REF-9",
+      date: "01/01/2026",
+    };
+    mockGetSubmissionState.mockReturnValue(persisted);
+
+    render(<Route.component />);
+
+    expect(mockFormRendererProps.current.submissionState).toEqual(persisted);
+  });
+
+  it("ignores and clears any persisted submissionState on a fresh non-confirmation load", () => {
+    jest.spyOn(Route, "useSearch").mockReturnValue({ step: "step1" });
+    // A stale outcome from an earlier submission this session must not leak into
+    // a brand-new form session.
+    mockGetSubmissionState.mockReturnValue({
+      hasPayment: false,
+      serviceName: "test-form",
+      submissionSuccess: true,
+      referenceNumber: "STALE",
+      date: "01/01/2026",
+    });
+
+    render(<Route.component />);
+
+    expect(mockFormRendererProps.current.submissionState).toBeUndefined();
+    expect(mockClearSubmissionState).toHaveBeenCalledWith("test-form");
   });
 });
 

@@ -167,6 +167,14 @@ test.describe("Temporary Teacher Application — Live Smoke", () => {
       .check();
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────
-    await submitAndConfirm(page, { heading: "Submission Confirmation" });
+    // The recipe overrides the confirmation title/description (v1.3.0) and
+    // renders recipe-authored markdown ("What you need to know") below.
+    await submitAndConfirm(page, {
+      heading: "Your application to be a temporary teacher has been submitted.",
+      subheading: "Thank you. We have received your application.",
+    });
+    await expect(
+      page.getByRole("heading", { name: "What you need to know" }),
+    ).toBeVisible();
   });
 });

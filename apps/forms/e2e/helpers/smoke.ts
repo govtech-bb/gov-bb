@@ -156,6 +156,12 @@ export async function submitAndConfirm(
   page: Page,
   opts: {
     heading: string | RegExp;
+    /**
+     * The subheading shown under the title. Defaults to the generic
+     * "Your submission has been saved" fallback; forms whose recipe sets a
+     * confirmation-step `description` (e.g. temp-teacher) pass their own copy.
+     */
+    subheading?: string | RegExp;
     referenceLabel?: string | RegExp;
   },
 ): Promise<Response> {
@@ -177,7 +183,9 @@ export async function submitAndConfirm(
     { timeout: STEP_TIMEOUT },
   );
   await expect(page.locator("h1")).toContainText(opts.heading);
-  await expect(page.getByText("Your submission has been saved")).toBeVisible();
+  await expect(
+    page.getByText(opts.subheading ?? "Your submission has been saved"),
+  ).toBeVisible();
 
   if (opts.referenceLabel) {
     await expect(page.getByText(opts.referenceLabel)).toBeVisible();
