@@ -451,6 +451,19 @@ describe("EmailBodyBuilder", () => {
       expect(fileField(ctx)?.value).toBe("durable.pdf");
     });
 
+    it("ignores null and non-object items in the stored array", async () => {
+      const ctx = await builder.build(
+        makeFilePayload([
+          null,
+          42,
+          "stray-string",
+          { key: "uploads/abc/ok.pdf", name: "ok.pdf" },
+        ]),
+      );
+
+      expect(fileField(ctx)?.value).toBe("ok.pdf");
+    });
+
     it("omits the row when no item has a durable key", async () => {
       const ctx = await builder.build(
         makeFilePayload([{ name: "never-uploaded.pdf" }, { key: "" }]),
