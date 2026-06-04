@@ -157,6 +157,39 @@ describe("migrateOverridesForRef", () => {
     });
   });
 
+  it("keeps numeric rules but drops year rules when switching text -> number", () => {
+    const overrides: FieldOverrides = {
+      validations: {
+        required: { value: true },
+        min: { value: 1 },
+        gt: { referenceFieldId: "other" },
+        minYear: { value: 1900 },
+        maxYear: { value: 2100 },
+      },
+    };
+    const result = migrateOverridesForRef(overrides, "text", "number");
+    // number offers the numeric comparison rules but not minYear/maxYear.
+    expect(result.validations).toEqual({
+      required: { value: true },
+      min: { value: 1 },
+      gt: { referenceFieldId: "other" },
+    });
+  });
+
+  it("drops numeric and year rules when switching text -> email", () => {
+    const overrides: FieldOverrides = {
+      validations: {
+        required: { value: true },
+        min: { value: 1 },
+        lt: { referenceFieldId: "other" },
+        minYear: { value: 1900 },
+      },
+    };
+    const result = migrateOverridesForRef(overrides, "text", "email");
+    // email offers neither the numeric comparison nor the year rules.
+    expect(result.validations).toEqual({ required: { value: true } });
+  });
+
   it("always carries required and conditionalOn even when not in target descriptors", () => {
     const overrides: FieldOverrides = {
       validations: {
