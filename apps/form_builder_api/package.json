@@ -1,0 +1,34 @@
+{
+  "name": "@govtech-bb/form-builder-api",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "TSX_TSCONFIG_PATH=tsconfig.dev.json tsx watch src/main.ts",
+    "build": "tsc && tsc-alias",
+    "start": "node dist/main.js",
+    "test": "jest --no-coverage"
+  },
+  "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.700.0",
+    "@govtech-bb/database": "workspace:*",
+    "@govtech-bb/form-builder": "workspace:*",
+    "@govtech-bb/form-types": "workspace:*",
+    "cors": "^2.8.5",
+    "dotenv": "17.4.2",
+    "express": "^5.1.0",
+    "reflect-metadata": "^0.2.0",
+    "typeorm": "^0.3.28",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^22.0.0",
+    "jest": "^30.3.0",
+    "ts-jest": "^29.4.6",
+    "tsc-alias": "^1.8.10",
+    "tsx": "^4.19.0",
+    "typescript": "catalog:"
+  }
+}

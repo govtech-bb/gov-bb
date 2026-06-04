@@ -11,7 +11,7 @@
       "path": "packages/form-validation"
     },
     {
-      "path": "apps/web"
+      "path": "apps/forms"
     },
     {
       "path": "apps/api"

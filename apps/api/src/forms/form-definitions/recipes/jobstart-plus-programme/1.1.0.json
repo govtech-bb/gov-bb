@@ -1,0 +1,1026 @@
+{
+  "steps": [
+    {
+      "title": "Tell us about yourself",
+      "stepId": "applicant-details",
+      "elements": [
+        {
+          "ref": "components/title",
+          "overrides": {
+            "fieldId": "applicant-title",
+            "validations": {
+              "required": {
+                "error": "Title is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "fieldId": "applicant-first-name",
+            "validations": {
+              "required": {
+                "error": "First name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "First name must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "hint": "Optional. Provide only if known",
+            "fieldId": "applicant-middle-name"
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "fieldId": "applicant-last-name",
+            "validations": {
+              "required": {
+                "error": "Last name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Last name must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/date-of-birth",
+          "overrides": {
+            "fieldId": "applicant-dob",
+            "validations": {
+              "required": {
+                "error": "Date of birth is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/sex",
+          "overrides": {
+            "fieldId": "applicant-sex",
+            "validations": {
+              "required": {
+                "error": "Sex is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Marital status",
+            "fieldId": "marital-status",
+            "options": [
+              {
+                "label": "Single",
+                "value": "single"
+              },
+              {
+                "label": "Married",
+                "value": "married"
+              },
+              {
+                "label": "Divorced",
+                "value": "divorced"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Marital Status is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/national-id-number",
+          "overrides": {
+            "fieldId": "applicant-nid",
+            "validations": {
+              "required": {
+                "error": "ID Number is required",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "optionalIf",
+                "targetFieldId": "passport-toggle",
+                "operator": "equal",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/show-hide",
+          "overrides": {
+            "hint": "If you don't have a National ID number, you can use your passport number instead.",
+            "label": "Use passport number instead",
+            "fieldId": "passport-toggle"
+          }
+        },
+        {
+          "ref": "components/passport-number",
+          "overrides": {
+            "label": "Passport Number",
+            "fieldId": "applicant-passport-number",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": true,
+                "operator": "equal",
+                "targetFieldId": "passport-toggle"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Passport number is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Passport number must be at least 6 characters",
+                "value": 6
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Do you have a National Insurance number (NIS)?",
+            "fieldId": "has-nis-number",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "NIS Number is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/national-insurance-number",
+          "overrides": {
+            "label": "Provide your National Insurance number (NIS)",
+            "fieldId": "nis-number",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetFieldId": "has-nis-number"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "NIS Number is required",
+                "value": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "Do you have a disability?",
+      "stepId": "disability-support",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Do you have a disability?",
+            "fieldId": "has-disability",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Disability status is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "label": "What is your disability?",
+            "fieldId": "disability-details",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetFieldId": "has-disability"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Disability is required",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "description": "We ask you this so we can accommodate accessibility or support needs."
+    },
+    {
+      "title": "Your contact details",
+      "stepId": "contact-details",
+      "elements": [
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address line 1",
+            "fieldId": "contact-address-1",
+            "validations": {
+              "required": {
+                "error": "Address line 1 is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Address must be at least 5 characters",
+                "value": 5
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address line 2",
+            "fieldId": "contact-address-2"
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "contact-parish",
+            "options": [
+              {
+                "label": "Christ Church",
+                "value": "christ-church"
+              },
+              {
+                "label": "St. Andrew",
+                "value": "st-andrew"
+              },
+              {
+                "label": "St. George",
+                "value": "st-george"
+              },
+              {
+                "label": "St. James",
+                "value": "st-james"
+              },
+              {
+                "label": "St. John",
+                "value": "st-john"
+              },
+              {
+                "label": "St. Joseph",
+                "value": "st-joseph"
+              },
+              {
+                "label": "St. Lucy",
+                "value": "st-lucy"
+              },
+              {
+                "label": "St. Michael",
+                "value": "st-michael"
+              },
+              {
+                "label": "St. Peter",
+                "value": "st-peter"
+              },
+              {
+                "label": "St. Philip",
+                "value": "st-philip"
+              },
+              {
+                "label": "St. Thomas",
+                "value": "st-thomas"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Parish is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/postcode",
+          "overrides": {
+            "hint": "For example, BB17004 (optional)",
+            "fieldId": "contact-postcode"
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "fieldId": "contact-email",
+            "validations": {
+              "required": {
+                "error": "Email address is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "fieldId": "contact-telephone",
+            "validations": {
+              "required": {
+                "error": "Telephone number is required",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "description": "How can we reach you?"
+    },
+    {
+      "title": "Emergency contact details",
+      "stepId": "emergency-contact",
+      "elements": [
+        {
+          "ref": "components/title",
+          "overrides": {
+            "fieldId": "emergency-title",
+            "validations": {
+              "required": {
+                "error": "Title is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "fieldId": "emergency-first-name",
+            "validations": {
+              "required": {
+                "error": "First name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "First name must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "fieldId": "emergency-last-name",
+            "validations": {
+              "required": {
+                "error": "Last name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Last name must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/name",
+          "overrides": {
+            "label": "Relationship",
+            "fieldId": "emergency-relationship",
+            "validations": {
+              "required": {
+                "error": "Relationship is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address line 1",
+            "fieldId": "emergency-address-1",
+            "validations": {
+              "required": {
+                "error": "Address line 1 is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Address must be at least 5 characters",
+                "value": 5
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address line 2",
+            "fieldId": "emergency-address-2"
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "emergency-parish",
+            "options": [
+              {
+                "label": "Christ Church",
+                "value": "christ-church"
+              },
+              {
+                "label": "St. Andrew",
+                "value": "st-andrew"
+              },
+              {
+                "label": "St. George",
+                "value": "st-george"
+              },
+              {
+                "label": "St. James",
+                "value": "st-james"
+              },
+              {
+                "label": "St. John",
+                "value": "st-john"
+              },
+              {
+                "label": "St. Joseph",
+                "value": "st-joseph"
+              },
+              {
+                "label": "St. Lucy",
+                "value": "st-lucy"
+              },
+              {
+                "label": "St. Michael",
+                "value": "st-michael"
+              },
+              {
+                "label": "St. Peter",
+                "value": "st-peter"
+              },
+              {
+                "label": "St. Philip",
+                "value": "st-philip"
+              },
+              {
+                "label": "St. Thomas",
+                "value": "st-thomas"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Parish is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "fieldId": "emergency-email",
+            "validations": {
+              "required": {
+                "error": "Email address is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "fieldId": "emergency-telephone",
+            "validations": {
+              "required": {
+                "error": "Telephone number is required",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "description": "In case of an emergency, who should we contact?"
+    },
+    {
+      "title": "Tell us about your primary education",
+      "stepId": "primary-education",
+      "elements": [
+        {
+          "ref": "components/name",
+          "overrides": {
+            "label": "Name of primary school",
+            "fieldId": "primary-school-name",
+            "validations": {
+              "required": {
+                "error": "Name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Name must be at least 5 characters",
+                "value": 5
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "ui": {
+              "width": "short"
+            },
+            "label": "Start year",
+            "fieldId": "primary-start-year",
+            "validations": {
+              "required": {
+                "error": "Start year is required",
+                "value": true
+              },
+              "pattern": {
+                "error": "Start year must be a valid year",
+                "value": "^[0-9]{4}$"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "ui": {
+              "width": "short"
+            },
+            "label": "End year",
+            "fieldId": "primary-end-year",
+            "validations": {
+              "required": {
+                "error": "End year is required",
+                "value": true
+              },
+              "pattern": {
+                "error": "End year must be a valid year",
+                "value": "^[0-9]{4}$"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "Tell us about your secondary education",
+      "stepId": "secondary-education",
+      "elements": [
+        {
+          "ref": "components/name",
+          "overrides": {
+            "label": "Name of secondary school",
+            "fieldId": "secondary-school-name",
+            "validations": {
+              "required": {
+                "error": "Name of secondary school is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Name must be at least 5 characters",
+                "value": 5
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "ui": {
+              "width": "short"
+            },
+            "label": "Start year",
+            "fieldId": "secondary-start-year",
+            "validations": {
+              "required": {
+                "error": "Start year is required",
+                "value": true
+              },
+              "pattern": {
+                "error": "Start year must be a valid year",
+                "value": "^[0-9]{4}$"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "ui": {
+              "width": "short"
+            },
+            "label": "End year",
+            "fieldId": "secondary-end-year",
+            "validations": {
+              "required": {
+                "error": "End year is required",
+                "value": true
+              },
+              "pattern": {
+                "error": "End year must be a valid year",
+                "value": "^[0-9]{4}$"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "Post-secondary and tertiary training",
+      "stepId": "post-secondary",
+      "elements": [
+        {
+          "ref": "components/name",
+          "overrides": {
+            "label": "Name of institution",
+            "fieldId": "post-sec-institution-1"
+          }
+        },
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "label": "What are your qualifications?",
+            "fieldId": "post-sec-qualifications-1"
+          }
+        },
+        {
+          "ref": "components/name",
+          "overrides": {
+            "hint": "Separate each course with a comma",
+            "label": "Courses or subjects",
+            "fieldId": "post-sec-courses-1"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "ui": {
+              "width": "short"
+            },
+            "label": "Start year",
+            "fieldId": "post-sec-start-year-1",
+            "validations": {
+              "pattern": {
+                "error": "Start year must be a valid year",
+                "value": "^[0-9]{4}$"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "ui": {
+              "width": "short"
+            },
+            "label": "End year",
+            "fieldId": "post-sec-end-year-1",
+            "validations": {
+              "pattern": {
+                "error": "End year must be a valid year",
+                "value": "^[0-9]{4}$"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "max": 3,
+          "min": 1,
+          "type": "repeatable"
+        }
+      ],
+      "description": "Add information about college, university and training courses you have completed."
+    },
+    {
+      "title": "Have you had a paid job?",
+      "stepId": "previous-paid-job",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Have you had a paid job?",
+            "fieldId": "has-previous-paid-job",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select an option",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/name",
+          "overrides": {
+            "label": "Name of employer",
+            "fieldId": "employer-name",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetFieldId": "has-previous-paid-job"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/name",
+          "overrides": {
+            "label": "Occupation",
+            "fieldId": "occupation",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetFieldId": "has-previous-paid-job"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/name",
+          "overrides": {
+            "hint": "Provide the month and year (for example, December 2023)",
+            "label": "When did you start this job?",
+            "fieldId": "job-start-date",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetFieldId": "has-previous-paid-job"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/name",
+          "overrides": {
+            "hint": "Provide the month and year (for example, December 2023)",
+            "label": "When did you end this job?",
+            "fieldId": "job-end-date",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetFieldId": "has-previous-paid-job"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "hint": "Provide a brief description of what you did in your role.",
+            "label": "Your main tasks",
+            "fieldId": "main-tasks",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetFieldId": "has-previous-paid-job"
+              }
+            ]
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "max": 5,
+          "min": 1,
+          "type": "repeatable"
+        }
+      ],
+      "description": "This includes part-time and/or casual work, or a full-time employed position."
+    },
+    {
+      "title": "Tell us about your areas of interest",
+      "stepId": "eligibility-interests",
+      "elements": [
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "hint": "For example, chef or carpentry",
+            "label": "What type of jobs or trades are you interested in?",
+            "fieldId": "job-interests",
+            "validations": {
+              "required": {
+                "error": "Interests is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "This must be at least 5 characters",
+                "value": 5
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "Are you 18 or over?",
+      "stepId": "eligibility-age",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Are you 18 or over?",
+            "fieldId": "are-you-over-18",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select an option",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Are you willing to work some night shifts?",
+            "fieldId": "willing-to-work-nights",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetFieldId": "are-you-over-18"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "This field is required",
+                "value": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "Tell us about your short-term goals",
+      "stepId": "short-term-goals",
+      "elements": [
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "label": "Tell us about your short-term goals",
+            "fieldId": "short-term-goals",
+            "validations": {
+              "required": {
+                "error": "Short Term Goals is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "This must be at least 5 characters",
+                "value": 5
+              }
+            }
+          }
+        }
+      ],
+      "description": "This helps us understand the kinds of opportunities that will support your growth."
+    },
+    {
+      "title": "Declaration",
+      "stepId": "declaration",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": "Declaration",
+            "fieldId": "declaration-confirmed",
+            "options": [
+              {
+                "label": "I confirm that my information is correct and I am happy for it to be verified. I understand that false details may lead to my application being rejected, and that the Government of Barbados will keep my information confidential.",
+                "value": "confirmed"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "You must confirm the declaration to continue",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/date-of-birth",
+          "overrides": {
+            "label": "Date of declaration",
+            "fieldId": "declaration-date",
+            "isHidden": true
+          }
+        }
+      ]
+    },
+    {
+      "title": "Application submitted",
+      "stepId": "submission-confirmation",
+      "elements": [],
+      "nextSteps": [
+        {
+          "title": "What happens next",
+          "content": "We have received your submission. You will receive a confirmation email at the address you provided."
+        }
+      ]
+    }
+  ],
+  "title": "Apply to Jobstart Plus Programme",
+  "formId": "jobstart-plus-programme",
+  "version": "1.1.0",
+  "createdAt": "2026-05-07T00:00:00Z",
+  "updatedAt": "2026-05-07T00:00:00Z",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "subject": "Your JobStart Plus application has been received",
+        "recipientField": "contact-details.contact-email"
+      }
+    }
+  ],
+  "description": "Apply to the Jobstart Plus Programme run by the Ministry of Labour, Social Security and Third Sector."
+}

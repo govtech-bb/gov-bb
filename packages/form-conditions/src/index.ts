@@ -1,10 +1,16 @@
 import type {
   FieldConditionalOnBehaviour,
+  OptionalIfBehaviour,
   StepConditionalOnBehaviour,
   RepeatableBehaviour,
   ServiceContract,
 } from "@govtech-bb/form-types";
 import { evaluateCondition, flattenStepValues } from "./internals";
+
+// Re-export the low-level condition primitives so clients (e.g. apps/forms)
+// can evaluate a single condition against a value tree without going through
+// the full `evaluateFormConditions` contract walk.
+export { evaluateCondition, flattenStepValues } from "./internals";
 
 export type StepScopedValues = Record<
   string,
@@ -20,6 +26,10 @@ export interface ConditionResult {
   hiddenFieldIds: Map<string, Set<string>>;
   activeFieldsByInstance: Map<string, Array<Set<string>>>;
   hiddenFieldsByInstance: Map<string, Array<Set<string>>>;
+  /** Per-instance set of active fields whose `optionalIf` condition currently
+   * matches. These fields stay active/visible; the set only flags them as
+   * not-required so callers can relax the `required` rule. */
+  optionalFieldsByInstance: Map<string, Array<Set<string>>>;
 }
 
 function isRepeatable(
@@ -53,6 +63,7 @@ export function evaluateFormConditions(
     hiddenFieldIds: new Map(),
     activeFieldsByInstance: new Map(),
     hiddenFieldsByInstance: new Map(),
+    optionalFieldsByInstance: new Map(),
   };
 
   for (const step of contract.steps) {
@@ -84,10 +95,12 @@ export function evaluateFormConditions(
 
     const activeByInstance: Array<Set<string>> = [];
     const hiddenByInstance: Array<Set<string>> = [];
+    const optionalByInstance: Array<Set<string>> = [];
 
     for (const instanceValues of instances) {
       const activeInStep = new Set<string>();
       const hiddenInStep = new Set<string>();
+      const optionalInStep = new Set<string>();
 
       for (const primitive of step.elements) {
         if (primitive.isHidden === true) {
@@ -105,14 +118,31 @@ export function evaluateFormConditions(
           );
         if (fieldActive) activeInStep.add(primitive.fieldId);
         else hiddenInStep.add(primitive.fieldId);
+
+        // `optionalIf` relaxes `required` without affecting visibility, so it is
+        // evaluated independently of the active/hidden decision above. AND
+        // semantics: the field is optional only when every `optionalIf` matches.
+        const optionalConditions = (primitive.behaviours ?? []).filter(
+          (b): b is OptionalIfBehaviour => b.type === "optionalIf",
+        );
+        if (
+          optionalConditions.length > 0 &&
+          optionalConditions.every((b) =>
+            evaluateCondition(b, values, flatValues, instanceValues),
+          )
+        ) {
+          optionalInStep.add(primitive.fieldId);
+        }
       }
 
       activeByInstance.push(activeInStep);
       hiddenByInstance.push(hiddenInStep);
+      optionalByInstance.push(optionalInStep);
     }
 
     result.activeFieldsByInstance.set(step.stepId, activeByInstance);
     result.hiddenFieldsByInstance.set(step.stepId, hiddenByInstance);
+    result.optionalFieldsByInstance.set(step.stepId, optionalByInstance);
 
     result.activeFieldIds.set(step.stepId, activeByInstance[0] ?? new Set());
     if (hiddenByInstance[0] && hiddenByInstance[0].size > 0) {

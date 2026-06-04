@@ -1,9 +1,16 @@
-if npx tsc -b --pretty --verbose; then
-  echo "--------------------------------------------"
-  echo "Pfft. You cleaned up the code nice. Good job"
-else
-  echo "--------------------------------------------"
-  echo "Don't panic. Just start from the top."
- exit 1
-fi
+# Heavy checks (`pnpm exec tsc -b` across the whole monorepo) live in CI's
+# "Type Check" required check in .github/workflows/ci.yml. Running them
+# pre-push duplicates that work AND blocks pushes when local node_modules
+# drift from origin (e.g. a new workspace dep was added that hasn't been
+# `pnpm install`-ed yet). Branch protection on `sandbox` requires Type
+# Check to pass before merge, so anything that would have been caught here
+# is caught at the merge gate without burning contributors' time on every
+# push.
+#
+# Local quick-feedback still lives in:
+#   - .husky/pre-commit (lint-staged + gitleaks on staged files)
+#   - `pnpm exec nx affected -t typecheck` when you want a focused check
+#
+# To restore the full pre-push check, add back the `tsc -b` line.
 
+echo "pre-push: skipping local tsc -b — CI 'Type Check' gates the merge."

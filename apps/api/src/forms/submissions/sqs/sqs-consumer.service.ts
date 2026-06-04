@@ -123,17 +123,46 @@ export class SqsConsumerService
       return;
     }
 
-    // processorType is carried inside the message body — all types share one queue.
-    const { submissionId, processorType } = payload;
+    // processorType + processorIndex are carried inside the message body — all
+    // types share one queue, and the index positions the single entry this
+    // message addresses within processors[].
+    const { submissionId, processorType, processorIndex } = payload;
+
+    // Per-entry dispatch guard. Every message enqueued under per-entry dispatch
+    // carries an integer processorIndex addressing exactly one entry in
+    // processors[]. A missing/non-array processors[], or a missing or
+    // out-of-range index, means a pre-drain (legacy) message or a corrupted
+    // body — delete it rather than let it loop to the DLQ, since no handler can
+    // act on an entry that isn't there. The `!Array.isArray` check is first so
+    // the `.length` reads below can't throw on a corrupted body (which, being
+    // outside the execute try/catch, would otherwise crash-loop the poller).
+    if (
+      !Array.isArray(payload.processors) ||
+      typeof processorIndex !== "number" ||
+      !Number.isInteger(processorIndex) ||
+      processorIndex < 0 ||
+      processorIndex >= payload.processors.length
+    ) {
+      const processorCount = Array.isArray(payload.processors)
+        ? payload.processors.length
+        : "none";
+      this.logger.error(
+        `Missing or out-of-range processorIndex=${String(processorIndex)} ` +
+          `(processors=${processorCount}) processor="${processorType}" ` +
+          `submissionId="${submissionId}" messageId="${message.MessageId}" — deleting`,
+      );
+      await this.deleteMessage(queueUrl, message.ReceiptHandle!);
+      return;
+    }
 
     if (receiveCount > 1) {
       this.logger.warn(
-        `Retry attempt #${receiveCount} processor="${processorType}" submissionId="${submissionId}"`,
+        `Retry attempt #${receiveCount} processor="${processorType}" index=${processorIndex} submissionId="${submissionId}"`,
       );
     }
 
     this.logger.log(
-      `Processing processor="${processorType}" submissionId="${submissionId}" messageId="${message.MessageId}"`,
+      `Processing processor="${processorType}" index=${processorIndex} submissionId="${submissionId}" messageId="${message.MessageId}"`,
     );
 
     // --- 2. Resolve handler ---
@@ -153,7 +182,7 @@ export class SqsConsumerService
       // Success — remove from queue.
       await this.deleteMessage(queueUrl, message.ReceiptHandle!);
       this.logger.log(
-        `Completed processor="${processorType}" submissionId="${submissionId}"`,
+        `Completed processor="${processorType}" index=${processorIndex} submissionId="${submissionId}"`,
       );
     } catch (err) {
       this.logger.error(
@@ -190,6 +219,7 @@ export class SqsConsumerService
       values: msg.values,
       meta: msg.meta,
       processors: msg.processors,
+      processorIndex: msg.processorIndex,
     };
   }
 

@@ -1,0 +1,11 @@
+{
+  "name": "@govtech-bb/registry",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "dependencies": {
+    "@govtech-bb/form-types": "workspace:*",
+    "zod": "^4.3.6"
+  }
+}

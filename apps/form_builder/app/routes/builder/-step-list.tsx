@@ -1,5 +1,6 @@
 import type { RecipeStepDraft } from "@govtech-bb/form-builder";
 import styles from "../../styles/builder.module.css";
+import { isRequiredStep, REQUIRED_STEP_IDS } from "./-recipe-reducer";
 
 interface StepListProps {
   steps: RecipeStepDraft[];
@@ -9,6 +10,12 @@ interface StepListProps {
   onRemove: (stepId: string) => void;
   onMoveUp: (index: number) => void;
   onMoveDown: (index: number) => void;
+  processorCount: number;
+  isProcessorsActive: boolean;
+  onSelectProcessors: () => void;
+  hasContactDetails: boolean;
+  isContactDetailsActive: boolean;
+  onSelectContactDetails: () => void;
 }
 
 export function StepList({
@@ -19,7 +26,15 @@ export function StepList({
   onRemove,
   onMoveUp,
   onMoveDown,
+  processorCount,
+  isProcessorsActive,
+  onSelectProcessors,
+  hasContactDetails,
+  isContactDetailsActive,
+  onSelectContactDetails,
 }: StepListProps) {
+  const editableCount = steps.length - REQUIRED_STEP_IDS.length;
+
   function handleRemove(stepId: string) {
     if (!window.confirm("Delete this step?")) return;
     onRemove(stepId);
@@ -27,9 +42,7 @@ export function StepList({
 
   return (
     <div className={styles.stepList}>
-      <div style={{ marginBottom: 8 }}>
-        <button type="button" onClick={onAdd} style={{ width: "100%" }}>+ Add Step</button>
-      </div>
+      <button type="button" onClick={onAdd} className={styles.stepListAddButton}>+ Add Step</button>
       {steps.map((step, index) => (
         <div
           key={step.stepId}
@@ -37,31 +50,55 @@ export function StepList({
           onClick={() => onSelect(step.stepId)}
         >
           <span style={{ flex: 1, fontSize: "0.9rem" }}>{step.title || step.stepId}</span>
-          <button
-            type="button"
-            title="Move up"
-            disabled={index === 0}
-            onClick={(e) => { e.stopPropagation(); onMoveUp(index); }}
-          >
-            ▲
-          </button>
-          <button
-            type="button"
-            title="Move down"
-            disabled={index === steps.length - 1}
-            onClick={(e) => { e.stopPropagation(); onMoveDown(index); }}
-          >
-            ▼
-          </button>
-          <button
-            type="button"
-            title="Delete"
-            onClick={(e) => { e.stopPropagation(); handleRemove(step.stepId); }}
-          >
-            ×
-          </button>
+          {!isRequiredStep(step.stepId) && (
+            <>
+              <button
+                type="button"
+                title="Move up"
+                disabled={index === 0}
+                onClick={(e) => { e.stopPropagation(); onMoveUp(index); }}
+              >
+                ▲
+              </button>
+              <button
+                type="button"
+                title="Move down"
+                disabled={index === editableCount - 1}
+                onClick={(e) => { e.stopPropagation(); onMoveDown(index); }}
+              >
+                ▼
+              </button>
+              <button
+                type="button"
+                title="Delete"
+                onClick={(e) => { e.stopPropagation(); handleRemove(step.stepId); }}
+              >
+                ×
+              </button>
+            </>
+          )}
         </div>
       ))}
+
+      {/* Form-level contact details live beside the steps, not inside one. */}
+      <div
+        className={`${styles.stepRow} ${styles.processorsRow} ${isContactDetailsActive ? styles.stepRowActive : ""}`}
+        onClick={onSelectContactDetails}
+      >
+        <span style={{ flex: 1, fontSize: "0.9rem" }}>
+          Contact Details {hasContactDetails ? "✓" : "(none)"}
+        </span>
+      </div>
+
+      {/* Form-level processors live beside the steps, not inside one. */}
+      <div
+        className={`${styles.stepRow} ${styles.processorsRow} ${isProcessorsActive ? styles.stepRowActive : ""}`}
+        onClick={onSelectProcessors}
+      >
+        <span style={{ flex: 1, fontSize: "0.9rem" }}>
+          Processors ({processorCount})
+        </span>
+      </div>
     </div>
   );
 }

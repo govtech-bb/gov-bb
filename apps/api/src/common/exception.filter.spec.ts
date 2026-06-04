@@ -84,6 +84,26 @@ describe("GlobalExceptionFilter", () => {
       expect(res.statusCode).toBe(500);
       expect(res.body).toMatchObject({ statusCode: 500 });
     });
+
+    it("non-HttpException Error carrying a 4xx .status → that status (#298)", () => {
+      const res = makeRes();
+      const err = Object.assign(new Error("request entity too large"), {
+        status: 413,
+      });
+      filter.catch(err, makeHost(res, mockReq));
+
+      expect(res.statusCode).toBe(413);
+      expect(res.body).toMatchObject({ statusCode: 413 });
+    });
+
+    it("non-HttpException Error with a 5xx .status still collapses to 500 (#298)", () => {
+      const res = makeRes();
+      const err = Object.assign(new Error("upstream boom"), { status: 502 });
+      filter.catch(err, makeHost(res, mockReq));
+
+      expect(res.statusCode).toBe(500);
+      expect(res.body).toMatchObject({ statusCode: 500 });
+    });
   });
 
   describe("metrics side-effects", () => {
@@ -142,6 +162,111 @@ describe("GlobalExceptionFilter", () => {
       expect(() =>
         filter.catch(new Error("boom"), makeHost(makeRes(), mockReq)),
       ).not.toThrow();
+    });
+
+    it("active span → recordException wraps non-Error exception in a new Error", () => {
+      (trace.getActiveSpan as jest.Mock).mockReturnValue(mockSpan);
+
+      // A plain string is not an Error instance — should be wrapped
+      filter.catch("plain string exception", makeHost(makeRes(), mockReq));
+
+      expect(mockSpan.recordException).toHaveBeenCalledWith(expect.any(Error));
+    });
+  });
+
+  describe("parseException branches", () => {
+    it("HttpException with object body containing errors → Validation failed + errors", () => {
+      const res = makeRes();
+      const fieldErrors = { name: ["required"] };
+      const exception = new HttpException(
+        { message: "Bad Request", errors: fieldErrors },
+        400,
+      );
+
+      filter.catch(exception, makeHost(res, mockReq));
+
+      expect(res.body).toMatchObject({
+        message: "Validation failed",
+        meta: { errors: fieldErrors },
+      });
+    });
+
+    it("HttpException with array message → Validation failed + errors array", () => {
+      const res = makeRes();
+      const messages = ["name must not be empty", "email must be a string"];
+      const exception = new HttpException(
+        { message: messages, statusCode: 400 },
+        400,
+      );
+
+      filter.catch(exception, makeHost(res, mockReq));
+
+      expect(res.body).toMatchObject({
+        message: "Validation failed",
+        meta: { errors: messages },
+      });
+    });
+
+    it("HttpException with object body containing string message → uses that message", () => {
+      const res = makeRes();
+      const exception = new HttpException(
+        { message: "Custom object message", statusCode: 422 },
+        422,
+      );
+
+      filter.catch(exception, makeHost(res, mockReq));
+
+      expect(res.body).toMatchObject({ message: "Custom object message" });
+    });
+
+    it("HttpException with object body missing message → falls back to exception.message", () => {
+      const res = makeRes();
+      // getResponse() returns an object without a "message" key
+      const exception = new HttpException({ code: "E001" }, 409);
+
+      filter.catch(exception, makeHost(res, mockReq));
+
+      // Falls through to `return { statusCode, message: exception.message }`
+      expect(res.body).toMatchObject({ statusCode: 409 });
+    });
+  });
+
+  describe("non-HttpException error passthrough", () => {
+    let originalNodeEnv: string | undefined;
+
+    beforeEach(() => {
+      originalNodeEnv = process.env.NODE_ENV;
+    });
+
+    afterEach(() => {
+      if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = originalNodeEnv;
+    });
+
+    it("non-prod → body.meta.error includes name and message", () => {
+      process.env.NODE_ENV = "development";
+      const res = makeRes();
+
+      filter.catch(new TypeError("kapow"), makeHost(res, mockReq));
+
+      expect(res.body).toMatchObject({
+        statusCode: 500,
+        meta: { error: { name: "TypeError", message: "kapow" } },
+      });
+    });
+
+    it("production → body has no meta.error", () => {
+      process.env.NODE_ENV = "production";
+      const res = makeRes();
+
+      filter.catch(new Error("boom"), makeHost(res, mockReq));
+
+      const body = res.body as { meta?: unknown };
+      expect(body.meta).toBeUndefined();
+      expect(res.body).toMatchObject({
+        statusCode: 500,
+        message: "An unexpected error occurred",
+      });
     });
   });
 });

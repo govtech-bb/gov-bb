@@ -1,0 +1,526 @@
+@import "@fontsource/figtree/400.css";
+@import "@fontsource/figtree/500.css";
+@import "@fontsource/figtree/600.css";
+@import "@fontsource/figtree/700.css";
+@import "tailwindcss";
+@import "@govtech-bb/design";
+
+@source "../../../../node_modules/@govtech-bb/react/dist/**/*.{js,cjs}";
+
+@theme {
+  --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Page wrapper used by every section (header, banner, page content, footer):
+ * capped at the design's 1512px frame, centred. Side gutters step from 16px on
+ * mobile up to the --xl (128px) token on large screens. */
+.container {
+  width: 100%;
+  max-width: 1512px;
+  margin-inline: auto;
+  padding-inline: var(--spacing-s); /* 16px — mobile */
+}
+
+@media (min-width: 48rem) {
+  .container {
+    padding-inline: var(--spacing-l); /* 64px — tablet */
+  }
+}
+
+@media (min-width: 64rem) {
+  .container {
+    padding-inline: var(--spacing-xl); /* 128px — desktop */
+  }
+}
+
+.form-width {
+  width: 100%;
+}
+
+@media (min-width: 48rem) {
+  .form-width {
+    width: calc(100% * 2 / 3);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Forms-app layout + surfaces the @govtech-bb/styles base stylesheet doesn't
+ * cover. Form fields themselves use govbb-* classes directly (see
+ * field-renderer). Everything below composes the same brand tokens the styles
+ * package ships (var(--color-*), var(--spacing-*), var(--font-size-*)).
+ * ------------------------------------------------------------------------- */
+
+/* Page + step layout (replaces the former design-system module classes) */
+.form-page {
+  font-family: var(--font-family-base), sans-serif;
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+
+.form-page__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  padding-block: var(--spacing-l) var(--spacing-m);
+}
+
+.form-page__header h1 {
+  margin: 0;
+}
+
+.form-page__step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s);
+}
+
+.form-page__service-title {
+  font-size: var(--font-size-h4);
+  line-height: var(--line-height-h4);
+  border-left: var(--color-blue-40) 0.25rem solid;
+  color: var(--color-mid-grey-00);
+  padding: 0.5rem 1rem;
+}
+
+.form-page__step-description {
+  margin-bottom: var(--spacing-s);
+}
+
+/* Per-field width hints carried on the govbb-form-group wrapper. Full width on
+ * mobile; capped to a fixed measure at >=768px (see the media query near the
+ * end of this file). */
+.govbb-form-group[data-field-width="short"],
+.govbb-form-group[data-field-width="medium"] {
+  width: 100%;
+}
+
+/* Vertical spacing for a group of radio/checkbox options. The govbb-checkboxes
+ * wrapper isn't in this package version, so the gap is supplied here. */
+.form-page__options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+/* ---- Show/hide -----------------------------------------------------------
+ * The govbb show-hide component is built on native <details>; this app drives
+ * a React-controlled toggle that reveals sibling form fields, so the visual is
+ * hand-rolled from tokens to match the govbb look. */
+.form-page__show-hide {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.form-page__show-hide-toggle {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  cursor: pointer;
+  color: var(--color-teal-00);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  width: fit-content;
+}
+
+.form-page__show-hide-toggle:hover {
+  color: var(--color-teal-100);
+  text-decoration-thickness: 0.1875rem;
+}
+
+.form-page__show-hide-toggle:focus-visible {
+  outline: 0.25rem solid var(--color-teal-100);
+  outline-offset: 0.125rem;
+  border-radius: 0.125rem;
+}
+
+.form-page__show-hide-arrow {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  border-top: 0.3125rem solid transparent;
+  border-bottom: 0.3125rem solid transparent;
+  border-left: 0.4375rem solid currentColor;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.form-page__show-hide-toggle[aria-expanded="true"] .form-page__show-hide-arrow {
+  transform: rotate(90deg);
+}
+
+.form-page__show-hide-content {
+  margin-top: var(--spacing-s);
+  padding: var(--spacing-s) 0 var(--spacing-s) var(--spacing-m);
+  border-left: 0.25rem solid var(--color-grey-00);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s);
+}
+
+.form-page__show-hide-content .govbb-hint {
+  margin: 0;
+}
+
+/* ---- Submission confirmation panels -------------------------------------- */
+/* Full-width wrapper for the confirmation step — no container/padding so the
+ * banner can bleed to the viewport edges; inner sections supply their own
+ * .container. */
+.form-page-confirmation {
+  font-family: var(--font-family-base), sans-serif;
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+
+.form-page__confirmation {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+/* Payment confirmation header (composed with .form-page__header). Adds a fixed
+ * banner height so the title block is a consistent height across payment
+ * states. The no-payment state uses the teal banner panel below instead. */
+.form-page__confirmation-header {
+  min-height: 16.75rem;
+}
+
+.form-page__reference {
+  display: flex;
+  gap: var(--spacing-s);
+  margin: var(--spacing-s) 0 var(--spacing-m);
+  padding: var(--spacing-s);
+  background-color: var(--color-grey-00);
+  border-radius: var(--radius-sm);
+}
+
+.form-page__reference dt {
+  font-weight: var(--font-weight-bold);
+}
+
+.form-page__reference dd {
+  margin: 0;
+}
+
+/* Full-bleed banner. The panel is a full-width child of <main> (no container),
+ * so its teal background reaches the viewport edges; the inner .container keeps
+ * the text aligned with the rest of the page. Fixed banner height with a 64px
+ * top / 32px bottom inset. */
+.form-page__panel {
+  min-height: 16.75rem;
+  padding-block: var(--spacing-l) var(--spacing-m);
+}
+
+.form-page__panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s);
+}
+
+.form-page__panel--success {
+  background-color: var(--color-teal-40);
+}
+
+.form-page__panel--error {
+  background-color: var(--color-red-40);
+}
+
+.form-page__panel-service-title {
+  font-size: var(--font-size-h4);
+  line-height: var(--line-height-h4);
+  color: var(--color-black-00);
+  padding: 0.5rem 1rem;
+}
+
+.form-page__panel--success .form-page__panel-service-title {
+  border-left: var(--color-teal-00) 0.25rem solid;
+}
+
+.form-page__panel--error .form-page__panel-service-title {
+  border-left: var(--color-red-00) 0.25rem solid;
+}
+
+.form-page__panel-subheading {
+  font-size: var(--font-size-h4);
+  line-height: var(--line-height-body);
+  font-weight: var(--font-weight-normal);
+}
+
+/* ---- Payment block (GOV.BB design system: govbb-payment) ----------------- */
+/* Canonical payment summary card. Not shipped in @govtech-bb/styles, so its
+ * markup + CSS are copied here per the design-system block spec:
+ * https://govtech-bb.github.io/design-system/llm/blocks/payment.md
+ * `--color-text` is not defined in @govtech-bb/design, so fall back to black. */
+.govbb-payment {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xm);
+  padding: var(--spacing-xm);
+  border-radius: var(--spacing-xxs);
+  background: var(--color-blue-10);
+  color: var(--color-text, var(--color-black-00));
+}
+
+.govbb-payment--success {
+  background: var(--color-green-00);
+  color: var(--color-white-00);
+}
+
+.govbb-payment--failed {
+  background: var(--color-red-00);
+  color: var(--color-white-00);
+}
+
+.govbb-payment__header {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-bottom: var(--spacing-xm);
+  border-bottom: 1px solid var(--color-mid-grey-00);
+}
+
+.govbb-payment--success .govbb-payment__header,
+.govbb-payment--failed .govbb-payment__header {
+  border-bottom-color: var(--color-grey-00);
+}
+
+.govbb-payment__title {
+  font-size: var(--font-size-h2);
+  line-height: var(--line-height-h2);
+  font-weight: var(--font-weight-bold);
+  margin: 0;
+}
+
+.govbb-payment__description {
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  margin: 0;
+}
+
+.govbb-payment__items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s);
+}
+
+.govbb-payment__item {
+  display: flex;
+  gap: var(--spacing-s);
+  align-items: flex-start;
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+
+.govbb-payment__item-label {
+  flex: 1 0 0;
+  min-width: 0;
+  margin: 0;
+  font-weight: var(--font-weight-bold);
+}
+
+.govbb-payment__item-value {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.govbb-payment__note {
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  margin: 0;
+  font-style: italic;
+  color: var(--color-mid-grey-00);
+}
+
+.govbb-payment--success .govbb-payment__note,
+.govbb-payment--failed .govbb-payment__note {
+  color: inherit;
+  font-style: normal;
+}
+
+/* ---- Feedback section (plain — no callout box, per the confirmation design) */
+.form-page__feedback {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-m);
+}
+
+.form-page__feedback h3 {
+  margin-top: 0;
+}
+
+/* ---- Next steps + contact details ---------------------------------------- */
+.form-page__next-steps {
+  margin-top: var(--spacing-m);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+
+.form-page__contact {
+  margin-top: var(--spacing-m);
+}
+
+.form-page__contact-body {
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s);
+}
+
+.form-page__contact-body p {
+  margin: 0;
+}
+
+.form-page__contact-label {
+  font-weight: var(--font-weight-bold);
+}
+
+/* ---- Markdown content (recipe-authored confirmation copy) ---------------- *
+ * react-markdown emits bare <p> elements, which Tailwind's preflight resets to
+ * zero margin — collapsing paragraphs together. Restore vertical rhythm between
+ * them (matching body spacing), and align the block with the next-steps panel. */
+.form-page__markdown-content {
+  margin-top: var(--spacing-m);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+
+.form-page__markdown-content p {
+  margin: 0 0 var(--spacing-s);
+}
+
+.form-page__markdown-content p:last-child {
+  margin-bottom: 0;
+}
+
+/* ---- Applicant name (declaration step) ----------------------------------- */
+.form-page__applicant {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xxs);
+}
+
+/* ---- Review / check-your-answers (summary list) -------------------------
+ * govbb-summary-section / govbb-summary-list are not in this package version
+ * (alpha.16); the official component CSS is ported here under the same class
+ * names, composed from brand tokens. Remove once the package ships them. */
+.govbb-summary-section {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-areas:
+    "heading"
+    "content"
+    "button";
+  row-gap: var(--spacing-xs);
+  padding-bottom: var(--spacing-m);
+  margin-bottom: var(--spacing-m);
+  border-bottom: 4px solid var(--color-grey-00);
+}
+
+.govbb-summary-section:last-child {
+  padding-bottom: 0;
+  margin-bottom: 0;
+  border-bottom: 0;
+}
+
+.govbb-summary-section__title {
+  grid-area: heading;
+  margin: 0;
+  font-size: var(--font-size-h2);
+  line-height: var(--line-height-h2);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+}
+
+.govbb-summary-section__action {
+  grid-area: button;
+  justify-self: start;
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+
+.govbb-summary-list {
+  grid-area: content;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  margin: 0;
+}
+
+.govbb-summary-list__row {
+  display: flex;
+  flex-direction: column;
+}
+
+.govbb-summary-list__key {
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+}
+
+.govbb-summary-list__value {
+  margin: 0;
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  color: var(--color-text);
+}
+
+@media (min-width: 768px) {
+  .govbb-summary-section {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "heading button"
+      "content content";
+  }
+
+  .govbb-summary-section__action {
+    place-self: center end;
+  }
+
+  .govbb-summary-list {
+    gap: var(--spacing-s);
+  }
+
+  .govbb-summary-list__row {
+    flex-direction: row;
+    column-gap: var(--spacing-xs);
+  }
+
+  .govbb-summary-list__key {
+    flex: 0 0 33.3333%;
+  }
+
+  .govbb-summary-list__value {
+    flex: 0 0 66.6666%;
+  }
+}
+
+/* ---- Error / not-found pages --------------------------------------------- */
+.form-page__message {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s);
+}
+
+/* Fixed-measure field widths (GOV.UK style). `ch` units size the cap to the
+ * field's own type, not its container, so a short field inside a show-hide
+ * inset renders the same as a standalone one — percentage widths compounded
+ * against every wrapper (.form-width 2/3 column × inset padding × 33%) and
+ * left inset fields tiny. `width: 100%` from the base rule above remains the
+ * floor, so fields still shrink inside containers narrower than the cap.
+ * `long` (or no hint) stays unstyled: full width of the form column. */
+@media (min-width: 768px) {
+  .govbb-form-group[data-field-width="short"] {
+    max-width: 24ch;
+  }
+
+  .govbb-form-group[data-field-width="medium"] {
+    max-width: 38ch;
+  }
+}

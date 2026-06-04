@@ -1,13 +1,16 @@
 import "./tracing"; // must be first — initialises the OTEL SDK before any NestJS code
 import { NestFactory } from "@nestjs/core";
-import { ValidationPipe } from "@nestjs/common";
+import { ValidationPipe, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
+import { DataSource } from "typeorm";
+import helmet from "helmet";
 import { AppModule } from "./app.module";
 import { GlobalExceptionFilter } from "./common/exception.filter";
 import { ResponseInterceptor } from "./common/response.interceptor";
 import { TracingInterceptor } from "./common/tracing.interceptor";
 import { MetricsService } from "./telemetry/metrics.service";
+import { runSeed } from "./database/seed";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
@@ -15,19 +18,34 @@ async function bootstrap() {
   const metricsService = app.get(MetricsService);
   const port = config.get<number>("app.port") ?? 3001;
 
-  // Increase body size limit for form-builder PDF uploads (base64-encoded pages)
-  app.use(require("express").json({ limit: "50mb" }));
-  app.use(require("express").urlencoded({ limit: "50mb", extended: true }));
+  app.use(require("express").json({ limit: "1mb" }));
   const corsOrigin =
     config.get<string>("app.corsOrigin") ?? "http://localhost:3000";
-  const corsOrigins = corsOrigin.includes(",")
-    ? corsOrigin.split(",").map((o) => o.trim())
-    : corsOrigin;
+  const corsOrigins: (string | RegExp)[] = corsOrigin
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean)
+    .map((o) => {
+      // Support regex patterns wrapped in slashes: /\.amplifyapp\.com$/
+      const match = o.match(/^\/(.+)\/([gimsuy]*)$/);
+      if (match) return new RegExp(match[1], match[2]);
+      return o;
+    });
+
+  // contentSecurityPolicy is disabled because the only HTML this API serves is
+  // Swagger UI at /api-docs, which needs inline scripts/styles. CSP for the
+  // forms app lives in apps/forms (see Amplify customHeaders).
+  app.use(helmet({ contentSecurityPolicy: false }));
 
   app.enableCors({
     origin: corsOrigins,
     methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "Idempotency-Key"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "Idempotency-Key",
+      "X-Recipe-Preview",
+    ],
     credentials: true,
   });
 
@@ -39,6 +57,24 @@ async function bootstrap() {
   app.useGlobalPipes(
     new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),
   );
+
+  // Run any pending migrations before accepting traffic. Idempotent —
+  // TypeORM tracks applied migrations in its own table.
+  const dataSource = app.get(DataSource);
+  const logger = new Logger("Bootstrap");
+  const pending = await dataSource.showMigrations();
+  if (pending) {
+    logger.log("Running pending database migrations…");
+    await dataSource.runMigrations();
+    logger.log("Migrations complete");
+  }
+
+  // Optional local-dev seed. Gated to keep production deploys clean.
+  if (process.env.SEED_ON_BOOT === "true") {
+    logger.log("SEED_ON_BOOT=true — applying seed data");
+    await runSeed(dataSource);
+    logger.log("Seed complete");
+  }
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle("Modular Forms API")

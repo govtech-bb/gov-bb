@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { behaviourSchema } from "./behavior.type";
 import { validationRuleSchema } from "./validation.type";
+import { kebabIdSchema } from "./id-pattern";
 
 export const primitiveMetadataSchema = z.object({
   pii: z.boolean(),
@@ -32,12 +33,15 @@ export type Option = z.infer<typeof optionSchema>;
 
 export const primitiveUISchema = z.object({
   width: z.enum(["short", "medium", "long"]).optional(),
+  /** When true, the field's visible label is hidden but kept in the DOM
+   * (via `.govbb-visually-hidden`) so the accessible name is preserved. */
+  hideLabel: z.boolean().optional(),
 });
 
 export type PrimitiveUI = z.infer<typeof primitiveUISchema>;
 
 export const basePrimitiveSchema = z.object({
-  fieldId: z.string(),
+  fieldId: kebabIdSchema,
   label: z.string(),
   name: z.string().optional(),
   htmlType: htmlTypesSchema,
@@ -52,6 +56,7 @@ export const basePrimitiveSchema = z.object({
   metadata: primitiveMetadataSchema.partial().optional(),
   options: z.array(optionSchema).optional(),
   multiple: z.boolean().optional(),
+  mask: z.string().optional(),
   ui: primitiveUISchema.optional(),
 });
 export type BasePrimitive = z.infer<typeof basePrimitiveSchema>;
@@ -144,6 +149,7 @@ export const fieldOverridesSchema = basePrimitiveSchema
     behaviours: true,
     multiple: true,
     options: true,
+    mask: true,
     ui: true,
   })
   .partial();

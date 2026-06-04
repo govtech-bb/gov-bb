@@ -1,4 +1,5 @@
-import { Test } from "@nestjs/testing";
+import { Test, TestingModule } from "@nestjs/testing";
+import { Logger } from "@nestjs/common";
 import { HttpService } from "@nestjs/axios";
 import { of } from "rxjs";
 import { EzpayClient } from "./ezpay.client";
@@ -7,17 +8,22 @@ import { EZPAY_CONFIG } from "./ezpay.config";
 describe("EzpayClient", () => {
   let client: EzpayClient;
   let http: { post: jest.Mock };
+  let module: TestingModule;
 
   beforeEach(async () => {
     http = { post: jest.fn() };
-    const moduleRef = await Test.createTestingModule({
+    module = await Test.createTestingModule({
       providers: [
         EzpayClient,
         { provide: HttpService, useValue: http },
         { provide: EZPAY_CONFIG, useValue: { baseUrl: "https://ezpay.test" } },
       ],
     }).compile();
-    client = moduleRef.get(EzpayClient);
+    client = module.get(EzpayClient);
+  });
+
+  afterEach(async () => {
+    if (module) await module.close();
   });
 
   it("createPayment posts to /ezpay_receivecart and returns token + url", async () => {
@@ -65,6 +71,24 @@ describe("EzpayClient", () => {
         "key",
       ),
     ).rejects.toThrow(/E-059/);
+  });
+
+  it("createPayment throws when response has no token (line 62 branch)", async () => {
+    // Successful response body but no token field
+    http.post.mockReturnValue(of({ data: {} }));
+    await expect(
+      client.createPayment(
+        {
+          paymentCode: "EDU",
+          amount: 10,
+          description: "d",
+          reference: "r",
+          customerEmail: "a@b.c",
+          customerName: "A B",
+        },
+        "key",
+      ),
+    ).rejects.toThrow(/no token/);
   });
 
   it("verifyPayment posts to /check_api with transaction_number", async () => {
@@ -172,5 +196,50 @@ describe("EzpayClient", () => {
       "key-1",
     );
     expect(result).toEqual([]);
+  });
+
+  it("queryTransactions extracts the list when EzPay wraps it under a property", async () => {
+    http.post.mockReturnValue(
+      of({
+        data: {
+          transactions: [
+            {
+              TransactionCode: "tx-201",
+              Status: "Success",
+              Amount: 30,
+              Cart: [[{ reference: "ref-201" }]],
+            },
+          ],
+        },
+      }),
+    );
+    const result = await client.queryTransactions("s", "e", "key");
+    expect(result).toEqual([
+      {
+        reference: "ref-201",
+        transactionNumber: "tx-201",
+        status: "Success",
+        amount: 30,
+      },
+    ]);
+  });
+
+  it("queryTransactions returns [] (no throw) when EzPay returns a non-array error/access object", async () => {
+    // e.g. the body returned when the caller IP is not whitelisted
+    const warn = jest.spyOn(Logger.prototype, "warn").mockImplementation();
+    http.post.mockReturnValue(
+      of({ data: { error: "Access denied", code: "E-IP" } }),
+    );
+    const result = await client.queryTransactions("s", "e", "key");
+    expect(result).toEqual([]);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("non-array body"),
+    );
+    warn.mockRestore();
+  });
+
+  it("queryTransactions returns [] when EzPay returns null/non-object", async () => {
+    http.post.mockReturnValue(of({ data: null }));
+    expect(await client.queryTransactions("s", "e", "key")).toEqual([]);
   });
 });

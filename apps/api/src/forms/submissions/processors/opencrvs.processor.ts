@@ -11,23 +11,42 @@ export class OpencrvsProcessor implements ISubmissionProcessor {
   private readonly logger = new Logger(OpencrvsProcessor.name);
 
   async process(payload: SubmissionCreatedEvent): Promise<ProcessorOutput> {
-    const cfg =
-      payload.processors.find((p) => p.type === "opencrvs")?.config ?? {};
+    // Per-entry dispatch (issue #95): act on exactly the entry addressed by
+    // processorIndex. The index is the position within the frozen processors[]
+    // snapshot, so the `${submissionId}:${index}` idempotency key stays stable
+    // across retries. Defaults to 0 for direct single-entry invocation;
+    // production dispatch (listener/consumer) always sets it.
+    const index = payload.processorIndex ?? 0;
+    const entry = payload.processors[index];
 
+    // Defensive: per-entry dispatch never invokes us without a matching entry,
+    // but a corrupted/out-of-range index should be a no-op, not a throw.
+    if (!entry) return { kind: "completed" };
+
+    await this.processEntry(payload, entry.config ?? {}, index);
+
+    return { kind: "completed" };
+  }
+
+  private async processEntry(
+    payload: SubmissionCreatedEvent,
+    cfg: Record<string, unknown>,
+    index: number,
+  ): Promise<void> {
     const endpoint = cfg["endpoint"] as string | undefined;
     if (!endpoint) {
       this.logger.warn(
         `[opencrvs] No endpoint configured for submission ${payload.submissionId} — skipping`,
       );
-      return { kind: "completed" };
+      return;
     }
 
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
-      // X-Idempotency-Key lets the OpenCRVS server deduplicate retried POSTs:
-      // a second request with the same key returns the original result without
-      // re-processing the registration.
-      "X-Idempotency-Key": payload.submissionId,
+      // X-Idempotency-Key lets the OpenCRVS server deduplicate retried POSTs.
+      // The index suffix distinguishes multiple opencrvs entries on the same
+      // submission so each entry can retry without colliding with the others.
+      "X-Idempotency-Key": `${payload.submissionId}:${index}`,
     };
 
     const token = cfg["token"] as string | undefined;
@@ -56,7 +75,5 @@ export class OpencrvsProcessor implements ISubmissionProcessor {
     this.logger.log(
       `[opencrvs] Forwarded submission ${payload.submissionId} to ${endpoint}`,
     );
-
-    return { kind: "completed" };
   }
 }

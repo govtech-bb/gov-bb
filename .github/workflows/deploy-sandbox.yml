@@ -3,11 +3,36 @@ name: Deploy Sandbox
 on:
   push:
     branches: [sandbox]
+    # Skip the whole pipeline for changes that can't affect any deploy target.
+    # Keep the list conservative — when in doubt, let nx-affected gate the
+    # individual jobs (it already skips unchanged apps). The point of this
+    # block is to skip jobs even nx-affected would skip, so docs-only PRs
+    # don't burn ~12 min spinning up `setup` for nothing.
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - ".gitignore"
+      - ".gitattributes"
+      - ".husky/**"
+      - ".editorconfig"
+      - ".vscode/**"
+      - ".idea/**"
+      - "LICENSE"
+      - "CODEOWNERS"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/PULL_REQUEST_TEMPLATE.md"
+      - ".github/dependabot.yml"
   workflow_dispatch:
 
 permissions:
   id-token: write
   contents: read
+
+# Queue deploys; never cancel one mid-flight. A half-applied deploy (migrations
+# run, ECS rolling, Amplify building) must finish before the next starts.
+concurrency:
+  group: deploy-sandbox-${{ github.ref }}
+  cancel-in-progress: false
 
 env:
   AWS_REGION: ca-central-1
@@ -16,13 +41,93 @@ env:
   ECS_SERVICE: modular-forms-api-sandbox
 
 jobs:
-  deploy:
-    name: Build, Push & Deploy to Sandbox
+  # Decide which deploy targets actually changed, so unchanged apps are skipped.
+  # The base is the last SUCCESSFUL deploy (nx-set-shas), not the push range:
+  # a target that failed to deploy stays "affected" until it ships green, where
+  # a github.event.before diff would wrongly skip it on the next unrelated push.
+  setup:
+    name: Detect affected targets
     runs-on: ubuntu-latest
-
+    outputs:
+      api: ${{ steps.affected.outputs.api }}
+      fb-api: ${{ steps.affected.outputs.fb-api }}
+      forms: ${{ steps.affected.outputs.forms }}
+      landing: ${{ steps.affected.outputs.landing }}
+      chat: ${{ steps.affected.outputs.chat }}
+      fb-app: ${{ steps.affected.outputs.fb-app }}
+      migrations: ${{ steps.affected.outputs.migrations }}
+      amplify-config: ${{ steps.affected.outputs.amplify-config }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+        with:
+          # Full history so nx-set-shas can find the last successful deploy and
+          # the migration/amplify path-diffs can compare against it.
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+
+      - name: Derive base/head SHAs
+        uses: nrwl/nx-set-shas@v4
+        with:
+          # MUST be sandbox: the default "main" makes nx-set-shas search a branch
+          # this workflow never runs on, so it falls back to HEAD~1 every time.
+          main-branch-name: sandbox
+          workflow-id: deploy-sandbox.yml
+
+      - name: Compute affected deploy targets
+        id: affected
+        run: |
+          AFFECTED=$(pnpm exec nx show projects \
+            --affected --base="$NX_BASE" --head="$NX_HEAD" --type app --json 2>/dev/null || echo '[]')
+          echo "Affected apps: $AFFECTED"
+          has() { echo "$AFFECTED" | jq -e --arg p "$1" 'index($p)' >/dev/null && echo true || echo false; }
+
+          echo "api=$(has api)" >> "$GITHUB_OUTPUT"
+          echo "fb-api=$(has form-builder-api)" >> "$GITHUB_OUTPUT"
+          echo "forms=$(has forms)" >> "$GITHUB_OUTPUT"
+          echo "landing=$(has landing)" >> "$GITHUB_OUTPUT"
+          echo "chat=$(has chat)" >> "$GITHUB_OUTPUT"
+          echo "fb-app=$(has form-builder-app)" >> "$GITHUB_OUTPUT"
+
+          # Migrations: precise path-grep (from PR #216) on the unified base. The
+          # migration task is a ~1.5-3 min cold Fargate run; migration:run is
+          # idempotent, so gate it on real migration file changes only.
+          if git diff --name-only "$NX_BASE" "$NX_HEAD" | grep -q '^apps/api/src/database/migrations/'; then
+            echo "migrations=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "migrations=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          # amplify.yml is a workspace-root file nx affected can't attribute to
+          # any app, but a change to it (e.g. security headers) must rebuild ALL
+          # Amplify apps. Force the frontend gates only when amplify.yml itself
+          # changes — workflow-file changes (smoke tests, monitoring tweaks,
+          # comments) don't actually affect the Amplify build output, so
+          # forcing all four Amplify rebuilds on every CI tweak was wasteful.
+          # If a workflow change really does require an Amplify rebuild, use
+          # `workflow_dispatch` to trigger one explicitly.
+          if git diff --name-only "$NX_BASE" "$NX_HEAD" | grep -q '^amplify\.yml$'; then
+            echo "amplify-config=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "amplify-config=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  deploy-api:
+    name: Build, Push & Deploy API
+    needs: setup
+    if: needs.setup.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.build.outputs.image }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v6
@@ -68,7 +173,10 @@ jobs:
           container-name: api
           image: ${{ steps.build.outputs.image }}
 
+      # Gated on the migrations output from setup (real migration file changes
+      # since the last successful deploy). migration:run is idempotent.
       - name: Run database migrations
+        if: needs.setup.outputs.migrations == 'true'
         run: |
           TASK_DEF_ARN=$(aws ecs register-task-definition \
             --cli-input-json "$(cat ${{ steps.new-task-def.outputs.task-definition }} | \
@@ -83,7 +191,7 @@ jobs:
             --task-definition "$TASK_DEF_ARN" \
             --launch-type FARGATE \
             --network-configuration "awsvpcConfiguration={subnets=[subnet-0dc6c8333012885b5,subnet-016eb706debe10250],securityGroups=[sg-05bfeab97a70e1081],assignPublicIp=DISABLED}" \
-            --overrides '{"containerOverrides":[{"name":"api","command":["npm","run","migration:run"]}]}' \
+            --overrides '{"containerOverrides":[{"name":"api","command":["pnpm","migration:run"]}]}' \
             --region $AWS_REGION \
             --query tasks[0].taskArn \
             --output text)
@@ -118,16 +226,167 @@ jobs:
           cluster: ${{ env.ECS_CLUSTER }}
           wait-for-service-stability: true
 
+      # ECS deployment circuit breaker rolls back to the last green image on
+      # health-check failure but still reports the deploy "succeeded with
+      # rollback". That silent revert is what masked #412 (registry
+      # MODULE_NOT_FOUND) for three deploys. Compare the running task's image
+      # against what we just built; fail loud if they don't match.
+      - name: Verify deployed image matches pushed image
+        env:
+          EXPECTED_IMAGE: ${{ steps.build.outputs.image }}
+        run: |
+          # The service's most recent PRIMARY deployment is what's serving
+          # traffic right now. Grab the task definition it points to and
+          # extract the container's image URI.
+          RUNNING_TASK_DEF=$(aws ecs describe-services \
+            --cluster "$ECS_CLUSTER" \
+            --services "$ECS_SERVICE" \
+            --region "$AWS_REGION" \
+            --query 'services[0].deployments[?status==`PRIMARY`].taskDefinition | [0]' \
+            --output text)
+
+          RUNNING_IMAGE=$(aws ecs describe-task-definition \
+            --task-definition "$RUNNING_TASK_DEF" \
+            --region "$AWS_REGION" \
+            --query 'taskDefinition.containerDefinitions[?name==`api`].image | [0]' \
+            --output text)
+
+          echo "Expected image: $EXPECTED_IMAGE"
+          echo "Running image:  $RUNNING_IMAGE"
+
+          if [ "$RUNNING_IMAGE" != "$EXPECTED_IMAGE" ]; then
+            echo "❌ Image mismatch — ECS circuit breaker rolled back to a prior revision."
+            echo "Check CloudWatch for the failed task's boot logs:"
+            echo "  aws logs tail $ECS_CLUSTER --filter-pattern ERROR --since 10m"
+            exit 1
+          fi
+          echo "✅ Running image matches the build output"
+
       # Task definition revision cleanup removed — old revisions don't consume
       # resources and deregistering them causes OpenTofu state drift (the revision
       # tofu tracks gets deregistered, making tofu think the resource is gone).
       # AWS allows thousands of revisions per family, so this is safe to skip.
 
-      - name: Monitor Amplify build
-        id: amplify
+  deploy-form-builder:
+    name: Build, Push & Deploy form-builder
+    needs: setup
+    if: needs.setup.outputs.fb-api == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push form-builder image
+        id: build-form-builder
         env:
-          AMPLIFY_APP_ID: d1yjf5g5ckxcxg
+          REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          IMAGE_URI="$REGISTRY/gov-bb-form-builder:$IMAGE_TAG"
+          LATEST_URI="$REGISTRY/gov-bb-form-builder:latest"
+
+          docker build --platform linux/amd64 -f apps/form_builder_api/Dockerfile -t "$IMAGE_URI" -t "$LATEST_URI" .
+          docker push "$IMAGE_URI"
+          docker push "$LATEST_URI"
+
+          echo "image=$IMAGE_URI" >> "$GITHUB_OUTPUT"
+          echo "✅ Pushed form-builder $IMAGE_URI"
+
+      - name: Deploy form-builder to ECS
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition form-builder-sandbox \
+            --region $AWS_REGION \
+            --query taskDefinition \
+            --output json > fb-task-def.json
+
+          # Update image in task def
+          NEW_IMAGE="${{ steps.build-form-builder.outputs.image }}"
+          jq --arg img "$NEW_IMAGE" '.containerDefinitions[0].image = $img | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)' fb-task-def.json > fb-task-def-new.json
+
+          TASK_DEF_ARN=$(aws ecs register-task-definition \
+            --cli-input-json file://fb-task-def-new.json \
+            --region $AWS_REGION \
+            --query taskDefinition.taskDefinitionArn \
+            --output text)
+          echo "Registered form-builder task def: $TASK_DEF_ARN"
+
+          aws ecs update-service \
+            --cluster $ECS_CLUSTER \
+            --service form-builder-sandbox \
+            --task-definition "$TASK_DEF_ARN" \
+            --region $AWS_REGION \
+            --query "service.deployments[0].rolloutState" \
+            --output text
+          echo "✅ Form-builder ECS deploy started"
+
+      # Wait for the rollout to stabilize, then verify the running image
+      # matches what we built. Same pattern as deploy-api — catches silent
+      # circuit-breaker rollbacks (the bug class from #412).
+      - name: Wait + verify form-builder image
+        env:
+          EXPECTED_IMAGE: ${{ steps.build-form-builder.outputs.image }}
+        run: |
+          echo "Waiting for form-builder-sandbox service to stabilize..."
+          aws ecs wait services-stable \
+            --cluster "$ECS_CLUSTER" \
+            --services form-builder-sandbox \
+            --region "$AWS_REGION"
+
+          RUNNING_TASK_DEF=$(aws ecs describe-services \
+            --cluster "$ECS_CLUSTER" \
+            --services form-builder-sandbox \
+            --region "$AWS_REGION" \
+            --query 'services[0].deployments[?status==`PRIMARY`].taskDefinition | [0]' \
+            --output text)
+
+          RUNNING_IMAGE=$(aws ecs describe-task-definition \
+            --task-definition "$RUNNING_TASK_DEF" \
+            --region "$AWS_REGION" \
+            --query 'taskDefinition.containerDefinitions[0].image' \
+            --output text)
+
+          echo "Expected image: $EXPECTED_IMAGE"
+          echo "Running image:  $RUNNING_IMAGE"
+
+          if [ "$RUNNING_IMAGE" != "$EXPECTED_IMAGE" ]; then
+            echo "❌ Image mismatch — ECS circuit breaker rolled back to a prior revision."
+            echo "Check CloudWatch: aws logs tail /ecs/form-builder-sandbox --filter-pattern ERROR --since 10m"
+            exit 1
+          fi
+          echo "✅ Running image matches the build output"
+
+  amplify-forms:
+    name: Amplify build (forms)
+    needs: setup
+    if: needs.setup.outputs.forms == 'true' || needs.setup.outputs.amplify-config == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Trigger and monitor Amplify build
+        env:
+          # Forms homepage (lists live forms) at forms.sandbox.alpha.gov.bb.
+          # NOT d1yjf5g5ckxcxg — that is the archived legacy monorepo app.
+          AMPLIFY_APP_ID: d1j7z1k0h7u5nb
           AMPLIFY_BRANCH: sandbox
+          # Needed for the CANCELLED→superseded check below to call gh api.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APP_LABEL: forms
+          APP_URL: https://forms.sandbox.alpha.gov.bb
         run: |
           JOB_ID=$(aws amplify start-job \
             --app-id "$AMPLIFY_APP_ID" \
@@ -136,8 +395,7 @@ jobs:
             --region "$AWS_REGION" \
             --query jobSummary.jobId \
             --output text)
-          echo "job_id=$JOB_ID" >> "$GITHUB_OUTPUT"
-          echo "Amplify job started: $JOB_ID"
+          echo "Amplify $APP_LABEL job started: $JOB_ID"
 
           for i in $(seq 1 30); do
             STATUS=$(aws amplify get-job \
@@ -147,28 +405,470 @@ jobs:
               --region "$AWS_REGION" \
               --query job.summary.status \
               --output text)
-            echo "[$i/30] Amplify status: $STATUS"
+            echo "[$i/30] Amplify $APP_LABEL status: $STATUS"
             if [ "$STATUS" = "SUCCEED" ]; then
-              echo "✅ Amplify build succeeded"
-              exit 0
-            elif [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "CANCELLED" ]; then
-              echo "❌ Amplify build $STATUS"
+              echo "✅ Amplify $APP_LABEL build succeeded — running smoke test on $APP_URL"
+              # Amplify's CloudFront cache flips to the new build after SUCCEED
+              # but the edge can serve stale for a few seconds; retry briefly.
+              for j in 1 2 3 4 5; do
+                CODE=$(curl -fsS -o /dev/null -w "%{http_code}" --max-time 10 "$APP_URL" 2>/dev/null || echo "000")
+                if [ "$CODE" = "200" ]; then
+                  echo "✅ $APP_LABEL smoke test passed (HTTP 200)"
+                  exit 0
+                fi
+                echo "[$j/5] smoke test got HTTP $CODE, retrying in 5s..."
+                sleep 5
+              done
+              echo "❌ $APP_LABEL smoke test failed — $APP_URL not responding 200 after deploy"
+              exit 1
+            elif [ "$STATUS" = "FAILED" ]; then
+              echo "❌ Amplify $APP_LABEL build FAILED"
+              exit 1
+            elif [ "$STATUS" = "CANCELLED" ]; then
+              # Amplify cancels in-flight builds when a newer commit lands on
+              # the same branch (configured in #441). If sandbox HEAD has
+              # advanced past us, the cancellation is correct — exit clean so
+              # rapid-fire merges don't spam this workflow with red runs that
+              # mean nothing.
+              CURRENT_HEAD=$(gh api "repos/${{ github.repository }}/commits/sandbox" --jq '.sha' 2>/dev/null || echo "")
+              if [ -n "$CURRENT_HEAD" ] && [ "$CURRENT_HEAD" != "${{ github.sha }}" ]; then
+                echo "✅ Amplify $APP_LABEL build CANCELLED — superseded by ${CURRENT_HEAD:0:7}; not failing"
+                exit 0
+              fi
+              echo "❌ Amplify $APP_LABEL build CANCELLED (no newer commit on sandbox — likely manual cancel or Amplify infra issue)"
               exit 1
             fi
             sleep 30
           done
-          echo "❌ Amplify build timed out after 15 minutes"
+          echo "❌ Amplify $APP_LABEL build did not finish within 15 minutes"
           exit 1
 
-      - name: Summary
-        if: always()
+  # Live end-to-end smoke tests of the deployed forms app: each drives a real
+  # form on sandbox (uploading files via the presign → S3 → confirm flow where
+  # the form has uploads), SUBMITS FOR REAL, and asserts the confirmation
+  # screen. `needs: amplify-forms` so they run only after that build succeeds —
+  # and are skipped whenever forms wasn't deployed (a skipped/failed dependency
+  # skips these too). No AWS creds: the reusable workflow drives a headless
+  # browser against the public deployed URL, and uploads use presigned URLs
+  # issued server-side. Steps live in .github/workflows/forms-smoke.yml.
+  smoke-test-temp-teacher:
+    name: Smoke test forms (temp-teacher)
+    needs: amplify-forms
+    uses: ./.github/workflows/forms-smoke.yml
+    with:
+      base_url: https://forms.sandbox.alpha.gov.bb
+      spec: temp-teacher-application.smoke.spec.ts
+      artifact_name: temp-teacher-smoke-trace
+
+  smoke-test-vendor-registration:
+    name: Smoke test forms (vendor-registration)
+    needs: amplify-forms
+    uses: ./.github/workflows/forms-smoke.yml
+    with:
+      base_url: https://forms.sandbox.alpha.gov.bb
+      spec: vendor-registration.smoke.spec.ts
+      artifact_name: vendor-registration-smoke-trace
+
+  smoke-test-get-a-primary-school-textbook-grant:
+    name: Smoke test forms (get-a-primary-school-textbook-grant)
+    needs: amplify-forms
+    uses: ./.github/workflows/forms-smoke.yml
+    with:
+      base_url: https://forms.sandbox.alpha.gov.bb
+      spec: get-a-primary-school-textbook-grant.smoke.spec.ts
+      artifact_name: get-a-primary-school-textbook-grant-smoke-trace
+
+  smoke-test-duties-performed:
+    name: Smoke test forms (duties-performed)
+    needs: amplify-forms
+    uses: ./.github/workflows/forms-smoke.yml
+    with:
+      base_url: https://forms.sandbox.alpha.gov.bb
+      spec: duties-performed-exam-claim.smoke.spec.ts
+      artifact_name: duties-performed-smoke-trace
+
+  # term-leave-application is smoked here post-deploy (not only per-PR preview):
+  # the per-PR preview smoke can't validate a term-leave recipe change, because
+  # the preview frontend reads contracts from the sandbox API and so serves the
+  # PREVIOUS version until the new one ships (ADR 0029). This job runs against
+  # the deployed sandbox once the API is serving the new recipe, so a recipe
+  # bump is actually validated end-to-end after it goes live.
+  smoke-test-term-leave:
+    name: Smoke test forms (term-leave)
+    needs: amplify-forms
+    uses: ./.github/workflows/forms-smoke.yml
+    with:
+      base_url: https://forms.sandbox.alpha.gov.bb
+      spec: term-leave-application.smoke.spec.ts
+      artifact_name: term-leave-smoke-trace
+
+  # NOTE: referral-student-support-services and homeschooling-application-2024
+  # smoke specs exist but are test.fixme (skipped) — their deployed forms have a
+  # required-checkbox-with-empty-options recipe bug that makes them unsubmittable
+  # (see the spec headers + ADR 0027). They are intentionally NOT wired here
+  # until the recipes are fixed; wiring a never-passing live smoke would just
+  # make every forms deploy red.
+
+  amplify-landing:
+    name: Amplify build (landing)
+    needs: setup
+    if: needs.setup.outputs.landing == 'true' || needs.setup.outputs.amplify-config == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Trigger and monitor Amplify build
+        env:
+          AMPLIFY_APP_ID: d3kbl8o0ovutw4
+          AMPLIFY_BRANCH: sandbox
+          # Needed for the CANCELLED→superseded check below to call gh api.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APP_LABEL: landing
+          APP_URL: https://landing.sandbox.alpha.gov.bb
         run: |
-          echo "## Sandbox Deployment Summary" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "**Image:** ${{ steps.build.outputs.image }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "**Commit:** ${{ github.sha }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "**API URL:** https://app-sandbox.alpha.gov.bb" >> "$GITHUB_STEP_SUMMARY"
-          echo "**Amplify Job:** ${{ steps.amplify.outputs.job_id }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Check API logs: \`aws logs tail /ecs/modular-forms-api-sandbox --follow\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "Check migration logs: \`aws logs tail /ecs/modular-forms-api-sandbox --follow --filter-pattern migration\`" >> "$GITHUB_STEP_SUMMARY"
+          JOB_ID=$(aws amplify start-job \
+            --app-id "$AMPLIFY_APP_ID" \
+            --branch-name "$AMPLIFY_BRANCH" \
+            --job-type RELEASE \
+            --region "$AWS_REGION" \
+            --query jobSummary.jobId \
+            --output text)
+          echo "Amplify $APP_LABEL job started: $JOB_ID"
+
+          for i in $(seq 1 30); do
+            STATUS=$(aws amplify get-job \
+              --app-id "$AMPLIFY_APP_ID" \
+              --branch-name "$AMPLIFY_BRANCH" \
+              --job-id "$JOB_ID" \
+              --region "$AWS_REGION" \
+              --query job.summary.status \
+              --output text)
+            echo "[$i/30] Amplify $APP_LABEL status: $STATUS"
+            if [ "$STATUS" = "SUCCEED" ]; then
+              echo "✅ Amplify $APP_LABEL build succeeded — running smoke test on $APP_URL"
+              for j in 1 2 3 4 5; do
+                CODE=$(curl -fsS -o /dev/null -w "%{http_code}" --max-time 10 "$APP_URL" 2>/dev/null || echo "000")
+                if [ "$CODE" = "200" ]; then
+                  echo "✅ $APP_LABEL smoke test passed (HTTP 200)"
+                  exit 0
+                fi
+                echo "[$j/5] smoke test got HTTP $CODE, retrying in 5s..."
+                sleep 5
+              done
+              echo "❌ $APP_LABEL smoke test failed — $APP_URL not responding 200 after deploy"
+              exit 1
+            elif [ "$STATUS" = "FAILED" ]; then
+              echo "❌ Amplify $APP_LABEL build FAILED"
+              exit 1
+            elif [ "$STATUS" = "CANCELLED" ]; then
+              # Amplify cancels in-flight builds when a newer commit lands on
+              # the same branch (configured in #441). If sandbox HEAD has
+              # advanced past us, the cancellation is correct — exit clean so
+              # rapid-fire merges don't spam this workflow with red runs that
+              # mean nothing.
+              CURRENT_HEAD=$(gh api "repos/${{ github.repository }}/commits/sandbox" --jq '.sha' 2>/dev/null || echo "")
+              if [ -n "$CURRENT_HEAD" ] && [ "$CURRENT_HEAD" != "${{ github.sha }}" ]; then
+                echo "✅ Amplify $APP_LABEL build CANCELLED — superseded by ${CURRENT_HEAD:0:7}; not failing"
+                exit 0
+              fi
+              echo "❌ Amplify $APP_LABEL build CANCELLED (no newer commit on sandbox — likely manual cancel or Amplify infra issue)"
+              exit 1
+            fi
+            sleep 30
+          done
+          echo "❌ Amplify $APP_LABEL build did not finish within 15 minutes"
+          exit 1
+
+  amplify-chat:
+    name: Amplify build (chat)
+    needs: setup
+    if: needs.setup.outputs.chat == 'true' || needs.setup.outputs.amplify-config == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Trigger and monitor Amplify build
+        env:
+          AMPLIFY_APP_ID: d3snq1f0c10466
+          AMPLIFY_BRANCH: sandbox
+          # Needed for the CANCELLED→superseded check below to call gh api.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APP_LABEL: chat
+          # /api/health is SSR-rendered (not the static fallback) and reports
+          # db connectivity + indexed doc count — catches more than a root
+          # 200 would. We assert docCount > 0 to surface "ingest is broken"
+          # at deploy time rather than via user reports of empty answers.
+          HEALTH_URL: https://chat.sandbox.alpha.gov.bb/api/health
+        run: |
+          JOB_ID=$(aws amplify start-job \
+            --app-id "$AMPLIFY_APP_ID" \
+            --branch-name "$AMPLIFY_BRANCH" \
+            --job-type RELEASE \
+            --region "$AWS_REGION" \
+            --query jobSummary.jobId \
+            --output text)
+          echo "Amplify $APP_LABEL job started: $JOB_ID"
+
+          for i in $(seq 1 30); do
+            STATUS=$(aws amplify get-job \
+              --app-id "$AMPLIFY_APP_ID" \
+              --branch-name "$AMPLIFY_BRANCH" \
+              --job-id "$JOB_ID" \
+              --region "$AWS_REGION" \
+              --query job.summary.status \
+              --output text)
+            echo "[$i/30] Amplify $APP_LABEL status: $STATUS"
+            if [ "$STATUS" = "SUCCEED" ]; then
+              echo "✅ Amplify $APP_LABEL build succeeded — running smoke test on $HEALTH_URL"
+              for j in 1 2 3 4 5; do
+                BODY=$(curl -fsS --max-time 10 "$HEALTH_URL" 2>/dev/null || echo "")
+                if [ -n "$BODY" ] && echo "$BODY" | jq -e '.ok == true and .db == "connected" and .docCount > 0' >/dev/null 2>&1; then
+                  echo "✅ $APP_LABEL smoke test passed: $(echo "$BODY" | jq -c '{db, docCount, chunkCount}')"
+                  exit 0
+                fi
+                echo "[$j/5] smoke test pending — body: $(echo "$BODY" | head -c 200), retrying in 5s..."
+                sleep 5
+              done
+              echo "❌ $APP_LABEL smoke test failed — /api/health did not return ok:true,db:connected,docCount>0"
+              exit 1
+            elif [ "$STATUS" = "FAILED" ]; then
+              echo "❌ Amplify $APP_LABEL build FAILED"
+              exit 1
+            elif [ "$STATUS" = "CANCELLED" ]; then
+              # Amplify cancels in-flight builds when a newer commit lands on
+              # the same branch (configured in #441). If sandbox HEAD has
+              # advanced past us, the cancellation is correct — exit clean so
+              # rapid-fire merges don't spam this workflow with red runs that
+              # mean nothing.
+              CURRENT_HEAD=$(gh api "repos/${{ github.repository }}/commits/sandbox" --jq '.sha' 2>/dev/null || echo "")
+              if [ -n "$CURRENT_HEAD" ] && [ "$CURRENT_HEAD" != "${{ github.sha }}" ]; then
+                echo "✅ Amplify $APP_LABEL build CANCELLED — superseded by ${CURRENT_HEAD:0:7}; not failing"
+                exit 0
+              fi
+              echo "❌ Amplify $APP_LABEL build CANCELLED (no newer commit on sandbox — likely manual cancel or Amplify infra issue)"
+              exit 1
+            fi
+            sleep 30
+          done
+          echo "❌ Amplify $APP_LABEL build did not finish within 15 minutes"
+          exit 1
+
+  deploy-chat-ingest:
+    # Chatbot RAG ingest image — one-shot Fargate task that runs
+    # `pnpm exec tsx src/ingest/cli.ts` from apps/chat against the sandbox
+    # pgvector RDS. Infra (ECR repo, ECS task def, indexer Lambda, 15-min
+    # EventBridge cron) lives in govtech-bb/alpha-infra — see
+    # SANDBOX-CHATBOT-INGEST.md there. This job builds the image and fires
+    # an instant ingest so content changes reach chat.sandbox.alpha.gov.bb
+    # in seconds instead of waiting for the cron.
+    #
+    # Gated on the same `chat` affected output as amplify-chat — nx-affected
+    # marks chat as affected when packages/content changes (chat depends on
+    # it via workspace), so this captures both code- and content-driven
+    # rebuilds without a second gate.
+    name: Build, Push & Trigger chat-ingest
+    needs: setup
+    if: needs.setup.outputs.chat == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.build.outputs.image }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push chat-ingest image
+        id: build
+        env:
+          REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          INGEST_URI="$REGISTRY/chatbot-ingest-sandbox:$IMAGE_TAG"
+          INGEST_LATEST="$REGISTRY/chatbot-ingest-sandbox:latest"
+
+          docker build --platform linux/amd64 -f apps/chat/Dockerfile.ingest -t "$INGEST_URI" -t "$INGEST_LATEST" .
+          docker push "$INGEST_URI"
+          docker push "$INGEST_LATEST"
+
+          echo "image=$INGEST_URI" >> "$GITHUB_OUTPUT"
+          echo "✅ Pushed chat-ingest $INGEST_URI"
+
+      - name: Trigger chatbot RAG ingest
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          INDEXER=$(aws ssm get-parameter \
+            --name /chatbot/sandbox/rag-indexer-name \
+            --region "$AWS_REGION" \
+            --query Parameter.Value --output text)
+
+          PAYLOAD=$(printf '{"startedBy":"gh-%.36s"}' "$COMMIT_SHA")
+
+          aws lambda invoke \
+            --function-name "$INDEXER" \
+            --payload "$PAYLOAD" \
+            --cli-binary-format raw-in-base64-out \
+            --region "$AWS_REGION" \
+            /tmp/indexer-out.json
+
+          echo "Indexer response:"
+          cat /tmp/indexer-out.json
+          echo
+          echo "✅ Ingest task started — follow with: aws logs tail /ecs/chatbot-ingest-sandbox --follow"
+
+  amplify-form-builder:
+    name: Amplify build (form-builder)
+    needs: setup
+    if: needs.setup.outputs.fb-app == 'true' || needs.setup.outputs.amplify-config == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Trigger and monitor Amplify build
+        env:
+          AMPLIFY_APP_ID: d16oo4n0w76zwn
+          AMPLIFY_BRANCH: sandbox
+          # Needed for the CANCELLED→superseded check below to call gh api.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APP_LABEL: form-builder
+        run: |
+          JOB_ID=$(aws amplify start-job \
+            --app-id "$AMPLIFY_APP_ID" \
+            --branch-name "$AMPLIFY_BRANCH" \
+            --job-type RELEASE \
+            --region "$AWS_REGION" \
+            --query jobSummary.jobId \
+            --output text)
+          echo "Amplify $APP_LABEL job started: $JOB_ID"
+
+          for i in $(seq 1 30); do
+            STATUS=$(aws amplify get-job \
+              --app-id "$AMPLIFY_APP_ID" \
+              --branch-name "$AMPLIFY_BRANCH" \
+              --job-id "$JOB_ID" \
+              --region "$AWS_REGION" \
+              --query job.summary.status \
+              --output text)
+            echo "[$i/30] Amplify $APP_LABEL status: $STATUS"
+            if [ "$STATUS" = "SUCCEED" ]; then
+              echo "✅ Amplify $APP_LABEL build succeeded"
+              exit 0
+            elif [ "$STATUS" = "FAILED" ]; then
+              echo "❌ Amplify $APP_LABEL build FAILED"
+              exit 1
+            elif [ "$STATUS" = "CANCELLED" ]; then
+              # Amplify cancels in-flight builds when a newer commit lands on
+              # the same branch (configured in #441). If sandbox HEAD has
+              # advanced past us, the cancellation is correct — exit clean so
+              # rapid-fire merges don't spam this workflow with red runs that
+              # mean nothing.
+              CURRENT_HEAD=$(gh api "repos/${{ github.repository }}/commits/sandbox" --jq '.sha' 2>/dev/null || echo "")
+              if [ -n "$CURRENT_HEAD" ] && [ "$CURRENT_HEAD" != "${{ github.sha }}" ]; then
+                echo "✅ Amplify $APP_LABEL build CANCELLED — superseded by ${CURRENT_HEAD:0:7}; not failing"
+                exit 0
+              fi
+              echo "❌ Amplify $APP_LABEL build CANCELLED (no newer commit on sandbox — likely manual cancel or Amplify infra issue)"
+              exit 1
+            fi
+            sleep 30
+          done
+          echo "❌ Amplify $APP_LABEL build did not finish within 15 minutes"
+          exit 1
+
+  summary:
+    name: Deployment summary
+    needs: [setup, deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-chat, deploy-chat-ingest, amplify-form-builder]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summary
+        env:
+          API_RESULT: ${{ needs.deploy-api.result }}
+          FB_API_RESULT: ${{ needs.deploy-form-builder.result }}
+          FORMS_RESULT: ${{ needs.amplify-forms.result }}
+          LANDING_RESULT: ${{ needs.amplify-landing.result }}
+          CHAT_RESULT: ${{ needs.amplify-chat.result }}
+          FB_APP_RESULT: ${{ needs.amplify-form-builder.result }}
+          CHAT_INGEST_RESULT: ${{ needs.deploy-chat-ingest.result }}
+          MIGRATIONS_GATE: ${{ needs.setup.outputs.migrations }}
+        run: |
+          # Report each target's ACTUAL job result, not just the
+          # affected-flag. A job can be affected, run, and then fail — and
+          # this table is what the team reads first to answer "did my
+          # change ship?". result is success|failure|cancelled|skipped.
+          outcome() {
+            case "$1" in
+              success)   echo "✅ deployed" ;;
+              failure)   echo "❌ failed" ;;
+              cancelled) echo "⏹ cancelled" ;;
+              skipped|*) echo "skipped (unaffected)" ;;
+            esac
+          }
+          # Migrations run as a step inside deploy-api (no separate job),
+          # so derive their line from the migrations gate + the API job.
+          migrations_outcome() {
+            if [ "$MIGRATIONS_GATE" != "true" ]; then
+              echo "skipped (no migration changes)"
+            else
+              case "$API_RESULT" in
+                success) echo "✅ ran" ;;
+                *)       echo "⚠️ see API ($API_RESULT)" ;;
+              esac
+            fi
+          }
+          {
+            echo "## Sandbox Deployment Summary"
+            echo ""
+            echo "**Commit:** ${{ github.sha }}"
+            echo ""
+            echo "| Target | Result |"
+            echo "|--------|--------|"
+            echo "| API | $(outcome "$API_RESULT") |"
+            echo "| API migrations | $(migrations_outcome) |"
+            echo "| form-builder API | $(outcome "$FB_API_RESULT") |"
+            echo "| Amplify forms | $(outcome "$FORMS_RESULT") |"
+            echo "| Amplify landing | $(outcome "$LANDING_RESULT") |"
+            echo "| Amplify chat | $(outcome "$CHAT_RESULT") |"
+            echo "| Amplify form-builder | $(outcome "$FB_APP_RESULT") |"
+            echo "| chat-ingest image | $(outcome "$CHAT_INGEST_RESULT") |"
+            echo ""
+            echo "**API URL:** https://forms.api.sandbox.alpha.gov.bb"
+            echo "**Landing URL:** https://landing.sandbox.alpha.gov.bb"
+            echo "**Forms URL:** https://forms.sandbox.alpha.gov.bb"
+            echo "**Chat URL:** https://chat.sandbox.alpha.gov.bb"
+            echo "**Form Builder URL:** https://builder.sandbox.alpha.gov.bb"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  notify-failure:
+    name: Notify Slack on failure
+    needs: [deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-chat, deploy-chat-ingest, amplify-form-builder]
+    if: always() && contains(needs.*.result, 'failure')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Slack notification
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": ":x: *Sandbox deploy failed*\n*Workflow:* ${{ github.workflow }}\n*Branch:* `${{ github.ref_name }}`\n*Commit:* `${{ github.sha }}`\n*Triggered by:* ${{ github.actor }}\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View failed run>"
+            }

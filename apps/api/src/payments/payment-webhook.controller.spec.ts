@@ -33,6 +33,23 @@ describe("PaymentWebhookController", () => {
       expect(result).toEqual({ acknowledged: true });
     });
 
+    it("uses 'unknown' as reference placeholder when _reference is absent (line 59 ?? branch)", async () => {
+      const ctl = makeController({ EZPAY_WEBHOOK_VERIFY_SIGNATURE: "false" });
+      // Body without _reference triggers the `?? "unknown"` fallback in the warn log
+      const body = {
+        _status: "Success",
+        _transaction_number: "tx-1",
+        _amount: "50",
+      };
+      const result = await ctl.ezpayCallback(
+        body as never,
+        undefined,
+        {} as never,
+      );
+      expect(service.handleEzpayCallback).toHaveBeenCalledWith(body);
+      expect(result).toEqual({ acknowledged: true });
+    });
+
     it("accepts when neither flag nor secret is set (default behavior)", async () => {
       const ctl = makeController({});
       const body = {

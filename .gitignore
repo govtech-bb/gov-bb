@@ -1,3 +1,6 @@
+# macOS
+.DS_Store
+
 # Logs
 logs
 *.log
@@ -154,5 +157,7 @@ amplify/#current-cloud-backend
 PRESENTATION-*.yml
 cicd-policy*.json
 
-# Playwright MCP tool artifacts
-.playwright-mcp/
+# Session plans live in docs/plans/ but are NOT version-controlled. The
+# directory is intentionally left un-ignored so plans are reachable via
+# @-mention (the file picker respects .gitignore). A PreToolUse hook
+# (.claude/hooks/block-commit-plans.sh) blocks staging/committing them.

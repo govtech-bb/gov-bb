@@ -1,0 +1,46 @@
+# Docker reads this file from the build-context root.
+# Anything matched here is excluded from the COPY operations in every Dockerfile
+# that builds from this monorepo.
+
+# Build outputs and dependency dirs — rebuilt fresh inside the container.
+node_modules
+**/node_modules
+dist
+**/dist
+.nx
+.next
+**/.next
+coverage
+**/coverage
+
+# VCS and IDE state.
+.git
+.gitignore
+.gitattributes
+.github
+.vscode
+.idea
+*.swp
+
+# Local-only env and secrets — never bake into images.
+.env
+.env.*
+!.env.example
+
+# Compose files and Docker meta — not consumed by Dockerfile builds.
+docker-compose*.yml
+
+# Docs and ephemeral noise.
+README.md
+docs
+*.log
+.DS_Store
+Thumbs.db
+
+# Tooling caches.
+.eslintcache
+.prettiercache
+
+# Test artifacts that shouldn't ship.
+test-results
+playwright-report

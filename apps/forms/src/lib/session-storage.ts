@@ -1,0 +1,165 @@
+import { FormValues, SubmissionState } from "@forms/types";
+
+function stripNonSerializableValues(value: unknown): unknown {
+  if (typeof File !== "undefined" && value instanceof File) {
+    return undefined;
+  }
+
+  if (typeof Blob !== "undefined" && value instanceof Blob) {
+    return undefined;
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .map((entry) => stripNonSerializableValues(entry))
+      .filter((entry) => entry !== undefined);
+  }
+
+  if (value && typeof value === "object") {
+    const entries: [string, unknown][] = [];
+
+    for (const [key, nestedValue] of Object.entries(
+      value as Record<string, unknown>,
+    )) {
+      const sanitizedValue = stripNonSerializableValues(nestedValue);
+
+      if (sanitizedValue !== undefined) {
+        entries.push([key, sanitizedValue]);
+      }
+    }
+
+    return Object.fromEntries(entries);
+  }
+
+  return value;
+}
+
+// Store form data in session storage
+export function storeFormData(formId: string, data: FormValues) {
+  sessionStorage.setItem(
+    `formData_${formId}`,
+    JSON.stringify(stripNonSerializableValues(data)),
+  );
+}
+
+// Retrieve form data from session storage
+export function getFormData(formId: string) {
+  const data = sessionStorage.getItem(`formData_${formId}`);
+  return data ? JSON.parse(data) : null;
+}
+
+// Clear a form's persisted progress (field values + completed steps).
+// Note: this deliberately does NOT touch the persisted submissionState — it is
+// called on submit success, and the committed outcome must survive so a refresh
+// on the confirmation step can still render it. See clearSubmissionState.
+export function clearFormState(formId: string) {
+  sessionStorage.removeItem(`formData_${formId}`);
+  sessionStorage.removeItem(`completedSteps_${formId}`);
+}
+
+// The submission outcome lives in React state, which is lost on a browser
+// refresh. Persisting it lets the confirmation step re-render after a reload
+// instead of bouncing the citizen back to check-your-answers.
+export function storeSubmissionState(formId: string, state: SubmissionState) {
+  sessionStorage.setItem(`submissionState_${formId}`, JSON.stringify(state));
+}
+
+export function getSubmissionState(formId: string): SubmissionState | null {
+  const raw = sessionStorage.getItem(`submissionState_${formId}`);
+  return raw ? JSON.parse(raw) : null;
+}
+
+export function clearSubmissionState(formId: string) {
+  sessionStorage.removeItem(`submissionState_${formId}`);
+}
+
+// Get completed steps from session storage
+export function getCompletedSteps(formId: string): string[] {
+  const steps = sessionStorage.getItem(`completedSteps_${formId}`);
+  return steps ? JSON.parse(steps) : [];
+}
+
+// Mark a step as completed in session storage
+export function markStepCompleted(formId: string, stepId: string) {
+  const completedSteps = getCompletedSteps(formId);
+  if (!completedSteps.includes(stepId)) {
+    completedSteps.push(stepId);
+    sessionStorage.setItem(
+      `completedSteps_${formId}`,
+      JSON.stringify(completedSteps),
+    );
+  }
+}
+
+// Check if a specific step is completed
+export function isStepCompleted(formId: string, stepId: string): boolean {
+  const completedSteps = getCompletedSteps(formId);
+  return completedSteps.includes(stepId);
+}
+
+// Find the last completed step
+export function getLastCompletedStep(
+  formId: string,
+  steps: { stepId: string }[],
+): string | null {
+  const completedSteps = getCompletedSteps(formId);
+  for (let i = steps.length - 1; i >= 0; i--) {
+    if (completedSteps.includes(steps[i].stepId)) {
+      return steps[i].stepId;
+    }
+  }
+  return null;
+}
+
+// Find the index of the first incomplete step
+// @deprecated — prefer getFirstIncompleteActiveStep for condition-aware navigation
+export function getFirstIncompleteStepIndex(
+  formId: string,
+  steps: { stepId: string }[],
+): number {
+  const completedSteps = getCompletedSteps(formId);
+  for (let i = 0; i < steps.length; i++) {
+    if (!completedSteps.includes(steps[i].stepId)) {
+      return i;
+    }
+  }
+  return steps.length; // all steps completed
+}
+
+/**
+ * Returns the first step in `activeSteps` that has not yet been completed.
+ *
+ * Only the steps currently visible (condition-filtered) are considered —
+ * hidden steps are not blocking, regardless of their stored completion state.
+ * Returns null when every active step is already completed.
+ */
+export function getFirstIncompleteActiveStep(
+  formId: string,
+  activeSteps: { stepId: string }[],
+): { stepId: string } | null {
+  const completedSteps = getCompletedSteps(formId);
+  return activeSteps.find((s) => !completedSteps.includes(s.stepId)) ?? null;
+}
+
+/**
+ * Returns true when every step that precedes `targetStepId` inside
+ * `activeSteps` has already been completed.
+ *
+ * This is the single source of truth for "can the user navigate here?":
+ * - Step is not in activeSteps → false (hidden by condition, not reachable)
+ * - Step is first in activeSteps → true (no prerequisites)
+ * - All steps before it are completed → true
+ * - Any step before it is incomplete → false
+ */
+export function isStepAccessible(
+  formId: string,
+  targetStepId: string,
+  activeSteps: { stepId: string }[],
+): boolean {
+  const completedSteps = getCompletedSteps(formId);
+  for (const step of activeSteps) {
+    if (step.stepId === targetStepId) return true; // reached target: all preceding steps were complete
+    if (!completedSteps.includes(step.stepId)) return false; // preceding step not complete
+  }
+  return false; // targetStepId not found in activeSteps
+}

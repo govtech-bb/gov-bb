@@ -1,4 +1,5 @@
-import { Test } from "@nestjs/testing";
+import { Test, TestingModule } from "@nestjs/testing";
+import { Logger } from "@nestjs/common";
 import { PaymentProcessor } from "./payment.processor";
 import { EzpayClient } from "./ezpay/ezpay.client";
 import { DepartmentKeyResolver } from "./ezpay/department-keys";
@@ -11,6 +12,7 @@ import type { SubmissionCreatedEvent } from "../../submissions.types";
 
 describe("PaymentProcessor.process", () => {
   let processor: PaymentProcessor;
+  let module: TestingModule;
   const ezpay = { createPayment: jest.fn() };
   const paymentRepo = {
     create: jest.fn().mockImplementation((d) => d),
@@ -32,7 +34,7 @@ describe("PaymentProcessor.process", () => {
       status: PaymentStatus.PENDING,
     }));
     paymentRepo.save.mockImplementation(async (e) => e);
-    const module = await Test.createTestingModule({
+    module = await Test.createTestingModule({
       providers: [
         PaymentProcessor,
         { provide: EzpayClient, useValue: ezpay },
@@ -41,6 +43,10 @@ describe("PaymentProcessor.process", () => {
       ],
     }).compile();
     processor = module.get(PaymentProcessor);
+  });
+
+  afterEach(async () => {
+    if (module) await module.close();
   });
 
   const event = (): SubmissionCreatedEvent => ({
@@ -141,6 +147,27 @@ describe("PaymentProcessor.process", () => {
     await expect(processor.process(e)).rejects.toThrow();
   });
 
+  it("throws when amount is not a number (string)", async () => {
+    // Branch: `typeof cfg.amount !== "number"`
+    const e = event();
+    (e.processors[0].config as Record<string, unknown>).amount = "fifty";
+    await expect(processor.process(e)).rejects.toThrow(/amount must be/);
+  });
+
+  it("throws when amount is Infinity (non-finite)", async () => {
+    // Branch: `!Number.isFinite(cfg.amount)`
+    const e = event();
+    (e.processors[0].config as Record<string, unknown>).amount = Infinity;
+    await expect(processor.process(e)).rejects.toThrow(/amount must be/);
+  });
+
+  it("throws when amount is negative", async () => {
+    // Branch: `cfg.amount < 0`
+    const e = event();
+    (e.processors[0].config as Record<string, unknown>).amount = -1;
+    await expect(processor.process(e)).rejects.toThrow(/amount must be/);
+  });
+
   it("returns cached URL even when status is PENDING (prior partial attempt)", async () => {
     paymentRepo.findOrCreate.mockResolvedValue({
       id: "pay-1",
@@ -180,7 +207,11 @@ describe("PaymentProcessor.process", () => {
     }).compile();
     const isolated = moduleRef.get(PaymentProcessor);
 
-    await expect(isolated.process(event())).rejects.toThrow(/department/);
+    try {
+      await expect(isolated.process(event())).rejects.toThrow(/department/);
+    } finally {
+      await moduleRef.close();
+    }
   });
 
   it("propagates EzPay client errors", async () => {
@@ -188,5 +219,48 @@ describe("PaymentProcessor.process", () => {
       new Error("EzPay createPayment failed [E-059]: Invalid Payment Code"),
     );
     await expect(processor.process(event())).rejects.toThrow(/E-059/);
+  });
+
+  it("warns and uses only the first config when multiple payment configs are present", async () => {
+    const warn = jest.spyOn(Logger.prototype, "warn").mockImplementation();
+    ezpay.createPayment.mockResolvedValue({
+      token: "tok-1",
+      url: "https://ezpay/p?token=tok-1",
+    });
+
+    const e = event();
+    const firstPaymentCfg = (
+      e.processors[0] as Extract<
+        (typeof e.processors)[number],
+        { type: "payment" }
+      >
+    ).config;
+    e.processors = [
+      e.processors[0],
+      {
+        type: "payment",
+        config: {
+          ...firstPaymentCfg,
+          paymentCode: "EDU-002",
+          amount: 999,
+          description: "Should be ignored",
+        },
+      },
+    ];
+
+    await processor.process(e);
+
+    // Only the first config drives the EzPay call.
+    expect(ezpay.createPayment).toHaveBeenCalledTimes(1);
+    expect(ezpay.createPayment).toHaveBeenCalledWith(
+      expect.objectContaining({ paymentCode: "EDU-001", amount: 50 }),
+      "edu-key",
+    );
+    // Warning identifies the submission so operators can spot misconfigured forms.
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringMatching(/payment configs.+sub-1/i),
+    );
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("school-fees"));
+    warn.mockRestore();
   });
 });

@@ -1,0 +1,56 @@
+{
+  "formId": "zainab-qa-test-form",
+  "title": "Zainab QA Test Form",
+  "version": "1.0.0",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "step-1.email",
+        "label": "Applicant Email",
+        "subject": "Your application has been received"
+      }
+    },
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "contactDetails.email",
+        "label": "MDA Email",
+        "subject": "New form submission received"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "stepId": "step-1",
+      "title": "Step 1",
+      "elements": [
+        {
+          "ref": "components/email"
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "check-your-answers",
+      "title": "Check your answers",
+      "description": "Review all the information you have provided before submitting your application.",
+      "elements": [],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Submission Confirmation",
+      "elements": [],
+      "behaviours": []
+    }
+  ],
+  "createdAt": "2026-06-02T12:12:14.255Z",
+  "updatedAt": "2026-06-02T12:12:14.255Z"
+}

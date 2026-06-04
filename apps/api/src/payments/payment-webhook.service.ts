@@ -102,6 +102,21 @@ export class PaymentWebhookService {
     paymentId: string,
     v: VerifyPaymentResult,
   ): Promise<void> {
+    // No transaction number means EzPay has no transaction linked to this
+    // reference yet — typically a still-unpaid payment surfaced by the
+    // reconciliation cron, which replays every PENDING payment by reference.
+    // There is nothing to record, and persisting it would be actively harmful:
+    // findOne({ where: { transactionNumber: undefined } }) drops the condition
+    // and matches an arbitrary row (which we'd then overwrite), while an empty
+    // string collides on the transaction_number unique index across every
+    // unpaid payment. Skip — the payment stays non-terminal and gets re-checked
+    // next cycle.
+    if (!v.transactionNumber) {
+      this.logger.debug(
+        `[payment] No transaction number on verified result for payment ${paymentId} (status=${v.status ?? "unknown"}) — skipping transaction upsert`,
+      );
+      return;
+    }
     const repo: Repository<PaymentTransactionEntity> =
       this.dataSource.getRepository(PaymentTransactionEntity);
     const existing = await repo.findOne({

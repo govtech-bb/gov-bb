@@ -21,11 +21,16 @@
  *     - upload-document  file  required, fileTypes: [".pdf",".jpg"], itemMaxSize: 5MB
  */
 
-import { Test } from "@nestjs/testing";
+import { Test, TestingModule } from "@nestjs/testing";
 import { UnprocessableEntityException } from "@nestjs/common";
 import { SubmissionPipelineService } from "./submission-pipeline.service";
 import { FormDefinitionsService } from "../form-definitions/form-definitions.service";
 import { FormDraftsService } from "../form-drafts/form-drafts.service";
+import { FilesService } from "../../files/files.service";
+
+const filesStub = {
+  verifySubmissionFiles: jest.fn().mockResolvedValue({}),
+};
 import type { ServiceContract } from "@govtech-bb/form-types";
 import type { FormDraftEntity } from "../../database/entities/form-draft.entity";
 import type { SubmitDto } from "./submissions.types";
@@ -193,9 +198,10 @@ const PDF_FILE = [{ name: "id.pdf", size: 1_200_000, type: "application/pdf" }];
 
 describe("SubmissionPipelineService — integration (real conditions + validation)", () => {
   let service: SubmissionPipelineService;
+  let module: TestingModule;
 
   beforeEach(async () => {
-    const module = await Test.createTestingModule({
+    module = await Test.createTestingModule({
       providers: [
         SubmissionPipelineService,
         {
@@ -206,10 +212,15 @@ describe("SubmissionPipelineService — integration (real conditions + validatio
           provide: FormDefinitionsService,
           useValue: { findByFormId: jest.fn().mockResolvedValue(CONTRACT) },
         },
+        { provide: FilesService, useValue: filesStub },
       ],
     }).compile();
 
     service = module.get(SubmissionPipelineService);
+  });
+
+  afterEach(async () => {
+    if (module) await module.close();
   });
 
   // ─── Happy path ────────────────────────────────────────────────────────────
@@ -633,6 +644,7 @@ const REPEAT_CONTRACT: ServiceContract = {
 
 function buildModuleWith(contract: ServiceContract): Promise<{
   service: SubmissionPipelineService;
+  module: TestingModule;
 }> {
   return Test.createTestingModule({
     providers: [
@@ -645,10 +657,11 @@ function buildModuleWith(contract: ServiceContract): Promise<{
         provide: FormDefinitionsService,
         useValue: { findByFormId: jest.fn().mockResolvedValue(contract) },
       },
+      { provide: FilesService, useValue: filesStub },
     ],
   })
     .compile()
-    .then((m) => ({ service: m.get(SubmissionPipelineService) }));
+    .then((m) => ({ service: m.get(SubmissionPipelineService), module: m }));
 }
 
 function repeatDto(values: Record<string, unknown>): SubmitDto {
@@ -662,9 +675,14 @@ function repeatDto(values: Record<string, unknown>): SubmitDto {
 
 describe("repeatable step handling (E2E pipeline)", () => {
   let service: SubmissionPipelineService;
+  let module: TestingModule;
 
   beforeEach(async () => {
-    ({ service } = await buildModuleWith(REPEAT_CONTRACT));
+    ({ service, module } = await buildModuleWith(REPEAT_CONTRACT));
+  });
+
+  afterEach(async () => {
+    if (module) await module.close();
   });
 
   it("validates each instance independently — instance 0 valid, instance 1 missing required", async () => {
@@ -765,7 +783,10 @@ describe("repeatable step handling (E2E pipeline)", () => {
             },
       ),
     };
-    ({ service } = await buildModuleWith(gatedContract));
+    const built = await buildModuleWith(gatedContract);
+    service = built.service;
+    if (module) await module.close();
+    module = built.module;
 
     const dto = repeatDto({
       personal: { "first-name": "Marcus" }, // != "show-jobs" → step hidden
@@ -808,5 +829,137 @@ describe("repeatable step handling (E2E pipeline)", () => {
     );
     // Instance 1 (has-job=no): only has-job; employer hidden.
     expect((jobsActive as string[][])[1]).toEqual(["has-job"]);
+  });
+});
+
+// ─── optionalIf — relax required without hiding the field ───────────────────
+
+// Test contract: a gate field controls whether `extra-detail` is required.
+// `extra-detail` is always visible; when `wants-extra === "no"` its `optionalIf`
+// matches and `required` is relaxed. A minLength format rule applies whenever
+// the field is filled, regardless of the optional state.
+const OPTIONAL_CONTRACT: ServiceContract = {
+  formId: "f-optional",
+  title: "Optional",
+  version: "1.0.0",
+  createdAt: "2026-01-01T00:00:00",
+  updatedAt: "2026-01-01T00:00:00",
+  steps: [
+    {
+      stepId: "gate",
+      title: "gate",
+      behaviours: [],
+      elements: [
+        {
+          fieldId: "wants-extra",
+          label: "Wants extra?",
+          htmlType: "text",
+          validations: {
+            required: { value: true, error: "Answer is required" },
+          },
+        },
+      ],
+    },
+    {
+      stepId: "details",
+      title: "details",
+      behaviours: [],
+      elements: [
+        {
+          fieldId: "extra-detail",
+          label: "Extra detail",
+          htmlType: "text",
+          behaviours: [
+            {
+              type: "optionalIf",
+              targetFieldId: "wants-extra",
+              targetStepId: "gate",
+              operator: "equal",
+              value: "no",
+            },
+          ],
+          validations: {
+            required: { value: true, error: "Extra detail is required" },
+            minLength: { value: 3, error: "Extra detail too short" },
+          },
+        },
+      ],
+    },
+  ],
+} as ServiceContract;
+
+function optionalDto(values: Record<string, unknown>): SubmitDto {
+  return {
+    idempotencyKey: "ik-opt",
+    formId: "f-optional",
+    formVersion: "1.0.0",
+    values: values as SubmitDto["values"],
+  };
+}
+
+describe("optionalIf — conditional required (E2E pipeline)", () => {
+  let service: SubmissionPipelineService;
+  let module: TestingModule;
+
+  beforeEach(async () => {
+    ({ service, module } = await buildModuleWith(OPTIONAL_CONTRACT));
+  });
+
+  afterEach(async () => {
+    if (module) await module.close();
+  });
+
+  it("passes when the optionalIf condition matches and the field is empty", async () => {
+    const dto = optionalDto({
+      gate: { "wants-extra": "no" },
+      details: { "extra-detail": "" },
+    });
+
+    await expect(service.run(dto)).resolves.toBeDefined();
+  });
+
+  it("returns 422 when the condition is false and the field is empty", async () => {
+    const dto = optionalDto({
+      gate: { "wants-extra": "yes" },
+      details: { "extra-detail": "" },
+    });
+
+    await expect(service.run(dto)).rejects.toBeInstanceOf(
+      UnprocessableEntityException,
+    );
+  });
+
+  it("keeps the field in normalizedValues — never hidden/dropped — when optional and empty", async () => {
+    const dto = optionalDto({
+      gate: { "wants-extra": "no" },
+      details: { "extra-detail": "" },
+    });
+
+    const result = await service.run(dto);
+    expect(result.normalizedValues.details).toHaveProperty("extra-detail", "");
+  });
+
+  it("still fails the format rule when filled with a malformed value even though optionalIf matches", async () => {
+    const dto = optionalDto({
+      gate: { "wants-extra": "no" }, // optionalIf matches → required relaxed
+      details: { "extra-detail": "ab" }, // but filled + too short → minLength fires
+    });
+
+    await expect(service.run(dto)).rejects.toBeInstanceOf(
+      UnprocessableEntityException,
+    );
+  });
+
+  it("passes and persists the value when filled validly while optional", async () => {
+    const dto = optionalDto({
+      gate: { "wants-extra": "no" },
+      details: { "extra-detail": "abcd" },
+    });
+
+    const result = await service.run(dto);
+    expect(result.normalizedValues.details).toHaveProperty(
+      "extra-detail",
+      "abcd",
+    );
   });
 });

@@ -10,15 +10,19 @@ import {
   OpencrvsProcessor,
   ProcessorFactory,
   SpreadsheetProcessor,
+  WebhookProcessor,
   SUBMISSION_PROCESSORS,
 } from "./processors";
 import { PaymentProcessor } from "./processors/payment/payment.processor";
 import { FormDefinitionsModule } from "../form-definitions/form-definitions.module";
+import { FormConfigModule } from "../form-config/form-config.module";
 import { FormDraftsModule } from "../form-drafts/form-drafts.module";
 import { PaymentsModule } from "../../payments/payments.module";
+import { FilesModule } from "../../files/files.module";
 import { SqsProducerService } from "./sqs/sqs-producer.service";
 import { SqsConsumerService } from "./sqs/sqs-consumer.service";
 import sqsConfig from "../../config/sqs.config";
+import emailConfig from "../../config/email.config";
 import { ExpressionsModule } from "../../expressions/expressions.module";
 import { EmailTemplateService } from "../../email/email-template.service";
 import { EmailBodyBuilder } from "../../email/email-body.builder";
@@ -26,9 +30,12 @@ import { EmailBodyBuilder } from "../../email/email-body.builder";
 @Module({
   imports: [
     FormDefinitionsModule,
+    FormConfigModule,
     FormDraftsModule,
     PaymentsModule,
+    FilesModule,
     ConfigModule.forFeature(sqsConfig),
+    ConfigModule.forFeature(emailConfig),
     ExpressionsModule,
   ],
   controllers: [SubmissionsController],
@@ -43,6 +50,7 @@ import { EmailBodyBuilder } from "../../email/email-body.builder";
     OpencrvsProcessor,
     SpreadsheetProcessor,
     PaymentProcessor,
+    WebhookProcessor,
     {
       provide: SUBMISSION_PROCESSORS,
       useFactory: (
@@ -50,12 +58,14 @@ import { EmailBodyBuilder } from "../../email/email-body.builder";
         opencrvs: OpencrvsProcessor,
         spreadsheet: SpreadsheetProcessor,
         payment: PaymentProcessor,
-      ) => [email, opencrvs, spreadsheet, payment],
+        webhook: WebhookProcessor,
+      ) => [email, opencrvs, spreadsheet, payment, webhook],
       inject: [
         EmailProcessor,
         OpencrvsProcessor,
         SpreadsheetProcessor,
         PaymentProcessor,
+        WebhookProcessor,
       ],
     },
     ProcessorFactory,

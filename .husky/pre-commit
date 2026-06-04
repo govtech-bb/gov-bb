@@ -1,1 +1,12 @@
 npx lint-staged --concurrent false
+
+# Block commits that include secrets. Install gitleaks locally:
+#   macOS:  brew install gitleaks
+#   Linux:  https://github.com/gitleaks/gitleaks#installing
+# To bypass once for a verified false positive: git commit --no-verify
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks protect --staged --redact --config .gitleaks.toml
+else
+  echo "Warning: gitleaks not installed — skipping secrets scan." >&2
+  echo "Install with 'brew install gitleaks' (macOS) to enable." >&2
+fi

@@ -1,0 +1,49 @@
+{
+  "steps": [
+    {
+      "title": "Personal Details",
+      "stepId": "personal-details",
+      "elements": [
+        {
+          "ref": "blocks/personal-information"
+        }
+      ]
+    },
+    {
+      "title": "Physical Address",
+      "stepId": "address",
+      "elements": [
+        {
+          "ref": "blocks/physical-address"
+        }
+      ]
+    },
+    {
+      "title": "Supporting Documents",
+      "stepId": "documents",
+      "elements": [
+        {
+          "ref": "blocks/supporting-documents"
+        }
+      ]
+    },
+    {
+      "title": "Application submitted",
+      "stepId": "submission-confirmation",
+      "elements": [],
+      "nextSteps": [
+        {
+          "title": "What happens next",
+          "content": "We have received your submission. You will receive a confirmation email at the address you provided."
+        }
+      ]
+    }
+  ],
+  "title": "Driver's Licence Renewal",
+  "formId": "driver-licence-renewal",
+  "version": "1.0.0",
+  "createdAt": "2026-01-10T00:00:00.000Z",
+  "updatedAt": "2026-01-10T00:00:00.000Z",
+  "processors": [],
+  "description": "Renew your Barbados driver's licence"
+}

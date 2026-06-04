@@ -4,6 +4,28 @@ import { resolveReference, MISSING } from "./resolve-reference";
 
 const num = (v: unknown): number => Number(v);
 
+// Equality used by `equal` / `notEqual`. These rules apply to text fields as
+// well as numbers, so compare numerically only when both sides are genuine
+// numbers; otherwise fall back to a case-insensitive string comparison (the
+// form client's long-standing behaviour). Coercing both sides with `Number()`
+// — as this used to — turned every text-to-text comparison into `NaN === NaN`
+// and silently failed, so string `equal` rules never matched.
+const looseEqual = (a: unknown, b: unknown): boolean => {
+  const na = Number(a);
+  const nb = Number(b);
+  const bothNumeric =
+    a !== "" &&
+    b !== "" &&
+    a !== null &&
+    b !== null &&
+    a !== undefined &&
+    b !== undefined &&
+    !Number.isNaN(na) &&
+    !Number.isNaN(nb);
+  if (bothNumeric) return na === nb;
+  return String(a ?? "").toLowerCase() === String(b ?? "").toLowerCase();
+};
+
 export const minRunner: RuleRunner = (value, config) => {
   const min = config.value as number;
   const msg = config.error ?? `Must be at least ${min}`;
@@ -55,10 +77,10 @@ export const equalRunner: RuleRunner = (value, config, allValues) => {
   if (resolved === MISSING)
     return config.referenceFieldId !== undefined
       ? null
-      : num(value) === num(config.value)
+      : looseEqual(value, config.value)
         ? null
         : msg;
-  return num(value) === num(resolved) ? null : msg;
+  return looseEqual(value, resolved) ? null : msg;
 };
 
 export const notEqualRunner: RuleRunner = (value, config, allValues) => {
@@ -68,8 +90,8 @@ export const notEqualRunner: RuleRunner = (value, config, allValues) => {
   if (resolved === MISSING)
     return config.referenceFieldId !== undefined
       ? null
-      : num(value) !== num(config.value)
+      : !looseEqual(value, config.value)
         ? null
         : msg;
-  return num(value) !== num(resolved) ? null : msg;
+  return !looseEqual(value, resolved) ? null : msg;
 };

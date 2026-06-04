@@ -14,7 +14,7 @@ When wiring up Jest coverage tooling across the monorepo (Phase 1 of the testing
 | `packages/form-conditions` | branches | 90% | 84.9% |
 | `packages/form-validation` | branches | 90% | 89.2% |
 | `packages/form-types` | functions | 50% | 6.52% |
-| `apps/web` | all | 50–60% | 0–22% |
+| `apps/forms` | all | 50–60% | 0–22% |
 
 Setting thresholds above actuals would cause every CI run to fail immediately, defeating the purpose of the tooling.
 

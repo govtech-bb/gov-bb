@@ -12,6 +12,9 @@
   },
   "references": [
     {
+      "path": "../../packages/database"
+    },
+    {
       "path": "../../packages/form-types"
     },
     {
@@ -19,6 +22,9 @@
     },
     {
       "path": "../../packages/form-conditions"
+    },
+    {
+      "path": "../../packages/registry"
     }
   ],
   "include": ["src/**/*.ts"],

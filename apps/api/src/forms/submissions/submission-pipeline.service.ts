@@ -1,15 +1,15 @@
 import { Injectable } from "@nestjs/common";
 import { evaluateFormConditions } from "@govtech-bb/form-conditions";
-// `validateFields` is re-exported as `validate` from form-validation
-// (see packages/form-validation/src/index.ts).
 import { validate as validateFields } from "@govtech-bb/form-validation";
 import type {
   ServiceContract,
   RepeatableBehaviour,
+  Primitive,
 } from "@govtech-bb/form-types";
 import type { FormDraftEntity } from "../../database/entities/form-draft.entity";
 import { FormDefinitionsService } from "../form-definitions/form-definitions.service";
 import { FormDraftsService } from "../form-drafts/form-drafts.service";
+import { FilesService } from "../../files/files.service";
 import { AppError } from "../../common/errors";
 import { expandSubmission, type StepInstance } from "./submission-expand";
 import {
@@ -31,11 +31,22 @@ export interface PipelineResult {
   normalizedValues: SubmissionValues;
 }
 
+// `optionalIf`: when a field's condition matches, its `required` rule is relaxed
+// so the field may be left empty — but it is never hidden, and all other
+// (format) rules are preserved so they still fire when it is filled. Clone the
+// primitive without its `required` validation; everything else is untouched.
+function relaxRequired(primitive: Primitive): Primitive {
+  if (!primitive.validations?.required) return primitive;
+  const { required: _required, ...rest } = primitive.validations;
+  return { ...primitive, validations: rest };
+}
+
 @Injectable()
 export class SubmissionPipelineService {
   constructor(
     private readonly formDraftsService: FormDraftsService,
     private readonly formDefinitionsService: FormDefinitionsService,
+    private readonly filesService: FilesService,
   ) {}
 
   async run(dto: SubmitDto): Promise<PipelineResult> {
@@ -69,10 +80,21 @@ export class SubmissionPipelineService {
       throw AppError.unprocessable(bundle);
     }
 
+    const fileFieldsByStep = FilesService.collectFileFieldsByStep(contract);
+
+    const fileBundle = await this.filesService.verifySubmissionFiles(
+      fileFieldsByStep,
+      dto.values,
+    );
+    if (Object.keys(fileBundle).length > 0) {
+      throw AppError.unprocessable(fileBundle);
+    }
+
     const normalizedValues = normalizeForStorage({
       instances: expanded.instances,
       hiddenStepIds: cond.hiddenStepIds,
       activeFieldsByInstance: cond.activeFieldsByInstance,
+      fileFieldsByStep,
     });
 
     const auditTrail = this.buildAuditTrail(dto, draft, cond);
@@ -146,9 +168,12 @@ export class SubmissionPipelineService {
       const activeIds =
         cond.activeFieldsByInstance.get(instance.stepId)?.[instance.index] ??
         new Set<string>();
-      const activePrimitives = step.elements.filter((p) =>
-        activeIds.has(p.fieldId),
-      );
+      const optionalIds =
+        cond.optionalFieldsByInstance.get(instance.stepId)?.[instance.index] ??
+        new Set<string>();
+      const activePrimitives = step.elements
+        .filter((p) => activeIds.has(p.fieldId))
+        .map((p) => (optionalIds.has(p.fieldId) ? relaxRequired(p) : p));
 
       const result = validateFields({
         primitives: activePrimitives,

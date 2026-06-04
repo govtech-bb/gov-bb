@@ -6,19 +6,28 @@ import { dynamic } from "./dynamic";
 const emailConfigAuthorSchema = z.object({
   recipientField: dynamic(z.string().min(1)),
   subject: dynamic(z.string().min(1)).optional(),
+  // Per-instance display label (e.g. "Applicant Email" / "MDA Email"). Plain
+  // literal — labels aren't templated. Metadata only; ignored for delivery.
+  label: z.string().min(1).optional(),
 });
 
-const opencrvsConfigAuthorSchema = z.record(
-  z.string(),
-  z.union([z.string(), z.number()]),
-);
+const opencrvsConfigAuthorSchema = z
+  .object({
+    endpoint: z
+      .url()
+      .refine((u) => u.startsWith("https://"), "endpoint must use https")
+      .optional(),
+    token: z.string().min(1).optional(),
+  })
+  .strict();
 
-const spreadsheetConfigAuthorSchema = z.record(
-  z.string(),
-  z.union([z.string(), z.number()]),
-);
+const spreadsheetConfigAuthorSchema = z
+  .object({
+    filename: z.string().min(1).optional(),
+  })
+  .strict();
 
-const paymentConfigAuthorSchema = z.object({
+export const paymentConfigAuthorSchema = z.object({
   provider: z.literal("ezpay"),
   department: z.string().min(1),
   paymentCode: dynamic(z.string().min(1)),
@@ -29,6 +38,15 @@ const paymentConfigAuthorSchema = z.object({
   allowCredit: z.boolean().optional(),
   allowDebit: z.boolean().optional(),
   allowPayce: z.boolean().optional(),
+});
+
+const webhookConfigAuthorSchema = z.object({
+  url: dynamic(z.string().url()),
+  method: z.enum(["POST", "PUT", "PATCH"]).default("POST"),
+  headers: z.record(z.string(), dynamic(z.string())).optional(),
+  secret: z.string().min(16).optional(),
+  signatureHeader: z.string().min(1).default("X-Webhook-Signature"),
+  timeoutMs: z.number().int().positive().max(30_000).default(10_000),
 });
 
 const emailProcessorSchema = z.object({
@@ -47,12 +65,17 @@ const paymentProcessorSchema = z.object({
   type: z.literal("payment"),
   config: paymentConfigAuthorSchema,
 });
+const webhookProcessorSchema = z.object({
+  type: z.literal("webhook"),
+  config: webhookConfigAuthorSchema,
+});
 
 export const processorSchema = z.discriminatedUnion("type", [
   emailProcessorSchema,
   opencrvsProcessorSchema,
   spreadsheetProcessorSchema,
   paymentProcessorSchema,
+  webhookProcessorSchema,
 ]);
 
 export type Processor = z.infer<typeof processorSchema>;
@@ -63,6 +86,8 @@ export type PaymentProcessorConfig = z.infer<typeof paymentConfigAuthorSchema>;
 const emailConfigResolvedSchema = z.object({
   recipientField: z.string().min(1),
   subject: z.string().min(1).optional(),
+  // See emailConfigAuthorSchema — carried verbatim through resolution.
+  label: z.string().min(1).optional(),
 });
 
 const paymentConfigResolvedSchema = z.object({
@@ -78,6 +103,15 @@ const paymentConfigResolvedSchema = z.object({
   allowPayce: z.boolean().optional(),
 });
 
+const webhookConfigResolvedSchema = z.object({
+  url: z.string().url(),
+  method: z.enum(["POST", "PUT", "PATCH"]).default("POST"),
+  headers: z.record(z.string(), z.string()).optional(),
+  secret: z.string().min(16).optional(),
+  signatureHeader: z.string().min(1).default("X-Webhook-Signature"),
+  timeoutMs: z.number().int().positive().max(30_000).default(10_000),
+});
+
 export const resolvedProcessorSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("email"), config: emailConfigResolvedSchema }),
   z.object({ type: z.literal("opencrvs"), config: opencrvsConfigAuthorSchema }),
@@ -86,9 +120,17 @@ export const resolvedProcessorSchema = z.discriminatedUnion("type", [
     config: spreadsheetConfigAuthorSchema,
   }),
   z.object({ type: z.literal("payment"), config: paymentConfigResolvedSchema }),
+  z.object({
+    type: z.literal("webhook"),
+    config: webhookConfigResolvedSchema,
+  }),
 ]);
 
 export type ResolvedProcessor = z.infer<typeof resolvedProcessorSchema>;
 export type ResolvedPaymentProcessorConfig = z.infer<
   typeof paymentConfigResolvedSchema
+>;
+export type WebhookProcessorConfig = z.infer<typeof webhookConfigAuthorSchema>;
+export type ResolvedWebhookProcessorConfig = z.infer<
+  typeof webhookConfigResolvedSchema
 >;

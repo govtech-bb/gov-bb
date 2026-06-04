@@ -22,17 +22,30 @@ export class ProcessorFactory {
     return this.registry.get(type);
   }
 
+  /** Resolve the set of distinct handlers for these configs.
+   *
+   * Returns at most one handler per registered type, preserving first-seen
+   * order. Used by the **gating** path (`submissions.service.ts`), where
+   * single-instance, first-wins semantics are wanted (e.g. payment). Non-gating
+   * dispatch no longer goes through here — it iterates `processors[]` by index
+   * and resolves each entry via `resolveByType` (per-entry dispatch, issue #95).
+   */
   resolve(processorConfigs: Processor[]): ISubmissionProcessor[] {
-    return processorConfigs.flatMap((cfg) => {
+    const seen = new Set<string>();
+    const handlers: ISubmissionProcessor[] = [];
+    for (const cfg of processorConfigs) {
+      if (seen.has(cfg.type)) continue;
       const handler = this.registry.get(cfg.type);
       if (!handler) {
         this.logger.warn(
           `No processor registered for type "${cfg.type}" — skipping`,
         );
-        return [];
+        continue;
       }
-      return [handler];
-    });
+      seen.add(cfg.type);
+      handlers.push(handler);
+    }
+    return handlers;
   }
 
   resolveSplit(processorConfigs: Processor[]): {
