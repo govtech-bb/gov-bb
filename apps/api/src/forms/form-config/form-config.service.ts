@@ -1,4 +1,6 @@
 import { Injectable } from "@nestjs/common";
+import { parseFormConfigBlob } from "@govtech-bb/form-types";
+import type { Processor } from "@govtech-bb/form-types";
 import { FormConfigRepository } from "./form-config.repository";
 import { MdaContactRepository } from "./mda-contact.repository";
 
@@ -38,5 +40,21 @@ export class FormConfigService {
     });
     const email = contact?.mdaEmail;
     return typeof email === "string" && email.length > 0 ? email : null;
+  }
+
+  /**
+   * Resolves the per-form, per-environment payment/notification processors from
+   * `form_config.config` (#716). Returns `[]` for every *resolved miss* — no
+   * config row, a null `config` column, or a blob without a `processors` key —
+   * which is the common case (most forms carry no DB processors).
+   *
+   * A `config` blob that *fails* validation is misconfiguration, not a miss, so
+   * `parseFormConfigBlob` is allowed to throw: silently dropping a payment
+   * processor would turn a paid form free. Mirroring `resolveMdaEmail`, there is
+   * no try/catch, so a DB error propagates as an infra failure (ADR 0032).
+   */
+  async resolveProcessors(formId: string): Promise<Processor[]> {
+    const config = await this.formConfigRepo.findOne({ where: { formId } });
+    return parseFormConfigBlob(config?.config).processors ?? [];
   }
 }

@@ -250,6 +250,84 @@ it("resets the value to an empty string when the Target Field switches to non-bo
   ]);
 });
 
+// #769: optionalIf (relax `required` without hiding the field, #625) must be
+// authorable from the field modal's behaviours editor.
+
+function addBehaviourSelect() {
+  return screen
+    .getAllByRole("combobox")
+    .find((el) =>
+      within(el).queryByRole("option", { name: /add behaviour/i }),
+    ) as HTMLSelectElement;
+}
+
+it("offers Optional If in the Add Behaviour dropdown for field scope", () => {
+  render(
+    <BehavioursEditor
+      scope="field"
+      behaviours={[]}
+      fieldRefs={FIELD_REFS}
+      stepRefs={STEP_REFS}
+      onChange={jest.fn()}
+      currentStepId="step-1"
+    />,
+  );
+  expect(
+    within(addBehaviourSelect()).getByRole("option", { name: "Optional If" }),
+  ).toBeInTheDocument();
+});
+
+it("does not offer Optional If for step scope", () => {
+  renderStepBehaviour([]);
+  expect(
+    within(addBehaviourSelect()).queryByRole("option", { name: "Optional If" }),
+  ).not.toBeInTheDocument();
+});
+
+it("defaults a new optionalIf's Target Step to currentStepId", async () => {
+  const onChange = jest.fn();
+  render(
+    <BehavioursEditor
+      scope="field"
+      behaviours={[]}
+      fieldRefs={FIELD_REFS}
+      stepRefs={STEP_REFS}
+      onChange={onChange}
+      currentStepId="step-2"
+    />,
+  );
+  await userEvent.selectOptions(addBehaviourSelect(), "optionalIf");
+  expect(onChange).toHaveBeenCalledWith([
+    expect.objectContaining({
+      type: "optionalIf",
+      targetStepId: "step-2",
+      targetFieldId: "",
+      operator: "equal",
+      value: "",
+    }),
+  ]);
+});
+
+it("renders the gated step/field/operator/value controls for an optionalIf behaviour", () => {
+  render(
+    <BehavioursEditor
+      scope="field"
+      behaviours={[
+        { type: "optionalIf", targetStepId: "step-1", targetFieldId: "agree", operator: "equal", value: true } as unknown as Behaviour,
+      ]}
+      fieldRefs={FIELD_REFS}
+      stepRefs={STEP_REFS}
+      onChange={jest.fn()}
+      currentStepId="step-1"
+    />,
+  );
+  expect(screen.getByText("Optional If")).toBeInTheDocument();
+  expect(targetStepSelect()).toBeInTheDocument();
+  expect(targetFieldSelect()).toBeEnabled();
+  // Boolean target (show-hide toggle) gets the true/false control. (#565)
+  expect(valueBooleanSelect()).toBeInTheDocument();
+});
+
 // #768: repeatable exposes an optional "Add another label" text param that
 // overrides the runtime's auto-generated "Add another?" radio label. Blank
 // means absent — the editor must never store "".

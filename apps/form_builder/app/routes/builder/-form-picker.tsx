@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { getRecipe, getFormConfig } from "../../server/forms";
-import { deserializeRecipe } from "@govtech-bb/form-builder";
+import { deserializeRecipe, mergeDbProcessors } from "@govtech-bb/form-builder";
 import type { RecipeDraft, RegistryCatalog } from "@govtech-bb/form-builder";
-import type { ServiceContractRecipe } from "@govtech-bb/form-types";
+import type { ServiceContractRecipe, Processor } from "@govtech-bb/form-types";
 import type { FormDefinitionSummary } from "../../types/index";
 import styles from "../../styles/builder.module.css";
 
@@ -53,13 +53,23 @@ export function FormPicker({ forms, loadError, isDirty, catalog, onLoad, onClose
       const [recipe, config] = await Promise.all([
         getRecipe({ data: { formId: form.formId } }) as Promise<ServiceContractRecipe>,
         getFormConfig({ data: { formId: form.formId } }).catch(
-          () => ({ mdaContactId: null }) as { mdaContactId: string | null },
+          () =>
+            ({ mdaContactId: null, processors: null }) as {
+              mdaContactId: string | null;
+              processors: Processor[] | null;
+            },
         ),
       ]);
       const draft = deserializeRecipe(recipe, catalog);
+      // Reconcile the recipe's processors with the DB-resident payment
+      // processors (#716): non-payment come from the recipe, payment from the
+      // DB. When the recipe still carries a payment processor and the DB has
+      // none, mergeDbProcessors lifts it into the editor — re-saving then
+      // persists it to the DB sibling and strips it from the recipe (#750).
       const draftWithConfig: RecipeDraft = {
         ...draft,
         mdaContactId: config.mdaContactId,
+        processors: mergeDbProcessors(draft.processors, config.processors),
       };
       onLoad(draftWithConfig, form.formId, form.version);
       onClose();

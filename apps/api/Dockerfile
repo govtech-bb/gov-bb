@@ -22,6 +22,7 @@ COPY --chown=app:app package.json pnpm-lock.yaml pnpm-workspace.yaml nx.json tsc
 COPY --chown=app:app apps/api/package.json apps/api/
 COPY --chown=app:app apps/landing/package.json apps/landing/
 COPY --chown=app:app apps/forms/package.json apps/forms/
+COPY --chown=app:app packages/database/package.json packages/database/
 COPY --chown=app:app packages/expressions/package.json packages/expressions/
 COPY --chown=app:app packages/form-conditions/package.json packages/form-conditions/
 COPY --chown=app:app packages/form-types/package.json packages/form-types/
@@ -33,6 +34,11 @@ COPY --chown=app:app packages/registry/package.json packages/registry/
 # without re-downloading from the registry. Shared `id` across all four app
 # Dockerfiles so they hit the same store. uid/gid match the app user so it can
 # write to the mount.
+# NOTE: this install intentionally includes devDependencies. The runner stage
+# copies the builder's node_modules wholesale, and the migrate-task's
+# `pnpm migration:run` registers tsconfig-paths — a devDependency of apps/api —
+# at runtime. Switching to --prod here would break in-container migrations
+# with MODULE_NOT_FOUND on tsconfig-paths/register.
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,uid=1001,gid=1001 \
     pnpm install --store-dir=/pnpm/store --frozen-lockfile --ignore-scripts
 
@@ -79,7 +85,19 @@ USER app
 
 COPY --from=builder --chown=app:app /app/dist/apps/api/ ./dist/
 COPY --from=builder --chown=app:app /app/dist/packages/ ./packages/
+# Workspace-package SOURCE overlays for ts-node. The migrate-task runs
+# `pnpm migration:run`, which ts-node-compiles apps/api/typeorm.config.ts →
+# data-source.ts and typechecks every `@govtech-bb/*` import against the
+# tsconfig.base.json `paths` mapping — `packages/<pkg>/src/index.ts`. The
+# compiled packages copied above contain only .js/.d.ts, and a missing paths
+# target makes TypeScript crash with a bare "Debug Failure" (it asserts while
+# building the module-not-found diagnostic). Any package imported from the
+# ts-node-compiled graph needs its src/ overlaid here; runtime require()
+# still resolves to the compiled .js via the package.json `main`.
+#   - form-types: imported (type-only) by the entity declarations
+#   - database: imported by data-source.ts since #721
 COPY --from=builder --chown=app:app /app/packages/form-types/src/ ./packages/form-types/src/
+COPY --from=builder --chown=app:app /app/packages/database/src/ ./packages/database/src/
 COPY --from=builder --chown=app:app /app/node_modules/ ./node_modules/
 
 # pnpm (hoisted mode) keeps workspace-package symlinks in the consumer's

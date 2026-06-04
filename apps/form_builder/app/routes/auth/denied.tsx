@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { logoutSession } from "../../server/auth";
-import { REPO_NAME, REPO_OWNER } from "../../server/github-oauth";
+import { getRepoDisplay } from "../../server/github-repo";
 
 /**
  * Optional `?reason=csrf` tells this page to render recovery-oriented copy for
@@ -14,6 +14,7 @@ const SearchSchema = z.object({
 
 export const Route = createFileRoute("/auth/denied")({
   validateSearch: (search) => SearchSchema.parse(search),
+  loader: () => getRepoDisplay(),
   component: DeniedPage,
 });
 
@@ -33,6 +34,7 @@ async function logoutAndRestart() {
 
 function DeniedPage() {
   const { reason } = Route.useSearch();
+  const { owner, name } = Route.useLoaderData();
   const isCsrf = reason === "csrf";
 
   return (
@@ -69,10 +71,8 @@ function DeniedPage() {
             <h1 style={{ marginTop: 0 }}>Access denied</h1>
             <p>
               You don&rsquo;t have write access to{" "}
-              <code>
-                {REPO_OWNER}/{REPO_NAME}
-              </code>
-              . Ask an admin to add you as a collaborator with at least{" "}
+              <code>{owner ? `${owner}/${name}` : name}</code>. Ask an admin to
+              add you as a collaborator with at least{" "}
               <strong>Write</strong> permission, then sign in again.
             </p>
           </>

@@ -1,10 +1,4 @@
-export const REPO_NAME = "gov-bb";
-
-export function repoOwner(): string {
-  const v = process.env.GITHUB_ORG;
-  if (!v) throw new Error("GITHUB_ORG is not set");
-  return v;
-}
+import { REPO_NAME, repoOwner } from "./github-repo";
 
 const API_BASE = "https://api.github.com";
 

@@ -21,7 +21,7 @@
         {
           "ref": "components/first-name",
           "overrides": {
-            "fieldId": "applicant-firstName",
+            "fieldId": "applicant-first-name",
             "validations": {
               "required": {
                 "error": "First name is required",
@@ -41,7 +41,7 @@
         {
           "ref": "components/last-name",
           "overrides": {
-            "fieldId": "applicant-lastName",
+            "fieldId": "applicant-last-name",
             "validations": {
               "required": {
                 "error": "Last name is required",
@@ -61,7 +61,7 @@
         {
           "ref": "components/date-of-birth",
           "overrides": {
-            "fieldId": "applicant-dateOfBirth",
+            "fieldId": "applicant-date-of-birth",
             "label": "Date of birth",
             "hint": "Used to confirm you meet the age requirements for this opportunity.",
             "validations": {
@@ -258,7 +258,7 @@
         {
           "ref": "components/generic-date",
           "overrides": {
-            "fieldId": "declaration-dateOfDeclaration",
+            "fieldId": "declaration-date-of-declaration",
             "label": "Date of declaration",
             "validations": {
               "required": {

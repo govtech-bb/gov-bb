@@ -46,6 +46,27 @@ export const BEHAVIOUR_TYPE_DESCRIPTORS: BehaviourTypeDescriptor[] = [
     ],
   },
   {
+    // Relaxes `required` when the condition matches, without hiding the
+    // field (#625) — e.g. National ID becomes optional once the "use
+    // passport instead" toggle is on. Same param shape as fieldConditionalOn,
+    // so it inherits the #519 step-gated field picker and the #565
+    // boolean-aware value control.
+    type: "optionalIf",
+    label: "Optional If",
+    scopes: ["field"],
+    params: [
+      {
+        name: "targetStepId",
+        label: "Target Step",
+        kind: "stepRef",
+        optional: true,
+      },
+      { name: "targetFieldId", label: "Target Field", kind: "fieldRef" },
+      { name: "operator", label: "Operator", kind: "operator" },
+      { name: "value", label: "Value", kind: "value" },
+    ],
+  },
+  {
     type: "stepConditionalOn",
     label: "Step Conditional On",
     scopes: ["step"],

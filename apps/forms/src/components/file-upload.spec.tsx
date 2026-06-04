@@ -67,7 +67,6 @@ function renderComponent(overrides: Partial<FileUploadProps> = {}) {
     onFileChange,
     value: null,
     errorMessage: "",
-    validationRules: undefined,
     ...overrides,
   };
   const result = render(<FileUpload {...props} />);
@@ -186,19 +185,36 @@ describe("FileUpload", () => {
 
     await user.upload(fileInput, makeFile("bad.pdf", "application/pdf", 100));
 
-    expect(await screen.findByText(/file upload failed/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/file upload failed/i, {
+        selector: ".govbb-file-upload__status--error",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      /bad\.pdf:.*file upload failed/i,
+    );
     expect(onFileChange).not.toHaveBeenCalled();
   });
 
   it("rejects an oversize file client-side without calling the upload API", async () => {
     const user = userEvent.setup();
     const { onFileChange, fileInput } = renderComponent({
-      validationRules: { maxSize: { value: 1024 } }, // 1KB cap
+      field: {
+        ...baseField,
+        validations: { maxSize: { value: 1024 } }, // 1KB cap
+      },
     });
 
     await user.upload(fileInput, makeFile("huge.pdf", "application/pdf", 5000));
 
-    expect(await screen.findByText(/larger than/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/larger than/i, {
+        selector: ".govbb-file-upload__status--error",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      /huge\.pdf:.*larger than/i,
+    );
     expect(mockUploadFile).not.toHaveBeenCalled();
     expect(onFileChange).not.toHaveBeenCalled();
   });
@@ -320,18 +336,88 @@ describe("FileUpload", () => {
     expect(screen.getByText(/no file type restrictions/i)).toBeInTheDocument();
   });
 
+  it("derives the accept attribute from MIME-type validations", () => {
+    const { fileInput } = renderComponent({
+      field: {
+        ...baseField,
+        validations: {
+          fileTypes: { value: ["image/png", "application/pdf"] },
+        },
+      },
+    });
+    expect(fileInput.accept).toBe("image/png,application/pdf");
+  });
+
+  it("derives the accept attribute from extension validations, adding a leading dot when missing", () => {
+    const { fileInput } = renderComponent({
+      field: {
+        ...baseField,
+        validations: {
+          fileTypes: { value: [".pdf", "docx", "png"] },
+        },
+      },
+    });
+    expect(fileInput.accept).toBe(".pdf,.docx,.png");
+  });
+
+  it("prefers an explicit sharedProps.accept over the derived value", () => {
+    const { fileInput } = renderComponent({
+      sharedProps: { ...baseSharedProps, accept: "image/jpeg" },
+      field: {
+        ...baseField,
+        validations: { fileTypes: { value: ["image/png"] } },
+      },
+    });
+    expect(fileInput.accept).toBe("image/jpeg");
+  });
+
+  it("leaves accept empty when no fileTypes validation is set", () => {
+    const { fileInput } = renderComponent();
+    expect(fileInput.accept).toBe("");
+  });
+
+  // -------------------------------------------------------------------------
+  // 8b. Status announcements for screen readers (WCAG 4.1.3)
+  // -------------------------------------------------------------------------
+  it("announces the chosen file name once the upload is confirmed", async () => {
+    const user = userEvent.setup();
+    mockUploadFile.mockResolvedValue(makeUploaded("report.pdf"));
+    const { fileInput } = renderComponent();
+
+    await user.upload(fileInput, makeFile("report.pdf", "application/pdf", 64));
+
+    const status = screen.getByRole("status");
+    await waitFor(() =>
+      expect(status).toHaveTextContent(/report\.pdf added\./i),
+    );
+  });
+
+  it("announces when a file is removed", async () => {
+    const user = userEvent.setup();
+    renderComponent({ value: [makeUploaded("alpha.pdf")] });
+
+    await user.click(screen.getByRole("button", { name: /remove/i }));
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      /alpha\.pdf removed\./i,
+    );
+  });
+
   // -------------------------------------------------------------------------
   // 9. Max-size display
   // -------------------------------------------------------------------------
-  it("renders the formatted max-size when validationRules.maxSize is provided", () => {
+  it("renders the formatted max-size when validations.maxSize is provided", () => {
     renderComponent({
-      validationRules: { maxSize: { value: 5 * 1024 * 1024 } }, // 5 MB
+      field: {
+        ...baseField,
+        validations: { maxSize: { value: 5 * 1024 * 1024 } }, // 5 MB
+      },
     });
     expect(screen.getByText(/5\.0 MB/i)).toBeInTheDocument();
   });
 
-  it("renders '--' for max size when validationRules has no maxSize", () => {
-    renderComponent({ validationRules: {} });
+  it("renders '--' for max size when validations has no maxSize", () => {
+    renderComponent({ field: { ...baseField, validations: {} } });
     expect(screen.getByText(/Max Size:.*--/i)).toBeInTheDocument();
   });
 

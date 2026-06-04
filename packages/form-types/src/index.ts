@@ -97,7 +97,15 @@ export type {
   RecipeBlockField,
 } from "./form-step.type";
 
-export { processorSchema, resolvedProcessorSchema } from "./processor.type";
+export {
+  processorSchema,
+  resolvedProcessorSchema,
+  paymentConfigAuthorSchema,
+} from "./processor.type";
+
+export { formConfigBlobSchema, parseFormConfigBlob } from "./form-config.type";
+
+export type { FormConfigBlob } from "./form-config.type";
 
 export type {
   Processor,

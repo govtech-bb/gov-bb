@@ -6,8 +6,10 @@ import {
   compareSemver,
 } from "./recipe-file-loader.service";
 import { RegistryService } from "../../registry/registry.service";
+import { FormConfigService } from "../form-config/form-config.service";
 import { AppError } from "../../common/errors";
 import type {
+  Processor,
   ServiceContract,
   ServiceContractRecipe,
 } from "@govtech-bb/form-types";
@@ -23,6 +25,7 @@ export class FormDefinitionsService {
     private readonly registryService: RegistryService,
     private readonly recipeFileLoader: RecipeFileLoaderService,
     private readonly configService: ConfigService,
+    private readonly formConfigService: FormConfigService,
   ) {}
 
   private source(): RecipeSource {
@@ -115,10 +118,31 @@ export class FormDefinitionsService {
     }
 
     const contract = await this.registryService.hydrateForm(recipe);
-    if (includeProcessors) return contract;
+    if (!includeProcessors) {
+      // Client path: processors are stripped, so don't pay the DB cost of
+      // resolving per-form `form_config` processors that would be dropped anyway.
+      const { processors: _processors, ...stripped } = contract;
+      return stripped as ServiceContract;
+    }
 
-    const { processors: _processors, ...stripped } = contract;
-    return stripped as ServiceContract;
+    // Submission path: merge per-form, per-environment processors from
+    // `form_config` over the recipe's (#716). DB wins on payment: the payment
+    // processor is first-wins on duplicate `type: "payment"` entries
+    // (payment.processor.ts), so a pure append would leave the committed recipe
+    // value silently winning. Drop recipe payments first when the DB set has one.
+    const dbProcessors = await this.formConfigService.resolveProcessors(formId);
+    if (dbProcessors.length === 0) return contract;
+
+    const recipeProcessors = (contract.processors ?? []) as Processor[];
+    const dbHasPayment = dbProcessors.some((p) => p.type === "payment");
+    const baseProcessors = dbHasPayment
+      ? recipeProcessors.filter((p) => p.type !== "payment")
+      : recipeProcessors;
+
+    return {
+      ...contract,
+      processors: [...baseProcessors, ...dbProcessors],
+    };
   }
 
   /**

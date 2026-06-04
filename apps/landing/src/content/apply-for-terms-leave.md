@@ -15,7 +15,7 @@ This form is for teachers at public schools in Barbados.
 
 Your leave:
 
-- cannot be more than one year long
+- cannot be more than 1 year long
 - cannot start more than 30 days in the past
 - cannot start more than 18 months in the future
 
@@ -29,17 +29,18 @@ You can apply online. It takes about 10 minutes once you have your information r
 
 ## What the form asks for
 
-You’ll need to give:
-
-1. Your details — your school, name, National ID number and your post or job title.
-2. Your contact number and email address.
-3. Your leave dates — your start and end dates, and whether you have previously been granted term’s leave.
-4. A brief explanation of why you are requesting leave. Your reason is confidential and is shared only with your principal and the Ministry HR team.
+- your details — your school, name, National ID number and your post or job title
+- your contact number and email address
+- your leave dates — your start and end dates, and whether you have previously been granted term’s leave
+- a brief explanation of why you are requesting leave. Your reason is confidential and we share it only with your principal and our HR team
 
 You’ll also need to confirm that your information is true and correct, and that you understand your principal and the Ministry will review the application.
 
 ## After you apply
 
-Your application is sent to your school principal, who recommends it or declines it and forwards it to the Ministry. The Ministry makes the final decision. You’ll be contacted with the outcome within 15 working days and get a copy of your application by email, along with a unique reference number.
+When you submit your application, you will get a copy by email along with a unique reference number. Your principal will
+review it and forwards it to the Ministry with a recommendation to approve or
+decline. The Ministry makes the final decision and contacts you with the
+outcome within 15 working days of receiving your application.
 
-If you need help, you can call +1 (246) 535-0700.
+If you need help, you can call the Ministry of Educational Transformation at 535-0600.
