@@ -46,8 +46,16 @@ COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
-# Payload's importmap step writes into src/; needs to run before build.
-RUN pnpm --filter cms run generate:importmap || true
+# Build the Next.js standalone output. The Payload importmap (src/app/(payload)/
+# admin/importMap.js) is committed to the repo — DO NOT regenerate it here.
+# payload.config.ts gates the s3Storage plugin on process.env.S3_BUCKET, which
+# is only set at runtime (ECS task-def env). Running `payload generate:importmap`
+# at build time would see no S3 plugin and rewrite the file WITHOUT the S3
+# entries, then fail at runtime when the actual plugin activates and looks for
+# components that the freshly-stripped importmap no longer references — silent
+# SSR bail-out, blank admin pages. Developers regenerate locally with the runtime
+# env (e.g. `S3_BUCKET=... pnpm --filter cms run generate:importmap`) and commit
+# the result whenever payload.config.ts changes.
 RUN pnpm --filter cms run build
 
 # ---------- runner: minimal image, non-root user ------------------------------
