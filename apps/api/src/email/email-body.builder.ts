@@ -135,8 +135,7 @@ export class EmailBodyBuilder {
 
     return {
       formTitle: contract.title,
-      // Prefer the human-readable referenceCode; fall back to the raw UUID for
-      // submissions that pre-date the referenceCode feature.
+      // referenceCode is required on the event; ?? is defensive for payloads predating the field.
       submissionId: referenceCode ?? submissionId,
       submittedAt: meta.submittedAt,
       processedAt: new Date().toISOString(),

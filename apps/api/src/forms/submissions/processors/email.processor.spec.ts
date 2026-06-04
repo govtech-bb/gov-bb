@@ -666,9 +666,9 @@ describe("EmailProcessor — reference code in plain-text and fallback HTML bodi
     expect(html).toContain("PPT-20260604-130732-9JZRZC");
   });
 
-  it("falls back referenceCode to submissionId in the text body when referenceCode is absent", async () => {
-    // Simulate an older in-flight event reconstructed by the SQS consumer
-    // from a pre-referenceCode message (consumer sets referenceCode = submissionId).
+  it("renders referenceCode in the text body when consumer has coalesced it to submissionId (legacy-event path)", async () => {
+    // The SQS consumer sets referenceCode = submissionId for pre-referenceCode
+    // payloads; verify that coalesced value is rendered correctly in the email.
     const bodyBuilder = makeBodyBuilder();
     (bodyBuilder.build as jest.Mock).mockRejectedValue(new Error("DB down"));
     const processor = new EmailProcessor(
@@ -679,7 +679,7 @@ describe("EmailProcessor — reference code in plain-text and fallback HTML bodi
       makeFormConfigService(),
     );
 
-    // Override referenceCode to equal submissionId (the consumer fallback case).
+    // referenceCode === submissionId — this is what the consumer sets for legacy events.
     const payload = makePayload({}, {}, { referenceCode: "sub-001" });
 
     await processor.process(payload);
