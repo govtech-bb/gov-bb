@@ -2,11 +2,11 @@ import "../../styles/builder.global.css";
 import { createFileRoute } from "@tanstack/react-router";
 import { useReducer, useState, useMemo } from "react";
 import { getCatalogFn } from "../../server/registry";
-import { submitRecipe, updateRecipe, rekeyRecipe, deleteForm, disableForm, enableForm, getFormConfig } from "../../server/forms";
+import { submitRecipe, updateRecipe, rekeyRecipe, deleteForm, disableForm, enableForm } from "../../server/forms";
 import { createMdaContact } from "../../server/mda-contacts";
 import { publishRecipe, getPublishBaseBranch, eraseRecipe } from "../../server/publish";
 import { validateRecipe, previewRecipe } from "../../server/registry";
-import { serializeRecipeDraft, findRecipeIdCollisions, formatCollisionIssues, resolveFieldIds } from "@govtech-bb/form-builder";
+import { serializeRecipeDraft, findRecipeIdCollisions, formatCollisionIssues, resolveFieldIds, extractDbProcessors } from "@govtech-bb/form-builder";
 import { bumpMinor, bumpPatch } from "../../lib/version";
 import type { ServiceContract, ServiceContractRecipe } from "@govtech-bb/form-types";
 import { KEBAB_ID_PATTERN, KEBAB_ID_ERROR } from "@govtech-bb/form-types";
@@ -381,15 +381,22 @@ function BuilderPage() {
       // API upserts it into form_config. Only sent when the draft carries a
       // value (undefined → key omitted, so an untouched selection isn't cleared).
       const mdaContactId = draft.mdaContactId;
+      // Payment processors are a DB-only sibling (#716): pull them out of the
+      // draft and send them in `processors` (the serializer already strips them
+      // from `recipe`). `null` when there are none — clears the DB key. A re-key
+      // moves the whole form_config row, so it doesn't resend the siblings.
+      const processors = extractDbProcessors(draft.processors);
       if (isRekey) {
         await rekeyRecipe({ data: { oldFormId, recipe } });
       } else if (isInPlaceUpdate) {
         await updateRecipe({
-          data: { formId: oldFormId, recipe, mdaContactId },
+          data: { formId: oldFormId, recipe, mdaContactId, processors },
         });
       } else {
         // Tells the API to enforce formId uniqueness for a genuine create.
-        await submitRecipe({ data: { recipe, isNew: isCreate, mdaContactId } });
+        await submitRecipe({
+          data: { recipe, isNew: isCreate, mdaContactId, processors },
+        });
       }
       setSubmitSuccess(true);
       setLastSaveStatus("submitted");

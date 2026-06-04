@@ -72,14 +72,20 @@ afterEach(() => {
 // A DataSource whose `transaction` runs the callback against a fake manager.
 // `configUpsert` captures the form_config upsert; `formConfigRows` feeds the
 // GET .../config lookup. The recipe save path goes through repos keyed by
-// entity name.
-function fakeDataSource(opts: { formConfigRows?: unknown[] } = {}) {
-  const { formConfigRows = [] } = opts;
+// entity name. `managerConfigRow` is the row the transaction's FormConfigEntity
+// repo returns from findOne (the existing blob the processors merge reads).
+function fakeDataSource(
+  opts: { formConfigRows?: unknown[]; managerConfigRow?: unknown } = {},
+) {
+  const { formConfigRows = [], managerConfigRow = null } = opts;
   const configUpsert = jest.fn(async () => undefined);
   const formDefSave = jest.fn(async (e: unknown) => e);
+  // The in-transaction form_config repo's findOne — the existing-blob read the
+  // processors merge does before writing. Distinct from the GET path's findOne.
+  const managerConfigFindOne = jest.fn(async () => managerConfigRow);
 
-  // Repo factory keyed off the entity's class name so the recipe path and the
-  // form_config path get distinct fakes.
+  // Repo factory for the live (non-transaction) DataSource — used by the GET
+  // .../config lookup.
   function repoFor(entity: any) {
     if (entity?.name === "FormConfigEntity") {
       return {
@@ -94,8 +100,25 @@ function fakeDataSource(opts: { formConfigRows?: unknown[] } = {}) {
     };
   }
 
+  // Repo factory for the transaction manager: the FormConfigEntity repo here
+  // captures the merge read (managerConfigFindOne) and the upsert (configUpsert,
+  // shared so existing mdaContactId assertions still see the call).
+  function managerRepoFor(entity: any) {
+    if (entity?.name === "FormConfigEntity") {
+      return {
+        upsert: configUpsert,
+        findOne: managerConfigFindOne,
+      };
+    }
+    return {
+      findOne: jest.fn(async () => null),
+      create: jest.fn((e: unknown) => e),
+      save: formDefSave,
+    };
+  }
+
   const manager = {
-    getRepository: jest.fn(repoFor),
+    getRepository: jest.fn(managerRepoFor),
     query: jest.fn(async () => []),
   };
 
@@ -115,7 +138,31 @@ function fakeDataSource(opts: { formConfigRows?: unknown[] } = {}) {
       cb(manager),
     ),
   };
-  return { ds, manager, configUpsert, formDefSave, query };
+  return {
+    ds,
+    manager,
+    configUpsert,
+    managerConfigFindOne,
+    formDefSave,
+    query,
+  };
+}
+
+// A minimal valid author-time payment processor for the merge/validate tests.
+function paymentProcessor(over: Record<string, unknown> = {}) {
+  return {
+    type: "payment",
+    config: {
+      provider: "ezpay",
+      department: "registry",
+      paymentCode: "MARRIAGE",
+      amount: 100,
+      description: "Marriage license fee",
+      customerEmailPath: "step-1.email",
+      customerNamePath: "step-1.name",
+      ...over,
+    },
+  };
 }
 
 describe("createFormHandler — form_config upsert", () => {
@@ -223,7 +270,7 @@ describe("getFormConfigHandler", () => {
     );
 
     expect(res.statusCode).toBe(200);
-    expect(res.body).toEqual({ mdaContactId: "c-1" });
+    expect(res.body).toEqual({ mdaContactId: "c-1", processors: null });
   });
 
   it("returns null mdaContactId when no row exists", async () => {
@@ -234,7 +281,52 @@ describe("getFormConfigHandler", () => {
     await getFormConfigHandler(mockReq({}, { formId: "no-config-form" }), res);
 
     expect(res.statusCode).toBe(200);
-    expect(res.body).toEqual({ mdaContactId: null });
+    expect(res.body).toEqual({ mdaContactId: null, processors: null });
+  });
+
+  it("returns the stored processors from config.processors when present", async () => {
+    const procs = [paymentProcessor()];
+    const { ds } = fakeDataSource({
+      formConfigRows: [
+        {
+          formId: "marriage-license",
+          mdaContactId: null,
+          config: { processors: procs },
+        },
+      ],
+    });
+    getDataSourceMock.mockResolvedValue(ds);
+
+    const res = mockRes();
+    await getFormConfigHandler(
+      mockReq({}, { formId: "marriage-license" }),
+      res,
+    );
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({ mdaContactId: null, processors: procs });
+  });
+
+  it("returns null processors when the row has a config without processors", async () => {
+    const { ds } = fakeDataSource({
+      formConfigRows: [
+        {
+          formId: "marriage-license",
+          mdaContactId: "c-1",
+          config: { somethingElse: true },
+        },
+      ],
+    });
+    getDataSourceMock.mockResolvedValue(ds);
+
+    const res = mockRes();
+    await getFormConfigHandler(
+      mockReq({}, { formId: "marriage-license" }),
+      res,
+    );
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({ mdaContactId: "c-1", processors: null });
   });
 
   it("returns 500 on a DB error", async () => {
@@ -242,5 +334,196 @@ describe("getFormConfigHandler", () => {
     const res = mockRes();
     await getFormConfigHandler(mockReq({}, { formId: "x" }), res);
     expect(res.statusCode).toBe(500);
+  });
+});
+
+describe("createFormHandler — processors blob merge", () => {
+  it("upserts processors into form_config.config when a non-empty array is given", async () => {
+    const procs = [paymentProcessor()];
+    const { ds, configUpsert } = fakeDataSource();
+    getDataSourceMock.mockResolvedValue(ds);
+
+    const res = mockRes();
+    await createFormHandler(
+      mockReq({ recipe: recipe(), isNew: true, processors: procs }),
+      res,
+    );
+
+    expect(res.statusCode).toBe(201);
+    expect(configUpsert).toHaveBeenCalledWith(
+      { formId: "marriage-license", config: { processors: procs } },
+      ["formId"],
+    );
+  });
+
+  it("merges processors into an existing config blob, preserving unknown keys", async () => {
+    const procs = [paymentProcessor()];
+    const { ds, configUpsert } = fakeDataSource({
+      managerConfigRow: {
+        formId: "marriage-license",
+        config: { futureFlag: 42, processors: [{ type: "stale" }] },
+      },
+    });
+    getDataSourceMock.mockResolvedValue(ds);
+
+    const res = mockRes();
+    await createFormHandler(
+      mockReq({ recipe: recipe(), isNew: true, processors: procs }),
+      res,
+    );
+
+    expect(res.statusCode).toBe(201);
+    expect(configUpsert).toHaveBeenCalledWith(
+      {
+        formId: "marriage-license",
+        config: { futureFlag: 42, processors: procs },
+      },
+      ["formId"],
+    );
+  });
+
+  it("clears the processors key (preserving the rest of the blob) on an empty array", async () => {
+    const { ds, configUpsert } = fakeDataSource({
+      managerConfigRow: {
+        formId: "marriage-license",
+        config: { futureFlag: 7, processors: [paymentProcessor()] },
+      },
+    });
+    getDataSourceMock.mockResolvedValue(ds);
+
+    const res = mockRes();
+    await createFormHandler(
+      mockReq({ recipe: recipe(), isNew: true, processors: [] }),
+      res,
+    );
+
+    expect(res.statusCode).toBe(201);
+    expect(configUpsert).toHaveBeenCalledWith(
+      { formId: "marriage-license", config: { futureFlag: 7 } },
+      ["formId"],
+    );
+  });
+
+  it("clears the processors key on an explicit null", async () => {
+    const { ds, configUpsert } = fakeDataSource({
+      managerConfigRow: {
+        formId: "marriage-license",
+        config: { processors: [paymentProcessor()] },
+      },
+    });
+    getDataSourceMock.mockResolvedValue(ds);
+
+    const res = mockRes();
+    await createFormHandler(
+      mockReq({ recipe: recipe(), isNew: true, processors: null }),
+      res,
+    );
+
+    expect(res.statusCode).toBe(201);
+    expect(configUpsert).toHaveBeenCalledWith(
+      { formId: "marriage-license", config: {} },
+      ["formId"],
+    );
+  });
+
+  it("leaves the config blob untouched when processors is absent", async () => {
+    const { ds, configUpsert, managerConfigFindOne } = fakeDataSource();
+    getDataSourceMock.mockResolvedValue(ds);
+
+    const res = mockRes();
+    await createFormHandler(mockReq({ recipe: recipe(), isNew: true }), res);
+
+    expect(res.statusCode).toBe(201);
+    // No processors read and no config upsert when the sibling is absent.
+    expect(managerConfigFindOne).not.toHaveBeenCalled();
+    expect(configUpsert).not.toHaveBeenCalled();
+  });
+
+  it("rejects an invalid processors array with a 4xx and writes nothing", async () => {
+    const { ds, configUpsert, formDefSave } = fakeDataSource();
+    getDataSourceMock.mockResolvedValue(ds);
+
+    const res = mockRes();
+    await createFormHandler(
+      mockReq({
+        recipe: recipe(),
+        isNew: true,
+        // Missing required payment fields => schema rejects.
+        processors: [{ type: "payment", config: { provider: "ezpay" } }],
+      }),
+      res,
+    );
+
+    expect(res.statusCode).toBe(400);
+    // Transaction atomicity: nothing else was written.
+    expect(formDefSave).not.toHaveBeenCalled();
+    expect(configUpsert).not.toHaveBeenCalled();
+    expect(ds.transaction).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateFormHandler — processors blob merge", () => {
+  it("upserts processors into form_config.config when a non-empty array is given", async () => {
+    const procs = [paymentProcessor()];
+    const { ds, configUpsert } = fakeDataSource();
+    getDataSourceMock.mockResolvedValue(ds);
+
+    const res = mockRes();
+    await updateFormHandler(
+      mockReq(
+        { recipe: recipe(), processors: procs },
+        { formId: "marriage-license" },
+      ),
+      res,
+    );
+
+    expect(res.statusCode).toBe(200);
+    expect(configUpsert).toHaveBeenCalledWith(
+      { formId: "marriage-license", config: { processors: procs } },
+      ["formId"],
+    );
+  });
+
+  it("rejects an invalid processors array with a 4xx and writes nothing", async () => {
+    const { ds, configUpsert } = fakeDataSource();
+    getDataSourceMock.mockResolvedValue(ds);
+
+    const res = mockRes();
+    await updateFormHandler(
+      mockReq(
+        { recipe: recipe(), processors: [{ type: "payment", config: {} }] },
+        { formId: "marriage-license" },
+      ),
+      res,
+    );
+
+    expect(res.statusCode).toBe(400);
+    expect(configUpsert).not.toHaveBeenCalled();
+    expect(ds.transaction).not.toHaveBeenCalled();
+  });
+
+  it("clears the processors key on an empty array", async () => {
+    const { ds, configUpsert } = fakeDataSource({
+      managerConfigRow: {
+        formId: "marriage-license",
+        config: { processors: [paymentProcessor()] },
+      },
+    });
+    getDataSourceMock.mockResolvedValue(ds);
+
+    const res = mockRes();
+    await updateFormHandler(
+      mockReq(
+        { recipe: recipe(), processors: [] },
+        { formId: "marriage-license" },
+      ),
+      res,
+    );
+
+    expect(res.statusCode).toBe(200);
+    expect(configUpsert).toHaveBeenCalledWith(
+      { formId: "marriage-license", config: {} },
+      ["formId"],
+    );
   });
 });

@@ -197,6 +197,35 @@ describe("rekeyFormHandler — POST /builder/forms/:formId/rekey", () => {
     expect(configMove?.[1]).toEqual(["birth-registration", "birth-reg-old"]);
   });
 
+  it("carries the form_config blob (incl. processors) to the new ID via the row move (#716)", async () => {
+    // The whole form_config row — mda_contact_id AND the `config` JSONB blob
+    // that now holds payment processors — moves with a single
+    // `UPDATE form_config SET form_id`. There's no per-key copy, so the blob
+    // survives a re-key untouched; assert the row-move fires keyed by form_id.
+    const { ds, query } = fakeDataSource({
+      oldRows: [{ id: "row1", version: "1.0.0", published_at: null }],
+      existingNewVersion: [{ id: "row1" }],
+    });
+    getDataSourceMock.mockResolvedValue(ds);
+    const res = mockRes();
+
+    await rekeyFormHandler(
+      mockReq({ formId: "birth-reg-old" }, { recipe: recipe() }),
+      res,
+    );
+
+    expect(res.statusCode).toBe(200);
+    const configMove = query.mock.calls.find((c) =>
+      /UPDATE form_config SET form_id/i.test(c[0] as string),
+    );
+    // The move is whole-row (only `SET form_id = ...`), so the processors blob
+    // is carried implicitly — the SQL never enumerates the `config` JSONB
+    // column, which would risk overwriting it.
+    expect(configMove).toBeDefined();
+    expect(configMove?.[0] as string).not.toMatch(/SET\s+config/i);
+    expect(configMove?.[1]).toEqual(["birth-registration", "birth-reg-old"]);
+  });
+
   it("allows a re-key whose title matches only the form's own prior record", async () => {
     const { ds } = fakeDataSource({
       oldRows: [{ id: "row1", version: "1.0.0", published_at: null }],

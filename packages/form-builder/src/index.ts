@@ -31,6 +31,10 @@ export type { ValidationRuleDescriptor } from "./behaviors/validation-builder";
 // Processor authoring defaults
 export { makeDefaultProcessor } from "./processor-defaults";
 
+// Payment processors as a DB sibling (#716): reconcile recipe + DB on open,
+// split them back apart on save.
+export { mergeDbProcessors, extractDbProcessors } from "./processor-config";
+
 // Core utilities
 export { hydrateForm, collectUnknownRefs } from "./resolution";
 export { UnknownRefError } from "./errors";

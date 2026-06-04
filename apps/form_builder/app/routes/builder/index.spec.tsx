@@ -35,7 +35,7 @@ const submitRecipe = jest.fn();
 // Always resolve to "no selection" by default so the picker's Promise.all
 // load path works; individual tests can override per case.
 const getFormConfig = jest.fn((..._args: unknown[]) =>
-  Promise.resolve({ mdaContactId: null }),
+  Promise.resolve({ mdaContactId: null, processors: null }),
 );
 jest.mock("../../server/forms", () => ({
   submitRecipe: (...args: unknown[]) => submitRecipe(...args),

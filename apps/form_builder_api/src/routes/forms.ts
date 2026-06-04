@@ -4,7 +4,9 @@ import { z } from "zod";
 import { FormDefinitionEntity, FormConfigEntity } from "@govtech-bb/database";
 import {
   serviceContractRecipeSchema,
+  processorSchema,
   type ServiceContractRecipe,
+  type Processor,
 } from "@govtech-bb/form-types";
 import { getDataSource } from "../db.js";
 import {
@@ -47,6 +49,77 @@ async function upsertFormConfig(
   await manager
     .getRepository(FormConfigEntity)
     .upsert({ formId, mdaContactId }, ["formId"]);
+}
+
+// The save/update body may also carry a sibling `processors` array, the
+// author-time payment (and other) processor config that now lives in
+// `form_config.config` rather than the recipe (#716, ADR 0033). Unlike
+// mdaContactId, an invalid value is NOT silently dropped: silently discarding a
+// payment processor would make a paid form free, so a malformed array fails the
+// request with a 400. Tri-state, mirroring mdaContactId:
+//   - absent/undefined  → no write (leave the blob's processors key alone)
+//   - `null` or `[]`     → clear the processors key
+//   - non-empty array    → validate against processorSchema[] and set
+const processorsSchema = z.array(processorSchema);
+
+// Outcome of reading the optional `processors` sibling off a request body:
+//   - { kind: "absent" }   → field not present; leave the blob untouched
+//   - { kind: "clear" }    → null/[] supplied; delete the processors key
+//   - { kind: "set", ... } → a validated non-empty array to write
+//   - { kind: "invalid" }  → present but failed validation; caller returns 400
+type ReadProcessorsResult =
+  | { kind: "absent" }
+  | { kind: "clear" }
+  | { kind: "set"; processors: Processor[] }
+  | { kind: "invalid"; message: string };
+
+function readProcessors(body: unknown): ReadProcessorsResult {
+  if (typeof body !== "object" || body === null || !("processors" in body)) {
+    return { kind: "absent" };
+  }
+  const raw = (body as { processors: unknown }).processors;
+  // `null` and `[]` both mean "clear the processors key" — keeping the parallel
+  // with mdaContactId's null-clears semantics.
+  if (raw === null) return { kind: "clear" };
+  const parsed = processorsSchema.safeParse(raw);
+  if (!parsed.success) {
+    const detail = parsed.error.issues
+      .map((i) => `${i.path.join(".") || "processors"}: ${i.message}`)
+      .join("; ");
+    return { kind: "invalid", message: detail || "Invalid processors" };
+  }
+  if (parsed.data.length === 0) return { kind: "clear" };
+  return { kind: "set", processors: parsed.data };
+}
+
+// Merge the processors change into the per-form `config` JSONB blob within the
+// recipe-save transaction. Reads the current blob first and spreads it so
+// unknown future keys survive (the blob is a shared envelope — ADR 0033); only
+// the `processors` key is set or deleted. `result.kind` is guaranteed to be
+// "set" or "clear" here (the handler returns 400 before reaching this on
+// "invalid", and skips the call entirely on "absent").
+async function upsertFormConfigBlob(
+  manager: EntityManager,
+  formId: string,
+  result: { kind: "set"; processors: Processor[] } | { kind: "clear" },
+): Promise<void> {
+  const repo = manager.getRepository(FormConfigEntity);
+  const existing = await repo.findOne({ where: { formId } });
+  const blob: Record<string, unknown> = { ...(existing?.config ?? {}) };
+  if (result.kind === "set") {
+    blob.processors = result.processors;
+  } else {
+    delete blob.processors;
+  }
+  // The `config` column is a free-form JSONB blob, so TypeORM's deep-partial
+  // upsert type fights its `Record<string, unknown>` index signature:
+  // _QueryDeepPartialEntity can't represent an index signature, so no concrete
+  // type (not the entity's own column type) satisfies it. We persist the whole
+  // blob as a single value (never patching individual JSONB keys server-side),
+  // so an `any` on just the config field is the narrowest workable escape hatch
+  // — matching the file's existing `err: any` style.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await repo.upsert({ formId, config: blob as any }, ["formId"]);
 }
 
 // Upstream apps/api base URL for the published-recipe proxy. Falls back to the
@@ -254,10 +327,12 @@ formsRouter.get("/:formId", async (req, res) => {
   }
 });
 
-// GET /builder/forms/:formId/config — the per-form config (form_config). Today
-// that's just the linked MDA contact id; returns null when no row exists (the
-// form has never had a contact set). Distinct path depth from "/:formId" so the
-// router never confuses the two.
+// GET /builder/forms/:formId/config — the per-form config (form_config): the
+// linked MDA contact id and the payment processors that now live in the
+// `config` JSONB blob (#716). Both default to `null` when absent (no row, or a
+// blob without a processors key), mirroring how mdaContactId reports "unset" —
+// the builder treats a `null` processors the same as none. Distinct path depth
+// from "/:formId" so the router never confuses the two.
 export async function getFormConfigHandler(
   req: Request,
   res: Response,
@@ -267,7 +342,11 @@ export async function getFormConfigHandler(
     const row = await ds.getRepository(FormConfigEntity).findOne({
       where: { formId: String(req.params.formId) },
     });
-    res.json({ mdaContactId: row?.mdaContactId ?? null });
+    const processors = row?.config?.processors;
+    res.json({
+      mdaContactId: row?.mdaContactId ?? null,
+      processors: Array.isArray(processors) ? processors : null,
+    });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -372,6 +451,14 @@ export async function createFormHandler(
     // a failed config upsert must not leave an orphaned recipe row, and vice
     // versa.
     const mdaContactId = readMdaContactId(req.body);
+    // Validate the processors sibling *before* the transaction so an invalid
+    // array fails the whole request with a 400 (writing nothing) rather than
+    // being silently dropped — see readProcessors.
+    const processors = readProcessors(req.body);
+    if (processors.kind === "invalid") {
+      res.status(400).json({ error: processors.message });
+      return;
+    }
     await ds.transaction(async (manager) => {
       const txRepo = manager.getRepository(FormDefinitionEntity);
       await txRepo.save(
@@ -384,6 +471,9 @@ export async function createFormHandler(
       );
       if (mdaContactId !== undefined) {
         await upsertFormConfig(manager, recipe.formId, mdaContactId);
+      }
+      if (processors.kind !== "absent") {
+        await upsertFormConfigBlob(manager, recipe.formId, processors);
       }
     });
     res.status(201).json({ ok: true });
@@ -443,6 +533,13 @@ export async function updateFormHandler(
     }
     // Update the recipe and (when supplied) the per-form config atomically.
     const mdaContactId = readMdaContactId(req.body);
+    // As in createFormHandler: validate processors before the transaction so an
+    // invalid array 400s without writing anything.
+    const processors = readProcessors(req.body);
+    if (processors.kind === "invalid") {
+      res.status(400).json({ error: processors.message });
+      return;
+    }
     await ds.transaction(async (manager) => {
       await manager.query(
         `UPDATE form_definitions SET schema = $1 WHERE id = $2`,
@@ -453,6 +550,13 @@ export async function updateFormHandler(
           manager,
           String(req.params.formId),
           mdaContactId,
+        );
+      }
+      if (processors.kind !== "absent") {
+        await upsertFormConfigBlob(
+          manager,
+          String(req.params.formId),
+          processors,
         );
       }
     });
