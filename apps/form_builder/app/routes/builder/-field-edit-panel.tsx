@@ -55,6 +55,10 @@ interface OverrideFormProps {
   // Validations declared on the base primitive — surfaced by the validation
   // editor as inherited, overridable rows (#618).
   baseValidations?: ValidationRule;
+  // `ui` hints declared on the base primitive — the per-key fallback the ui
+  // editor collapses to, so a registry default (e.g. National ID's
+  // `width: "short"`) is shown truthfully and overriding it persists (#789).
+  baseUi?: PrimitiveUI;
 }
 
 const OPTIONS_HTML_TYPES: ReadonlySet<HtmlTypes> = new Set([
@@ -69,8 +73,10 @@ function isRequiredRule(rule: { value?: unknown } | undefined): boolean {
 
 // Per-key presentation metadata for the schema-driven `ui` editor. Keys absent
 // here fall back to a humanized key name; enum keys may declare the `default`
-// value that collapses the key to `undefined` (no persistence). Boolean keys
-// need no entry beyond a label.
+// value that collapses the key to `undefined` (no persistence). A `ui` default
+// declared on the base primitive itself (e.g. National ID's `width: "short"`)
+// takes precedence over the global default here (#789). Boolean keys need no
+// entry beyond a label.
 const UI_FIELD_META: Partial<
   Record<keyof PrimitiveUI, { label: string; default?: string }>
 > = {
@@ -88,6 +94,7 @@ type UiInnerSchema = { def: { type: string }; options?: string[] };
 
 interface UiPropertiesEditorProps {
   ui: PrimitiveUI | undefined;
+  baseUi: PrimitiveUI | undefined;
   onChange: (ui: PrimitiveUI | undefined) => void;
   fg: (isOverridden: boolean) => string;
 }
@@ -95,17 +102,18 @@ interface UiPropertiesEditorProps {
 // Schema-driven editor for a field's presentation `ui` object: it reads the
 // keys off `primitiveUISchema` and renders one control per key (checkbox for
 // booleans, native <select> for enums), so existing and future `ui` keys
-// surface with no per-key panel wiring. Setting a key to its default/unchecked
-// value drops it, and `ui` collapses to `undefined` once nothing is set, per
-// the override contract (ADR 0013/0014).
-function UiPropertiesEditor({ ui, onChange, fg }: UiPropertiesEditorProps) {
+// surface with no per-key panel wiring. Setting a key to its per-key default —
+// the base primitive's `ui` value when declared, the global UI_FIELD_META
+// default otherwise (#789) — drops it, and `ui` collapses to `undefined` once
+// nothing is set, per the override contract (ADR 0013/0014).
+function UiPropertiesEditor({ ui, baseUi, onChange, fg }: UiPropertiesEditorProps) {
   function setKey(key: keyof PrimitiveUI, value: string | boolean | undefined) {
-    // A key is dropped only when explicitly cleared — `false` (checkbox off) or
-    // `undefined` (enum set to its default). We deliberately avoid `value ||
-    // undefined`: that would also drop a future falsy-but-valid value (e.g. `0`
-    // or `""`), which would silently break the editor's schema-driven contract.
-    const dropped = value === false || value === undefined;
-    const nextUi = { ...ui, [key]: dropped ? undefined : value };
+    // A key is dropped only when explicitly cleared back to its default
+    // (`undefined` from the control's onChange). We deliberately avoid `value
+    // || undefined`: that would also drop a falsy-but-valid value — `false` is
+    // persisted when it overrides a base `true` — which would silently break
+    // the editor's schema-driven contract.
+    const nextUi = { ...ui, [key]: value };
     const hasValue = Object.values(nextUi).some((v) => v !== undefined);
     onChange(hasValue ? (nextUi as PrimitiveUI) : undefined);
   }
@@ -121,14 +129,17 @@ function UiPropertiesEditor({ ui, onChange, fg }: UiPropertiesEditorProps) {
         const label = meta?.label ?? humanize(key);
 
         if (inner.def.type === "boolean") {
-          const checked = ui?.[k] === true;
+          const fallback = baseUi?.[k] === true;
+          const checked = (ui?.[k] as boolean | undefined) ?? fallback;
           return (
-            <div key={key} className={`${fg(checked)} ${styles.checkRow}`}>
+            <div key={key} className={`${fg(ui?.[k] !== undefined)} ${styles.checkRow}`}>
               <label>
                 <input
                   type="checkbox"
                   checked={checked}
-                  onChange={(e) => setKey(k, e.target.checked)}
+                  onChange={(e) =>
+                    setKey(k, e.target.checked === fallback ? undefined : e.target.checked)
+                  }
                 />
                 {" "}{label}
               </label>
@@ -138,7 +149,8 @@ function UiPropertiesEditor({ ui, onChange, fg }: UiPropertiesEditorProps) {
 
         if (inner.def.type === "enum") {
           const options = inner.options ?? [];
-          const fallback = meta?.default ?? options[0];
+          const fallback =
+            (baseUi?.[k] as string | undefined) ?? meta?.default ?? options[0];
           const current = (ui?.[k] as string | undefined) ?? fallback;
           const selectId = `ui-${key}`;
           return (
@@ -177,6 +189,7 @@ function OverrideForm({
   defaultMultiple,
   defaultRequired = false,
   baseValidations,
+  baseUi,
 }: OverrideFormProps) {
   const [fieldIdError, setFieldIdError] = useState("");
   const fieldIdDuplicate =
@@ -263,6 +276,7 @@ function OverrideForm({
       </div>
       <UiPropertiesEditor
         ui={overrides.ui}
+        baseUi={baseUi}
         onChange={(ui) => patch({ ui })}
         fg={fg}
       />
@@ -487,6 +501,7 @@ export function FieldEditPanel({
                     defaultMultiple={element.multiple}
                     defaultRequired={isRequiredRule(element.validations?.required)}
                     baseValidations={element.validations}
+                    baseUi={element.ui}
                   />
                 </div>
               );
@@ -538,6 +553,7 @@ export function FieldEditPanel({
             baseValidations={
               item && "primitive" in item ? item.primitive.validations : undefined
             }
+            baseUi={item && "primitive" in item ? item.primitive.ui : undefined}
             />
           </>
         )}
