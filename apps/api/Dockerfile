@@ -34,6 +34,11 @@ COPY --chown=app:app packages/registry/package.json packages/registry/
 # without re-downloading from the registry. Shared `id` across all four app
 # Dockerfiles so they hit the same store. uid/gid match the app user so it can
 # write to the mount.
+# NOTE: this install intentionally includes devDependencies. The runner stage
+# copies the builder's node_modules wholesale, and the migrate-task's
+# `pnpm migration:run` registers tsconfig-paths — a devDependency of apps/api —
+# at runtime. Switching to --prod here would break in-container migrations
+# with MODULE_NOT_FOUND on tsconfig-paths/register.
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,uid=1001,gid=1001 \
     pnpm install --store-dir=/pnpm/store --frozen-lockfile --ignore-scripts
 
