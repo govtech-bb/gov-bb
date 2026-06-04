@@ -8,6 +8,7 @@ function makeEvent(
 ): SubmissionCreatedEvent {
   return {
     submissionId: "sub-1",
+    referenceCode: "YTH-20260604-130732-000001",
     formId: "youth-opportunity-byac",
     formVersion: "1.0.0",
     idempotencyKey: "idem-1",

@@ -14,6 +14,10 @@ import type {
  */
 export interface SubmissionSqsMessage {
   submissionId: string;
+  /** Human-readable reference code (e.g. "JPP-20260604-130732-9JZRZC").
+   *  Optional so messages enqueued before this field was added still parse;
+   *  consumers fall back to `submissionId` when absent. */
+  referenceCode?: string;
   processorType: string;
   /** Position of the addressed entry within `processors[]`. */
   processorIndex: number;

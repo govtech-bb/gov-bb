@@ -79,6 +79,7 @@ export class SubmissionsService {
 
     const event: SubmissionCreatedEvent = {
       submissionId: saved.id,
+      referenceCode,
       formId: dto.formId,
       formVersion: pinnedVersion,
       idempotencyKey: dto.idempotencyKey,

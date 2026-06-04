@@ -82,6 +82,7 @@ function makePayload(
 ): SubmissionCreatedEvent {
   return {
     submissionId: "sub-001",
+    referenceCode: "TST-20260604-130732-ABCDEF",
     formId: "test-form",
     formVersion: "1.0.0",
     idempotencyKey: "key-1",
@@ -151,9 +152,17 @@ describe("EmailBodyBuilder", () => {
       const ctx = await builder.build(makePayload());
 
       expect(ctx.formTitle).toBe("Test Form");
-      expect(ctx.submissionId).toBe("sub-001");
+      // submissionId in the template context is the referenceCode when present
+      expect(ctx.submissionId).toBe("TST-20260604-130732-ABCDEF");
       expect(ctx.submittedAt).toBe("2026-05-12T10:00:00.000Z");
       expect(typeof ctx.processedAt).toBe("string");
+    });
+
+    it("uses referenceCode as the template submissionId when present", async () => {
+      const ctx = await builder.build(
+        makePayload({ referenceCode: "JPP-20260604-130732-9JZRZC" }),
+      );
+      expect(ctx.submissionId).toBe("JPP-20260604-130732-9JZRZC");
     });
 
     it("fetches the contract using formId and formVersion from the payload", async () => {

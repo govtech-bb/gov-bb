@@ -100,7 +100,7 @@ export class EmailBodyBuilder {
       payload.formVersion,
     );
 
-    const { meta, values, submissionId } = payload;
+    const { meta, values, submissionId, referenceCode } = payload;
 
     const sections = contract.steps
       .filter((step) => meta.activeStepIds.includes(step.stepId))
@@ -135,7 +135,9 @@ export class EmailBodyBuilder {
 
     return {
       formTitle: contract.title,
-      submissionId,
+      // Prefer the human-readable referenceCode; fall back to the raw UUID for
+      // submissions that pre-date the referenceCode feature.
+      submissionId: referenceCode ?? submissionId,
       submittedAt: meta.submittedAt,
       processedAt: new Date().toISOString(),
       sections,

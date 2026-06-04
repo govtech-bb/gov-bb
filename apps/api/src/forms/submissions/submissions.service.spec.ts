@@ -167,6 +167,17 @@ describe("SubmissionsService", () => {
       );
     });
 
+    it("emits the submission event with referenceCode set", async () => {
+      const { service, eventEmitter } = makeMocks();
+      await service.submit(BASE_DTO);
+      expect(eventEmitter.emit as jest.Mock).toHaveBeenCalledWith(
+        "submission.created",
+        expect.objectContaining({
+          referenceCode: expect.any(String),
+        }),
+      );
+    });
+
     it("emits the submission event with raw processors (resolution happens in the listener)", async () => {
       const customExpressions = makeExpressions(() => ({ resolved: true }));
       const rawProcessors = [{ type: "email", config: { to: "raw@x" } }];
