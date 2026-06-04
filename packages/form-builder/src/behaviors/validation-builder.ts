@@ -44,6 +44,45 @@ export const VALIDATION_RULE_DESCRIPTORS: Record<
       hasValue: true,
       hasReference: true,
     },
+    // Numeric comparison and year rules — the runtime validators already
+    // support these on text values, so they are offered on text fields too
+    // (#830). Shapes mirror the `number` and `date` entries exactly.
+    {
+      type: "min",
+      label: "Min Value",
+      hasValue: true,
+      hasReference: false,
+    },
+    {
+      type: "max",
+      label: "Max Value",
+      hasValue: true,
+      hasReference: false,
+    },
+    {
+      type: "gt",
+      label: "Greater Than",
+      hasValue: true,
+      hasReference: true,
+    },
+    {
+      type: "lt",
+      label: "Less Than",
+      hasValue: true,
+      hasReference: true,
+    },
+    {
+      type: "minYear",
+      label: "Min Year",
+      hasValue: true,
+      hasReference: false,
+    },
+    {
+      type: "maxYear",
+      label: "Max Year",
+      hasValue: true,
+      hasReference: false,
+    },
   ],
   textarea: [
     {
