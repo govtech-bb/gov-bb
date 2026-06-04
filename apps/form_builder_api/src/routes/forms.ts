@@ -60,7 +60,18 @@ async function upsertFormConfig(
 //   - absent/undefined  → no write (leave the blob's processors key alone)
 //   - `null` or `[]`     → clear the processors key
 //   - non-empty array    → validate against processorSchema[] and set
-const processorsSchema = z.array(processorSchema);
+//
+// The write gate is payment-only: only payment processors live in the DB blob
+// today, and the API appends the blob's processors on top of the recipe's at
+// hydration (#716). A non-payment entry here would therefore double-execute the
+// recipe's identical processor (duplicate email/webhook), so every element must
+// be `type: "payment"`. The GET/read path and the generic blob schema are NOT
+// constrained — this gate is for the builder write only.
+const processorsSchema = z
+  .array(processorSchema)
+  .refine((ps) => ps.every((p) => p.type === "payment"), {
+    message: "Only payment processors may be stored in form_config",
+  });
 
 // Outcome of reading the optional `processors` sibling off a request body:
 //   - { kind: "absent" }   → field not present; leave the blob untouched

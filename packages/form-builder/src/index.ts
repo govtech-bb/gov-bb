@@ -33,7 +33,11 @@ export { makeDefaultProcessor } from "./processor-defaults";
 
 // Payment processors as a DB sibling (#716): reconcile recipe + DB on open,
 // split them back apart on save.
-export { mergeDbProcessors, extractDbProcessors } from "./processor-config";
+export {
+  mergeDbProcessors,
+  extractDbProcessors,
+  firstIncompletePaymentProcessor,
+} from "./processor-config";
 
 // Core utilities
 export { hydrateForm, collectUnknownRefs } from "./resolution";

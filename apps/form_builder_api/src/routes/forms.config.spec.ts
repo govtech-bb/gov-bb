@@ -460,6 +460,30 @@ describe("createFormHandler — processors blob merge", () => {
     expect(configUpsert).not.toHaveBeenCalled();
     expect(ds.transaction).not.toHaveBeenCalled();
   });
+
+  it("rejects a non-payment processor in the sibling with a 400 and writes nothing", async () => {
+    const { ds, configUpsert, formDefSave } = fakeDataSource();
+    getDataSourceMock.mockResolvedValue(ds);
+
+    const res = mockRes();
+    await createFormHandler(
+      mockReq({
+        recipe: recipe(),
+        isNew: true,
+        // A valid email processor — but only payment processors may live in the
+        // DB blob (a non-payment entry would double-execute at hydration).
+        processors: [
+          { type: "email", config: { recipientField: "applicant.email" } },
+        ],
+      }),
+      res,
+    );
+
+    expect(res.statusCode).toBe(400);
+    expect(formDefSave).not.toHaveBeenCalled();
+    expect(configUpsert).not.toHaveBeenCalled();
+    expect(ds.transaction).not.toHaveBeenCalled();
+  });
 });
 
 describe("updateFormHandler — processors blob merge", () => {
@@ -492,6 +516,29 @@ describe("updateFormHandler — processors blob merge", () => {
     await updateFormHandler(
       mockReq(
         { recipe: recipe(), processors: [{ type: "payment", config: {} }] },
+        { formId: "marriage-license" },
+      ),
+      res,
+    );
+
+    expect(res.statusCode).toBe(400);
+    expect(configUpsert).not.toHaveBeenCalled();
+    expect(ds.transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects a non-payment processor in the sibling with a 400 and writes nothing", async () => {
+    const { ds, configUpsert } = fakeDataSource();
+    getDataSourceMock.mockResolvedValue(ds);
+
+    const res = mockRes();
+    await updateFormHandler(
+      mockReq(
+        {
+          recipe: recipe(),
+          processors: [
+            { type: "email", config: { recipientField: "applicant.email" } },
+          ],
+        },
         { formId: "marriage-license" },
       ),
       res,

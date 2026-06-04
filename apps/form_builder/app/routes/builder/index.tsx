@@ -6,7 +6,7 @@ import { submitRecipe, updateRecipe, rekeyRecipe, deleteForm, disableForm, enabl
 import { createMdaContact } from "../../server/mda-contacts";
 import { publishRecipe, getPublishBaseBranch, eraseRecipe } from "../../server/publish";
 import { validateRecipe, previewRecipe } from "../../server/registry";
-import { serializeRecipeDraft, findRecipeIdCollisions, formatCollisionIssues, resolveFieldIds, extractDbProcessors } from "@govtech-bb/form-builder";
+import { serializeRecipeDraft, findRecipeIdCollisions, formatCollisionIssues, resolveFieldIds, extractDbProcessors, firstIncompletePaymentProcessor } from "@govtech-bb/form-builder";
 import { bumpMinor, bumpPatch } from "../../lib/version";
 import type { ServiceContract, ServiceContractRecipe } from "@govtech-bb/form-types";
 import { KEBAB_ID_PATTERN, KEBAB_ID_ERROR } from "@govtech-bb/form-types";
@@ -306,8 +306,36 @@ function BuilderPage() {
     return true;
   };
 
+  // Hard gate for both Save draft and Deploy: a payment processor with an
+  // incomplete config (e.g. the empty strings makeDefaultProcessor seeds) is
+  // sent as the DB `processors` sibling, where the builder API 400s the WHOLE
+  // save with an opaque error (#716 follow-up). Pre-flight the same author-time
+  // payment schema the API enforces and surface a friendly, targeted message in
+  // the always-visible validation panel instead, blocking the save so no request
+  // is sent. Lights the panel and returns true when blocked. This is a hard gate
+  // even on Save draft (unlike contract errors, which Save draft can override),
+  // because an incomplete payment config can never be persisted.
+  const blockedByIncompletePayment = (): boolean => {
+    const index = firstIncompletePaymentProcessor(draft.processors);
+    if (index === null) return false;
+    setMainView("processors");
+    setValidateResult({
+      valid: false,
+      issues: [
+        {
+          path: "processors",
+          message:
+            "A payment processor is incomplete. Open the Processors panel and fill in every payment field before saving.",
+        },
+      ],
+    });
+    setLastSaveStatus("error");
+    return true;
+  };
+
   const handleSaveDraftClick = async () => {
     if (blockedByUniqueness()) return;
+    if (blockedByIncompletePayment()) return;
     const result = await runValidation();
     if (
       !result.valid &&
@@ -324,6 +352,7 @@ function BuilderPage() {
 
   const handleDeployClick = async () => {
     if (blockedByUniqueness()) return;
+    if (blockedByIncompletePayment()) return;
     const result = await runValidation();
     if (result.valid) handleOpenPublish();
   };
