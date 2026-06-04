@@ -656,6 +656,132 @@ describe("FormRenderer", () => {
     expect(insetOptions).toEqual([["yes", ["step1_extra"]]]);
   });
 
+  it("select-conditional: select field with conditional child is grouped with insetFieldsByOption (#863)", () => {
+    const selectField = {
+      id: "step1_choice",
+      fieldId: "choice",
+      stepId: "step1",
+      name: "choice",
+      label: "Choice",
+      htmlType: "select" as const,
+      disabled: false,
+      hidden: false,
+      conditionallyHidden: false,
+      options: [
+        { value: "yes", label: "Yes" },
+        { value: "no", label: "No" },
+      ],
+      behaviours: [],
+    };
+    const conditionalChild = {
+      id: "step1_extra",
+      fieldId: "extra",
+      stepId: "step1",
+      name: "extra",
+      label: "Extra",
+      htmlType: "text" as const,
+      disabled: false,
+      hidden: false,
+      conditionallyHidden: false,
+      behaviours: [
+        {
+          type: "fieldConditionalOn",
+          targetFieldId: "choice",
+          operator: "equal",
+          value: "yes",
+        },
+      ],
+    };
+    const step = makeStep("step1", [selectField, conditionalChild]);
+
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="step1"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+
+    const renderers = screen.getAllByTestId("field-renderer");
+    const fieldIds = renderers.map((el) => el.getAttribute("data-field-id"));
+    expect(fieldIds).toContain("step1_choice");
+    // The child is rendered inside the select's inset map, not page-level.
+    expect(fieldIds).not.toContain("step1_extra");
+
+    const selectEl = renderers.find(
+      (el) => el.getAttribute("data-field-id") === "step1_choice",
+    )!;
+    const insetOptions = JSON.parse(
+      selectEl.getAttribute("data-inset-options") || "[]",
+    ) as Array<[string, string[]]>;
+    expect(insetOptions).toEqual([["yes", ["step1_extra"]]]);
+  });
+
+  it("select-conditional: a multiple select keeps the page-level fallback (#863)", () => {
+    const multiSelectField = {
+      id: "step1_choice",
+      fieldId: "choice",
+      stepId: "step1",
+      name: "choice",
+      label: "Choice",
+      htmlType: "select" as const,
+      multiple: true,
+      disabled: false,
+      hidden: false,
+      conditionallyHidden: false,
+      options: [
+        { value: "yes", label: "Yes" },
+        { value: "no", label: "No" },
+      ],
+      behaviours: [],
+    };
+    const conditionalChild = {
+      id: "step1_extra",
+      fieldId: "extra",
+      stepId: "step1",
+      name: "extra",
+      label: "Extra",
+      htmlType: "text" as const,
+      disabled: false,
+      hidden: false,
+      conditionallyHidden: false,
+      behaviours: [
+        {
+          type: "fieldConditionalOn",
+          targetFieldId: "choice",
+          operator: "equal",
+          value: "yes",
+        },
+      ],
+    };
+    const step = makeStep("step1", [multiSelectField, conditionalChild]);
+
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="step1"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+
+    // Both fields render as plain page-level renderers — no inset grouping.
+    const renderers = screen.getAllByTestId("field-renderer");
+    const fieldIds = renderers.map((el) => el.getAttribute("data-field-id"));
+    expect(fieldIds).toContain("step1_choice");
+    expect(fieldIds).toContain("step1_extra");
+
+    const selectEl = renderers.find(
+      (el) => el.getAttribute("data-field-id") === "step1_choice",
+    )!;
+    expect(selectEl.getAttribute("data-inset-options")).toBe("");
+  });
+
   it("clicking Previous calls navigateToStep with the previous step's id", async () => {
     const user = userEvent.setup();
     mockUseStepGuard.mockReturnValue({

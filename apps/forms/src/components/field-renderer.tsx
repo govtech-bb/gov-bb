@@ -16,7 +16,7 @@ import type {
 import FileUpload from "./file-upload";
 import { MaskedInput } from "./masked-input";
 
-/** An inset field entry passed from the parent radio group. */
+/** An inset field entry passed from the parent radio/select group. */
 export interface InsetFieldEntry {
   field: ClientPrimitive;
   validationProperties: FieldValidationProperties;
@@ -403,9 +403,17 @@ export default function FieldRenderer({
             );
             return element;
           }
-          case "select":
+          case "select": {
             const isMultiple = field.multiple ?? false;
             const selectValue = f.state.value as string | string[] | undefined;
+            // Conditional reveal (#863): inset fields keyed to the selected
+            // option. Unlike radio there is no per-option DOM position, so
+            // the reveal renders below the whole control. Multi-selects never
+            // receive insetFieldsByOption (see buildFieldGroups).
+            const selectInsetEntries =
+              !isMultiple && typeof selectValue === "string"
+                ? insetFieldsByOption?.get(selectValue)
+                : undefined;
             return (
               <div
                 className="govbb-form-group"
@@ -443,8 +451,27 @@ export default function FieldRenderer({
                     </svg>
                   </span>
                 </div>
+                {selectInsetEntries && (
+                  <div className="govbb-select__conditional">
+                    {selectInsetEntries.map(
+                      ({
+                        field: insetField,
+                        validationProperties: insetValidation,
+                      }) => (
+                        <FieldRenderer
+                          key={insetField.id}
+                          form={form}
+                          field={insetField}
+                          validationProperties={insetValidation}
+                          formId={formId}
+                        />
+                      ),
+                    )}
+                  </div>
+                )}
               </div>
             );
+          }
           case "checkbox":
             if (field.options && field.options.length === 1) {
               const option = field.options[0];
