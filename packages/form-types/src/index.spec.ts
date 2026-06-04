@@ -578,6 +578,26 @@ describe("repeatableBehaviourSchema", () => {
     });
     expect(result.success).toBe(false);
   });
+
+  it("accepts an optional instanceLabel", () => {
+    const result = repeatableBehaviourSchema.safeParse({
+      type: "repeatable",
+      min: 1,
+      max: 5,
+      instanceLabel: "Dependent",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects an empty instanceLabel", () => {
+    const result = repeatableBehaviourSchema.safeParse({
+      type: "repeatable",
+      min: 1,
+      max: 5,
+      instanceLabel: "",
+    });
+    expect(result.success).toBe(false);
+  });
 });
 
 describe("fieldArrayBehaviourSchema", () => {
