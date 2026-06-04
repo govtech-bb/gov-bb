@@ -61,6 +61,15 @@ try/catch, so a DB error propagates as an infra failure. This is ADR 0032's
 split applied to payment: degrade only on a resolved miss, never on
 misconfiguration, never on an infra error.
 
+**The builder write gate is payment-only.** Although `formConfigBlobSchema`
+accepts any author-time processor, the builder API's `processors` sibling
+rejects (400) any non-`payment` entry before its transaction opens. The
+hydration merge above only defines a dedup rule for payment; a non-payment
+entry in the blob would append on top of the recipe's identical processor and
+execute twice (a duplicate email, a double webhook). The gate stays closed for
+a processor type until that type defines its own DB-wins drop rule in
+`findByFormId`.
+
 ## Consequences
 
 - **The DB override actually takes effect.** Because recipe payments are dropped
