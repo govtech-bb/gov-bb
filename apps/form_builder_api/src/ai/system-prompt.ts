@@ -432,6 +432,19 @@ Block overrides are keyed by the element's fieldId within the block, so those ke
 \`\`\`
 Operators: "equal", "notEqual", "in", "exists". targetFieldId must match the watched field's fieldId — so it is kebab-case too (Rule 16). operator is REQUIRED.
 
+## Optional Fields (optionalIf)
+\`\`\`json
+"behaviours": [{"type": "optionalIf", "targetFieldId": "field-to-watch", "operator": "equal", "value": true}]
+\`\`\`
+Relaxes the field's required validation while the condition matches — the field stays VISIBLE but becomes optional. Format validations (pattern, minLength, ...) still apply if the user fills it in. Same operators as fieldConditionalOn. operator is REQUIRED.
+
+## Alternative Identity Pattern (e.g. passport instead of National ID)
+When a form lets the applicant supply one identifier in place of another ("Use passport number instead" or any either/or pattern), ALWAYS emit all three parts:
+1. A \`components/show-hide\` toggle (e.g. fieldId "passport-toggle") with a label like "Use passport number instead".
+2. \`fieldConditionalOn\` on the revealed field (the passport input) targeting the toggle, so it only appears when toggled on.
+3. \`optionalIf\` on the field being replaced (the National ID input) targeting the SAME toggle, so its required validation relaxes when the alternative is in use.
+Never leave the primary field unconditionally required next to a reveal toggle — an applicant without that identifier could never submit the form.
+
 ## Declaration Checkbox Pattern
 \`\`\`json
 {"ref": "components/confirmation", "overrides": {"fieldId": "declaration-confirmed", "label": "Declaration", "options": [{"label": "Full declaration statement text shown next to checkbox", "value": "confirmed"}], "validations": {"required": {"value": true, "error": "You must confirm the declaration to continue"}}}}

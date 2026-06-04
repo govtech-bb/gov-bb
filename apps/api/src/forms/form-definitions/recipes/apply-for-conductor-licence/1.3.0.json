@@ -78,7 +78,15 @@
                 "error": "National ID Number is required",
                 "value": true
               }
-            }
+            },
+            "behaviours": [
+              {
+                "type": "optionalIf",
+                "targetFieldId": "passport-toggle",
+                "operator": "equal",
+                "value": true
+              }
+            ]
           }
         },
         {

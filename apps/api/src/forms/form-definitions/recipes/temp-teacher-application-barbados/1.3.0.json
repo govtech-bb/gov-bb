@@ -84,7 +84,15 @@
                 "error": "National Identification (ID) number is required",
                 "value": true
               }
-            }
+            },
+            "behaviours": [
+              {
+                "type": "optionalIf",
+                "targetFieldId": "passport-toggle",
+                "operator": "equal",
+                "value": true
+              }
+            ]
           }
         },
         {
@@ -195,7 +203,6 @@
           "overrides": {
             "fieldId": "parish",
             "label": "Parish",
-
             "validations": {
               "required": {
                 "error": "Parish is required",
@@ -587,7 +594,6 @@
             }
           }
         },
-
         {
           "ref": "components/generic-textarea",
           "overrides": {
