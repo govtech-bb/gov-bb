@@ -132,8 +132,15 @@ export default function Review({
         .map((step) => {
           // Compute each visible field's display value once, then drop the
           // rows that have no answer so blank fields are omitted entirely.
+          // Show-hide toggles are UI controls, not answers — never a row,
+          // regardless of toggle state.
           const rows = step.fields
-            .filter((field) => !field.hidden && !field.conditionallyHidden)
+            .filter(
+              (field) =>
+                !field.hidden &&
+                !field.conditionallyHidden &&
+                field.htmlType !== "show-hide",
+            )
             .map((field: ClientPrimitive) => ({
               field,
               value: getFieldDisplayValue(field),
