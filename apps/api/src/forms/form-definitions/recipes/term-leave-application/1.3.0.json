@@ -17,7 +17,7 @@
       "title": "Applicant Information",
       "elements": [
         {
-          "ref": "components/generic-text",
+          "ref": "components/primary-school",
           "overrides": {
             "label": "School",
             "fieldId": "school",
@@ -161,6 +161,10 @@
               "required": {
                 "error": "End Date is required",
                 "value": true
+              },
+              "onOrAfter": {
+                "error": "End Date must be the same as or after the Start Date",
+                "referenceFieldId": "leave-start-date"
               }
             }
           }
@@ -189,29 +193,50 @@
           }
         },
         {
-          "ref": "components/show-hide",
+          "ref": "components/generic-date",
           "overrides": {
-            "label": "If yes, enter the last leave period",
-            "fieldId": "previous-leave-details",
-            "elements": [
+            "label": "Previous leave start date",
+            "fieldId": "previous-leave-start-date",
+            "hint": "Enter the start date of your last leave period",
+            "behaviours": [
               {
-                "ref": "components/generic-date",
-                "overrides": {
-                  "label": "Start Date",
-                  "fieldId": "previous-leave-start-date"
-                }
-              },
-              {
-                "ref": "components/generic-date",
-                "overrides": {
-                  "label": "End Date",
-                  "fieldId": "previous-leave-end-date"
-                }
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetFieldId": "previous-leave-granted"
               }
             ],
-            "showWhen": {
-              "value": "yes",
-              "fieldId": "previous-leave-granted"
+            "validations": {
+              "required": {
+                "error": "Previous leave start date is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-date",
+          "overrides": {
+            "label": "Previous leave end date",
+            "fieldId": "previous-leave-end-date",
+            "hint": "Enter the end date of your last leave period",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetFieldId": "previous-leave-granted"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Previous leave end date is required",
+                "value": true
+              },
+              "onOrAfter": {
+                "error": "Previous leave end date must be the same as or after the start date",
+                "referenceFieldId": "previous-leave-start-date"
+              }
             }
           }
         },
