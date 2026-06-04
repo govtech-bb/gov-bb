@@ -75,7 +75,10 @@ describe("POST /builder/forms/:formId/disable", () => {
     const res = mockRes();
 
     await disableFormHandler(
-      mockReq({ formId: "passport" }, { reason: "duplicate", disabledBy: "alice" }),
+      mockReq(
+        { formId: "passport" },
+        { reason: "duplicate", disabledBy: "alice" },
+      ),
       res,
     );
 
@@ -101,8 +104,6 @@ describe("POST /builder/forms/:formId/disable", () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual({ ok: true });
-    expect(
-      sqlsOf(ds).some((s) => /ON CONFLICT/i.test(s)),
-    ).toBe(true);
+    expect(sqlsOf(ds).some((s) => /ON CONFLICT/i.test(s))).toBe(true);
   });
 });

@@ -36,6 +36,11 @@
             "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/block-dotted-branch.sh\"",
             "statusMessage": "Checking branch name"
+          },
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/block-commit-plans.sh\"",
+            "statusMessage": "Guarding docs/plans"
           }
         ]
       }

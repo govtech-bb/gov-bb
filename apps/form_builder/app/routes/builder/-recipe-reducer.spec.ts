@@ -975,20 +975,25 @@ describe("UPDATE_PROCESSOR_CONFIG", () => {
   });
 
   it("replaces rather than merges, so a key-value editor can drop a key", () => {
-    // spreadsheet/opencrvs configs ARE the record: removing a row must remove
-    // the key. The editor emits the full remaining record; replace honours it.
+    // spreadsheet/opencrvs configs are edited as a key-value record: removing
+    // a row must remove the key. The editor emits the full remaining record;
+    // replace honours it.
     const start: RecipeDraft = {
       ...baseDraft(),
       processors: [
-        { id: "sp-1", type: "spreadsheet", config: { a: "1", b: "2" } },
+        {
+          id: "sp-1",
+          type: "spreadsheet",
+          config: { filename: "submissions" },
+        },
       ],
     };
     const next = recipeReducer(start, {
       type: "UPDATE_PROCESSOR_CONFIG",
       id: "sp-1",
-      config: { a: "1" },
+      config: {},
     });
-    expect(next.processors![0].config).toEqual({ a: "1" });
+    expect(next.processors![0].config).toEqual({});
   });
 
   it("leaves processors untouched when no id matches", () => {
@@ -1046,5 +1051,39 @@ describe("UPDATE_CONTACT_DETAILS", () => {
     });
     expect(next.contactDetails).toBeUndefined();
     expect(Object.keys(next)).not.toContain("contactDetails");
+  });
+});
+
+// ── SET_MDA_CONTACT (issue #607) ─────────────────────────────────────────────
+
+describe("SET_MDA_CONTACT", () => {
+  it("records the selected MDA contact id on the draft", () => {
+    const next = recipeReducer(baseDraft(), {
+      type: "SET_MDA_CONTACT",
+      mdaContactId: "contact-123",
+    });
+    expect(next.mdaContactId).toBe("contact-123");
+  });
+
+  it("clears the selection with null", () => {
+    const start: RecipeDraft = { ...baseDraft(), mdaContactId: "contact-123" };
+    const next = recipeReducer(start, {
+      type: "SET_MDA_CONTACT",
+      mdaContactId: null,
+    });
+    expect(next.mdaContactId).toBeNull();
+  });
+
+  it("leaves the rest of the draft untouched", () => {
+    const start: RecipeDraft = {
+      ...baseDraft(),
+      contactDetails: { email: "mda@gov.bb" },
+    };
+    const next = recipeReducer(start, {
+      type: "SET_MDA_CONTACT",
+      mdaContactId: "contact-9",
+    });
+    expect(next.contactDetails).toEqual({ email: "mda@gov.bb" });
+    expect(next.formId).toBe("form-1");
   });
 });

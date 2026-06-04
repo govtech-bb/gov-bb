@@ -25,6 +25,7 @@ import {
   addRepeatableStep,
   removeRepeatableStep,
   restoreRepeatableStepsFromStorage,
+  getEffectiveRepeatBounds,
 } from "./repeatable-helper";
 import type {
   ClientFormStep,
@@ -175,6 +176,69 @@ describe("generateRepeatableAddAnotherField", () => {
 });
 
 // ---------------------------------------------------------------------------
+// getEffectiveRepeatBounds
+// ---------------------------------------------------------------------------
+
+describe("getEffectiveRepeatBounds", () => {
+  it("returns min:1 max:Infinity for bare {type:'repeatable'} (no min/max) (#771)", () => {
+    const bounds = getEffectiveRepeatBounds({ type: "repeatable" });
+    expect(bounds.min).toBe(1);
+    expect(bounds.max).toBe(Infinity);
+  });
+
+  it("clamps min:0 to 1 and uses valid max (#771)", () => {
+    const bounds = getEffectiveRepeatBounds({
+      type: "repeatable",
+      min: 0,
+      max: 5,
+    });
+    expect(bounds.min).toBe(1);
+    expect(bounds.max).toBe(5);
+  });
+
+  it("floors fractional min:2.7 and treats max:-1 as Infinity (#771)", () => {
+    const bounds = getEffectiveRepeatBounds({
+      type: "repeatable",
+      min: 2.7,
+      max: -1,
+    } as unknown as RepeatableBehaviour);
+    expect(bounds.min).toBe(2);
+    expect(bounds.max).toBe(Infinity);
+  });
+
+  it("passes through valid min:2 max:5 unchanged (#771)", () => {
+    const bounds = getEffectiveRepeatBounds({
+      type: "repeatable",
+      min: 2,
+      max: 5,
+    });
+    expect(bounds.min).toBe(2);
+    expect(bounds.max).toBe(5);
+  });
+
+  it("treats max equal to min as valid cap (#771)", () => {
+    const bounds = getEffectiveRepeatBounds({
+      type: "repeatable",
+      min: 1,
+      max: 1,
+    });
+    expect(bounds.min).toBe(1);
+    expect(bounds.max).toBe(1);
+  });
+
+  it("treats max less than effective min as Infinity (#771)", () => {
+    // max:1 with min:3 — floor(1) < min(3) → Infinity
+    const bounds = getEffectiveRepeatBounds({
+      type: "repeatable",
+      min: 3,
+      max: 1,
+    });
+    expect(bounds.min).toBe(3);
+    expect(bounds.max).toBe(Infinity);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // generateRepeatStepFields
 // ---------------------------------------------------------------------------
 
@@ -304,17 +368,101 @@ describe("setupRepeatSteps", () => {
     ]);
   });
 
-  it("appends addAnother field to the source step when min is 0 (falsy)", () => {
+  it("legacy min:0 — clamps to 1 and renders exactly one instance with addAnother (#771)", () => {
+    // Legacy recipes may carry min:0 (old "base step only" semantics). After
+    // normalisation, min:0 must render identically to min:1 — one instance on
+    // the source step, with the addAnother radio (because 1 < max=5).
     const repeatBehaviour = makeRepeatableBehaviour(0, 5);
     const step = makeStep("personalInfo", ["firstName"], [repeatBehaviour]);
     const repeatSettings: RepeatableStepSettings = {};
 
     const result = setupRepeatSteps([step], repeatSettings);
 
-    // No repeat steps added when min is 0
+    // Clamped to min=1 → one instance (source step), no extra ~1 generated.
     expect(result).toHaveLength(1);
-    // addAnother is appended to the source step
+    expect(result[0].stepId).toBe("personalInfo");
+    // 1 < 5, so addAnother must be present.
     expect(result[0].fields.some((f) => f.fieldId === "addAnother")).toBe(true);
+  });
+
+  it("bare behaviour {type:'repeatable'} (no min/max) — one instance with addAnother (#771)", () => {
+    // conductor 1.0.0 shape: no min/max at all. Naive canAddMore = 1 < undefined
+    // === false would drop the addAnother control. Normalisation must treat
+    // missing max as Infinity so canAddMore = 1 < Infinity = true.
+    const bareRepeatBehaviour: RepeatableBehaviour = { type: "repeatable" };
+    const step = makeStep("personalInfo", ["firstName"], [bareRepeatBehaviour]);
+    const repeatSettings: RepeatableStepSettings = {};
+
+    const result = setupRepeatSteps([step], repeatSettings);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].stepId).toBe("personalInfo");
+    // unlimited adds → addAnother must be present
+    expect(result[0].fields.some((f) => f.fieldId === "addAnother")).toBe(true);
+  });
+
+  it("min:1 max:1 — one instance, no addAnother (#771)", () => {
+    // When min === max there is nothing more to add; addAnother must be absent.
+    const repeatBehaviour = makeRepeatableBehaviour(1, 1);
+    const step = makeStep("personalInfo", ["firstName"], [repeatBehaviour]);
+    const repeatSettings: RepeatableStepSettings = {};
+
+    const result = setupRepeatSteps([step], repeatSettings);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].stepId).toBe("personalInfo");
+    expect(result[0].fields.some((f) => f.fieldId === "addAnother")).toBe(
+      false,
+    );
+  });
+
+  it("fractional/invalid bounds min:2.7 max:-1 — two instances, last has addAnother (#771)", () => {
+    // min:2.7 → floor → 2 instances; max:-1 is invalid → Infinity (unlimited).
+    // So source step + one generated ~1 instance, last one has addAnother.
+    const repeatBehaviour = {
+      type: "repeatable",
+      min: 2.7,
+      max: -1,
+    } as unknown as RepeatableBehaviour;
+    const step = makeStep("personalInfo", ["firstName"], [repeatBehaviour]);
+    const repeatSettings: RepeatableStepSettings = {};
+
+    const result = setupRepeatSteps([step], repeatSettings);
+
+    expect(result).toHaveLength(2);
+    expect(result[0].stepId).toBe("personalInfo");
+    expect(result[1].stepId).toBe("personalInfo~1");
+    // Source step (not last) has no addAnother; last (~1) does.
+    expect(result[0].fields.some((f) => f.fieldId === "addAnother")).toBe(
+      false,
+    );
+    expect(result[1].fields.some((f) => f.fieldId === "addAnother")).toBe(true);
+  });
+
+  it("shared-fields step with min:0 — source step + one materialised instance (#771)", () => {
+    // Legacy else-branch never materialised instances for shared-fields steps
+    // when min was 0. Clamping to 1 fixes that hole.
+    const repeatBehaviour = makeRepeatableBehaviour(0, 3);
+    const sharedBehaviour = makeSharedFieldsBehaviour(["firstName"]);
+    const step = makeStep(
+      "personalInfo",
+      ["firstName", "lastName"],
+      [repeatBehaviour, sharedBehaviour],
+    );
+    const repeatSettings: RepeatableStepSettings = {};
+
+    const result = setupRepeatSteps([step], repeatSettings);
+
+    // Source step (shared-values host) + one materialised instance (~1).
+    expect(result).toHaveLength(2);
+    expect(result[0].stepId).toBe("personalInfo");
+    expect(result[1].stepId).toBe("personalInfo~1");
+    // ~1 is the only instance and 1 < max(3) → has addAnother.
+    expect(result[1].fields.some((f) => f.fieldId === "addAnother")).toBe(true);
+    expect(repeatSettings["personalInfo"].orderedStepIds).toEqual([
+      "personalInfo",
+      "personalInfo~1",
+    ]);
   });
 
   it("skips steps without behaviours", () => {
@@ -471,6 +619,42 @@ describe("addRepeatableStep", () => {
     );
   });
 
+  it("carries addAnotherLabel onto the new instance's addAnother control", () => {
+    const repeatBehaviour: RepeatableBehaviour = {
+      ...makeRepeatableBehaviour(1, 4),
+      addAnotherLabel: "Add another teacher?",
+    };
+    const step = makeStep("personalInfo", ["firstName"], [repeatBehaviour]);
+    const repeatStep1 = makeStep(
+      "personalInfo~1",
+      ["firstName"],
+      [repeatBehaviour],
+    );
+    const repeatSettings: RepeatableStepSettings = {
+      personalInfo: {
+        minRepeats: 1,
+        maxRepeats: 4,
+        orderedStepIds: ["personalInfo", "personalInfo~1"],
+        stepData: {},
+      },
+    };
+    const formMeta = makeFormMeta([step, repeatStep1]);
+    const visibleSteps = [step, repeatStep1];
+
+    const result = addRepeatableStep({
+      currentStep: repeatStep1,
+      repeatableStepSettings: repeatSettings,
+      repeatableBehaviour: repeatBehaviour,
+      visibleSteps,
+      formMeta,
+    });
+
+    // The dynamically added instance (~2) must keep the custom label,
+    // not fall back to the "Add another?" default.
+    const addAnother = result[2].fields.find((f) => f.fieldId === "addAnother");
+    expect(addAnother?.label).toBe("Add another teacher?");
+  });
+
   it("returns visibleSteps unchanged when at max", () => {
     const repeatBehaviour = makeRepeatableBehaviour(2, 2);
     const step = makeStep("personalInfo", ["firstName"]);
@@ -583,6 +767,45 @@ describe("addRepeatableStep", () => {
     });
 
     expect(result).toBe(visibleSteps);
+  });
+
+  it("negative max is treated as unlimited — adding past first instance is not blocked (#771)", () => {
+    // Before normalisation, repeatableBehaviour.max = -2 is truthy → the guard
+    // `max && count >= max` triggers immediately and blocks all adds. After
+    // normalisation, invalid max → Infinity → never blocks.
+    const repeatBehaviour = {
+      type: "repeatable",
+      min: 1,
+      max: -2,
+    } as unknown as RepeatableBehaviour;
+    const step = makeStep("personalInfo", ["firstName"], [repeatBehaviour]);
+    const repeatStep1 = makeStep(
+      "personalInfo~1",
+      ["firstName"],
+      [repeatBehaviour],
+    );
+    const repeatSettings: RepeatableStepSettings = {
+      personalInfo: {
+        minRepeats: 1,
+        maxRepeats: -2,
+        orderedStepIds: ["personalInfo", "personalInfo~1"],
+        stepData: {},
+      },
+    };
+    const formMeta = makeFormMeta([step, repeatStep1]);
+    const visibleSteps = [step, repeatStep1];
+
+    const result = addRepeatableStep({
+      currentStep: repeatStep1,
+      repeatableStepSettings: repeatSettings,
+      repeatableBehaviour: repeatBehaviour,
+      visibleSteps,
+      formMeta,
+    });
+
+    // Should NOT be blocked — new step personalInfo~2 must be added.
+    expect(result).toHaveLength(3);
+    expect(result[2].stepId).toBe("personalInfo~2");
   });
 
   it("appends addAnother to the new step when repeatableStepCount < max - 1", () => {

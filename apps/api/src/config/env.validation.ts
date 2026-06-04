@@ -46,6 +46,10 @@ export const envValidationSchema = Joi.object({
   SES_REGION: Joi.string().optional(),
   SES_FROM_ADDRESS: Joi.string().default("noreply@gov.bb"),
   SES_CONFIGURATION_SET: Joi.string().optional(),
+  // Fallback recipient for the "config.*" recipient kind when no form_config
+  // row resolves (e.g. sandbox). Defaults to a shared test inbox so sandbox
+  // never emails a real MDA.
+  SES_DEFAULT_RECIPIENT: Joi.string().default("testing@govtech.bb"),
 
   // Spreadsheet export (optional — defaults to <cwd>/exports)
   SPREADSHEET_EXPORT_DIR: Joi.string().optional(),

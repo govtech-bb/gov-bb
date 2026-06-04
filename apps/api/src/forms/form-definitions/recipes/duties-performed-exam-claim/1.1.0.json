@@ -20,28 +20,28 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "First Name",
-            "fieldId": "firstName"
+            "fieldId": "first-name"
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Last Name",
-            "fieldId": "lastName"
+            "fieldId": "last-name"
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Other Names",
-            "fieldId": "otherNames"
+            "fieldId": "other-names"
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "ID Number",
-            "fieldId": "idNumber"
+            "fieldId": "id-number"
           }
         },
         {
@@ -77,7 +77,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Tamis No",
-            "fieldId": "tamisNo"
+            "fieldId": "tamis-no"
           }
         },
         {
@@ -91,28 +91,28 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "NIS No",
-            "fieldId": "nisNo"
+            "fieldId": "nis-no"
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Exam Period",
-            "fieldId": "examPeriod"
+            "fieldId": "exam-period"
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Claim Period From",
-            "fieldId": "claimPeriodFrom"
+            "fieldId": "claim-period-from"
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Claim Period To",
-            "fieldId": "claimPeriodTo"
+            "fieldId": "claim-period-to"
           }
         }
       ],
@@ -126,7 +126,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "#",
-            "fieldId": "#",
+            "fieldId": "row-no",
             "validations": {
               "required": {
                 "error": "# is required",
@@ -208,7 +208,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Overtime (Hrs)",
-            "fieldId": "overtimeHrs",
+            "fieldId": "overtime-hrs",
             "validations": {
               "required": {
                 "error": "Overtime (Hrs) is required",
@@ -255,7 +255,7 @@
           "ref": "components/generic-number",
           "overrides": {
             "label": "Section B Total",
-            "fieldId": "sectionBTotal",
+            "fieldId": "section-b-total",
             "readonly": true
           }
         }
@@ -318,7 +318,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Total Candidates",
-            "fieldId": "totalCandidates",
+            "fieldId": "total-candidates",
             "validations": {
               "required": {
                 "error": "Total Candidates is required",
@@ -335,7 +335,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Total Personnel",
-            "fieldId": "totalPersonnel",
+            "fieldId": "total-personnel",
             "validations": {
               "required": {
                 "error": "Total Personnel is required",
@@ -382,7 +382,7 @@
           "ref": "components/generic-number",
           "overrides": {
             "label": "Section C Total",
-            "fieldId": "sectionCTotal",
+            "fieldId": "section-c-total",
             "readonly": true
           }
         }
@@ -462,7 +462,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "No of Hours / Passages",
-            "fieldId": "noHoursPassages",
+            "fieldId": "no-hours-passages",
             "validations": {
               "required": {
                 "error": "No of Hours / Passages is required",
@@ -509,7 +509,7 @@
           "ref": "components/generic-number",
           "overrides": {
             "label": "Section D Total",
-            "fieldId": "sectionDTotal",
+            "fieldId": "section-d-total",
             "readonly": true
           }
         }
@@ -524,35 +524,35 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Bank/Branch",
-            "fieldId": "bankBranch"
+            "fieldId": "bank-branch"
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Name on Account",
-            "fieldId": "nameOnAccount"
+            "fieldId": "name-on-account"
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Account No",
-            "fieldId": "accountNo"
+            "fieldId": "account-no"
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "BIC/Swift No",
-            "fieldId": "bicSwiftNo"
+            "fieldId": "bic-swift-no"
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Account Type",
-            "fieldId": "accountType"
+            "fieldId": "account-type"
           }
         }
       ],
@@ -567,7 +567,7 @@
           "overrides": {
             "label": "I hereby claim the sum of",
             "prefix": "$",
-            "fieldId": "claimAmount",
+            "fieldId": "claim-amount",
             "readonly": true
           }
         },
@@ -575,14 +575,14 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Signature of Claimant",
-            "fieldId": "claimantSignature"
+            "fieldId": "claimant-signature"
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Date",
-            "fieldId": "claimantDate"
+            "fieldId": "claimant-date"
           }
         }
       ],
@@ -596,42 +596,42 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Signature of Supervisor",
-            "fieldId": "supervisorSignature"
+            "fieldId": "supervisor-signature"
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Date",
-            "fieldId": "supervisorDate"
+            "fieldId": "supervisor-date"
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Examination Verifier Signature",
-            "fieldId": "examVerifierSignature"
+            "fieldId": "exam-verifier-signature"
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Date",
-            "fieldId": "examVerifierDate"
+            "fieldId": "exam-verifier-date"
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Accounting Officer Signature",
-            "fieldId": "accountingOfficerSignature"
+            "fieldId": "accounting-officer-signature"
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Date",
-            "fieldId": "accountingOfficerDate"
+            "fieldId": "accounting-officer-date"
           }
         }
       ],

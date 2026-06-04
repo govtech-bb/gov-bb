@@ -20,7 +20,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "First Name",
-            "fieldId": "firstName",
+            "fieldId": "first-name",
             "validations": {
               "required": {
                 "error": "First Name is required",
@@ -37,7 +37,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Last Name",
-            "fieldId": "lastName",
+            "fieldId": "last-name",
             "validations": {
               "required": {
                 "error": "Last Name is required",
@@ -71,7 +71,7 @@
           "ref": "components/generic-number",
           "overrides": {
             "label": "Day",
-            "fieldId": "dobDay",
+            "fieldId": "dob-day",
             "validations": {
               "required": {
                 "error": "Day is required",
@@ -84,7 +84,7 @@
           "ref": "components/generic-number",
           "overrides": {
             "label": "Month",
-            "fieldId": "dobMonth",
+            "fieldId": "dob-month",
             "validations": {
               "required": {
                 "error": "Month is required",
@@ -97,7 +97,7 @@
           "ref": "components/generic-number",
           "overrides": {
             "label": "Year",
-            "fieldId": "dobYear",
+            "fieldId": "dob-year",
             "validations": {
               "required": {
                 "error": "Year is required",
@@ -110,7 +110,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "ID Number",
-            "fieldId": "idNumber",
+            "fieldId": "id-number",
             "validations": {
               "required": {
                 "error": "ID Number is required",
@@ -161,7 +161,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Telephone No",
-            "fieldId": "telephoneNo",
+            "fieldId": "telephone-no",
             "validations": {
               "required": {
                 "error": "Telephone No is required",
@@ -186,7 +186,7 @@
           "overrides": {
             "type": "info",
             "label": "Please list below the subject(s) for which you are registering. If you are repeating a subject from a previous sitting for which a School Based Assessment (SBA) was required, please select RESIT and type your previous registration number in the relevant field.",
-            "fieldId": "subjectsInfo",
+            "fieldId": "subjects-info",
             "disabled": true
           }
         },
@@ -225,7 +225,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "PREVIOUS REGISTRATION NUMBER",
-            "fieldId": "previousRegistrationNumber",
+            "fieldId": "previous-registration-number",
             "conditional": "resit"
           }
         }
@@ -247,14 +247,14 @@
           "overrides": {
             "label": "Important Notices",
             "content": "Candidates should inform the CXC Local Registrar of any name changes which have occurred since their last examination sitting.\n\nCandidates should check ALL Timetables before registering so as to avoid any subject clashes with other Examination Boards.\n\nABSOLUTELY NO ALTERNATIVE ARRANGEMENTS WILL BE MADE IN RESPECT OF CLASHES",
-            "fieldId": "importantNotices"
+            "fieldId": "important-notices"
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Signature of Claimant",
-            "fieldId": "signatureOfClaimant",
+            "fieldId": "signature-of-claimant",
             "validations": {
               "required": {
                 "error": "Signature of Claimant is required",

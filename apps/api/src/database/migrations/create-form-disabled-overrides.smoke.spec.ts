@@ -1,35 +1,7 @@
 import { DataSource } from "typeorm";
-import * as path from "node:path";
+import { CreateFormDisabledOverrides1779466523478 } from "@govtech-bb/database";
 
 const HAS_DB = !!process.env.DB_HOST;
-
-// Resolve the migration class from disk at runtime so the test does not break
-// when the filename's timestamp prefix changes between dev rebases.
-function loadMigrationClass(): new () => {
-  up: (qr: unknown) => Promise<void>;
-  down: (qr: unknown) => Promise<void>;
-} {
-  const fs = require("node:fs");
-  const dir = __dirname;
-  const file = fs
-    .readdirSync(dir)
-    .find((f: string) => f.endsWith("-CreateFormDisabledOverrides.ts"));
-  if (!file) {
-    throw new Error(
-      "Could not find CreateFormDisabledOverrides migration file",
-    );
-  }
-  const mod = require(path.join(dir, file));
-  const exportedClassName = Object.keys(mod).find((k) =>
-    k.startsWith("CreateFormDisabledOverrides"),
-  );
-  if (!exportedClassName) {
-    throw new Error(
-      "Migration file does not export a CreateFormDisabledOverrides* class",
-    );
-  }
-  return mod[exportedClassName];
-}
 
 (HAS_DB ? describe : describe.skip)(
   "CreateFormDisabledOverrides migration (smoke)",
@@ -56,8 +28,7 @@ function loadMigrationClass(): new () => {
 
     it("up creates the form_disabled_overrides table with the expected columns", async () => {
       const queryRunner = dataSource.createQueryRunner();
-      const MigrationClass = loadMigrationClass();
-      const migration = new MigrationClass();
+      const migration = new CreateFormDisabledOverrides1779466523478();
 
       // Run every statement inside a transaction we ALWAYS roll back. Postgres
       // DDL is transactional, so on rollback the developer's real

@@ -1,0 +1,171 @@
+import type { Request, Response } from "express";
+
+// The handlers import MdaContactEntity from @govtech-bb/database. Stub it so
+// loading the module doesn't drag in the full TypeORM entity graph.
+jest.mock("@govtech-bb/database", () => ({
+  MdaContactEntity: class MdaContactEntity {},
+  FormConfigEntity: class FormConfigEntity {},
+}));
+
+jest.mock("../db.js", () => ({ getDataSource: jest.fn() }));
+
+import { getDataSource } from "../db.js";
+import {
+  listMdaContactsHandler,
+  createMdaContactHandler,
+} from "./mda-contacts";
+
+const getDataSourceMock = getDataSource as jest.Mock;
+
+function mockReq(body: unknown, params: Record<string, string> = {}): Request {
+  return { body, params } as unknown as Request;
+}
+
+interface CapturingResponse extends Response {
+  statusCode: number;
+  body: unknown;
+}
+
+function mockRes(): CapturingResponse {
+  const res = { statusCode: 200, body: undefined } as CapturingResponse;
+  res.status = jest.fn((code: number) => {
+    res.statusCode = code;
+    return res;
+  }) as unknown as Response["status"];
+  res.json = jest.fn((payload: unknown) => {
+    res.body = payload;
+    return res;
+  }) as unknown as Response["json"];
+  return res;
+}
+
+function fakeDataSource(rows: { find?: unknown[]; created?: unknown } = {}) {
+  const { find = [], created = null } = rows;
+  const save = jest.fn(async (e: unknown) => created ?? e);
+  const repo = {
+    find: jest.fn(async () => find),
+    create: jest.fn((e: unknown) => e),
+    save,
+  };
+  const ds = { getRepository: jest.fn(() => repo) };
+  return { ds, repo, save };
+}
+
+function validBody(over: Record<string, unknown> = {}) {
+  return {
+    label: "Registry Dept",
+    title: "Registration Department",
+    telephone: "246-555-0100",
+    email: "public@registry.gov.bb",
+    mdaEmail: "notify@registry.gov.bb",
+    ...over,
+  };
+}
+
+describe("listMdaContactsHandler", () => {
+  it("returns 200 with the directory of contacts (including mdaEmail)", async () => {
+    const contacts = [
+      {
+        id: "c1",
+        label: "Registry Dept",
+        title: "Registration Department",
+        telephone: "246-555-0100",
+        email: "public@registry.gov.bb",
+        address: { line1: "1 Main St", city: "Bridgetown" },
+        mdaEmail: "notify@registry.gov.bb",
+      },
+    ];
+    const { ds, repo } = fakeDataSource({ find: contacts });
+    getDataSourceMock.mockResolvedValue(ds);
+
+    const res = mockRes();
+    await listMdaContactsHandler(mockReq({}), res);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual(contacts);
+    expect(repo.find).toHaveBeenCalled();
+  });
+
+  it("returns 500 on a DB error", async () => {
+    getDataSourceMock.mockRejectedValue(new Error("db down"));
+    const res = mockRes();
+    await listMdaContactsHandler(mockReq({}), res);
+    expect(res.statusCode).toBe(500);
+    expect((res.body as { error: string }).error).toBe("db down");
+  });
+});
+
+describe("createMdaContactHandler", () => {
+  it("creates a contact and returns 201 with the full record", async () => {
+    const createdRecord = {
+      id: "new-id",
+      ...validBody(),
+      address: null,
+    };
+    const { ds, repo, save } = fakeDataSource({ created: createdRecord });
+    getDataSourceMock.mockResolvedValue(ds);
+
+    const res = mockRes();
+    await createMdaContactHandler(mockReq(validBody()), res);
+
+    expect(res.statusCode).toBe(201);
+    expect(res.body).toEqual(createdRecord);
+    expect(repo.create).toHaveBeenCalled();
+    expect(save).toHaveBeenCalled();
+  });
+
+  it("accepts an optional address object", async () => {
+    const body = validBody({
+      address: { line1: "1 Main St", city: "Bridgetown" },
+    });
+    const { ds, repo } = fakeDataSource();
+    getDataSourceMock.mockResolvedValue(ds);
+
+    const res = mockRes();
+    await createMdaContactHandler(mockReq(body), res);
+
+    expect(res.statusCode).toBe(201);
+    expect(repo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        address: { line1: "1 Main St", city: "Bridgetown" },
+      }),
+    );
+  });
+
+  it("rejects a body missing a required field with 400", async () => {
+    const { ds } = fakeDataSource();
+    getDataSourceMock.mockResolvedValue(ds);
+
+    const res = mockRes();
+    const { mdaEmail, ...incomplete } = validBody();
+    await createMdaContactHandler(mockReq(incomplete), res);
+
+    expect(res.statusCode).toBe(400);
+    expect((res.body as { error: string }).error).toBeTruthy();
+  });
+
+  it("rejects a non-email email field with 400", async () => {
+    const { ds } = fakeDataSource();
+    getDataSourceMock.mockResolvedValue(ds);
+
+    const res = mockRes();
+    await createMdaContactHandler(
+      mockReq(validBody({ email: "not-an-email" })),
+      res,
+    );
+
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("returns 500 on a DB error", async () => {
+    const { ds, repo } = fakeDataSource();
+    repo.save.mockRejectedValue(new Error("insert failed"));
+    getDataSourceMock.mockResolvedValue(ds);
+
+    const res = mockRes();
+    await createMdaContactHandler(mockReq(validBody()), res);
+
+    expect(res.statusCode).toBe(500);
+    expect((res.body as { error: string }).error).toBe("insert failed");
+  });
+});

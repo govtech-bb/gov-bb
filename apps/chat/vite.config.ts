@@ -9,6 +9,11 @@ import tailwindcss from "@tailwindcss/vite";
 // at runtime, so we bake them into the bundle at build time via Vite's
 // `define`. In dev, Vite's `loadEnv` reads `.env.local` directly into
 // `process.env`, so the same `process.env.X` reads work without baking.
+//
+// DATABASE_URL is intentionally NOT baked here (issue #202). The value is
+// a Secrets Manager value fetched at SSR runtime via the compute role; only
+// the *ARN* (non-sensitive identifier) is baked, and `src/lib/db/index.ts`
+// reads the actual connection string from SM on first use.
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const pick = (key: string, fallback = ""): string =>
@@ -18,7 +23,9 @@ export default defineConfig(({ mode }) => {
     resolve: { tsconfigPaths: true },
     define: {
       "process.env.RAG_URL": JSON.stringify(pick("RAG_URL")),
-      "process.env.DATABASE_URL": JSON.stringify(pick("DATABASE_URL")),
+      "process.env.CHAT_DATABASE_URL_SECRET_ARN": JSON.stringify(
+        pick("CHAT_DATABASE_URL_SECRET_ARN"),
+      ),
       "process.env.FORM_API_URL": JSON.stringify(pick("FORM_API_URL")),
       "process.env.FORMS_URL": JSON.stringify(pick("FORMS_URL")),
       "process.env.BEDROCK_REGION": JSON.stringify(

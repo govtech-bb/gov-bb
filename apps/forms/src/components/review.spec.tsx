@@ -212,6 +212,47 @@ describe("Review", () => {
     expect(screen.queryByText("Conditional field")).not.toBeInTheDocument();
   });
 
+  it("does not render show-hide fields, even when opened, but keeps revealed answers", () => {
+    const steps: ClientFormStep[] = [
+      makeStep({
+        stepId: "step-1",
+        title: "Step One",
+        fields: [
+          makeField({
+            id: "step-1.no-national-id",
+            fieldId: "no-national-id",
+            label: "I don't have a National ID",
+            htmlType: "show-hide",
+          }),
+          makeField({
+            id: "step-1.passport-number",
+            fieldId: "passport-number",
+            label: "Passport number",
+          }),
+        ],
+      }),
+    ];
+    const form = makeMockForm({
+      "step-1.no-national-id": true, // toggle opened by the user
+      "step-1.passport-number": "AB123456",
+    });
+
+    render(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={form as never}
+        visibleSteps={steps}
+      />,
+    );
+
+    expect(screen.getByText("Passport number")).toBeInTheDocument();
+    expect(screen.getByText("AB123456")).toBeInTheDocument();
+    expect(
+      screen.queryByText("I don't have a National ID"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("true")).not.toBeInTheDocument();
+  });
+
   it("renders an empty section with title and Change link when all fields in a step are hidden", () => {
     const steps: ClientFormStep[] = [
       makeStep({

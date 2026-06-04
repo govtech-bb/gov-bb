@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { behaviourSchema } from "./behavior.type";
 import { validationRuleSchema } from "./validation.type";
+import { kebabIdSchema } from "./id-pattern";
 
 export const primitiveMetadataSchema = z.object({
   pii: z.boolean(),
@@ -40,7 +41,7 @@ export const primitiveUISchema = z.object({
 export type PrimitiveUI = z.infer<typeof primitiveUISchema>;
 
 export const basePrimitiveSchema = z.object({
-  fieldId: z.string(),
+  fieldId: kebabIdSchema,
   label: z.string(),
   name: z.string().optional(),
   htmlType: htmlTypesSchema,

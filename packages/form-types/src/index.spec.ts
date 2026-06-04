@@ -41,6 +41,9 @@ import {
   recipeFormStepSchema,
   processorSchema,
   resolvedProcessorSchema,
+  paymentConfigAuthorSchema,
+  formConfigBlobSchema,
+  parseFormConfigBlob,
   dynamic,
   validateFormContract,
   dateTimeFormatSchema,
@@ -49,6 +52,9 @@ import {
   contactDetailsSchema,
   KEBAB_ID_PATTERN,
   KEBAB_ID_ERROR,
+  classifyRecipientField,
+  CONTACT_DETAILS_PREFIX,
+  CONFIG_RECIPIENT_PREFIX,
 } from "./index";
 import { z } from "zod";
 
@@ -562,6 +568,16 @@ describe("repeatableBehaviourSchema", () => {
     });
     expect(result.success).toBe(true);
   });
+
+  it("rejects an empty addAnotherLabel", () => {
+    const result = repeatableBehaviourSchema.safeParse({
+      type: "repeatable",
+      min: 1,
+      max: 5,
+      addAnotherLabel: "",
+    });
+    expect(result.success).toBe(false);
+  });
 });
 
 describe("fieldArrayBehaviourSchema", () => {
@@ -754,6 +770,50 @@ describe("resolvedProcessorSchema (re-export)", () => {
   });
 });
 
+describe("paymentConfigAuthorSchema (re-export)", () => {
+  it("accepts a valid ezpay payment config", () => {
+    expect(
+      paymentConfigAuthorSchema.safeParse({
+        provider: "ezpay",
+        department: "civil-registry",
+        paymentCode: "BIRTH-CERT",
+        amount: 50,
+        description: "Birth certificate",
+        customerEmailPath: "personal.email",
+        customerNamePath: "personal.name",
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects a non-ezpay provider", () => {
+    expect(
+      paymentConfigAuthorSchema.safeParse({ provider: "stripe" }).success,
+    ).toBe(false);
+  });
+});
+
+describe("formConfigBlobSchema (re-export)", () => {
+  it("accepts an empty blob", () => {
+    expect(formConfigBlobSchema.safeParse({}).success).toBe(true);
+  });
+
+  it("rejects a non-array processors key", () => {
+    expect(formConfigBlobSchema.safeParse({ processors: {} }).success).toBe(
+      false,
+    );
+  });
+});
+
+describe("parseFormConfigBlob (re-export)", () => {
+  it("maps null to an empty blob", () => {
+    expect(parseFormConfigBlob(null)).toEqual({});
+  });
+
+  it("throws on an invalid blob", () => {
+    expect(() => parseFormConfigBlob({ processors: "nope" })).toThrow();
+  });
+});
+
 // ---------------------------------------------------------------------------
 // dynamic (factory function)
 // ---------------------------------------------------------------------------
@@ -914,5 +974,29 @@ describe("validateFormContract", () => {
     if (!result.ok) {
       expect(result.issues.length).toBeGreaterThan(0);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// recipient-field exports (re-export path — detailed tests in recipient-field.spec.ts)
+// ---------------------------------------------------------------------------
+
+describe("classifyRecipientField (re-export)", () => {
+  it("classifies a literal, contact, config, and submitted recipient", () => {
+    expect(classifyRecipientField("a@b.bb")).toBe("literal");
+    expect(classifyRecipientField(`${CONTACT_DETAILS_PREFIX}email`)).toBe(
+      "contact",
+    );
+    expect(classifyRecipientField(`${CONFIG_RECIPIENT_PREFIX}mdaEmail`)).toBe(
+      "config",
+    );
+    expect(classifyRecipientField("step.field")).toBe("submitted");
+  });
+});
+
+describe("recipient prefix constants (re-export)", () => {
+  it("expose the reserved prefixes", () => {
+    expect(CONTACT_DETAILS_PREFIX).toBe("contactDetails.");
+    expect(CONFIG_RECIPIENT_PREFIX).toBe("config.");
   });
 });

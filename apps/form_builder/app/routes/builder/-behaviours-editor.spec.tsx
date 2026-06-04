@@ -5,7 +5,7 @@
  * selected Target Step, keyed by resolved field id.
  */
 import "@testing-library/jest-dom";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, within, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { Behaviour } from "@govtech-bb/form-types";
 import { BehavioursEditor } from "./-behaviours-editor";
@@ -247,5 +247,353 @@ it("resets the value to an empty string when the Target Field switches to non-bo
   await userEvent.selectOptions(targetFieldSelect(), "first-name");
   expect(onChange).toHaveBeenLastCalledWith([
     expect.objectContaining({ targetFieldId: "first-name", value: "" }),
+  ]);
+});
+
+// #769: optionalIf (relax `required` without hiding the field, #625) must be
+// authorable from the field modal's behaviours editor.
+
+function addBehaviourSelect() {
+  return screen
+    .getAllByRole("combobox")
+    .find((el) =>
+      within(el).queryByRole("option", { name: /add behaviour/i }),
+    ) as HTMLSelectElement;
+}
+
+it("offers Optional If in the Add Behaviour dropdown for field scope", () => {
+  render(
+    <BehavioursEditor
+      scope="field"
+      behaviours={[]}
+      fieldRefs={FIELD_REFS}
+      stepRefs={STEP_REFS}
+      onChange={jest.fn()}
+      currentStepId="step-1"
+    />,
+  );
+  expect(
+    within(addBehaviourSelect()).getByRole("option", { name: "Optional If" }),
+  ).toBeInTheDocument();
+});
+
+it("does not offer Optional If for step scope", () => {
+  renderStepBehaviour([]);
+  expect(
+    within(addBehaviourSelect()).queryByRole("option", { name: "Optional If" }),
+  ).not.toBeInTheDocument();
+});
+
+it("defaults a new optionalIf's Target Step to currentStepId", async () => {
+  const onChange = jest.fn();
+  render(
+    <BehavioursEditor
+      scope="field"
+      behaviours={[]}
+      fieldRefs={FIELD_REFS}
+      stepRefs={STEP_REFS}
+      onChange={onChange}
+      currentStepId="step-2"
+    />,
+  );
+  await userEvent.selectOptions(addBehaviourSelect(), "optionalIf");
+  expect(onChange).toHaveBeenCalledWith([
+    expect.objectContaining({
+      type: "optionalIf",
+      targetStepId: "step-2",
+      targetFieldId: "",
+      operator: "equal",
+      value: "",
+    }),
+  ]);
+});
+
+// #771: repeatable min/max defaults and clamped inputs
+
+it("adding a repeatable behaviour initialises { min: 1, max: 5 }", async () => {
+  const onChange = renderStepBehaviour([]);
+  await userEvent.selectOptions(addBehaviourSelect(), "repeatable");
+  expect(onChange).toHaveBeenLastCalledWith([
+    expect.objectContaining({ type: "repeatable", min: 1, max: 5 }),
+  ]);
+});
+
+it("the Min input for repeatable has min='1' and changing to 0 stores 1", () => {
+  const onChange = jest.fn();
+  render(
+    <BehavioursEditor
+      scope="step"
+      behaviours={[{ type: "repeatable", min: 1, max: 5 } as unknown as Behaviour]}
+      fieldRefs={FIELD_REFS}
+      stepRefs={STEP_REFS}
+      onChange={onChange}
+    />,
+  );
+  const minInput = screen.getAllByRole("spinbutton").find(
+    (el) => (el as HTMLInputElement).closest("div")?.textContent?.includes("Min"),
+  ) as HTMLInputElement;
+  expect(minInput).toHaveAttribute("min", "1");
+  // fireEvent.change sets the full value atomically on a controlled input
+  fireEvent.change(minInput, { target: { value: "0" } });
+  const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0] as Behaviour[];
+  expect((lastCall[0] as Record<string, unknown>)["min"]).toBe(1);
+});
+
+it("with min: 3, changing Max to 2 stores 3 (clamped to atLeastParam)", () => {
+  const onChange = jest.fn();
+  render(
+    <BehavioursEditor
+      scope="step"
+      behaviours={[{ type: "repeatable", min: 3, max: 5 } as unknown as Behaviour]}
+      fieldRefs={FIELD_REFS}
+      stepRefs={STEP_REFS}
+      onChange={onChange}
+    />,
+  );
+  const maxInput = screen.getAllByRole("spinbutton").find(
+    (el) => (el as HTMLInputElement).closest("div")?.textContent?.includes("Max"),
+  ) as HTMLInputElement;
+  fireEvent.change(maxInput, { target: { value: "2" } });
+  const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0] as Behaviour[];
+  expect((lastCall[0] as Record<string, unknown>)["max"]).toBe(3);
+});
+
+it("raising Min above current Max also raises Max (min: 7 with max: 5 stores { min: 7, max: 7 })", () => {
+  const onChange = jest.fn();
+  render(
+    <BehavioursEditor
+      scope="step"
+      behaviours={[{ type: "repeatable", min: 3, max: 5 } as unknown as Behaviour]}
+      fieldRefs={FIELD_REFS}
+      stepRefs={STEP_REFS}
+      onChange={onChange}
+    />,
+  );
+  const minInput = screen.getAllByRole("spinbutton").find(
+    (el) => (el as HTMLInputElement).closest("div")?.textContent?.includes("Min"),
+  ) as HTMLInputElement;
+  fireEvent.change(minInput, { target: { value: "7" } });
+  const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0] as Behaviour[];
+  expect((lastCall[0] as Record<string, unknown>)["min"]).toBe(7);
+  expect((lastCall[0] as Record<string, unknown>)["max"]).toBe(7);
+});
+
+it("renders the gated step/field/operator/value controls for an optionalIf behaviour", () => {
+  render(
+    <BehavioursEditor
+      scope="field"
+      behaviours={[
+        { type: "optionalIf", targetStepId: "step-1", targetFieldId: "agree", operator: "equal", value: true } as unknown as Behaviour,
+      ]}
+      fieldRefs={FIELD_REFS}
+      stepRefs={STEP_REFS}
+      onChange={jest.fn()}
+      currentStepId="step-1"
+    />,
+  );
+  expect(screen.getByText("Optional If")).toBeInTheDocument();
+  expect(targetStepSelect()).toBeInTheDocument();
+  expect(targetFieldSelect()).toBeEnabled();
+  // Boolean target (show-hide toggle) gets the true/false control. (#565)
+  expect(valueBooleanSelect()).toBeInTheDocument();
+});
+
+// #768: repeatable exposes an optional "Add another label" text param that
+// overrides the runtime's auto-generated "Add another?" radio label. Blank
+// means absent — the editor must never store "".
+
+it("renders a text input for repeatable's Add another label with the default as placeholder", () => {
+  renderStepBehaviour([
+    { type: "repeatable", min: 1, max: 5 } as unknown as Behaviour,
+  ]);
+  const input = screen.getByPlaceholderText("Add another?");
+  expect(input).toBeInTheDocument();
+  expect(input).toHaveValue("");
+});
+
+it("shows the stored addAnotherLabel value", () => {
+  renderStepBehaviour([
+    {
+      type: "repeatable",
+      min: 1,
+      max: 5,
+      addAnotherLabel: "Add another qualification?",
+    } as unknown as Behaviour,
+  ]);
+  expect(screen.getByPlaceholderText("Add another?")).toHaveValue(
+    "Add another qualification?",
+  );
+});
+
+it("does not initialize addAnotherLabel when adding a repeatable behaviour", async () => {
+  const onChange = jest.fn();
+  render(
+    <BehavioursEditor
+      scope="step"
+      behaviours={[]}
+      fieldRefs={FIELD_REFS}
+      stepRefs={STEP_REFS}
+      onChange={onChange}
+    />,
+  );
+  await userEvent.selectOptions(screen.getByRole("combobox"), "repeatable");
+  const added = onChange.mock.lastCall?.[0][0] as Record<string, unknown>;
+  expect(added.type).toBe("repeatable");
+  expect("addAnotherLabel" in added).toBe(false);
+});
+
+it("stores typed text as addAnotherLabel", async () => {
+  const onChange = renderStepBehaviour([
+    { type: "repeatable", min: 1, max: 5 } as unknown as Behaviour,
+  ]);
+  await userEvent.type(screen.getByPlaceholderText("Add another?"), "A");
+  expect(onChange).toHaveBeenLastCalledWith([
+    expect.objectContaining({ addAnotherLabel: "A" }),
+  ]);
+});
+
+it("deletes addAnotherLabel from the behaviour when the input is blanked", async () => {
+  const onChange = renderStepBehaviour([
+    {
+      type: "repeatable",
+      min: 1,
+      max: 5,
+      addAnotherLabel: "X",
+    } as unknown as Behaviour,
+  ]);
+  await userEvent.clear(screen.getByPlaceholderText("Add another?"));
+  const updated = onChange.mock.lastCall?.[0][0] as Record<string, unknown>;
+  expect("addAnotherLabel" in updated).toBe(false);
+});
+
+it("treats whitespace-only input as blank", async () => {
+  const onChange = renderStepBehaviour([
+    { type: "repeatable", min: 1, max: 5 } as unknown as Behaviour,
+  ]);
+  await userEvent.type(screen.getByPlaceholderText("Add another?"), " ");
+  const updated = onChange.mock.lastCall?.[0][0] as Record<string, unknown>;
+  expect("addAnotherLabel" in updated).toBe(false);
+});
+
+// #792: sharedFields.fieldIds is picked from a checkbox list of the current
+// step's fields (fieldRefArray kind) instead of a free-typed comma-separated
+// text input, so authors can't typo a field id into a recipe.
+
+function renderSharedFields(
+  fieldIds: string[],
+  onChange = jest.fn(),
+  { refs = FIELD_REFS, currentStepId = "step-1" as string | undefined } = {},
+) {
+  render(
+    <BehavioursEditor
+      scope="step"
+      behaviours={[{ type: "sharedFields", fieldIds } as unknown as Behaviour]}
+      fieldRefs={refs}
+      stepRefs={STEP_REFS}
+      onChange={onChange}
+      currentStepId={currentStepId}
+    />,
+  );
+  return onChange;
+}
+
+it("renders a checkbox per current-step field and none for other steps' fields", () => {
+  renderSharedFields([]);
+  expect(screen.getByRole("checkbox", { name: "First Name" })).toBeInTheDocument();
+  expect(screen.getByRole("checkbox", { name: "Last Name" })).toBeInTheDocument();
+  expect(screen.getByRole("checkbox", { name: "Agree" })).toBeInTheDocument();
+  // step-2's field must not be offered.
+  expect(screen.queryByRole("checkbox", { name: "Email" })).not.toBeInTheDocument();
+  // The old comma-separated text input is gone.
+  expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+});
+
+it("checks exactly the boxes whose field ids are in fieldIds", () => {
+  renderSharedFields(["first-name"]);
+  expect(screen.getByRole("checkbox", { name: "First Name" })).toBeChecked();
+  expect(screen.getByRole("checkbox", { name: "Last Name" })).not.toBeChecked();
+  expect(screen.getByRole("checkbox", { name: "Agree" })).not.toBeChecked();
+});
+
+it("checking a box adds its field id to fieldIds", async () => {
+  const onChange = renderSharedFields(["first-name"]);
+  await userEvent.click(screen.getByRole("checkbox", { name: "Last Name" }));
+  expect(onChange).toHaveBeenLastCalledWith([
+    expect.objectContaining({ fieldIds: ["first-name", "last-name"] }),
+  ]);
+});
+
+it("unchecking a box removes its field id from fieldIds", async () => {
+  const onChange = renderSharedFields(["first-name", "last-name"]);
+  await userEvent.click(screen.getByRole("checkbox", { name: "First Name" }));
+  expect(onChange).toHaveBeenLastCalledWith([
+    expect.objectContaining({ fieldIds: ["last-name"] }),
+  ]);
+});
+
+it("renders one checkbox for two same-step fields that resolve to the same id", () => {
+  // Two same-type components on one step resolve to the same runtime fieldId;
+  // the list dedupes so the id is offered once.
+  const refs: FieldRef[] = [
+    { stepId: "step-1", fieldId: "text", displayName: "Text", isBoolean: false },
+    { stepId: "step-1", fieldId: "text", displayName: "Text", isBoolean: false },
+  ];
+  renderSharedFields([], jest.fn(), { refs });
+  expect(screen.getAllByRole("checkbox")).toHaveLength(1);
+});
+
+it("renders no checkbox for a stale id and drops it on the next toggle", async () => {
+  // "ghost" matches no current field: nothing rendered for it, and the next
+  // edit rebuilds fieldIds from real fields only (#792 silent-drop semantics).
+  const onChange = renderSharedFields(["ghost", "first-name"]);
+  expect(screen.getAllByRole("checkbox")).toHaveLength(3); // step-1 fields only
+  await userEvent.click(screen.getByRole("checkbox", { name: "Last Name" }));
+  expect(onChange).toHaveBeenLastCalledWith([
+    expect.objectContaining({ fieldIds: ["first-name", "last-name"] }),
+  ]);
+});
+
+it("shows a hint instead of checkboxes when the step has no fields", () => {
+  renderSharedFields([], jest.fn(), { currentStepId: "step-9" });
+  expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
+  expect(screen.getByText(/no fields/i)).toBeInTheDocument();
+});
+
+it("adding a Shared Fields behaviour seeds an empty fieldIds array", async () => {
+  const onChange = jest.fn();
+  render(
+    <BehavioursEditor
+      scope="step"
+      behaviours={[]}
+      fieldRefs={FIELD_REFS}
+      stepRefs={STEP_REFS}
+      onChange={onChange}
+      currentStepId="step-1"
+    />,
+  );
+  await userEvent.selectOptions(addBehaviourSelect(), "sharedFields");
+  expect(onChange).toHaveBeenLastCalledWith([
+    { type: "sharedFields", fieldIds: [] },
+  ]);
+});
+
+it("step-scope stepConditionalOn still seeds an empty Target Step when currentStepId is passed", async () => {
+  // The step editor now passes currentStepId for the checkbox list; the
+  // stepRef seeding must stay field-scope-only so the Target Step doesn't
+  // default to the step itself (#519 gating unchanged).
+  const onChange = jest.fn();
+  render(
+    <BehavioursEditor
+      scope="step"
+      behaviours={[]}
+      fieldRefs={FIELD_REFS}
+      stepRefs={STEP_REFS}
+      onChange={onChange}
+      currentStepId="step-1"
+    />,
+  );
+  await userEvent.selectOptions(addBehaviourSelect(), "stepConditionalOn");
+  expect(onChange).toHaveBeenLastCalledWith([
+    expect.objectContaining({ type: "stepConditionalOn", targetStepId: "" }),
   ]);
 });

@@ -1,4 +1,7 @@
 import React from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { markdownComponents } from "./markdown-components";
 import { isSafePaymentUrl } from "../lib/security/safe-payment-url";
 import { SubmissionConfirmationProps } from "../types/props.type";
 
@@ -27,13 +30,17 @@ export default function SubmissionConfirmation({
   stepTitle,
   processingMessage,
   nextSteps,
+  markdownContent,
   contactDetails,
   onTryAgain,
   submissionState,
 }: SubmissionConfirmationProps) {
-  // Without a committed submissionState there is nothing genuine to confirm.
-  // The form-renderer redirects away from this step when state is absent, so
-  // rendering null here avoids ever fabricating a fake payment receipt.
+  // submissionState is rehydrated from session storage, so it survives a
+  // refresh on this step. When it is genuinely absent (the step was reached
+  // without a submission) there is nothing to confirm — the form-renderer
+  // redirects away and rendering null here avoids fabricating a fake receipt.
+  // The stored value is display-only; the real submission/payment outcome is
+  // authoritative server-side.
   if (!submissionState) {
     return null;
   }
@@ -89,10 +96,29 @@ export default function SubmissionConfirmation({
         </div>
       )}
 
+      {markdownContent && (
+        <div className="form-page__markdown-content">
+          {/* Recipe-authored copy (e.g. "What you need to know"). react-markdown
+              escapes raw HTML by default and we deliberately omit rehype-raw, so
+              recipe content cannot inject markup. */}
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={markdownComponents}
+          >
+            {markdownContent}
+          </ReactMarkdown>
+        </div>
+      )}
+
       {contactDetails && (
         <div className="form-page__contact">
           <p>If you need help with your application, contact:</p>
-          <h3 className="govbb-text-h3">{contactDetails.title}</h3>
+          {/* title/telephone/email are each optional (issue #607) — render
+              only the lines that are present so a partial contact (e.g. an
+              email-only MDA) doesn't show empty labels or a blank heading. */}
+          {contactDetails.title && (
+            <h3 className="govbb-text-h3">{contactDetails.title}</h3>
+          )}
           <div className="form-page__contact-body">
             {contactDetails.address && (
               <>
@@ -106,14 +132,18 @@ export default function SubmissionConfirmation({
                 )}
               </>
             )}
-            <p>
-              <span className="form-page__contact-label">Telephone:</span>{" "}
-              {contactDetails.telephoneNumber}
-            </p>
-            <p>
-              <span className="form-page__contact-label">Email:</span>{" "}
-              {contactDetails.email}
-            </p>
+            {contactDetails.telephoneNumber && (
+              <p>
+                <span className="form-page__contact-label">Telephone:</span>{" "}
+                {contactDetails.telephoneNumber}
+              </p>
+            )}
+            {contactDetails.email && (
+              <p>
+                <span className="form-page__contact-label">Email:</span>{" "}
+                {contactDetails.email}
+              </p>
+            )}
           </div>
         </div>
       )}

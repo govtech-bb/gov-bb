@@ -560,14 +560,42 @@ describe("processors round-trip through deserialize/serialize", () => {
     };
   }
 
-  it("preserves a processors array across deserialize → serialize (id-aware: minted on the draft, stripped from the wire)", () => {
+  // The non-payment processors, in fixture order. Payment now lives in the DB
+  // sibling (#716), so it's stripped from the serialized recipe — every wire
+  // assertion below compares against this filtered set, not processorsFixture.
+  const nonPaymentProcessors: Processor[] = processorsFixture.filter(
+    (p) => p.type !== "payment",
+  );
+
+  it("preserves non-payment processors across deserialize → serialize (id-aware: minted on the draft, stripped from the wire)", () => {
     const draft = deserializeRecipe(makeRecipeWithProcessors());
     // The deserialized draft carries minted editor-only ids the persisted
     // recipe must not — so the round-trip is exact only once `id` is stripped.
     expect(draft.processors?.every((p) => typeof p.id === "string")).toBe(true);
 
     const result = serializeRecipeDraft(draft, { version: "1.0.0" });
-    expect(result.processors).toEqual(processorsFixture);
+    expect(result.processors).toEqual(nonPaymentProcessors);
+  });
+
+  it("strips every payment processor from the serialized recipe (it's a DB sibling now, #716)", () => {
+    const draft = deserializeRecipe(makeRecipeWithProcessors());
+    const result = serializeRecipeDraft(draft, { version: "1.0.0" });
+    expect((result.processors ?? []).some((p) => p.type === "payment")).toBe(
+      false,
+    );
+  });
+
+  it("collapses to an empty processors array when the draft's only processor is payment", () => {
+    const draft = deserializeRecipe({
+      ...makeRecipeWithProcessors(),
+      processors: [
+        processorsFixture.find((p) => p.type === "payment") as Processor,
+      ],
+    });
+    const result = serializeRecipeDraft(draft, { version: "1.0.0" });
+    // Present-but-empty (not absent): the draft had a processors field, so the
+    // `!== undefined` guard still emits `[]`.
+    expect(result.processors).toEqual([]);
   });
 
   it("serializeRecipeDraft does not emit the editor-only processor id on the wire", () => {
@@ -601,7 +629,9 @@ describe("processors round-trip through deserialize/serialize", () => {
     const parsed = serviceContractRecipeSchema.safeParse(result);
     expect(parsed.success).toBe(true);
     if (parsed.success) {
-      expect(parsed.data.processors).toEqual(processorsFixture);
+      // Payment is stripped on serialize (#716), so the wire carries only the
+      // non-payment processors.
+      expect(parsed.data.processors).toEqual(nonPaymentProcessors);
     }
   });
 
@@ -686,5 +716,24 @@ describe("contactDetails round-trip through deserialize/serialize", () => {
     if (parsed.success) {
       expect(parsed.data.contactDetails).toEqual(contactDetailsFixture);
     }
+  });
+});
+
+// ─── mdaContactId is DB-only, never on the recipe wire (issue #607) ─────────
+
+describe("mdaContactId serialization", () => {
+  it("does NOT emit mdaContactId into the serialized recipe (it's a DB-only sibling field)", () => {
+    const draft = makeBaseDraft({ mdaContactId: "contact-123" });
+    const recipe = serializeRecipeDraft(draft, { version: "1.0.0" });
+    expect(Object.keys(recipe)).not.toContain("mdaContactId");
+    expect(
+      (recipe as unknown as Record<string, unknown>).mdaContactId,
+    ).toBeUndefined();
+  });
+
+  it("omits mdaContactId even when set to null", () => {
+    const draft = makeBaseDraft({ mdaContactId: null });
+    const recipe = serializeRecipeDraft(draft, { version: "1.0.0" });
+    expect(Object.keys(recipe)).not.toContain("mdaContactId");
   });
 });

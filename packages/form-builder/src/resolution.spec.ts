@@ -320,6 +320,72 @@ describe("hydrateForm", () => {
     );
   });
 
+  // Regression (#789): an override touching one `ui` key must not clobber the
+  // registry's other `ui` keys — overriding only `hideLabel` on National ID
+  // used to silently discard the registry's `width: "short"`.
+  it("deep-merges a partial ui override with the registry's ui defaults", () => {
+    const recipe = makeRecipe({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          elements: [
+            {
+              ref: "components/national-id-number",
+              overrides: { ui: { hideLabel: true } },
+            },
+          ],
+        },
+      ],
+    });
+
+    const contract = hydrateForm(recipe, catalog);
+    expect(contract.steps[0].elements[0].ui).toEqual({
+      width: "short",
+      hideLabel: true,
+    });
+  });
+
+  it("lets a ui.width override win over the registry's ui.width default", () => {
+    const recipe = makeRecipe({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          elements: [
+            {
+              ref: "components/national-id-number",
+              overrides: { ui: { width: "long" } },
+            },
+          ],
+        },
+      ],
+    });
+
+    const contract = hydrateForm(recipe, catalog);
+    expect(contract.steps[0].elements[0].ui).toEqual({ width: "long" });
+  });
+
+  it("keeps the registry ui when the override has no ui key", () => {
+    const recipe = makeRecipe({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          elements: [
+            {
+              ref: "components/national-id-number",
+              overrides: { label: "ID number" },
+            },
+          ],
+        },
+      ],
+    });
+
+    const contract = hydrateForm(recipe, catalog);
+    expect(contract.steps[0].elements[0].ui).toEqual({ width: "short" });
+  });
+
   it("expands a block ref to all child primitives", () => {
     const recipe = makeRecipe({
       steps: [

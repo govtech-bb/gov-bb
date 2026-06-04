@@ -1,13 +1,19 @@
 import { z } from "zod";
 import { fieldOverridesSchema, primitiveSchema } from "./primitive.type";
 import { behaviourSchema } from "./behavior.type";
+import { kebabIdSchema } from "./id-pattern";
 
 export const formStepSchema = z.object({
-  stepId: z.string(),
+  stepId: kebabIdSchema,
   title: z.string(),
   description: z.string().optional(),
   elements: z.array(primitiveSchema),
   behaviours: z.array(behaviourSchema).optional(),
+  // Raw markdown rendered on the submission-confirmation page (parsed by the
+  // forms client). Lets a recipe drive form-specific confirmation content
+  // (e.g. a "What you need to know" section) without code changes. Distinct
+  // from `nextSteps`, which renders structured title/content/items blocks.
+  markdownContent: z.string().optional(),
   nextSteps: z
     .array(
       z.object({
@@ -28,7 +34,9 @@ export type RecipeComponentField = z.infer<typeof recipeComponentFieldSchema>;
 
 export const recipeBlockFieldSchema = z.object({
   ref: z.string().regex(/^blocks\//),
-  overrides: z.record(z.string(), fieldOverridesSchema).optional(),
+  // Keys are the block's child fieldIds, so the kebab rule applies to them
+  // the same as to any other fieldId position.
+  overrides: z.record(kebabIdSchema, fieldOverridesSchema).optional(),
 });
 export type RecipeBlockField = z.infer<typeof recipeBlockFieldSchema>;
 

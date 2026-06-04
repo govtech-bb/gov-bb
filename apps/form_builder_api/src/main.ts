@@ -3,6 +3,7 @@ import "reflect-metadata";
 import express from "express";
 import cors from "cors";
 import { formsRouter } from "./routes/forms";
+import { mdaContactsRouter } from "./routes/mda-contacts";
 import { registryRouter } from "./routes/registry";
 import { aiRouter } from "./routes/ai";
 import { publishRouter } from "./routes/publish";
@@ -24,6 +25,7 @@ app.use("/builder", authMiddleware);
 
 // Routes
 app.use("/builder/forms", formsRouter);
+app.use("/builder/mda-contacts", mdaContactsRouter);
 app.use("/builder/registry", registryRouter);
 app.use("/builder/ai", aiRouter);
 app.use("/builder/publish", publishRouter);

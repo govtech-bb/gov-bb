@@ -152,7 +152,10 @@ export function Toolbar({
         type="button"
         className={styles.btnPrimary}
         onClick={onPublish}
-        disabled={isValidating || isPublishing}
+        // Deploy requires a saved draft (#331): publishing an unsaved draft
+        // opens a PR for a recipe the draft API has never seen.
+        disabled={isValidating || isPublishing || hasUnsavedChanges}
+        title={hasUnsavedChanges ? "Save draft before deploying" : undefined}
       >
         {isPublishing ? "Opening PR…" : "Deploy"}
       </button>

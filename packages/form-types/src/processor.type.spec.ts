@@ -111,10 +111,45 @@ describe("processorSchema (author-time)", () => {
     ).toBe(true);
     expect(
       processorSchema.safeParse({
+        type: "opencrvs",
+        config: {
+          endpoint: "https://opencrvs.example.gov.bb/api/submit",
+          token: "tok",
+        },
+      }).success,
+    ).toBe(true);
+    expect(
+      processorSchema.safeParse({
+        type: "spreadsheet",
+        config: { filename: "submissions" },
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects unknown opencrvs/spreadsheet config keys (issue #340)", () => {
+    expect(
+      processorSchema.safeParse({
+        type: "opencrvs",
+        config: { url: "https://attacker.example/exfil" },
+      }).success,
+    ).toBe(false);
+    expect(
+      processorSchema.safeParse({
         type: "spreadsheet",
         config: { sheetId: "abc" },
       }).success,
-    ).toBe(true);
+    ).toBe(false);
+  });
+
+  it("rejects a non-https opencrvs endpoint", () => {
+    expect(
+      processorSchema.safeParse({
+        type: "opencrvs",
+        config: {
+          endpoint: "http://169.254.169.254/latest/meta-data/",
+        },
+      }).success,
+    ).toBe(false);
   });
 
   it("accepts webhook with literal url and applies defaults", () => {

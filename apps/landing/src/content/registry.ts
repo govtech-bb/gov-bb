@@ -2,6 +2,7 @@ import { FrontmatterSchema, titleFromSlug } from '../lib/frontmatter'
 import { parseFrontmatter } from '../lib/parse-frontmatter'
 import type { Frontmatter } from '../lib/frontmatter'
 import { CATEGORIES, CATEGORY_BY_SLUG, getSubcategory } from './categories'
+import type { Category } from './categories'
 
 export interface ContentPage {
   /** Relative slug derived from filename, e.g. "register-a-birth" or "register-a-birth/start". */
@@ -228,6 +229,38 @@ export function resolveServiceHref(href: string): string {
     if (url) return `/${url}`
   }
   return href
+}
+
+/**
+ * The listable service pages of a category under the current mode: non-sub-page
+ * pages that claim the category and are visible. Sub-category pages are included
+ * (they carry the parent slug in `categories`); callers narrow by subcategory.
+ * The single source for "what shows under a category" — both the category
+ * listings and the visibility gate read it, so they can never disagree.
+ */
+export function categoryServices(
+  categorySlug: string,
+  inPreview: boolean,
+): Array<ContentPage> {
+  return PAGES.filter(
+    (p) =>
+      p.frontmatter.categories.includes(categorySlug) &&
+      !isSubPage(p) &&
+      isVisible(p, inPreview),
+  )
+}
+
+/**
+ * A category is visible when it has at least one listable service under the
+ * current mode. A category whose only services are `preview` (or that has none)
+ * is dropped from the public home list and 404s when visited directly; a
+ * reviewer in preview mode still sees it.
+ */
+export function isCategoryVisible(
+  category: Category,
+  inPreview: boolean,
+): boolean {
+  return categoryServices(category.slug, inPreview).length > 0
 }
 
 export { CATEGORIES, CATEGORY_BY_SLUG }

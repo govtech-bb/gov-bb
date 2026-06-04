@@ -132,4 +132,16 @@ describe("Toolbar — unsaved changes + Discard", () => {
 
     expect(saveDraftButton()).toBeEnabled();
   });
+
+  it("disables Deploy when there are unsaved changes (#331)", () => {
+    renderToolbar({ hasUnsavedChanges: true });
+
+    expect(screen.getByRole("button", { name: /deploy/i })).toBeDisabled();
+  });
+
+  it("enables Deploy when the draft is clean", () => {
+    renderToolbar({ hasUnsavedChanges: false });
+
+    expect(screen.getByRole("button", { name: /deploy/i })).toBeEnabled();
+  });
 });

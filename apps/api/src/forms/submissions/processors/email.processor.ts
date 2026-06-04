@@ -10,11 +10,16 @@ import {
   type EmailFileLink,
 } from "../../../email/email-body.builder";
 import { FilesService } from "../../../files/files.service";
+import {
+  classifyRecipientField,
+  CONTACT_DETAILS_PREFIX,
+} from "@govtech-bb/form-types";
 import type {
   ISubmissionProcessor,
   ProcessorOutput,
 } from "./submission-processor.interface";
 import type { SubmissionCreatedEvent } from "../submissions.types";
+import { FormConfigService } from "../../form-config/form-config.service";
 
 const CONFIRMATION_TEMPLATE = "submission-confirmation";
 
@@ -32,13 +37,6 @@ const ATTACHMENT_BUDGET_BYTES = 7 * 1024 * 1024;
 // long enough to span a weekend before a reviewer opens the notification.
 const EMAIL_LINK_TTL_SECONDS = 72 * 60 * 60;
 
-// Reserved recipientField prefix. A recipientField of "contactDetails.<key>"
-// resolves against the form's service-contract contactDetails (e.g. the MDA
-// notification address) rather than against submitted answer values. A step
-// literally named "contactDetails" is therefore shadowed — see
-// FORM-CREATION-GUIDE.md.
-const CONTACT_DETAILS_PREFIX = "contactDetails.";
-
 @Injectable()
 export class EmailProcessor implements ISubmissionProcessor {
   readonly type = "email" as const;
@@ -46,15 +44,19 @@ export class EmailProcessor implements ISubmissionProcessor {
   private readonly client: SESv2Client;
   private readonly from: string;
   private readonly configurationSet: string | undefined;
+  private readonly defaultRecipient: string;
 
   constructor(
     config: ConfigService,
     private readonly templateService: EmailTemplateService,
     private readonly emailBodyBuilder: EmailBodyBuilder,
     private readonly filesService: FilesService,
+    private readonly formConfigService: FormConfigService,
   ) {
     this.from = config.get<string>("email.from") ?? "noreply@gov.bb";
     this.configurationSet = config.get<string>("email.configurationSet");
+    this.defaultRecipient =
+      config.get<string>("email.defaultRecipient") ?? "testing@govtech.bb";
     this.client = new SESv2Client({
       region: config.get<string>("email.region") ?? "us-east-1",
     });
@@ -100,24 +102,19 @@ export class EmailProcessor implements ISubmissionProcessor {
     // delivery error) throws. The caller surfaces it (SQS retry → DLQ / error
     // log) instead of silently dropping an undelivered email.
     try {
-      // A literal address (contains "@") is used verbatim — this is how a
-      // recipe hardcodes a fixed internal recipient (e.g. "testing@govtech.bb").
-      // Neither a "contactDetails." prefix nor a "stepId.fieldId" path contains
-      // "@", so the literal case is unambiguous and checked first. Classified
-      // once: recipient resolution and the uploads gate below both derive
-      // from `kind` so they can never disagree.
-      const kind = recipientField.includes("@")
-        ? "literal"
-        : recipientField.startsWith(CONTACT_DETAILS_PREFIX)
-          ? "contact"
-          : "submitted";
+      // Classify once: recipient resolution and the uploads gate below both
+      // derive from `kind` so they can never disagree. See classifyRecipientField
+      // (@govtech-bb/form-types) for the literal/contact/config/submitted rules.
+      const kind = classifyRecipientField(recipientField);
 
       const recipient =
         kind === "literal"
           ? recipientField
           : kind === "contact"
             ? await this.resolveContactRecipient(payload, recipientField)
-            : this.resolveSubmittedRecipient(payload, recipientField);
+            : kind === "config"
+              ? await this.resolveConfigRecipient(payload)
+              : this.resolveSubmittedRecipient(payload, recipientField);
 
       if (!recipient) {
         throw new Error(`Could not resolve recipient at "${recipientField}"`);
@@ -226,6 +223,28 @@ export class EmailProcessor implements ISubmissionProcessor {
       await this.emailBodyBuilder.resolveContactDetails(payload);
     const value = contactDetails?.[key as keyof typeof contactDetails];
     return typeof value === "string" ? value : undefined;
+  }
+
+  /**
+   * Resolves a recipient for the reserved "config.*" token from the
+   * per-environment `form_config` → `mda_contact` directory (the private MDA
+   * notification address). Always returns a usable address: on a **resolved
+   * miss** — no row (e.g. sandbox, or a freshly-migrated recipe with no
+   * production row yet), no/deleted contact, or a blank `mda_email` — it
+   * degrades to the configured default test inbox rather than a stale
+   * production address.
+   *
+   * A genuine infrastructure failure (DB unreachable) is *not* a resolved miss:
+   * it propagates so the send retries (SQS → DLQ) instead of silently
+   * misrouting a production MDA notification to the default inbox.
+   */
+  private async resolveConfigRecipient(
+    payload: SubmissionCreatedEvent,
+  ): Promise<string> {
+    const mdaEmail = await this.formConfigService.resolveMdaEmail(
+      payload.formId,
+    );
+    return mdaEmail ?? this.defaultRecipient;
   }
 
   /**

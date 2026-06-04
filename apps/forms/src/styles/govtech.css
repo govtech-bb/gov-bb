@@ -86,7 +86,9 @@
   margin-bottom: var(--spacing-s);
 }
 
-/* Per-field width hints carried on the govbb-form-group wrapper */
+/* Per-field width hints carried on the govbb-form-group wrapper. Full width on
+ * mobile; capped to a fixed measure at >=768px (see the media query near the
+ * end of this file). */
 .govbb-form-group[data-field-width="short"],
 .govbb-form-group[data-field-width="medium"] {
   width: 100%;
@@ -190,6 +192,9 @@
   display: flex;
   gap: var(--spacing-s);
   margin: var(--spacing-s) 0 var(--spacing-m);
+  padding: var(--spacing-s);
+  background-color: var(--color-grey-00);
+  border-radius: var(--radius-sm);
 }
 
 .form-page__reference dt {
@@ -375,6 +380,24 @@
   font-weight: var(--font-weight-bold);
 }
 
+/* ---- Markdown content (recipe-authored confirmation copy) ---------------- *
+ * react-markdown emits bare <p> elements, which Tailwind's preflight resets to
+ * zero margin — collapsing paragraphs together. Restore vertical rhythm between
+ * them (matching body spacing), and align the block with the next-steps panel. */
+.form-page__markdown-content {
+  margin-top: var(--spacing-m);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+
+.form-page__markdown-content p {
+  margin: 0 0 var(--spacing-s);
+}
+
+.form-page__markdown-content p:last-child {
+  margin-bottom: 0;
+}
+
 /* ---- Applicant name (declaration step) ----------------------------------- */
 .form-page__applicant {
   display: flex;
@@ -485,12 +508,19 @@
   gap: var(--spacing-s);
 }
 
+/* Fixed-measure field widths (GOV.UK style). `ch` units size the cap to the
+ * field's own type, not its container, so a short field inside a show-hide
+ * inset renders the same as a standalone one — percentage widths compounded
+ * against every wrapper (.form-width 2/3 column × inset padding × 33%) and
+ * left inset fields tiny. `width: 100%` from the base rule above remains the
+ * floor, so fields still shrink inside containers narrower than the cap.
+ * `long` (or no hint) stays unstyled: full width of the form column. */
 @media (min-width: 768px) {
   .govbb-form-group[data-field-width="short"] {
-    width: 33%;
+    max-width: 24ch;
   }
 
   .govbb-form-group[data-field-width="medium"] {
-    width: 50%;
+    max-width: 38ch;
   }
 }

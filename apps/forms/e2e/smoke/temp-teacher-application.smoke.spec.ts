@@ -31,6 +31,11 @@
  * step IDs). Repeatable steps (educational-record, qualifications,
  * work-experience) render their first instance inline with an "Add another?"
  * radio; we fill one instance and answer "No" to advance to the next step.
+ *
+ * Field-id suffixes are kebab-case (`first-name`, not `firstName`) since the
+ * #741/#745 recipe id migration kebab-cased every checked-in recipe version.
+ * (`addAnother` is unaffected — it's the runtime-injected repeatable radio,
+ * not a recipe field id.)
  */
 import { faker } from "@faker-js/faker";
 import { test, expect } from "@playwright/test";
@@ -64,19 +69,19 @@ test.describe("Temporary Teacher Application — Live Smoke", () => {
     // ─── Personal Data ───────────────────────────────────────────────────────
     let step = expectStep(page, "personal-data", { exact: true });
     await expect(page.locator("h1")).toContainText("Personal Data");
-    await fillField(page, step, "firstName", firstName);
-    await fillField(page, step, "lastName", lastName);
+    await fillField(page, step, "first-name", firstName);
+    await fillField(page, step, "last-name", lastName);
     // `components/national-id-number` enforces the 850101-0001 shape
     // (`^\d{6}-\d{4}$`), so random digits won't validate.
-    await fillField(page, step, "idNumber", "850101-0001");
-    await fillDate(page, step, "dateOfBirth", 15, 6, 1990);
+    await fillField(page, step, "id-number", "850101-0001");
+    await fillDate(page, step, "date-of-birth", 15, 6, 1990);
     await selectRadio(page, step, "gender", "female");
     await fillField(page, step, "address", faker.location.streetAddress());
     // parish and citizenship render as native <select> dropdowns
     // (components/parish, components/country) — option values are slugs.
     await selectDropdown(page, step, "parish", "saint-michael");
     await fillField(page, step, "email", "testing@govtech.bb");
-    await fillField(page, step, "telCell", faker.string.numeric(10));
+    await fillField(page, step, "tel-cell", faker.string.numeric(10));
     // marital-status is a required radio.
     await selectRadio(page, step, "marital-status", "single");
     await selectDropdown(page, step, "citizenship", "barbados");
@@ -97,7 +102,7 @@ test.describe("Temporary Teacher Application — Live Smoke", () => {
     await fillField(
       page,
       step,
-      "examiningBody",
+      "examining-body",
       "Caribbean Examinations Council",
     );
     await fillField(page, step, "qualification-year", "2010");
@@ -121,27 +126,27 @@ test.describe("Temporary Teacher Application — Live Smoke", () => {
 
     // ─── Reference 1 ─────────────────────────────────────────────────────────
     step = expectStep(page, "reference-1", { exact: true });
-    await fillField(page, step, "ref1Name", "John Principal");
-    await fillField(page, step, "ref1Address", "2 School Road, Bridgetown");
-    await fillField(page, step, "ref1Occupation", "School Principal");
-    await fillField(page, step, "ref1Contact", faker.string.numeric(10));
+    await fillField(page, step, "ref1-name", "John Principal");
+    await fillField(page, step, "ref1-address", "2 School Road, Bridgetown");
+    await fillField(page, step, "ref1-occupation", "School Principal");
+    await fillField(page, step, "ref1-contact", faker.string.numeric(10));
     await advance(page, step);
 
     // ─── Reference 2 ─────────────────────────────────────────────────────────
     step = expectStep(page, "reference-2", { exact: true });
-    await fillField(page, step, "ref2Name", "Mary Supervisor");
-    await fillField(page, step, "ref2Address", "3 Office Lane, Bridgetown");
-    await fillField(page, step, "ref2Occupation", "Education Officer");
-    await fillField(page, step, "ref2Contact", faker.string.numeric(10));
+    await fillField(page, step, "ref2-name", "Mary Supervisor");
+    await fillField(page, step, "ref2-address", "3 Office Lane, Bridgetown");
+    await fillField(page, step, "ref2-occupation", "Education Officer");
+    await fillField(page, step, "ref2-contact", faker.string.numeric(10));
     await advance(page, step);
 
     // ─── Upload your documents (real S3 upload) ──────────────────────────────
     step = expectStep(page, "upload-documents", { exact: true });
-    // certificatesUpload: one file is enough.
-    await uploadOne(page, step, "certificatesUpload", TEST_PNG);
-    // testimonialsUpload: exactly two files required.
-    await uploadOne(page, step, "testimonialsUpload", TEST_PNG_2);
-    await uploadOne(page, step, "testimonialsUpload", TEST_PNG_3);
+    // certificates-upload: one file is enough.
+    await uploadOne(page, step, "certificates-upload", TEST_PNG);
+    // testimonials-upload: exactly two files required.
+    await uploadOne(page, step, "testimonials-upload", TEST_PNG_2);
+    await uploadOne(page, step, "testimonials-upload", TEST_PNG_3);
     await advance(page, step);
 
     // ─── Check your answers (auto-injected) ──────────────────────────────────
@@ -162,6 +167,14 @@ test.describe("Temporary Teacher Application — Live Smoke", () => {
       .check();
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────
-    await submitAndConfirm(page, { heading: "Submission Confirmation" });
+    // The recipe overrides the confirmation title/description (v1.3.0) and
+    // renders recipe-authored markdown ("What you need to know") below.
+    await submitAndConfirm(page, {
+      heading: "Your application to be a temporary teacher has been submitted.",
+      subheading: "Thank you. We have received your application.",
+    });
+    await expect(
+      page.getByRole("heading", { name: "What you need to know" }),
+    ).toBeVisible();
   });
 });

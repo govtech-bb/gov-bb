@@ -1,6 +1,7 @@
 import type {
   Primitive,
   FieldOverrides,
+  PrimitiveUI,
   ValidationRule,
 } from "@govtech-bb/form-types";
 import type { Block } from "@govtech-bb/form-types";
@@ -46,23 +47,51 @@ function mergeValidations(
   return { ...base, ...override };
 }
 
+/**
+ * Deep-merge ui hints: override keys win, absent keys keep the primitive's
+ * shipped value. Same bug class as #371 but for `ui` — a wholesale replace
+ * would drop hints the recipe didn't restate (e.g. overriding only `hideLabel`
+ * on NationalIdNumber would lose its `width: "short"`). Mirrors `mergeUi` in
+ * packages/form-builder/src/resolution.ts so the builder preview and the
+ * served form agree. See issue #789.
+ */
+function mergeUi(
+  base: PrimitiveUI | undefined,
+  override: PrimitiveUI | undefined,
+): PrimitiveUI | undefined {
+  if (!base && !override) return undefined;
+  if (!base) return override;
+  if (!override) return base;
+  return { ...base, ...override };
+}
+
 function applyPrimitiveOverrides(
   primitive: Primitive,
   overrides: FieldOverrides,
 ): Primitive {
-  const { validations: baseValidations, ...restPrimitive } = primitive;
-  const { validations: overrideValidations, ...restOverrides } = overrides;
+  const {
+    validations: baseValidations,
+    ui: baseUi,
+    ...restPrimitive
+  } = primitive;
+  const {
+    validations: overrideValidations,
+    ui: overrideUi,
+    ...restOverrides
+  } = overrides;
 
   const mergedValidations = mergeValidations(
     baseValidations,
     overrideValidations,
   );
+  const mergedUi = mergeUi(baseUi, overrideUi);
   return {
     ...restPrimitive,
     ...restOverrides,
     ...(mergedValidations !== undefined
       ? { validations: mergedValidations }
       : {}),
+    ...(mergedUi !== undefined ? { ui: mergedUi } : {}),
   } as Primitive;
 }
 
@@ -123,6 +152,11 @@ export async function hydrateStep(
     description: step.description,
     behaviours: step.behaviours,
     elements,
+    // Carry recipe-authored markdown (e.g. a confirmation "What you need to
+    // know" section) through to the citizen-facing form. Note: `nextSteps` is
+    // intentionally NOT carried here — it is unused by the live serving path,
+    // and wiring it would switch on dormant copy across many existing recipes.
+    markdownContent: step.markdownContent,
   };
 }
 

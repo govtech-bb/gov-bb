@@ -3,9 +3,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useReducer, useState, useMemo } from "react";
 import { getCatalogFn } from "../../server/registry";
 import { submitRecipe, updateRecipe, rekeyRecipe, deleteForm, disableForm, enableForm } from "../../server/forms";
+import { createMdaContact } from "../../server/mda-contacts";
 import { publishRecipe, getPublishBaseBranch, eraseRecipe } from "../../server/publish";
 import { validateRecipe, previewRecipe } from "../../server/registry";
-import { serializeRecipeDraft, findRecipeIdCollisions, formatCollisionIssues, resolveFieldIds } from "@govtech-bb/form-builder";
+import { serializeRecipeDraft, findRecipeIdCollisions, formatCollisionIssues, resolveFieldIds, extractDbProcessors, firstIncompletePaymentProcessor } from "@govtech-bb/form-builder";
 import { bumpMinor, bumpPatch } from "../../lib/version";
 import type { ServiceContract, ServiceContractRecipe } from "@govtech-bb/form-types";
 import { KEBAB_ID_PATTERN, KEBAB_ID_ERROR } from "@govtech-bb/form-types";
@@ -27,6 +28,8 @@ import { PublishModal } from "./-publish-modal";
 import { FormPicker } from "./-form-picker";
 import { checkFormUniqueness, checkRekeyPublished } from "./-form-uniqueness";
 import { useFormsList } from "./-use-forms-list";
+import { useMdaContacts } from "./-use-mda-contacts";
+import type { CreateMdaContactInput, MdaContact } from "../../types/index";
 import { DeleteModal } from "./-delete-modal";
 import { DisableModal } from "./-disable-modal";
 import { EraseModal } from "./-erase-modal";
@@ -59,6 +62,13 @@ function BuilderPage() {
     refetch: refetchForms,
     upsertForm,
   } = useFormsList();
+  // Per-environment MDA contact directory (issue #607), consumed by the
+  // contact-details dropdown.
+  const {
+    contacts: mdaContacts,
+    loadError: mdaContactsLoadError,
+    upsertContact: upsertMdaContact,
+  } = useMdaContacts();
   const [draft, dispatch] = useReducer(recipeReducer, EMPTY_DRAFT);
   // Snapshot of the last saved/loaded draft — the baseline that "unsaved
   // changes" is measured against. null for a brand-new form (no save/load yet);
@@ -85,6 +95,10 @@ function BuilderPage() {
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [previewData, setPreviewData] = useState<ServiceContract | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  // The serialized draft captured when Preview is pressed (#744) — set before
+  // the preview request so the "View recipe JSON" action works even while the
+  // contract is loading or the request failed.
+  const [previewRecipeJson, setPreviewRecipeJson] = useState<ServiceContractRecipe | null>(null);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [isSubmitOpen, setIsSubmitOpen] = useState(false);
   const [isPublishOpen, setIsPublishOpen] = useState(false);
@@ -296,8 +310,36 @@ function BuilderPage() {
     return true;
   };
 
+  // Hard gate for both Save draft and Deploy: a payment processor with an
+  // incomplete config (e.g. the empty strings makeDefaultProcessor seeds) is
+  // sent as the DB `processors` sibling, where the builder API 400s the WHOLE
+  // save with an opaque error (#716 follow-up). Pre-flight the same author-time
+  // payment schema the API enforces and surface a friendly, targeted message in
+  // the always-visible validation panel instead, blocking the save so no request
+  // is sent. Lights the panel and returns true when blocked. This is a hard gate
+  // even on Save draft (unlike contract errors, which Save draft can override),
+  // because an incomplete payment config can never be persisted.
+  const blockedByIncompletePayment = (): boolean => {
+    const index = firstIncompletePaymentProcessor(draft.processors);
+    if (index === null) return false;
+    setMainView("processors");
+    setValidateResult({
+      valid: false,
+      issues: [
+        {
+          path: "processors",
+          message:
+            "A payment processor is incomplete. Open the Processors panel and fill in every payment field before saving.",
+        },
+      ],
+    });
+    setLastSaveStatus("error");
+    return true;
+  };
+
   const handleSaveDraftClick = async () => {
     if (blockedByUniqueness()) return;
+    if (blockedByIncompletePayment()) return;
     const result = await runValidation();
     if (
       !result.valid &&
@@ -314,6 +356,7 @@ function BuilderPage() {
 
   const handleDeployClick = async () => {
     if (blockedByUniqueness()) return;
+    if (blockedByIncompletePayment()) return;
     const result = await runValidation();
     if (result.valid) handleOpenPublish();
   };
@@ -329,6 +372,9 @@ function BuilderPage() {
     setPreviewError(null);
     try {
       const recipe = serializeRecipeDraft(draft, { version });
+      // Captured before the request so the JSON is inspectable even when the
+      // preview request fails — failure is exactly when you want to see it.
+      setPreviewRecipeJson(recipe);
       const contract = await previewRecipe({ data: { recipe } }) as ServiceContract;
       setPreviewData(contract as ServiceContract);
     } catch (e) {
@@ -366,13 +412,27 @@ function BuilderPage() {
         draft.formId === oldFormId &&
         !!currentVersion &&
         submitVersion === currentVersion;
+      // The selected per-environment MDA contact (issue #607). DB-only: it
+      // rides alongside the recipe as a sibling field on create/update so the
+      // API upserts it into form_config. Only sent when the draft carries a
+      // value (undefined → key omitted, so an untouched selection isn't cleared).
+      const mdaContactId = draft.mdaContactId;
+      // Payment processors are a DB-only sibling (#716): pull them out of the
+      // draft and send them in `processors` (the serializer already strips them
+      // from `recipe`). `null` when there are none — clears the DB key. A re-key
+      // moves the whole form_config row, so it doesn't resend the siblings.
+      const processors = extractDbProcessors(draft.processors);
       if (isRekey) {
         await rekeyRecipe({ data: { oldFormId, recipe } });
       } else if (isInPlaceUpdate) {
-        await updateRecipe({ data: { formId: oldFormId, recipe } });
+        await updateRecipe({
+          data: { formId: oldFormId, recipe, mdaContactId, processors },
+        });
       } else {
         // Tells the API to enforce formId uniqueness for a genuine create.
-        await submitRecipe({ data: { recipe, isNew: isCreate } });
+        await submitRecipe({
+          data: { recipe, isNew: isCreate, mdaContactId, processors },
+        });
       }
       setSubmitSuccess(true);
       setLastSaveStatus("submitted");
@@ -426,6 +486,15 @@ function BuilderPage() {
   };
 
   const handlePublish = async (description: string) => {
+    // Deploy requires a saved draft (#331), and this is the one place the
+    // check holds: the toolbar's disabled gate goes stale the moment the
+    // author edits during the validate round-trip, while this handler is
+    // recreated each render so it reads the live hasUnsavedChanges right
+    // before the irreversible publishRecipe call.
+    if (hasUnsavedChanges) {
+      setPublishError("Save draft before deploying.");
+      return;
+    }
     setIsPublishing(true);
     setPublishError(null);
     try {
@@ -473,6 +542,7 @@ function BuilderPage() {
     setSubmitSuccess(false);
     setSubmitError(null);
     setPreviewData(null);
+    setPreviewRecipeJson(null);
     setPreviewError(null);
     setLastSaveStatus("idle");
   };
@@ -603,6 +673,7 @@ function BuilderPage() {
     setSubmitSuccess(false);
     setSubmitError(null);
     setPreviewData(null);
+    setPreviewRecipeJson(null);
     setLastSaveStatus("idle");
     // Close all open panels/modals
     setIsPickerOpen(false);
@@ -634,6 +705,7 @@ function BuilderPage() {
     setSubmitSuccess(false);
     setSubmitError(null);
     setPreviewData(null);
+    setPreviewRecipeJson(null);
     setPreviewError(null);
     setLastSaveStatus("idle");
   };
@@ -761,6 +833,17 @@ function BuilderPage() {
     dispatch({ type: "SET_FORM_META", formId: draft.formId, title, description: draft.description });
   };
 
+  // Create an MDA contact via the API, patch it into the local directory so the
+  // dropdown shows it immediately, and hand the created row back to the editor
+  // (which selects it). Issue #607.
+  const handleCreateMdaContact = async (
+    input: CreateMdaContactInput,
+  ): Promise<MdaContact> => {
+    const created = await createMdaContact({ data: input });
+    upsertMdaContact(created);
+    return created;
+  };
+
   const handleSelectStep = (stepId: string) => {
     setSelectedStepId(stepId);
     setMainView("step");
@@ -842,7 +925,13 @@ function BuilderPage() {
         />
 
         {mainView === "contactDetails" ? (
-          <ContactDetailsEditor draft={draft} dispatch={dispatch} />
+          <ContactDetailsEditor
+            draft={draft}
+            dispatch={dispatch}
+            contacts={mdaContacts}
+            contactsLoadError={mdaContactsLoadError}
+            onCreateContact={handleCreateMdaContact}
+          />
         ) : mainView === "processors" ? (
           <ProcessorsEditor
             draft={draft}
@@ -909,7 +998,8 @@ function BuilderPage() {
           isLoading={isPreviewing}
           error={previewError}
           previewUrl={loadedFromId ? formPreviewUrl(loadedFromId) : null}
-          onClose={() => { setIsPreviewOpen(false); setPreviewData(null); setPreviewError(null); }}
+          recipe={previewRecipeJson}
+          onClose={() => { setIsPreviewOpen(false); setPreviewData(null); setPreviewError(null); setPreviewRecipeJson(null); }}
         />
       )}
 

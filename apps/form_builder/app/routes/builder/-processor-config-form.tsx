@@ -12,9 +12,11 @@ interface ProcessorConfigFormProps {
   // Receives the FULL replacement config. Each handler spreads the existing
   // config first, so unrendered keys (notably webhook `secret`) survive.
   onConfigChange: (config: Record<string, unknown>) => void;
-  // When the form carries contact details, the reserved `contactDetails.email`
-  // path becomes a selectable recipient for the email processor (issue #547).
-  hasContactDetails?: boolean;
+  // True when the form's contactDetails carries an `email` (issue #547). Since
+  // `contactDetails.email` is now optional (issue #607), this gates the
+  // `contactDetails.email` recipient option on the email actually being present
+  // — not merely on a contactDetails object existing.
+  hasContactEmail?: boolean;
 }
 
 const WEBHOOK_METHODS = ["POST", "PUT", "PATCH"] as const;
@@ -33,7 +35,7 @@ export function ProcessorConfigForm({
   processor,
   fields,
   onConfigChange,
-  hasContactDetails = false,
+  hasContactEmail = false,
 }: ProcessorConfigFormProps) {
   // Namespace ids by processor so labels associate correctly with several cards.
   const fid = (name: string) => `${name}-${processor.id}`;
@@ -50,6 +52,26 @@ export function ProcessorConfigForm({
       const recipientFields = fields.filter((f) =>
         f.fieldId.toLowerCase().includes("email"),
       );
+      // Reserved (non-field) recipient options offered alongside the form's
+      // fields. `config.mdaEmail` (issue #607) is the per-environment MDA
+      // notification address resolved server-side from `form_config`, so it is
+      // offered always — it doesn't depend on the recipe carrying contact
+      // details. `contactDetails.email` (issue #547) is only offered when the
+      // form actually has a contact email to resolve against.
+      const recipientExtraOptions = [
+        {
+          value: "config.mdaEmail",
+          label: "MDA notification email (per-environment)",
+        },
+        ...(hasContactEmail
+          ? [
+              {
+                value: "contactDetails.email",
+                label: "MDA contact email",
+              },
+            ]
+          : []),
+      ];
       return (
         <>
           <div className={styles.formGroup}>
@@ -74,16 +96,7 @@ export function ProcessorConfigForm({
               id={fid("recipientField")}
               value={asText(config.recipientField)}
               fields={recipientFields}
-              extraOptions={
-                hasContactDetails
-                  ? [
-                      {
-                        value: "contactDetails.email",
-                        label: "MDA contact email",
-                      },
-                    ]
-                  : undefined
-              }
+              extraOptions={recipientExtraOptions}
               onChange={(recipientField) =>
                 onConfigChange({ ...config, recipientField })
               }
@@ -196,13 +209,139 @@ export function ProcessorConfigForm({
       );
     }
 
-    case "payment":
+    case "payment": {
+      const config = processor.config;
+      // Provider is fixed to ezpay (the only supported gateway) — shown
+      // read-only so the author can't author an unsupported value. amount is
+      // numeric; the path fields point at form fields via the same picker email
+      // uses; the three allow* flags are checkboxes. The whole config is
+      // validated against paymentConfigAuthorSchema on save (DB sibling, #716).
+      const setBool = (key: string, checked: boolean) => {
+        // Prune the flag to absent when unchecked (it's optional), mirroring how
+        // optional string fields prune to absent, so a false flag doesn't
+        // persist verbosely.
+        const next = { ...config };
+        if (checked) (next as Record<string, unknown>)[key] = true;
+        else delete (next as Record<string, unknown>)[key];
+        onConfigChange(next);
+      };
       return (
-        <div className={styles.processorReadOnly} role="note">
-          Payment processors aren&apos;t editable in the builder yet. This
-          processor is preserved as-is on deploy — edit its config in the recipe
-          JSON directly.
-        </div>
+        <>
+          <div className={styles.formGroup}>
+            <label htmlFor={fid("provider")}>Provider</label>
+            <input
+              id={fid("provider")}
+              type="text"
+              value="ezpay"
+              readOnly
+              disabled
+            />
+          </div>
+          <div className={styles.formGroup}>
+            <label htmlFor={fid("department")}>Department</label>
+            <input
+              id={fid("department")}
+              type="text"
+              value={asText(config.department)}
+              onChange={(e) =>
+                onConfigChange({ ...config, department: e.target.value })
+              }
+            />
+          </div>
+          <div className={styles.formGroup}>
+            <label htmlFor={fid("paymentCode")}>Payment code</label>
+            <input
+              id={fid("paymentCode")}
+              type="text"
+              value={asText(config.paymentCode)}
+              onChange={(e) =>
+                onConfigChange({ ...config, paymentCode: e.target.value })
+              }
+            />
+          </div>
+          <div className={styles.formGroup}>
+            <label htmlFor={fid("amount")}>Amount</label>
+            <input
+              id={fid("amount")}
+              type="number"
+              min={0}
+              value={
+                typeof config.amount === "number" ? config.amount : ""
+              }
+              onChange={(e) =>
+                onConfigChange({
+                  ...config,
+                  amount:
+                    e.target.value === "" ? undefined : Number(e.target.value),
+                })
+              }
+            />
+          </div>
+          <div className={styles.formGroup}>
+            <label htmlFor={fid("description")}>Description</label>
+            <input
+              id={fid("description")}
+              type="text"
+              value={asText(config.description)}
+              onChange={(e) =>
+                onConfigChange({ ...config, description: e.target.value })
+              }
+            />
+          </div>
+          <div className={styles.formGroup}>
+            <label htmlFor={fid("customerEmailPath")}>Customer email path</label>
+            <ValuePathPicker
+              id={fid("customerEmailPath")}
+              value={asText(config.customerEmailPath)}
+              fields={fields}
+              onChange={(customerEmailPath) =>
+                onConfigChange({ ...config, customerEmailPath })
+              }
+            />
+          </div>
+          <div className={styles.formGroup}>
+            <label htmlFor={fid("customerNamePath")}>Customer name path</label>
+            <ValuePathPicker
+              id={fid("customerNamePath")}
+              value={asText(config.customerNamePath)}
+              fields={fields}
+              onChange={(customerNamePath) =>
+                onConfigChange({ ...config, customerNamePath })
+              }
+            />
+          </div>
+          <div className={styles.formGroup}>
+            <label>
+              <input
+                type="checkbox"
+                checked={config.allowCredit === true}
+                onChange={(e) => setBool("allowCredit", e.target.checked)}
+              />{" "}
+              Allow credit card
+            </label>
+          </div>
+          <div className={styles.formGroup}>
+            <label>
+              <input
+                type="checkbox"
+                checked={config.allowDebit === true}
+                onChange={(e) => setBool("allowDebit", e.target.checked)}
+              />{" "}
+              Allow debit card
+            </label>
+          </div>
+          <div className={styles.formGroup}>
+            <label>
+              <input
+                type="checkbox"
+                checked={config.allowPayce === true}
+                onChange={(e) => setBool("allowPayce", e.target.checked)}
+              />{" "}
+              Allow Payce
+            </label>
+          </div>
+        </>
       );
+    }
   }
 }

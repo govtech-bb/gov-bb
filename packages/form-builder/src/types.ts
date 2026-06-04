@@ -30,10 +30,11 @@ export interface RecipeStepDraft {
 // discriminated union keeps the `type` discriminant intact across all members.
 export type RecipeProcessorDraft = Processor & { id: string };
 
-// The processor types the builder can author. `payment` is intentionally not
-// authorable in the UI (issue #255 Session 2): an existing payment processor is
-// shown read-only and round-trips intact, but new ones aren't created here.
-export type AuthorableProcessorType = Exclude<Processor["type"], "payment">;
+// The processor types the builder can author. `payment` is now authorable
+// (#716): its config is editable in the builder and persisted to the DB sibling
+// `form_config.config` (never the recipe), unlike the other types which live in
+// the recipe. So this is just every processor type.
+export type AuthorableProcessorType = Processor["type"];
 
 export interface RecipeDraft {
   formId: string;
@@ -43,6 +44,12 @@ export interface RecipeDraft {
   // A single optional structured object — no editor-only id, unlike processors.
   // Round-tripped with the same `!== undefined` guard so absent stays distinct.
   contactDetails?: ContactDetails;
+  // The selected per-environment MDA contact (issue #607). DB-only: it is
+  // persisted to `form_config` and travels as a sibling field of the save
+  // request, NEVER inside the serialized recipe/ServiceContractRecipe — so
+  // serializeRecipeDraft must not emit it. `null` means "explicitly none";
+  // `undefined`/absent means "untouched".
+  mdaContactId?: string | null;
   steps: RecipeStepDraft[];
   // Carried through with an editor-only id per entry (issue #255). Serializer
   // drops the id; deserialize mints a fresh one. Authoring UI: Session 2.

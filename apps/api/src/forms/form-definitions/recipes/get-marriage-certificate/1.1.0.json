@@ -185,7 +185,15 @@
                 "error": "ID Number is required",
                 "value": true
               }
-            }
+            },
+            "behaviours": [
+              {
+                "type": "optionalIf",
+                "targetFieldId": "passport-toggle",
+                "operator": "equal",
+                "value": true
+              }
+            ]
           }
         },
         {
@@ -363,7 +371,15 @@
                 "error": "ID Number is required",
                 "value": true
               }
-            }
+            },
+            "behaviours": [
+              {
+                "type": "optionalIf",
+                "targetFieldId": "husband-passport-toggle",
+                "operator": "equal",
+                "value": true
+              }
+            ]
           }
         },
         {
@@ -460,7 +476,15 @@
                 "error": "ID Number is required",
                 "value": true
               }
-            }
+            },
+            "behaviours": [
+              {
+                "type": "optionalIf",
+                "targetFieldId": "wife-passport-toggle",
+                "operator": "equal",
+                "value": true
+              }
+            ]
           }
         },
         {

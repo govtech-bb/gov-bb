@@ -61,7 +61,7 @@
         {
           "ref": "components/date-of-birth",
           "overrides": {
-            "fieldId": "applicant-dateOfBirth",
+            "fieldId": "applicant-date-of-birth",
             "label": "Date of birth",
             "hint": "Used to confirm you meet the age requirements for this opportunity.",
             "validations": {

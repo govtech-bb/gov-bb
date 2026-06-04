@@ -24,10 +24,13 @@ const PROCESSOR_LABELS: Record<RecipeProcessorDraft["type"], string> = {
   opencrvs: "OpenCRVS forward",
 };
 
-// Only these four are authorable; `payment` is preserved read-only, never added.
+// Every processor type is now authorable, including `payment` (#716): its
+// config is editable here and persisted to the DB sibling form_config.config
+// rather than the recipe.
 const ADDABLE: { type: AuthorableProcessorType; label: string }[] = [
   { type: "email", label: PROCESSOR_LABELS.email },
   { type: "webhook", label: PROCESSOR_LABELS.webhook },
+  { type: "payment", label: PROCESSOR_LABELS.payment },
   { type: "spreadsheet", label: PROCESSOR_LABELS.spreadsheet },
   { type: "opencrvs", label: PROCESSOR_LABELS.opencrvs },
 ];
@@ -45,9 +48,11 @@ export function ProcessorsEditor({
   const processors = draft.processors ?? [];
   const [addType, setAddType] = useState<AuthorableProcessorType>("email");
   const hasEmail = processors.some((p) => p.type === "email");
-  // `contactDetailsSchema` makes `email` required, so a present `contactDetails`
-  // is a sufficient gate for offering it as a recipient (issue #547).
-  const hasContactDetails = draft.contactDetails !== undefined;
+  // `contactDetails.email` is now optional (issue #607), so a present
+  // `contactDetails` object is no longer a sufficient gate — offer the
+  // `contactDetails.email` recipient only when an email is actually set.
+  // (`config.mdaEmail` is offered unconditionally inside ProcessorConfigForm.)
+  const hasContactEmail = Boolean(draft.contactDetails?.email);
 
   function handleAdd() {
     dispatch({ type: "ADD_PROCESSOR", processorType: addType });
@@ -109,7 +114,7 @@ export function ProcessorsEditor({
             <ProcessorConfigForm
               processor={p}
               fields={fields}
-              hasContactDetails={hasContactDetails}
+              hasContactEmail={hasContactEmail}
               onConfigChange={(config) =>
                 dispatch({ type: "UPDATE_PROCESSOR_CONFIG", id: p.id, config })
               }

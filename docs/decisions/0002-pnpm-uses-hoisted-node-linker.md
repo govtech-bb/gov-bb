@@ -17,7 +17,13 @@ That was out of scope for a package-manager swap.
 
 ## Decision
 
-**`.npmrc` sets `node-linker=hoisted`.**
+**`pnpm-workspace.yaml` sets `nodeLinker: hoisted`.**
+
+(Originally this lived in `.npmrc` as `node-linker=hoisted`, but npm reads
+`.npmrc` too and warned `Unknown project config "node-linker"` on every npm/npx
+invocation — and npm's next major will hard-fail on it. pnpm ≥9.15 reads
+settings from `pnpm-workspace.yaml`, which npm never touches, so the setting
+moved there and `.npmrc` was deleted.)
 
 pnpm runs in hoisted mode, producing a flat root `node_modules/` similar to npm's behaviour. Existing tsconfigs and code keep working without per-package dependency cleanup.
 
