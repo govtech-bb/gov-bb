@@ -117,16 +117,44 @@ describe("migrateOverridesForRef", () => {
     });
   });
 
-  it("drops numeric range rules when switching number -> text, keeping required", () => {
+  it("carries numeric range rules when switching number -> text, keeping required", () => {
     const overrides: FieldOverrides = {
       validations: {
         required: { value: true },
         min: { value: 1 },
         max: { value: 100 },
+        gt: { referenceFieldId: "other" },
+        lt: { referenceFieldId: "other" },
       },
     };
     const result = migrateOverridesForRef(overrides, "number", "text");
-    expect(result.validations).toEqual({ required: { value: true } });
+    // text now offers the numeric comparison rules, so they survive the swap.
+    expect(result.validations).toEqual({
+      required: { value: true },
+      min: { value: 1 },
+      max: { value: 100 },
+      gt: { referenceFieldId: "other" },
+      lt: { referenceFieldId: "other" },
+    });
+  });
+
+  it("carries year rules but drops date-only rules when switching date -> text", () => {
+    const overrides: FieldOverrides = {
+      validations: {
+        required: { value: true },
+        minYear: { value: 1900 },
+        maxYear: { value: 2100 },
+        past: { value: true },
+        after: { referenceFieldId: "other" },
+      },
+    };
+    const result = migrateOverridesForRef(overrides, "date", "text");
+    // text offers minYear/maxYear but not the date-only past/after rules.
+    expect(result.validations).toEqual({
+      required: { value: true },
+      minYear: { value: 1900 },
+      maxYear: { value: 2100 },
+    });
   });
 
   it("always carries required and conditionalOn even when not in target descriptors", () => {

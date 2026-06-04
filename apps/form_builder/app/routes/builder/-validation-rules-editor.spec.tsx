@@ -195,6 +195,24 @@ describe("editing an overridden row", () => {
   });
 });
 
+describe("text fields offer numeric and year comparison rules (#830)", () => {
+  it("lists the numeric/year rules in the Add Rule dropdown", () => {
+    renderEditor({});
+
+    // The numeric comparison and year rules are now available on text fields.
+    for (const label of [
+      "Min Value",
+      "Max Value",
+      "Greater Than",
+      "Less Than",
+      "Min Year",
+      "Max Year",
+    ]) {
+      expect(screen.getByRole("option", { name: label })).toBeInTheDocument();
+    }
+  });
+});
+
 describe("inherited and author-added rules coexist", () => {
   it("renders a base-only rule (inherited) before an override-only rule (editable)", () => {
     renderEditor({
