@@ -960,7 +960,7 @@ describe("FormRenderer", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("repeat instance marker: a labelled instance renders a caption above the unchanged h1", () => {
+  it("repeat instance marker: a labelled instance renders the caption inside the h1 (GOV.UK pattern)", () => {
     const { getInstanceMarker } = jest.requireMock("@forms/lib");
     (getInstanceMarker as jest.Mock).mockReturnValue({
       text: "Dependent 2",
@@ -984,15 +984,14 @@ describe("FormRenderer", () => {
     );
     const caption = screen.getByTestId("repeat-instance-marker");
     expect(caption).toHaveTextContent("Dependent 2");
-    const heading = screen.getByRole("heading", { name: /Step step-1~1/ });
-    // The h1 text stays unchanged (no suffix) when a caption is shown.
-    expect(heading).toHaveTextContent("Step step-1~1");
+    // The caption lives INSIDE the h1 so the accessible name distinguishes
+    // instances for screen-reader heading navigation ("Dependent 2 Step …"),
+    // matching the GOV.UK caption-in-heading pattern.
+    const heading = screen.getByRole("heading", {
+      name: "Dependent 2 Step step-1~1",
+    });
+    expect(heading).toContainElement(caption);
+    // No em-dash suffix in the labelled case — the caption carries the marker.
     expect(heading.textContent).not.toContain("—");
-    expect(heading.textContent).not.toContain("Dependent");
-    // Caption sits above the heading in the DOM.
-    expect(
-      caption.compareDocumentPosition(heading) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
   });
 });

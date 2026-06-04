@@ -387,15 +387,18 @@ export default function FormRenderer({
       <div className="form-page form-width">
         <div className="form-page__header">
           <p className="form-page__service-title"> {formMeta.formTitle} </p>
-          {instanceMarker?.hasLabel && (
-            <span
-              data-testid="repeat-instance-marker"
-              className="block text-caption text-mid-grey-00"
-            >
-              {instanceMarker.text}
-            </span>
-          )}
           <h1 className="govbb-text-h1">
+            {/* GOV.UK caption-in-heading pattern: the caption sits inside the
+                h1 so the accessible name distinguishes repeat instances for
+                screen-reader heading navigation. */}
+            {instanceMarker?.hasLabel && (
+              <span
+                data-testid="repeat-instance-marker"
+                className="block text-caption text-mid-grey-00"
+              >
+                {instanceMarker.text}
+              </span>
+            )}
             {instanceMarker && !instanceMarker.hasLabel
               ? `${currentStep.title} — ${instanceMarker.text}`
               : currentStep.title}
