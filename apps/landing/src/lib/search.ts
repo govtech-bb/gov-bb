@@ -194,7 +194,7 @@ function buildIndex(): {
       title,
       description,
       body: stripMarkdown(page.body),
-      keywords: buildKeywords(title, description),
+      keywords: buildKeywords(title, description, page.frontmatter.keywords),
       href: `/${page.url}`,
       category,
       kind: 'service',

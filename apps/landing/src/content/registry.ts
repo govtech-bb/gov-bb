@@ -3,6 +3,7 @@ import { parseFrontmatter } from '../lib/parse-frontmatter'
 import type { Frontmatter } from '../lib/frontmatter'
 import { CATEGORIES, CATEGORY_BY_SLUG, getSubcategory } from './categories'
 import type { Category } from './categories'
+import { FeatureMetaSchema } from './feature-meta'
 
 export interface ContentPage {
   /** Relative slug derived from filename, e.g. "register-a-birth" or "register-a-birth/start". */
@@ -47,7 +48,7 @@ const modules = import.meta.glob('./**/*.md', {
   eager: true,
 })
 
-export const PAGES: Array<ContentPage> = Object.entries(modules).map(
+const markdownPages: Array<ContentPage> = Object.entries(modules).map(
   ([path, source]) => {
     const slug = slugFromPath(path)
     const { data, content } = parseFrontmatter(source as string)
@@ -102,6 +103,53 @@ export const PAGES: Array<ContentPage> = Object.entries(modules).map(
     return { slug, url, frontmatter, body: content }
   },
 )
+
+/**
+ * Co-located feature modules self-register here. An interactive feature lives in
+ * its own folder under src/routes/<url>/ with a `-meta.ts` (the leading dash
+ * makes TanStack's router generator ignore it, and its sibling `-ui`/`-data`/
+ * `-lib` dirs, while the route files alongside become real routes). Each META is
+ * validated and folded into the same list as markdown services, so listings,
+ * search, breadcrumbs and the preview gate treat them identically with no
+ * per-feature code. Adding a feature never touches this file.
+ */
+const featureMetaModules = import.meta.glob('../routes/**/-meta.ts', {
+  eager: true,
+})
+
+const featurePages: Array<ContentPage> = Object.entries(featureMetaModules).map(
+  ([path, mod]) => {
+    const parsed = FeatureMetaSchema.safeParse((mod as { META?: unknown }).META)
+    if (!parsed.success) {
+      throw new Error(
+        `Invalid META in ${path.replace(/^\.\.\//, 'src/')}: ${parsed.error.message}`,
+      )
+    }
+    const meta = parsed.data
+    if (!CATEGORY_BY_SLUG[meta.category]) {
+      throw new Error(
+        `Feature "${meta.url}" references unknown category "${meta.category}". Add it to src/content/categories.ts.`,
+      )
+    }
+    if (meta.subcategory && !getSubcategory(meta.category, meta.subcategory)) {
+      throw new Error(
+        `Feature "${meta.url}" sets subcategory "${meta.subcategory}" but category "${meta.category}" does not declare it.`,
+      )
+    }
+    const frontmatter: Frontmatter = {
+      title: meta.title,
+      description: meta.description,
+      categories: [meta.category],
+      subcategory: meta.subcategory,
+      visibility: meta.visibility,
+      keywords: meta.keywords,
+    }
+    const slug = meta.url.split('/').pop() ?? meta.url
+    return { slug, url: meta.url, frontmatter, body: '' }
+  },
+)
+
+export const PAGES: Array<ContentPage> = [...markdownPages, ...featurePages]
 
 const BY_URL = new Map(PAGES.map((p) => [p.url, p]))
 const BY_SLUG = new Map(PAGES.map((p) => [p.slug, p]))
