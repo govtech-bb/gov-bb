@@ -297,6 +297,66 @@ describe("SubmissionConfirmation — nextSteps rendering", () => {
   });
 });
 
+describe("SubmissionConfirmation — markdownContent rendering", () => {
+  const successState: SubmissionState = {
+    hasPayment: false,
+    serviceName: "Test Service",
+    submissionSuccess: true,
+    paymentSuccess: false,
+    referenceNumber: "MD-REF-001",
+    date: "19/05/2026",
+  };
+
+  // react-markdown is mocked with a passthrough renderer (see
+  // test/__mocks__/react-markdown.tsx), so these assert that the component wires
+  // markdownContent into the renderer and shows it — the markdown→HTML parsing
+  // itself is the library's responsibility, exercised by the build/smoke runs.
+  it("renders markdownContent through the markdown renderer", () => {
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Test"
+        stepTitle="Done"
+        submissionState={successState}
+        markdownContent={
+          "## What you need to know\n\nFor questions, contact us.\n\n**Phone:** (246) 535-0600"
+        }
+      />,
+    );
+    const md = screen.getByTestId("react-markdown");
+    expect(md).toHaveTextContent("What you need to know");
+    expect(md).toHaveTextContent("For questions, contact us.");
+    expect(md).toHaveTextContent("Phone:");
+    // Wrapper class is the styling hook for paragraph spacing (govtech.css).
+    expect(md.closest(".form-page__markdown-content")).not.toBeNull();
+  });
+
+  it("does not render a markdown block when markdownContent is absent", () => {
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Test"
+        stepTitle="Done"
+        submissionState={successState}
+      />,
+    );
+    expect(screen.queryByTestId("react-markdown")).not.toBeInTheDocument();
+  });
+
+  it("renders the reference number alongside markdownContent", () => {
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Test"
+        stepTitle="Done"
+        submissionState={successState}
+        markdownContent={"## What you need to know\n\nContact us."}
+      />,
+    );
+    expect(screen.getByText("MD-REF-001")).toBeInTheDocument();
+    expect(screen.getByTestId("react-markdown")).toHaveTextContent(
+      "What you need to know",
+    );
+  });
+});
+
 describe("SubmissionConfirmation — contactDetails address branches", () => {
   const successState: SubmissionState = {
     hasPayment: false,

@@ -9,6 +9,11 @@ export const formStepSchema = z.object({
   description: z.string().optional(),
   elements: z.array(primitiveSchema),
   behaviours: z.array(behaviourSchema).optional(),
+  // Raw markdown rendered on the submission-confirmation page (parsed by the
+  // forms client). Lets a recipe drive form-specific confirmation content
+  // (e.g. a "What you need to know" section) without code changes. Distinct
+  // from `nextSteps`, which renders structured title/content/items blocks.
+  markdownContent: z.string().optional(),
   nextSteps: z
     .array(
       z.object({
