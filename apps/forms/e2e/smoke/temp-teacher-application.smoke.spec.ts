@@ -113,8 +113,10 @@ test.describe("Temporary Teacher Application — Live Smoke", () => {
     // ─── Work Experience (repeatable) ────────────────────────────────────────
     step = expectStep(page, "work-experience", { exact: true });
     await fillField(page, step, "employer", "Bridgetown Secondary School");
-    await fillField(page, step, "from", "2013");
-    await fillField(page, step, "to", "2020");
+    // #825 renamed the year fieldIds (`from`/`to` → `work-start-year`/
+    // `work-end-year`) in the published recipe.
+    await fillField(page, step, "work-start-year", "2013");
+    await fillField(page, step, "work-end-year", "2020");
     await fillField(page, step, "position", "Mathematics Teacher");
     await fillField(page, step, "duties", "Teaching mathematics to forms 1-5");
     await selectRadio(page, step, "addAnother", "no");
