@@ -54,4 +54,25 @@ describe("BUILTIN_REGISTRY", () => {
       value: "workmans-primary",
     });
   });
+
+  it("exposes the marital-status select with its three options", () => {
+    const maritalStatus = BUILTIN_REGISTRY["components/marital-status"];
+    expect(maritalStatus).toMatchObject({
+      fieldId: "marital-status",
+      label: "Marital status",
+      htmlType: "select",
+      multiple: false,
+    });
+    if (!("options" in maritalStatus)) {
+      throw new Error("marital-status must define options");
+    }
+    expect(maritalStatus.options).toEqual([
+      { label: "Single", value: "single" },
+      { label: "Married", value: "married" },
+      { label: "Divorced", value: "divorced" },
+    ]);
+    expect(maritalStatus.validations).toMatchObject({
+      required: { value: true },
+    });
+  });
 });
