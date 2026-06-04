@@ -66,7 +66,7 @@ export function BehavioursEditor({
       } else if (param.kind === "operator") {
         newBehaviour[param.name] = "equal";
       } else if (param.kind === "number") {
-        newBehaviour[param.name] = 0;
+        newBehaviour[param.name] = param.defaultValue ?? 0;
       } else if (param.kind === "stringArray") {
         newBehaviour[param.name] = [];
       } else if (param.kind === "text" && !param.optional) {
@@ -122,6 +122,21 @@ export function BehavioursEditor({
         const valueIsBoolean = typeof next[valueParam.name] === "boolean";
         if (targetIsBoolean !== valueIsBoolean) {
           next[valueParam.name] = targetIsBoolean ? true : "";
+        }
+      }
+      // When a number param changes, raise any sibling number param whose
+      // `atLeastParam` points at this one and is now below it. Mirrors the
+      // #519/#565 sibling-invalidation pattern above. (#771)
+      if (descriptor && typeof value === "number") {
+        for (const sibling of descriptor.params) {
+          if (
+            sibling.kind === "number" &&
+            sibling.atLeastParam === paramName &&
+            typeof next[sibling.name] === "number" &&
+            (next[sibling.name] as number) < value
+          ) {
+            next[sibling.name] = value;
+          }
         }
       }
       return next as unknown as Behaviour;
@@ -203,9 +218,23 @@ export function BehavioursEditor({
                     <input
                       type="number"
                       value={(bRecord[param.name] as number) ?? 0}
-                      onChange={(e) =>
-                        handleParamChange(index, param.name, parseInt(e.target.value, 10) || 0)
-                      }
+                      min={param.minValue}
+                      onChange={(e) => {
+                        const parsed = parseInt(e.target.value, 10);
+                        const atLeastValue =
+                          param.atLeastParam != null
+                            ? (bRecord[param.atLeastParam] as number | undefined) ?? -Infinity
+                            : -Infinity;
+                        const floor = Math.max(
+                          param.minValue ?? -Infinity,
+                          atLeastValue,
+                        );
+                        handleParamChange(
+                          index,
+                          param.name,
+                          Math.max(floor, isNaN(parsed) ? 0 : parsed),
+                        );
+                      }}
                     />
                   </div>
                 );

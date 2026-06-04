@@ -17,6 +17,10 @@ export interface BehaviourParamDescriptor {
   // For "text" params: shown as the input placeholder, so authors can see the
   // runtime default they'd be overriding (e.g. "Add another?").
   placeholder?: string;
+  // For "number" params (#771):
+  defaultValue?: number; // initial value on add (falls back to 0)
+  minValue?: number; // hard floor: applied as input min attr and onChange clamp
+  atLeastParam?: string; // floor is another param's current value (e.g. max >= min)
 }
 
 export interface BehaviourTypeDescriptor {
@@ -82,8 +86,21 @@ export const BEHAVIOUR_TYPE_DESCRIPTORS: BehaviourTypeDescriptor[] = [
     label: "Repeatable",
     scopes: ["step"],
     params: [
-      { name: "min", label: "Min", kind: "number" },
-      { name: "max", label: "Max", kind: "number" },
+      {
+        name: "min",
+        label: "Min",
+        kind: "number",
+        defaultValue: 1,
+        minValue: 1,
+      },
+      {
+        name: "max",
+        label: "Max",
+        kind: "number",
+        defaultValue: 5,
+        minValue: 1,
+        atLeastParam: "min",
+      },
       // Optional override for the runtime's auto-generated "Add another?"
       // radio label (form-types repeatableBehaviourSchema.addAnotherLabel).
       // Blank means absent: the editor deletes the key so the runtime

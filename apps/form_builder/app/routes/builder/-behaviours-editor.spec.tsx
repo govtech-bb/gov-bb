@@ -5,7 +5,7 @@
  * selected Target Step, keyed by resolved field id.
  */
 import "@testing-library/jest-dom";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, within, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { Behaviour } from "@govtech-bb/form-types";
 import { BehavioursEditor } from "./-behaviours-editor";
@@ -306,6 +306,76 @@ it("defaults a new optionalIf's Target Step to currentStepId", async () => {
       value: "",
     }),
   ]);
+});
+
+// #771: repeatable min/max defaults and clamped inputs
+
+it("adding a repeatable behaviour initialises { min: 1, max: 5 }", async () => {
+  const onChange = renderStepBehaviour([]);
+  await userEvent.selectOptions(addBehaviourSelect(), "repeatable");
+  expect(onChange).toHaveBeenLastCalledWith([
+    expect.objectContaining({ type: "repeatable", min: 1, max: 5 }),
+  ]);
+});
+
+it("the Min input for repeatable has min='1' and changing to 0 stores 1", () => {
+  const onChange = jest.fn();
+  render(
+    <BehavioursEditor
+      scope="step"
+      behaviours={[{ type: "repeatable", min: 1, max: 5 } as unknown as Behaviour]}
+      fieldRefs={FIELD_REFS}
+      stepRefs={STEP_REFS}
+      onChange={onChange}
+    />,
+  );
+  const minInput = screen.getAllByRole("spinbutton").find(
+    (el) => (el as HTMLInputElement).closest("div")?.textContent?.includes("Min"),
+  ) as HTMLInputElement;
+  expect(minInput).toHaveAttribute("min", "1");
+  // fireEvent.change sets the full value atomically on a controlled input
+  fireEvent.change(minInput, { target: { value: "0" } });
+  const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0] as Behaviour[];
+  expect((lastCall[0] as Record<string, unknown>)["min"]).toBe(1);
+});
+
+it("with min: 3, changing Max to 2 stores 3 (clamped to atLeastParam)", () => {
+  const onChange = jest.fn();
+  render(
+    <BehavioursEditor
+      scope="step"
+      behaviours={[{ type: "repeatable", min: 3, max: 5 } as unknown as Behaviour]}
+      fieldRefs={FIELD_REFS}
+      stepRefs={STEP_REFS}
+      onChange={onChange}
+    />,
+  );
+  const maxInput = screen.getAllByRole("spinbutton").find(
+    (el) => (el as HTMLInputElement).closest("div")?.textContent?.includes("Max"),
+  ) as HTMLInputElement;
+  fireEvent.change(maxInput, { target: { value: "2" } });
+  const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0] as Behaviour[];
+  expect((lastCall[0] as Record<string, unknown>)["max"]).toBe(3);
+});
+
+it("raising Min above current Max also raises Max (min: 7 with max: 5 stores { min: 7, max: 7 })", () => {
+  const onChange = jest.fn();
+  render(
+    <BehavioursEditor
+      scope="step"
+      behaviours={[{ type: "repeatable", min: 3, max: 5 } as unknown as Behaviour]}
+      fieldRefs={FIELD_REFS}
+      stepRefs={STEP_REFS}
+      onChange={onChange}
+    />,
+  );
+  const minInput = screen.getAllByRole("spinbutton").find(
+    (el) => (el as HTMLInputElement).closest("div")?.textContent?.includes("Min"),
+  ) as HTMLInputElement;
+  fireEvent.change(minInput, { target: { value: "7" } });
+  const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0] as Behaviour[];
+  expect((lastCall[0] as Record<string, unknown>)["min"]).toBe(7);
+  expect((lastCall[0] as Record<string, unknown>)["max"]).toBe(7);
 });
 
 it("renders the gated step/field/operator/value controls for an optionalIf behaviour", () => {
