@@ -115,3 +115,38 @@ it("kebabizes the Step ID on blur and commits the normalized id", () => {
   });
   expect(onStepIdChange).toHaveBeenCalledWith("step-1", "step-one");
 });
+
+// #792: the step editor passes its own stepId to the Step Behaviours editor,
+// so a sharedFields behaviour's checkbox list offers this step's fields.
+it("renders this step's fields as Shared Fields checkboxes", () => {
+  const catalog: RegistryCatalog = {
+    components: [
+      {
+        ref: "components/first-name",
+        displayName: "First Name",
+        primitive: { fieldId: "first-name", htmlType: "text" },
+      } as unknown as RegistryCatalog["components"][number],
+    ],
+    blocks: [],
+    custom: [],
+  };
+  const step = makeStep({
+    fields: [
+      { id: "field-1", kind: "component", ref: "components/first-name", overrides: {} },
+    ],
+    behaviours: [
+      { type: "sharedFields", fieldIds: [] } as unknown as RecipeStepDraft["behaviours"][number],
+    ],
+  });
+  const draft: RecipeDraft = { formId: "f", title: "F", steps: [step] };
+  render(
+    <StepEditor
+      step={step}
+      draft={draft}
+      dispatch={jest.fn()}
+      catalog={catalog}
+      onStepIdChange={jest.fn()}
+    />,
+  );
+  expect(screen.getByRole("checkbox", { name: "First Name" })).toBeInTheDocument();
+});

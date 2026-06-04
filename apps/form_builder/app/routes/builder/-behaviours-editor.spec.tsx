@@ -474,3 +474,126 @@ it("treats whitespace-only input as blank", async () => {
   const updated = onChange.mock.lastCall?.[0][0] as Record<string, unknown>;
   expect("addAnotherLabel" in updated).toBe(false);
 });
+
+// #792: sharedFields.fieldIds is picked from a checkbox list of the current
+// step's fields (fieldRefArray kind) instead of a free-typed comma-separated
+// text input, so authors can't typo a field id into a recipe.
+
+function renderSharedFields(
+  fieldIds: string[],
+  onChange = jest.fn(),
+  { refs = FIELD_REFS, currentStepId = "step-1" as string | undefined } = {},
+) {
+  render(
+    <BehavioursEditor
+      scope="step"
+      behaviours={[{ type: "sharedFields", fieldIds } as unknown as Behaviour]}
+      fieldRefs={refs}
+      stepRefs={STEP_REFS}
+      onChange={onChange}
+      currentStepId={currentStepId}
+    />,
+  );
+  return onChange;
+}
+
+it("renders a checkbox per current-step field and none for other steps' fields", () => {
+  renderSharedFields([]);
+  expect(screen.getByRole("checkbox", { name: "First Name" })).toBeInTheDocument();
+  expect(screen.getByRole("checkbox", { name: "Last Name" })).toBeInTheDocument();
+  expect(screen.getByRole("checkbox", { name: "Agree" })).toBeInTheDocument();
+  // step-2's field must not be offered.
+  expect(screen.queryByRole("checkbox", { name: "Email" })).not.toBeInTheDocument();
+  // The old comma-separated text input is gone.
+  expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+});
+
+it("checks exactly the boxes whose field ids are in fieldIds", () => {
+  renderSharedFields(["first-name"]);
+  expect(screen.getByRole("checkbox", { name: "First Name" })).toBeChecked();
+  expect(screen.getByRole("checkbox", { name: "Last Name" })).not.toBeChecked();
+  expect(screen.getByRole("checkbox", { name: "Agree" })).not.toBeChecked();
+});
+
+it("checking a box adds its field id to fieldIds", async () => {
+  const onChange = renderSharedFields(["first-name"]);
+  await userEvent.click(screen.getByRole("checkbox", { name: "Last Name" }));
+  expect(onChange).toHaveBeenLastCalledWith([
+    expect.objectContaining({ fieldIds: ["first-name", "last-name"] }),
+  ]);
+});
+
+it("unchecking a box removes its field id from fieldIds", async () => {
+  const onChange = renderSharedFields(["first-name", "last-name"]);
+  await userEvent.click(screen.getByRole("checkbox", { name: "First Name" }));
+  expect(onChange).toHaveBeenLastCalledWith([
+    expect.objectContaining({ fieldIds: ["last-name"] }),
+  ]);
+});
+
+it("renders one checkbox for two same-step fields that resolve to the same id", () => {
+  // Two same-type components on one step resolve to the same runtime fieldId;
+  // the list dedupes so the id is offered once.
+  const refs: FieldRef[] = [
+    { stepId: "step-1", fieldId: "text", displayName: "Text", isBoolean: false },
+    { stepId: "step-1", fieldId: "text", displayName: "Text", isBoolean: false },
+  ];
+  renderSharedFields([], jest.fn(), { refs });
+  expect(screen.getAllByRole("checkbox")).toHaveLength(1);
+});
+
+it("renders no checkbox for a stale id and drops it on the next toggle", async () => {
+  // "ghost" matches no current field: nothing rendered for it, and the next
+  // edit rebuilds fieldIds from real fields only (#792 silent-drop semantics).
+  const onChange = renderSharedFields(["ghost", "first-name"]);
+  expect(screen.getAllByRole("checkbox")).toHaveLength(3); // step-1 fields only
+  await userEvent.click(screen.getByRole("checkbox", { name: "Last Name" }));
+  expect(onChange).toHaveBeenLastCalledWith([
+    expect.objectContaining({ fieldIds: ["first-name", "last-name"] }),
+  ]);
+});
+
+it("shows a hint instead of checkboxes when the step has no fields", () => {
+  renderSharedFields([], jest.fn(), { currentStepId: "step-9" });
+  expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
+  expect(screen.getByText(/no fields/i)).toBeInTheDocument();
+});
+
+it("adding a Shared Fields behaviour seeds an empty fieldIds array", async () => {
+  const onChange = jest.fn();
+  render(
+    <BehavioursEditor
+      scope="step"
+      behaviours={[]}
+      fieldRefs={FIELD_REFS}
+      stepRefs={STEP_REFS}
+      onChange={onChange}
+      currentStepId="step-1"
+    />,
+  );
+  await userEvent.selectOptions(addBehaviourSelect(), "sharedFields");
+  expect(onChange).toHaveBeenLastCalledWith([
+    { type: "sharedFields", fieldIds: [] },
+  ]);
+});
+
+it("step-scope stepConditionalOn still seeds an empty Target Step when currentStepId is passed", async () => {
+  // The step editor now passes currentStepId for the checkbox list; the
+  // stepRef seeding must stay field-scope-only so the Target Step doesn't
+  // default to the step itself (#519 gating unchanged).
+  const onChange = jest.fn();
+  render(
+    <BehavioursEditor
+      scope="step"
+      behaviours={[]}
+      fieldRefs={FIELD_REFS}
+      stepRefs={STEP_REFS}
+      onChange={onChange}
+      currentStepId="step-1"
+    />,
+  );
+  await userEvent.selectOptions(addBehaviourSelect(), "stepConditionalOn");
+  expect(onChange).toHaveBeenLastCalledWith([
+    expect.objectContaining({ type: "stepConditionalOn", targetStepId: "" }),
+  ]);
+});
