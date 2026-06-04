@@ -24,6 +24,7 @@ export { Parish } from "./parish";
 export { PassportNumber } from "./passport-number";
 export { Postcode } from "./post-code";
 export { PrimarySchool } from "./primary-school";
+export { SecondarySchool } from "./secondary-school";
 export { Relationship } from "./relationship";
 export { Sex } from "./sex";
 export { TamisNumber } from "./tamis-number";
@@ -70,6 +71,7 @@ import { Parish } from "./parish";
 import { PassportNumber } from "./passport-number";
 import { Postcode } from "./post-code";
 import { PrimarySchool } from "./primary-school";
+import { SecondarySchool } from "./secondary-school";
 import { Relationship } from "./relationship";
 import { Sex } from "./sex";
 import { TamisNumber } from "./tamis-number";
@@ -131,6 +133,7 @@ const ALL = [
   PassportNumber,
   Postcode,
   PrimarySchool,
+  SecondarySchool,
   Relationship,
   Sex,
   TamisNumber,
@@ -145,7 +148,7 @@ const ALL = [
 
 // Completeness guard: bump the literal type whenever you add a component to
 // ALL, so a registered-but-unlisted component fails the build.
-const _componentCount: 45 = ALL.length;
+const _componentCount: 46 = ALL.length;
 
 export const REGISTRY_COMPONENTS: Record<`components/${string}`, Primitive> =
   Object.fromEntries(ALL.map((c) => [`components/${c.fieldId}`, c]));
