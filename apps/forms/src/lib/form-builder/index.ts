@@ -23,6 +23,7 @@ export {
 export {
   checkConditionalOn,
   getVisibleSteps,
+  getVisibleFields,
   getStepConditonalTargets,
 } from "./helpers/behavior-helper";
 export {
