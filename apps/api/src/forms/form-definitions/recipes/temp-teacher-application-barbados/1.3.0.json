@@ -58,7 +58,7 @@
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/name",
           "overrides": {
             "fieldId": "otherNames",
             "label": "Other Names",
@@ -78,11 +78,44 @@
           "ref": "components/national-id-number",
           "overrides": {
             "fieldId": "idNumber",
-            "label": "ID Number",
+            "label": "National Identification (ID) number",
             "validations": {
               "required": {
-                "error": "ID Number is required",
+                "error": "National Identification (ID) number is required",
                 "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/show-hide",
+          "overrides": {
+            "hint": "If you don't have a National ID number, you can use your passport number instead.",
+            "label": "Use passport number instead",
+            "fieldId": "passport-toggle"
+          }
+        },
+        {
+          "ref": "components/passport-number",
+          "overrides": {
+            "label": "Passport Number",
+            "fieldId": "applicant-passport-number",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": true,
+                "operator": "equal",
+                "targetFieldId": "passport-toggle"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Passport number is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Passport number must be at least 6 characters",
+                "value": 6
               }
             }
           }
@@ -132,7 +165,7 @@
           "ref": "components/national-insurance-number",
           "overrides": {
             "fieldId": "nisNumber",
-            "label": "NIS No",
+            "label": "National Insurance number (NIS)",
             "validations": {
               "required": {
                 "value": false
@@ -365,6 +398,10 @@
               "pattern": {
                 "error": "End Year must be a 4-digit year, for example 2012",
                 "value": "^\\d{4}$"
+              },
+              "gt": {
+                "error": "End Year must be later than Start Year",
+                "referenceFieldId": "education-start-year"
               }
             }
           }
@@ -538,6 +575,10 @@
               "pattern": {
                 "error": "End Year must be a 4-digit year, for example 2020",
                 "value": "^\\d{4}$"
+              },
+              "gt": {
+                "error": "End Year must be later than Start Year",
+                "referenceFieldId": "from"
               }
             }
           }
