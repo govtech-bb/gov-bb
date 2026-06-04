@@ -943,6 +943,84 @@ describe("Review", () => {
   });
 
   // -------------------------------------------------------------------------
+  // Repeatable instance markers in section headings (issue #801)
+  // -------------------------------------------------------------------------
+
+  it("renders the plain title for a non-repeat step (no marker)", () => {
+    const steps: ClientFormStep[] = [
+      makeStep({
+        stepId: "step-personal",
+        title: "Personal Details",
+        fields: [],
+      }),
+    ];
+
+    render(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={makeMockForm() as never}
+        visibleSteps={steps}
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "Personal Details" }),
+    ).toBeInTheDocument();
+  });
+
+  it("appends an auto-number marker for a ~1 repeat step with no instanceLabel", () => {
+    const steps: ClientFormStep[] = [
+      makeStep({
+        stepId: "dependents~1",
+        title: "Tell us about your dependent(s)",
+        fields: [],
+        behaviours: [{ type: "repeatable", min: 1, max: 5 }],
+      }),
+    ];
+
+    render(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={makeMockForm() as never}
+        visibleSteps={steps}
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", {
+        name: "Tell us about your dependent(s) — 2",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("appends a labelled marker for a ~1 repeat step with an instanceLabel", () => {
+    const steps: ClientFormStep[] = [
+      makeStep({
+        stepId: "dependents~1",
+        title: "Tell us about your dependent(s)",
+        fields: [],
+        behaviours: [
+          { type: "repeatable", min: 1, max: 5, instanceLabel: "Dependent" },
+        ],
+      }),
+    ];
+
+    render(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={makeMockForm() as never}
+        visibleSteps={steps}
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", {
+        name: "Tell us about your dependent(s) — Dependent 2",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  // -------------------------------------------------------------------------
   // Accessibility
   // -------------------------------------------------------------------------
 

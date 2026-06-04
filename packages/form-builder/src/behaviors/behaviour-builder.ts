@@ -112,6 +112,17 @@ export const BEHAVIOUR_TYPE_DESCRIPTORS: BehaviourTypeDescriptor[] = [
         optional: true,
         placeholder: "Add another?",
       },
+      // Optional noun marking repeat instances beyond the first (form-types
+      // repeatableBehaviourSchema.instanceLabel), e.g. "Dependent" → the
+      // second instance renders "Dependent 2". Blank means absent: the
+      // runtime auto-numbers the step title instead.
+      {
+        name: "instanceLabel",
+        label: "Instance label",
+        kind: "text",
+        optional: true,
+        placeholder: "e.g. Dependent",
+      },
     ],
   },
   {
