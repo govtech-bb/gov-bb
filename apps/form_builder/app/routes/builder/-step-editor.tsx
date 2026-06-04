@@ -166,6 +166,16 @@ export function StepEditor({
             if (isRequiredStep(step.stepId)) return;
             handleStepIdChange(e.target.value);
           }}
+          onBlur={() => {
+            // Mirror the Field ID Override input: normalize a non-kebab id on
+            // blur (e.g. `step_one` → `step-one`) instead of leaving it to
+            // fail server-side validation (#741).
+            if (isRequiredStep(step.stepId)) return;
+            const normalized = kebabize(localStepId);
+            if (normalized && normalized !== localStepId) {
+              handleStepIdChange(normalized);
+            }
+          }}
           aria-invalid={stepIdError ? true : undefined}
         />
         {stepIdError && (
