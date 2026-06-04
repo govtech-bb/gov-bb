@@ -6,7 +6,7 @@ import type {
   ValidationConfig,
   ValidationRule,
 } from "@govtech-bb/form-types";
-import type { FieldRef } from "./-recipe-refs";
+import type { FieldRef, StepRef } from "./-recipe-refs";
 import { FieldRefPicker } from "./-field-ref-picker";
 import styles from "../../styles/builder.module.css";
 
@@ -17,6 +17,10 @@ interface ValidationRulesEditorProps {
   // "inherited" rows the author can override per field instance (#618).
   baseRules?: ValidationRule;
   fieldRefs: FieldRef[];
+  // Steps available as reference-rule scopes. Mirrors the behaviours editor's
+  // Target Step pattern, but unscoped (no targetStepId) stays fully editable
+  // for backward compatibility with existing reference rules (#840).
+  stepRefs: StepRef[];
   onChange: (rules: FieldOverrides["validations"]) => void;
 }
 
@@ -30,6 +34,7 @@ export function ValidationRulesEditor({
   rules,
   baseRules,
   fieldRefs,
+  stepRefs,
   onChange,
 }: ValidationRulesEditorProps) {
   const descriptors = VALIDATION_RULE_DESCRIPTORS[htmlType] ?? [];
@@ -80,7 +85,37 @@ export function ValidationRulesEditor({
     patch: Partial<ValidationConfig>,
   ) {
     const existing = overrideRules[ruleType] ?? {};
-    commit({ ...overrideRules, [ruleType]: { ...existing, ...patch } });
+    const merged = { ...existing, ...patch } as Record<string, unknown>;
+    // A patched key set to `undefined` is a genuine deletion, not a stored
+    // `undefined`: strip it so the committed config never owns the key (e.g.
+    // clearing the Reference Step removes targetStepId entirely). ADR 0013/0014.
+    for (const key of Object.keys(patch)) {
+      if ((patch as Record<string, unknown>)[key] === undefined) {
+        delete merged[key];
+      }
+    }
+    commit({ ...overrideRules, [ruleType]: merged as ValidationConfig });
+  }
+
+  // Changing the Reference Step revalidates the Reference Field: a field that no
+  // longer belongs to the newly scoped step is cleared in the same update so a
+  // stale id can't be saved. Clearing the step (empty value) removes
+  // targetStepId entirely and falls back to the flat field list. (#840, #519)
+  function handleStepChange(ruleType: ValidationType, stepId: string) {
+    const existing = overrideRules[ruleType] ?? {};
+    const patch: Partial<ValidationConfig> = {
+      // undefined => handleUpdate strips the key (genuine delta).
+      targetStepId: stepId === "" ? undefined : stepId,
+    };
+    if (stepId !== "" && existing.referenceFieldId) {
+      const validIds = fieldRefs
+        .filter((f) => f.stepId === stepId)
+        .map((f) => f.fieldId);
+      if (!validIds.includes(existing.referenceFieldId)) {
+        patch.referenceFieldId = "";
+      }
+    }
+    handleUpdate(ruleType, patch);
   }
 
   return (
@@ -155,18 +190,47 @@ export function ValidationRulesEditor({
                 />
               </div>
             )}
-            {descriptor?.hasReference && (
-              <div className={styles.formGroup}>
-                <label>Reference Field</label>
-                <FieldRefPicker
-                  value={config.referenceFieldId ?? ""}
-                  fieldRefs={fieldRefs}
-                  onChange={(val) =>
-                    handleUpdate(ruleType, { referenceFieldId: val })
-                  }
-                />
-              </div>
-            )}
+            {descriptor?.hasReference &&
+              (() => {
+                const targetStepId = config.targetStepId ?? "";
+                // Unscoped (no step): show the full flat field list and stay
+                // enabled — existing recipes have reference rules with no
+                // targetStepId and must remain fully editable. Scoped: filter
+                // the field list to the selected step. (#840)
+                const scopedRefs = targetStepId
+                  ? fieldRefs.filter((f) => f.stepId === targetStepId)
+                  : fieldRefs;
+                return (
+                  <>
+                    <div className={styles.formGroup}>
+                      <label>Reference Step</label>
+                      <select
+                        value={targetStepId}
+                        onChange={(e) =>
+                          handleStepChange(ruleType, e.target.value)
+                        }
+                      >
+                        <option value="">— any step —</option>
+                        {stepRefs.map((s) => (
+                          <option key={s.stepId} value={s.stepId}>
+                            {s.title}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className={styles.formGroup}>
+                      <label>Reference Field</label>
+                      <FieldRefPicker
+                        value={config.referenceFieldId ?? ""}
+                        fieldRefs={scopedRefs}
+                        onChange={(val) =>
+                          handleUpdate(ruleType, { referenceFieldId: val })
+                        }
+                      />
+                    </div>
+                  </>
+                );
+              })()}
             <div className={styles.formGroup}>
               <label>Error Message</label>
               <input
