@@ -1,19 +1,43 @@
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import * as schema from "./schema";
+import { getCachedSecret } from "../secrets";
 
 type Db = NodePgDatabase<typeof schema> & { $client: pg.Pool };
 let dbPromise: Promise<Db> | null = null;
 
+// Resolves the connection string from one of three sources, in priority:
+//   1. process.env.DATABASE_URL — CLI / ingest ECS task (ECS injects from
+//      Secrets Manager via the task def's `valueFrom`).
+//   2. process.env.CHAT_DATABASE_URL — legacy local-dev override.
+//   3. AWS Secrets Manager via CHAT_DATABASE_URL_SECRET_ARN — the SSR Lambda
+//      path (issue #202). The Lambda has no plaintext DATABASE_URL env var;
+//      it knows only the ARN of the secret and reads the value via
+//      secretsmanager:GetSecretValue using its compute role.
+async function resolveConnectionString(): Promise<string> {
+  const direct = process.env.DATABASE_URL ?? process.env.CHAT_DATABASE_URL;
+  if (direct) return direct;
+  const arn = process.env.CHAT_DATABASE_URL_SECRET_ARN;
+  if (!arn) {
+    throw new Error(
+      "Neither DATABASE_URL/CHAT_DATABASE_URL nor CHAT_DATABASE_URL_SECRET_ARN is set",
+    );
+  }
+  return getCachedSecret(arn);
+}
+
 export function hasDatabase(): boolean {
-  return Boolean(process.env.DATABASE_URL ?? process.env.CHAT_DATABASE_URL);
+  return Boolean(
+    process.env.DATABASE_URL ??
+    process.env.CHAT_DATABASE_URL ??
+    process.env.CHAT_DATABASE_URL_SECRET_ARN,
+  );
 }
 
 export function getDb(): Promise<Db> {
   if (!dbPromise) {
     dbPromise = (async () => {
-      const raw = process.env.DATABASE_URL ?? process.env.CHAT_DATABASE_URL;
-      if (!raw) throw new Error("DATABASE_URL not set");
+      const raw = await resolveConnectionString();
       // RDS / any managed Postgres needs SSL. pg-connection-string v3 now
       // treats sslmode=require as verify-full and rejects RDS's CA chain.
       // For sandbox we accept the self-signed chain explicitly via the pool

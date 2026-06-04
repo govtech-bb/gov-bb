@@ -1,12 +1,15 @@
 import { z } from "zod";
 
+// Note: DATABASE_URL is intentionally NOT in this schema. Its lifecycle is
+// owned by `src/lib/db/index.ts`, which resolves it at runtime from one of:
+// process.env.DATABASE_URL (CLI/ECS), CHAT_DATABASE_URL, or Secrets Manager
+// (via CHAT_DATABASE_URL_SECRET_ARN — the SSR Lambda path, issue #202).
 const envSchema = z.object({
   RAG_URL: z.url(),
   FORM_API_URL: z.url().transform((s) => s.replace(/\/+$/, "")),
   // Forms frontend (not the API). Used to hand users a link to forms that
   // are too complex to collect inline (file uploads, payment).
   FORMS_URL: z.url().transform((s) => s.replace(/\/+$/, "")),
-  DATABASE_URL: z.string().url(),
   BEDROCK_REGION: z.string().optional(),
   LLM_MODEL: z.string().default("claude-haiku-4-5"),
   REWRITE_MODEL: z.string().default("claude-haiku-4-5"),
@@ -26,7 +29,6 @@ export const getServerEnv = () =>
     RAG_URL: process.env.RAG_URL,
     FORM_API_URL: process.env.FORM_API_URL,
     FORMS_URL: process.env.FORMS_URL,
-    DATABASE_URL: process.env.DATABASE_URL,
     BEDROCK_REGION: process.env.BEDROCK_REGION,
     LLM_MODEL: process.env.LLM_MODEL,
     REWRITE_MODEL: process.env.REWRITE_MODEL,
