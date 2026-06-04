@@ -6,7 +6,7 @@ export type ParamKind =
   | "operator" // renders an operator dropdown
   | "value" // renders a value input
   | "number" // renders a number input
-  | "stringArray" // renders a comma-separated string input (for sharedFields.fieldIds)
+  | "fieldRefArray" // renders a checkbox list of the current step's fields (for sharedFields.fieldIds, #792)
   | "text"; // renders a plain text input (free text, e.g. addAnotherLabel)
 
 export interface BehaviourParamDescriptor {
@@ -127,6 +127,6 @@ export const BEHAVIOUR_TYPE_DESCRIPTORS: BehaviourTypeDescriptor[] = [
     type: "sharedFields",
     label: "Shared Fields",
     scopes: ["step"],
-    params: [{ name: "fieldIds", label: "Field IDs", kind: "stringArray" }],
+    params: [{ name: "fieldIds", label: "Field IDs", kind: "fieldRefArray" }],
   },
 ];
