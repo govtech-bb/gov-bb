@@ -60,7 +60,6 @@ export type FileUploadProps = {
   errorMessage?: string;
   /** id for the error element, so the input's aria-describedby resolves. */
   errorId?: string;
-  validationRules?: any;
   formId?: string;
   /** Form version, required for the presigned-upload requests. */
   formVersion?: string;

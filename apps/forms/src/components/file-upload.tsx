@@ -22,7 +22,6 @@ export default function FileUpload({
   value,
   errorMessage,
   errorId,
-  validationRules,
   formId,
   formVersion,
 }: FileUploadProps) {
@@ -39,10 +38,14 @@ export default function FileUpload({
   const [pending, setPending] = React.useState<PendingUpload[]>([]);
   const idRef = React.useRef(0);
 
+  // Single live region announcing every terminal change to screen readers —
+  // added, removed, rejected, or failed (WCAG 4.1.3).
+  const [statusMessage, setStatusMessage] = React.useState("");
+
   // presign's stepId is slug-validated, so strip any repeatable suffix
   // ("qualifications~1" → "qualifications") — the base step carries the policy.
   const presignStepId = field.stepId.split("~")[0];
-  const maxSize = validationRules?.maxSize?.value as number | undefined;
+  const maxSize = field.validations?.maxSize?.value as number | undefined;
 
   const appendConfirmed = (uploaded: UploadedFile) => {
     // Store the reference WITHOUT the expiring preview url (kept in memory only).
@@ -50,12 +53,15 @@ export default function FileUpload({
     const next = [...confirmedRef.current, ref];
     confirmedRef.current = next;
     onFileChange(next);
+    setStatusMessage(`${ref.name} added.`);
   };
 
   const removeFile = (key: string) => {
+    const removed = confirmedRef.current.find((f) => f.key === key);
     const next = confirmedRef.current.filter((f) => f.key !== key);
     confirmedRef.current = next;
     onFileChange(next.length ? next : null);
+    if (removed) setStatusMessage(`${removed.name} removed.`);
   };
 
   const dismissPending = (id: number) =>
@@ -79,15 +85,12 @@ export default function FileUpload({
 
         // Short-circuit oversize files before hitting the network.
         if (maxSize && file.size > maxSize) {
+          const error = `This file is larger than the ${formatMb(maxSize)} limit.`;
           setPending((prev) => [
             ...prev,
-            {
-              id,
-              name: file.name,
-              status: "error",
-              error: `This file is larger than the ${formatMb(maxSize)} limit.`,
-            },
+            { id, name: file.name, status: "error", error },
           ]);
+          setStatusMessage(`${file.name}: ${error}`);
           return;
         }
 
@@ -116,6 +119,7 @@ export default function FileUpload({
               p.id === id ? { ...p, status: "error", error: message } : p,
             ),
           );
+          setStatusMessage(`${file.name}: ${message}`);
         }
       }),
     );
@@ -124,9 +128,19 @@ export default function FileUpload({
   // Accepts either MIME types ("image/png" → "png") or extension values
   // (".pdf" → ".pdf"), so a recipe can list user-friendly extensions and have
   // them shown verbatim (e.g. "Attach a .pdf, .docx, or .png file").
-  const readableFileTypes: string[] = (
-    field.validations?.fileTypes?.value ?? []
-  ).map((type: string) => (type.includes("/") ? type.split("/")[1] : type));
+  const rawFileTypes: string[] = field.validations?.fileTypes?.value ?? [];
+  const readableFileTypes: string[] = rawFileTypes.map((type: string) =>
+    type.includes("/") ? type.split("/")[1] : type,
+  );
+
+  // Constrain the native picker to the allowed types. MIME types pass through;
+  // bare extensions ("pdf") get a leading dot so the picker recognises them.
+  const acceptAttr =
+    rawFileTypes
+      .map((type) =>
+        type.includes("/") || type.startsWith(".") ? type : `.${type}`,
+      )
+      .join(",") || undefined;
 
   const fileTypeFormatter = new Intl.ListFormat("en", {
     style: "long",
@@ -151,6 +165,7 @@ export default function FileUpload({
         <input
           {...sharedProps}
           type="file"
+          accept={sharedProps.accept ?? acceptAttr}
           className="govbb-file-upload__input"
           aria-invalid={errorMessage ? true : undefined}
           onChange={handleInputChange}
@@ -165,6 +180,10 @@ export default function FileUpload({
           </span>
         </div>
       </label>
+
+      <div role="status" aria-live="polite" className="govbb-visually-hidden">
+        {statusMessage}
+      </div>
 
       {(files.length > 0 || pending.length > 0) && (
         <ul className="govbb-file-upload__list">
@@ -189,9 +208,7 @@ export default function FileUpload({
             >
               <span className="govbb-file-upload__name">{p.name}</span>
               {p.status === "uploading" ? (
-                <span className="govbb-file-upload__status" aria-live="polite">
-                  Uploading…
-                </span>
+                <span className="govbb-file-upload__status">Uploading…</span>
               ) : (
                 <span className="govbb-file-upload__status govbb-file-upload__status--error">
                   {p.error}{" "}
