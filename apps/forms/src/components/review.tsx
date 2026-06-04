@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { AnyFormApi } from "@tanstack/react-form";
 import { ClientFormStep, ClientPrimitive, FormMeta } from "@forms/types";
-import { getInstanceMarker } from "@forms/lib";
+import { getInstanceMarker, getVisibleFields } from "@forms/lib";
 
 export default function Review({
   formMeta,
@@ -133,15 +133,13 @@ export default function Review({
         .map((step) => {
           // Compute each visible field's display value once, then drop the
           // rows that have no answer so blank fields are omitted entirely.
+          // Visibility is evaluated from current form values (#737) — the
+          // render-mutated conditionallyHidden flag goes stale for fields
+          // that never re-mounted after their controlling answer flipped.
           // Show-hide toggles are UI controls, not answers — never a row,
           // regardless of toggle state.
-          const rows = step.fields
-            .filter(
-              (field) =>
-                !field.hidden &&
-                !field.conditionallyHidden &&
-                field.htmlType !== "show-hide",
-            )
+          const rows = getVisibleFields(step, form)
+            .filter((field) => field.htmlType !== "show-hide")
             .map((field: ClientPrimitive) => ({
               field,
               value: getFieldDisplayValue(field),

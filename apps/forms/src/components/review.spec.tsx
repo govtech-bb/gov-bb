@@ -47,6 +47,9 @@ const baseFormMeta: Pick<FormMeta, "formId"> = { formId: "test-form" };
 
 function makeMockForm(values: Record<string, unknown> = {}) {
   return {
+    // getVisibleFields evaluates fieldConditionalOn behaviours against the
+    // composite-keyed value map in `state.values` (#737).
+    state: { values },
     getFieldValue: jest.fn((fieldId: string) => values[fieldId]),
   };
 }
@@ -179,22 +182,35 @@ describe("Review", () => {
     expect(screen.queryByText("Hidden field")).not.toBeInTheDocument();
   });
 
-  it("does not render fields where conditionallyHidden=true", () => {
+  it("does not render a conditional field whose condition fails, even when it holds a stale answer (#737)", () => {
+    // The user answered Yes, filled the conditional field, then flipped back
+    // to No. The value stays in form state (keep-but-hide) and the render
+    // flag was never updated because the field never re-mounted — visibility
+    // must come from evaluating the behaviour, not the flag.
     const steps: ClientFormStep[] = [
       makeStep({
         stepId: "step-1",
         title: "Step One",
         fields: [
           makeField({
-            id: "step-1.shown",
-            fieldId: "shown",
-            label: "Shown field",
+            id: "step-1_hasJob",
+            fieldId: "hasJob",
+            label: "Have you had a paid job?",
           }),
           makeField({
-            id: "step-1.cond-hidden",
-            fieldId: "cond-hidden",
-            label: "Conditional field",
-            conditionallyHidden: true,
+            id: "step-1_employer",
+            fieldId: "employer",
+            label: "Name of employer",
+            conditionallyHidden: false, // stale: flag still says visible
+            behaviours: [
+              {
+                type: "fieldConditionalOn",
+                targetStepId: "step-1",
+                targetFieldId: "hasJob",
+                operator: "equal",
+                value: "yes",
+              },
+            ],
           }),
         ],
       }),
@@ -203,13 +219,61 @@ describe("Review", () => {
     render(
       <Review
         formMeta={baseFormMeta as FormMeta}
-        form={makeMockForm({ "step-1.shown": "Answered" }) as never}
+        form={
+          makeMockForm({
+            "step-1_hasJob": "no",
+            "step-1_employer": "Acme Ltd", // stale answer kept in state
+          }) as never
+        }
         visibleSteps={steps}
       />,
     );
 
-    expect(screen.getByText("Shown field")).toBeInTheDocument();
-    expect(screen.queryByText("Conditional field")).not.toBeInTheDocument();
+    expect(screen.getByText("Have you had a paid job?")).toBeInTheDocument();
+    expect(screen.queryByText("Name of employer")).not.toBeInTheDocument();
+    expect(screen.queryByText("Acme Ltd")).not.toBeInTheDocument();
+  });
+
+  it("renders a conditional field whose condition passes, even when the stale flag says hidden", () => {
+    const steps: ClientFormStep[] = [
+      makeStep({
+        stepId: "step-1",
+        title: "Step One",
+        fields: [
+          makeField({
+            id: "step-1_employer",
+            fieldId: "employer",
+            label: "Name of employer",
+            conditionallyHidden: true, // stale: flag still says hidden
+            behaviours: [
+              {
+                type: "fieldConditionalOn",
+                targetStepId: "step-1",
+                targetFieldId: "hasJob",
+                operator: "equal",
+                value: "yes",
+              },
+            ],
+          }),
+        ],
+      }),
+    ];
+
+    render(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={
+          makeMockForm({
+            "step-1_hasJob": "yes",
+            "step-1_employer": "Acme Ltd",
+          }) as never
+        }
+        visibleSteps={steps}
+      />,
+    );
+
+    expect(screen.getByText("Name of employer")).toBeInTheDocument();
+    expect(screen.getByText("Acme Ltd")).toBeInTheDocument();
   });
 
   it("does not render show-hide fields, even when opened, but keeps revealed answers", () => {
