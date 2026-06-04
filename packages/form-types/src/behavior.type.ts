@@ -64,7 +64,7 @@ export const repeatableBehaviourSchema = z.object({
   // Optional override for the auto-generated "Add another?" radio label, so a
   // recipe can phrase it per step (e.g. "Do you want to add another
   // qualification?"). Falls back to "Add another?" when omitted.
-  addAnotherLabel: z.string().optional(),
+  addAnotherLabel: z.string().min(1).optional(),
 });
 export type RepeatableBehaviour = z.infer<typeof repeatableBehaviourSchema>;
 
