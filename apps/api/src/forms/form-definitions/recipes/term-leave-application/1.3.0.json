@@ -38,7 +38,7 @@
           "ref": "components/first-name",
           "overrides": {
             "label": "First Name",
-            "fieldId": "firstName",
+            "fieldId": "first-name",
             "columnWidth": "50%",
             "validations": {
               "required": {
@@ -56,7 +56,7 @@
           "ref": "components/last-name",
           "overrides": {
             "label": "Last Name",
-            "fieldId": "lastName",
+            "fieldId": "last-name",
             "columnWidth": "50%",
             "validations": {
               "required": {
@@ -74,7 +74,7 @@
           "ref": "components/telephone",
           "overrides": {
             "label": "Contact No",
-            "fieldId": "contactNo",
+            "fieldId": "contact-no",
             "columnWidth": "50%",
             "validations": {
               "required": {
@@ -120,7 +120,7 @@
           "ref": "components/national-id-number",
           "overrides": {
             "label": "ID Number",
-            "fieldId": "idNumber",
+            "fieldId": "id-number",
             "columnWidth": "50%",
             "validations": {
               "required": {
@@ -141,7 +141,7 @@
           "ref": "components/generic-date",
           "overrides": {
             "label": "Start Date",
-            "fieldId": "leaveStartDate",
+            "fieldId": "leave-start-date",
             "hint": "For example, 1 9 2026",
             "validations": {
               "required": {
@@ -155,7 +155,7 @@
           "ref": "components/generic-date",
           "overrides": {
             "label": "End Date",
-            "fieldId": "leaveEndDate",
+            "fieldId": "leave-end-date",
             "hint": "For example, 15 12 2026",
             "validations": {
               "required": {
@@ -169,7 +169,7 @@
           "ref": "components/generic-radio",
           "overrides": {
             "label": "Have you previously been granted term's leave?",
-            "fieldId": "previousLeaveGranted",
+            "fieldId": "previous-leave-granted",
             "options": [
               {
                 "label": "Yes",
@@ -192,26 +192,26 @@
           "ref": "components/show-hide",
           "overrides": {
             "label": "If yes, enter the last leave period",
-            "fieldId": "previousLeaveDetails",
+            "fieldId": "previous-leave-details",
             "elements": [
               {
                 "ref": "components/generic-date",
                 "overrides": {
                   "label": "Start Date",
-                  "fieldId": "previousLeaveStartDate"
+                  "fieldId": "previous-leave-start-date"
                 }
               },
               {
                 "ref": "components/generic-date",
                 "overrides": {
                   "label": "End Date",
-                  "fieldId": "previousLeaveEndDate"
+                  "fieldId": "previous-leave-end-date"
                 }
               }
             ],
             "showWhen": {
               "value": "yes",
-              "fieldId": "previousLeaveGranted"
+              "fieldId": "previous-leave-granted"
             }
           }
         },

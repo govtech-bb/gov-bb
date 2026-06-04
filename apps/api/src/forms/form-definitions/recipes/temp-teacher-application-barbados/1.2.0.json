@@ -26,7 +26,7 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "firstName",
+            "fieldId": "first-name",
             "label": "First Name",
             "validations": {
               "required": {
@@ -43,7 +43,7 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "lastName",
+            "fieldId": "last-name",
             "label": "Last Name",
             "validations": {
               "required": {
@@ -60,7 +60,7 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "otherNames",
+            "fieldId": "other-names",
             "label": "Other Names",
             "validations": {
               "required": {
@@ -72,7 +72,7 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "idNumber",
+            "fieldId": "id-number",
             "label": "ID Number",
             "validations": {
               "required": {
@@ -89,7 +89,7 @@
         {
           "ref": "components/generic-date",
           "overrides": {
-            "fieldId": "dateOfBirth",
+            "fieldId": "date-of-birth",
             "label": "Date of birth",
             "validations": {
               "required": {
@@ -129,7 +129,7 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "nisNumber",
+            "fieldId": "nis-number",
             "label": "NIS No",
             "validations": {
               "required": {
@@ -188,7 +188,7 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "telHome",
+            "fieldId": "tel-home",
             "label": "Tel Home",
             "validations": {
               "required": {
@@ -200,7 +200,7 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "telCell",
+            "fieldId": "tel-cell",
             "label": "Tel Cell",
             "validations": {
               "required": {
@@ -217,7 +217,7 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "placeOfBirth",
+            "fieldId": "place-of-birth",
             "label": "Place of birth",
             "validations": {
               "required": {
@@ -229,7 +229,7 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "maritalStatus",
+            "fieldId": "marital-status",
             "label": "Marital Status",
             "validations": {
               "required": {
@@ -258,7 +258,7 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "periodResidingBarbados",
+            "fieldId": "period-residing-barbados",
             "label": "Period Residing in Barbados",
             "validations": {
               "required": {
@@ -359,7 +359,7 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "examiningBody",
+            "fieldId": "examining-body",
             "label": "Examining Body",
             "validations": {
               "required": {
@@ -521,7 +521,7 @@
         {
           "ref": "components/generic-textarea",
           "overrides": {
-            "fieldId": "skillsAthletics",
+            "fieldId": "skills-athletics",
             "label": "Skills possessed in athletics/games/crafts/etc. (Please specify)",
             "validations": {
               "required": {
@@ -533,7 +533,7 @@
         {
           "ref": "components/generic-textarea",
           "overrides": {
-            "fieldId": "youthCommunityExperience",
+            "fieldId": "youth-community-experience",
             "label": "Experience in Youth/Community Organisations (Specify indicating any positions of responsibility held)",
             "validations": {
               "required": {
@@ -545,7 +545,7 @@
         {
           "ref": "components/generic-textarea",
           "overrides": {
-            "fieldId": "positionsResponsibility",
+            "fieldId": "positions-responsibility",
             "label": "Positions of responsibility held at School/College/University (Specify indicating any positions of responsibility held)",
             "validations": {
               "required": {
@@ -557,7 +557,7 @@
         {
           "ref": "components/generic-textarea",
           "overrides": {
-            "fieldId": "otherRelevantInfo",
+            "fieldId": "other-relevant-info",
             "label": "Any other relevant information not covered by the foregoing",
             "validations": {
               "required": {
@@ -576,7 +576,7 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "ref1Name",
+            "fieldId": "ref1-name",
             "label": "Reference 1 - Name",
             "validations": {
               "required": {
@@ -593,7 +593,7 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "ref1Address",
+            "fieldId": "ref1-address",
             "label": "Reference 1 - Address",
             "validations": {
               "required": {
@@ -610,7 +610,7 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "ref1Occupation",
+            "fieldId": "ref1-occupation",
             "label": "Reference 1 - Occupation/Profession",
             "validations": {
               "required": {
@@ -627,7 +627,7 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "ref1Contact",
+            "fieldId": "ref1-contact",
             "label": "Reference 1 - Contact No",
             "validations": {
               "required": {
@@ -644,7 +644,7 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "ref1Email",
+            "fieldId": "ref1-email",
             "label": "Reference 1 - Email",
             "validations": {
               "required": {
@@ -656,7 +656,7 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "ref2Name",
+            "fieldId": "ref2-name",
             "label": "Reference 2 - Name",
             "validations": {
               "required": {
@@ -673,7 +673,7 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "ref2Address",
+            "fieldId": "ref2-address",
             "label": "Reference 2 - Address",
             "validations": {
               "required": {
@@ -690,7 +690,7 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "ref2Occupation",
+            "fieldId": "ref2-occupation",
             "label": "Reference 2 - Occupation/Profession",
             "validations": {
               "required": {
@@ -707,7 +707,7 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "ref2Contact",
+            "fieldId": "ref2-contact",
             "label": "Reference 2 - Contact No",
             "validations": {
               "required": {
@@ -724,7 +724,7 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "ref2Email",
+            "fieldId": "ref2-email",
             "label": "Reference 2 - Email",
             "validations": {
               "required": {
@@ -743,7 +743,7 @@
         {
           "ref": "components/generic-file",
           "overrides": {
-            "fieldId": "certificatesUpload",
+            "fieldId": "certificates-upload",
             "label": "Upload your certificates, diplomas, and transcripts",
             "validations": {
               "required": {
@@ -764,7 +764,7 @@
         {
           "ref": "components/generic-file",
           "overrides": {
-            "fieldId": "testimonialsUpload",
+            "fieldId": "testimonials-upload",
             "label": "Upload your two testimonials",
             "validations": {
               "required": {

@@ -27,7 +27,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "ID Number",
-            "fieldId": "idNumber"
+            "fieldId": "id-number"
           }
         },
         {
@@ -41,7 +41,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Phone Number",
-            "fieldId": "phoneNumber"
+            "fieldId": "phone-number"
           }
         }
       ],
@@ -55,7 +55,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Month",
-            "fieldId": "certificationMonth",
+            "fieldId": "certification-month",
             "placeholder": "MM"
           }
         },
@@ -63,7 +63,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Year",
-            "fieldId": "certificationYear",
+            "fieldId": "certification-year",
             "placeholder": "YYYY"
           }
         },
@@ -71,7 +71,7 @@
           "ref": "components/generic-textarea",
           "overrides": {
             "label": "I certify that during the month of [month/year] the extent of my travelling in the performance of my public duties:",
-            "fieldId": "certificationStatement"
+            "fieldId": "certification-statement"
           }
         }
       ],
@@ -93,7 +93,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Distance Travelled",
-            "fieldId": "distanceTravelled"
+            "fieldId": "distance-travelled"
           }
         },
         {
@@ -108,7 +108,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "No. of Passengers",
-            "fieldId": "numPassengers"
+            "fieldId": "num-passengers"
           }
         }
       ],
@@ -129,7 +129,7 @@
           "overrides": {
             "label": "Travel Rates",
             "value": "FIRST 320 KM OR LESS: $2.56 PER KM\nREMAINDER OVER 320 KM: $1.03 PER KM\nPASSENGER RATE: # OF PASSENGERS * $0.11 PER KM",
-            "fieldId": "travelRatesInfo",
+            "fieldId": "travel-rates-info",
             "multiline": true,
             "readonly": true
           }
@@ -138,7 +138,7 @@
           "ref": "components/generic-number",
           "overrides": {
             "label": "Total Distance Travelled",
-            "fieldId": "totalDistanceTravelled",
+            "fieldId": "total-distance-travelled",
             "readonly": true
           }
         },
@@ -146,7 +146,7 @@
           "ref": "components/generic-number",
           "overrides": {
             "label": "First 320 KM or Less",
-            "fieldId": "first320kmOrLess",
+            "fieldId": "first320km-or-less",
             "readonly": true
           }
         },
@@ -154,7 +154,7 @@
           "ref": "components/generic-number",
           "overrides": {
             "label": "Remainder Over 320 KM",
-            "fieldId": "remainderOver320km",
+            "fieldId": "remainder-over320km",
             "readonly": true
           }
         },
@@ -162,7 +162,7 @@
           "ref": "components/generic-number",
           "overrides": {
             "label": "Passenger Subtotal",
-            "fieldId": "passengerSubtotal",
+            "fieldId": "passenger-subtotal",
             "readonly": true
           }
         },
@@ -170,7 +170,7 @@
           "ref": "components/generic-number",
           "overrides": {
             "label": "Total Claimed",
-            "fieldId": "totalClaimed",
+            "fieldId": "total-claimed",
             "readonly": true
           }
         }
@@ -185,14 +185,14 @@
           "ref": "components/generic-checkbox",
           "overrides": {
             "label": "I further certify that all travelling on private business or pleasure has been excluded from the total distance travelled as set out in this claim.",
-            "fieldId": "businessExclusionCertify"
+            "fieldId": "business-exclusion-certify"
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Signed",
-            "fieldId": "applicantSignature",
+            "fieldId": "applicant-signature",
             "placeholder": ".........................."
           }
         },
@@ -200,7 +200,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Date",
-            "fieldId": "applicantDate",
+            "fieldId": "applicant-date",
             "placeholder": ".........................."
           }
         }
@@ -216,14 +216,14 @@
           "overrides": {
             "hint": "I hereby certify that I have examined this claim and have found it to be in respect of travelling on public duty only and by the type of vehicle specified and that the journeys made and distances involved have been necessary for the proper performance of the officer's duties.",
             "label": "Examination Notes",
-            "fieldId": "examinationNotes"
+            "fieldId": "examination-notes"
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Examination Section Signature",
-            "fieldId": "examinationSignature",
+            "fieldId": "examination-signature",
             "placeholder": ".........................."
           }
         },
@@ -231,7 +231,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Date",
-            "fieldId": "examinationDate",
+            "fieldId": "examination-date",
             "placeholder": ".........................."
           }
         }
@@ -246,7 +246,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "DPS Signature",
-            "fieldId": "dpsSignature",
+            "fieldId": "dps-signature",
             "placeholder": ".........................."
           }
         },
@@ -254,7 +254,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Date",
-            "fieldId": "dpsDate",
+            "fieldId": "dps-date",
             "placeholder": ".........................."
           }
         }
@@ -269,7 +269,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Processing Officer Signature",
-            "fieldId": "processingOfficerSignature",
+            "fieldId": "processing-officer-signature",
             "placeholder": ".........................."
           }
         },
@@ -277,7 +277,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Date",
-            "fieldId": "processingOfficerDate",
+            "fieldId": "processing-officer-date",
             "placeholder": ".........................."
           }
         }
@@ -293,7 +293,7 @@
           "overrides": {
             "label": "School Distances by Parish",
             "value": "Reference table for distances to various schools by parish - see form pages 3-5 for complete listing",
-            "fieldId": "schoolReferenceInfo",
+            "fieldId": "school-reference-info",
             "multiline": true,
             "readonly": true
           }
