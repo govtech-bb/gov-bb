@@ -176,7 +176,10 @@ export function resolveFieldIds(
           editorFieldId: field.id,
           stepId: step.stepId,
           stepTitle: step.title,
-          display: componentDef.displayName,
+          display:
+            field.overrides.label ??
+            componentDef.primitive.label ??
+            componentDef.displayName,
           isBoolean: BOOLEAN_HTML_TYPES.has(componentDef.primitive.htmlType),
         });
       } else if (field.ref.startsWith("blocks/")) {
@@ -190,7 +193,7 @@ export function resolveFieldIds(
             editorFieldId: field.id,
             stepId: step.stepId,
             stepTitle: step.title,
-            display: `${blockDef.displayName} › ${element.label ?? element.fieldId}`,
+            display: `${blockDef.displayName} › ${childOverride?.label ?? element.label ?? element.fieldId}`,
             childFieldId: element.fieldId,
             isBoolean: BOOLEAN_HTML_TYPES.has(element.htmlType),
           });
