@@ -38,7 +38,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "First Name",
-            "fieldId": "firstName",
+            "fieldId": "first-name",
             "columnWidth": "50%",
             "validations": {
               "required": {
@@ -56,7 +56,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Last Name",
-            "fieldId": "lastName",
+            "fieldId": "last-name",
             "columnWidth": "50%",
             "validations": {
               "required": {
@@ -74,7 +74,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Contact No",
-            "fieldId": "contactNo",
+            "fieldId": "contact-no",
             "columnWidth": "50%",
             "validations": {
               "required": {
@@ -125,7 +125,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "ID Number",
-            "fieldId": "idNumber",
+            "fieldId": "id-number",
             "columnWidth": "50%",
             "validations": {
               "required": {
@@ -151,7 +151,7 @@
           "overrides": {
             "type": "date",
             "label": "Start Date",
-            "fieldId": "leaveStartDate",
+            "fieldId": "leave-start-date",
             "columnWidth": "50%",
             "validations": {
               "required": {
@@ -166,7 +166,7 @@
           "overrides": {
             "type": "date",
             "label": "End Date",
-            "fieldId": "leaveEndDate",
+            "fieldId": "leave-end-date",
             "columnWidth": "50%",
             "validations": {
               "required": {
@@ -180,7 +180,7 @@
           "ref": "components/generic-radio",
           "overrides": {
             "label": "Have you previously been granted term's leave?",
-            "fieldId": "previousLeaveGranted",
+            "fieldId": "previous-leave-granted",
             "options": [
               {
                 "label": "Yes",
@@ -203,14 +203,14 @@
           "ref": "components/show-hide",
           "overrides": {
             "label": "If yes, enter the last leave period",
-            "fieldId": "previousLeaveDetails",
+            "fieldId": "previous-leave-details",
             "elements": [
               {
                 "ref": "components/generic-text",
                 "overrides": {
                   "type": "date",
                   "label": "Start Date",
-                  "fieldId": "previousLeaveStartDate",
+                  "fieldId": "previous-leave-start-date",
                   "columnWidth": "50%"
                 }
               },
@@ -219,14 +219,14 @@
                 "overrides": {
                   "type": "date",
                   "label": "End Date",
-                  "fieldId": "previousLeaveEndDate",
+                  "fieldId": "previous-leave-end-date",
                   "columnWidth": "50%"
                 }
               }
             ],
             "showWhen": {
               "value": "yes",
-              "fieldId": "previousLeaveGranted"
+              "fieldId": "previous-leave-granted"
             }
           }
         },
@@ -250,7 +250,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Signature of applicant",
-            "fieldId": "applicantSignature",
+            "fieldId": "applicant-signature",
             "columnWidth": "50%",
             "validations": {
               "required": {
@@ -269,7 +269,7 @@
           "overrides": {
             "type": "date",
             "label": "Date of Signature",
-            "fieldId": "signatureDate",
+            "fieldId": "signature-date",
             "columnWidth": "50%",
             "validations": {
               "required": {
@@ -314,7 +314,7 @@
           "overrides": {
             "rows": 4,
             "label": "Comments",
-            "fieldId": "officialComments",
+            "fieldId": "official-comments",
             "fullWidth": true
           }
         },
@@ -322,7 +322,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Signature of Principal",
-            "fieldId": "principalSignature",
+            "fieldId": "principal-signature",
             "columnWidth": "50%",
             "validations": {
               "required": {
@@ -341,7 +341,7 @@
           "overrides": {
             "type": "date",
             "label": "Date Signed",
-            "fieldId": "dateSigned",
+            "fieldId": "date-signed",
             "columnWidth": "50%",
             "validations": {
               "required": {

@@ -37,7 +37,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "First Name",
-            "fieldId": "firstName",
+            "fieldId": "first-name",
             "validations": {
               "required": {
                 "error": "First Name is required",
@@ -54,7 +54,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Last Name",
-            "fieldId": "lastName",
+            "fieldId": "last-name",
             "validations": {
               "required": {
                 "error": "Last Name is required",
@@ -71,7 +71,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Middle Name",
-            "fieldId": "middleName",
+            "fieldId": "middle-name",
             "validations": {
               "required": {
                 "value": false
@@ -124,7 +124,7 @@
           "overrides": {
             "label": "Date of Birth (mm/dd/yyyy)",
             "format": "mm/dd/yyyy",
-            "fieldId": "dateOfBirth",
+            "fieldId": "date-of-birth",
             "validations": {
               "required": {
                 "error": "Date of Birth (mm/dd/yyyy) is required",
@@ -186,7 +186,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "ID Number",
-            "fieldId": "idNumber",
+            "fieldId": "id-number",
             "validations": {
               "required": {
                 "value": false
@@ -198,7 +198,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Birth Country",
-            "fieldId": "birthCountry",
+            "fieldId": "birth-country",
             "validations": {
               "required": {
                 "error": "Birth Country is required",
@@ -222,7 +222,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Title",
-            "fieldId": "parentTitle",
+            "fieldId": "parent-title",
             "placeholder": "e.g., Mr., Mrs., Ms.",
             "validations": {
               "required": {
@@ -240,7 +240,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "First Name",
-            "fieldId": "parentFirstName",
+            "fieldId": "parent-first-name",
             "validations": {
               "required": {
                 "error": "First Name is required",
@@ -257,7 +257,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Last Name",
-            "fieldId": "parentLastName",
+            "fieldId": "parent-last-name",
             "validations": {
               "required": {
                 "error": "Last Name is required",
@@ -274,7 +274,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "ID Number",
-            "fieldId": "parentIdNumber",
+            "fieldId": "parent-id-number",
             "validations": {
               "required": {
                 "error": "ID Number is required",
@@ -292,7 +292,7 @@
           "overrides": {
             "type": "tel",
             "label": "Phone",
-            "fieldId": "parentPhone",
+            "fieldId": "parent-phone",
             "validations": {
               "required": {
                 "error": "Phone is required",
@@ -475,7 +475,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Signature of Parent/Guardian",
-            "fieldId": "parentSignature",
+            "fieldId": "parent-signature",
             "validations": {
               "required": {
                 "error": "Signature of Parent/Guardian is required",
@@ -492,7 +492,7 @@
           "ref": "components/generic-date",
           "overrides": {
             "label": "Date",
-            "fieldId": "signatureDate",
+            "fieldId": "signature-date",
             "validations": {
               "required": {
                 "error": "Date is required",
@@ -512,7 +512,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Centre Code",
-            "fieldId": "centreCode",
+            "fieldId": "centre-code",
             "validations": {
               "required": {
                 "value": false
@@ -524,7 +524,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Sequence No",
-            "fieldId": "sequenceNo",
+            "fieldId": "sequence-no",
             "validations": {
               "required": {
                 "value": false
@@ -536,7 +536,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Signature of Principal",
-            "fieldId": "principalSignature",
+            "fieldId": "principal-signature",
             "validations": {
               "required": {
                 "value": false
@@ -548,7 +548,7 @@
           "ref": "components/generic-date",
           "overrides": {
             "label": "Date",
-            "fieldId": "principalSignatureDate",
+            "fieldId": "principal-signature-date",
             "validations": {
               "required": {
                 "value": false

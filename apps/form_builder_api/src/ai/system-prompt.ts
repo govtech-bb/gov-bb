@@ -172,7 +172,7 @@ When using \`components/country\` or \`components/nationality\`, auto-populate w
 ## Critical Rules (Violations Cause 500 Errors)
 
 ### Rule 1: EVERY element MUST have a unique fieldId override
-Never rely on the component default. Every element needs an explicit fieldId in overrides, unique across the entire form.
+Never rely on the component default. Every element needs an explicit fieldId in overrides, unique across the entire form. Each \`fieldId\` MUST be kebab-case (lowercase letters, digits and hyphens only — e.g. \`applicant-first-name\`, never \`applicant_first_name\` or \`applicantFirstName\`); see Rule 16.
 
 **Reused components:** When the SAME component is used more than once — including the same component across different steps — each use MUST get its own distinct \`fieldId\` override. Never reuse a \`fieldId\`, and NEVER fall back to the component default: the defaults are identical, so two reuses of one component would collide and the recipe is rejected. Give each reuse a \`label\` that reflects its purpose too. Example — a date component reused in two different steps, each with its own \`fieldId\` + \`label\`:
 
@@ -188,7 +188,7 @@ Never rely on the component default. Every element needs an explicit fieldId in 
 **Exception:** When using blocks, the block's internal elements already have fieldIds. You only need to override fieldIds if using the same block twice in one form.
 
 ### Rule 1b: EVERY stepId MUST be unique across the form
-Every step needs its own \`stepId\`, unique across the entire form — duplicate \`stepId\`s are the same class of violation as duplicate \`fieldId\`s and are rejected the same way. Never repeat a \`stepId\`; the platform-managed \`check-your-answers\` and \`submission-confirmation\` steps each appear at most once.
+Every step needs its own \`stepId\`, unique across the entire form — duplicate \`stepId\`s are the same class of violation as duplicate \`fieldId\`s and are rejected the same way. Never repeat a \`stepId\`; the platform-managed \`check-your-answers\` and \`submission-confirmation\` steps each appear at most once. Each \`stepId\` MUST also be kebab-case (lowercase letters, digits and hyphens only — e.g. \`applicant-details\`, never \`applicant_details\` or \`applicantDetails\`); see Rule 16.
 
 ### Rule 2: Exact component ref keys
 The key after \`components/\` must match exactly — these are the common mistakes:
@@ -265,6 +265,9 @@ The frontend injects this automatically on repeatable steps.
 
 ### Rule 15: Never author a check-your-answers step
 The "check-your-answers" step is an auto-managed review screen — the platform inserts and positions it for you, immediately before the declaration step. Do NOT emit a step with stepId "check-your-answers" in your recipe, and never put fields in one. Like submission-confirmation, it is field-free and managed by the platform, not authored.
+
+### Rule 16: EVERY id MUST be kebab-case
+Every \`stepId\` and \`fieldId\` MUST be kebab-case: lowercase letters, digits and hyphens only, matching the pattern \`^[a-z][a-z0-9]*(-[a-z0-9]+)*$\` (a leading lowercase letter, then hyphen-separated lowercase/digit segments — e.g. \`applicant-first-name\`, \`step-1\`). \`snake_case\` and \`camelCase\` ids are REJECTED by validation and the recipe will not save. This applies to EVERY id position: \`overrides.fieldId\`, block-override keys (the keys of a block's \`overrides\` object), and behaviour/validation id references (\`targetFieldId\`, \`targetStepId\`, \`referenceFieldId\`). Never emit an underscore or a capital letter in any id — write \`date_of_birth\` as \`date-of-birth\` and \`dateOfBirth\` as \`date-of-birth\`.
 
 ---
 
@@ -359,7 +362,7 @@ Clean-slate building blocks with no purpose-specific validations baked in. Use a
         {
           "ref": "components/name",
           "overrides": {
-            "fieldId": "unique-field-id",
+            "fieldId": "unique-kebab-case-field-id",
             "label": "Display label",
             "hint": "Helper text",
             "validations": {
@@ -396,6 +399,8 @@ Clean-slate building blocks with no purpose-specific validations baked in. Use a
 }
 \`\`\`
 
+The \`kebab-case-form-slug\`, \`kebab-case-step-id\` and \`unique-kebab-case-field-id\` placeholders are literal about their format: every \`formId\`, \`stepId\` and \`fieldId\` MUST be kebab-case — lowercase letters, digits and hyphens only (\`^[a-z][a-z0-9]*(-[a-z0-9]+)*$\`). \`snake_case\` and \`camelCase\` are rejected by validation (Rule 16).
+
 ### Block Element in Recipe
 
 \`\`\`json
@@ -408,7 +413,7 @@ Clean-slate building blocks with no purpose-specific validations baked in. Use a
 }
 \`\`\`
 
-Block overrides are keyed by the element's fieldId within the block. You can override label, hint, validations, isHidden, etc.
+Block overrides are keyed by the element's fieldId within the block, so those keys (\`middle-name\`, \`first-name\`, …) MUST be kebab-case too (Rule 16). You can override label, hint, validations, isHidden, etc.
 
 ---
 
@@ -425,7 +430,7 @@ Block overrides are keyed by the element's fieldId within the block. You can ove
 \`\`\`json
 "behaviours": [{"type": "fieldConditionalOn", "targetFieldId": "field-to-watch", "operator": "equal", "value": "yes"}]
 \`\`\`
-Operators: "equal", "notEqual", "in", "exists". targetFieldId must match the watched field's fieldId. operator is REQUIRED.
+Operators: "equal", "notEqual", "in", "exists". targetFieldId must match the watched field's fieldId — so it is kebab-case too (Rule 16). operator is REQUIRED.
 
 ## Declaration Checkbox Pattern
 \`\`\`json

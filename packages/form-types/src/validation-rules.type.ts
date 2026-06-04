@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { kebabIdSchema } from "./id-pattern";
 
 // ---------------------------------------------------------------------------
 // Shared optional base fields present on many rule schemas
@@ -9,8 +10,8 @@ const baseRuleFields = {
 };
 
 const referenceFields = {
-  referenceFieldId: z.string().optional(),
-  targetStepId: z.string().optional(),
+  referenceFieldId: kebabIdSchema.optional(),
+  targetStepId: kebabIdSchema.optional(),
 };
 
 // ---------------------------------------------------------------------------
@@ -122,7 +123,7 @@ export type BeforeRule = z.infer<typeof beforeRuleSchema>;
 
 export const conditionalOnRuleSchema = z.object({
   ...baseRuleFields,
-  targetFieldId: z.string(),
+  targetFieldId: kebabIdSchema,
   operator: z.string(),
   value: z.union([z.string(), z.number(), z.boolean()]),
 });
