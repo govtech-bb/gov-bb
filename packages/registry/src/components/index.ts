@@ -25,6 +25,7 @@ export { Parish } from "./parish";
 export { PassportNumber } from "./passport-number";
 export { Postcode } from "./post-code";
 export { PrimarySchool } from "./primary-school";
+export { SecondarySchool } from "./secondary-school";
 export { Relationship } from "./relationship";
 export { Sex } from "./sex";
 export { TamisNumber } from "./tamis-number";
@@ -72,6 +73,7 @@ import { Parish } from "./parish";
 import { PassportNumber } from "./passport-number";
 import { Postcode } from "./post-code";
 import { PrimarySchool } from "./primary-school";
+import { SecondarySchool } from "./secondary-school";
 import { Relationship } from "./relationship";
 import { Sex } from "./sex";
 import { TamisNumber } from "./tamis-number";
@@ -134,6 +136,7 @@ const ALL = [
   PassportNumber,
   Postcode,
   PrimarySchool,
+  SecondarySchool,
   Relationship,
   Sex,
   TamisNumber,
