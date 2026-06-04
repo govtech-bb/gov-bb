@@ -78,9 +78,10 @@ test.describe("Term Leave Application — Live Smoke", () => {
     // ─── Applicant Information ───────────────────────────────────────────────
     let step = expectStep(page, "applicant-info");
     await expect(page.locator("h1")).toContainText("Applicant Information");
-    // The published form's school field is the components/primary-school
-    // <select> — option values are slugs.
-    await selectDropdown(page, step, "school", "a-dacosta-edwards");
+    // The published 1.3.0 recipe swapped `school` from a free-text input to a
+    // school select (PrimarySchool registry component) — drive it by option
+    // value, not fill().
+    await selectDropdown(page, step, "school", "bay-primary-school");
     await fillField(page, step, "first-name", firstName);
     await fillField(page, step, "last-name", lastName);
     // `components/telephone` — phone-format validation.
@@ -122,7 +123,7 @@ test.describe("Term Leave Application — Live Smoke", () => {
     // ─── Submit + Submission Confirmation ────────────────────────────────────
     await submitAndConfirm(page, {
       heading: "Submission Confirmation",
-      referenceLabel: "Reference number",
+      referenceLabel: "Submission ID",
     });
   });
 });

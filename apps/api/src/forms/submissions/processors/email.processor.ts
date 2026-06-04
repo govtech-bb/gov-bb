@@ -373,7 +373,8 @@ export class EmailProcessor implements ISubmissionProcessor {
     const lines = [
       "Your submission has been received.",
       "",
-      `Reference: ${payload.submissionId}`,
+      // referenceCode is required on the event; ?? is defensive for payloads predating the field.
+      `Reference: ${payload.referenceCode ?? payload.submissionId}`,
       `Form:      ${payload.formId}`,
       `Submitted: ${payload.meta.submittedAt}`,
     ];
@@ -401,10 +402,11 @@ export class EmailProcessor implements ISubmissionProcessor {
         .map((l) => `<li><a href="${esc(l.url)}">${esc(l.name)}</a></li>`)
         .join("")}</ul>`
         : "";
+    // referenceCode is required on the event; ?? is defensive for payloads predating the field.
     return `
       <p>Your submission has been received.</p>
       <table>
-        <tr><th>Reference</th><td>${payload.submissionId}</td></tr>
+        <tr><th>Reference</th><td>${payload.referenceCode ?? payload.submissionId}</td></tr>
         <tr><th>Form</th><td>${payload.formId}</td></tr>
         <tr><th>Submitted</th><td>${payload.meta.submittedAt}</td></tr>
       </table>${links}

@@ -102,7 +102,7 @@ export class EmailBodyBuilder {
       payload.formVersion,
     );
 
-    const { meta, values, submissionId } = payload;
+    const { meta, values, submissionId, referenceCode } = payload;
 
     const sections = contract.steps
       .filter((step) => meta.activeStepIds.includes(step.stepId))
@@ -137,7 +137,8 @@ export class EmailBodyBuilder {
 
     return {
       formTitle: contract.title,
-      submissionId,
+      // referenceCode is required on the event; ?? is defensive for payloads predating the field.
+      submissionId: referenceCode ?? submissionId,
       submittedAt: meta.submittedAt,
       processedAt: new Date().toISOString(),
       sections,

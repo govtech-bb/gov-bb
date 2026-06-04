@@ -29,6 +29,11 @@ export const formSubmissionResponseBodySchema = z.object({
   values: z.record(z.string(), z.unknown()),
   meta: z.unknown(),
   submittedAt: z.string(),
+  // Human-readable reference shown on the confirmation screen (e.g.
+  // "JPP-20260604-130732-9JZRZC"). Optional so an older API deploy that does
+  // not yet return this field still passes validation — the client falls back
+  // to `id` (the UUID) in that case.
+  referenceCode: z.string().optional(),
 });
 
 export type FormSubmissionResponseBody = z.infer<

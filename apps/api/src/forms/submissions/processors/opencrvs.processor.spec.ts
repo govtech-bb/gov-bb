@@ -10,6 +10,7 @@ function makePayload(
 ): SubmissionCreatedEvent {
   return {
     submissionId: "sub-002",
+    referenceCode: "BRT-20260604-130732-000001",
     formId: "birth-registration",
     formVersion: "2.0.0",
     idempotencyKey: "idem-opencrvs-1",

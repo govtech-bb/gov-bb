@@ -34,9 +34,11 @@ function makeConfig(overrides: Record<string, unknown> = {}): ConfigService {
 function makePayload(
   processorConfig: Record<string, string> = {},
   valueOverrides: Record<string, Record<string, unknown>> = {},
+  payloadOverrides: Partial<SubmissionCreatedEvent> = {},
 ): SubmissionCreatedEvent {
   return {
     submissionId: "sub-001",
+    referenceCode: "PPT-20260604-130732-9JZRZC",
     formId: "passport-renewal",
     formVersion: "1.0.0",
     idempotencyKey: "idem-email-1",
@@ -58,6 +60,7 @@ function makePayload(
       visitedPages: [0],
       submittedAt: "2026-04-29T10:00:00.000Z",
     },
+    ...payloadOverrides,
   };
 }
 
@@ -597,7 +600,8 @@ describe("EmailProcessor — dynamic template rendering", () => {
 
     const html =
       (getSentInput().Content?.Simple?.Body?.Html?.Data as string) ?? "";
-    expect(html).toContain("sub-001");
+    // Fallback HTML shows referenceCode, not the raw UUID
+    expect(html).toContain("PPT-20260604-130732-9JZRZC");
     expect(html).not.toContain("Confirmation");
   });
 
@@ -608,7 +612,8 @@ describe("EmailProcessor — dynamic template rendering", () => {
 
     const html =
       (getSentInput().Content?.Simple?.Body?.Html?.Data as string) ?? "";
-    expect(html).toContain("sub-001");
+    // Fallback HTML shows referenceCode, not the raw UUID
+    expect(html).toContain("PPT-20260604-130732-9JZRZC");
   });
 
   it("falls back to generic HTML when template render throws", async () => {
@@ -626,7 +631,64 @@ describe("EmailProcessor — dynamic template rendering", () => {
 
     const html =
       (getSentInput().Content?.Simple?.Body?.Html?.Data as string) ?? "";
-    expect(html).toContain("sub-001");
+    // Fallback HTML shows referenceCode, not the raw UUID
+    expect(html).toContain("PPT-20260604-130732-9JZRZC");
+  });
+});
+
+describe("EmailProcessor — reference code in plain-text and fallback HTML bodies", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("uses referenceCode in the plain-text body when the builder throws (fallback path)", async () => {
+    // When EmailBodyBuilder.build() throws, resolveHtmlBody falls back to
+    // buildHtmlBody (inline) and the text body is always built from buildTextBody.
+    // Both must show the referenceCode, not the raw UUID.
+    const bodyBuilder = makeBodyBuilder();
+    (bodyBuilder.build as jest.Mock).mockRejectedValue(new Error("DB down"));
+    const processor = new EmailProcessor(
+      makeConfig(),
+      makeTemplateService(),
+      bodyBuilder,
+      makeFilesService(),
+      makeFormConfigService(),
+    );
+
+    await processor.process(makePayload());
+
+    const input = getSentInput();
+    const text = input.Content?.Simple?.Body?.Text?.Data as string;
+    const html = input.Content?.Simple?.Body?.Html?.Data as string;
+
+    expect(text).toContain("PPT-20260604-130732-9JZRZC");
+    expect(text).not.toContain("Reference: sub-001");
+    expect(html).toContain("PPT-20260604-130732-9JZRZC");
+    // Ensure no stray JS comment leaks into the HTML body as literal text
+    expect(html).not.toContain("referenceCode is required on the event");
+    expect(html).not.toContain("// ");
+  });
+
+  it("renders referenceCode in the text body when consumer has coalesced it to submissionId (legacy-event path)", async () => {
+    // The SQS consumer sets referenceCode = submissionId for pre-referenceCode
+    // payloads; verify that coalesced value is rendered correctly in the email.
+    const bodyBuilder = makeBodyBuilder();
+    (bodyBuilder.build as jest.Mock).mockRejectedValue(new Error("DB down"));
+    const processor = new EmailProcessor(
+      makeConfig(),
+      makeTemplateService(),
+      bodyBuilder,
+      makeFilesService(),
+      makeFormConfigService(),
+    );
+
+    // referenceCode === submissionId — this is what the consumer sets for legacy events.
+    const payload = makePayload({}, {}, { referenceCode: "sub-001" });
+
+    await processor.process(payload);
+
+    const text = getSentInput().Content?.Simple?.Body?.Text?.Data as string;
+    expect(text).toContain("Reference: sub-001");
   });
 });
 
