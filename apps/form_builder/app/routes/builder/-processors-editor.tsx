@@ -24,10 +24,13 @@ const PROCESSOR_LABELS: Record<RecipeProcessorDraft["type"], string> = {
   opencrvs: "OpenCRVS forward",
 };
 
-// Only these four are authorable; `payment` is preserved read-only, never added.
+// Every processor type is now authorable, including `payment` (#716): its
+// config is editable here and persisted to the DB sibling form_config.config
+// rather than the recipe.
 const ADDABLE: { type: AuthorableProcessorType; label: string }[] = [
   { type: "email", label: PROCESSOR_LABELS.email },
   { type: "webhook", label: PROCESSOR_LABELS.webhook },
+  { type: "payment", label: PROCESSOR_LABELS.payment },
   { type: "spreadsheet", label: PROCESSOR_LABELS.spreadsheet },
   { type: "opencrvs", label: PROCESSOR_LABELS.opencrvs },
 ];

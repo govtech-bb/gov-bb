@@ -10,6 +10,7 @@ import { PaymentTransactionEntity } from "./entities/payment-transaction.entity"
 import { CustomComponent } from "./entities/custom-component.entity";
 import { MdaContactEntity } from "./entities/mda-contact.entity";
 import { FormConfigEntity } from "./entities/form-config.entity";
+import { FormDisabledOverrideEntity } from "./entities/form-disabled-override.entity";
 
 // Migrations
 import { CreateFormsTables1774544962999 } from "./migrations/1774544962999-CreateFormsTables";
@@ -20,6 +21,8 @@ import { AddPendingPaymentSubmissionStatus1777896617226 } from "./migrations/177
 import { CreatePaymentTables1777896888080 } from "./migrations/1777896888080-CreatePaymentTables";
 import { AddAbandonedPaymentIndex1778195854282 } from "./migrations/1778195854282-AddAbandonedPaymentIndex";
 import { AddFormDefinitionUniqueConstraint1778500000000 } from "./migrations/1778500000000-AddFormDefinitionUniqueConstraint";
+import { AddReferenceCodeToFormSubmissions1778841559000 } from "./migrations/1778841559000-AddReferenceCodeToFormSubmissions";
+import { CreateFormDisabledOverrides1779466523478 } from "./migrations/1779466523478-CreateFormDisabledOverrides";
 import { CreateMdaContactAndFormConfig1780520220084 } from "./migrations/1780520220084-CreateMdaContactAndFormConfig";
 
 export const entities = [
@@ -32,6 +35,7 @@ export const entities = [
   CustomComponent,
   MdaContactEntity,
   FormConfigEntity,
+  FormDisabledOverrideEntity,
 ];
 
 export const migrations = [
@@ -43,6 +47,8 @@ export const migrations = [
   CreatePaymentTables1777896888080,
   AddAbandonedPaymentIndex1778195854282,
   AddFormDefinitionUniqueConstraint1778500000000,
+  AddReferenceCodeToFormSubmissions1778841559000,
+  CreateFormDisabledOverrides1779466523478,
   CreateMdaContactAndFormConfig1780520220084,
 ];
 
@@ -60,5 +66,6 @@ export function createDataSource(
   } as DataSourceOptions);
 }
 
-// Re-export all entities
+// Re-export all entities and migration classes
 export * from "./entities/index";
+export * from "./migrations/index";

@@ -21,6 +21,7 @@
 import {
   storeFormData,
   getFormData,
+  clearFormState,
   getCompletedSteps,
   markStepCompleted,
   isStepCompleted,
@@ -86,6 +87,41 @@ describe("storeFormData / getFormData", () => {
     const result = getFormData(FORM_ID);
     // The File is stripped; the array retains only non-undefined entries
     expect(result.step1_items).toEqual(["kept"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// clearFormState
+// ---------------------------------------------------------------------------
+
+describe("clearFormState", () => {
+  it("removes both the stored field values and the completed steps", () => {
+    storeFormData(FORM_ID, { step1_name: "Alice" });
+    markStepCompleted(FORM_ID, "step1");
+
+    clearFormState(FORM_ID);
+
+    expect(getFormData(FORM_ID)).toBeNull();
+    expect(getCompletedSteps(FORM_ID)).toEqual([]);
+  });
+
+  it("is a no-op when nothing has been stored", () => {
+    expect(() => clearFormState(FORM_ID)).not.toThrow();
+    expect(getFormData(FORM_ID)).toBeNull();
+    expect(getCompletedSteps(FORM_ID)).toEqual([]);
+  });
+
+  it("does not touch state stored under a different form id", () => {
+    storeFormData(FORM_ID, { step1_name: "Alice" });
+    markStepCompleted(FORM_ID, "step1");
+    storeFormData("other-form", { step1_name: "Bob" });
+    markStepCompleted("other-form", "step1");
+
+    clearFormState(FORM_ID);
+
+    expect(getFormData(FORM_ID)).toBeNull();
+    expect(getFormData("other-form")).toEqual({ step1_name: "Bob" });
+    expect(getCompletedSteps("other-form")).toEqual(["step1"]);
   });
 });
 

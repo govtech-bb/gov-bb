@@ -2,11 +2,11 @@ import "../../styles/builder.global.css";
 import { createFileRoute } from "@tanstack/react-router";
 import { useReducer, useState, useMemo } from "react";
 import { getCatalogFn } from "../../server/registry";
-import { submitRecipe, updateRecipe, rekeyRecipe, deleteForm, disableForm, enableForm, getFormConfig } from "../../server/forms";
+import { submitRecipe, updateRecipe, rekeyRecipe, deleteForm, disableForm, enableForm } from "../../server/forms";
 import { createMdaContact } from "../../server/mda-contacts";
 import { publishRecipe, getPublishBaseBranch, eraseRecipe } from "../../server/publish";
 import { validateRecipe, previewRecipe } from "../../server/registry";
-import { serializeRecipeDraft, findRecipeIdCollisions, formatCollisionIssues, resolveFieldIds } from "@govtech-bb/form-builder";
+import { serializeRecipeDraft, findRecipeIdCollisions, formatCollisionIssues, resolveFieldIds, extractDbProcessors, firstIncompletePaymentProcessor } from "@govtech-bb/form-builder";
 import { bumpMinor, bumpPatch } from "../../lib/version";
 import type { ServiceContract, ServiceContractRecipe } from "@govtech-bb/form-types";
 import { KEBAB_ID_PATTERN, KEBAB_ID_ERROR } from "@govtech-bb/form-types";
@@ -95,6 +95,10 @@ function BuilderPage() {
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [previewData, setPreviewData] = useState<ServiceContract | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  // The serialized draft captured when Preview is pressed (#744) — set before
+  // the preview request so the "View recipe JSON" action works even while the
+  // contract is loading or the request failed.
+  const [previewRecipeJson, setPreviewRecipeJson] = useState<ServiceContractRecipe | null>(null);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [isSubmitOpen, setIsSubmitOpen] = useState(false);
   const [isPublishOpen, setIsPublishOpen] = useState(false);
@@ -306,8 +310,36 @@ function BuilderPage() {
     return true;
   };
 
+  // Hard gate for both Save draft and Deploy: a payment processor with an
+  // incomplete config (e.g. the empty strings makeDefaultProcessor seeds) is
+  // sent as the DB `processors` sibling, where the builder API 400s the WHOLE
+  // save with an opaque error (#716 follow-up). Pre-flight the same author-time
+  // payment schema the API enforces and surface a friendly, targeted message in
+  // the always-visible validation panel instead, blocking the save so no request
+  // is sent. Lights the panel and returns true when blocked. This is a hard gate
+  // even on Save draft (unlike contract errors, which Save draft can override),
+  // because an incomplete payment config can never be persisted.
+  const blockedByIncompletePayment = (): boolean => {
+    const index = firstIncompletePaymentProcessor(draft.processors);
+    if (index === null) return false;
+    setMainView("processors");
+    setValidateResult({
+      valid: false,
+      issues: [
+        {
+          path: "processors",
+          message:
+            "A payment processor is incomplete. Open the Processors panel and fill in every payment field before saving.",
+        },
+      ],
+    });
+    setLastSaveStatus("error");
+    return true;
+  };
+
   const handleSaveDraftClick = async () => {
     if (blockedByUniqueness()) return;
+    if (blockedByIncompletePayment()) return;
     const result = await runValidation();
     if (
       !result.valid &&
@@ -324,6 +356,7 @@ function BuilderPage() {
 
   const handleDeployClick = async () => {
     if (blockedByUniqueness()) return;
+    if (blockedByIncompletePayment()) return;
     const result = await runValidation();
     if (result.valid) handleOpenPublish();
   };
@@ -339,6 +372,9 @@ function BuilderPage() {
     setPreviewError(null);
     try {
       const recipe = serializeRecipeDraft(draft, { version });
+      // Captured before the request so the JSON is inspectable even when the
+      // preview request fails — failure is exactly when you want to see it.
+      setPreviewRecipeJson(recipe);
       const contract = await previewRecipe({ data: { recipe } }) as ServiceContract;
       setPreviewData(contract as ServiceContract);
     } catch (e) {
@@ -381,15 +417,22 @@ function BuilderPage() {
       // API upserts it into form_config. Only sent when the draft carries a
       // value (undefined → key omitted, so an untouched selection isn't cleared).
       const mdaContactId = draft.mdaContactId;
+      // Payment processors are a DB-only sibling (#716): pull them out of the
+      // draft and send them in `processors` (the serializer already strips them
+      // from `recipe`). `null` when there are none — clears the DB key. A re-key
+      // moves the whole form_config row, so it doesn't resend the siblings.
+      const processors = extractDbProcessors(draft.processors);
       if (isRekey) {
         await rekeyRecipe({ data: { oldFormId, recipe } });
       } else if (isInPlaceUpdate) {
         await updateRecipe({
-          data: { formId: oldFormId, recipe, mdaContactId },
+          data: { formId: oldFormId, recipe, mdaContactId, processors },
         });
       } else {
         // Tells the API to enforce formId uniqueness for a genuine create.
-        await submitRecipe({ data: { recipe, isNew: isCreate, mdaContactId } });
+        await submitRecipe({
+          data: { recipe, isNew: isCreate, mdaContactId, processors },
+        });
       }
       setSubmitSuccess(true);
       setLastSaveStatus("submitted");
@@ -499,6 +542,7 @@ function BuilderPage() {
     setSubmitSuccess(false);
     setSubmitError(null);
     setPreviewData(null);
+    setPreviewRecipeJson(null);
     setPreviewError(null);
     setLastSaveStatus("idle");
   };
@@ -629,6 +673,7 @@ function BuilderPage() {
     setSubmitSuccess(false);
     setSubmitError(null);
     setPreviewData(null);
+    setPreviewRecipeJson(null);
     setLastSaveStatus("idle");
     // Close all open panels/modals
     setIsPickerOpen(false);
@@ -660,6 +705,7 @@ function BuilderPage() {
     setSubmitSuccess(false);
     setSubmitError(null);
     setPreviewData(null);
+    setPreviewRecipeJson(null);
     setPreviewError(null);
     setLastSaveStatus("idle");
   };
@@ -952,7 +998,8 @@ function BuilderPage() {
           isLoading={isPreviewing}
           error={previewError}
           previewUrl={loadedFromId ? formPreviewUrl(loadedFromId) : null}
-          onClose={() => { setIsPreviewOpen(false); setPreviewData(null); setPreviewError(null); }}
+          recipe={previewRecipeJson}
+          onClose={() => { setIsPreviewOpen(false); setPreviewData(null); setPreviewError(null); setPreviewRecipeJson(null); }}
         />
       )}
 

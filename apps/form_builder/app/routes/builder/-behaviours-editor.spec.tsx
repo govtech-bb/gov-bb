@@ -249,3 +249,158 @@ it("resets the value to an empty string when the Target Field switches to non-bo
     expect.objectContaining({ targetFieldId: "first-name", value: "" }),
   ]);
 });
+
+// #769: optionalIf (relax `required` without hiding the field, #625) must be
+// authorable from the field modal's behaviours editor.
+
+function addBehaviourSelect() {
+  return screen
+    .getAllByRole("combobox")
+    .find((el) =>
+      within(el).queryByRole("option", { name: /add behaviour/i }),
+    ) as HTMLSelectElement;
+}
+
+it("offers Optional If in the Add Behaviour dropdown for field scope", () => {
+  render(
+    <BehavioursEditor
+      scope="field"
+      behaviours={[]}
+      fieldRefs={FIELD_REFS}
+      stepRefs={STEP_REFS}
+      onChange={jest.fn()}
+      currentStepId="step-1"
+    />,
+  );
+  expect(
+    within(addBehaviourSelect()).getByRole("option", { name: "Optional If" }),
+  ).toBeInTheDocument();
+});
+
+it("does not offer Optional If for step scope", () => {
+  renderStepBehaviour([]);
+  expect(
+    within(addBehaviourSelect()).queryByRole("option", { name: "Optional If" }),
+  ).not.toBeInTheDocument();
+});
+
+it("defaults a new optionalIf's Target Step to currentStepId", async () => {
+  const onChange = jest.fn();
+  render(
+    <BehavioursEditor
+      scope="field"
+      behaviours={[]}
+      fieldRefs={FIELD_REFS}
+      stepRefs={STEP_REFS}
+      onChange={onChange}
+      currentStepId="step-2"
+    />,
+  );
+  await userEvent.selectOptions(addBehaviourSelect(), "optionalIf");
+  expect(onChange).toHaveBeenCalledWith([
+    expect.objectContaining({
+      type: "optionalIf",
+      targetStepId: "step-2",
+      targetFieldId: "",
+      operator: "equal",
+      value: "",
+    }),
+  ]);
+});
+
+it("renders the gated step/field/operator/value controls for an optionalIf behaviour", () => {
+  render(
+    <BehavioursEditor
+      scope="field"
+      behaviours={[
+        { type: "optionalIf", targetStepId: "step-1", targetFieldId: "agree", operator: "equal", value: true } as unknown as Behaviour,
+      ]}
+      fieldRefs={FIELD_REFS}
+      stepRefs={STEP_REFS}
+      onChange={jest.fn()}
+      currentStepId="step-1"
+    />,
+  );
+  expect(screen.getByText("Optional If")).toBeInTheDocument();
+  expect(targetStepSelect()).toBeInTheDocument();
+  expect(targetFieldSelect()).toBeEnabled();
+  // Boolean target (show-hide toggle) gets the true/false control. (#565)
+  expect(valueBooleanSelect()).toBeInTheDocument();
+});
+
+// #768: repeatable exposes an optional "Add another label" text param that
+// overrides the runtime's auto-generated "Add another?" radio label. Blank
+// means absent — the editor must never store "".
+
+it("renders a text input for repeatable's Add another label with the default as placeholder", () => {
+  renderStepBehaviour([
+    { type: "repeatable", min: 1, max: 5 } as unknown as Behaviour,
+  ]);
+  const input = screen.getByPlaceholderText("Add another?");
+  expect(input).toBeInTheDocument();
+  expect(input).toHaveValue("");
+});
+
+it("shows the stored addAnotherLabel value", () => {
+  renderStepBehaviour([
+    {
+      type: "repeatable",
+      min: 1,
+      max: 5,
+      addAnotherLabel: "Add another qualification?",
+    } as unknown as Behaviour,
+  ]);
+  expect(screen.getByPlaceholderText("Add another?")).toHaveValue(
+    "Add another qualification?",
+  );
+});
+
+it("does not initialize addAnotherLabel when adding a repeatable behaviour", async () => {
+  const onChange = jest.fn();
+  render(
+    <BehavioursEditor
+      scope="step"
+      behaviours={[]}
+      fieldRefs={FIELD_REFS}
+      stepRefs={STEP_REFS}
+      onChange={onChange}
+    />,
+  );
+  await userEvent.selectOptions(screen.getByRole("combobox"), "repeatable");
+  const added = onChange.mock.lastCall?.[0][0] as Record<string, unknown>;
+  expect(added.type).toBe("repeatable");
+  expect("addAnotherLabel" in added).toBe(false);
+});
+
+it("stores typed text as addAnotherLabel", async () => {
+  const onChange = renderStepBehaviour([
+    { type: "repeatable", min: 1, max: 5 } as unknown as Behaviour,
+  ]);
+  await userEvent.type(screen.getByPlaceholderText("Add another?"), "A");
+  expect(onChange).toHaveBeenLastCalledWith([
+    expect.objectContaining({ addAnotherLabel: "A" }),
+  ]);
+});
+
+it("deletes addAnotherLabel from the behaviour when the input is blanked", async () => {
+  const onChange = renderStepBehaviour([
+    {
+      type: "repeatable",
+      min: 1,
+      max: 5,
+      addAnotherLabel: "X",
+    } as unknown as Behaviour,
+  ]);
+  await userEvent.clear(screen.getByPlaceholderText("Add another?"));
+  const updated = onChange.mock.lastCall?.[0][0] as Record<string, unknown>;
+  expect("addAnotherLabel" in updated).toBe(false);
+});
+
+it("treats whitespace-only input as blank", async () => {
+  const onChange = renderStepBehaviour([
+    { type: "repeatable", min: 1, max: 5 } as unknown as Behaviour,
+  ]);
+  await userEvent.type(screen.getByPlaceholderText("Add another?"), " ");
+  const updated = onChange.mock.lastCall?.[0][0] as Record<string, unknown>;
+  expect("addAnotherLabel" in updated).toBe(false);
+});

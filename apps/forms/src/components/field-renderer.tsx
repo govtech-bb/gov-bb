@@ -605,7 +605,6 @@ export default function FieldRenderer({
                 onFileChange={(files) => commitChange(files)}
                 errorMessage={errorMessage}
                 errorId={errorId}
-                validationRules={field.validations}
                 formId={formId}
                 formVersion={formVersion}
               />

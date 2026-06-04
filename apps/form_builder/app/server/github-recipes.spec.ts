@@ -1,4 +1,5 @@
-import { getPublishedRecipe, REPO_NAME } from "./github-recipes";
+import { getPublishedRecipe } from "./github-recipes";
+import { REPO_NAME } from "./github-repo";
 
 const REPO_OWNER = "govtech-bb";
 

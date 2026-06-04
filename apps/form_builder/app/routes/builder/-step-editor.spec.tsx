@@ -5,7 +5,7 @@
  * the "Add field" picker — i.e. between the Fields list and the picker.
  */
 import "@testing-library/jest-dom";
-import { render } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import type {
   RecipeDraft,
   RecipeStepDraft,
@@ -82,4 +82,36 @@ it("pins a stable dnd-kit id so draggable aria-describedby is deterministic", ()
   const handle = container.querySelector("[aria-describedby]");
   expect(handle).not.toBeNull();
   expect(handle).toHaveAttribute("aria-describedby", "step-fields-dnd");
+});
+
+// #741: the Step ID input kebabizes on blur, mirroring the Field ID Override
+// input, so a typed `step_one` is auto-corrected instead of only erroring at
+// validate time (the shared schemas now reject non-kebab ids).
+it("kebabizes the Step ID on blur and commits the normalized id", () => {
+  const step = makeStep();
+  const draft: RecipeDraft = { formId: "f", title: "F", steps: [step] };
+  const dispatch = jest.fn();
+  const onStepIdChange = jest.fn();
+  render(
+    <StepEditor
+      step={step}
+      draft={draft}
+      dispatch={dispatch}
+      catalog={CATALOG}
+      onStepIdChange={onStepIdChange}
+    />,
+  );
+  // The label is a sibling of the input (no htmlFor), so locate via the group.
+  const input = screen
+    .getByText("Step ID")
+    .parentElement!.querySelector("input")!;
+  fireEvent.change(input, { target: { value: "step_one" } });
+  expect(dispatch).not.toHaveBeenCalled(); // invalid id is not committed
+  fireEvent.blur(input);
+  expect(dispatch).toHaveBeenCalledWith({
+    type: "UPDATE_STEP_META",
+    stepId: "step-1",
+    meta: { stepId: "step-one" },
+  });
+  expect(onStepIdChange).toHaveBeenCalledWith("step-1", "step-one");
 });

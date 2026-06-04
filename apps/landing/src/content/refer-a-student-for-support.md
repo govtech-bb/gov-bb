@@ -9,7 +9,7 @@ form_id: referral-student-support-services
 
 If you are a member of school staff, you can use this form to refer a student to the Student Support Services Unit (SSSU). The unit helps students who are facing difficulties in school.
 
-## Who can apply
+## Who can refer a student
 
 This form is for school staff, such as teachers, counsellors and administrators, referring a student on behalf of their school.
 
@@ -19,7 +19,7 @@ Before you submit a referral, you should have:
 - completed a Student Profile Form after a period of classroom observation
 - got approval from your principal
 
-## How to apply
+## How to refer
 
 You can complete the referral online. It takes about 15 minutes.
 
@@ -29,20 +29,28 @@ You can complete the referral online. It takes about 15 minutes.
 
 You’ll need to give:
 
-1. The student’s details — their name, National ID number, date of birth, sex and home address.
-2. The parent or guardian details — names, relationships and contact numbers, and who the student lives with most of the time.
-3. The school details — the school name, the student’s class or form, and the school telephone number.
-4. A description of the student’s challenges, and the difficulties you have observed.
-5. The student’s attendance pattern and any outside agencies already involved.
-6. What the school has tried so far.
-7. Your details as the referrer — your name, role, email address and the date you consulted the parent or guardian.
+- the student’s details — their name, National ID number, date of birth, sex and home address
+- the parent or guardian details — names, relationships and contact numbers, and who the student lives with most of the time
+- the school details — the school name, the student’s class or form, and the school telephone number
+- a description of the student’s challenges, and the difficulties you have observed
+- the student’s attendance pattern and any outside agencies already involved
+- what the school has tried so far
+- your details as the referrer — your name, role, email address and the date you consulted the parent or guardian
 
-You can also upload supporting documents, such as the Student Profile Form, clinical or psychological reports, and school or attendance records.
+You can also upload supporting documents:
 
-You’ll need to confirm that the parent or guardian has been consulted, that your information is true and correct, and that the principal has approved the referral.
+- student Profile Form
+- clinical or psychological reports
+- school or attendance records
 
-## After you apply
+You'll need to confirm that:
 
-A caseworker is assigned to the referral and will contact the school within 3 weeks. The caseworker will meet the student and consult the parent or guardian. If the unit needs more information before assigning a caseworker, they will email or phone you.
+- the parent or guardian has been consulted
+- your information is true and correct
+- the principal has approved the referral
 
-You’ll get a reference number for future correspondence. If you have additional reports later, you can email them to studentsupportservices@mes.gov.bb with your reference number.
+## After you submit a referral
+
+We will assign a caseworker, who will contact the school within 3 weeks. The caseworker will meet the student and consult the parent or guardian. If we need more information before assigning a caseworker, we will email or phone you. You will get a reference number for future correspondence. 
+
+If you have additional reports later, you can email them to studentsupportservices@mes.gov.bb with your reference number.

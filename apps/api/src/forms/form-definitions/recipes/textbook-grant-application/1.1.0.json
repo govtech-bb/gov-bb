@@ -38,7 +38,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "First Name",
-            "fieldId": "firstName",
+            "fieldId": "first-name",
             "validations": {
               "required": {
                 "error": "First Name is required",
@@ -55,7 +55,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Last Name",
-            "fieldId": "lastName",
+            "fieldId": "last-name",
             "validations": {
               "required": {
                 "error": "Last Name is required",
@@ -72,14 +72,14 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Other Names",
-            "fieldId": "otherNames"
+            "fieldId": "other-names"
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "ID Number",
-            "fieldId": "idNumber",
+            "fieldId": "id-number",
             "validations": {
               "required": {
                 "error": "ID Number is required",
@@ -96,14 +96,14 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Home Phone",
-            "fieldId": "homePhone"
+            "fieldId": "home-phone"
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Cell Phone",
-            "fieldId": "cellPhone",
+            "fieldId": "cell-phone",
             "validations": {
               "required": {
                 "error": "Cell Phone is required",
@@ -120,7 +120,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Work Phone",
-            "fieldId": "workPhone"
+            "fieldId": "work-phone"
           }
         },
         {
@@ -175,7 +175,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Tamis No",
-            "fieldId": "tamisNo"
+            "fieldId": "tamis-no"
           }
         }
       ],
@@ -189,7 +189,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Bank/Branch",
-            "fieldId": "bankBranch",
+            "fieldId": "bank-branch",
             "helperText": "In order to receive the $100 Grant, please provide accurate and current banking information to prevent delays in processing this application.",
             "validations": {
               "required": {
@@ -207,7 +207,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Account No",
-            "fieldId": "accountNo",
+            "fieldId": "account-no",
             "validations": {
               "required": {
                 "error": "Account No is required",
@@ -224,7 +224,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Account Type",
-            "fieldId": "accountType",
+            "fieldId": "account-type",
             "validations": {
               "required": {
                 "error": "Account Type is required",
@@ -241,7 +241,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Name on Acct",
-            "fieldId": "nameOnAcct",
+            "fieldId": "name-on-acct",
             "validations": {
               "required": {
                 "error": "Name on Acct is required",
@@ -283,7 +283,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "ID Number",
-            "fieldId": "idNumber",
+            "fieldId": "id-number",
             "validations": {
               "required": {
                 "error": "ID Number is required",
@@ -392,7 +392,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Signature of Parent/Guardian",
-            "fieldId": "parentSignature",
+            "fieldId": "parent-signature",
             "validations": {
               "required": {
                 "error": "Signature of Parent/Guardian is required",
@@ -410,7 +410,7 @@
           "overrides": {
             "type": "date",
             "label": "Date",
-            "fieldId": "parentDate",
+            "fieldId": "parent-date",
             "validations": {
               "required": {
                 "error": "Date is required",
@@ -437,7 +437,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Signature of Principal",
-            "fieldId": "principalSignature"
+            "fieldId": "principal-signature"
           }
         },
         {
@@ -445,7 +445,7 @@
           "overrides": {
             "type": "date",
             "label": "Date",
-            "fieldId": "principalDate"
+            "fieldId": "principal-date"
           }
         }
       ],

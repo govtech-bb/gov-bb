@@ -69,6 +69,11 @@ export function BehavioursEditor({
         newBehaviour[param.name] = 0;
       } else if (param.kind === "stringArray") {
         newBehaviour[param.name] = [];
+      } else if (param.kind === "text" && !param.optional) {
+        // Required text params seed ""; optional ones (excluded above) stay
+        // absent so runtime fallbacks (e.g. addAnotherLabel ?? "Add
+        // another?") keep applying.
+        newBehaviour[param.name] = "";
       }
     }
     onChange([...behaviours, newBehaviour as unknown as Behaviour]);
@@ -82,7 +87,14 @@ export function BehavioursEditor({
     const updated = behaviours.map((b, i) => {
       if (i !== index) return b;
       const descriptor = BEHAVIOUR_TYPE_DESCRIPTORS.find((d) => d.type === b.type);
-      const next = { ...b, [paramName]: value } as Record<string, unknown>;
+      const next = { ...b } as Record<string, unknown>;
+      if (value === undefined) {
+        // Blanked optional text param: remove the key entirely (storing "" or
+        // undefined would still ship the key in the recipe).
+        delete next[paramName];
+      } else {
+        next[paramName] = value;
+      }
       // Changing the Target Step invalidates a Target Field that no longer
       // belongs to it — clear the stale selection so it can't be saved. (#519)
       const stepParam = descriptor?.params.find((p) => p.kind === "stepRef");
@@ -248,6 +260,25 @@ export function BehavioursEditor({
                           index,
                           param.name,
                           e.target.value.split(",").map((s) => s.trim()).filter(Boolean),
+                        )
+                      }
+                    />
+                  </div>
+                );
+              }
+              if (param.kind === "text") {
+                return (
+                  <div key={param.name} className={styles.formGroup}>
+                    <label>{param.label}</label>
+                    <input
+                      type="text"
+                      placeholder={param.placeholder}
+                      value={(bRecord[param.name] as string) ?? ""}
+                      onChange={(e) =>
+                        handleParamChange(
+                          index,
+                          param.name,
+                          e.target.value.trim() === "" ? undefined : e.target.value,
                         )
                       }
                     />

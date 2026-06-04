@@ -53,6 +53,7 @@ jest.mock("@forms/components", () => ({
 jest.mock("../../../lib/session-storage", () => ({
   getFormData: jest.fn(() => null),
   storeFormData: jest.fn(),
+  clearFormState: jest.fn(),
 }));
 
 jest.mock("@forms/form-api", () => ({
@@ -640,6 +641,80 @@ describe("RouteComponent onSubmit handler", () => {
     );
     expect(hiddenIds.sort()).toEqual(["step1_f1", "step1_f2"]);
     expect(hiddenIds).not.toContain("step1_f3");
+  });
+
+  describe("clears persisted state on a successful submission", () => {
+    const { clearFormState } = jest.requireMock("../../../lib/session-storage");
+
+    const okData = {
+      id: "ref-001",
+      submittedAt: "2026-05-22T00:00:00Z",
+      formId: "test-form",
+    };
+
+    it("clears form state on a 'submitted' success", async () => {
+      const onSubmit = renderAndExtractOnSubmit();
+      (postFormSubmission as jest.Mock).mockResolvedValue({
+        status: "submitted",
+        data: okData,
+      });
+      await onSubmit({ value: {} });
+      expect(clearFormState).toHaveBeenCalledWith("test-form");
+    });
+
+    it("clears form state on a 'pending_payment' with payment details (success)", async () => {
+      const onSubmit = renderAndExtractOnSubmit();
+      (postFormSubmission as jest.Mock).mockResolvedValue({
+        status: "pending_payment",
+        meta: {
+          deferred: {
+            amount: 100,
+            paymentUrl: "https://pay.example.com",
+            paymentId: "pay-001",
+            description: "Fee",
+          },
+        },
+        data: okData,
+      });
+      await onSubmit({ value: {} });
+      expect(clearFormState).toHaveBeenCalledWith("test-form");
+    });
+
+    it("does NOT clear form state on a 'failed' submission", async () => {
+      const onSubmit = renderAndExtractOnSubmit();
+      (postFormSubmission as jest.Mock).mockResolvedValue({
+        status: "failed",
+        data: okData,
+      });
+      await act(async () => {
+        await onSubmit({ value: {} });
+      });
+      expect(clearFormState).not.toHaveBeenCalled();
+    });
+
+    it("does NOT clear form state when payment could not be initiated (answers kept for retry)", async () => {
+      const onSubmit = renderAndExtractOnSubmit();
+      (postFormSubmission as jest.Mock).mockResolvedValue({
+        status: "pending_payment",
+        // No meta.deferred — payment-init error, which keeps a Try again path.
+        data: okData,
+      });
+      await act(async () => {
+        await onSubmit({ value: {} });
+      });
+      expect(clearFormState).not.toHaveBeenCalled();
+    });
+
+    it("does NOT clear form state when the request rejects (network error)", async () => {
+      const onSubmit = renderAndExtractOnSubmit();
+      (postFormSubmission as jest.Mock).mockRejectedValue(
+        new Error("network failure"),
+      );
+      await act(async () => {
+        await onSubmit({ value: {} });
+      });
+      expect(clearFormState).not.toHaveBeenCalled();
+    });
   });
 
   void storeFormData;

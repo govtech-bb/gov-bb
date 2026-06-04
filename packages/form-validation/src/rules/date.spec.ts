@@ -380,3 +380,67 @@ describe("maxYearRunner", () => {
     );
   });
 });
+
+// Plain numeric-year inputs: `minYear`/`maxYear` also apply to number fields
+// (e.g. a 4-digit "Year" input), where the value is a bare number or numeric
+// string rather than a date. The runner compares it as a year directly.
+describe("minYear/maxYear — plain numeric year inputs", () => {
+  it("maxYear passes for a numeric year <= max", () => {
+    expect(maxYearRunner(2020, cfg(2099), {})).toBeNull();
+    expect(maxYearRunner("2020", cfg(2099), {})).toBeNull();
+  });
+
+  it("maxYear fails for a numeric year > max", () => {
+    expect(maxYearRunner(2100, cfg(2099), {})).toBe(
+      "Year must be 2099 or earlier",
+    );
+  });
+
+  it("minYear passes for a numeric year >= min", () => {
+    expect(minYearRunner(2005, cfg(2000), {})).toBeNull();
+  });
+
+  it("minYear fails for a numeric year < min", () => {
+    expect(minYearRunner(1999, cfg(2000), {})).toBe(
+      "Year must be 2000 or later",
+    );
+  });
+});
+
+// `currentYear: true` resolves the bound dynamically to the current year, so a
+// recipe can say "not in the future" without hardcoding a literal that rots.
+describe("minYear/maxYear — currentYear bound", () => {
+  const thisYear = new Date().getUTCFullYear();
+  const withCurrentYear = (error?: string) => ({ currentYear: true, error });
+
+  it("maxYear passes for the current year (boundary)", () => {
+    expect(maxYearRunner(thisYear, withCurrentYear(), {})).toBeNull();
+  });
+
+  it("maxYear passes for a past year", () => {
+    expect(maxYearRunner(thisYear - 5, withCurrentYear(), {})).toBeNull();
+  });
+
+  it("maxYear fails for a future year", () => {
+    expect(maxYearRunner(thisYear + 1, withCurrentYear(), {})).toBe(
+      `Year must be ${thisYear} or earlier`,
+    );
+  });
+
+  it("maxYear uses the custom error for a future year", () => {
+    expect(
+      maxYearRunner(
+        thisYear + 1,
+        withCurrentYear("Year cannot be in the future"),
+        {},
+      ),
+    ).toBe("Year cannot be in the future");
+  });
+
+  it("minYear treats the current year as the lower bound", () => {
+    expect(minYearRunner(thisYear, withCurrentYear(), {})).toBeNull();
+    expect(minYearRunner(thisYear - 1, withCurrentYear(), {})).toBe(
+      `Year must be ${thisYear} or later`,
+    );
+  });
+});

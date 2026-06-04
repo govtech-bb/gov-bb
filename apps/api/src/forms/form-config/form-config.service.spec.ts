@@ -72,3 +72,76 @@ describe("FormConfigService.resolveMdaEmail", () => {
     await expect(service.resolveMdaEmail("form-a")).resolves.toBeNull();
   });
 });
+
+describe("FormConfigService.resolveProcessors", () => {
+  const PAYMENT_PROCESSOR = {
+    type: "payment",
+    config: {
+      provider: "ezpay",
+      department: "civil-registry",
+      paymentCode: "BIRTH-CERT",
+      amount: 25,
+      description: "Birth certificate",
+      customerEmailPath: "applicant.email",
+      customerNamePath: "applicant.name",
+    },
+  };
+
+  it("returns [] when the form has no form_config row", async () => {
+    const { service, formConfigRepo } = makeService(null);
+
+    await expect(service.resolveProcessors("form-a")).resolves.toEqual([]);
+    expect(formConfigRepo.findOne).toHaveBeenCalledWith({
+      where: { formId: "form-a" },
+    });
+  });
+
+  it("returns [] when the row's config is null", async () => {
+    const { service } = makeService({ formId: "form-a", config: null });
+
+    await expect(service.resolveProcessors("form-a")).resolves.toEqual([]);
+  });
+
+  it("returns [] when the blob has no processors key", async () => {
+    const { service } = makeService({
+      formId: "form-a",
+      config: { somethingElse: true },
+    });
+
+    await expect(service.resolveProcessors("form-a")).resolves.toEqual([]);
+  });
+
+  it("returns the processors from a valid blob", async () => {
+    const { service } = makeService({
+      formId: "form-a",
+      config: { processors: [PAYMENT_PROCESSOR] },
+    });
+
+    await expect(service.resolveProcessors("form-a")).resolves.toEqual([
+      PAYMENT_PROCESSOR,
+    ]);
+  });
+
+  it("throws when the blob fails validation (misconfiguration must fail loudly)", async () => {
+    const { service } = makeService({
+      formId: "form-a",
+      config: { processors: "not-an-array" },
+    });
+
+    await expect(service.resolveProcessors("form-a")).rejects.toThrow();
+  });
+
+  it("lets a DB error propagate (infra failure, not a resolved miss)", async () => {
+    const formConfigRepo = {
+      findOne: jest.fn().mockRejectedValue(new Error("db down")),
+    } as unknown as jest.Mocked<FormConfigRepository>;
+    const mdaContactRepo = {
+      findOne: jest.fn(),
+    } as unknown as jest.Mocked<MdaContactRepository>;
+    const service = new FormConfigService(formConfigRepo, mdaContactRepo);
+
+    await expect(service.resolveProcessors("form-a")).rejects.toThrow(
+      "db down",
+    );
+  });
+});

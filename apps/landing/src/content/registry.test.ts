@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
+  categoryServices,
   findPage,
+  isCategoryVisible,
   isPreview,
   isSubPage,
   isUrlPreview,
@@ -10,6 +12,7 @@ import {
   resolveServiceHref,
   startSubPageInPreview,
 } from './registry'
+import { CATEGORY_BY_SLUG } from './categories'
 
 describe('resolveServiceHref', () => {
   it('rewrites a bare service slug to its category-prefixed URL', () => {
@@ -143,14 +146,33 @@ describe('visibility helpers over real content', () => {
   })
 })
 
-describe('money-financial-support listing', () => {
+describe('isCategoryVisible', () => {
+  it('hides pensions-and-gratuities for the public (its only service is preview)', () => {
+    const pensions = CATEGORY_BY_SLUG['pensions-and-gratuities']
+    expect(pensions).toBeDefined()
+    expect(isCategoryVisible(pensions, false)).toBe(false)
+  })
+
+  it('shows pensions-and-gratuities to a reviewer in preview mode', () => {
+    const pensions = CATEGORY_BY_SLUG['pensions-and-gratuities']
+    expect(isCategoryVisible(pensions, true)).toBe(true)
+  })
+
+  it('shows a category with public services in both modes', () => {
+    const family = CATEGORY_BY_SLUG['family-birth-relationships']
+    expect(isCategoryVisible(family, false)).toBe(true)
+    expect(isCategoryVisible(family, true)).toBe(true)
+  })
+
+  it('shows a sub-categorised category whose services are public', () => {
+    const youth = CATEGORY_BY_SLUG['youth-and-community']
+    expect(isCategoryVisible(youth, false)).toBe(true)
+  })
+})
+
+describe('categoryServices', () => {
   it('lists the severance service once, not its /start step', () => {
-    const inCategory = PAGES.filter(
-      (p) =>
-        p.frontmatter.categories.includes('money-financial-support') &&
-        !isSubPage(p),
-    )
-    const severance = inCategory.filter(
+    const severance = categoryServices('money-financial-support', false).filter(
       (p) =>
         p.frontmatter.title ===
         'Find out how much severance payment you are owed',
@@ -162,13 +184,19 @@ describe('money-financial-support listing', () => {
   })
 
   it('lists severance under work-employment too, at the same canonical URL', () => {
-    const inWork = PAGES.filter(
-      (p) =>
-        p.frontmatter.categories.includes('work-employment') && !isSubPage(p),
-    ).filter((p) => p.slug === 'calculate-severance-pay')
+    const inWork = categoryServices('work-employment', false).filter(
+      (p) => p.slug === 'calculate-severance-pay',
+    )
     expect(inWork).toHaveLength(1)
     expect(inWork[0].url).toBe(
       'money-financial-support/calculate-severance-pay',
     )
+  })
+
+  it('drops a category whose only service is preview from the public listing', () => {
+    expect(categoryServices('pensions-and-gratuities', false)).toHaveLength(0)
+    expect(
+      categoryServices('pensions-and-gratuities', true).length,
+    ).toBeGreaterThan(0)
   })
 })

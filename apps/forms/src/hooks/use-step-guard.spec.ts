@@ -109,6 +109,27 @@ describe("useStepGuard", () => {
       );
       expect(mockNavigate).not.toHaveBeenCalled();
     });
+
+    it("does not redirect away from the terminal submission-confirmation step when preceding steps are not complete", () => {
+      // On a successful submission the completed-step records are cleared, so
+      // the confirmation's prerequisites no longer look complete. The guard must
+      // still leave the citizen on their confirmation — the renderer, not the
+      // guard, decides whether there is a submission to show.
+      const confirmationSteps = [
+        step("step-1"),
+        step("check-your-answers"),
+        step("submission-confirmation"),
+      ];
+      // Nothing is recorded as complete.
+      renderHook(() =>
+        useStepGuard({
+          formId: FORM_ID,
+          activeSteps: confirmationSteps,
+          currentStepId: "submission-confirmation",
+        }),
+      );
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
   });
 
   describe("navigateToStep", () => {

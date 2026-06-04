@@ -27,7 +27,7 @@ const spreadsheetConfigAuthorSchema = z
   })
   .strict();
 
-const paymentConfigAuthorSchema = z.object({
+export const paymentConfigAuthorSchema = z.object({
   provider: z.literal("ezpay"),
   department: z.string().min(1),
   paymentCode: dynamic(z.string().min(1)),
