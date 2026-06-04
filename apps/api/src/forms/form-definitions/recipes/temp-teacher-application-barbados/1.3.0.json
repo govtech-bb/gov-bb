@@ -462,12 +462,16 @@
             "label": "Year",
             "validations": {
               "required": {
-                "error": "End Year is required",
+                "error": "Qualification Year is required",
                 "value": true
               },
               "pattern": {
-                "error": "End Year must be a 4-digit year, for example 2012",
+                "error": "Qualification Year must be a 4-digit year, for example 2012",
                 "value": "^\\d{4}$"
+              },
+              "maxYear": {
+                "error": "Qualification Year cannot be in the future",
+                "currentYear": true
               }
             }
           }
