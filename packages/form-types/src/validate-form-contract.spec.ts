@@ -12,6 +12,23 @@ const validRecipe = {
   ],
 };
 
+const repeatableStep = {
+  stepId: "qualifications",
+  title: "Qualifications",
+  elements: [{ ref: "components/text-field" }],
+  behaviours: [{ type: "repeatable" as const, min: 1, max: 5 }],
+};
+
+const recipeWithRepeatable = (min: number, max: number) => ({
+  ...validRecipe,
+  steps: [
+    {
+      ...repeatableStep,
+      behaviours: [{ type: "repeatable" as const, min, max }],
+    },
+  ],
+});
+
 describe("validateFormContract", () => {
   it("accepts a well-formed recipe", () => {
     const result = validateFormContract(validRecipe);
@@ -101,5 +118,81 @@ describe("validateFormContract", () => {
     };
     const result = validateFormContract(withRule);
     expect(result.ok).toBe(true);
+  });
+
+  describe("repeatable behaviour min/max validation", () => {
+    it("accepts a repeatable step with min=1, max=5", () => {
+      const result = validateFormContract(recipeWithRepeatable(1, 5));
+      expect(result.ok).toBe(true);
+    });
+
+    it("rejects min=0 (must be integer >= 1)", () => {
+      const result = validateFormContract(recipeWithRepeatable(0, 5));
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        const paths = result.issues.map((i) => i.path);
+        expect(paths).toContain("steps.0.behaviours.0.min");
+        const minIssue = result.issues.find(
+          (i) => i.path === "steps.0.behaviours.0.min",
+        );
+        expect(minIssue?.message).toMatch(/1/);
+      }
+    });
+
+    it("rejects non-integer min (min=1.5)", () => {
+      const result = validateFormContract(recipeWithRepeatable(1.5, 5));
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        const paths = result.issues.map((i) => i.path);
+        expect(paths).toContain("steps.0.behaviours.0.min");
+      }
+    });
+
+    it("rejects max < min (min=2, max=1)", () => {
+      const result = validateFormContract(recipeWithRepeatable(2, 1));
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        const paths = result.issues.map((i) => i.path);
+        expect(paths).toContain("steps.0.behaviours.0.max");
+        const maxIssue = result.issues.find(
+          (i) => i.path === "steps.0.behaviours.0.max",
+        );
+        expect(maxIssue?.message).toMatch(/min/);
+      }
+    });
+
+    it("reports correct indices for repeatable behaviours on a second step", () => {
+      const recipe = {
+        ...validRecipe,
+        steps: [
+          {
+            stepId: "personal-info",
+            title: "Personal Info",
+            elements: [{ ref: "components/text-field" }],
+          },
+          {
+            ...repeatableStep,
+            stepId: "qualifications",
+            behaviours: [{ type: "repeatable" as const, min: 0, max: 5 }],
+          },
+        ],
+      };
+      const result = validateFormContract(recipe);
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        const paths = result.issues.map((i) => i.path);
+        expect(paths).toContain("steps.1.behaviours.0.min");
+      }
+    });
+
+    it("reports both min and max issues when both are invalid", () => {
+      const result = validateFormContract(recipeWithRepeatable(0, -1));
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        const paths = result.issues.map((i) => i.path);
+        expect(paths).toContain("steps.0.behaviours.0.min");
+        expect(paths).toContain("steps.0.behaviours.0.max");
+      }
+    });
   });
 });
