@@ -28,6 +28,8 @@ export default defineConfig({
     screenshot: "only-on-failure",
     actionTimeout: 15_000,
     navigationTimeout: 30_000,
+    /* Optional slow-motion for watching a headed run, e.g. SMOKE_SLOWMO=500. */
+    launchOptions: { slowMo: Number(process.env.SMOKE_SLOWMO) || 0 },
   },
   /* No webServer: we test a deployed environment, not a local dev server. */
   projects: [
