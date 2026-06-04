@@ -159,6 +159,19 @@ To hide specific elements within a block, use field-keyed overrides:
 | Label contains: "upload multiple", "attach files", "upload several", "supporting documents" (plural) | Set \`"multiple": true\` on file component |
 | Step has more than 10 fields | Split into two steps (max 8-10 fields per step) |
 
+#### The \`ui\` Object (per-field presentation hints)
+
+Every element's overrides may carry a \`ui\` object with two optional keys:
+
+\`\`\`json
+{"ref": "components/generic-text", "overrides": {"fieldId": "permit-number", "label": "Permit number", "ui": {"width": "short", "hideLabel": false}}}
+\`\`\`
+
+- \`"width"\` — \`"short"\`, \`"medium"\` or \`"long"\`. Controls the rendered input width on desktop (\`short\` ≈ 24 characters, \`medium\` ≈ 38 characters, \`long\`/unset = full width); on mobile every field is full width. Match the width to the expected answer length: \`short\` for codes, IDs, postcodes and other brief identifiers; \`medium\` for single words or short phrases (e.g. a town, a first name); \`long\` for sentences and textareas.
+- \`"hideLabel"\` — when \`true\`, the field's label is visually hidden but kept in the DOM, so screen readers still announce it (the accessible name is preserved). Use sparingly — e.g. a second address line whose purpose is obvious from the line above it. A \`label\` override is still REQUIRED even when hidden: it is what assistive technology reads.
+
+\`ui\` merges key-by-key with the component's registry defaults: overriding only \`hideLabel\` keeps a baked-in width (e.g. National ID's \`width: "short"\`), and vice versa. Only set the keys you mean to change.
+
 ### CATEGORY 5: Standard Option Lists
 
 #### Barbados Parish Options (always use this exact list)
@@ -371,7 +384,8 @@ Clean-slate building blocks with no purpose-specific validations baked in. Use a
             "validations": {
               "required": {"value": true, "error": "Error message"}
             },
-            "options": [{"label": "Option 1", "value": "opt1"}]
+            "options": [{"label": "Option 1", "value": "opt1"}],
+            "ui": {"width": "short", "hideLabel": false}
           }
         }
       ]
@@ -461,11 +475,13 @@ For paired range fields ("start"/"end", "from"/"to"), put the reference validati
 \`\`\`
 Operators: "equal", "notEqual", "in", "exists". targetFieldId must match the watched field's fieldId — so it is kebab-case too (Rule 16). operator is REQUIRED.
 
+The compared \`value\` is ALWAYS lowercased and kebab-cased: it must equal the watched field's submitted option \`value\` (which is kebab-case by convention), NEVER the display label. Watch for \`"christ-church"\`, not \`"Christ Church"\`; \`"yes"\`, not \`"Yes"\`. With \`"in"\`, every entry in the array follows the same rule.
+
 ## Optional Fields (optionalIf)
 \`\`\`json
 "behaviours": [{"type": "optionalIf", "targetFieldId": "field-to-watch", "operator": "equal", "value": true}]
 \`\`\`
-Relaxes the field's required validation while the condition matches — the field stays VISIBLE but becomes optional. Format validations (pattern, minLength, ...) still apply if the user fills it in. Same operators as fieldConditionalOn. operator is REQUIRED.
+Relaxes the field's required validation while the condition matches — the field stays VISIBLE but becomes optional. Format validations (pattern, minLength, ...) still apply if the user fills it in. Same operators as fieldConditionalOn, and the same \`value\` rule: string values are always lowercased and kebab-cased to match the watched field's option \`value\`, never its label. operator is REQUIRED.
 
 ## Alternative Identity Pattern (e.g. passport instead of National ID)
 When a form lets the applicant supply one identifier in place of another ("Use passport number instead" or any either/or pattern), ALWAYS emit all three parts:
