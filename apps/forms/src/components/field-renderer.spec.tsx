@@ -733,6 +733,67 @@ describe("FieldRenderer", () => {
   });
 
   // -------------------------------------------------------------------------
+  // Select with inset fields (#863) — same conditional-reveal pattern as
+  // radio, but the inset renders below the whole control since a <select>
+  // has no per-option DOM position.
+  // -------------------------------------------------------------------------
+  describe("select with insetFieldsByOption", () => {
+    const selectOptions = [
+      { value: "yes", label: "Yes" },
+      { value: "no", label: "No" },
+    ];
+
+    function insetEntriesFor(value: string) {
+      const insetField = primitive("text", {
+        id: "step-1.inset-field",
+        fieldId: "inset-field",
+        name: "inset-field",
+        label: "Inset field label",
+        htmlType: "text",
+      });
+      return new Map([
+        [value, [{ field: insetField, validationProperties: noValidation }]],
+      ]);
+    }
+
+    it("shows inset fields when the selected value has inset entries", () => {
+      mockState = { value: "yes", meta: { isValid: true, errors: [] } };
+
+      const { container } = renderField(
+        primitive("select", { options: selectOptions }),
+        { insetFieldsByOption: insetEntriesFor("yes") },
+      );
+
+      const inset = container.querySelector(".govbb-select__conditional");
+      expect(inset).toBeTruthy();
+      // The inset field itself renders inside the conditional wrapper.
+      expect(inset?.querySelector("input")).toBeTruthy();
+    });
+
+    it("does not show inset fields when a different value is selected", () => {
+      mockState = { value: "no", meta: { isValid: true, errors: [] } };
+
+      const { container } = renderField(
+        primitive("select", { options: selectOptions }),
+        { insetFieldsByOption: insetEntriesFor("yes") },
+      );
+
+      expect(container.querySelector(".govbb-select__conditional")).toBeNull();
+    });
+
+    it("does not show inset fields when nothing is selected", () => {
+      mockState = { value: undefined, meta: { isValid: true, errors: [] } };
+
+      const { container } = renderField(
+        primitive("select", { options: selectOptions }),
+        { insetFieldsByOption: insetEntriesFor("yes") },
+      );
+
+      expect(container.querySelector(".govbb-select__conditional")).toBeNull();
+    });
+  });
+
+  // -------------------------------------------------------------------------
   // ui.hideLabel — visually hides the label/legend while keeping it in the DOM
   // so the accessible name (htmlFor / <legend> grouping) is preserved.
   // -------------------------------------------------------------------------
