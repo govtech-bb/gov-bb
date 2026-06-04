@@ -110,4 +110,15 @@ describe("AI system prompt", () => {
   it("requires every stepId to be unique across the form", () => {
     expect(prompt).toContain("EVERY stepId MUST be unique");
   });
+
+  it("documents the optionalIf behaviour", () => {
+    expect(prompt).toContain('"type": "optionalIf"');
+    expect(prompt).toContain("stays VISIBLE but becomes optional");
+  });
+
+  it("guards the alternative-identity pattern (reveal toggle + optionalIf)", () => {
+    expect(prompt).toContain(
+      "Never leave the primary field unconditionally required next to a reveal toggle",
+    );
+  });
 });
