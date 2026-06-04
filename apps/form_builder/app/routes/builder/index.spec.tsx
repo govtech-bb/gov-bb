@@ -22,12 +22,14 @@ jest.mock("@tanstack/react-router", () => ({
 
 // validateRecipe is the only server fn a Save-draft click reaches (and only on
 // the valid path); the rest are mocked so importing the route doesn't attempt a
-// real RPC.
+// real RPC. previewRecipe is threaded out the same way so the Preview-modal
+// tests can drive its success/failure paths.
 const validateRecipe = jest.fn();
+const previewRecipe = jest.fn();
 jest.mock("../../server/registry", () => ({
   getCatalogFn: jest.fn(),
   validateRecipe: (...args: unknown[]) => validateRecipe(...args),
-  previewRecipe: jest.fn(),
+  previewRecipe: (...args: unknown[]) => previewRecipe(...args),
 }));
 const getRecipe = jest.fn();
 const rekeyRecipe = jest.fn();
@@ -809,5 +811,47 @@ describe("BuilderPage — re-key (changing a loaded form's ID)", () => {
     ).toBeInTheDocument();
     expect(rekeyRecipe).not.toHaveBeenCalled();
     expect(validateRecipe).not.toHaveBeenCalled();
+  }, 30_000);
+});
+
+describe("BuilderPage — Preview modal recipe JSON (#744)", () => {
+  beforeEach(() => {
+    previewRecipe.mockReset();
+    mockForms = [];
+  });
+
+  it("offers View recipe JSON even when the preview request fails", async () => {
+    mockEmptyDraft = VALID_DRAFT;
+    previewRecipe.mockRejectedValue(new Error("preview boom"));
+    renderBuilder();
+
+    await userEvent.click(screen.getByRole("button", { name: /^preview$/i }));
+
+    // The recipe is captured before the request fires, so the JSON action is
+    // available exactly when debugging matters most — when preview fails.
+    expect(await screen.findByText(/preview boom/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /view recipe json/i }),
+    ).toBeInTheDocument();
+  }, 30_000);
+
+  it("offers View recipe JSON alongside a successful preview", async () => {
+    mockEmptyDraft = VALID_DRAFT;
+    previewRecipe.mockResolvedValue({
+      formId: "test-form",
+      title: "Test Form",
+      version: "0.0.1",
+      steps: [],
+    });
+    renderBuilder();
+
+    await userEvent.click(screen.getByRole("button", { name: /^preview$/i }));
+
+    expect(
+      await screen.findByText("Test Form", { selector: "div *" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /view recipe json/i }),
+    ).toBeInTheDocument();
   }, 30_000);
 });
