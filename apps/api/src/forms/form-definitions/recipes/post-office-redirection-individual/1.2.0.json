@@ -127,14 +127,22 @@
                 "error": "ID Number is required",
                 "value": true
               }
-            }
+            },
+            "behaviours": [
+              {
+                "type": "optionalIf",
+                "targetFieldId": "passport-toggle",
+                "operator": "equal",
+                "value": true
+              }
+            ]
           }
         },
         {
           "ref": "components/show-hide",
           "overrides": {
             "label": "Use passport number instead",
-            "fieldId": "passport-number",
+            "fieldId": "passport-toggle",
             "hint": "If you don't have a National ID number, you can use your passport number instead."
           }
         },
@@ -150,7 +158,7 @@
               {
                 "type": "fieldConditionalOn",
                 "targetStepId": "applicant-details",
-                "targetFieldId": "passport-number",
+                "targetFieldId": "passport-toggle",
                 "operator": "equal",
                 "value": true
               }

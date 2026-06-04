@@ -12,7 +12,9 @@ interface BehavioursEditorProps {
   onChange: (behaviours: Behaviour[]) => void;
   // The step the edited entity lives in. For field behaviours this seeds a new
   // fieldConditionalOn's Target Step so the common "same step" case needs no
-  // extra click. Step behaviours pass nothing (the target step is open). (#519)
+  // extra click (#519). For step behaviours it scopes the fieldRefArray
+  // checkbox list (sharedFields.fieldIds) to the step's own fields (#792) —
+  // it never seeds a step-scope Target Step.
   currentStepId?: string;
 }
 
@@ -58,17 +60,24 @@ export function BehavioursEditor({
     const newBehaviour: Record<string, unknown> = { type: bType };
     for (const param of descriptor.params) {
       if (param.kind === "stepRef") {
-        // Default the Target Step to the current step; step-scoped behaviours
-        // (currentStepId undefined) stay empty so the field picker is gated.
-        newBehaviour[param.name] = currentStepId ?? "";
+        // Default the Target Step to the current step for field behaviours
+        // only; step scope (which now also receives currentStepId for the
+        // fieldRefArray list) stays empty so the field picker is gated and
+        // stepConditionalOn can't target its own step by default. (#519)
+        newBehaviour[param.name] = scope === "field" ? (currentStepId ?? "") : "";
       } else if (param.kind === "fieldRef" || param.kind === "value") {
         newBehaviour[param.name] = "";
       } else if (param.kind === "operator") {
         newBehaviour[param.name] = "equal";
       } else if (param.kind === "number") {
-        newBehaviour[param.name] = 0;
-      } else if (param.kind === "stringArray") {
+        newBehaviour[param.name] = param.defaultValue ?? 0;
+      } else if (param.kind === "fieldRefArray") {
         newBehaviour[param.name] = [];
+      } else if (param.kind === "text" && !param.optional) {
+        // Required text params seed ""; optional ones (excluded above) stay
+        // absent so runtime fallbacks (e.g. addAnotherLabel ?? "Add
+        // another?") keep applying.
+        newBehaviour[param.name] = "";
       }
     }
     onChange([...behaviours, newBehaviour as unknown as Behaviour]);
@@ -82,7 +91,14 @@ export function BehavioursEditor({
     const updated = behaviours.map((b, i) => {
       if (i !== index) return b;
       const descriptor = BEHAVIOUR_TYPE_DESCRIPTORS.find((d) => d.type === b.type);
-      const next = { ...b, [paramName]: value } as Record<string, unknown>;
+      const next = { ...b } as Record<string, unknown>;
+      if (value === undefined) {
+        // Blanked optional text param: remove the key entirely (storing "" or
+        // undefined would still ship the key in the recipe).
+        delete next[paramName];
+      } else {
+        next[paramName] = value;
+      }
       // Changing the Target Step invalidates a Target Field that no longer
       // belongs to it — clear the stale selection so it can't be saved. (#519)
       const stepParam = descriptor?.params.find((p) => p.kind === "stepRef");
@@ -110,6 +126,21 @@ export function BehavioursEditor({
         const valueIsBoolean = typeof next[valueParam.name] === "boolean";
         if (targetIsBoolean !== valueIsBoolean) {
           next[valueParam.name] = targetIsBoolean ? true : "";
+        }
+      }
+      // When a number param changes, raise any sibling number param whose
+      // `atLeastParam` points at this one and is now below it. Mirrors the
+      // #519/#565 sibling-invalidation pattern above. (#771)
+      if (descriptor && typeof value === "number") {
+        for (const sibling of descriptor.params) {
+          if (
+            sibling.kind === "number" &&
+            sibling.atLeastParam === paramName &&
+            typeof next[sibling.name] === "number" &&
+            (next[sibling.name] as number) < value
+          ) {
+            next[sibling.name] = value;
+          }
         }
       }
       return next as unknown as Behaviour;
@@ -191,9 +222,23 @@ export function BehavioursEditor({
                     <input
                       type="number"
                       value={(bRecord[param.name] as number) ?? 0}
-                      onChange={(e) =>
-                        handleParamChange(index, param.name, parseInt(e.target.value, 10) || 0)
-                      }
+                      min={param.minValue}
+                      onChange={(e) => {
+                        const parsed = parseInt(e.target.value, 10);
+                        const atLeastValue =
+                          param.atLeastParam != null
+                            ? (bRecord[param.atLeastParam] as number | undefined) ?? -Infinity
+                            : -Infinity;
+                        const floor = Math.max(
+                          param.minValue ?? -Infinity,
+                          atLeastValue,
+                        );
+                        handleParamChange(
+                          index,
+                          param.name,
+                          Math.max(floor, isNaN(parsed) ? 0 : parsed),
+                        );
+                      }}
                     />
                   </div>
                 );
@@ -235,19 +280,70 @@ export function BehavioursEditor({
                   </div>
                 );
               }
-              if (param.kind === "stringArray") {
-                const arr = (bRecord[param.name] as string[]) ?? [];
+              if (param.kind === "fieldRefArray") {
+                // Checkbox per current-step field, so resolved field ids are
+                // picked rather than typed. Two same-type fields on one step
+                // resolve to the same runtime id, so dedupe by fieldId. (#792)
+                const selected = (bRecord[param.name] as string[]) ?? [];
+                const stepFields = fieldRefs.filter(
+                  (f) => f.stepId === currentStepId,
+                );
+                const options = stepFields.filter(
+                  (f, i) =>
+                    stepFields.findIndex((o) => o.fieldId === f.fieldId) === i,
+                );
+                if (options.length === 0) {
+                  return (
+                    <div key={param.name} className={styles.formGroup}>
+                      <label>{param.label}</label>
+                      <em>This step has no fields yet.</em>
+                    </div>
+                  );
+                }
+                const validIds = options.map((o) => o.fieldId);
                 return (
                   <div key={param.name} className={styles.formGroup}>
-                    <label>{param.label} (comma-separated)</label>
+                    <label>{param.label}</label>
+                    {options.map((f) => {
+                      const checked = selected.includes(f.fieldId);
+                      return (
+                        <label key={f.fieldId}>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => {
+                              // Rebuild from real fields only — a stale
+                              // hand-typed id silently drops on the next edit.
+                              const next = checked
+                                ? selected.filter((id) => id !== f.fieldId)
+                                : [...selected, f.fieldId];
+                              handleParamChange(
+                                index,
+                                param.name,
+                                next.filter((id) => validIds.includes(id)),
+                              );
+                            }}
+                          />
+                          {f.displayName}
+                        </label>
+                      );
+                    })}
+                  </div>
+                );
+              }
+              if (param.kind === "text") {
+                return (
+                  <div key={param.name} className={styles.formGroup}>
+                    <label>{param.label}</label>
                     <input
                       type="text"
-                      value={arr.join(", ")}
+                      placeholder={param.placeholder}
+                      value={(bRecord[param.name] as string) ?? ""}
                       onChange={(e) =>
                         handleParamChange(
                           index,
                           param.name,
-                          e.target.value.split(",").map((s) => s.trim()).filter(Boolean),
+                          e.target.value.trim() === "" ? undefined : e.target.value,
                         )
                       }
                     />

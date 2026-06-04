@@ -109,6 +109,35 @@ describe("mergeEntry", () => {
     });
   });
 
+  // Regression (#789, same class as #371 but for `ui`): a recipe that
+  // overrides one `ui` key must not wipe out the primitive's other shipped
+  // ui hints. NationalIdNumber ships `width: "short"`; overriding only
+  // `hideLabel` must preserve it, or the served form renders at the wrong
+  // width while the builder preview (which deep-merges) looks correct.
+  it("preserves un-overridden ui hints on a primitive (#789)", () => {
+    const nationalId = BUILTIN_REGISTRY[
+      "components/national-id-number"
+    ] as Primitive;
+    const result = mergeEntry(nationalId, {
+      ref: "components/national-id-number",
+      overrides: { ui: { hideLabel: true } },
+    }) as Primitive;
+
+    expect(result.ui).toEqual({ width: "short", hideLabel: true });
+  });
+
+  it("lets a ui.width override win over the primitive's shipped width (#789)", () => {
+    const nationalId = BUILTIN_REGISTRY[
+      "components/national-id-number"
+    ] as Primitive;
+    const result = mergeEntry(nationalId, {
+      ref: "components/national-id-number",
+      overrides: { ui: { width: "long" } },
+    }) as Primitive;
+
+    expect(result.ui).toEqual({ width: "long" });
+  });
+
   it("preserves un-overridden validation rules on a block child (#371)", () => {
     const contactBlock = BUILTIN_REGISTRY[
       "blocks/contact-information"
@@ -183,6 +212,35 @@ describe("hydrateStep", () => {
         resolver,
       ),
     ).rejects.toThrow(UnresolvableComponentError);
+  });
+
+  it("carries markdownContent through to the served step", async () => {
+    const resolver = jest.fn().mockResolvedValue(primitiveEntry);
+    const result = await hydrateStep(
+      {
+        stepId: "submission-confirmation",
+        title: "Done",
+        elements: [],
+        markdownContent: "## What you need to know\n\nContact us.",
+      },
+      resolver,
+    );
+    expect(result.markdownContent).toBe(
+      "## What you need to know\n\nContact us.",
+    );
+  });
+
+  it("leaves markdownContent undefined when the step has none", async () => {
+    const resolver = jest.fn().mockResolvedValue(primitiveEntry);
+    const result = await hydrateStep(
+      {
+        stepId: "step-1",
+        title: "Step 1",
+        elements: [{ ref: "components/first-name" }],
+      },
+      resolver,
+    );
+    expect(result.markdownContent).toBeUndefined();
   });
 });
 

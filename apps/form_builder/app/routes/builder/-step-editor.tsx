@@ -291,6 +291,7 @@ export function StepEditor({
         fieldRefs={fieldRefs}
         stepRefs={stepRefs}
         onChange={handleSetBehaviours}
+        currentStepId={step.stepId}
       />
 
       {/* Inline field picker palette — renders below Step Behaviours (#566),

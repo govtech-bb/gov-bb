@@ -1,4 +1,7 @@
 import React from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { markdownComponents } from "./markdown-components";
 import { isSafePaymentUrl } from "../lib/security/safe-payment-url";
 import { SubmissionConfirmationProps } from "../types/props.type";
 
@@ -27,13 +30,17 @@ export default function SubmissionConfirmation({
   stepTitle,
   processingMessage,
   nextSteps,
+  markdownContent,
   contactDetails,
   onTryAgain,
   submissionState,
 }: SubmissionConfirmationProps) {
-  // Without a committed submissionState there is nothing genuine to confirm.
-  // The form-renderer redirects away from this step when state is absent, so
-  // rendering null here avoids ever fabricating a fake payment receipt.
+  // submissionState is rehydrated from session storage, so it survives a
+  // refresh on this step. When it is genuinely absent (the step was reached
+  // without a submission) there is nothing to confirm — the form-renderer
+  // redirects away and rendering null here avoids fabricating a fake receipt.
+  // The stored value is display-only; the real submission/payment outcome is
+  // authoritative server-side.
   if (!submissionState) {
     return null;
   }
@@ -86,6 +93,20 @@ export default function SubmissionConfirmation({
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {markdownContent && (
+        <div className="form-page__markdown-content">
+          {/* Recipe-authored copy (e.g. "What you need to know"). react-markdown
+              escapes raw HTML by default and we deliberately omit rehype-raw, so
+              recipe content cannot inject markup. */}
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={markdownComponents}
+          >
+            {markdownContent}
+          </ReactMarkdown>
         </div>
       )}
 

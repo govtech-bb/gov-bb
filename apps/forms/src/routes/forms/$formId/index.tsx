@@ -24,6 +24,9 @@ import {
   clearFormState,
   getFormData,
   storeFormData,
+  storeSubmissionState,
+  getSubmissionState,
+  clearSubmissionState,
 } from "../../../lib/session-storage";
 import { formatDataForSubmission, postFormSubmission } from "@forms/form-api";
 import { trackEvent } from "../../../lib/analytics";
@@ -85,13 +88,43 @@ export const Route = createFileRoute("/forms/$formId/")({
 function RouteComponent() {
   const formMeta = Route.useLoaderData();
   const { step } = Route.useSearch();
+  // Rehydrate the committed submission outcome on a confirmation-step reload so
+  // the renderer doesn't bounce the citizen off it (submissionState is React
+  // state and is otherwise lost on refresh). A lazy initialiser — not an effect
+  // — so the value is present on the first render, before the renderer's
+  // "no submissionState → redirect" effect runs. On any other step this is a
+  // fresh session: ignore (and later clear) any stale persisted outcome.
   const [submissionState, setSubmissionState] = React.useState<
     SubmissionState | undefined
-  >(undefined);
+  >(() =>
+    step === "submission-confirmation"
+      ? (getSubmissionState(formMeta.formId) ?? undefined)
+      : undefined,
+  );
 
   React.useEffect(() => {
     trackEvent("form-open", { form_id: formMeta.formId });
   }, [formMeta.formId]);
+
+  // Mount-only: a fresh load on any step other than the confirmation means we
+  // are not viewing a committed outcome, so discard any submissionState left in
+  // storage by an earlier submission this session — it must not resurface as a
+  // stale confirmation. In-app navigation to the confirmation step does not
+  // remount, so the freshly-set state is unaffected.
+  React.useEffect(() => {
+    if (step !== "submission-confirmation") {
+      clearSubmissionState(formMeta.formId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount only; reads the initial step
+  }, []);
+
+  // Persist the committed outcome so a refresh on the confirmation step can
+  // rehydrate it (see the submissionState initialiser above).
+  React.useEffect(() => {
+    if (submissionState) {
+      storeSubmissionState(formMeta.formId, submissionState);
+    }
+  }, [formMeta.formId, submissionState]);
 
   const repeatableStepSettingsRef = React.useRef<RepeatableStepSettings>(
     formMeta.repeatSettings,
