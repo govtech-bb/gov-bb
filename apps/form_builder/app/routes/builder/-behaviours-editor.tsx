@@ -70,8 +70,9 @@ export function BehavioursEditor({
       } else if (param.kind === "stringArray") {
         newBehaviour[param.name] = [];
       } else if (param.kind === "text" && !param.optional) {
-        // Optional text params stay absent so runtime fallbacks (e.g.
-        // addAnotherLabel ?? "Add another?") keep applying.
+        // Required text params seed ""; optional ones (excluded above) stay
+        // absent so runtime fallbacks (e.g. addAnotherLabel ?? "Add
+        // another?") keep applying.
         newBehaviour[param.name] = "";
       }
     }
