@@ -1,0 +1,556 @@
+{
+  "formId": "referral-student-support-services",
+  "title": "Referral to Student Support Services Unit Online Application",
+  "version": "1.1.0",
+  "steps": [
+    {
+      "stepId": "student-information",
+      "title": "Student Information",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "ID Number",
+            "fieldId": "id-number",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "date",
+            "label": "DOB",
+            "fieldId": "dob",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "AGE",
+            "fieldId": "age",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "GENDER",
+            "fieldId": "gender",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Surname",
+            "fieldId": "surname",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "First Name and Middle Name",
+            "fieldId": "first-middle-name",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Address",
+            "fieldId": "address",
+            "required": true,
+            "multiline": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "parent-guardian-information",
+      "title": "Parent/Guardian Information",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Mother",
+            "fieldId": "mother-name",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Father",
+            "fieldId": "father-name",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Guardian",
+            "fieldId": "guardian-name",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "ADDRESS OF PARENT/GUARDIAN (If different from above)",
+            "fieldId": "parent-guardian-address",
+            "required": false,
+            "multiline": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "tel",
+            "label": "TELEPHONE: Mother (H)",
+            "fieldId": "mother-phone-home",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "tel",
+            "label": "TELEPHONE: Mother (W)",
+            "fieldId": "mother-phone-work",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "tel",
+            "label": "TELEPHONE: Mother (C)",
+            "fieldId": "mother-phone-cell",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "tel",
+            "label": "TELEPHONE: Father (H)",
+            "fieldId": "father-phone-home",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "tel",
+            "label": "TELEPHONE: Father (W)",
+            "fieldId": "father-phone-work",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "tel",
+            "label": "TELEPHONE: Father (C)",
+            "fieldId": "father-phone-cell",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "tel",
+            "label": "TELEPHONE: Guardian (H)",
+            "fieldId": "guardian-phone-home",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "tel",
+            "label": "TELEPHONE: Guardian (W)",
+            "fieldId": "guardian-phone-work",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "tel",
+            "label": "TELEPHONE: Guardian (C)",
+            "fieldId": "guardian-phone-cell",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Please Indicate with whom the child resides",
+            "fieldId": "child-resides-with",
+            "required": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "school-information",
+      "title": "School Information",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "SCHOOL",
+            "fieldId": "school-name",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "CLASS/FORM",
+            "fieldId": "class-form",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "tel",
+            "label": "SCHOOL TELEPHONE",
+            "fieldId": "school-telephone",
+            "required": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "student-challenges",
+      "title": "Student Challenges",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "STUDENT'S CHALLENGES (Please be specific)",
+            "fieldId": "student-challenges",
+            "required": true,
+            "multiline": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "additional-difficulties-challenges",
+      "title": "Additional Difficulties/Challenges",
+      "elements": [
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Hearing",
+            "fieldId": "difficulty-hearing",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Vision",
+            "fieldId": "difficulty-vision",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Physical",
+            "fieldId": "difficulty-physical",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Behavioural",
+            "fieldId": "difficulty-behavioural",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Social/Emotional Difficulties",
+            "fieldId": "difficulty-social-emotional",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Speech and Language Difficulties",
+            "fieldId": "difficulty-speech-language",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Learning Difficulties",
+            "fieldId": "difficulty-learning",
+            "required": false
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "school-attendance",
+      "title": "School Attendance",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "SCHOOL ATTENDANCE",
+            "fieldId": "school-attendance",
+            "options": [
+              {
+                "label": "Regular",
+                "value": "regular"
+              },
+              {
+                "label": "Irregular",
+                "value": "irregular"
+              },
+              {
+                "label": "Non Attendance",
+                "value": "non_attendance"
+              }
+            ],
+            "required": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "involvement-with-outside-agencies",
+      "title": "Involvement with Outside Agencies",
+      "elements": [
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Children's Development Centre",
+            "fieldId": "agency-childrens-dev-centre",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Probation Department",
+            "fieldId": "agency-probation-dept",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Juvenile Liaison Scheme",
+            "fieldId": "agency-juvenile-liaison",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Child Care Board",
+            "fieldId": "agency-child-care-board",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Child Guidance Clinic",
+            "fieldId": "agency-child-guidance",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Private Support Services",
+            "fieldId": "agency-private-support",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Edna Nicholls Centre",
+            "fieldId": "agency-edna-nicholls",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Welfare Department",
+            "fieldId": "agency-welfare-dept",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Government Industrial School",
+            "fieldId": "agency-gov-industrial-school",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Other (Specify)",
+            "fieldId": "agency-other",
+            "required": false
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "intervention-strategies",
+      "title": "Intervention Strategies",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Intervention Strategies used at the school to date (Please be specific)",
+            "fieldId": "intervention-strategies",
+            "required": false,
+            "multiline": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "referral-details",
+      "title": "Referral Details",
+      "elements": [
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Parent consulted",
+            "fieldId": "parent-consulted",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "date",
+            "label": "Date",
+            "fieldId": "parent-consulted-date",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Referral Initiated By",
+            "fieldId": "referral-initiated-by",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "date",
+            "label": "Date",
+            "fieldId": "referral-initiated-date",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Principal's Signature",
+            "fieldId": "principal-signature",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "date",
+            "label": "Date",
+            "fieldId": "principal-signature-date",
+            "required": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "for-official-use-only",
+      "title": "For Official Use Only",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Case Assigned To",
+            "fieldId": "case-assigned-to",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Classification",
+            "fieldId": "classification",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "date",
+            "label": "Date",
+            "fieldId": "official-date",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "By",
+            "fieldId": "official-by",
+            "required": false
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Submission Confirmation",
+      "elements": [],
+      "behaviours": []
+    }
+  ],
+  "createdAt": "2026-05-27T20:34:16.771Z",
+  "updatedAt": "2026-05-27T20:34:16.771Z"
+}

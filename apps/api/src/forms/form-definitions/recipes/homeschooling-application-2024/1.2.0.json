@@ -1,0 +1,420 @@
+{
+  "formId": "homeschooling-application-2024",
+  "title": "Ministry of Education Transformation - Homeschooling Application Form",
+  "version": "1.2.0",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "subject": "Your Homeschooling Application has been received",
+        "recipientField": "applicant-info.email-address"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "stepId": "applicant-info",
+      "title": "Applicant Information",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Name of Applicant",
+            "fieldId": "applicant-name",
+            "validations": {
+              "required": {
+                "error": "Name of Applicant is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Name of Applicant must be at least 2 characters",
+                "value": 2
+              }
+            },
+            "placeholder": "Enter full name"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Address",
+            "fieldId": "applicant-address",
+            "validations": {
+              "required": {
+                "error": "Address is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Address must be at least 2 characters",
+                "value": 2
+              }
+            },
+            "placeholder": "Enter residential address"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Contact Number(s)",
+            "fieldId": "contact-numbers",
+            "validations": {
+              "required": {
+                "error": "Contact Number(s) is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Contact Number(s) must be at least 2 characters",
+                "value": 2
+              }
+            },
+            "placeholder": "Enter contact number(s)"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "email",
+            "label": "Email Address",
+            "fieldId": "email-address",
+            "validations": {
+              "required": {
+                "error": "Email Address is required",
+                "value": true
+              }
+            },
+            "placeholder": "Enter email address"
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Status Resident",
+            "fieldId": "resident-status",
+            "options": [
+              {
+                "label": "Resident",
+                "value": "resident"
+              },
+              {
+                "label": "Non-Resident",
+                "value": "non-resident"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Status Resident is required",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "student-info",
+      "title": "Student Information",
+      "description": "Name and Date of Birth of Student(s) to be Homeschooled",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Student Name",
+            "fieldId": "student-name",
+            "validations": {
+              "required": {
+                "error": "Student Name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Student Name must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "date",
+            "label": "Date of Birth (DD/MM/YYYY)",
+            "fieldId": "student-dob",
+            "validations": {
+              "required": {
+                "error": "Date of Birth (DD/MM/YYYY) is required",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 1,
+          "max": 10
+        }
+      ]
+    },
+    {
+      "stepId": "previous-schooling",
+      "title": "Previous Schooling",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Was the student(s) previously in school?",
+            "fieldId": "previously-in-school",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Was the student(s) previously in school? is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "If Yes, Name and Address of the School",
+            "fieldId": "previous-school-info",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "conditional": {
+              "value": "yes",
+              "fieldId": "previously-in-school",
+              "operator": "equals"
+            },
+            "placeholder": "Enter school name and address"
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "instructor-info",
+      "title": "Instructor/Tutor Information",
+      "description": "Names of Instructors/Tutors (Please provide certified copies of qualifications)",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Instructor/Tutor Name",
+            "fieldId": "instructor-name",
+            "validations": {
+              "required": {
+                "error": "Instructor/Tutor Name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Instructor/Tutor Name must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "List of Qualifications",
+            "fieldId": "instructor-qualifications",
+            "validations": {
+              "required": {
+                "error": "List of Qualifications is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "List of Qualifications must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 1,
+          "max": 10
+        }
+      ]
+    },
+    {
+      "stepId": "curriculum-attachments",
+      "title": "Curriculum and Attachments",
+      "elements": [
+        {
+          "ref": "components/generic-file",
+          "overrides": {
+            "label": "Timetable (detailing subjects and times)",
+            "fieldId": "timetable-attachment",
+            "validations": {
+              "required": {
+                "error": "Timetable (detailing subjects and times) is required",
+                "value": true
+              }
+            },
+            "helperText": "The timetable should include three (3) core subjects: English, Mathematics, Science and Social Studies and a session of Physical Activity",
+            "acceptedFormats": [".pdf", ".doc", ".docx", ".xls", ".xlsx"]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Are you following the National Curriculum?",
+            "fieldId": "following-national-curriculum",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Are you following the National Curriculum? is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-file",
+          "overrides": {
+            "label": "Curriculum (if not following National Curriculum)",
+            "fieldId": "curriculum-attachment",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "helperText": "Please attach the curriculum you will be following if you are not following the National Curriculum",
+            "conditional": {
+              "value": "no",
+              "fieldId": "following-national-curriculum",
+              "operator": "equals"
+            },
+            "acceptedFormats": [".pdf", ".doc", ".docx"]
+          }
+        },
+        {
+          "ref": "components/generic-file",
+          "overrides": {
+            "label": "Certified Copies of Tutor Qualifications",
+            "fieldId": "tutor-qualifications-attachment",
+            "validations": {
+              "required": {
+                "error": "Certified Copies of Tutor Qualifications is required",
+                "value": true
+              }
+            },
+            "helperText": "Please attach certified copies of qualifications of persons who will be teaching",
+            "acceptedFormats": [".pdf", ".doc", ".docx"]
+          }
+        },
+        {
+          "ref": "components/generic-file",
+          "overrides": {
+            "label": "Previous Progress Report (Report Card)",
+            "fieldId": "progress-report-attachment",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "acceptedFormats": [".pdf", ".doc", ".docx"]
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration-and-signature",
+      "title": "Declaration and Signature",
+      "elements": [
+        {
+          "ref": "components/show-hide",
+          "overrides": {
+            "label": "Requirements for Home Schooling",
+            "content": "1. A letter addressed to the Permanent Secretary must be written seeking permission from the Ministry of Education Transformation for home schooling. The reason must also be given.\n2. Please include the child's name, date of birth and any previous school(s) attended by the child.\n3. The curriculum being used must be provided for perusal by the Ministry.\n4. The qualifications and names of the tutor(s) must be provided.\n5. A timetable must be submitted.\n6. Previous Progress Report (Report Card)\n7. The Ministry of Education Transformation will then arrange an interview with the parent before written permission is given.\n8. For further details please contact the Administrative Officer in the Nursery and Primary Section at 535-0760.",
+            "fieldId": "requirements-info"
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "I acknowledge that I have read and understand the requirements for home schooling",
+            "fieldId": "acknowledge-requirements",
+            "validations": {
+              "required": {
+                "error": "I acknowledge that I have read and understand the requirements for home schooling is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Parent/Guardian Signature",
+            "fieldId": "parent-signature",
+            "validations": {
+              "required": {
+                "error": "Parent/Guardian Signature is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Parent/Guardian Signature must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-date",
+          "overrides": {
+            "label": "Date",
+            "fieldId": "signature-date",
+            "validations": {
+              "required": {
+                "error": "Date is required",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Submission Confirmation",
+      "elements": [],
+      "behaviours": []
+    }
+  ],
+  "createdAt": "2026-05-27T19:09:10.854Z",
+  "updatedAt": "2026-05-27T19:09:10.854Z"
+}

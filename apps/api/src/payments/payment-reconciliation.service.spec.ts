@@ -1,141 +1,124 @@
-import { Test } from "@nestjs/testing";
+import { Test, TestingModule } from "@nestjs/testing";
 import { DataSource } from "typeorm";
 import {
   PaymentReconciliationService,
   RECONCILIATION_LOCK_KEY,
 } from "./payment-reconciliation.service";
-import { EzpayClient } from "../forms/submissions/processors/payment/ezpay/ezpay.client";
-import { DepartmentKeyResolver } from "../forms/submissions/processors/payment/ezpay/department-keys";
 import { PaymentRepository } from "./payment.repository";
 import { PaymentWebhookService } from "./payment-webhook.service";
 import { PaymentStatus } from "../database/entities/payment.entity";
 
 describe("PaymentReconciliationService.runOnce", () => {
   let service: PaymentReconciliationService;
+  let module: TestingModule;
   const query = jest.fn();
   const release = jest.fn().mockResolvedValue(undefined);
   const connect = jest.fn().mockResolvedValue(undefined);
   const dataSource = {
     createQueryRunner: jest.fn().mockReturnValue({ query, release, connect }),
   } as unknown as DataSource;
-  const ezpay = { queryTransactions: jest.fn() };
-  const paymentRepo = { findByReference: jest.fn() };
+  const paymentRepo = { findReconcilable: jest.fn() };
   const webhook = {
     handleEzpayCallback: jest.fn().mockResolvedValue({ acknowledged: true }),
   };
-  const deptKeys = new DepartmentKeyResolver({ education: "edu-key" });
 
   beforeEach(async () => {
     jest.clearAllMocks();
-    const module = await Test.createTestingModule({
+    webhook.handleEzpayCallback.mockResolvedValue({ acknowledged: true });
+    module = await Test.createTestingModule({
       providers: [
         PaymentReconciliationService,
         { provide: DataSource, useValue: dataSource },
-        { provide: EzpayClient, useValue: ezpay },
         { provide: PaymentRepository, useValue: paymentRepo },
         { provide: PaymentWebhookService, useValue: webhook },
-        { provide: DepartmentKeyResolver, useValue: deptKeys },
       ],
     }).compile();
     service = module.get(PaymentReconciliationService);
+  });
+
+  afterEach(async () => {
+    if (module) await module.close();
   });
 
   it("aborts when advisory lock is held by another instance", async () => {
     query.mockResolvedValueOnce([{ pg_try_advisory_lock: false }]);
     const result = await service.runOnce();
     expect(result).toEqual({ skipped: true, processed: 0 });
-    expect(ezpay.queryTransactions).not.toHaveBeenCalled();
+    expect(paymentRepo.findReconcilable).not.toHaveBeenCalled();
   });
 
-  it("queries each department over a 24h rolling window", async () => {
+  it("replays each non-terminal payment through the webhook entry point by reference", async () => {
     query.mockResolvedValueOnce([{ pg_try_advisory_lock: true }]);
-    ezpay.queryTransactions.mockResolvedValue([]);
-    query.mockResolvedValueOnce([{ pg_advisory_unlock: true }]);
-
-    await service.runOnce();
-
-    expect(ezpay.queryTransactions).toHaveBeenCalledTimes(1);
-    const [start, end, apiKey] = ezpay.queryTransactions.mock.calls[0];
-    expect(apiKey).toBe("edu-key");
-    const startMs = Date.parse(start);
-    const endMs = Date.parse(end);
-    expect(endMs - startMs).toBe(24 * 60 * 60 * 1000);
-  });
-
-  it("replays divergent transactions through the webhook entry point", async () => {
-    query.mockResolvedValueOnce([{ pg_try_advisory_lock: true }]);
-    ezpay.queryTransactions.mockResolvedValue([
+    paymentRepo.findReconcilable.mockResolvedValue([
       {
-        reference: "ref-1",
-        transactionNumber: "tx-1",
-        status: "Success",
-        amount: 50,
+        referenceNumber: "ref-1",
+        expectedAmount: "50.00",
+        status: PaymentStatus.PENDING,
+      },
+      {
+        referenceNumber: "ref-2",
+        expectedAmount: "5.00",
+        status: PaymentStatus.INITIATED,
       },
     ]);
-    paymentRepo.findByReference.mockResolvedValue({
-      id: "p-1",
-      status: PaymentStatus.INITIATED,
-    });
     query.mockResolvedValueOnce([{ pg_advisory_unlock: true }]);
 
     const result = await service.runOnce();
 
-    expect(webhook.handleEzpayCallback).toHaveBeenCalledWith({
+    expect(webhook.handleEzpayCallback).toHaveBeenCalledTimes(2);
+    // Only the reference matters — the handler re-verifies via check_api and
+    // ignores the rest of the synthetic body.
+    expect(webhook.handleEzpayCallback).toHaveBeenNthCalledWith(1, {
       _reference: "ref-1",
-      _status: "Success",
-      _transaction_number: "tx-1",
-      _amount: "50",
+      _status: "Initiated",
+      _transaction_number: "",
+      _amount: "50.00",
     });
+    expect(webhook.handleEzpayCallback).toHaveBeenNthCalledWith(2, {
+      _reference: "ref-2",
+      _status: "Initiated",
+      _transaction_number: "",
+      _amount: "5.00",
+    });
+    expect(result).toEqual({ skipped: false, processed: 2 });
+  });
+
+  it("reconciles from our own pending payments — never queries EzPay transaction listing", async () => {
+    query.mockResolvedValueOnce([{ pg_try_advisory_lock: true }]);
+    paymentRepo.findReconcilable.mockResolvedValue([]);
+    query.mockResolvedValueOnce([{ pg_advisory_unlock: true }]);
+
+    const result = await service.runOnce();
+
+    expect(paymentRepo.findReconcilable).toHaveBeenCalledTimes(1);
+    expect(webhook.handleEzpayCallback).not.toHaveBeenCalled();
+    expect(result).toEqual({ skipped: false, processed: 0 });
+  });
+
+  it("swallows a single payment's verify failure and continues the batch", async () => {
+    query.mockResolvedValueOnce([{ pg_try_advisory_lock: true }]);
+    paymentRepo.findReconcilable.mockResolvedValue([
+      {
+        referenceNumber: "ref-bad",
+        expectedAmount: "5.00",
+        status: PaymentStatus.PENDING,
+      },
+      {
+        referenceNumber: "ref-ok",
+        expectedAmount: "5.00",
+        status: PaymentStatus.PENDING,
+      },
+    ]);
+    webhook.handleEzpayCallback
+      .mockRejectedValueOnce(new Error("EzPay timeout"))
+      .mockResolvedValueOnce({ acknowledged: true });
+    query.mockResolvedValueOnce([{ pg_advisory_unlock: true }]);
+
+    const result = await service.runOnce();
+
+    expect(webhook.handleEzpayCallback).toHaveBeenCalledTimes(2);
     expect(result).toEqual({ skipped: false, processed: 1 });
-  });
-
-  it("skips already-finalised payments (status=SUCCESS and tx=Success)", async () => {
-    query.mockResolvedValueOnce([{ pg_try_advisory_lock: true }]);
-    ezpay.queryTransactions.mockResolvedValue([
-      {
-        reference: "ref-1",
-        transactionNumber: "tx-1",
-        status: "Success",
-        amount: 50,
-      },
-    ]);
-    paymentRepo.findByReference.mockResolvedValue({
-      id: "p-1",
-      status: PaymentStatus.SUCCESS,
-    });
-    query.mockResolvedValueOnce([{ pg_advisory_unlock: true }]);
-
-    const result = await service.runOnce();
-
-    expect(webhook.handleEzpayCallback).not.toHaveBeenCalled();
-    expect(result.processed).toBe(0);
-  });
-
-  it("skips transactions with no matching local payment", async () => {
-    query.mockResolvedValueOnce([{ pg_try_advisory_lock: true }]);
-    ezpay.queryTransactions.mockResolvedValue([
-      {
-        reference: "unknown-ref",
-        transactionNumber: "tx-x",
-        status: "Success",
-        amount: 50,
-      },
-    ]);
-    paymentRepo.findByReference.mockResolvedValue(null);
-    query.mockResolvedValueOnce([{ pg_advisory_unlock: true }]);
-
-    const result = await service.runOnce();
-
-    expect(webhook.handleEzpayCallback).not.toHaveBeenCalled();
-    expect(result.processed).toBe(0);
-  });
-
-  it("releases the advisory lock even when EzPay throws", async () => {
-    query.mockResolvedValueOnce([{ pg_try_advisory_lock: true }]);
-    ezpay.queryTransactions.mockRejectedValue(new Error("EzPay down"));
-    query.mockResolvedValueOnce([{ pg_advisory_unlock: true }]);
-
-    await expect(service.runOnce()).rejects.toThrow("EzPay down");
+    // lock still released despite the per-payment failure
     expect(query).toHaveBeenLastCalledWith(`SELECT pg_advisory_unlock($1)`, [
       RECONCILIATION_LOCK_KEY,
     ]);
@@ -143,7 +126,7 @@ describe("PaymentReconciliationService.runOnce", () => {
 
   it("pins the lock + unlock to a single QueryRunner and releases it", async () => {
     query.mockResolvedValueOnce([{ pg_try_advisory_lock: true }]);
-    ezpay.queryTransactions.mockResolvedValue([]);
+    paymentRepo.findReconcilable.mockResolvedValue([]);
     query.mockResolvedValueOnce([{ pg_advisory_unlock: true }]);
 
     await service.runOnce();
@@ -153,25 +136,11 @@ describe("PaymentReconciliationService.runOnce", () => {
     expect(release).toHaveBeenCalledTimes(1);
   });
 
-  it("skips when local FAILED matches remote Failed", async () => {
+  it("scheduled() swallows errors from runOnce and does not rethrow", async () => {
     query.mockResolvedValueOnce([{ pg_try_advisory_lock: true }]);
-    ezpay.queryTransactions.mockResolvedValue([
-      {
-        reference: "ref-1",
-        transactionNumber: "tx-1",
-        status: "Failed",
-        amount: 50,
-      },
-    ]);
-    paymentRepo.findByReference.mockResolvedValue({
-      id: "p-1",
-      status: PaymentStatus.FAILED,
-    });
+    paymentRepo.findReconcilable.mockRejectedValue(new Error("DB down"));
     query.mockResolvedValueOnce([{ pg_advisory_unlock: true }]);
 
-    const result = await service.runOnce();
-
-    expect(webhook.handleEzpayCallback).not.toHaveBeenCalled();
-    expect(result.processed).toBe(0);
+    await expect(service.scheduled()).resolves.toBeUndefined();
   });
 });

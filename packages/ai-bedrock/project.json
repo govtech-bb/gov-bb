@@ -1,0 +1,31 @@
+{
+  "name": "ai-bedrock",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/ai-bedrock/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/ai-bedrock",
+        "tsConfig": "packages/ai-bedrock/tsconfig.json",
+        "main": "packages/ai-bedrock/src/index.ts"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm test",
+        "cwd": "packages/ai-bedrock"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "lintFilePatterns": ["packages/ai-bedrock/**/*.ts"]
+      }
+    }
+  },
+  "tags": []
+}

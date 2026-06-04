@@ -1,0 +1,69 @@
+name: Forms Live Smoke
+
+# Reusable workflow: drives ONE live smoke spec against a deployed forms URL.
+#
+# It is called (via `uses:`) from the workflows that have a deployed URL to
+# point at — job-level `needs:` only resolves within a single workflow file, so
+# the callers keep their dependency edge (deploy-sandbox's smoke jobs
+# `needs: amplify-forms`; pr-preview's smoke job `needs: preview-forms`) while
+# the steps below live in one place. See ADR 0027 (post-deploy smoke) and ADR
+# 0029 (per-PR preview smoke).
+#
+# No AWS credentials: it drives a headless browser against the public deployed
+# URL, and any uploads use presigned URLs the deployed API issues server-side.
+# The spec SUBMITS FOR REAL, so a green run files a real submission in the
+# target environment (recipient testing@govtech.bb).
+
+on:
+  workflow_call:
+    inputs:
+      base_url:
+        description: "Deployed forms URL the smoke spec runs against (SMOKE_BASE_URL)."
+        required: true
+        type: string
+      spec:
+        description: "The *.smoke.spec.ts filename under apps/forms/e2e/smoke to run."
+        required: true
+        type: string
+      artifact_name:
+        description: "Name for the Playwright trace artifact uploaded on failure."
+        required: true
+        type: string
+
+jobs:
+  smoke:
+    name: Smoke (${{ inputs.spec }})
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - name: Install Playwright chromium
+        run: pnpm --filter @govtech-bb/forms exec playwright install --with-deps chromium
+      - name: Run live smoke spec
+        env:
+          # Both via env (not inline ${{ }}) so nothing is interpolated into the
+          # shell. base_url in particular traces back to the PR branch name on
+          # the preview caller, so it must never reach the script directly.
+          SMOKE_BASE_URL: ${{ inputs.base_url }}
+          SMOKE_SPEC: ${{ inputs.spec }}
+        # Run only the one spec (not the whole e2e/smoke dir). Override the
+        # config's retries: 0 with 2 retries here to absorb post-deploy edge
+        # cache / network flakiness without masking a genuine failure.
+        run: >
+          pnpm --filter @govtech-bb/forms exec playwright test
+          --config playwright.smoke.config.ts
+          "$SMOKE_SPEC"
+          --retries=2
+      - name: Upload Playwright trace on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: apps/forms/test-results/
+          retention-days: 7

@@ -21,21 +21,26 @@ export class SqsProducerService {
   }
 
   /**
-   * Enqueue a single non-gating processor message onto the shared SQS queue.
+   * Enqueue a single non-gating processor *entry* message onto the shared SQS
+   * queue.
    *
    * All processor types share one queue. The `processorType` field inside the
-   * message body tells the consumer which handler to dispatch to.
+   * message body tells the consumer which handler to dispatch to;
+   * `processorIndex` tells it which entry within `processors[]` to act on.
    *
    * @param event          The full SubmissionCreatedEvent to hydrate the worker.
    * @param processorType  e.g. "email", "spreadsheet", "opencrvs".
+   * @param processorIndex Position of the addressed entry within `processors[]`.
    */
   async enqueue(
     event: SubmissionCreatedEvent,
     processorType: string,
+    processorIndex: number,
   ): Promise<void> {
     const message: SubmissionSqsMessage = {
       submissionId: event.submissionId,
       processorType,
+      processorIndex,
       formId: event.formId,
       formVersion: event.formVersion,
       idempotencyKey: event.idempotencyKey,
@@ -58,12 +63,16 @@ export class SqsProducerService {
             DataType: "String",
             StringValue: processorType,
           },
+          processorIndex: {
+            DataType: "Number",
+            StringValue: String(processorIndex),
+          },
         },
       }),
     );
 
     this.logger.log(
-      `Enqueued processor="${processorType}" submissionId="${event.submissionId}" messageId="${result.MessageId}"`,
+      `Enqueued processor="${processorType}" index=${processorIndex} submissionId="${event.submissionId}" messageId="${result.MessageId}"`,
     );
   }
 }

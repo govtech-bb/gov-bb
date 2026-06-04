@@ -1,0 +1,67 @@
+{
+  "name": "@govtech-bb/chat",
+  "private": true,
+  "type": "module",
+  "imports": {
+    "#/*": "./src/*"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "vite dev --port 3000",
+    "build": "vite build",
+    "preview": "nitro preview",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx --env-file-if-exists=.env.local --env-file-if-exists=.env src/lib/db/migrate.ts",
+    "db:studio": "drizzle-kit studio",
+    "db:reset": "tsx --env-file-if-exists=.env.local --env-file-if-exists=.env src/lib/db/reset.ts",
+    "ingest": "tsx --env-file-if-exists=.env.local --env-file-if-exists=.env src/ingest/cli.ts",
+    "eval:sweep": "tsx --env-file-if-exists=.env.local --env-file-if-exists=.env eval/sweep.ts",
+    "eval:responses": "tsx --env-file-if-exists=.env.local --env-file-if-exists=.env eval/responses/run.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.1057.0",
+    "@aws-sdk/client-secrets-manager": "^3.1057.0",
+    "@fontsource/figtree": "^5.2.10",
+    "@govtech-bb/ai-bedrock": "workspace:*",
+    "@govtech-bb/content": "workspace:*",
+    "@govtech-bb/design": "1.0.0-alpha.16",
+    "@govtech-bb/form-conditions": "workspace:*",
+    "@govtech-bb/form-types": "workspace:*",
+    "@govtech-bb/react": "1.0.0-alpha.16",
+    "@tailwindcss/vite": "^4.3.0",
+    "@tanstack/ai": "catalog:",
+    "@tanstack/ai-react": "catalog:",
+    "@tanstack/react-router": "catalog:",
+    "@tanstack/react-start": "catalog:",
+    "@tanstack/react-virtual": "catalog:",
+    "drizzle-orm": "^0.45.2",
+    "partial-json": "^0.1.7",
+    "pg": "^8.21.0",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "tailwindcss": "^4.3.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/typography": "^0.5.19",
+    "@tanstack/ai-client": "^0.16.2",
+    "@tanstack/devtools-vite": "catalog:",
+    "@tanstack/react-devtools": "catalog:",
+    "@tanstack/react-router-devtools": "catalog:",
+    "@types/node": "^24.0.0",
+    "@types/pg": "^8.20.0",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "^6.0.2",
+    "dotenv": "17.4.2",
+    "drizzle-kit": "^0.31.10",
+    "nitro": "3.0.260429-beta",
+    "tsx": "^4.22.3",
+    "typescript": "catalog:",
+    "vite": "catalog:"
+  }
+}

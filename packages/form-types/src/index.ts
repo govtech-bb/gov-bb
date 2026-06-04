@@ -59,6 +59,7 @@ export type {
 
 export {
   fieldConditionalOnBehaviourSchema,
+  optionalIfBehaviourSchema,
   stepConditionalOnBehaviourSchema,
   repeatableBehaviourSchema,
   fieldArrayBehaviourSchema,
@@ -70,6 +71,7 @@ export {
 export type {
   Behaviour,
   FieldConditionalOnBehaviour,
+  OptionalIfBehaviour,
   StepConditionalOnBehaviour,
   RepeatableBehaviour,
   FieldArrayBehaviour,
@@ -95,7 +97,15 @@ export type {
   RecipeBlockField,
 } from "./form-step.type";
 
-export { processorSchema, resolvedProcessorSchema } from "./processor.type";
+export {
+  processorSchema,
+  resolvedProcessorSchema,
+  paymentConfigAuthorSchema,
+} from "./processor.type";
+
+export { formConfigBlobSchema, parseFormConfigBlob } from "./form-config.type";
+
+export type { FormConfigBlob } from "./form-config.type";
 
 export type {
   Processor,
@@ -103,6 +113,15 @@ export type {
   PaymentProcessorConfig,
   ResolvedPaymentProcessorConfig,
 } from "./processor.type";
+
+export {
+  CONTACT_DETAILS_PREFIX,
+  CONFIG_RECIPIENT_PREFIX,
+  classifyRecipientField,
+} from "./recipient-field";
+export type { RecipientKind } from "./recipient-field";
+
+export { KEBAB_ID_PATTERN, KEBAB_ID_ERROR } from "./id-pattern";
 
 export { dynamic } from "./dynamic";
 

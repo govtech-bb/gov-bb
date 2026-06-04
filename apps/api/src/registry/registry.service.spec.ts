@@ -4,7 +4,7 @@ import {
 } from "./registry.service";
 import { mergeEntry, hydrateStep, hydrateForm } from "./resolution";
 import { CustomComponent } from "./entities/custom-component.entity";
-import { BUILTIN_REGISTRY } from "./builtins";
+import { BUILTIN_REGISTRY } from "@govtech-bb/registry";
 import type { Block, ServiceContractRecipe } from "@govtech-bb/form-types";
 import type { Primitive } from "@govtech-bb/form-types";
 import { Repository } from "typeorm";
@@ -82,6 +82,87 @@ describe("mergeEntry", () => {
     });
     expect((blockEntry.elements[0] as any).label).toBe(originalLabel);
   });
+
+  // Regression: a recipe that overrides one validation rule must not wipe out
+  // the primitive's other shipped rules. EmailAddress ships `required` + `email`
+  // by default; overriding only `required` must preserve `email`. See #371.
+  it("preserves un-overridden validation rules on a primitive (#371)", () => {
+    const emailEntry = BUILTIN_REGISTRY["components/email"] as Primitive;
+    const result = mergeEntry(emailEntry, {
+      ref: "components/email",
+      overrides: {
+        fieldId: "contact-email",
+        validations: {
+          required: { value: true, error: "Email address is required" },
+        },
+      },
+    }) as Primitive;
+
+    expect(result.validations?.required).toEqual({
+      value: true,
+      error: "Email address is required",
+    });
+    // The format rule the primitive shipped must survive the override.
+    expect(result.validations?.email).toEqual({
+      value: true,
+      error: "Please enter a valid email address",
+    });
+  });
+
+  // Regression (#789, same class as #371 but for `ui`): a recipe that
+  // overrides one `ui` key must not wipe out the primitive's other shipped
+  // ui hints. NationalIdNumber ships `width: "short"`; overriding only
+  // `hideLabel` must preserve it, or the served form renders at the wrong
+  // width while the builder preview (which deep-merges) looks correct.
+  it("preserves un-overridden ui hints on a primitive (#789)", () => {
+    const nationalId = BUILTIN_REGISTRY[
+      "components/national-id-number"
+    ] as Primitive;
+    const result = mergeEntry(nationalId, {
+      ref: "components/national-id-number",
+      overrides: { ui: { hideLabel: true } },
+    }) as Primitive;
+
+    expect(result.ui).toEqual({ width: "short", hideLabel: true });
+  });
+
+  it("lets a ui.width override win over the primitive's shipped width (#789)", () => {
+    const nationalId = BUILTIN_REGISTRY[
+      "components/national-id-number"
+    ] as Primitive;
+    const result = mergeEntry(nationalId, {
+      ref: "components/national-id-number",
+      overrides: { ui: { width: "long" } },
+    }) as Primitive;
+
+    expect(result.ui).toEqual({ width: "long" });
+  });
+
+  it("preserves un-overridden validation rules on a block child (#371)", () => {
+    const contactBlock = BUILTIN_REGISTRY[
+      "blocks/contact-information"
+    ] as Block;
+    const result = mergeEntry(contactBlock, {
+      ref: "blocks/contact-information",
+      overrides: {
+        email: {
+          validations: {
+            required: { value: true, error: "Email address is required" },
+          },
+        },
+      },
+    }) as Block;
+
+    const emailEl = result.elements.find((el) => el.fieldId === "email");
+    expect((emailEl as Primitive).validations?.required).toEqual({
+      value: true,
+      error: "Email address is required",
+    });
+    expect((emailEl as Primitive).validations?.email).toEqual({
+      value: true,
+      error: "Please enter a valid email address",
+    });
+  });
 });
 
 // ─── hydrateStep ───────────────────────────────────────────────────────────
@@ -132,6 +213,35 @@ describe("hydrateStep", () => {
       ),
     ).rejects.toThrow(UnresolvableComponentError);
   });
+
+  it("carries markdownContent through to the served step", async () => {
+    const resolver = jest.fn().mockResolvedValue(primitiveEntry);
+    const result = await hydrateStep(
+      {
+        stepId: "submission-confirmation",
+        title: "Done",
+        elements: [],
+        markdownContent: "## What you need to know\n\nContact us.",
+      },
+      resolver,
+    );
+    expect(result.markdownContent).toBe(
+      "## What you need to know\n\nContact us.",
+    );
+  });
+
+  it("leaves markdownContent undefined when the step has none", async () => {
+    const resolver = jest.fn().mockResolvedValue(primitiveEntry);
+    const result = await hydrateStep(
+      {
+        stepId: "step-1",
+        title: "Step 1",
+        elements: [{ ref: "components/first-name" }],
+      },
+      resolver,
+    );
+    expect(result.markdownContent).toBeUndefined();
+  });
 });
 
 // ─── hydrateForm ───────────────────────────────────────────────────────────
@@ -169,6 +279,25 @@ describe("hydrateForm", () => {
     expect(result.version).toBe("1.0.0");
     expect(result.createdAt).toBe("2026-01-01T00:00:00");
   });
+
+  it("carries contactDetails through to the served contract (issue #452 dead-feature fix)", async () => {
+    const contactDetails = {
+      title: "Ministry of Health",
+      telephoneNumber: "+1 246 555 0100",
+      email: "health@gov.bb",
+      address: { line1: "Jemmotts Lane", city: "Bridgetown" },
+    };
+    const result = await hydrateForm(
+      { ...baseRecipe, contactDetails },
+      resolver,
+    );
+    expect(result.contactDetails).toEqual(contactDetails);
+  });
+
+  it("leaves contactDetails undefined when the recipe has none", async () => {
+    const result = await hydrateForm(baseRecipe, resolver);
+    expect(result.contactDetails).toBeUndefined();
+  });
 });
 
 // ─── RegistryService ───────────────────────────────────────────────────────
@@ -183,6 +312,13 @@ describe("RegistryService", () => {
     it("returns a built-in block by ref", async () => {
       const result = await makeService().resolve("blocks/personal-information");
       expect((result as any).blockId).toBe("personal-information");
+    });
+
+    it("returns the show-hide builtin by ref", async () => {
+      const result = await makeService().resolve("components/show-hide");
+      expect(result).not.toBeNull();
+      expect((result as any).fieldId).toBe("show-hide");
+      expect((result as any).htmlType).toBe("show-hide");
     });
 
     it("returns null for an unknown ref", async () => {
@@ -206,6 +342,31 @@ describe("RegistryService", () => {
       ]);
       const result = await service.resolve("components/barbados/next-of-kin");
       expect((result as any).fieldId).toBe("next-of-kin");
+    });
+
+    it("uses the in-memory cache and skips the database on the second call", async () => {
+      // Branch: `if (this.cache.has(CACHE_LOADED_KEY)) return` — cache already warm
+      const mockRepo = {
+        find: jest.fn().mockResolvedValue([
+          {
+            namespace: "barbados",
+            type: "passport-type",
+            definition: {
+              fieldId: "passport-type",
+              label: "Type",
+              htmlType: "text",
+            },
+          },
+        ]),
+      } as unknown as Repository<CustomComponent>;
+      const service = new RegistryService(mockRepo);
+
+      // First call — warms the cache (calls repo.find once)
+      await service.resolve("components/barbados/passport-type");
+      // Second call — cache is warm, should NOT call repo.find again
+      await service.resolve("components/barbados/passport-type");
+
+      expect(mockRepo.find).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -340,6 +501,33 @@ describe("RegistryService", () => {
           ],
         }),
       ).rejects.toThrow(UnresolvableComponentError);
+    });
+
+    it("hydrates a show-hide ref and applies field overrides", async () => {
+      const result = await makeService().hydrateForm({
+        ...base,
+        steps: [
+          {
+            stepId: "step-1",
+            title: "Step 1",
+            elements: [
+              {
+                ref: "components/show-hide" as const,
+                overrides: {
+                  label: "Show advanced options",
+                  hint: "Reveals extra fields",
+                  fieldId: "show-advanced",
+                },
+              },
+            ],
+          },
+        ],
+      });
+      const el = result.steps[0].elements[0] as any;
+      expect(el.label).toBe("Show advanced options");
+      expect(el.hint).toBe("Reveals extra fields");
+      expect(el.fieldId).toBe("show-advanced");
+      expect(el.htmlType).toBe("show-hide");
     });
   });
 });

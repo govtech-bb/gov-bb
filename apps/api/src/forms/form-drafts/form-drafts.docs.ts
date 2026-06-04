@@ -5,7 +5,7 @@ import {
   ApiOperation,
   ApiParam,
 } from "@nestjs/swagger";
-import { FormDraftEntity } from "../../database/entities/form-draft.entity";
+import { FormDraftResponseDto } from "./dto";
 import { ApiWrappedResponse } from "../../common/swagger";
 
 const draftIdParam = ApiParam({
@@ -22,7 +22,11 @@ export function CreateDraftDocs() {
         "Creates a new draft for the given form, pinning the form version at creation time. " +
         "If a draft with the same draftId already exists, the existing draft is returned (idempotent).",
     }),
-    ApiWrappedResponse({ status: 201, type: FormDraftEntity, description: "Draft created (or existing draft returned)" }),
+    ApiWrappedResponse({
+      status: 201,
+      type: FormDraftResponseDto,
+      description: "Draft created (or existing draft returned)",
+    }),
     ApiNotFoundResponse({ description: "Form definition not found" }),
   );
 }
@@ -31,7 +35,11 @@ export function GetDraftDocs() {
   return applyDecorators(
     ApiOperation({ summary: "Get a draft by ID" }),
     draftIdParam,
-    ApiWrappedResponse({ status: 200, type: FormDraftEntity, description: "Draft retrieved" }),
+    ApiWrappedResponse({
+      status: 200,
+      type: FormDraftResponseDto,
+      description: "Draft retrieved",
+    }),
     ApiNotFoundResponse({ description: "Draft not found" }),
   );
 }
@@ -45,7 +53,11 @@ export function UpdateDraftDocs() {
         "Existing fields not included in the payload are preserved.",
     }),
     draftIdParam,
-    ApiWrappedResponse({ status: 200, type: FormDraftEntity, description: "Draft updated" }),
+    ApiWrappedResponse({
+      status: 200,
+      type: FormDraftResponseDto,
+      description: "Draft updated",
+    }),
     ApiNotFoundResponse({ description: "Draft not found" }),
   );
 }
@@ -54,7 +66,8 @@ export function AbandonDraftDocs() {
   return applyDecorators(
     ApiOperation({
       summary: "Abandon a draft",
-      description: "Marks the draft as abandoned. Abandoned drafts are purged after 7 days.",
+      description:
+        "Marks the draft as abandoned. Abandoned drafts are purged after 7 days.",
     }),
     draftIdParam,
     ApiNoContentResponse({ description: "Draft abandoned" }),

@@ -1,0 +1,14 @@
+{
+  "id": "22222222-2222-2222-2222-222222222222",
+  "form_id": "passport-renewal",
+  "version": "1.1.0",
+  "schema": {
+    "formId": "passport-renewal",
+    "title": "Passport Renewal",
+    "description": "Renew your passport",
+    "version": "1.1.0",
+    "createdAt": "2026-02-01T00:00:00.000Z",
+    "updatedAt": "2026-02-01T00:00:00.000Z",
+    "steps": []
+  }
+}

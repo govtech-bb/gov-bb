@@ -1,0 +1,727 @@
+{
+  "formId": "get-marriage-certificate-test",
+  "title": "Get a Marriage Certificate",
+  "description": "Apply for a certified copy of a marriage certificate",
+  "version": "1.1.0",
+  "processors": [
+    {
+      "type": "payment",
+      "config": {
+        "amount": 10,
+        "provider": "ezpay",
+        "allowDebit": true,
+        "department": "oag-registration",
+        "allowCredit": true,
+        "description": "Marriage certificate copy",
+        "paymentCode": "awR2Da5z7K",
+        "customerNamePath": "applicant-details.applicant-first-name",
+        "customerEmailPath": "applicant-details.applicant-email"
+      }
+    },
+    {
+      "type": "email",
+      "config": {
+        "subject": "Your marriage certificate request has been received",
+        "recipientField": "applicant-details.applicant-email"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "stepId": "applicant-details",
+      "title": "Tell us about yourself",
+      "elements": [
+        {
+          "ref": "components/title",
+          "overrides": {
+            "fieldId": "applicant-title",
+            "validations": {
+              "required": {
+                "error": "Title is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "label": "First name",
+            "fieldId": "applicant-first-name",
+            "validations": {
+              "required": {
+                "error": "First name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "First name must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "hint": "Optional. Provide only if known",
+            "label": "Middle name",
+            "fieldId": "applicant-middle-name"
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "label": "Last name",
+            "fieldId": "applicant-last-name",
+            "validations": {
+              "required": {
+                "error": "Last name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Last name must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address line 1",
+            "fieldId": "applicant-address-line-1",
+            "validations": {
+              "required": {
+                "error": "Address line 1 is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Address must be at least 5 characters",
+                "value": 5
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address line 2",
+            "fieldId": "applicant-address-line-2"
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "applicant-parish",
+            "options": [
+              {
+                "label": "Christ Church",
+                "value": "christ-church"
+              },
+              {
+                "label": "St. Andrew",
+                "value": "st-andrew"
+              },
+              {
+                "label": "St. George",
+                "value": "st-george"
+              },
+              {
+                "label": "St. James",
+                "value": "st-james"
+              },
+              {
+                "label": "St. John",
+                "value": "st-john"
+              },
+              {
+                "label": "St. Joseph",
+                "value": "st-joseph"
+              },
+              {
+                "label": "St. Lucy",
+                "value": "st-lucy"
+              },
+              {
+                "label": "St. Michael",
+                "value": "st-michael"
+              },
+              {
+                "label": "St. Peter",
+                "value": "st-peter"
+              },
+              {
+                "label": "St. Philip",
+                "value": "st-philip"
+              },
+              {
+                "label": "St. Thomas",
+                "value": "st-thomas"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Parish is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/postcode",
+          "overrides": {
+            "hint": "For example, BB17004 (optional)",
+            "fieldId": "applicant-postcode"
+          }
+        },
+        {
+          "ref": "components/national-id-number",
+          "overrides": {
+            "label": "National Identification (ID) Number",
+            "fieldId": "applicant-id-number",
+            "placeholder": "for example, 850101-0001",
+            "validations": {
+              "required": {
+                "error": "ID Number is required",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "optionalIf",
+                "targetFieldId": "passport-toggle",
+                "operator": "equal",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/show-hide",
+          "overrides": {
+            "hint": "If you don't have a National ID number, you can use your passport number instead.",
+            "label": "Use passport number instead",
+            "fieldId": "passport-toggle"
+          }
+        },
+        {
+          "ref": "components/passport-number",
+          "overrides": {
+            "label": "Passport Number",
+            "fieldId": "applicant-passport-number",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": true,
+                "operator": "equal",
+                "targetFieldId": "passport-toggle"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Passport number is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Passport number must be at least 6 characters",
+                "value": 6
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "fieldId": "applicant-email",
+            "validations": {
+              "required": {
+                "error": "Email address is required",
+                "value": true
+              },
+              "email": {
+                "value": true,
+                "error": "Enter a valid email address"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "label": "Telephone number",
+            "fieldId": "applicant-telephone",
+            "validations": {
+              "required": {
+                "error": "Telephone number is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Are you a Barbados national?",
+            "fieldId": "applicant-is-barbados-national",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select an option",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "applying-for-yourself",
+      "title": "Are you applying for your own marriage certificate?",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Are you applying for your own marriage certificate?",
+            "fieldId": "applying-for-yourself",
+            "options": [
+              {
+                "label": "Yes - the certificate is for me",
+                "value": "yes"
+              },
+              {
+                "label": "No - the certificate is for someone else",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select an option",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "husband-details",
+      "title": "Tell us about the husband",
+      "description": "Enter the details as they appear on the marriage record, if known.",
+      "elements": [
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "label": "First name",
+            "fieldId": "husband-first-name",
+            "validations": {
+              "required": {
+                "error": "First name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "First name must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "hint": "Leave blank if there are no middle names or if they are not known.",
+            "label": "Middle name",
+            "fieldId": "husband-middle-name"
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "label": "Last name",
+            "fieldId": "husband-last-name",
+            "validations": {
+              "required": {
+                "error": "Last name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Last name must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/national-id-number",
+          "overrides": {
+            "label": "National Identification (ID) Number",
+            "fieldId": "husband-id-number",
+            "validations": {
+              "required": {
+                "error": "ID Number is required",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "optionalIf",
+                "targetFieldId": "husband-passport-toggle",
+                "operator": "equal",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/show-hide",
+          "overrides": {
+            "hint": "If the husband doesn't have a National ID number, you can use a passport number instead.",
+            "label": "Use passport number instead",
+            "fieldId": "husband-passport-toggle"
+          }
+        },
+        {
+          "ref": "components/passport-number",
+          "overrides": {
+            "label": "Passport Number",
+            "fieldId": "husband-passport-number",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": true,
+                "operator": "equal",
+                "targetFieldId": "husband-passport-toggle"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Passport number is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Passport number must be at least 6 characters",
+                "value": 6
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "wife-details",
+      "title": "Tell us about the wife",
+      "description": "Enter the details as they appear on the marriage record, if known.",
+      "elements": [
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "label": "First name",
+            "fieldId": "wife-first-name",
+            "validations": {
+              "required": {
+                "error": "First name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "First name must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "hint": "Leave blank if there are no middle names or if they are not known.",
+            "label": "Middle name",
+            "fieldId": "wife-middle-name"
+          }
+        },
+        {
+          "ref": "components/name",
+          "overrides": {
+            "hint": "This is their last name before marriage",
+            "label": "Maiden name",
+            "fieldId": "wife-maiden-name",
+            "validations": {
+              "required": {
+                "error": "Maiden name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Maiden name must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/national-id-number",
+          "overrides": {
+            "label": "National Identification (ID) Number",
+            "fieldId": "wife-id-number",
+            "validations": {
+              "required": {
+                "error": "ID Number is required",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "optionalIf",
+                "targetFieldId": "wife-passport-toggle",
+                "operator": "equal",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/show-hide",
+          "overrides": {
+            "hint": "If the wife doesn't have a National ID number, you can use a passport number instead.",
+            "label": "Use passport number instead",
+            "fieldId": "wife-passport-toggle"
+          }
+        },
+        {
+          "ref": "components/passport-number",
+          "overrides": {
+            "label": "Passport Number",
+            "fieldId": "wife-passport-number",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": true,
+                "operator": "equal",
+                "targetFieldId": "wife-passport-toggle"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Passport number is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Passport number must be at least 6 characters",
+                "value": 6
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "marriage-details",
+      "title": "Provide your marriage details",
+      "description": "Answer as accurately as possible",
+      "elements": [
+        {
+          "ref": "components/date-of-birth",
+          "overrides": {
+            "label": "Date of marriage",
+            "fieldId": "date-of-marriage"
+          }
+        },
+        {
+          "ref": "components/name",
+          "overrides": {
+            "hint": "For example, the parish and church or registry office.",
+            "label": "Place of marriage",
+            "fieldId": "place-of-marriage",
+            "validations": {
+              "required": {
+                "error": "Place of marriage is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "reason-for-requesting",
+      "title": "Tell us about why you are requesting this certificate",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "hint": "For example, spouse, child, parent, sibling, or authorised representative. If you have a relationship to both, you can describe either one.",
+            "label": "What is your relationship to the persons married?",
+            "fieldId": "relationship-to-married-persons",
+            "options": [
+              {
+                "label": "Parent",
+                "value": "parent"
+              },
+              {
+                "label": "Spouse",
+                "value": "spouse"
+              },
+              {
+                "label": "Child",
+                "value": "child"
+              },
+              {
+                "label": "Sibling",
+                "value": "sibling"
+              },
+              {
+                "label": "Grandparent",
+                "value": "grandparent"
+              },
+              {
+                "label": "Legal guardian",
+                "value": "legal-guardian"
+              },
+              {
+                "label": "Legal representative",
+                "value": "legal-representative"
+              },
+              {
+                "label": "Other (please describe)",
+                "value": "other"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Relationship is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/name",
+          "overrides": {
+            "label": "Please describe your relationship",
+            "fieldId": "relationship-other-description",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "other",
+                "operator": "equal",
+                "targetFieldId": "relationship-to-married-persons"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Please describe your relationship",
+                "value": true
+              },
+              "minLength": {
+                "error": "Please provide at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "hint": "This information helps us confirm that you are eligible to request the certificate.",
+            "label": "Why are you requesting the marriage certificate?",
+            "fieldId": "explanation-for-requesting",
+            "validations": {
+              "required": {
+                "error": "Explanation is required",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "value": "no",
+          "operator": "equal",
+          "targetStepId": "applying-for-yourself",
+          "targetFieldId": "applying-for-yourself"
+        }
+      ]
+    },
+    {
+      "stepId": "order-details",
+      "title": "How many copies do you need?",
+      "description": "Each copy costs $5.00 BBD for a certificate",
+      "elements": [
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "ui": {
+              "width": "short"
+            },
+            "label": "Number of copies",
+            "fieldId": "number-of-copies",
+            "validations": {
+              "required": {
+                "error": "Number of copies is required",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": "Declaration",
+            "fieldId": "declaration-confirmed",
+            "options": [
+              {
+                "label": "I confirm that my information is correct and I am happy for it to be verified. I understand that false details may lead to my application being rejected, and that the Government of Barbados will keep my information confidential.",
+                "value": "confirmed"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "You must confirm the declaration to continue",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/date-of-birth",
+          "overrides": {
+            "label": "Date of declaration",
+            "fieldId": "declaration-date"
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Application submitted",
+      "elements": [],
+      "behaviours": []
+    }
+  ],
+  "createdAt": "2026-06-01T20:45:53.053Z",
+  "updatedAt": "2026-06-01T20:45:53.053Z"
+}

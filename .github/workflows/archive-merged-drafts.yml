@@ -1,0 +1,37 @@
+name: Archive merged drafts
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - "recipes/**/*.json"
+
+permissions:
+  contents: read
+
+jobs:
+  archive:
+    name: Archive draft DB rows for merged recipes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (with enough history to diff before..after)
+        uses: actions/checkout@v5
+        with:
+          # We need both the `before` and `after` SHAs of the push reachable.
+          # fetch-depth: 0 fetches all history. Cheaper alternatives like
+          # fetch-depth: 50 could miss merges of long-lived branches, so we
+          # pay the cost.
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+
+      - name: Archive drafts via admin endpoint
+        env:
+          API_URL: ${{ secrets.ARCHIVE_DRAFTS_API_URL }}
+          ARCHIVE_DRAFTS_TOKEN: ${{ secrets.ARCHIVE_DRAFTS_TOKEN }}
+        run: pnpm tsx scripts/archive-merged-drafts.ts

@@ -22,6 +22,22 @@ describe("formStepSchema", () => {
     expect(formStepSchema.safeParse(full).success).toBe(true);
   });
 
+  it("preserves an optional markdownContent string", () => {
+    const parsed = formStepSchema.parse({
+      ...validStep,
+      markdownContent: "## What you need to know\n\nContact us.",
+    });
+    expect(parsed.markdownContent).toBe(
+      "## What you need to know\n\nContact us.",
+    );
+  });
+
+  it("rejects a non-string markdownContent", () => {
+    expect(
+      formStepSchema.safeParse({ ...validStep, markdownContent: 42 }).success,
+    ).toBe(false);
+  });
+
   it("rejects missing stepId", () => {
     const { stepId: _s, ...noStepId } = validStep;
     expect(formStepSchema.safeParse(noStepId).success).toBe(false);

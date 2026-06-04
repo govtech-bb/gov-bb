@@ -35,19 +35,23 @@ describe("contactDetailsSchema", () => {
     expect(contactDetailsSchema.safeParse(partial).success).toBe(true);
   });
 
-  it("rejects missing title", () => {
+  it("accepts missing title (now optional, issue #607)", () => {
     const { title: _t, ...noTitle } = validFull;
-    expect(contactDetailsSchema.safeParse(noTitle).success).toBe(false);
+    expect(contactDetailsSchema.safeParse(noTitle).success).toBe(true);
   });
 
-  it("rejects missing telephoneNumber", () => {
+  it("accepts missing telephoneNumber (now optional, issue #607)", () => {
     const { telephoneNumber: _p, ...noPhone } = validFull;
-    expect(contactDetailsSchema.safeParse(noPhone).success).toBe(false);
+    expect(contactDetailsSchema.safeParse(noPhone).success).toBe(true);
   });
 
-  it("rejects missing email", () => {
+  it("accepts missing email (now optional, issue #607)", () => {
     const { email: _e, ...noEmail } = validFull;
-    expect(contactDetailsSchema.safeParse(noEmail).success).toBe(false);
+    expect(contactDetailsSchema.safeParse(noEmail).success).toBe(true);
+  });
+
+  it("accepts an empty object (all fields optional)", () => {
+    expect(contactDetailsSchema.safeParse({}).success).toBe(true);
   });
 
   it("rejects invalid email format", () => {
@@ -125,12 +129,47 @@ describe("serviceContractSchema with contactDetails", () => {
     expect(serviceContractSchema.safeParse(withContact).success).toBe(true);
   });
 
-  it("rejects a contract with invalid contactDetails", () => {
+  it("accepts a contract with a partial contactDetails (issue #607)", () => {
+    const withPartialContact = {
+      ...baseContract,
+      contactDetails: { title: "Post Office" }, // telephoneNumber/email now optional
+    };
+    expect(serviceContractSchema.safeParse(withPartialContact).success).toBe(
+      true,
+    );
+  });
+
+  it("rejects a contract with malformed contactDetails", () => {
     const withBadContact = {
       ...baseContract,
-      contactDetails: { title: "Post Office" }, // missing telephoneNumber and email
+      contactDetails: { email: "not-an-email" }, // present-but-invalid email
     };
     expect(serviceContractSchema.safeParse(withBadContact).success).toBe(false);
+  });
+
+  it("rejects an empty formId", () => {
+    expect(
+      serviceContractSchema.safeParse({ ...baseContract, formId: "" }).success,
+    ).toBe(false);
+  });
+
+  it("rejects an empty title", () => {
+    expect(
+      serviceContractSchema.safeParse({ ...baseContract, title: "" }).success,
+    ).toBe(false);
+  });
+
+  it.each(["1-foo", "foo-", "foo--bar", "Foo"])(
+    "rejects a malformed formId %p",
+    (formId) => {
+      expect(
+        serviceContractSchema.safeParse({ ...baseContract, formId }).success,
+      ).toBe(false);
+    },
+  );
+
+  it("accepts a valid kebab formId with a non-empty title", () => {
+    expect(serviceContractSchema.safeParse(baseContract).success).toBe(true);
   });
 });
 
@@ -183,6 +222,36 @@ describe("serviceContractRecipeSchema", () => {
   it("rejects missing formId", () => {
     const { formId: _f, ...noFormId } = baseRecipe;
     expect(serviceContractRecipeSchema.safeParse(noFormId).success).toBe(false);
+  });
+
+  it("rejects an empty formId", () => {
+    expect(
+      serviceContractRecipeSchema.safeParse({ ...baseRecipe, formId: "" })
+        .success,
+    ).toBe(false);
+  });
+
+  it("rejects an empty title", () => {
+    expect(
+      serviceContractRecipeSchema.safeParse({ ...baseRecipe, title: "" })
+        .success,
+    ).toBe(false);
+  });
+
+  it.each(["1-foo", "foo-", "foo--bar", "Foo"])(
+    "rejects a malformed formId %p",
+    (formId) => {
+      expect(
+        serviceContractRecipeSchema.safeParse({ ...baseRecipe, formId })
+          .success,
+      ).toBe(false);
+    },
+  );
+
+  it("accepts a valid kebab formId with a non-empty title", () => {
+    expect(serviceContractRecipeSchema.safeParse(baseRecipe).success).toBe(
+      true,
+    );
   });
 
   it("rejects malformed createdAt", () => {

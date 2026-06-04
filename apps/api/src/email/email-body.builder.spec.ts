@@ -61,6 +61,7 @@ function makeContract(
               { label: "Spanish", value: "es" },
             ],
           },
+          { fieldId: "dob", label: "Date of birth", htmlType: "date" },
         ],
       },
       {
@@ -93,6 +94,7 @@ function makePayload(
         interests: ["sports", "art"],
         country: "bb",
         languages: ["en", "fr"],
+        dob: { day: 5, month: 6, year: 1990 },
       },
       contact: {
         email: "alice@example.com",
@@ -113,6 +115,7 @@ function makePayload(
           "interests",
           "country",
           "languages",
+          "dob",
         ],
         contact: ["email", "phone"],
       },
@@ -207,6 +210,51 @@ describe("EmailBodyBuilder", () => {
       const field = ctx.sections[0].fields.find((f) => f.label === "Languages");
 
       expect(field?.value).toBe("English, French");
+    });
+
+    it("formats object-shaped date values instead of '[object Object]'", async () => {
+      const ctx = await builder.build(makePayload());
+      const field = ctx.sections[0].fields.find(
+        (f) => f.label === "Date of birth",
+      );
+
+      expect(field?.value).toBe("5 June 1990");
+    });
+
+    it("passes through legacy string date values unchanged", async () => {
+      const payload = makePayload();
+      (payload.values.personal as Record<string, unknown>).dob = "1990-06-05";
+
+      const ctx = await builder.build(payload);
+      const field = ctx.sections[0].fields.find(
+        (f) => f.label === "Date of birth",
+      );
+
+      expect(field?.value).toBe("1990-06-05");
+    });
+
+    it("omits a malformed object-shaped date instead of stringifying it", async () => {
+      const payload = makePayload();
+      (payload.values.personal as Record<string, unknown>).dob = { day: 5 };
+
+      const ctx = await builder.build(payload);
+      const field = ctx.sections[0].fields.find(
+        (f) => f.label === "Date of birth",
+      );
+
+      expect(field).toBeUndefined();
+    });
+
+    it("omits an empty date field", async () => {
+      const payload = makePayload();
+      (payload.values.personal as Record<string, unknown>).dob = undefined;
+
+      const ctx = await builder.build(payload);
+      const field = ctx.sections[0].fields.find(
+        (f) => f.label === "Date of birth",
+      );
+
+      expect(field).toBeUndefined();
     });
 
     it("omits steps listed in hiddenStepIds", async () => {
@@ -523,6 +571,93 @@ describe("EmailBodyBuilder", () => {
       expect(formSvc.findByFormId).toHaveBeenCalledWith(
         expect.objectContaining({ version: "2.0.0" }),
       );
+    });
+  });
+
+  describe("resolveContactDetails()", () => {
+    it("returns the contract's contactDetails when present", async () => {
+      const contactDetails = {
+        title: "Passport Office",
+        telephoneNumber: "+1-246-555-0100",
+        email: "mda@gov.bb",
+      };
+      formSvc = makeFormDefinitionsService(makeContract({ contactDetails }));
+      builder = new EmailBodyBuilder(formSvc);
+
+      const result = await builder.resolveContactDetails(makePayload());
+
+      expect(result).toEqual(contactDetails);
+    });
+
+    it("returns undefined when the contract has no contactDetails", async () => {
+      const result = await builder.resolveContactDetails(makePayload());
+
+      expect(result).toBeUndefined();
+    });
+
+    it("reuses the cached contract — does not double-fetch alongside build()", async () => {
+      const payload = makePayload();
+
+      await builder.build(payload);
+      await builder.resolveContactDetails(payload);
+
+      expect(formSvc.findByFormId).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("missing branch coverage", () => {
+    it("handles null rawVal for an active step (line 114 ?? {} branch)", async () => {
+      // Step is in activeStepIds but values[stepId] is undefined → rawVal ?? {} = {}
+      const payload = makePayload();
+      // Remove 'contact' from values so rawVal is undefined, but keep it active
+      delete (payload.values as Record<string, unknown>)["contact"];
+      const ctx = await builder.build(payload);
+      // contact section should be omitted (empty fields from empty {}), no crash
+      const titles = ctx.sections.map((s) => s.title);
+      expect(titles).not.toContain("Contact Details");
+    });
+
+    it("uses fallback string when select[multiple] option label is not found", async () => {
+      // Branch in resolveOptionLabels: ??.label ?? String(v) for a missing option
+      const payload = makePayload();
+      (payload.values["personal"] as Record<string, unknown>)["languages"] = [
+        "unknown-code",
+      ];
+      const ctx = await builder.build(payload);
+      const field = ctx.sections[0].fields.find((f) => f.label === "Languages");
+      expect(field?.value).toBe("unknown-code");
+    });
+
+    it("uses fallback string when checkbox option label is not found", async () => {
+      // Branch in resolveOptionLabels: missing option label → String(v)
+      const payload = makePayload();
+      (payload.values["personal"] as Record<string, unknown>)["interests"] = [
+        "unknown-interest",
+      ];
+      const ctx = await builder.build(payload);
+      const field = ctx.sections[0].fields.find((f) => f.label === "Interests");
+      expect(field?.value).toBe("unknown-interest");
+    });
+
+    it("formats checkbox with a scalar (non-array) value via [raw] coercion", async () => {
+      // Branch: `Array.isArray(raw) ? raw : [raw]` — the [raw] arm for checkbox
+      const payload = makePayload();
+      (payload.values["personal"] as Record<string, unknown>)["interests"] =
+        "sports" as unknown as string[];
+      const ctx = await builder.build(payload);
+      const field = ctx.sections[0].fields.find((f) => f.label === "Interests");
+      expect(field?.value).toBe("Sports");
+    });
+
+    it("handles select[multiple]=true with scalar value (falls through to single-select path)", async () => {
+      // Branch: `field.multiple && Array.isArray(raw)` is false when raw is scalar
+      const payload = makePayload();
+      (payload.values["personal"] as Record<string, unknown>)["languages"] =
+        "en" as unknown as string[];
+      const ctx = await builder.build(payload);
+      const field = ctx.sections[0].fields.find((f) => f.label === "Languages");
+      // Falls through to single-select: finds option label "English"
+      expect(field?.value).toBe("English");
     });
   });
 });

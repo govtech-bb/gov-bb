@@ -108,4 +108,30 @@ describe("foldErrors", () => {
       jobs: { instances: [{}, { e: ["x"] }] },
     });
   });
+
+  it("emits _step for step-level errors on a non-repeatable step with no field errors", () => {
+    // Branch: `bundle[stepId] ?? {}` — bundle[stepId] is undefined (no field errors),
+    // so the nullish coalescing fallback kicks in.
+    const result = foldErrors({
+      instances: [inst("personal", 0, false)],
+      perInstanceErrors: new Map(),
+      stepLevelErrors: new Map([["personal", ["Custom step error"]]]),
+    });
+    expect(result).toEqual({
+      personal: { _step: ["Custom step error"] },
+    });
+  });
+
+  it("merges field errors and _step on a non-repeatable step when both exist", () => {
+    const perInstance: PerInstanceErrors = new Map();
+    perInstance.set("personal:0", { name: ["Name is required"] });
+    const result = foldErrors({
+      instances: [inst("personal", 0, false)],
+      perInstanceErrors: perInstance,
+      stepLevelErrors: new Map([["personal", ["Custom step error"]]]),
+    });
+    expect(result).toEqual({
+      personal: { name: ["Name is required"], _step: ["Custom step error"] },
+    });
+  });
 });

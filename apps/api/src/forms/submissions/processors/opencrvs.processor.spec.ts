@@ -69,11 +69,12 @@ describe("OpencrvsProcessor", () => {
       });
     });
 
-    it("sets X-Idempotency-Key header to submissionId for retry safety", async () => {
+    it("sets X-Idempotency-Key header derived from submissionId for retry safety", async () => {
       await processor.process(makePayload());
 
       const headers = mockFetch.mock.calls[0][1].headers;
-      expect(headers["X-Idempotency-Key"]).toBe("sub-002");
+      // Format is "<submissionId>:<index>" so multi-entry retries don't collide.
+      expect(headers["X-Idempotency-Key"]).toBe("sub-002:0");
     });
 
     it("includes Authorization header when token is configured", async () => {
@@ -108,6 +109,62 @@ describe("OpencrvsProcessor", () => {
       await expect(processor.process(makePayload())).rejects.toThrow(
         "HTTP 503",
       );
+    });
+
+    it("acts only on the entry at processorIndex, ignoring siblings", async () => {
+      // Per-entry dispatch: each message addresses one entry by index. This
+      // invocation targets index 1, so only the secondary endpoint is POSTed.
+      const payload = makePayload();
+      payload.processors = [
+        {
+          type: "opencrvs",
+          config: { endpoint: "https://primary.example/api/submit" },
+        },
+        {
+          type: "opencrvs",
+          config: { endpoint: "https://secondary.example/api/submit" },
+        },
+      ];
+      payload.processorIndex = 1;
+
+      await processor.process(payload);
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(mockFetch.mock.calls[0][0]).toBe(
+        "https://secondary.example/api/submit",
+      );
+    });
+
+    it("is a no-op when no entry exists at processorIndex (defensive guard)", async () => {
+      // Per-entry dispatch never invokes us without a matching entry, but a
+      // corrupted/out-of-range index should be a no-op, not a throw.
+      const payload = makePayload();
+      payload.processors = [];
+
+      const result = await processor.process(payload);
+
+      expect(result).toEqual({ kind: "completed" });
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it("keys X-Idempotency-Key with the addressed index so per-entry retries don't collide", async () => {
+      const payload = makePayload();
+      payload.processors = [
+        {
+          type: "opencrvs",
+          config: { endpoint: "https://primary.example/api/submit" },
+        },
+        {
+          type: "opencrvs",
+          config: { endpoint: "https://secondary.example/api/submit" },
+        },
+      ];
+      payload.processorIndex = 1;
+
+      await processor.process(payload);
+
+      const headers = mockFetch.mock.calls[0][1].headers;
+      expect(headers["X-Idempotency-Key"]).toBe("sub-002:1");
     });
   });
 });

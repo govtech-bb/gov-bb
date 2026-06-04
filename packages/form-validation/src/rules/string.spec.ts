@@ -33,6 +33,22 @@ describe("minLengthRunner", () => {
   it("uses custom error", () => {
     expect(minLengthRunner("hi", cfg(5, "Too short"), {})).toBe("Too short");
   });
+
+  it("coerces non-string value to string", () => {
+    expect(minLengthRunner(12345, cfg(3), {})).toBeNull();
+  });
+
+  it("coerces null to empty string", () => {
+    expect(minLengthRunner(null, cfg(1), {})).toBe(
+      "Must be at least 1 characters",
+    );
+  });
+
+  it("coerces undefined to empty string", () => {
+    expect(minLengthRunner(undefined, cfg(1), {})).toBe(
+      "Must be at least 1 characters",
+    );
+  });
 });
 
 describe("maxLengthRunner", () => {
@@ -66,6 +82,20 @@ describe("patternRunner", () => {
     expect(patternRunner("ABC", cfg("^[a-z]+$", "Lowercase only"), {})).toBe(
       "Lowercase only",
     );
+  });
+
+  it("fails closed on an invalid regex instead of throwing (#335)", () => {
+    expect(patternRunner("anything", cfg("["), {})).toBe("Invalid format");
+  });
+
+  it("fails closed when config.value is undefined (#335)", () => {
+    expect(patternRunner("anything", cfg(undefined), {})).toBe(
+      "Invalid format",
+    );
+  });
+
+  it("fails closed when config.value is a non-string (#335)", () => {
+    expect(patternRunner("anything", cfg(123), {})).toBe("Invalid format");
   });
 });
 
@@ -166,5 +196,76 @@ describe("strictEqualityRunner", () => {
     expect(strictEqualityRunner("a", cfg("b", "Does not match"), {})).toBe(
       "Does not match",
     );
+  });
+
+  it("passes when resolved is MISSING, no referenceFieldId, and value matches config.value (non-string coercion)", () => {
+    expect(strictEqualityRunner(123, cfg(123), {})).toBeNull();
+  });
+
+  it("fails when resolved is MISSING, no referenceFieldId, and value does not match config.value (non-string coercion)", () => {
+    expect(strictEqualityRunner(123, cfg(456), {})).toBe("Values do not match");
+  });
+
+  it("fails when reference resolves to null and value is blank (#338)", () => {
+    expect(
+      strictEqualityRunner("", cfg(undefined, undefined, "password"), {
+        "step-1": { password: null },
+      }),
+    ).toBe("Values do not match");
+  });
+
+  it("fails when reference resolves to null and value is non-blank (#338)", () => {
+    expect(
+      strictEqualityRunner("secret", cfg(undefined, undefined, "password"), {
+        "step-1": { password: null },
+      }),
+    ).toBe("Values do not match");
+  });
+});
+
+// String rules applied to multi-value (array) fields validate each non-empty
+// element independently rather than the comma-joined string.
+describe("string rules over array values (per-element)", () => {
+  it("maxLength passes when every element is within the limit", () => {
+    expect(maxLengthRunner(["ab", "cd"], cfg(3), {})).toBeNull();
+  });
+
+  it("maxLength fails when any element exceeds the limit", () => {
+    expect(maxLengthRunner(["ok", "toolong"], cfg(3), {})).toBe(
+      "Must be at most 3 characters",
+    );
+  });
+
+  it("minLength fails when any element is too short, skipping empty entries", () => {
+    expect(minLengthRunner(["", "hi"], cfg(5), {})).toBe(
+      "Must be at least 5 characters",
+    );
+  });
+
+  it("minLength passes for an array of only empty strings", () => {
+    expect(minLengthRunner(["", ""], cfg(5), {})).toBeNull();
+  });
+
+  it("pattern validates each element", () => {
+    expect(
+      patternRunner(["AB12345", "nope"], cfg("^[A-Z]{2}\\d{5}$"), {}),
+    ).toBe("Invalid format");
+    expect(
+      patternRunner(["AB12345", "CD67890"], cfg("^[A-Z]{2}\\d{5}$"), {}),
+    ).toBeNull();
+  });
+
+  it("email validates each element", () => {
+    expect(emailRunner(["a@b.com", "nope"], cfg(undefined), {})).toBe(
+      "Must be a valid email address",
+    );
+    expect(emailRunner(["a@b.com", "c@d.com"], cfg(undefined), {})).toBeNull();
+  });
+
+  it("contains validates each element", () => {
+    expect(containsRunner(["xworld", "nope"], cfg("world"), {})).toBe(
+      'Must contain "world"',
+    );
+    expect(containsRunner(["world1", "world2"], cfg("world"), {})).toBeNull();
   });
 });

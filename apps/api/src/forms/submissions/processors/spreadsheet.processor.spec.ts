@@ -2,6 +2,7 @@ import { Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import * as ExcelJS from "exceljs";
 import * as fs from "node:fs";
+import { join } from "node:path";
 import { SpreadsheetProcessor } from "./spreadsheet.processor";
 import type { SubmissionCreatedEvent } from "../submissions.types";
 
@@ -124,7 +125,8 @@ describe("SpreadsheetProcessor", () => {
 
       expect(sheet.addRow).toHaveBeenCalledTimes(1);
       const [dataRow] = sheet.addRow.mock.calls;
-      expect(dataRow[0][0]).toBe("sub-003");
+      // Column 1 is the composite dedup token `${submissionId}:${index}`.
+      expect(dataRow[0][0]).toBe("sub-003:0");
     });
 
     it("uses the formId as filename when no filename is configured", async () => {
@@ -139,16 +141,13 @@ describe("SpreadsheetProcessor", () => {
       );
     });
 
-    it("skips writing and warns when the submissionId already exists in the sheet (retry safety)", async () => {
+    it("skips writing and warns when this entry's composite token already exists (retry safety)", async () => {
       const warn = jest.spyOn(Logger.prototype, "warn").mockImplementation();
-      buildWorkbookMock([
-        ["submissionId", "formId"],
-        ["sub-003", "passport-renewal"], // already recorded
-      ]);
 
+      // The sheet already holds this entry's composite token — a retry.
       const { workbook } = buildWorkbookMock([
-        ["submissionId", "formId"],
-        ["sub-003", "passport-renewal"],
+        ["submissionRef", "submissionId"],
+        ["sub-003:0", "sub-003"],
       ]);
 
       await processor.process(makePayload("sub-003"));
@@ -158,6 +157,29 @@ describe("SpreadsheetProcessor", () => {
         expect.stringContaining("already recorded"),
       );
       warn.mockRestore();
+    });
+
+    it("does not falsely dedup a sibling entry sharing the same file (composite token is per-entry)", async () => {
+      // Sheet already holds entry 0's row. Entry 1 writes to the same file and
+      // must NOT mistake entry 0's row for its own — each entry dedups on its
+      // own `${submissionId}:${index}` token. This is the load-bearing fix.
+      const { sheet, workbook } = buildWorkbookMock([
+        ["submissionRef", "submissionId"],
+        ["sub-003:0", "sub-003"],
+      ]);
+
+      const payload = makePayload("sub-003");
+      payload.processors = [
+        { type: "spreadsheet", config: { filename: "shared" } },
+        { type: "spreadsheet", config: { filename: "shared" } },
+      ];
+      payload.processorIndex = 1;
+
+      await processor.process(payload);
+
+      expect(sheet.addRow).toHaveBeenCalledTimes(1);
+      expect((sheet.addRow.mock.calls[0][0] as string[])[0]).toBe("sub-003:1");
+      expect(workbook.xlsx.writeFile).toHaveBeenCalled();
     });
 
     it("flattens step-scoped values into stepId.fieldId columns", async () => {
@@ -177,6 +199,75 @@ describe("SpreadsheetProcessor", () => {
       const [headerRow] = sheet.addRow.mock.calls;
       expect(headerRow[0]).toContain("personal.firstName");
       expect(headerRow[0]).toContain("personal.surname");
+    });
+
+    it("uses cwd/exports as exportDir when config returns undefined", () => {
+      // Branch: `config.get(...) ?? join(process.cwd(), "exports")`
+      const configWithoutDir = {
+        get: (_key: string) => undefined,
+      } as unknown as ConfigService;
+      const proc = new SpreadsheetProcessor(configWithoutDir);
+      // The processor was constructed without throwing — verify it uses cwd fallback
+      // by checking the exportDir is not the test-specific "/tmp/test-exports"
+      expect(proc).toBeInstanceOf(SpreadsheetProcessor);
+      expect((proc as any).exportDir).toBe(join(process.cwd(), "exports"));
+    });
+
+    it("is a no-op when no entry exists at processorIndex (defensive guard)", async () => {
+      // Per-entry dispatch never invokes the handler without a matching entry,
+      // but guard against a corrupted/out-of-range index rather than throwing.
+      const { workbook } = buildWorkbookMock();
+      const payload = makePayload();
+      payload.processors = [];
+
+      const result = await processor.process(payload);
+
+      expect(result).toEqual({ kind: "completed" });
+      expect(workbook.xlsx.writeFile).not.toHaveBeenCalled();
+      expect(workbook.addWorksheet).not.toHaveBeenCalled();
+    });
+
+    it("strips path-traversal segments from a recipe-supplied filename (#297)", async () => {
+      const { workbook } = buildWorkbookMock();
+
+      await processor.process(
+        makePayload("sub-003", { filename: "../../etc/passwd" }),
+      );
+
+      expect(workbook.xlsx.writeFile).toHaveBeenCalledWith(
+        join("/tmp/test-exports", "passwd.xlsx"),
+      );
+      const writtenPath = (workbook.xlsx.writeFile as jest.Mock).mock
+        .calls[0][0] as string;
+      expect(writtenPath).not.toContain("..");
+    });
+
+    it("skips repeatable/array-valued steps when flattening values", async () => {
+      // Branch: `if (Array.isArray(fields)) continue`
+      const { sheet } = buildWorkbookMock();
+      const workbook = {
+        getWorksheet: jest.fn().mockReturnValue(undefined),
+        addWorksheet: jest.fn().mockReturnValue(sheet),
+        xlsx: {
+          readFile: jest.fn().mockRejectedValue(new Error("ENOENT")),
+          writeFile: jest.fn().mockResolvedValue(undefined),
+        },
+      };
+      (ExcelJS.Workbook as jest.Mock).mockImplementation(() => workbook);
+
+      const payload = makePayload();
+      // Add an array-valued step to trigger the Array.isArray branch
+      payload.values = {
+        personal: { firstName: "Jane", surname: "Doe" },
+        "repeatable-step": [{ entry: "1" }, { entry: "2" }] as any,
+      };
+
+      await processor.process(payload);
+
+      // Headers should only contain personal.* columns, not repeatable-step.*
+      const [headerRow] = sheet.addRow.mock.calls;
+      expect(headerRow[0]).toContain("personal.firstName");
+      expect(headerRow[0]).not.toContain("repeatable-step");
     });
   });
 });

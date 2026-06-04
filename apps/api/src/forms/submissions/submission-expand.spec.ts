@@ -176,4 +176,47 @@ describe("expandSubmission", () => {
     expect(result.shapeErrors).toEqual([]);
     expect(result.byStep.get("jobs")).toBeUndefined();
   });
+
+  it("rejects non-object non-array value for a repeatable step (else branch, lines 102-107)", () => {
+    // When raw is a primitive (string/number), not an array and not a plain object
+    const contract = makeContract({ steps: [step("jobs", ["e"], 3)] });
+    const result = expandSubmission(contract, {
+      jobs: "not-valid" as unknown as Record<string, unknown>,
+    });
+    expect(result.shapeErrors).toEqual([
+      expect.objectContaining({
+        stepId: "jobs",
+        reason: "non_object_instance",
+      }),
+    ]);
+  });
+
+  it("rejects a non-null, non-object repeatable instance (lines 133-139)", () => {
+    // When an element in the repeatable array is a non-null primitive
+    const contract = makeContract({ steps: [step("jobs", ["e"], 3)] });
+    const result = expandSubmission(contract, {
+      jobs: [42 as unknown as Record<string, unknown>],
+    });
+    expect(result.shapeErrors).toEqual([
+      expect.objectContaining({
+        stepId: "jobs",
+        index: 0,
+        reason: "non_object_instance",
+      }),
+    ]);
+  });
+
+  it("rejects non-object non-array value for a non-repeatable step (lines 171-176)", () => {
+    // When raw is a primitive (not an array, not a plain object)
+    const contract = makeContract({ steps: [step("personal", ["name"])] });
+    const result = expandSubmission(contract, {
+      personal: "just-a-string" as unknown as Record<string, unknown>,
+    });
+    expect(result.shapeErrors).toEqual([
+      expect.objectContaining({
+        stepId: "personal",
+        reason: "non_object_instance",
+      }),
+    ]);
+  });
 });

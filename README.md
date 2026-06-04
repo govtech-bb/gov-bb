@@ -5,19 +5,19 @@ Modular form component system for Barbados government services.
 ## Prerequisites
 
 - Node.js >= 20
-- npm >= 10
+- pnpm >= 10 (`corepack enable` or `npm install -g pnpm@10.30.0`)
 
 ## Getting started
 
 ```bash
-npm install
+pnpm install
 ```
 
 ## Project structure
 
 ```
 apps/
-  web/          Next.js frontend (port 4200)
+  forms/        Next.js frontend (port 4200)
   api/          NestJS backend  (port 3001)
 
 packages/
@@ -29,35 +29,33 @@ packages/
 
 | Command | Description |
 |---|---|
-| `npm run dev:web` | Start web app in dev mode |
-| `npm run dev:api` | Start API in dev mode |
-| `npm run start:web` | Start web app in production mode |
-| `npm run start:api` | Start API in production mode |
-| `npm run build` | Build all apps and packages |
-| `npm run lint` | Lint all apps and packages |
-| `npm run format` | Format all files with Prettier |
-| `npm run format:check` | Check formatting without writing |
-| `npm run migration:generate -- <path>` | Generate a migration from entity changes |
-| `npm run migration:run` | Run all pending migrations |
-| `npm run migration:revert` | Revert the last migration |
-| `npm run migration:show` | Show applied / pending migration status |
+| `pnpm dev:forms` | Start forms app in dev mode |
+| `pnpm dev:api` | Start API in dev mode |
+| `pnpm dev:landing` | Start landing app in dev mode |
+| `pnpm start:forms` | Start forms app in production mode |
+| `pnpm start:api` | Start API in production mode |
+| `pnpm build` | Build all apps and packages |
+| `pnpm lint` | Lint all apps and packages |
+| `pnpm format` | Format all files with Prettier |
+| `pnpm format:check` | Check formatting without writing |
+| `pnpm migration:generate -- <path>` | Generate a migration from entity changes |
+| `pnpm migration:run` | Run all pending migrations |
+| `pnpm migration:revert` | Revert the last migration |
+| `pnpm migration:show` | Show applied / pending migration status |
 
 ## Environment variables
 
 Copy the example files and adjust as needed:
 
 ```bash
-cp apps/web/.env.example apps/web/.env
+cp apps/forms/.env.example apps/forms/.env
 cp apps/api/.env.example apps/api/.env
 ```
 
 | Variable | App | Default | Description |
 |---|---|---|---|
-| `PORT` | web | `4200` | Next.js server port |
-| `VITE_API_URL` | web | `http://localhost:3001` | API base URL |
-| `VITE_POSTHOG_KEY` | web | _unset_ | PostHog project key. Leave unset to disable form analytics. |
-| `VITE_POSTHOG_HOST` | web | `https://us.i.posthog.com` | PostHog ingestion host. |
-| `VITE_POSTHOG_ENV` | web | `development` | Environment tag attached to every event (`development`, `staging`, `production`). |
+| `PORT` | forms | `4200` | Next.js server port |
+| `VITE_API_URL` | forms | `http://localhost:3001` | API base URL |
 | `API_PORT` | api | `3001` | NestJS server port |
 | `DB_HOST` | api | `localhost` | PostgreSQL host |
 | `DB_PORT` | api | `5432` | PostgreSQL port |
@@ -66,12 +64,13 @@ cp apps/api/.env.example apps/api/.env
 | `DB_NAME` | api | `modular_forms` | Database name |
 | `DB_SYNCHRONIZE` | api | `false` | Auto-sync schema (dev only — never `true` in production) |
 | `DB_LOGGING` | api | `false` | Log all SQL queries |
+| `DB_SSL_CA` | api | _(unset)_ | Optional CA bundle (PEM contents or path) for verifying the DB TLS cert in production. If unset, Node's built-in trust store is used. |
 
 ## Deployment
 
-### Web (AWS Amplify)
+### Forms (AWS Amplify)
 
-The `amplify.yml` at the repo root configures the build. Amplify runs `npx nx build web` and serves from `apps/web/.next`.
+The `amplify.yml` at the repo root configures the build. Amplify runs `pnpm exec nx run forms:build` and serves from `apps/forms/dist`.
 
 Set environment variables in the Amplify console.
 
@@ -95,16 +94,16 @@ The TypeORM CLI DataSource is at `apps/api/typeorm.config.ts`. Run migrations fr
 
 ```bash
 # Generate a new migration from entity changes
-npm run migration:generate -- src/database/migrations/<MigrationName>
+pnpm migration:generate -- src/database/migrations/<MigrationName>
 
 # Run pending migrations
-npm run migration:run
+pnpm migration:run
 
 # Revert the last migration
-npm run migration:revert
+pnpm migration:revert
 
 # Show migration status
-npm run migration:show
+pnpm migration:show
 ```
 
 Migration files are stored in `apps/api/src/database/migrations/`.
@@ -121,7 +120,7 @@ Shared packages are available via these TypeScript path aliases (configured in `
 ## Nx
 
 ```bash
-npx nx graph          # Visualize the dependency graph
-npx nx show projects  # List all projects
-npx nx build web      # Build a single project
+pnpm exec nx graph              # Visualize the dependency graph
+pnpm exec nx show projects      # List all projects
+pnpm exec nx run forms:build    # Build a single project
 ```

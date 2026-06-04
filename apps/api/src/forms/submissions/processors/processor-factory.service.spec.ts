@@ -1,4 +1,4 @@
-import { Test } from "@nestjs/testing";
+import { Test, TestingModule } from "@nestjs/testing";
 import { Logger } from "@nestjs/common";
 import type { Processor } from "@govtech-bb/form-types";
 import { ProcessorFactory } from "./processor-factory.service";
@@ -16,13 +16,19 @@ const cfg = (type: string): Processor =>
   ({ type, config: {} }) as unknown as Processor;
 
 describe("ProcessorFactory", () => {
+  let module: TestingModule;
+
+  afterEach(async () => {
+    if (module) await module.close();
+  });
+
   describe("resolve", () => {
     let factory: ProcessorFactory;
     const emailProcessor = makeProcessor("email");
     const opencrvsProcessor = makeProcessor("opencrvs");
 
     beforeEach(async () => {
-      const module = await Test.createTestingModule({
+      module = await Test.createTestingModule({
         providers: [
           ProcessorFactory,
           {
@@ -67,6 +73,19 @@ describe("ProcessorFactory", () => {
 
       warn.mockRestore();
     });
+
+    it("returns a single handler per type when multiple same-type configs are present", () => {
+      // Internal iteration means each handler reads every matching entry
+      // itself — the factory must not enqueue duplicate dispatches.
+      const resolved = factory.resolve([
+        cfg("email"),
+        cfg("email"),
+        cfg("opencrvs"),
+      ]);
+
+      expect(resolved).toHaveLength(2);
+      expect(resolved).toEqual([emailProcessor, opencrvsProcessor]);
+    });
   });
 
   describe("resolve with partial registry", () => {
@@ -74,7 +93,7 @@ describe("ProcessorFactory", () => {
     const emailProcessor = makeProcessor("email");
 
     beforeEach(async () => {
-      const module = await Test.createTestingModule({
+      module = await Test.createTestingModule({
         providers: [
           ProcessorFactory,
           {
@@ -101,7 +120,7 @@ describe("ProcessorFactory", () => {
     const emailProcessor = makeProcessor("email");
 
     beforeEach(async () => {
-      const module = await Test.createTestingModule({
+      module = await Test.createTestingModule({
         providers: [
           ProcessorFactory,
           { provide: SUBMISSION_PROCESSORS, useValue: [emailProcessor] },
@@ -129,7 +148,7 @@ describe("ProcessorFactory", () => {
     };
 
     beforeEach(async () => {
-      const module = await Test.createTestingModule({
+      module = await Test.createTestingModule({
         providers: [
           ProcessorFactory,
           {

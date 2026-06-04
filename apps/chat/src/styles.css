@@ -1,0 +1,109 @@
+@import "@fontsource/figtree/400.css";
+@import "@fontsource/figtree/500.css";
+@import "@fontsource/figtree/600.css";
+@import "@fontsource/figtree/700.css";
+@import "tailwindcss";
+@import "@govtech-bb/design";
+@source "../../../node_modules/@govtech-bb/react/dist/**/*.{js,cjs}";
+@plugin "@tailwindcss/typography";
+
+@theme {
+  --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
+}
+
+@keyframes shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+
+@keyframes bot-hum {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@theme {
+  --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
+}
+
+@keyframes shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+
+@keyframes bot-hum {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@utility text-bubble {
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-caption);
+  @media (min-width: 768px) {
+    font-size: var(--font-size-body);
+    line-height: var(--line-height-body);
+  }
+}
+
+@utility text-disclaimer {
+  font-size: 0.875rem;
+  line-height: var(--line-height-caption);
+  @media (min-width: 768px) {
+    font-size: var(--font-size-caption);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-white-00);
+  color: var(--color-black-00);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+
+@utility container {
+  margin-inline: auto;
+  width: 100%;
+  padding-inline: 1rem;
+
+  @media (min-width: 1024px) {
+    max-width: 1200px;
+    padding-inline: 8rem;
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Composer field grows with its content where supported (Chromium, Safari),
+   capped before it crowds the conversation. Firefox lacks field-sizing, so it
+   keeps the default single-row box the user can drag to resize. */
+.composer-field textarea {
+  max-height: 12rem;
+}
+
+@supports (field-sizing: content) {
+  .composer-field textarea {
+    field-sizing: content;
+    resize: none;
+  }
+}

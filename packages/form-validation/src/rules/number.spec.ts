@@ -101,6 +101,30 @@ describe("ltRunner", () => {
   it("skips when reference is missing", () => {
     expect(ltRunner(100, cfg(undefined, undefined, "maxAge"), {})).toBeNull();
   });
+
+  it("fails when value >= config.value with no referenceFieldId (MISSING path)", () => {
+    expect(ltRunner(10, cfg(5), {})).toBe("Must be less than 5");
+  });
+
+  it("passes when value < config.value with no referenceFieldId (MISSING path)", () => {
+    expect(ltRunner(3, cfg(5), {})).toBeNull();
+  });
+
+  it("uses referenced field via flat fallback", () => {
+    expect(
+      ltRunner(3, cfg(undefined, undefined, "maxAge"), {
+        "step-1": { maxAge: 5 },
+      }),
+    ).toBeNull();
+  });
+
+  it("fails when value >= resolved reference field", () => {
+    expect(
+      ltRunner(10, cfg(undefined, undefined, "maxAge"), {
+        "step-1": { maxAge: 5 },
+      }),
+    ).toBe("Must be less than maxAge");
+  });
 });
 
 describe("equalRunner", () => {
@@ -132,6 +156,22 @@ describe("equalRunner", () => {
   it("skips when reference missing", () => {
     expect(equalRunner(1, cfg(undefined, undefined, "qty"), {})).toBeNull();
   });
+
+  it("passes for case-insensitive text equality", () => {
+    expect(equalRunner("Yes", cfg("yes"), {})).toBeNull();
+  });
+
+  it("fails when text values differ", () => {
+    expect(equalRunner("yes", cfg("no"), {})).toBe("Must equal no");
+  });
+
+  it("matches a referenced text field", () => {
+    expect(
+      equalRunner("Barbados", cfg(undefined, undefined, "country"), {
+        "step-1": { country: "barbados" },
+      }),
+    ).toBeNull();
+  });
 });
 
 describe("notEqualRunner", () => {
@@ -153,5 +193,13 @@ describe("notEqualRunner", () => {
 
   it("skips when reference missing", () => {
     expect(notEqualRunner(1, cfg(undefined, undefined, "qty"), {})).toBeNull();
+  });
+
+  it("passes when text values differ", () => {
+    expect(notEqualRunner("yes", cfg("no"), {})).toBeNull();
+  });
+
+  it("fails for case-insensitive text equality", () => {
+    expect(notEqualRunner("Yes", cfg("yes"), {})).toBe("Must not equal yes");
   });
 });

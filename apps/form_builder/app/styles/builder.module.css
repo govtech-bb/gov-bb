@@ -1,7 +1,76 @@
+/* ── Buttons ─────────────────────────────────────── */
+
+.btnPrimary {
+  background: var(--color-accent);
+  color: white;
+  border-color: var(--color-accent);
+}
+
+.btnPrimary:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
+}
+
+.btnDanger {
+  background: var(--color-danger);
+  color: white;
+  border-color: var(--color-danger);
+}
+
+.btnDanger:hover:not(:disabled) {
+  background: #b91c1c;
+  border-color: #b91c1c;
+}
+
+/* Erase is permanent (deletes the on-disk recipe via PR), so it reads stronger
+   than the reversible Disable: a darker, heavier red so the two destructive
+   actions on a live published row aren't confused. */
+.btnErase {
+  background: #7f1d1d;
+  color: white;
+  border-color: #7f1d1d;
+  font-weight: 600;
+}
+
+.btnErase:hover:not(:disabled) {
+  background: #5f1414;
+  border-color: #5f1414;
+}
+
+.btnSwitch {
+  background: #7c3aed;
+  color: white;
+  border-color: #7c3aed;
+}
+
+.btnSwitch:hover:not(:disabled) {
+  background: #6d28d9;
+  border-color: #6d28d9;
+}
+
+/* ── Inputs & textareas ───────────────────────────── */
+
+.formGroup input,
+.formGroup textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ── Layout ──────────────────────────────────────── */
+
+/* The editor and the docked AI sidebar sit side by side. */
+.builderShell {
+  display: flex;
+  height: 100vh;
+}
+
 .builderRoot {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  background: var(--color-bg);
 }
 
 .builderBody {
@@ -10,32 +79,87 @@
   overflow: hidden;
 }
 
+/* ── Toolbar ─────────────────────────────────────── */
+
 .toolbar {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
-  border-bottom: 1px solid #ccc;
-  background: #f8f8f8;
+  padding: 10px 20px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.toolbar input {
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  margin-left: 4px;
 }
 
 .toolbarTitle {
-  font-size: 1rem;
-  font-weight: bold;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text);
+  letter-spacing: -0.01em;
   margin-right: auto;
 }
 
+.toolbarHint {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  max-width: 220px;
+  line-height: 1.3;
+}
+
+/* ── Step list ───────────────────────────────────── */
+
 .stepList {
   width: 240px;
-  border-right: 1px solid #ccc;
+  border-right: 1px solid var(--color-border);
   overflow-y: auto;
-  padding: 8px;
+  padding: 12px 8px;
+  background: var(--color-surface);
 }
+
+.stepListAddButton {
+  border: 1px dashed var(--color-border-strong);
+  color: var(--color-text-muted);
+  background: transparent;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.stepRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  cursor: pointer;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  color: var(--color-text);
+  transition: background 0.1s;
+}
+
+.stepRow:hover {
+  background: var(--color-bg);
+}
+
+.stepRowActive {
+  background: var(--color-accent-light);
+  color: var(--color-accent);
+  font-weight: 500;
+}
+
+/* ── Step editor ─────────────────────────────────── */
 
 .stepEditor {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
+  padding: 24px;
+  background: var(--color-bg);
 }
 
 .noStepSelected {
@@ -43,13 +167,16 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #888;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
 }
+
+/* ── Modal ───────────────────────────────────────── */
 
 .modal {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -57,71 +184,155 @@
 }
 
 .modalContent {
-  background: white;
-  border-radius: 6px;
-  padding: 24px;
+  background: var(--color-surface);
+  border-radius: 10px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  padding: 28px 32px;
+  border: 1px solid var(--color-border);
   min-width: 400px;
   max-width: 80vw;
   max-height: 80vh;
   overflow-y: auto;
 }
 
-.tabs {
-  display: flex;
-  gap: 0;
-  border-bottom: 1px solid #ccc;
+/* ── Field picker search ─────────────────────────── */
+
+.pickerSearch {
+  position: relative;
   margin-bottom: 12px;
 }
 
+.pickerSearchInput {
+  width: 100%;
+  padding: 8px 28px 8px 10px;
+  font-size: 0.875rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.pickerSearchInput:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.pickerSearchClear {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 0;
+}
+
+.pickerSearchClear:hover {
+  color: var(--color-text);
+}
+
+.pickerHintLink {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: var(--color-accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* ── Tabs ────────────────────────────────────────── */
+
+.tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--color-border);
+  margin-bottom: 16px;
+}
+
 .tab {
-  padding: 6px 16px;
+  padding: 8px 16px;
   cursor: pointer;
   border: none;
   background: none;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  transition: color 0.1s;
+}
+
+.tab:hover {
+  color: var(--color-text);
 }
 
 .tabActive {
-  border-bottom: 2px solid #0066cc;
-  font-weight: bold;
+  color: var(--color-accent);
+  font-weight: 600;
+  border-bottom: 2px solid var(--color-accent);
+  margin-bottom: -2px;
 }
+
+/* ── Field row ───────────────────────────────────── */
 
 .fieldRow {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 0;
-  border-bottom: 1px solid #eee;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  margin-bottom: 6px;
+  background: var(--color-surface);
+  transition: border-color 0.1s;
 }
 
-.stepRow {
+.fieldRow:hover {
+  border-color: var(--color-border-strong);
+}
+
+.dragHandle {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px;
-  cursor: pointer;
-  border-radius: 4px;
+  justify-content: center;
+  padding: 0 4px;
+  border: none;
+  background: none;
+  color: var(--color-text-muted);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: grab;
+  touch-action: none;
 }
 
-.stepRowActive {
-  background: #e8f0fe;
+.dragHandle:active {
+  cursor: grabbing;
 }
 
-.validationSuccess {
-  padding: 8px 16px;
-  background: #e6f4ea;
-  color: #1b5e20;
+.fieldRowSecondary {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
 }
 
-.validationErrors {
-  padding: 8px 16px;
-  background: #fce8e6;
-  color: #b71c1c;
-}
+/* ── Section title ───────────────────────────────── */
 
 .sectionTitle {
-  font-weight: bold;
-  margin: 16px 0 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  margin: 20px 0 8px;
 }
+
+/* ── Form group ──────────────────────────────────── */
 
 .formGroup {
   display: flex;
@@ -130,9 +341,280 @@
   margin-bottom: 12px;
 }
 
+.formGroup label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+/* ── Badges ──────────────────────────────────────── */
+
 .badge {
   font-size: 0.7rem;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.publishedBadge {
+  font-size: 0.7rem;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: var(--color-warning-light);
+  color: var(--color-warning-text);
+  margin-left: 4px;
+}
+
+.disabledBadge {
+  font-size: 0.7rem;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: var(--color-danger);
+  color: white;
+  margin-left: 4px;
+}
+
+/* ── Validation banners ───────────────────────────── */
+
+.validationSuccess {
+  background: var(--color-success-light);
+  color: var(--color-success);
+  border-left: 3px solid var(--color-success);
+  padding: 10px 16px;
+  font-size: 0.875rem;
+}
+
+.validationErrors {
+  background: var(--color-danger-light);
+  color: var(--color-danger);
+  border-left: 3px solid var(--color-danger);
+  padding: 10px 16px;
+  font-size: 0.875rem;
+}
+
+/* ── Toolbar status badge ─────────────────────────── */
+
+.statusOk {
+  color: var(--color-success, #1f7a3a);
+  font-size: 0.8rem;
   padding: 2px 6px;
-  border-radius: 3px;
-  background: #e0e0e0;
+  background: var(--color-success-light, #e6f4ea);
+  border-radius: 4px;
+}
+
+.statusError {
+  color: var(--color-danger);
+  font-size: 0.8rem;
+  padding: 2px 6px;
+  background: var(--color-danger-light);
+  border-radius: 4px;
+}
+
+/* Unsaved-changes indicator — amber, distinct from the green/red save status
+   it sits beside, to read as "pending" rather than success or failure. */
+.statusUnsaved {
+  color: var(--color-warning-text);
+  font-size: 0.8rem;
+  padding: 2px 6px;
+  background: var(--color-warning-light);
+  border-radius: 4px;
+}
+
+/* ── Override indicators ──────────────────────────── */
+
+.overrideDot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-accent, #1565c0);
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.overrideField {
+  border-left: 3px solid var(--color-accent, #1565c0);
+  padding-left: 8px;
+}
+
+/* Inherited (base component) validation rule: read-only, visually muted to
+   distinguish it from author-set overrides (#618). */
+.inheritedRow {
+  border-left: 3px dashed var(--color-border, #d4d4d4);
+  padding-left: 8px;
+}
+
+.inheritedTag {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted, #6b7280);
+  background: var(--color-surface-muted, #f3f4f6);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+/* ── Select fields ────────────────────────────────── */
+
+.formGroup select {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--color-border, #d4d4d4);
+  border-radius: 4px;
+  background: var(--color-surface, #fff);
+  font-size: 0.9rem;
+  appearance: auto;
+}
+
+.formGroup select:focus {
+  outline: 2px solid var(--color-accent, #1565c0);
+  outline-offset: -1px;
+}
+
+/* ── Checkbox rows ────────────────────────────────── */
+
+.checkRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkRow label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+
+.checkRow input[type="checkbox"] {
+  margin: 0;
+  vertical-align: middle;
+}
+
+/* ── Processors ──────────────────────────────────── */
+
+/* Rail entry for the form-level processors view. */
+.processorsRow {
+  margin-top: 8px;
+  border-top: 1px solid var(--color-border);
+  padding-top: 12px;
+  border-radius: 0;
+}
+
+.processorsEditor {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  background: var(--color-bg);
+}
+
+.processorWarning {
+  margin: 8px 0 16px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+}
+
+.addProcessorRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.addProcessorRow label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.noProcessors {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  padding: 8px 0;
+}
+
+.processorCard {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+  background: var(--color-surface);
+}
+
+.processorCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.processorReadOnly {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.fieldLabel {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+/* ── Key/value editor ────────────────────────────── */
+
+.keyValueEditor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.keyValueRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.keyValueRow input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Options editor ──────────────────────────────── */
+
+.optionsEditor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.optionsRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.optionsRow input[type="text"] {
+  flex: 1;
+  min-width: 0;
+}
+
+.optionsDisabled {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.optionsActions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
 }

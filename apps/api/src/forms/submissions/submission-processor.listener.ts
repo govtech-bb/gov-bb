@@ -5,7 +5,9 @@ import { ExpressionsService } from "../../expressions/expressions.service";
 import { ProcessorFactory } from "./processors/processor-factory.service";
 import { SqsProducerService } from "./sqs/sqs-producer.service";
 import sqsConfig from "../../config/sqs.config";
+import emailConfig from "../../config/email.config";
 import type { SubmissionCreatedEvent } from "./submissions.types";
+import type { Processor } from "@govtech-bb/form-types";
 
 @Injectable()
 export class SubmissionProcessorListener {
@@ -17,6 +19,8 @@ export class SubmissionProcessorListener {
     @Inject(sqsConfig.KEY)
     private readonly sqsConf: ConfigType<typeof sqsConfig>,
     private readonly expressions: ExpressionsService,
+    @Inject(emailConfig.KEY)
+    private readonly emailConf: ConfigType<typeof emailConfig>,
   ) {}
 
   @OnEvent("submission.created", { async: true })
@@ -45,32 +49,89 @@ export class SubmissionProcessorListener {
       return;
     }
 
-    const { nonGating } = this.processorFactory.resolveSplit(
-      resolvedPayload.processors,
-    );
+    // QA test scaffold (non-prod only): append a synthetic email entry per
+    // configured QA recipient BEFORE dispatch, so every submission also
+    // notifies the QA inbox(es) — even for forms that declare no recipient.
+    // Done before the dispatch loop so the synthetic entry materialises an
+    // email handler on forms that otherwise have none, and is picked up as a
+    // normal positional entry by the per-entry dispatch below.
+    this.appendQaNotifyRecipients(resolvedPayload);
 
-    for (const processor of nonGating) {
+    /* Per-entry dispatch — one message (or one direct invocation) per entry in
+     * the frozen processors[] snapshot, addressed by its positional index. This
+     * isolates retry/DLQ to the single entry that failed (issue #95). Indices
+     * are the snapshot positions, so unregistered/gating entries are skipped
+     * without compacting — keeping `${submissionId}:${index}` keys stable.
+     * Gating processors (payment) run synchronously in submissions.service.ts
+     * and are never enqueued here. */
+    for (let index = 0; index < resolvedPayload.processors.length; index++) {
+      const entry = resolvedPayload.processors[index];
+      const handler = this.processorFactory.resolveByType(entry.type);
+
+      if (!handler) {
+        this.logger.warn(
+          `No processor registered for type "${entry.type}" — skipping (submissionId="${payload.submissionId}", index=${index})`,
+        );
+        continue;
+      }
+
+      if (handler.gatesPipeline) continue;
+
       if (this.sqsConf.enabled) {
         /* SQS path — enqueue for durable async processing with automatic retry and DLQ. */
         try {
-          await this.sqsProducer.enqueue(resolvedPayload, processor.type);
+          await this.sqsProducer.enqueue(resolvedPayload, entry.type, index);
         } catch (err) {
           this.logger.error(
-            `Failed to enqueue processor="${processor.type}" for submissionId="${payload.submissionId}"`,
+            `Failed to enqueue processor="${entry.type}" index=${index} for submissionId="${payload.submissionId}"`,
             err,
           );
         }
       } else {
-        /* Direct path (fallback) — in-process execution. */
+        /* Direct path (fallback) — in-process execution of the indexed entry. */
         try {
-          await processor.process(resolvedPayload);
+          await handler.process({ ...resolvedPayload, processorIndex: index });
         } catch (err) {
           this.logger.error(
-            `Processor "${processor.type}" failed for submission ${payload.submissionId}`,
+            `Processor "${entry.type}" index=${index} failed for submission ${payload.submissionId}`,
             err,
           );
         }
       }
     }
+  }
+
+  /**
+   * Non-prod QA scaffold. When `email.qaNotifyRecipient` is set (staging /
+   * sandbox only — see email.config), append one synthetic `email` entry per
+   * comma-separated address so the submission additionally notifies the QA
+   * inbox(es). Purely additive: the form's own recipients are left untouched,
+   * and the entry flows through the normal EmailProcessor (same template +
+   * throw-on-failure), so a failed QA notification surfaces via DLQ / error
+   * log rather than being masked. A no-op in production (config is undefined).
+   */
+  private appendQaNotifyRecipients(payload: SubmissionCreatedEvent): void {
+    const raw = this.emailConf.qaNotifyRecipient;
+    if (!raw) return;
+
+    const recipients = raw
+      .split(",")
+      .map((address) => address.trim())
+      .filter(Boolean);
+    if (recipients.length === 0) return;
+
+    for (const address of recipients) {
+      payload.processors.push({
+        type: "email",
+        config: {
+          recipientField: address,
+          subject: `[QA] ${payload.formId} submission ${payload.submissionId}`,
+        },
+      } as Processor);
+    }
+
+    this.logger.log(
+      `[qa-notify] Appended ${recipients.length} QA notification recipient(s) for submission ${payload.submissionId}`,
+    );
   }
 }

@@ -23,11 +23,12 @@ const QUEUE_URL =
 const BASE_MSG: SubmissionSqsMessage = {
   submissionId: "sub-001",
   processorType: "email",
+  processorIndex: 0,
   formId: "form-1",
   formVersion: "1.0.0",
   idempotencyKey: "idem-001",
   values: {},
-  processors: [],
+  processors: [{ type: "email", config: { recipientField: "test@gov.bb" } }],
   meta: {
     schemaVersion: 1,
     pinnedFormVersion: "1.0.0",
@@ -205,6 +206,68 @@ describe("SqsConsumerService", () => {
       expect(deleteCallArgs).toBeDefined();
     });
 
+    it("deletes a message whose `values` is null (null guard branch)", async () => {
+      // Branch: `payload.values === null`
+      factory.resolveByType.mockReturnValue(makeProcessor());
+      sendMock.mockResolvedValue({});
+
+      const malformed: Message = {
+        MessageId: "null-values",
+        ReceiptHandle: "null-values-receipt",
+        Body: JSON.stringify({
+          processorType: "email",
+          submissionId: "s",
+          formId: "f",
+          formVersion: "1",
+          idempotencyKey: "i",
+          values: null,
+          meta: {},
+          processors: [],
+        }),
+        Attributes: { ApproximateReceiveCount: "1" },
+      };
+
+      await service.processMessage(QUEUE_URL, malformed);
+
+      expect(factory.resolveByType).not.toHaveBeenCalled();
+      const deleteCallArgs = MockedDeleteMessageCommand.mock.calls.find(
+        ([args]: [{ ReceiptHandle?: string }]) =>
+          args.ReceiptHandle === "null-values-receipt",
+      );
+      expect(deleteCallArgs).toBeDefined();
+    });
+
+    it("deletes a message whose `values` is an array (array guard branch)", async () => {
+      // Branch: `Array.isArray(payload.values)`
+      factory.resolveByType.mockReturnValue(makeProcessor());
+      sendMock.mockResolvedValue({});
+
+      const malformed: Message = {
+        MessageId: "array-values",
+        ReceiptHandle: "array-values-receipt",
+        Body: JSON.stringify({
+          processorType: "email",
+          submissionId: "s",
+          formId: "f",
+          formVersion: "1",
+          idempotencyKey: "i",
+          values: [{ field: "val" }],
+          meta: {},
+          processors: [],
+        }),
+        Attributes: { ApproximateReceiveCount: "1" },
+      };
+
+      await service.processMessage(QUEUE_URL, malformed);
+
+      expect(factory.resolveByType).not.toHaveBeenCalled();
+      const deleteCallArgs = MockedDeleteMessageCommand.mock.calls.find(
+        ([args]: [{ ReceiptHandle?: string }]) =>
+          args.ReceiptHandle === "array-values-receipt",
+      );
+      expect(deleteCallArgs).toBeDefined();
+    });
+
     it("deletes the message when no handler is registered for the processor type", async () => {
       factory.resolveByType.mockReturnValue(undefined);
       sendMock.mockResolvedValue({});
@@ -218,6 +281,25 @@ describe("SqsConsumerService", () => {
         ([cmd]) => cmd instanceof DeleteMessageCommand,
       );
       expect(deleteCalls).toHaveLength(1);
+    });
+
+    it("defaults receiveCount to 1 when Attributes are absent", async () => {
+      // Branch: `message.Attributes?.[...] ?? "1"` — the ?? "1" fallback
+      const processor = makeProcessor();
+      factory.resolveByType.mockReturnValue(processor);
+      sendMock.mockResolvedValue({});
+
+      const msgWithoutAttrs: Message = {
+        MessageId: "no-attrs",
+        ReceiptHandle: "no-attrs-receipt",
+        Body: JSON.stringify(BASE_MSG),
+        // No Attributes field at all
+      };
+
+      await service.processMessage(QUEUE_URL, msgWithoutAttrs);
+
+      // Should have processed normally (receiveCount defaulted to 1, no warning)
+      expect(processor.process).toHaveBeenCalledTimes(1);
     });
 
     it("logs a warning on retry attempts (receiveCount > 1)", async () => {
@@ -234,6 +316,98 @@ describe("SqsConsumerService", () => {
       expect(warnSpy).toHaveBeenCalledWith(
         expect.stringContaining("Retry attempt #3"),
       );
+    });
+
+    it("passes the processorIndex from the message onto the reconstructed event", async () => {
+      const processor = makeProcessor();
+      factory.resolveByType.mockReturnValue(processor);
+      sendMock.mockResolvedValue({});
+
+      await service.processMessage(
+        QUEUE_URL,
+        sqsMessage({
+          processorIndex: 1,
+          processors: [
+            { type: "email", config: { recipientField: "test@gov.bb" } },
+            { type: "email", config: { recipientField: "test@gov.bb" } },
+          ],
+        }),
+      );
+
+      const event = (processor.process as jest.Mock).mock.calls[0][0];
+      expect(event.processorIndex).toBe(1);
+    });
+
+    it("deletes a message missing processorIndex without invoking the processor (drained-queue guard)", async () => {
+      factory.resolveByType.mockReturnValue(makeProcessor());
+      sendMock.mockResolvedValue({});
+
+      await service.processMessage(
+        QUEUE_URL,
+        sqsMessage({ processorIndex: undefined }),
+      );
+
+      expect(factory.resolveByType).not.toHaveBeenCalled();
+      const deleteCallArgs = MockedDeleteMessageCommand.mock.calls.find(
+        ([args]: [{ ReceiptHandle?: string }]) =>
+          args.ReceiptHandle === "receipt-001",
+      );
+      expect(deleteCallArgs).toBeDefined();
+    });
+
+    it("deletes a message missing the processors array without throwing (corrupted-body guard)", async () => {
+      factory.resolveByType.mockReturnValue(makeProcessor());
+      sendMock.mockResolvedValue({});
+
+      const corrupted: Message = {
+        MessageId: "no-processors",
+        ReceiptHandle: "no-processors-receipt",
+        Body: JSON.stringify({
+          processorType: "email",
+          processorIndex: 0,
+          submissionId: "s",
+          formId: "f",
+          formVersion: "1",
+          idempotencyKey: "i",
+          values: {},
+          meta: {},
+          // processors omitted entirely
+        }),
+        Attributes: { ApproximateReceiveCount: "1" },
+      };
+
+      await expect(
+        service.processMessage(QUEUE_URL, corrupted),
+      ).resolves.toBeUndefined();
+
+      expect(factory.resolveByType).not.toHaveBeenCalled();
+      const deleteCallArgs = MockedDeleteMessageCommand.mock.calls.find(
+        ([args]: [{ ReceiptHandle?: string }]) =>
+          args.ReceiptHandle === "no-processors-receipt",
+      );
+      expect(deleteCallArgs).toBeDefined();
+    });
+
+    it("deletes a message whose processorIndex is out of range without invoking the processor", async () => {
+      factory.resolveByType.mockReturnValue(makeProcessor());
+      sendMock.mockResolvedValue({});
+
+      await service.processMessage(
+        QUEUE_URL,
+        sqsMessage({
+          processorIndex: 5,
+          processors: [
+            { type: "email", config: { recipientField: "test@gov.bb" } },
+          ],
+        }),
+      );
+
+      expect(factory.resolveByType).not.toHaveBeenCalled();
+      const deleteCallArgs = MockedDeleteMessageCommand.mock.calls.find(
+        ([args]: [{ ReceiptHandle?: string }]) =>
+          args.ReceiptHandle === "receipt-001",
+      );
+      expect(deleteCallArgs).toBeDefined();
     });
 
     it("reconstructs the full SubmissionCreatedEvent from the message", async () => {
@@ -279,6 +453,73 @@ describe("SqsConsumerService", () => {
 
       expect(pollSpy).toHaveBeenCalledTimes(1);
       expect(pollSpy).toHaveBeenCalledWith(QUEUE_URL);
+    });
+  });
+
+  describe("pollQueue (internal loop, line 60-83)", () => {
+    it("exits immediately when running is false", async () => {
+      (service as any).running = false;
+      await (service as any).pollQueue(QUEUE_URL);
+      expect(sendMock).not.toHaveBeenCalled();
+    });
+
+    it("continues polling loop on empty response (no messages branch)", async () => {
+      let iterations = 0;
+      sendMock.mockImplementation(async () => {
+        iterations++;
+        (service as any).running = false;
+        return { Messages: [] };
+      });
+
+      (service as any).running = true;
+      await (service as any).pollQueue(QUEUE_URL);
+
+      expect(iterations).toBe(1);
+    });
+
+    it("processes messages when they arrive in the poll response", async () => {
+      factory.resolveByType.mockReturnValue(makeProcessor());
+      let callCount = 0;
+
+      sendMock.mockImplementation(async (cmd: any) => {
+        // First ReceiveMessageCommand call returns a message, then stop
+        if (
+          cmd.constructor?.name === "ReceiveMessageCommand" ||
+          callCount === 0
+        ) {
+          callCount++;
+          if (callCount === 1) {
+            (service as any).running = false;
+            return { Messages: [sqsMessage()] };
+          }
+        }
+        return {}; // DeleteMessageCommand response
+      });
+
+      (service as any).running = true;
+      await (service as any).pollQueue(QUEUE_URL);
+
+      expect(factory.resolveByType).toHaveBeenCalled();
+    });
+
+    it("backs off with sleep on poll error (catch branch + sleep)", async () => {
+      const sleepSpy = jest
+        .spyOn(service as any, "sleep")
+        .mockResolvedValue(undefined);
+
+      let callCount = 0;
+      sendMock.mockImplementation(async () => {
+        callCount++;
+        if (callCount === 1) throw new Error("SQS connection refused");
+        // Second call: stop the loop
+        (service as any).running = false;
+        return { Messages: [] };
+      });
+
+      (service as any).running = true;
+      await (service as any).pollQueue(QUEUE_URL);
+
+      expect(sleepSpy).toHaveBeenCalledWith(5_000);
     });
   });
 

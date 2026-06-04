@@ -27,6 +27,38 @@ const past = "2000-01-01";
 const future = "2099-12-31";
 const todayStr = new Date().toISOString().split("T")[0]!;
 
+describe("parseDate — DateValue object format", () => {
+  it("parses a valid DateValue object", () => {
+    expect(pastRunner({ day: 1, month: 1, year: 2000 }, cfg(), {})).toBeNull();
+  });
+
+  it("returns error when DateValue has day=0", () => {
+    expect(pastRunner({ day: 0, month: 1, year: 2000 }, cfg(), {})).toBe(
+      "Date must be in the past",
+    );
+  });
+
+  it("returns error when DateValue has month=0", () => {
+    expect(pastRunner({ day: 1, month: 0, year: 2000 }, cfg(), {})).toBe(
+      "Date must be in the past",
+    );
+  });
+
+  it("returns error when DateValue has year=0", () => {
+    expect(pastRunner({ day: 1, month: 1, year: 0 }, cfg(), {})).toBe(
+      "Date must be in the past",
+    );
+  });
+
+  it("returns error for non-string non-object value", () => {
+    expect(pastRunner(12345, cfg(), {})).toBe("Date must be in the past");
+  });
+
+  it("returns error for null value", () => {
+    expect(pastRunner(null, cfg(), {})).toBe("Date must be in the past");
+  });
+});
+
 describe("pastRunner", () => {
   it("passes for a past date", () => {
     expect(pastRunner(past, cfg(), {})).toBeNull();
@@ -175,6 +207,22 @@ describe("beforeRunner", () => {
       beforeRunner("2020-06-01", cfg(undefined, undefined, "endDate"), {}),
     ).toBeNull();
   });
+
+  it("uses referenced field via flat fallback", () => {
+    expect(
+      beforeRunner("2020-01-01", cfg(undefined, undefined, "endDate"), {
+        "step-1": { endDate: "2020-06-01" },
+      }),
+    ).toBeNull();
+  });
+
+  it("fails when date is after resolved reference field", () => {
+    expect(
+      beforeRunner("2020-12-01", cfg(undefined, undefined, "endDate"), {
+        "step-1": { endDate: "2020-06-01" },
+      }),
+    ).toBe("Date must be before endDate");
+  });
 });
 
 describe("onOrAfterRunner", () => {
@@ -191,6 +239,28 @@ describe("onOrAfterRunner", () => {
       "Date must be on or after 2020-01-01",
     );
   });
+
+  it("skips when reference field is missing", () => {
+    expect(
+      onOrAfterRunner("2019-01-01", cfg(undefined, undefined, "startDate"), {}),
+    ).toBeNull();
+  });
+
+  it("uses referenced field via flat fallback", () => {
+    expect(
+      onOrAfterRunner("2020-06-01", cfg(undefined, undefined, "startDate"), {
+        "step-1": { startDate: "2020-01-01" },
+      }),
+    ).toBeNull();
+  });
+
+  it("fails when date is before resolved reference field", () => {
+    expect(
+      onOrAfterRunner("2019-12-31", cfg(undefined, undefined, "startDate"), {
+        "step-1": { startDate: "2020-01-01" },
+      }),
+    ).toBe("Date must be on or after startDate");
+  });
 });
 
 describe("onOrBeforeRunner", () => {
@@ -206,6 +276,78 @@ describe("onOrBeforeRunner", () => {
     expect(onOrBeforeRunner("2020-06-01", cfg("2020-01-01"), {})).toBe(
       "Date must be on or before 2020-01-01",
     );
+  });
+});
+
+describe("parseDate — DD/MM/YYYY literal thresholds (#633)", () => {
+  // The comparison runners route the literal `config.value` threshold through
+  // parseDate. Barbados authors type thresholds as DD/MM/YYYY (day-first), so a
+  // `/`-separated string must parse day-first rather than as US MM/DD or
+  // Invalid Date.
+
+  it("parses a DD/MM/YYYY threshold day-first (31/12/2020 = 31 Dec 2020)", () => {
+    // 1 Jan 2021 is after 31 Dec 2020.
+    expect(afterRunner("2021-01-01", cfg("31/12/2020"), {})).toBeNull();
+    // 30 Dec 2020 is not after 31 Dec 2020.
+    expect(afterRunner("2020-12-30", cfg("31/12/2020"), {})).toBe(
+      "Date must be after 31/12/2020",
+    );
+  });
+
+  it("parses 01/02/2020 as 1 Feb (day-first), not 2 Jan (US MM/DD)", () => {
+    // 15 Jan 2020 is before 1 Feb 2020 (day-first) -> `before` passes.
+    // Were it misread as 2 Jan (US MM/DD), 15 Jan would be *after* -> `before`
+    // would fail. This asserts the day-first interpretation.
+    expect(beforeRunner("2020-01-15", cfg("01/02/2020"), {})).toBeNull();
+    expect(afterRunner("2020-01-15", cfg("01/02/2020"), {})).toBe(
+      "Date must be after 01/02/2020",
+    );
+  });
+
+  it("still parses ISO (YYYY-MM-DD) thresholds (apps/api regression guard)", () => {
+    expect(afterRunner("2020-06-01", cfg("2020-12-31"), {})).toBe(
+      "Date must be after 2020-12-31",
+    );
+    expect(afterRunner("2021-01-01", cfg("2020-12-31"), {})).toBeNull();
+  });
+
+  it("accepts single-digit day/month (1/2/2020 = 1 Feb 2020)", () => {
+    expect(beforeRunner("2020-01-15", cfg("1/2/2020"), {})).toBeNull();
+    expect(afterRunner("2020-01-15", cfg("1/2/2020"), {})).toBe(
+      "Date must be after 1/2/2020",
+    );
+  });
+
+  it.each([
+    // wrong shape
+    "31/12",
+    "1/2/3/4",
+    // non-numeric / non-canonical segments (Number() must not coerce these)
+    "aa/bb/cccc",
+    "0x10/01/2020",
+    "12.5/6/2020",
+    " 5 /6/2020",
+    // short / typo year
+    "1/2/3",
+    // out-of-range components Date.UTC would silently roll over
+    "31/02/2020",
+    "32/01/2020",
+    "31/13/2020",
+    "00/00/0000",
+  ])(
+    "treats malformed '/'-separated threshold %s as unparseable -> rule fires",
+    (bad) => {
+      expect(afterRunner("2021-01-01", cfg(bad), {})).toBe(
+        `Date must be after ${bad}`,
+      );
+    },
+  );
+
+  it("bare-year '2020' falls through to ISO parsing, not the DD/MM fork", () => {
+    // No '/', so parseDate uses new Date("2020") = 1 Jan 2020 UTC (a valid ISO
+    // year). The DD/MM/YYYY fork only governs '/'-separated input; the shared
+    // ISO path is left untouched so apps/api date values keep parsing.
+    expect(afterRunner("2021-01-01", cfg("2020"), {})).toBeNull();
   });
 });
 
@@ -235,6 +377,70 @@ describe("maxYearRunner", () => {
   it("fails when year > maxYear", () => {
     expect(maxYearRunner("2100-01-01", cfg(2099), {})).toBe(
       "Year must be 2099 or earlier",
+    );
+  });
+});
+
+// Plain numeric-year inputs: `minYear`/`maxYear` also apply to number fields
+// (e.g. a 4-digit "Year" input), where the value is a bare number or numeric
+// string rather than a date. The runner compares it as a year directly.
+describe("minYear/maxYear — plain numeric year inputs", () => {
+  it("maxYear passes for a numeric year <= max", () => {
+    expect(maxYearRunner(2020, cfg(2099), {})).toBeNull();
+    expect(maxYearRunner("2020", cfg(2099), {})).toBeNull();
+  });
+
+  it("maxYear fails for a numeric year > max", () => {
+    expect(maxYearRunner(2100, cfg(2099), {})).toBe(
+      "Year must be 2099 or earlier",
+    );
+  });
+
+  it("minYear passes for a numeric year >= min", () => {
+    expect(minYearRunner(2005, cfg(2000), {})).toBeNull();
+  });
+
+  it("minYear fails for a numeric year < min", () => {
+    expect(minYearRunner(1999, cfg(2000), {})).toBe(
+      "Year must be 2000 or later",
+    );
+  });
+});
+
+// `currentYear: true` resolves the bound dynamically to the current year, so a
+// recipe can say "not in the future" without hardcoding a literal that rots.
+describe("minYear/maxYear — currentYear bound", () => {
+  const thisYear = new Date().getUTCFullYear();
+  const withCurrentYear = (error?: string) => ({ currentYear: true, error });
+
+  it("maxYear passes for the current year (boundary)", () => {
+    expect(maxYearRunner(thisYear, withCurrentYear(), {})).toBeNull();
+  });
+
+  it("maxYear passes for a past year", () => {
+    expect(maxYearRunner(thisYear - 5, withCurrentYear(), {})).toBeNull();
+  });
+
+  it("maxYear fails for a future year", () => {
+    expect(maxYearRunner(thisYear + 1, withCurrentYear(), {})).toBe(
+      `Year must be ${thisYear} or earlier`,
+    );
+  });
+
+  it("maxYear uses the custom error for a future year", () => {
+    expect(
+      maxYearRunner(
+        thisYear + 1,
+        withCurrentYear("Year cannot be in the future"),
+        {},
+      ),
+    ).toBe("Year cannot be in the future");
+  });
+
+  it("minYear treats the current year as the lower bound", () => {
+    expect(minYearRunner(thisYear, withCurrentYear(), {})).toBeNull();
+    expect(minYearRunner(thisYear - 1, withCurrentYear(), {})).toBe(
+      `Year must be ${thisYear} or later`,
     );
   });
 });
