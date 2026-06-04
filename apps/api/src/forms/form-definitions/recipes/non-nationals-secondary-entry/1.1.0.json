@@ -11,7 +11,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "First Name",
-            "fieldId": "child_first_name",
+            "fieldId": "child-first-name",
             "required": true
           }
         },
@@ -19,7 +19,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Surname",
-            "fieldId": "child_surname",
+            "fieldId": "child-surname",
             "required": true
           }
         },
@@ -27,7 +27,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Other Name(s)",
-            "fieldId": "child_other_names",
+            "fieldId": "child-other-names",
             "required": false
           }
         },
@@ -35,7 +35,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Country of Birth",
-            "fieldId": "country_of_birth",
+            "fieldId": "country-of-birth",
             "required": true
           }
         },
@@ -43,7 +43,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Name of Present School",
-            "fieldId": "present_school",
+            "fieldId": "present-school",
             "required": true
           }
         },
@@ -59,7 +59,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Date of Birth of Child",
-            "fieldId": "date_of_birth",
+            "fieldId": "date-of-birth",
             "required": true,
             "inputType": "date"
           }
@@ -68,7 +68,7 @@
           "ref": "components/generic-radio",
           "overrides": {
             "label": "Caricom National",
-            "fieldId": "caricom_national",
+            "fieldId": "caricom-national",
             "options": [
               {
                 "label": "Yes",
@@ -93,7 +93,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Title",
-            "fieldId": "guardian_title",
+            "fieldId": "guardian-title",
             "required": false
           }
         },
@@ -101,7 +101,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "First Name",
-            "fieldId": "guardian_first_name",
+            "fieldId": "guardian-first-name",
             "required": true
           }
         },
@@ -109,7 +109,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Last Name",
-            "fieldId": "guardian_last_name",
+            "fieldId": "guardian-last-name",
             "required": true
           }
         },
@@ -117,7 +117,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Address",
-            "fieldId": "guardian_address",
+            "fieldId": "guardian-address",
             "required": true
           }
         },
@@ -125,7 +125,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Contact Number",
-            "fieldId": "guardian_contact_number",
+            "fieldId": "guardian-contact-number",
             "required": true,
             "inputType": "tel"
           }
@@ -134,7 +134,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Country of Birth of Parent/Guardian",
-            "fieldId": "guardian_country_of_birth",
+            "fieldId": "guardian-country-of-birth",
             "required": true
           }
         },
@@ -142,7 +142,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Status",
-            "fieldId": "guardian_status",
+            "fieldId": "guardian-status",
             "required": true
           }
         }
@@ -158,7 +158,7 @@
           "overrides": {
             "label": "Document Requirements",
             "content": "A copy of the birth certificate should be uploaded by all Non-Nationals. Caricom Nationals also have to upload a certificate of Immigration Status for the Parent. All other Non-Nationals should upload a copy of Immigration Status for the child. Persons unable to upload these documents should submit physical copies to the school.",
-            "fieldId": "document_requirements_info"
+            "fieldId": "document-requirements-info"
           }
         },
         {
@@ -166,7 +166,7 @@
           "overrides": {
             "label": "Birth Certificate",
             "accept": "application/pdf,image/*",
-            "fieldId": "birth_certificate",
+            "fieldId": "birth-certificate",
             "required": true
           }
         },
@@ -175,7 +175,7 @@
           "overrides": {
             "label": "Immigration Status Document (Parent for CARICOM Nationals, Child for Other Non-Nationals)",
             "accept": "application/pdf,image/*",
-            "fieldId": "immigration_status_document",
+            "fieldId": "immigration-status-document",
             "required": true
           }
         }
@@ -190,7 +190,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Signature",
-            "fieldId": "applicant_signature",
+            "fieldId": "applicant-signature",
             "required": true
           }
         },
@@ -198,7 +198,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Date",
-            "fieldId": "applicant_date",
+            "fieldId": "applicant-date",
             "required": true,
             "inputType": "date"
           }
@@ -215,7 +215,7 @@
           "overrides": {
             "label": "Certification",
             "value": "This is to certify that I have seen the request submitted by the parent/guardian of the pupil",
-            "fieldId": "official_certification",
+            "fieldId": "official-certification",
             "disabled": true,
             "required": false,
             "inputType": "textarea"
@@ -225,7 +225,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Signature",
-            "fieldId": "official_signature",
+            "fieldId": "official-signature",
             "required": false
           }
         },
@@ -233,7 +233,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Date",
-            "fieldId": "official_date",
+            "fieldId": "official-date",
             "required": false,
             "inputType": "date"
           }

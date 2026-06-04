@@ -11,7 +11,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "ID Number",
-            "fieldId": "id_number",
+            "fieldId": "id-number",
             "required": true
           }
         },
@@ -52,7 +52,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "First Name and Middle Name",
-            "fieldId": "first_middle_name",
+            "fieldId": "first-middle-name",
             "required": true
           }
         },
@@ -76,7 +76,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Mother",
-            "fieldId": "mother_name",
+            "fieldId": "mother-name",
             "required": false
           }
         },
@@ -84,7 +84,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Father",
-            "fieldId": "father_name",
+            "fieldId": "father-name",
             "required": false
           }
         },
@@ -92,7 +92,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Guardian",
-            "fieldId": "guardian_name",
+            "fieldId": "guardian-name",
             "required": false
           }
         },
@@ -100,7 +100,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "ADDRESS OF PARENT/GUARDIAN (If different from above)",
-            "fieldId": "parent_guardian_address",
+            "fieldId": "parent-guardian-address",
             "required": false,
             "multiline": true
           }
@@ -110,7 +110,7 @@
           "overrides": {
             "type": "tel",
             "label": "TELEPHONE: Mother (H)",
-            "fieldId": "mother_phone_home",
+            "fieldId": "mother-phone-home",
             "required": false
           }
         },
@@ -119,7 +119,7 @@
           "overrides": {
             "type": "tel",
             "label": "TELEPHONE: Mother (W)",
-            "fieldId": "mother_phone_work",
+            "fieldId": "mother-phone-work",
             "required": false
           }
         },
@@ -128,7 +128,7 @@
           "overrides": {
             "type": "tel",
             "label": "TELEPHONE: Mother (C)",
-            "fieldId": "mother_phone_cell",
+            "fieldId": "mother-phone-cell",
             "required": false
           }
         },
@@ -137,7 +137,7 @@
           "overrides": {
             "type": "tel",
             "label": "TELEPHONE: Father (H)",
-            "fieldId": "father_phone_home",
+            "fieldId": "father-phone-home",
             "required": false
           }
         },
@@ -146,7 +146,7 @@
           "overrides": {
             "type": "tel",
             "label": "TELEPHONE: Father (W)",
-            "fieldId": "father_phone_work",
+            "fieldId": "father-phone-work",
             "required": false
           }
         },
@@ -155,7 +155,7 @@
           "overrides": {
             "type": "tel",
             "label": "TELEPHONE: Father (C)",
-            "fieldId": "father_phone_cell",
+            "fieldId": "father-phone-cell",
             "required": false
           }
         },
@@ -164,7 +164,7 @@
           "overrides": {
             "type": "tel",
             "label": "TELEPHONE: Guardian (H)",
-            "fieldId": "guardian_phone_home",
+            "fieldId": "guardian-phone-home",
             "required": false
           }
         },
@@ -173,7 +173,7 @@
           "overrides": {
             "type": "tel",
             "label": "TELEPHONE: Guardian (W)",
-            "fieldId": "guardian_phone_work",
+            "fieldId": "guardian-phone-work",
             "required": false
           }
         },
@@ -182,7 +182,7 @@
           "overrides": {
             "type": "tel",
             "label": "TELEPHONE: Guardian (C)",
-            "fieldId": "guardian_phone_cell",
+            "fieldId": "guardian-phone-cell",
             "required": false
           }
         },
@@ -190,7 +190,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Please Indicate with whom the child resides",
-            "fieldId": "child_resides_with",
+            "fieldId": "child-resides-with",
             "required": true
           }
         }
@@ -205,7 +205,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "SCHOOL",
-            "fieldId": "school_name",
+            "fieldId": "school-name",
             "required": true
           }
         },
@@ -213,7 +213,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "CLASS/FORM",
-            "fieldId": "class_form",
+            "fieldId": "class-form",
             "required": true
           }
         },
@@ -222,7 +222,7 @@
           "overrides": {
             "type": "tel",
             "label": "SCHOOL TELEPHONE",
-            "fieldId": "school_telephone",
+            "fieldId": "school-telephone",
             "required": true
           }
         }
@@ -237,7 +237,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "STUDENT'S CHALLENGES (Please be specific)",
-            "fieldId": "student_challenges",
+            "fieldId": "student-challenges",
             "required": true,
             "multiline": true
           }
@@ -253,7 +253,7 @@
           "ref": "components/generic-checkbox",
           "overrides": {
             "label": "Hearing",
-            "fieldId": "difficulty_hearing",
+            "fieldId": "difficulty-hearing",
             "required": false
           }
         },
@@ -261,7 +261,7 @@
           "ref": "components/generic-checkbox",
           "overrides": {
             "label": "Vision",
-            "fieldId": "difficulty_vision",
+            "fieldId": "difficulty-vision",
             "required": false
           }
         },
@@ -269,7 +269,7 @@
           "ref": "components/generic-checkbox",
           "overrides": {
             "label": "Physical",
-            "fieldId": "difficulty_physical",
+            "fieldId": "difficulty-physical",
             "required": false
           }
         },
@@ -277,7 +277,7 @@
           "ref": "components/generic-checkbox",
           "overrides": {
             "label": "Behavioural",
-            "fieldId": "difficulty_behavioural",
+            "fieldId": "difficulty-behavioural",
             "required": false
           }
         },
@@ -285,7 +285,7 @@
           "ref": "components/generic-checkbox",
           "overrides": {
             "label": "Social/Emotional Difficulties",
-            "fieldId": "difficulty_social_emotional",
+            "fieldId": "difficulty-social-emotional",
             "required": false
           }
         },
@@ -293,7 +293,7 @@
           "ref": "components/generic-checkbox",
           "overrides": {
             "label": "Speech and Language Difficulties",
-            "fieldId": "difficulty_speech_language",
+            "fieldId": "difficulty-speech-language",
             "required": false
           }
         },
@@ -301,7 +301,7 @@
           "ref": "components/generic-checkbox",
           "overrides": {
             "label": "Learning Difficulties",
-            "fieldId": "difficulty_learning",
+            "fieldId": "difficulty-learning",
             "required": false
           }
         }
@@ -316,7 +316,7 @@
           "ref": "components/generic-radio",
           "overrides": {
             "label": "SCHOOL ATTENDANCE",
-            "fieldId": "school_attendance",
+            "fieldId": "school-attendance",
             "options": [
               {
                 "label": "Regular",
@@ -345,7 +345,7 @@
           "ref": "components/generic-checkbox",
           "overrides": {
             "label": "Children's Development Centre",
-            "fieldId": "agency_childrens_dev_centre",
+            "fieldId": "agency-childrens-dev-centre",
             "required": false
           }
         },
@@ -353,7 +353,7 @@
           "ref": "components/generic-checkbox",
           "overrides": {
             "label": "Probation Department",
-            "fieldId": "agency_probation_dept",
+            "fieldId": "agency-probation-dept",
             "required": false
           }
         },
@@ -361,7 +361,7 @@
           "ref": "components/generic-checkbox",
           "overrides": {
             "label": "Juvenile Liaison Scheme",
-            "fieldId": "agency_juvenile_liaison",
+            "fieldId": "agency-juvenile-liaison",
             "required": false
           }
         },
@@ -369,7 +369,7 @@
           "ref": "components/generic-checkbox",
           "overrides": {
             "label": "Child Care Board",
-            "fieldId": "agency_child_care_board",
+            "fieldId": "agency-child-care-board",
             "required": false
           }
         },
@@ -377,7 +377,7 @@
           "ref": "components/generic-checkbox",
           "overrides": {
             "label": "Child Guidance Clinic",
-            "fieldId": "agency_child_guidance",
+            "fieldId": "agency-child-guidance",
             "required": false
           }
         },
@@ -385,7 +385,7 @@
           "ref": "components/generic-checkbox",
           "overrides": {
             "label": "Private Support Services",
-            "fieldId": "agency_private_support",
+            "fieldId": "agency-private-support",
             "required": false
           }
         },
@@ -393,7 +393,7 @@
           "ref": "components/generic-checkbox",
           "overrides": {
             "label": "Edna Nicholls Centre",
-            "fieldId": "agency_edna_nicholls",
+            "fieldId": "agency-edna-nicholls",
             "required": false
           }
         },
@@ -401,7 +401,7 @@
           "ref": "components/generic-checkbox",
           "overrides": {
             "label": "Welfare Department",
-            "fieldId": "agency_welfare_dept",
+            "fieldId": "agency-welfare-dept",
             "required": false
           }
         },
@@ -409,7 +409,7 @@
           "ref": "components/generic-checkbox",
           "overrides": {
             "label": "Government Industrial School",
-            "fieldId": "agency_gov_industrial_school",
+            "fieldId": "agency-gov-industrial-school",
             "required": false
           }
         },
@@ -417,7 +417,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Other (Specify)",
-            "fieldId": "agency_other",
+            "fieldId": "agency-other",
             "required": false
           }
         }
@@ -432,7 +432,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Intervention Strategies used at the school to date (Please be specific)",
-            "fieldId": "intervention_strategies",
+            "fieldId": "intervention-strategies",
             "required": false,
             "multiline": true
           }
@@ -448,7 +448,7 @@
           "ref": "components/generic-checkbox",
           "overrides": {
             "label": "Parent consulted",
-            "fieldId": "parent_consulted",
+            "fieldId": "parent-consulted",
             "required": false
           }
         },
@@ -457,7 +457,7 @@
           "overrides": {
             "type": "date",
             "label": "Date",
-            "fieldId": "parent_consulted_date",
+            "fieldId": "parent-consulted-date",
             "required": false
           }
         },
@@ -465,7 +465,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Referral Initiated By",
-            "fieldId": "referral_initiated_by",
+            "fieldId": "referral-initiated-by",
             "required": true
           }
         },
@@ -474,7 +474,7 @@
           "overrides": {
             "type": "date",
             "label": "Date",
-            "fieldId": "referral_initiated_date",
+            "fieldId": "referral-initiated-date",
             "required": true
           }
         },
@@ -482,7 +482,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Principal's Signature",
-            "fieldId": "principal_signature",
+            "fieldId": "principal-signature",
             "required": true
           }
         },
@@ -491,7 +491,7 @@
           "overrides": {
             "type": "date",
             "label": "Date",
-            "fieldId": "principal_signature_date",
+            "fieldId": "principal-signature-date",
             "required": true
           }
         }
@@ -506,7 +506,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Case Assigned To",
-            "fieldId": "case_assigned_to",
+            "fieldId": "case-assigned-to",
             "required": false
           }
         },
@@ -523,7 +523,7 @@
           "overrides": {
             "type": "date",
             "label": "Date",
-            "fieldId": "official_date",
+            "fieldId": "official-date",
             "required": false
           }
         },
@@ -531,7 +531,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "By",
-            "fieldId": "official_by",
+            "fieldId": "official-by",
             "required": false
           }
         }
