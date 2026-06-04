@@ -32,4 +32,26 @@ describe("BUILTIN_REGISTRY", () => {
         Object.keys(REGISTRY_BLOCKS).length,
     );
   });
+
+  it("exposes the primary-school select with all 70 schools", () => {
+    const primarySchool = BUILTIN_REGISTRY["components/primary-school"];
+    expect(primarySchool).toMatchObject({
+      fieldId: "primary-school",
+      label: "Primary School",
+      htmlType: "select",
+      multiple: false,
+    });
+    if (!("options" in primarySchool)) {
+      throw new Error("primary-school must define options");
+    }
+    expect(primarySchool.options).toHaveLength(70);
+    expect(primarySchool.options?.[0]).toEqual({
+      label: "A Dacosta Edwards",
+      value: "a-dacosta-edwards",
+    });
+    expect(primarySchool.options?.at(-1)).toEqual({
+      label: "Workman's Primary",
+      value: "workmans-primary",
+    });
+  });
 });
