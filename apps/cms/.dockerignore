@@ -1,0 +1,10 @@
+node_modules
+.next
+.amplify-hosting
+.nx
+.git
+.env
+.env.local
+.env.*.local
+Dockerfile
+*.log
