@@ -80,6 +80,21 @@ describe('isSubPage', () => {
   })
 })
 
+describe('step pages hang off their parent service URL', () => {
+  it('resolves a category-less start.md under its parent, not at a bare URL', () => {
+    expect(
+      findPage('family-birth-relationships/get-death-certificate/start'),
+    ).toBeDefined()
+    expect(findPage('get-death-certificate/start')).toBeUndefined()
+  })
+
+  it('keeps a start step under a service that does declare its own category', () => {
+    expect(
+      findPage('money-financial-support/calculate-severance-pay/start'),
+    ).toBeDefined()
+  })
+})
+
 describe('resolveIsPreview (ancestor inheritance)', () => {
   // A small synthetic registry: a public service with a preview /start step,
   // and a fully-preview service.
