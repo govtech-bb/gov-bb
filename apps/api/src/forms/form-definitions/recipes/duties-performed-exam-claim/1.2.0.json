@@ -17,67 +17,108 @@
       "title": "Section A: Claimant Details",
       "elements": [
         {
-          "ref": "components/generic-text",
+          "ref": "components/first-name",
           "overrides": {
-            "label": "First Name",
-            "fieldId": "first-name"
+            "label": "First name",
+            "fieldId": "first-name",
+            "validations": {
+              "required": { "value": true, "error": "First name is required" }
+            }
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/last-name",
           "overrides": {
-            "label": "Last Name",
-            "fieldId": "last-name"
+            "label": "Last name",
+            "fieldId": "last-name",
+            "validations": {
+              "required": { "value": true, "error": "Last name is required" }
+            }
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/middle-name",
           "overrides": {
-            "label": "Other Names",
+            "label": "Other names",
             "fieldId": "other-names"
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/national-id-number",
           "overrides": {
-            "label": "ID Number",
-            "fieldId": "id-number"
+            "label": "National ID number",
+            "fieldId": "id-number",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "National ID number is required"
+              }
+            }
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/address",
           "overrides": {
             "label": "Address",
             "fieldId": "address",
-            "multiline": true
+            "validations": {
+              "required": { "value": true, "error": "Address is required" }
+            }
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/parish",
           "overrides": {
             "label": "Parish",
-            "fieldId": "parish"
+            "fieldId": "parish",
+            "validations": {
+              "required": { "value": true, "error": "Parish is required" }
+            }
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/email",
           "overrides": {
-            "label": "Email",
-            "fieldId": "email"
+            "label": "Email address",
+            "fieldId": "email",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Email address is required"
+              },
+              "email": {
+                "value": true,
+                "error": "Enter a valid email address"
+              }
+            }
           }
         },
         {
-          "ref": "components/contact-telephone",
+          "ref": "components/telephone",
           "overrides": {
-            "label": "Telephone",
-            "fieldId": "telephone"
+            "label": "Telephone number",
+            "fieldId": "telephone",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Telephone number is required"
+              }
+            }
           }
-        },
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "claim-details",
+      "title": "Section A: Claim Details",
+      "elements": [
         {
-          "ref": "components/generic-text",
+          "ref": "components/tamis-number",
           "overrides": {
-            "label": "Tamis No",
-            "fieldId": "tamis-no"
+            "label": "TAMIS number",
+            "fieldId": "tamis-no",
+            "ui": { "width": "short" }
           }
         },
         {
@@ -88,31 +129,44 @@
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/national-insurance-number",
           "overrides": {
-            "label": "NIS No",
-            "fieldId": "nis-no"
+            "label": "National Insurance (NIS) number",
+            "fieldId": "nis-no",
+            "ui": { "width": "short" }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
-            "label": "Exam Period",
+            "label": "Examination period",
             "fieldId": "exam-period"
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/generic-date",
           "overrides": {
-            "label": "Claim Period From",
-            "fieldId": "claim-period-from"
+            "label": "Claim period from",
+            "fieldId": "claim-period-from",
+            "validations": {
+              "pastOrToday": {
+                "value": true,
+                "error": "Date cannot be in the future"
+              }
+            }
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/generic-date",
           "overrides": {
-            "label": "Claim Period To",
-            "fieldId": "claim-period-to"
+            "label": "Claim period to",
+            "fieldId": "claim-period-to",
+            "validations": {
+              "pastOrToday": {
+                "value": true,
+                "error": "Date cannot be in the future"
+              }
+            }
           }
         }
       ],
@@ -123,32 +177,15 @@
       "title": "Section B: Duties Performed (Invigilators, Supervisors, Examination Assessors)",
       "elements": [
         {
-          "ref": "components/generic-text",
-          "overrides": {
-            "label": "#",
-            "fieldId": "row-no",
-            "validations": {
-              "required": {
-                "error": "# is required",
-                "value": true
-              },
-              "minLength": {
-                "error": "# must be at least 2 characters",
-                "value": 2
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-text",
+          "ref": "components/generic-date",
           "overrides": {
             "label": "Date",
-            "fieldId": "date",
-            "type": "date",
+            "fieldId": "b-date",
             "validations": {
-              "required": {
-                "error": "Date is required",
-                "value": true
+              "required": { "value": true, "error": "Date is required" },
+              "pastOrToday": {
+                "value": true,
+                "error": "Date cannot be in the future"
               }
             }
           }
@@ -157,16 +194,9 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Centre",
-            "fieldId": "centre",
+            "fieldId": "b-centre",
             "validations": {
-              "required": {
-                "error": "Centre is required",
-                "value": true
-              },
-              "minLength": {
-                "error": "Centre must be at least 2 characters",
-                "value": 2
-              }
+              "required": { "value": true, "error": "Centre is required" }
             }
           }
         },
@@ -174,78 +204,50 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Role",
-            "fieldId": "role",
+            "fieldId": "b-role",
+            "validations": {
+              "required": { "value": true, "error": "Role is required" }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "Rate (BBD $)",
+            "fieldId": "b-rate",
+            "ui": { "width": "short" },
+            "validations": {
+              "required": { "value": true, "error": "Rate is required" }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "Overtime (hours)",
+            "fieldId": "b-overtime-hours",
+            "ui": { "width": "short" },
             "validations": {
               "required": {
-                "error": "Role is required",
-                "value": true
-              },
-              "minLength": {
-                "error": "Role must be at least 2 characters",
-                "value": 2
+                "value": true,
+                "error": "Overtime hours are required"
               }
             }
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/generic-number",
           "overrides": {
-            "label": "Rate",
-            "fieldId": "rate",
+            "label": "Subtotal (BBD $)",
+            "fieldId": "b-subtotal",
+            "ui": { "width": "short" },
             "validations": {
-              "required": {
-                "error": "Rate is required",
-                "value": true
-              },
-              "minLength": {
-                "error": "Rate must be at least 2 characters",
-                "value": 2
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "label": "Overtime (Hrs)",
-            "fieldId": "overtime-hrs",
-            "validations": {
-              "required": {
-                "error": "Overtime (Hrs) is required",
-                "value": true
-              },
-              "minLength": {
-                "error": "Overtime (Hrs) must be at least 2 characters",
-                "value": 2
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "label": "Subtotal",
-            "fieldId": "subtotal",
-            "validations": {
-              "required": {
-                "error": "Subtotal is required",
-                "value": true
-              },
-              "minLength": {
-                "error": "Subtotal must be at least 2 characters",
-                "value": 2
-              }
+              "required": { "value": true, "error": "Subtotal is required" }
             }
           }
         }
       ],
-      "behaviours": [
-        {
-          "type": "repeatable",
-          "min": 1,
-          "max": 25
-        }
-      ]
+      "behaviours": [{ "type": "repeatable", "min": 1, "max": 25 }]
     },
     {
       "stepId": "section-b-total",
@@ -254,9 +256,16 @@
         {
           "ref": "components/generic-number",
           "overrides": {
-            "label": "Section B Total",
+            "label": "Section B total (BBD $)",
             "fieldId": "section-b-total",
-            "readonly": true
+            "hint": "Enter the sum of the Section B subtotals.",
+            "ui": { "width": "short" },
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Section B total is required"
+              }
+            }
           }
         }
       ],
@@ -267,15 +276,15 @@
       "title": "Section C: Practical Examination Setup",
       "elements": [
         {
-          "ref": "components/generic-text",
+          "ref": "components/generic-date",
           "overrides": {
             "label": "Date",
-            "fieldId": "date",
-            "type": "date",
+            "fieldId": "c-date",
             "validations": {
-              "required": {
-                "error": "Date is required",
-                "value": true
+              "required": { "value": true, "error": "Date is required" },
+              "pastOrToday": {
+                "value": true,
+                "error": "Date cannot be in the future"
               }
             }
           }
@@ -284,16 +293,9 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Centre",
-            "fieldId": "centre",
+            "fieldId": "c-centre",
             "validations": {
-              "required": {
-                "error": "Centre is required",
-                "value": true
-              },
-              "minLength": {
-                "error": "Centre must be at least 2 characters",
-                "value": 2
-              }
+              "required": { "value": true, "error": "Centre is required" }
             }
           }
         },
@@ -301,78 +303,53 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Subject",
-            "fieldId": "subject",
+            "fieldId": "c-subject",
+            "validations": {
+              "required": { "value": true, "error": "Subject is required" }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "Total candidates",
+            "fieldId": "c-total-candidates",
+            "ui": { "width": "short" },
             "validations": {
               "required": {
-                "error": "Subject is required",
-                "value": true
-              },
-              "minLength": {
-                "error": "Subject must be at least 2 characters",
-                "value": 2
+                "value": true,
+                "error": "Total candidates is required"
               }
             }
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/generic-number",
           "overrides": {
-            "label": "Total Candidates",
-            "fieldId": "total-candidates",
+            "label": "Total personnel",
+            "fieldId": "c-total-personnel",
+            "ui": { "width": "short" },
             "validations": {
               "required": {
-                "error": "Total Candidates is required",
-                "value": true
-              },
-              "minLength": {
-                "error": "Total Candidates must be at least 2 characters",
-                "value": 2
+                "value": true,
+                "error": "Total personnel is required"
               }
             }
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/generic-number",
           "overrides": {
-            "label": "Total Personnel",
-            "fieldId": "total-personnel",
+            "label": "Subtotal (BBD $)",
+            "fieldId": "c-subtotal",
+            "ui": { "width": "short" },
             "validations": {
-              "required": {
-                "error": "Total Personnel is required",
-                "value": true
-              },
-              "minLength": {
-                "error": "Total Personnel must be at least 2 characters",
-                "value": 2
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "label": "Subtotal",
-            "fieldId": "subtotal",
-            "validations": {
-              "required": {
-                "error": "Subtotal is required",
-                "value": true
-              },
-              "minLength": {
-                "error": "Subtotal must be at least 2 characters",
-                "value": 2
-              }
+              "required": { "value": true, "error": "Subtotal is required" }
             }
           }
         }
       ],
-      "behaviours": [
-        {
-          "type": "repeatable",
-          "min": 1,
-          "max": 7
-        }
-      ]
+      "behaviours": [{ "type": "repeatable", "min": 1, "max": 7 }]
     },
     {
       "stepId": "section-c-total",
@@ -381,9 +358,16 @@
         {
           "ref": "components/generic-number",
           "overrides": {
-            "label": "Section C Total",
+            "label": "Section C total (BBD $)",
             "fieldId": "section-c-total",
-            "readonly": true
+            "hint": "Enter the sum of the Section C subtotals.",
+            "ui": { "width": "short" },
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Section C total is required"
+              }
+            }
           }
         }
       ],
@@ -394,15 +378,15 @@
       "title": "Section D: Reader, Writer, Interpreter, Model, Moderator or Dictator Duties",
       "elements": [
         {
-          "ref": "components/generic-text",
+          "ref": "components/generic-date",
           "overrides": {
             "label": "Date",
-            "fieldId": "date",
-            "type": "date",
+            "fieldId": "d-date",
             "validations": {
-              "required": {
-                "error": "Date is required",
-                "value": true
+              "required": { "value": true, "error": "Date is required" },
+              "pastOrToday": {
+                "value": true,
+                "error": "Date cannot be in the future"
               }
             }
           }
@@ -411,16 +395,9 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Centre",
-            "fieldId": "centre",
+            "fieldId": "d-centre",
             "validations": {
-              "required": {
-                "error": "Centre is required",
-                "value": true
-              },
-              "minLength": {
-                "error": "Centre must be at least 2 characters",
-                "value": 2
-              }
+              "required": { "value": true, "error": "Centre is required" }
             }
           }
         },
@@ -428,78 +405,50 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Subject",
-            "fieldId": "subject",
+            "fieldId": "d-subject",
             "validations": {
-              "required": {
-                "error": "Subject is required",
-                "value": true
-              },
-              "minLength": {
-                "error": "Subject must be at least 2 characters",
-                "value": 2
-              }
+              "required": { "value": true, "error": "Subject is required" }
             }
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/generic-textarea",
           "overrides": {
             "label": "Duties",
-            "fieldId": "duties",
+            "fieldId": "d-duties",
+            "ui": { "width": "long" },
+            "validations": {
+              "required": { "value": true, "error": "Duties are required" }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "No. of hours / passages",
+            "fieldId": "d-hours-passages",
+            "ui": { "width": "short" },
             "validations": {
               "required": {
-                "error": "Duties is required",
-                "value": true
-              },
-              "minLength": {
-                "error": "Duties must be at least 2 characters",
-                "value": 2
+                "value": true,
+                "error": "No. of hours / passages is required"
               }
             }
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/generic-number",
           "overrides": {
-            "label": "No of Hours / Passages",
-            "fieldId": "no-hours-passages",
+            "label": "Subtotal (BBD $)",
+            "fieldId": "d-subtotal",
+            "ui": { "width": "short" },
             "validations": {
-              "required": {
-                "error": "No of Hours / Passages is required",
-                "value": true
-              },
-              "minLength": {
-                "error": "No of Hours / Passages must be at least 2 characters",
-                "value": 2
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "label": "Subtotal",
-            "fieldId": "subtotal",
-            "validations": {
-              "required": {
-                "error": "Subtotal is required",
-                "value": true
-              },
-              "minLength": {
-                "error": "Subtotal must be at least 2 characters",
-                "value": 2
-              }
+              "required": { "value": true, "error": "Subtotal is required" }
             }
           }
         }
       ],
-      "behaviours": [
-        {
-          "type": "repeatable",
-          "min": 1,
-          "max": 10
-        }
-      ]
+      "behaviours": [{ "type": "repeatable", "min": 1, "max": 10 }]
     },
     {
       "stepId": "section-d-total",
@@ -508,9 +457,16 @@
         {
           "ref": "components/generic-number",
           "overrides": {
-            "label": "Section D Total",
+            "label": "Section D total (BBD $)",
             "fieldId": "section-d-total",
-            "readonly": true
+            "hint": "Enter the sum of the Section D subtotals.",
+            "ui": { "width": "short" },
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Section D total is required"
+              }
+            }
           }
         }
       ],
@@ -521,38 +477,61 @@
       "title": "Section E: Payee Information",
       "elements": [
         {
-          "ref": "components/generic-text",
+          "ref": "components/bank",
           "overrides": {
-            "label": "Bank/Branch",
-            "fieldId": "bank-branch"
+            "label": "Bank",
+            "fieldId": "bank-branch",
+            "validations": {
+              "required": { "value": true, "error": "Bank is required" }
+            }
+          }
+        },
+        {
+          "ref": "components/account-name",
+          "overrides": {
+            "label": "Name on account",
+            "fieldId": "name-on-account",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Name on account is required"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/account-number",
+          "overrides": {
+            "label": "Account number",
+            "fieldId": "account-no",
+            "ui": { "width": "short" },
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Account number is required"
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
-            "label": "Name on Account",
-            "fieldId": "name-on-account"
+            "label": "BIC / SWIFT",
+            "fieldId": "bic-swift-no",
+            "ui": { "width": "short" }
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/account-type",
           "overrides": {
-            "label": "Account No",
-            "fieldId": "account-no"
-          }
-        },
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "label": "BIC/Swift No",
-            "fieldId": "bic-swift-no"
-          }
-        },
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "label": "Account Type",
-            "fieldId": "account-type"
+            "label": "Account type",
+            "fieldId": "account-type",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Account type is required"
+              }
+            }
           }
         }
       ],
@@ -565,73 +544,15 @@
         {
           "ref": "components/generic-number",
           "overrides": {
-            "label": "I hereby claim the sum of",
-            "prefix": "$",
+            "label": "Total amount claimed (BBD $)",
             "fieldId": "claim-amount",
-            "readonly": true
-          }
-        },
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "label": "Signature of Claimant",
-            "fieldId": "claimant-signature"
-          }
-        },
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "label": "Date",
-            "fieldId": "claimant-date"
-          }
-        }
-      ],
-      "behaviours": []
-    },
-    {
-      "stepId": "section-official",
-      "title": "For Official Use Only",
-      "elements": [
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "label": "Signature of Supervisor",
-            "fieldId": "supervisor-signature"
-          }
-        },
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "label": "Date",
-            "fieldId": "supervisor-date"
-          }
-        },
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "label": "Examination Verifier Signature",
-            "fieldId": "exam-verifier-signature"
-          }
-        },
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "label": "Date",
-            "fieldId": "exam-verifier-date"
-          }
-        },
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "label": "Accounting Officer Signature",
-            "fieldId": "accounting-officer-signature"
-          }
-        },
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "label": "Date",
-            "fieldId": "accounting-officer-date"
+            "ui": { "width": "short" },
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Total amount claimed is required"
+              }
+            }
           }
         }
       ],
@@ -640,7 +561,27 @@
     {
       "stepId": "declaration",
       "title": "Declaration",
-      "elements": [],
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "fieldId": "declaration-confirmed",
+            "label": "Declaration",
+            "options": [
+              {
+                "label": "I declare that the information provided in this claim is true and correct, and that the duties claimed were performed by me.",
+                "value": "confirmed"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "You must confirm the declaration to continue"
+              }
+            }
+          }
+        }
+      ],
       "behaviours": []
     },
     {
