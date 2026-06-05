@@ -119,13 +119,21 @@ const markdownPages: Array<ContentPage> = Object.entries(modules).map(
  * search, breadcrumbs and the preview gate treat them identically with no
  * per-feature code. Adding a feature never touches this file.
  */
+// Import only the named `META` export, not each module's full namespace. The
+// namespace form makes the Rolldown-based bundler (Vite 8) wrap every matched
+// module in an `__exportAll(...)` helper call; in the SSR build that helper
+// collided with a hoisted local of the same name, throwing
+// "TypeError: __exportAll is not a function" at module init and 500ing every
+// page. Selecting the single export we use sidesteps the namespace wrappers
+// (and is what this code wants anyway).
 const featureMetaModules = import.meta.glob('../routes/**/-meta.ts', {
   eager: true,
+  import: 'META',
 })
 
 const featurePages: Array<ContentPage> = Object.entries(featureMetaModules).map(
-  ([path, mod]) => {
-    const parsed = FeatureMetaSchema.safeParse((mod as { META?: unknown }).META)
+  ([path, meta_]) => {
+    const parsed = FeatureMetaSchema.safeParse(meta_)
     if (!parsed.success) {
       throw new Error(
         `Invalid META in ${path.replace(/^\.\.\//, 'src/')}: ${parsed.error.message}`,
