@@ -67,7 +67,7 @@ test.describe("Homeschooling Application — Live Smoke", () => {
       faker.location.streetAddress(),
     );
     await selectDropdown(page, step, "applicant-parish", "saint-michael");
-    await fillField(page, step, "contact-numbers", faker.string.numeric(10));
+    await fillField(page, step, "contact-numbers", "246-418-1234");
     await fillField(page, step, "email-address", "testing@govtech.bb");
     await selectRadio(page, step, "resident-status", "resident");
     await advance(page, step);

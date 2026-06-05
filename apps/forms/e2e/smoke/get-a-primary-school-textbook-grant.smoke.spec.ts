@@ -103,7 +103,7 @@ test.describe("Get a Primary School Textbook Grant — Live Smoke", () => {
     );
     await selectDropdown(page, step, "applicant-parish", "st-michael");
     await fillField(page, step, "applicant-email", "testing@govtech.bb");
-    await fillField(page, step, "applicant-telephone", "246-555-0100");
+    await fillField(page, step, "applicant-telephone", "246-418-1234");
     await fillField(page, step, "applicant-id-number", nationalId());
     // `components/tamis-number` requires 10-15 digits.
     await fillField(

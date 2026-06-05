@@ -230,6 +230,12 @@ export const VALIDATION_RULE_DESCRIPTORS: Record<
       hasReference: false,
     },
     {
+      type: "phone",
+      label: "Phone Number",
+      hasValue: false,
+      hasReference: false,
+    },
+    {
       type: "pattern",
       label: "Pattern",
       hasValue: true,

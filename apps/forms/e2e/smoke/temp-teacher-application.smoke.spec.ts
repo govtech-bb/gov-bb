@@ -81,7 +81,7 @@ test.describe("Temporary Teacher Application — Live Smoke", () => {
     // (components/parish, components/country) — option values are slugs.
     await selectDropdown(page, step, "parish", "saint-michael");
     await fillField(page, step, "email", "testing@govtech.bb");
-    await fillField(page, step, "tel-cell", faker.string.numeric(10));
+    await fillField(page, step, "tel-cell", "246-418-1234");
     // marital-status is a required <select> (components/marital-status).
     await selectDropdown(page, step, "marital-status", "single");
     await selectDropdown(page, step, "citizenship", "barbados");
@@ -131,7 +131,7 @@ test.describe("Temporary Teacher Application — Live Smoke", () => {
     await fillField(page, step, "ref1-name", "John Principal");
     await fillField(page, step, "ref1-address", "2 School Road, Bridgetown");
     await fillField(page, step, "ref1-occupation", "School Principal");
-    await fillField(page, step, "ref1-contact", faker.string.numeric(10));
+    await fillField(page, step, "ref1-contact", "246-418-1234");
     await advance(page, step);
 
     // ─── Reference 2 ─────────────────────────────────────────────────────────
@@ -139,7 +139,7 @@ test.describe("Temporary Teacher Application — Live Smoke", () => {
     await fillField(page, step, "ref2-name", "Mary Supervisor");
     await fillField(page, step, "ref2-address", "3 Office Lane, Bridgetown");
     await fillField(page, step, "ref2-occupation", "Education Officer");
-    await fillField(page, step, "ref2-contact", faker.string.numeric(10));
+    await fillField(page, step, "ref2-contact", "246-418-1234");
     await advance(page, step);
 
     // ─── Upload your documents (real S3 upload) ──────────────────────────────

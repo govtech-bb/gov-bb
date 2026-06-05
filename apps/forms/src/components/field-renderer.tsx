@@ -132,6 +132,10 @@ export default function FieldRenderer({
           ? { required: true, "aria-required": true }
           : {};
 
+        // GOV.UK telephone pattern: phone inputs carry autocomplete="tel" so
+        // the browser can autofill a saved number (WCAG 2.2 SC 1.3.5).
+        const autoComplete = field.htmlType === "tel" ? "tel" : undefined;
+
         switch (field.htmlType) {
           case "date": {
             const value = f.state.value as DateValue | undefined;
@@ -299,6 +303,7 @@ export default function FieldRenderer({
                     mask={field.mask}
                     {...sharedProps}
                     {...requiredProps}
+                    autoComplete={autoComplete}
                     className="govbb-input"
                     value={value ?? ""}
                     aria-invalid={invalid}
@@ -346,6 +351,7 @@ export default function FieldRenderer({
                         <MaskedInput
                           mask={field.mask}
                           {...sharedProps}
+                          autoComplete={autoComplete}
                           className="govbb-input"
                           value={values && values.length > 0 ? values[i] : ""}
                           aria-invalid={invalid}
