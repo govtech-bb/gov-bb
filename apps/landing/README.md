@@ -305,6 +305,66 @@ button silently disappears) or pick up the new ID (in which case any
 content still pointing at the old ID also silently disappears, with a
 dev warning).
 
+## Preview content gate (`visibility: preview`)
+
+Pages can be hidden from the public while still being reviewable. A page is
+gated by setting `visibility: preview` in its frontmatter (the default is
+`public`):
+
+```yaml
+---
+title: 'Register as a private CSEC candidate'
+category: education
+visibility: preview
+---
+```
+
+A `preview` page 404s for the public, is dropped from search and category
+listings, and carries `robots: noindex`. Because a category's visibility is
+**derived** from its pages (a category is shown only if it has at least one
+visible service), flagging every page in a category also hides the category
+itself — `/education` disappears from the homepage and 404s when there are no
+public education services left.
+
+### Viewing a flagged page
+
+Reviewers unlock preview content with a token that must match the server-only
+`PREVIEW_SECRET` env var (never `VITE_`-prefixed, so it is never shipped to the
+browser).
+
+1. Visit **any** URL with `?preview=<PREVIEW_SECRET>` appended, e.g.
+   `https://landing.sandbox.alpha.gov.bb/education?preview=THE_SECRET`.
+2. On a match the server sets an httpOnly `preview` cookie and redirects to the
+   same path with the token stripped (so the secret never lingers in the URL or
+   browser history). From then on the whole session sees preview content —
+   hidden pages render, and hidden categories reappear in listings and search.
+
+A wrong token is simply stripped from the URL, leaving any existing grant
+intact.
+
+### Exiting preview mode
+
+Visit `?preview=exit` (on any URL). This clears the `preview` cookie and
+redirects **home** — not back to the current page, which may be preview-only
+and would otherwise 404 once the grant is gone.
+
+### Environment variable
+
+| Variable         | When used  | Purpose                                                                                                          |
+| ---------------- | ---------- | --------------------------------------------------------------------------------------------------------------- |
+| `PREVIEW_SECRET` | run time   | The token reviewers append as `?preview=<value>`. Server-only. When unset, no token works and preview is off.   |
+
+Set it per environment in the deploy console (Amplify) — or, locally, in
+`apps/landing/.env`:
+
+```bash
+PREVIEW_SECRET=some-local-secret pnpm dev
+# then visit http://localhost:3000/...?preview=some-local-secret
+```
+
+The implementation lives in `src/lib/preview.ts` (token check, cookie, redirect)
+and is resolved once per request in `src/routes/__root.tsx`.
+
 ## Chat handoff (ChatAssistant)
 
 The `ChatAssistant` component on the homepage probes the chat app's
