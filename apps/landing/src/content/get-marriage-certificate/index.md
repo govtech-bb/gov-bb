@@ -6,6 +6,7 @@ featured: false
 publish_date: 2026-01-22
 category: family-birth-relationships
 form_id: get-marriage-certificate
+service_type: digital
 ---
 
 This service can be used to get a copy of a marriage certificate for any couple whose marriage was registered in Barbados.

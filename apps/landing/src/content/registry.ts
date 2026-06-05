@@ -201,6 +201,18 @@ export function isSubPage(page: ContentPage): boolean {
 }
 
 /**
+ * A service is "digital" — completed online — when it has a form to submit or
+ * is an interactive tool (calculators, the bank-holiday lookup, etc.); anything
+ * else is informational. Tools carry `service_type: digital`; forms imply it.
+ */
+export function isDigitalService(page: ContentPage): boolean {
+  return (
+    Boolean(page.frontmatter.form_id) ||
+    page.frontmatter.service_type === 'digital'
+  )
+}
+
+/**
  * A page is *effectively preview* if its own `visibility` is `preview` or any
  * ancestor page is. Walking ancestors by slug means flagging a service's
  * `index.md` automatically hides its `/start` (and other) sub-pages, which sit

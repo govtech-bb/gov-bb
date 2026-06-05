@@ -6,6 +6,7 @@ publish_date: 2026-06-02
 category: education
 visibility: preview
 form_id: referral-student-support-services
+service_type: digital
 ---
 
 If you are a member of school staff, you can use this form to refer a student to the Student Support Services Unit (SSSU). The unit helps students who are facing difficulties in school.

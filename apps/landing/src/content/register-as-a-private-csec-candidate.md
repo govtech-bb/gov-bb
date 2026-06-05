@@ -6,6 +6,7 @@ publish_date: 2026-06-02
 category: education
 visibility: preview
 form_id: csec-private-candidate-registration
+service_type: digital
 ---
 
 ## Who can register

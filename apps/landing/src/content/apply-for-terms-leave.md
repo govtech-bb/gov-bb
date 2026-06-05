@@ -6,6 +6,7 @@ publish_date: 2026-06-02
 category: education
 visibility: preview
 form_id: term-leave-application
+service_type: digital
 ---
 
 If you are a teacher at a public school in Barbados, you can use this form to apply for term’s leave. This is extended leave taken during a school term, and is separate from maternity, sick or sabbatical leave.

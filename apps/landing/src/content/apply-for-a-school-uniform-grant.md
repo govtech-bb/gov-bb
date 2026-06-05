@@ -6,6 +6,7 @@ publish_date: 2026-06-02
 category: education
 visibility: preview
 form_id: school-uniform-grant-barbados
+service_type: digital
 ---
 
 If your child is starting or continuing at a Barbadian primary school for the new school year, you can apply for a $100 grant towards the cost of their school uniform. You can claim one grant per child each school year, paid into your bank or credit union account.
