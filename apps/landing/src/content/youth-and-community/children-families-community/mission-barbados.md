@@ -5,6 +5,7 @@ stage: "alpha"
 publish_date: 2026-05-20
 category: youth-and-community
 subcategory: children-families-community
+visibility: preview
 service_type: information
 form_id: mission-barbados
 ---

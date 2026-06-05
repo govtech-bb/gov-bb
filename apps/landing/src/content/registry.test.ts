@@ -164,9 +164,14 @@ describe('isCategoryVisible', () => {
     expect(isCategoryVisible(family, true)).toBe(true)
   })
 
-  it('shows a sub-categorised category whose services are public', () => {
+  it('hides youth-and-community for the public (all its services are preview)', () => {
     const youth = CATEGORY_BY_SLUG['youth-and-community']
-    expect(isCategoryVisible(youth, false)).toBe(true)
+    expect(isCategoryVisible(youth, false)).toBe(false)
+  })
+
+  it('shows the sub-categorised youth-and-community to a reviewer in preview mode', () => {
+    const youth = CATEGORY_BY_SLUG['youth-and-community']
+    expect(isCategoryVisible(youth, true)).toBe(true)
   })
 })
 

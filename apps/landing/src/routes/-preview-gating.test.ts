@@ -115,6 +115,39 @@ describe('$ route category gating', () => {
   })
 })
 
+describe('$ route subcategory gating', () => {
+  it('throws notFound for a subcategory whose category is hidden when not in preview', async () => {
+    const { Route } = await import('./$')
+    mocks.findPage.mockReturnValue(undefined)
+    mocks.isCategoryVisible.mockReturnValue(false)
+
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    const err = await loader({
+      params: { _splat: 'youth-and-community/youth-development-leadership' },
+      context: { preview: false },
+    }).catch((e: unknown) => e)
+    expect((err as { isNotFound?: boolean }).isNotFound).toBe(true)
+    expect(mocks.isCategoryVisible).toHaveBeenCalledWith(
+      expect.objectContaining({ slug: 'youth-and-community' }),
+      false,
+    )
+  })
+
+  it('renders the subcategory for a reviewer in preview mode', async () => {
+    const { Route } = await import('./$')
+    mocks.findPage.mockReturnValue(undefined)
+    mocks.isCategoryVisible.mockReturnValue(true)
+
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    const data = (await loader({
+      params: { _splat: 'youth-and-community/youth-development-leadership' },
+      context: { preview: true },
+    })) as { kind: string; subcategory: { slug: string } }
+    expect(data.kind).toBe('subcategory')
+    expect(data.subcategory.slug).toBe('youth-development-leadership')
+  })
+})
+
 describe('form route beforeLoad gating', () => {
   it('throws notFound when the owning service is preview and not unlocked', async () => {
     mocks.isUrlPreview.mockReturnValue(true)
