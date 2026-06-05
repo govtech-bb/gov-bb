@@ -2,6 +2,7 @@
 title: "Get a copy of a death certificate"
 stage: "alpha"
 publish_date: 2026-01-30
+category: family-birth-relationships
 form_id: get-death-certificate
 ---
 
