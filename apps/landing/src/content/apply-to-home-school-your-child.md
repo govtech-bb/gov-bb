@@ -4,6 +4,7 @@ description: "Apply for permission to home-school your child in Barbados."
 stage: "alpha"
 publish_date: 2026-06-02
 category: education
+visibility: preview
 form_id: homeschooling-application-2024
 ---
 

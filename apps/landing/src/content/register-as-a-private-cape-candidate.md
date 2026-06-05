@@ -4,6 +4,7 @@ description: "Register online to sit the Caribbean Advanced Proficiency Examinat
 stage: "alpha"
 publish_date: 2026-06-02
 category: education
+visibility: preview
 form_id: cape-exam-registration-2024
 ---
 

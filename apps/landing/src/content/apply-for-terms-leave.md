@@ -4,6 +4,7 @@ description: "Teachers at public schools in Barbados can apply for extended leav
 stage: "alpha"
 publish_date: 2026-06-02
 category: education
+visibility: preview
 form_id: term-leave-application
 ---
 
