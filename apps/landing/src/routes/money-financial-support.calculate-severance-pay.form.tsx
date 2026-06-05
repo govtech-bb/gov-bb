@@ -1,6 +1,7 @@
 import { createFileRoute, notFound } from '@tanstack/react-router'
 import { SeveranceCalculator } from '../blocks/severance/SeveranceCalculator'
 import { isUrlPreview } from '../content/registry'
+import { pageHead } from '../lib/page-head'
 
 const CONTENT_URL = 'money-financial-support/calculate-severance-pay'
 
@@ -12,21 +13,11 @@ export const Route = createFileRoute(
   beforeLoad: ({ context }) => {
     if (!context.preview && isUrlPreview(CONTENT_URL)) throw notFound()
   },
-  head: () => ({
-    meta: [
-      {
-        title:
-          'Find out how much severance payment you are owed | Government of Barbados',
-      },
-      {
-        name: 'description',
-        content:
-          'Estimate the severance payment you may be owed under the Severance Payments Act (Cap. 355A) if you were made redundant, your workplace was damaged by a disaster, you were laid off, or your employer died.',
-      },
-      ...(isUrlPreview(CONTENT_URL)
-        ? [{ name: 'robots', content: 'noindex' }]
-        : []),
-    ],
-  }),
+  head: () =>
+    pageHead(
+      'Find out how much severance payment you are owed',
+      'Estimate the severance payment you may be owed under the Severance Payments Act (Cap. 355A) if you were made redundant, your workplace was damaged by a disaster, you were laid off, or your employer died.',
+      { noindex: isUrlPreview(CONTENT_URL) },
+    ),
   component: SeveranceCalculator,
 })

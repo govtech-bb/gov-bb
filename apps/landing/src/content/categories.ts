@@ -94,6 +94,12 @@ export const CATEGORIES: Array<Category> = [
     description:
       'Apply for school places and exams, claim education grants, and manage your child’s schooling',
   },
+  {
+    slug: 'health-and-emergency-services',
+    title: 'Health and emergency services',
+    description:
+      'Prepare for hurricane season, find an emergency shelter, and reach key emergency contacts',
+  },
 ]
 
 export const CATEGORY_BY_SLUG: Record<string, Category> = Object.fromEntries(
