@@ -24,7 +24,7 @@ Workshop teaching young entrepreneurs to design and maintain their own websites.
 
 Complete the short application form to register your interest. Your progress is saved automatically.
 
-<a data-start-link>Start now</a>
+<a data-start-link>Apply now</a>
 
 ## More information
 
