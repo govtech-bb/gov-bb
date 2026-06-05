@@ -205,7 +205,7 @@ export default function SubmissionConfirmation({
           <div className="form-width form-page__confirmation">
             {referenceNumber && (
               <dl className="form-page__reference">
-                <dt>Reference number</dt>
+                <dt>Submission ID</dt>
                 <dd>{referenceNumber}</dd>
               </dl>
             )}
@@ -242,7 +242,7 @@ export default function SubmissionConfirmation({
             <div className="govbb-payment__items">
               {paymentItem("Service:", serviceLabel)}
               {paymentItem("Amount:", formattedAmount)}
-              {paymentItem("Reference number:", referenceNumber)}
+              {paymentItem("Submission ID:", referenceNumber)}
               {paymentItem("Date:", formattedDate)}
             </div>
           </section>

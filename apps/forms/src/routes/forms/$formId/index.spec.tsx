@@ -32,6 +32,9 @@ jest.mock("@tanstack/react-form", () => ({
 
 jest.mock("@forms/lib", () => ({
   getVisibleSteps: jest.fn(),
+  // Default: every field is visible, so hiddenFields (the complement) is
+  // empty. Tests that pin the complement derivation override per-call.
+  getVisibleFields: jest.fn((step: { fields: unknown[] }) => step.fields),
   getFullFieldId: (step: string, field: string) => `${step}_${field}`,
   restoreRepeatableStepsFromStorage: jest.fn(),
   contractQueryOptions: jest.fn(() => ({ queryKey: ["contract"] })),
@@ -70,7 +73,11 @@ jest.mock("../../../lib/analytics", () => ({
 
 import { Route } from "./index";
 import { useForm, useStore } from "@tanstack/react-form";
-import { getVisibleSteps, restoreRepeatableStepsFromStorage } from "@forms/lib";
+import {
+  getVisibleSteps,
+  getVisibleFields,
+  restoreRepeatableStepsFromStorage,
+} from "@forms/lib";
 import {
   getFormData,
   getSubmissionState,
@@ -81,6 +88,7 @@ import { trackEvent } from "../../../lib/analytics";
 const mockUseForm = useForm as jest.Mock;
 const mockUseStore = useStore as jest.Mock;
 const mockGetVisibleSteps = getVisibleSteps as jest.Mock;
+const mockGetVisibleFields = getVisibleFields as jest.Mock;
 const mockGetFormData = getFormData as jest.Mock;
 const mockGetSubmissionState = getSubmissionState as jest.Mock;
 const mockClearSubmissionState = clearSubmissionState as jest.Mock;
@@ -669,6 +677,10 @@ describe("RouteComponent onSubmit handler", () => {
       ],
     };
     mockGetVisibleSteps.mockReturnValue([stepWithHiddenFields]);
+    // #737: hiddenFields is the complement of the evaluated visible set,
+    // not a read of the render-mutated conditionallyHidden flag. Here the
+    // evaluator says only f3 is visible, so f1 and f2 must be stripped.
+    mockGetVisibleFields.mockReturnValueOnce([stepWithHiddenFields.fields[2]]);
     const onSubmit = renderAndExtractOnSubmit();
     (postFormSubmission as jest.Mock).mockResolvedValue({
       status: "submitted",
@@ -679,10 +691,14 @@ describe("RouteComponent onSubmit handler", () => {
       },
     });
     await onSubmit({ value: {} });
+    expect(mockGetVisibleFields).toHaveBeenCalledWith(
+      stepWithHiddenFields,
+      mockFormInstance,
+    );
     // Inspect the actual hiddenFields arg passed to formatDataForSubmission
     // rather than just confirming the function was called. An inverted
-    // filter (e.g. `!field.hidden && !field.conditionallyHidden`) would
-    // still trigger the call, so without this the test pins nothing.
+    // filter (visible fields instead of their complement) would still
+    // trigger the call, so without this the test pins nothing.
     expect(formatDataForSubmission).toHaveBeenCalledTimes(1);
     const [, , hiddenFieldsArg] = (formatDataForSubmission as jest.Mock).mock
       .calls[0];

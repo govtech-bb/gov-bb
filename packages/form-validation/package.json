@@ -12,5 +12,8 @@
   },
   "devDependencies": {
     "lint-staged": "^16.4.0"
+  },
+  "dependencies": {
+    "libphonenumber-js": "^1.13.5"
   }
 }

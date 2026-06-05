@@ -17,159 +17,113 @@
       "title": "Student Information",
       "elements": [
         {
-          "ref": "components/generic-text",
+          "ref": "components/first-name",
           "overrides": {
-            "label": "First Name",
+            "label": "First name",
             "fieldId": "first-name",
             "validations": {
               "required": {
-                "error": "First Name is required",
+                "error": "First name is required",
                 "value": true
-              },
-              "minLength": {
-                "error": "First Name must be at least 2 characters",
-                "value": 2
               }
             }
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/last-name",
           "overrides": {
-            "label": "Last Name",
+            "label": "Last name",
             "fieldId": "last-name",
             "validations": {
               "required": {
-                "error": "Last Name is required",
+                "error": "Last name is required",
                 "value": true
-              },
-              "minLength": {
-                "error": "Last Name must be at least 2 characters",
-                "value": 2
               }
             }
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/sex",
           "overrides": {
             "label": "Gender",
-            "fieldId": "gender",
-            "validations": {
-              "required": {
-                "error": "Gender is required",
-                "value": true
-              },
-              "minLength": {
-                "error": "Gender must be at least 2 characters",
-                "value": 2
-              }
-            }
+            "fieldId": "gender"
           }
         },
         {
-          "ref": "components/generic-number",
+          "ref": "components/date-of-birth",
           "overrides": {
-            "label": "Day",
-            "fieldId": "dob-day",
+            "label": "Date of birth",
+            "fieldId": "date-of-birth",
             "validations": {
               "required": {
-                "error": "Day is required",
+                "error": "Date of birth is required",
                 "value": true
               }
             }
           }
         },
         {
-          "ref": "components/generic-number",
+          "ref": "components/national-id-number",
           "overrides": {
-            "label": "Month",
-            "fieldId": "dob-month",
-            "validations": {
-              "required": {
-                "error": "Month is required",
-                "value": true
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-number",
-          "overrides": {
-            "label": "Year",
-            "fieldId": "dob-year",
-            "validations": {
-              "required": {
-                "error": "Year is required",
-                "value": true
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "label": "ID Number",
+            "label": "National ID number",
             "fieldId": "id-number",
             "validations": {
               "required": {
-                "error": "ID Number is required",
+                "error": "National ID number is required",
                 "value": true
-              },
-              "minLength": {
-                "error": "ID Number must be at least 2 characters",
-                "value": 2
               }
             }
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/address",
           "overrides": {
             "label": "Address",
             "fieldId": "address",
+            "multiline": true,
             "validations": {
               "required": {
                 "error": "Address is required",
                 "value": true
-              },
-              "minLength": {
-                "error": "Address must be at least 2 characters",
-                "value": 2
               }
             }
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/parish",
           "overrides": {
-            "label": "Email",
+            "label": "Parish",
+            "fieldId": "parish",
+            "validations": {
+              "required": {
+                "error": "Parish is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "label": "Email address",
             "fieldId": "email",
             "validations": {
               "required": {
-                "error": "Email is required",
+                "error": "Email address is required",
                 "value": true
-              },
-              "minLength": {
-                "error": "Email must be at least 2 characters",
-                "value": 2
               }
             }
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/telephone",
           "overrides": {
-            "label": "Telephone No",
+            "label": "Telephone number",
             "fieldId": "telephone-no",
             "validations": {
               "required": {
-                "error": "Telephone No is required",
+                "error": "Telephone number is required",
                 "value": true
-              },
-              "minLength": {
-                "error": "Telephone No must be at least 2 characters",
-                "value": 2
               }
             }
           }
@@ -180,29 +134,17 @@
     {
       "stepId": "subject-selection",
       "title": "Subject Selection",
+      "description": "List each subject you are registering for. If you are repeating a subject from a previous sitting that required a School Based Assessment (SBA), tick Resit and enter your previous registration number.",
       "elements": [
         {
           "ref": "components/generic-text",
           "overrides": {
-            "type": "info",
-            "label": "Please list below the subject(s) for which you are registering. If you are repeating a subject from a previous sitting for which a School Based Assessment (SBA) was required, please select RESIT and type your previous registration number in the relevant field.",
-            "fieldId": "subjects-info",
-            "disabled": true
-          }
-        },
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "label": "SUBJECT(S)",
+            "label": "Subject(s)",
             "fieldId": "subject",
             "validations": {
               "required": {
-                "error": "SUBJECT(S) is required",
+                "error": "Subject is required",
                 "value": true
-              },
-              "minLength": {
-                "error": "SUBJECT(S) must be at least 2 characters",
-                "value": 2
               }
             }
           }
@@ -210,23 +152,57 @@
         {
           "ref": "components/generic-checkbox",
           "overrides": {
-            "label": "ALTERNATIVE",
-            "fieldId": "alternative"
+            "label": "Alternative",
+            "fieldId": "alternative",
+            "options": [
+              {
+                "label": "This is an alternative subject",
+                "value": "yes"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
           "ref": "components/generic-checkbox",
           "overrides": {
-            "label": "RESIT",
-            "fieldId": "resit"
+            "label": "Resit",
+            "fieldId": "resit",
+            "options": [
+              {
+                "label": "This is a resit",
+                "value": "yes"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
-            "label": "PREVIOUS REGISTRATION NUMBER",
+            "label": "Previous registration number",
             "fieldId": "previous-registration-number",
-            "conditional": "resit"
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "resit",
+                "operator": "exists",
+                "value": "yes"
+              }
+            ]
           }
         }
       ],
@@ -239,55 +215,37 @@
       ]
     },
     {
-      "stepId": "declaration-signature",
-      "title": "Declaration & Signature",
+      "stepId": "declaration",
+      "title": "Declaration",
       "elements": [
         {
           "ref": "components/show-hide",
           "overrides": {
-            "label": "Important Notices",
-            "content": "Candidates should inform the CXC Local Registrar of any name changes which have occurred since their last examination sitting.\n\nCandidates should check ALL Timetables before registering so as to avoid any subject clashes with other Examination Boards.\n\nABSOLUTELY NO ALTERNATIVE ARRANGEMENTS WILL BE MADE IN RESPECT OF CLASHES",
+            "label": "Important notices",
+            "content": "Candidates should inform the CXC Local Registrar of any name changes that have occurred since their last examination sitting.\n\nCandidates should check all timetables before registering to avoid subject clashes with other examination boards.\n\nNo alternative arrangements will be made in respect of clashes.",
             "fieldId": "important-notices"
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/confirmation",
           "overrides": {
-            "label": "Signature of Claimant",
-            "fieldId": "signature-of-claimant",
+            "fieldId": "declaration-confirmed",
+            "label": "",
             "validations": {
               "required": {
-                "error": "Signature of Claimant is required",
-                "value": true
-              },
-              "minLength": {
-                "error": "Signature of Claimant must be at least 2 characters",
-                "value": 2
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "type": "date",
-            "label": "Date",
-            "fieldId": "date",
-            "validations": {
-              "required": {
-                "error": "Date is required",
+                "error": "You must confirm the declaration to continue",
                 "value": true
               }
-            }
+            },
+            "options": [
+              {
+                "label": "I confirm that the information I have provided is true and complete to the best of my knowledge. I understand that providing false information may result in my registration being rejected.",
+                "value": "confirmed"
+              }
+            ]
           }
         }
       ],
-      "behaviours": []
-    },
-    {
-      "stepId": "declaration",
-      "title": "Declaration",
-      "elements": [],
       "behaviours": []
     },
     {
@@ -298,5 +256,5 @@
     }
   ],
   "createdAt": "2026-05-27T20:37:03.164Z",
-  "updatedAt": "2026-05-27T20:37:03.164Z"
+  "updatedAt": "2026-06-04T00:00:00.000Z"
 }

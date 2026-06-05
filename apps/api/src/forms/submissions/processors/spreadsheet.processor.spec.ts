@@ -25,6 +25,7 @@ function makePayload(
 ): SubmissionCreatedEvent {
   return {
     submissionId,
+    referenceCode: "PPT-20260604-130732-000003",
     formId: "passport-renewal",
     formVersion: "1.0.0",
     idempotencyKey: "idem-spreadsheet-1",

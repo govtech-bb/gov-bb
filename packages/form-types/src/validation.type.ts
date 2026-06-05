@@ -38,6 +38,7 @@ export const validationTypeSchema = z.enum([
   "minSelection",
   "maxSelection",
   "email",
+  "phone",
   "fileTypes",
   "itemMaxSize",
   "maxSize",

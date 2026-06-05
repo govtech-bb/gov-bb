@@ -63,7 +63,7 @@ test.describe("Duties Performed Exam Claim — Live Smoke", () => {
     await fillField(page, step, "address", faker.location.streetAddress());
     await fillField(page, step, "parish", "St. Michael");
     await fillField(page, step, "email", "testing@govtech.bb");
-    await fillField(page, step, "telephone", faker.string.numeric(10));
+    await fillField(page, step, "telephone", "246-418-1234");
     await fillField(page, step, "tamis-no", faker.string.numeric(9));
     await fillField(page, step, "supervisor", faker.person.fullName());
     await fillField(page, step, "nis-no", faker.string.numeric(9));

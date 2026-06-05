@@ -154,6 +154,117 @@ describe("resolveFieldIds", () => {
     expect(resolved[0].fieldId).toBe("custom-id");
   });
 
+  it("uses the authored override label as the display when set", () => {
+    const draft = makeBaseDraft({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          fields: [
+            f({
+              kind: "component",
+              ref: "components/generic-text",
+              overrides: { label: "Start Year" },
+            }),
+          ],
+          behaviours: [],
+        },
+      ],
+    });
+
+    const resolved = resolveFieldIds(draft, catalog);
+    expect(resolved).toHaveLength(1);
+    expect(resolved[0].display).toBe("Start Year");
+  });
+
+  it("falls back to the primitive's default label (not the component displayName) when no override label", () => {
+    const customCatalog: RegistryCatalog = {
+      ...getCatalog(),
+      custom: [
+        {
+          ref: "components/custom-distinct",
+          displayName: "Distinct Display Name",
+          namespace: "custom",
+          type: "distinct-widget",
+          definition: {
+            fieldId: "distinct-widget",
+            label: "Primitive Label",
+            htmlType: "text",
+          },
+        },
+      ],
+    };
+
+    const draft = makeBaseDraft({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          fields: [
+            f({
+              kind: "custom",
+              ref: "components/custom-distinct",
+              overrides: {},
+            }),
+          ],
+          behaviours: [],
+        },
+      ],
+    });
+
+    const resolved = resolveFieldIds(draft, customCatalog);
+    expect(resolved).toHaveLength(1);
+    expect(resolved[0].display).toBe("Primitive Label");
+  });
+
+  it("uses a block child's override label in the display when set", () => {
+    const draft = makeBaseDraft({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          fields: [
+            f({
+              kind: "block",
+              ref: "blocks/personal-information",
+              overrides: {},
+              childOverrides: { "first-name": { label: "Given Name" } },
+            }),
+          ],
+          behaviours: [],
+        },
+      ],
+    });
+
+    const resolved = resolveFieldIds(draft, catalog);
+    const firstName = resolved.find((r) => r.childFieldId === "first-name");
+    expect(firstName?.display).toBe("personal-information › Given Name");
+  });
+
+  it("falls back to the block child's element label when no child override label", () => {
+    const draft = makeBaseDraft({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          fields: [
+            f({
+              kind: "block",
+              ref: "blocks/personal-information",
+              overrides: {},
+              childOverrides: {},
+            }),
+          ],
+          behaviours: [],
+        },
+      ],
+    });
+
+    const resolved = resolveFieldIds(draft, catalog);
+    const firstName = resolved.find((r) => r.childFieldId === "first-name");
+    expect(firstName?.display).toBe("personal-information › First name");
+  });
+
   it("skips fields whose ref is unknown to the catalog without throwing", () => {
     const draft = makeBaseDraft({
       steps: [
@@ -903,5 +1014,40 @@ describe("formatCollisionIssues", () => {
     expect(
       formatCollisionIssues({ fieldIdCollisions: [], stepIdCollisions: [] }),
     ).toEqual([]);
+  });
+
+  it("embeds the authored override label (not the component displayName) in the collision message", () => {
+    const catalog = getCatalog();
+    const draft = makeBaseDraft({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Dates",
+          fields: [
+            f({
+              kind: "component",
+              ref: "components/generic-text",
+              overrides: { label: "Start Year" },
+            }),
+            f({
+              kind: "component",
+              ref: "components/generic-email",
+              overrides: { fieldId: "generic-text", label: "End Year" },
+            }),
+          ],
+          behaviours: [],
+        },
+      ],
+    });
+
+    const issues = formatCollisionIssues({
+      fieldIdCollisions: findDuplicateFieldIds(draft, catalog),
+      stepIdCollisions: [],
+    });
+
+    expect(issues).toHaveLength(1);
+    expect(issues[0].message).toBe(
+      'Field ID "generic-text" is used by 2 fields: Dates › Start Year; Dates › End Year.',
+    );
   });
 });

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
   getVisibleSteps,
+  getVisibleFields,
   getFullFieldId,
   restoreRepeatableStepsFromStorage,
   contractQueryOptions,
@@ -163,10 +164,16 @@ function RouteComponent() {
     },
     onSubmit: async ({ value }) => {
       const values = value as FormValues;
-      const hiddenFields = visibleSteps
-        .map((step) => step.fields)
-        .flat()
-        .filter((field) => field.hidden || field.conditionallyHidden);
+      // Hidden = the complement of the evaluated visible set (#737). The
+      // render-mutated conditionallyHidden flag goes stale for fields that
+      // never re-mounted after their controlling answer flipped, which
+      // would leak de-selected answers into the payload.
+      const hiddenFields = visibleSteps.flatMap((step) => {
+        const visibleFieldIds = new Set(
+          getVisibleFields(step, form).map((field) => field.id),
+        );
+        return step.fields.filter((field) => !visibleFieldIds.has(field.id));
+      });
       const formattedData: FormValuesByStep = formatDataForSubmission(
         values,
         repeatableStepSettingsRef.current,

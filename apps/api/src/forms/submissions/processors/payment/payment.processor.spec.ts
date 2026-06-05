@@ -51,6 +51,7 @@ describe("PaymentProcessor.process", () => {
 
   const event = (): SubmissionCreatedEvent => ({
     submissionId: "sub-1",
+    referenceCode: "SCH-20260604-130732-000001",
     formId: "school-fees",
     formVersion: "1.0.0",
     idempotencyKey: "idem-1",

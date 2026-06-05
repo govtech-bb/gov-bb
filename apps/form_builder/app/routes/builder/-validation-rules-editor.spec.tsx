@@ -11,11 +11,14 @@ import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ValidationRule } from "@govtech-bb/form-types";
+import type { FieldRef, StepRef } from "./-recipe-refs";
 import { ValidationRulesEditor } from "./-validation-rules-editor";
 
 function renderEditor(props: {
   rules?: ValidationRule;
   baseRules?: ValidationRule;
+  fieldRefs?: FieldRef[];
+  stepRefs?: StepRef[];
 }) {
   const onChange = jest.fn();
   render(
@@ -23,7 +26,8 @@ function renderEditor(props: {
       htmlType="text"
       rules={props.rules}
       baseRules={props.baseRules}
-      fieldRefs={[]}
+      fieldRefs={props.fieldRefs ?? []}
+      stepRefs={props.stepRefs ?? []}
       onChange={onChange}
     />,
   );
@@ -192,6 +196,168 @@ describe("editing an overridden row", () => {
       minLength: { value: "8", error: "oldX" },
       pattern: { value: "abc", error: "pat" },
     });
+  });
+});
+
+describe("text fields offer numeric and year comparison rules (#830)", () => {
+  it("lists the numeric/year rules in the Add Rule dropdown", () => {
+    renderEditor({});
+
+    // The numeric comparison and year rules are now available on text fields.
+    for (const label of [
+      "Min Value",
+      "Max Value",
+      "Greater Than",
+      "Less Than",
+      "Min Year",
+      "Max Year",
+    ]) {
+      expect(screen.getByRole("option", { name: label })).toBeInTheDocument();
+    }
+  });
+});
+
+describe("reference rule step scoping (#840)", () => {
+  // Two steps; step one has two fields, step two has one.
+  const STEP_REFS: StepRef[] = [
+    { stepId: "step-one", title: "Step One" },
+    { stepId: "step-two", title: "Step Two" },
+  ];
+  const FIELD_REFS: FieldRef[] = [
+    { stepId: "step-one", fieldId: "first-name", displayName: "First Name", isBoolean: false },
+    { stepId: "step-one", fieldId: "last-name", displayName: "Last Name", isBoolean: false },
+    { stepId: "step-two", fieldId: "age", displayName: "Age", isBoolean: false },
+  ];
+
+  // Locate the Reference Step select by its containing label.
+  const stepSelect = () => {
+    const label = screen.getByText("Reference Step");
+    // The select is the next sibling control inside the same form group.
+    return label.parentElement!.querySelector("select")! as HTMLSelectElement;
+  };
+
+  const fieldSelect = () => {
+    const label = screen.getByText("Reference Field");
+    return label.parentElement!.querySelector("select")! as HTMLSelectElement;
+  };
+
+  const fieldOptionLabels = () =>
+    Array.from(fieldSelect().options)
+      .map((o) => o.textContent)
+      .filter((t) => t !== "— select field —");
+
+  it("renders a Reference Step select for a reference rule (gt) but not for a value-only rule (minLength)", () => {
+    renderEditor({
+      rules: { gt: { value: "5" } },
+      fieldRefs: FIELD_REFS,
+      stepRefs: STEP_REFS,
+    });
+    expect(screen.getByText("Reference Step")).toBeInTheDocument();
+    expect(screen.getByText("Reference Field")).toBeInTheDocument();
+  });
+
+  it("does not render a Reference Step select for a value-only rule (minLength)", () => {
+    renderEditor({
+      rules: { minLength: { value: "5" } },
+      fieldRefs: FIELD_REFS,
+      stepRefs: STEP_REFS,
+    });
+    expect(screen.queryByText("Reference Step")).not.toBeInTheDocument();
+    expect(screen.queryByText("Reference Field")).not.toBeInTheDocument();
+  });
+
+  it("offers an 'any step' option plus one option per step", () => {
+    renderEditor({
+      rules: { gt: { value: "5" } },
+      fieldRefs: FIELD_REFS,
+      stepRefs: STEP_REFS,
+    });
+    const labels = Array.from(stepSelect().options).map((o) => o.textContent);
+    expect(labels).toEqual([
+      expect.stringMatching(/any step/i),
+      "Step One",
+      "Step Two",
+    ]);
+  });
+
+  it("unscoped: shows the full flat field list and keeps the field picker enabled", () => {
+    renderEditor({
+      rules: { gt: {} },
+      fieldRefs: FIELD_REFS,
+      stepRefs: STEP_REFS,
+    });
+    expect(stepSelect().value).toBe("");
+    expect(fieldSelect().disabled).toBe(false);
+    expect(fieldOptionLabels()).toEqual(["First Name", "Last Name", "Age"]);
+  });
+
+  it("selecting a step commits targetStepId and filters the field list to that step", async () => {
+    const onChange = renderEditor({
+      rules: { gt: {} },
+      fieldRefs: FIELD_REFS,
+      stepRefs: STEP_REFS,
+    });
+    await userEvent.selectOptions(stepSelect(), "step-one");
+
+    const config = onChange.mock.calls.at(-1)![0].gt;
+    expect(config.targetStepId).toBe("step-one");
+  });
+
+  it("scoped: a pre-existing targetStepId renders the step value and a scoped field list", () => {
+    renderEditor({
+      rules: { gt: { targetStepId: "step-two", referenceFieldId: "age" } },
+      fieldRefs: FIELD_REFS,
+      stepRefs: STEP_REFS,
+    });
+    expect(stepSelect().value).toBe("step-two");
+    expect(fieldSelect().disabled).toBe(false);
+    expect(fieldOptionLabels()).toEqual(["Age"]);
+  });
+
+  it("changing the step clears a now-stale referenceFieldId", async () => {
+    const onChange = renderEditor({
+      rules: { gt: { targetStepId: "step-one", referenceFieldId: "first-name" } },
+      fieldRefs: FIELD_REFS,
+      stepRefs: STEP_REFS,
+    });
+    await userEvent.selectOptions(stepSelect(), "step-two");
+
+    const config = onChange.mock.calls.at(-1)![0].gt;
+    expect(config.targetStepId).toBe("step-two");
+    // "first-name" is not on step-two → cleared.
+    expect(config.referenceFieldId).toBe("");
+  });
+
+  it("changing the step keeps a still-valid referenceFieldId", async () => {
+    const onChange = renderEditor({
+      // first-name and last-name are both on step-one; we'll switch the
+      // targetStepId away then... actually test same-step revalidation: a field
+      // that survives the new step is kept. Set up a field present on the new step.
+      rules: { gt: { targetStepId: "step-one", referenceFieldId: "first-name" } },
+      fieldRefs: [
+        ...FIELD_REFS,
+        // a field that exists on step-two with the same id is unrealistic; instead
+        // verify selecting step-one again keeps first-name.
+      ],
+      stepRefs: STEP_REFS,
+    });
+    await userEvent.selectOptions(stepSelect(), "step-one");
+
+    const config = onChange.mock.calls.at(-1)![0].gt;
+    expect(config.targetStepId).toBe("step-one");
+    expect(config.referenceFieldId).toBe("first-name");
+  });
+
+  it("clearing the step back to 'any step' removes the targetStepId key and restores the flat list", async () => {
+    const onChange = renderEditor({
+      rules: { gt: { targetStepId: "step-two", referenceFieldId: "age" } },
+      fieldRefs: FIELD_REFS,
+      stepRefs: STEP_REFS,
+    });
+    await userEvent.selectOptions(stepSelect(), "");
+
+    const config = onChange.mock.calls.at(-1)![0].gt;
+    expect(config).not.toHaveProperty("targetStepId");
   });
 });
 

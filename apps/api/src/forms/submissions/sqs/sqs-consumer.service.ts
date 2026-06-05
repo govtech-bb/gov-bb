@@ -209,10 +209,16 @@ export class SqsConsumerService
     );
   }
 
-  /** Reconstruct a SubmissionCreatedEvent from the queue message payload. */
+  /** Reconstruct a SubmissionCreatedEvent from the queue message payload.
+   *
+   * `referenceCode` is optional on the wire (messages enqueued before this
+   * field was added omit it). Fall back to `submissionId` so older in-flight
+   * messages still produce a usable reference string downstream.
+   */
   private toEvent(msg: SubmissionSqsMessage): SubmissionCreatedEvent {
     return {
       submissionId: msg.submissionId,
+      referenceCode: msg.referenceCode ?? msg.submissionId,
       formId: msg.formId,
       formVersion: msg.formVersion,
       idempotencyKey: msg.idempotencyKey,

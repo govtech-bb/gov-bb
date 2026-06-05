@@ -128,4 +128,46 @@ describe("AI system prompt", () => {
       "Never leave the primary field unconditionally required next to a reveal toggle",
     );
   });
+
+  it("directs relationship fields to components/relationship, not a text input", () => {
+    expect(prompt).toContain("Relationship fields use components/relationship");
+    // The component reference must surface it as a select with baked-in options.
+    expect(prompt).toContain("components/relationship — select (HAS options");
+    // The old guidance steered relationship fields to generic-text — must not return.
+    expect(prompt).not.toContain("free-text relationship fields");
+  });
+
+  it("makes address line 2 and similar continuation lines optional by default", () => {
+    // Explicit never-infer-required rule for continuation lines.
+    expect(prompt).toContain('"address line 2"');
+    expect(prompt).toContain("optional by default");
+    // The inferred-required list must name line 1 specifically, not bare
+    // "address" (which would sweep line 2 into required-by-default).
+    expect(prompt).toMatch(
+      /common required fields \([^)]*\baddress line 1\b[^)]*\)/,
+    );
+    expect(prompt).not.toMatch(
+      /common required fields \([^)]*\baddress\b(?! line 1)[^)]*\)/,
+    );
+  });
+
+  it("documents the numeric bound validations with literal or cross-field reference", () => {
+    // min/max are the or-equal forms, gt/lt the strict forms — all four listed.
+    for (const rule of ["min", "max", "gt", "lt"]) {
+      expect(prompt).toMatch(new RegExp(`^- ${rule}: `, "m"));
+    }
+    // The literal-or-reference shape and the kebab-case reference id.
+    expect(prompt).toContain('"referenceFieldId": "start-year"');
+    // No gte/lte exists — or-equal comparisons must route through min/max.
+    expect(prompt).toContain("There is NO gte/lte");
+    // The worked start-year/end-year range example.
+    expect(prompt).toContain('"fieldId": "end-year"');
+  });
+
+  it("documents minYear/maxYear with literal value or currentYear, never a reference", () => {
+    expect(prompt).toMatch(/^- minYear: /m);
+    expect(prompt).toMatch(/^- maxYear: /m);
+    expect(prompt).toContain('"currentYear": true');
+    expect(prompt).toContain("do NOT accept referenceFieldId");
+  });
 });

@@ -67,6 +67,10 @@ export const repeatableBehaviourSchema = z.object({
   // recipe can phrase it per step (e.g. "Do you want to add another
   // qualification?"). Falls back to "Add another?" when omitted.
   addAnotherLabel: z.string().min(1).optional(),
+  // Optional noun used to mark repeat instances beyond the first (e.g.
+  // "Dependent" renders instance 2 as "Dependent 2"). When omitted, instances
+  // beyond the first are auto-numbered against the step title.
+  instanceLabel: z.string().min(1).optional(),
 });
 export type RepeatableBehaviour = z.infer<typeof repeatableBehaviourSchema>;
 
