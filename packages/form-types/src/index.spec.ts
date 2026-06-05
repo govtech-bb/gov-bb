@@ -55,6 +55,8 @@ import {
   classifyRecipientField,
   CONTACT_DETAILS_PREFIX,
   CONFIG_RECIPIENT_PREFIX,
+  deployBranchName,
+  eraseBranchName,
 } from "./index";
 import { z } from "zod";
 
@@ -578,6 +580,26 @@ describe("repeatableBehaviourSchema", () => {
     });
     expect(result.success).toBe(false);
   });
+
+  it("accepts an optional instanceLabel", () => {
+    const result = repeatableBehaviourSchema.safeParse({
+      type: "repeatable",
+      min: 1,
+      max: 5,
+      instanceLabel: "Dependent",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects an empty instanceLabel", () => {
+    const result = repeatableBehaviourSchema.safeParse({
+      type: "repeatable",
+      min: 1,
+      max: 5,
+      instanceLabel: "",
+    });
+    expect(result.success).toBe(false);
+  });
 });
 
 describe("fieldArrayBehaviourSchema", () => {
@@ -998,5 +1020,16 @@ describe("recipient prefix constants (re-export)", () => {
   it("expose the reserved prefixes", () => {
     expect(CONTACT_DETAILS_PREFIX).toBe("contactDetails.");
     expect(CONFIG_RECIPIENT_PREFIX).toBe("config.");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// deploy-branch exports (re-export path — detailed tests in deploy-branch.spec.ts)
+// ---------------------------------------------------------------------------
+
+describe("deployBranchName / eraseBranchName (re-export)", () => {
+  it("build dot-free branch names", () => {
+    expect(deployBranchName("passport-renewal", "1.2.0")).not.toContain(".");
+    expect(eraseBranchName("passport-renewal")).not.toContain(".");
   });
 });

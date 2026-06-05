@@ -117,15 +117,76 @@ describe("migrateOverridesForRef", () => {
     });
   });
 
-  it("drops numeric range rules when switching number -> text, keeping required", () => {
+  it("carries numeric range rules when switching number -> text, keeping required", () => {
     const overrides: FieldOverrides = {
       validations: {
         required: { value: true },
         min: { value: 1 },
         max: { value: 100 },
+        gt: { referenceFieldId: "other" },
+        lt: { referenceFieldId: "other" },
       },
     };
     const result = migrateOverridesForRef(overrides, "number", "text");
+    // text now offers the numeric comparison rules, so they survive the swap.
+    expect(result.validations).toEqual({
+      required: { value: true },
+      min: { value: 1 },
+      max: { value: 100 },
+      gt: { referenceFieldId: "other" },
+      lt: { referenceFieldId: "other" },
+    });
+  });
+
+  it("carries year rules but drops date-only rules when switching date -> text", () => {
+    const overrides: FieldOverrides = {
+      validations: {
+        required: { value: true },
+        minYear: { value: 1900 },
+        maxYear: { value: 2100 },
+        past: { value: true },
+        after: { referenceFieldId: "other" },
+      },
+    };
+    const result = migrateOverridesForRef(overrides, "date", "text");
+    // text offers minYear/maxYear but not the date-only past/after rules.
+    expect(result.validations).toEqual({
+      required: { value: true },
+      minYear: { value: 1900 },
+      maxYear: { value: 2100 },
+    });
+  });
+
+  it("keeps numeric rules but drops year rules when switching text -> number", () => {
+    const overrides: FieldOverrides = {
+      validations: {
+        required: { value: true },
+        min: { value: 1 },
+        gt: { referenceFieldId: "other" },
+        minYear: { value: 1900 },
+        maxYear: { value: 2100 },
+      },
+    };
+    const result = migrateOverridesForRef(overrides, "text", "number");
+    // number offers the numeric comparison rules but not minYear/maxYear.
+    expect(result.validations).toEqual({
+      required: { value: true },
+      min: { value: 1 },
+      gt: { referenceFieldId: "other" },
+    });
+  });
+
+  it("drops numeric and year rules when switching text -> email", () => {
+    const overrides: FieldOverrides = {
+      validations: {
+        required: { value: true },
+        min: { value: 1 },
+        lt: { referenceFieldId: "other" },
+        minYear: { value: 1900 },
+      },
+    };
+    const result = migrateOverridesForRef(overrides, "text", "email");
+    // email offers neither the numeric comparison nor the year rules.
     expect(result.validations).toEqual({ required: { value: true } });
   });
 

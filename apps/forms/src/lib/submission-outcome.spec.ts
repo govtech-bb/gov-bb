@@ -4,6 +4,7 @@ import { FormSubmissionResponse } from "@forms/types";
 const response = (
   status: string,
   meta?: FormSubmissionResponse["meta"],
+  referenceCode?: string,
 ): FormSubmissionResponse =>
   ({
     status,
@@ -12,12 +13,19 @@ const response = (
       id: "ref-001",
       submittedAt: "2026-05-22T00:00:00Z",
       formId: "test-form",
+      ...(referenceCode !== undefined ? { referenceCode } : {}),
     },
     meta,
   }) as FormSubmissionResponse;
 
 const base = {
   referenceNumber: "ref-001",
+  date: "2026-05-22T00:00:00Z",
+  serviceName: "test-form",
+};
+
+const baseWithCode = {
+  referenceNumber: "JPP-20260604-130732-9JZRZC",
   date: "2026-05-22T00:00:00Z",
   serviceName: "test-form",
 };
@@ -85,4 +93,50 @@ describe("resolveSubmissionOutcome", () => {
       });
     },
   );
+
+  it("uses referenceCode as referenceNumber when present", () => {
+    const outcome = resolveSubmissionOutcome(
+      response("submitted", undefined, "JPP-20260604-130732-9JZRZC"),
+    );
+    expect(outcome.subState?.referenceNumber).toBe(
+      "JPP-20260604-130732-9JZRZC",
+    );
+  });
+
+  it("falls back to id when referenceCode is absent", () => {
+    const outcome = resolveSubmissionOutcome(response("submitted"));
+    expect(outcome.subState?.referenceNumber).toBe("ref-001");
+  });
+
+  it("uses referenceCode in pending_payment state", () => {
+    const outcome = resolveSubmissionOutcome(
+      response(
+        "pending_payment",
+        {
+          deferred: {
+            amount: 100,
+            paymentUrl: "https://pay.example.com",
+            paymentId: "pay-001",
+            description: "Application fee",
+          },
+        },
+        "JPP-20260604-130732-9JZRZC",
+      ),
+    );
+    expect(outcome.subState?.referenceNumber).toBe(
+      "JPP-20260604-130732-9JZRZC",
+    );
+    expect(outcome).toEqual({
+      subState: {
+        ...baseWithCode,
+        submissionSuccess: true,
+        hasPayment: true,
+        amount: "100",
+        paymentUrl: "https://pay.example.com",
+        paymentId: "pay-001",
+        paymentDescription: "Application fee",
+      },
+      event: { name: "form-submit-success" },
+    });
+  });
 });

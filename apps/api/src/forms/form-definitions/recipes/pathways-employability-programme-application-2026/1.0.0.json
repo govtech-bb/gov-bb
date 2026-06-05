@@ -175,10 +175,9 @@
           }
         },
         {
-          "ref": "components/generic-radio",
+          "ref": "components/marital-status",
           "overrides": {
             "label": "Marital Status",
-            "fieldId": "marital-status",
             "options": [
               {
                 "label": "Single",

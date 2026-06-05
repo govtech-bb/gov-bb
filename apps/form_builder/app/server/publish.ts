@@ -4,9 +4,11 @@ import { z } from "zod";
 import { type SessionPayload } from "./session";
 import { getSession } from "./session-cipher.server";
 import { getSessionSecret } from "./secrets";
-import type {
-  ServiceContractRecipe,
-  ValidationResult,
+import {
+  deployBranchName,
+  eraseBranchName,
+  type ServiceContractRecipe,
+  type ValidationResult,
 } from "@govtech-bb/form-types";
 import { api } from "./api-client";
 import { listVersions, RECIPES_BASE } from "./github-recipes";
@@ -161,8 +163,8 @@ export const publishRecipe = createServerFn({ method: "POST" })
     const refJson = (await refRes.json()) as { object: { sha: string } };
     const baseSha = refJson.object.sha;
 
-    // Step 2: create namespaced branch
-    const branch = `form-builder/${recipe.formId}-${recipe.version}-${Date.now()}`;
+    // Step 2: create namespaced branch (dot-free — see deployBranchName, #805)
+    const branch = deployBranchName(recipe.formId, recipe.version);
     const createRefRes = await fetch(repoUrl("/git/refs"), {
       method: "POST",
       headers: { ...authHeaders(token), "Content-Type": "application/json" },
@@ -369,7 +371,7 @@ export const eraseRecipe = createServerFn({ method: "POST" })
       .object.sha;
 
     // Step 2: create the namespaced erase branch off the base tip.
-    const branch = `form-builder/erase-${formId}-${Date.now()}`;
+    const branch = eraseBranchName(formId);
     const createRefRes = await fetch(repoUrl("/git/refs"), {
       method: "POST",
       headers: { ...authHeaders(token), "Content-Type": "application/json" },

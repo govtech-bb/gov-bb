@@ -116,7 +116,7 @@ describe("publishRecipe", () => {
     );
     const step2Body = JSON.parse((step2[1] as RequestInit).body as string);
     expect(step2Body).toEqual({
-      ref: "refs/heads/form-builder/passport-renewal-1.2.0-1700000000000",
+      ref: "refs/heads/form-builder/passport-renewal-1-2-0-1700000000000",
       sha: "devsha123",
     });
 
@@ -124,7 +124,7 @@ describe("publishRecipe", () => {
     // API form-definitions module so the API's file loader, the dump script,
     // the Dockerfile, and this publish flow all point at the same path.
     expect(fetchMock.mock.calls[2][0]).toBe(
-      "https://api.github.com/repos/govtech-bb/gov-bb/contents/apps/api/src/forms/form-definitions/recipes/passport-renewal/1.2.0.json?ref=form-builder%2Fpassport-renewal-1.2.0-1700000000000",
+      "https://api.github.com/repos/govtech-bb/gov-bb/contents/apps/api/src/forms/form-definitions/recipes/passport-renewal/1.2.0.json?ref=form-builder%2Fpassport-renewal-1-2-0-1700000000000",
     );
 
     // Step 4: PUT with base64 content and matching message
@@ -134,7 +134,7 @@ describe("publishRecipe", () => {
     );
     const step4Body = JSON.parse((step4[1] as RequestInit).body as string);
     expect(step4Body.branch).toBe(
-      "form-builder/passport-renewal-1.2.0-1700000000000",
+      "form-builder/passport-renewal-1-2-0-1700000000000",
     );
     expect(step4Body.message).toBe("Publish passport-renewal v1.2.0");
     const expectedFileContent = JSON.stringify(RECIPE, null, 2) + "\n";
@@ -150,13 +150,53 @@ describe("publishRecipe", () => {
     const step5Body = JSON.parse((step5[1] as RequestInit).body as string);
     expect(step5Body.base).toBe("dev");
     expect(step5Body.head).toBe(
-      "form-builder/passport-renewal-1.2.0-1700000000000",
+      "form-builder/passport-renewal-1-2-0-1700000000000",
     );
     expect(step5Body.title).toBe("Publish form: Passport Renewal v1.2.0");
     expect(step5Body.body).toContain("Form ID: `passport-renewal`");
     expect(step5Body.body).toContain("Version: `1.2.0`");
     expect(step5Body.body).toContain("@alice");
     expect(step5Body.body).toContain("Adds passport-renewal v1.2.0");
+  });
+
+  it("sanitizes dots out of the branch name but keeps the dotted version in the file path, message, and title (#805)", async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse(200, { object: { sha: "devsha123" } }),
+      )
+      .mockResolvedValueOnce(jsonResponse(201, { ref: "refs/heads/x" }))
+      .mockResolvedValueOnce(emptyResponse(404))
+      .mockResolvedValueOnce(jsonResponse(201, { commit: { sha: "c1" } }))
+      .mockResolvedValueOnce(
+        jsonResponse(201, {
+          number: 42,
+          html_url: "https://github.com/govtech-bb/gov-bb/pull/42",
+        }),
+      );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    await publishRecipe({ data: { recipe: RECIPE, description: "" } });
+
+    // Branch name: no "." anywhere — CI's pr-preview "Guard branch name" step
+    // hard-fails dotted branches (Amplify preview cert breakage).
+    const step2Body = JSON.parse(
+      (fetchMock.mock.calls[1][1] as RequestInit).body as string,
+    );
+    expect(step2Body.ref).toBe(
+      "refs/heads/form-builder/passport-renewal-1-2-0-1700000000000",
+    );
+    expect(step2Body.ref).not.toContain(".");
+
+    // The committed artifacts keep the real dotted version.
+    const step4 = fetchMock.mock.calls[3];
+    expect(step4[0]).toContain("/passport-renewal/1.2.0.json");
+    const step4Body = JSON.parse((step4[1] as RequestInit).body as string);
+    expect(step4Body.message).toBe("Publish passport-renewal v1.2.0");
+    const step5Body = JSON.parse(
+      (fetchMock.mock.calls[4][1] as RequestInit).body as string,
+    );
+    expect(step5Body.title).toBe("Publish form: Passport Renewal v1.2.0");
   });
 
   it("throws version-already-exists and cleans up the branch when step 3 returns 200", async () => {
@@ -181,7 +221,7 @@ describe("publishRecipe", () => {
     expect(fetchMock).toHaveBeenCalledTimes(4);
     const cleanup = fetchMock.mock.calls[3];
     expect(cleanup[0]).toBe(
-      "https://api.github.com/repos/govtech-bb/gov-bb/git/refs/heads/form-builder/passport-renewal-1.2.0-1700000000000",
+      "https://api.github.com/repos/govtech-bb/gov-bb/git/refs/heads/form-builder/passport-renewal-1-2-0-1700000000000",
     );
     expect((cleanup[1] as RequestInit).method).toBe("DELETE");
   });

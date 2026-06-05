@@ -71,7 +71,9 @@ export interface EmailTemplateContext {
  * - `radio` / single `select` — option label looked up from `options` list
  * - `checkbox` / multi `select` (`multiple: true`) — selected option labels joined with ", "
  * - `date`      — `{ day, month, year }` object formatted as e.g. "5 June 2026"
- * - `file`      — skipped (binary; not shown in email)
+ * - `file`      — uploaded filenames joined with ", " (name falls back to the
+ *   key's basename; items without a durable `key` are skipped — the file
+ *   bytes are never inlined, only acknowledged by name)
  * - `show-hide` — skipped (layout-only; carries no user data)
  * - all others  — coerced to string
  *
@@ -100,7 +102,7 @@ export class EmailBodyBuilder {
       payload.formVersion,
     );
 
-    const { meta, values, submissionId } = payload;
+    const { meta, values, submissionId, referenceCode } = payload;
 
     const sections = contract.steps
       .filter((step) => meta.activeStepIds.includes(step.stepId))
@@ -135,7 +137,8 @@ export class EmailBodyBuilder {
 
     return {
       formTitle: contract.title,
-      submissionId,
+      // referenceCode is required on the event; ?? is defensive for payloads predating the field.
+      submissionId: referenceCode ?? submissionId,
       submittedAt: meta.submittedAt,
       processedAt: new Date().toISOString(),
       sections,
@@ -211,7 +214,7 @@ export class EmailBodyBuilder {
           ? [...new Set((rawHidden as string[][]).flat())]
           : (rawHidden as string[]);
 
-    const SKIP_TYPES = new Set<Primitive["htmlType"]>(["file", "show-hide"]);
+    const SKIP_TYPES = new Set<Primitive["htmlType"]>(["show-hide"]);
 
     const fields = step.elements
       .filter((el) => !SKIP_TYPES.has(el.htmlType))
@@ -256,6 +259,24 @@ export class EmailBodyBuilder {
           field.options ?? [],
           Array.isArray(raw) ? raw : [raw],
         );
+
+      case "file": {
+        // Stored answer is an array of { key, name, size, type } upload items.
+        // Mirror FilesService.collectFileEntries: only items with a non-empty
+        // string `key` were durably uploaded; display `name`, falling back to
+        // the key's basename. Anything else → "" so the row is omitted.
+        if (!Array.isArray(raw)) return "";
+        return (raw as Array<Record<string, unknown>>)
+          .filter(
+            (item) => typeof item?.key === "string" && item.key.length > 0,
+          )
+          .map((item) =>
+            typeof item.name === "string" && item.name.length > 0
+              ? item.name
+              : ((item.key as string).split("/").pop() ?? (item.key as string)),
+          )
+          .join(", ");
+      }
 
       case "date": {
         if (isCompleteDateValue(raw)) return formatDateValue(raw);

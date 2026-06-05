@@ -26,6 +26,7 @@ import {
   removeRepeatableStep,
   restoreRepeatableStepsFromStorage,
   getEffectiveRepeatBounds,
+  getInstanceMarker,
 } from "./repeatable-helper";
 import type {
   ClientFormStep,
@@ -137,6 +138,101 @@ describe("getRepeatStepCount", () => {
 
   it("returns undefined when the suffix after the separator is non-numeric", () => {
     expect(getRepeatStepCount("personalInfo~abc")).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getInstanceMarker
+// ---------------------------------------------------------------------------
+
+describe("getInstanceMarker", () => {
+  it("returns undefined for a base step (instance 1 is never marked)", () => {
+    const step = makeStep(
+      "dependents",
+      ["firstName"],
+      [makeRepeatableBehaviour(1, 5)],
+    );
+    expect(getInstanceMarker(step)).toBeUndefined();
+  });
+
+  it("returns undefined for a step with no behaviours and no repeat suffix", () => {
+    expect(getInstanceMarker(makeStep("personalInfo"))).toBeUndefined();
+  });
+
+  it("returns undefined when the repeat suffix is non-numeric", () => {
+    const step = makeStep("dependents~abc");
+    expect(getInstanceMarker(step)).toBeUndefined();
+  });
+
+  it("auto-numbers a ~N instance when no instanceLabel is configured", () => {
+    // Without sharedFields the base step is instance 1, so ~1 displays as 2.
+    const step = makeStep(
+      "dependents~1",
+      ["firstName"],
+      [makeRepeatableBehaviour(1, 5)],
+    );
+    expect(getInstanceMarker(step)).toEqual({ text: "2", hasLabel: false });
+  });
+
+  it("numbers later instances by suffix + 1 without sharedFields", () => {
+    const step = makeStep(
+      "dependents~3",
+      ["firstName"],
+      [makeRepeatableBehaviour(1, 5)],
+    );
+    expect(getInstanceMarker(step)).toEqual({ text: "4", hasLabel: false });
+  });
+
+  it("uses the configured instanceLabel with the display number", () => {
+    const step = makeStep(
+      "dependents~1",
+      ["firstName"],
+      [{ ...makeRepeatableBehaviour(1, 5), instanceLabel: "Dependent" }],
+    );
+    expect(getInstanceMarker(step)).toEqual({
+      text: "Dependent 2",
+      hasLabel: true,
+    });
+  });
+
+  it("auto-numbers a ~N instance that lost its behaviours", () => {
+    // Defensive: a ~N suffix only arises from repeatable cloning, so the
+    // fallback marker still applies even if behaviours are missing.
+    const step = makeStep("dependents~1");
+    expect(getInstanceMarker(step)).toEqual({ text: "2", hasLabel: false });
+  });
+
+  describe("with sharedFields (base step is a separate shared-values page)", () => {
+    // In the shared-fields layout the instances are ~1..~min and the base
+    // step holds only the shared fields — so ~1 IS instance 1.
+    const behaviours = (label?: string): ClientFormStep["behaviours"] => [
+      label
+        ? { ...makeRepeatableBehaviour(2, 5), instanceLabel: label }
+        : makeRepeatableBehaviour(2, 5),
+      makeSharedFieldsBehaviour(["sharedField"]),
+    ];
+
+    it("returns undefined for ~1 (it is instance 1)", () => {
+      const step = makeStep("dependents~1", ["firstName"], behaviours());
+      expect(getInstanceMarker(step)).toBeUndefined();
+    });
+
+    it("numbers ~N as N", () => {
+      const step = makeStep("dependents~2", ["firstName"], behaviours());
+      expect(getInstanceMarker(step)).toEqual({ text: "2", hasLabel: false });
+    });
+
+    it("combines instanceLabel with the shared-fields numbering", () => {
+      const step = makeStep(
+        "dependents~3",
+        ["firstName"],
+        behaviours("Dependent"),
+      );
+      expect(getInstanceMarker(step)).toEqual({
+        text: "Dependent 3",
+        hasLabel: true,
+      });
+    });
   });
 });
 

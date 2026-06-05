@@ -80,31 +80,7 @@
           }
         },
         {
-          "ref": "components/generic-radio",
-          "overrides": {
-            "label": "Marital status",
-            "fieldId": "marital-status",
-            "options": [
-              {
-                "label": "Single",
-                "value": "single"
-              },
-              {
-                "label": "Married",
-                "value": "married"
-              },
-              {
-                "label": "Divorced",
-                "value": "divorced"
-              }
-            ],
-            "validations": {
-              "required": {
-                "error": "Marital Status is required",
-                "value": true
-              }
-            }
-          }
+          "ref": "components/marital-status"
         },
         {
           "ref": "components/national-id-number",

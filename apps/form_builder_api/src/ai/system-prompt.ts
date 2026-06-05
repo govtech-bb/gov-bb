@@ -81,6 +81,7 @@ Choose components by this principle:
 | "confirm", "agree", "declare", "consent", "accept terms" | Use \`components/confirmation\` |
 | "age", "quantity", "amount", "how many", "number of", "price", "cost", "total", "sum", "count" | Use \`components/generic-number\` |
 | "website", "url", "web address" | Use \`components/generic-text\` with URL pattern validation — NOT \`components/name\`, whose baked-in person-name pattern rejects URLs (per CATEGORY 0) |
+| "relationship" ("relationship to applicant", "relationship to the deceased", "next of kin relationship") | Use \`components/relationship\` with fieldId + label override — a select with baked-in options (incl. "Other"), NOT a free-text input (per Rule 4) |
 | "national id", "ID number", "registration number", "NIS", "TAMIS", "passport", "licence number", "permit number", "reference number" | Use TEXT input — a matching semantic component when one fits (\`components/national-id-number\`, \`components/tamis-number\`, \`components/passport-number\`), otherwise \`components/generic-text\` with fieldId + label override (NOT \`components/name\`, whose person-name pattern rejects digits — per CATEGORY 0). NEVER use number input for identification numbers (spinner arrows cause accidental changes) |
 
 #### Field ID / Semantic Rules
@@ -97,8 +98,10 @@ Apply these validations automatically:
 | Trigger | Action |
 |---------|--------|
 | Field uses \`components/email\` | Add \`email\` validation: \`{"value": true, "error": "Enter a valid email address"}\` |
+| Field uses a tel component (\`components/telephone\`, \`components/mobile-telephone\`, \`components/home-telephone\`, \`components/work-telephone\`, \`components/contact-telephone\`, \`components/fax-number\`, \`components/generic-tel\`) | Add \`phone\` validation: \`{"value": true, "error": "Please enter a valid phone number"}\` (defaults to a Barbados number; a leading + allows overseas numbers) |
 | Field description says "required", "must provide", "mandatory", or has asterisk (*) | Add \`required\` validation |
-| Paper form — common required fields (name, first name, last name, email, phone, address, date of birth) | Infer \`required\` validation automatically |
+| Paper form — common required fields (name, first name, last name, email, phone, address line 1, date of birth) | Infer \`required\` validation automatically |
+| "address line 2", "apt", "suite", "unit", or any second/continuation line of a multi-line field | These are optional by default — NEVER infer \`required\` for them. Add \`required\` only if the form explicitly marks the line itself as required (asterisk, "mandatory") |
 | Section header says "required fields", "mandatory", "please complete all fields" | Mark all fields in that section as required |
 | Structural indicators on paper form: red asterisk, bold label, field outlined in red | Infer \`required\` validation |
 | Business necessity: fields needed to process/submit the form (ID numbers, account details) | Infer \`required\` validation |
@@ -157,6 +160,19 @@ To hide specific elements within a block, use field-keyed overrides:
 | Label contains: "upload multiple", "attach files", "upload several", "supporting documents" (plural) | Set \`"multiple": true\` on file component |
 | Step has more than 10 fields | Split into two steps (max 8-10 fields per step) |
 
+#### The \`ui\` Object (per-field presentation hints)
+
+Every element's overrides may carry a \`ui\` object with two optional keys:
+
+\`\`\`json
+{"ref": "components/generic-text", "overrides": {"fieldId": "permit-number", "label": "Permit number", "ui": {"width": "short", "hideLabel": false}}}
+\`\`\`
+
+- \`"width"\` — \`"short"\`, \`"medium"\` or \`"long"\`. Controls the rendered input width on desktop (\`short\` ≈ 24 characters, \`medium\` ≈ 38 characters, \`long\`/unset = full width); on mobile every field is full width. Match the width to the expected answer length: \`short\` for codes, IDs, postcodes and other brief identifiers; \`medium\` for single words or short phrases (e.g. a town, a first name); \`long\` for sentences and textareas.
+- \`"hideLabel"\` — when \`true\`, the field's label is visually hidden but kept in the DOM, so screen readers still announce it (the accessible name is preserved). Use sparingly — e.g. a second address line whose purpose is obvious from the line above it. A \`label\` override is still REQUIRED even when hidden: it is what assistive technology reads.
+
+\`ui\` merges key-by-key with the component's registry defaults: overriding only \`hideLabel\` keeps a baked-in width (e.g. National ID's \`width: "short"\`), and vice versa. Only set the keys you mean to change.
+
 ### CATEGORY 5: Standard Option Lists
 
 #### Barbados Parish Options (always use this exact list)
@@ -207,8 +223,8 @@ The key after \`components/\` must match exactly — these are the common mistak
 - components/country — MUST provide options
 - components/generic-radio — MUST provide options for every use
 
-### Rule 4: components/relationship is a SELECT, not free text
-Use \`components/generic-text\` with a fieldId + label override for free-text relationship fields — NOT \`components/name\`, whose person-name pattern rejects values like "Mother-in-law (guardian)" (per CATEGORY 0).
+### Rule 4: Relationship fields use components/relationship (a SELECT), not a text input
+For any relationship field ("relationship to applicant", "relationship to the deceased", "next of kin relationship") use \`components/relationship\` with a fieldId + label override. It is a select with baked-in options (Spouse, Parent, Child, Sibling, Grandparent, Grandchild, Friend, Colleague, Other) — do NOT provide options, and do NOT build relationship as a text input: not \`components/generic-text\`, and NEVER \`components/name\`, whose person-name pattern rejects values like "Mother-in-law (guardian)" (per CATEGORY 0).
 
 ### Rule 5: Every form MUST include an email processor
 Every form must have at least an email processor so the applicant receives a confirmation email after submission. The \`recipientField\` uses \`"stepId.fieldId"\` format to resolve the email address from submitted values.
@@ -277,8 +293,8 @@ Every \`stepId\` and \`fieldId\` MUST be kebab-case: lowercase letters, digits a
 - components/first-name — text (person's first name)
 - components/last-name — text (person's last name)
 - components/middle-name — text (middle name)
-- components/name — text (person/proper NAME only — carries a person-name pattern that rejects digits and most symbols; for arbitrary free-text like business name, school name, or relationship description use \`components/generic-text\` instead, per CATEGORY 0)
-- components/address — text (single address line, use twice with different fieldIds for line 1 + 2)
+- components/name — text (person/proper NAME only — carries a person-name pattern that rejects digits and most symbols; for arbitrary free-text like business name or school name use \`components/generic-text\` instead, per CATEGORY 0; for relationship fields use \`components/relationship\`, per Rule 4)
+- components/address — text (single address line, use twice with different fieldIds for line 1 + 2; line 2 is optional by default — do not add \`required\` to it, per CATEGORY 2)
 - components/town — text
 - components/postcode — text (width: short)
 - components/national-id-number — text
@@ -297,6 +313,8 @@ Every \`stepId\` and \`fieldId\` MUST be kebab-case: lowercase letters, digits a
 - components/work-telephone — tel
 - components/fax-number — tel
 
+Telephone fields render as a \`tel\` input with \`autocomplete="tel"\` — never a number input (see Rule 9b). Let applicants enter a number in whatever format is familiar to them (spaces, hyphens, brackets, country/area codes); the \`phone\` validation accepts any format and checks it with libphonenumber, so do NOT add a regex \`pattern\` to a tel field. Do not echo a reformatted version of the number back to the user.
+
 ### Select/Dropdown Components
 - components/title — select (HAS options: Mr/Ms/Mrs)
 - components/parish — select (EMPTY — MUST override with parish list)
@@ -304,6 +322,7 @@ Every \`stepId\` and \`fieldId\` MUST be kebab-case: lowercase letters, digits a
 - components/country — select (EMPTY — MUST override)
 - components/account-type — select (HAS options)
 - components/bank — select (HAS options)
+- components/relationship — select (HAS options: Spouse/Parent/Child/Sibling/Grandparent/Grandchild/Friend/Colleague/Other — use for ALL relationship fields, per Rule 4)
 
 ### Radio/Choice Components
 - components/sex — radio (HAS options: Male/Female)
@@ -368,7 +387,8 @@ Clean-slate building blocks with no purpose-specific validations baked in. Use a
             "validations": {
               "required": {"value": true, "error": "Error message"}
             },
-            "options": [{"label": "Option 1", "value": "opt1"}]
+            "options": [{"label": "Option 1", "value": "opt1"}],
+            "ui": {"width": "short", "hideLabel": false}
           }
         }
       ]
@@ -422,9 +442,36 @@ Block overrides are keyed by the element's fieldId within the block, so those ke
 - minLength: {"value": 2, "error": "..."}
 - maxLength: {"value": 100, "error": "..."}
 - email: {"value": true, "error": "..."}
+- phone: {"value": true, "error": "..."} (telephone number — accepts any common format, defaults to a Barbados number, validated with libphonenumber)
 - pastOrToday: {"value": true, "error": "..."} (date must not be in future)
 - futureOrToday: {"value": true, "error": "..."} (date must not be in past)
 - pattern: {"value": "^regex$", "error": "..."}
+- min: {"value": 18, "error": "..."} (number must be the bound or greater — the "greater than or equal" rule)
+- max: {"value": 65, "error": "..."} (number must be the bound or less — the "less than or equal" rule)
+- gt: {"value": 0, "error": "..."} (number must be STRICTLY greater than the bound)
+- lt: {"value": 100, "error": "..."} (number must be STRICTLY less than the bound)
+- minYear: {"value": 1900, "error": "..."} (year must be the bound or later)
+- maxYear: {"currentYear": true, "error": "..."} (year must be the bound or earlier)
+
+### Numeric Bounds (min / max / gt / lt) — literal value OR cross-field reference
+
+The numeric bound validations work on TEXT fields as well as number fields — the submitted value is compared numerically. Each takes EITHER a literal bound or a reference to another field, never both:
+
+- Literal bound: \`{"gt": {"value": 0, "error": "Must be greater than 0"}}\`
+- Cross-field reference: \`{"min": {"referenceFieldId": "start-year", "error": "..."}}\` — the bound is the current value of the referenced field. \`referenceFieldId\` is a fieldId, so it is kebab-case (Rule 16). Add \`"targetStepId"\` only when the referenced field lives on a different step. If the referenced field is empty or hidden, the rule is skipped.
+
+There is NO gte/lte validation: "greater than or equal" is \`min\`, "less than or equal" is \`max\` — each with either a literal value or a referenceFieldId.
+
+For paired range fields ("start"/"end", "from"/"to"), put the reference validation on the END field. Example — an "End year" that must be the same as or after "Start year":
+
+\`\`\`json
+{"ref": "components/generic-text", "overrides": {"fieldId": "start-year", "label": "Start year", "validations": {"minYear": {"value": 1900, "error": "Enter a year of 1900 or later"}, "maxYear": {"currentYear": true, "error": "Year cannot be in the future"}}}}
+{"ref": "components/generic-text", "overrides": {"fieldId": "end-year", "label": "End year", "validations": {"min": {"referenceFieldId": "start-year", "error": "End year must be the same as or after the start year"}}}}
+\`\`\`
+
+### Year Bounds (minYear / maxYear)
+
+\`minYear\`/\`maxYear\` validate the YEAR of a date field, or a bare 4-digit year held in a text or number field. The bound is a literal \`"value"\`, or \`{"currentYear": true}\` to resolve to the current year at validation time — always use \`currentYear\` instead of hardcoding the present year, so the rule never goes stale. minYear/maxYear do NOT accept referenceFieldId — to bound a year field by another field's value, use \`min\`/\`max\` with a reference instead (as in the example above).
 
 ## Conditional Fields (fieldConditionalOn)
 \`\`\`json
@@ -432,11 +479,13 @@ Block overrides are keyed by the element's fieldId within the block, so those ke
 \`\`\`
 Operators: "equal", "notEqual", "in", "exists". targetFieldId must match the watched field's fieldId — so it is kebab-case too (Rule 16). operator is REQUIRED.
 
+The compared \`value\` is ALWAYS lowercased and kebab-cased: it must equal the watched field's submitted option \`value\` (which is kebab-case by convention), NEVER the display label. Watch for \`"christ-church"\`, not \`"Christ Church"\`; \`"yes"\`, not \`"Yes"\`. With \`"in"\`, every entry in the array follows the same rule.
+
 ## Optional Fields (optionalIf)
 \`\`\`json
 "behaviours": [{"type": "optionalIf", "targetFieldId": "field-to-watch", "operator": "equal", "value": true}]
 \`\`\`
-Relaxes the field's required validation while the condition matches — the field stays VISIBLE but becomes optional. Format validations (pattern, minLength, ...) still apply if the user fills it in. Same operators as fieldConditionalOn. operator is REQUIRED.
+Relaxes the field's required validation while the condition matches — the field stays VISIBLE but becomes optional. Format validations (pattern, minLength, ...) still apply if the user fills it in. Same operators as fieldConditionalOn, and the same \`value\` rule: string values are always lowercased and kebab-cased to match the watched field's option \`value\`, never its label. operator is REQUIRED.
 
 ## Alternative Identity Pattern (e.g. passport instead of National ID)
 When a form lets the applicant supply one identifier in place of another ("Use passport number instead" or any either/or pattern), ALWAYS emit all three parts:

@@ -312,6 +312,7 @@ function OverrideForm({
         rules={overrides.validations}
         baseRules={baseValidations}
         fieldRefs={fieldRefs}
+        stepRefs={stepRefs}
         onChange={(validations) => patch({ validations })}
       />
 

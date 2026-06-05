@@ -21,7 +21,10 @@ export function resolveSubmissionOutcome(
   response: FormSubmissionResponse,
 ): SubmissionOutcome {
   const base = {
-    referenceNumber: response.data.id,
+    // Prefer the human-readable referenceCode (e.g. "JPP-20260604-130732-9JZRZC")
+    // returned by the API; fall back to the UUID `id` for older API deploys that
+    // don't yet include it (see issue #791).
+    referenceNumber: response.data.referenceCode ?? response.data.id,
     date: response.data.submittedAt,
     serviceName: response.data.formId,
   };

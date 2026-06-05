@@ -2,6 +2,7 @@ import React from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { AnyFormApi } from "@tanstack/react-form";
 import { ClientFormStep, ClientPrimitive, FormMeta } from "@forms/types";
+import { getInstanceMarker, getVisibleFields } from "@forms/lib";
 
 export default function Review({
   formMeta,
@@ -132,24 +133,29 @@ export default function Review({
         .map((step) => {
           // Compute each visible field's display value once, then drop the
           // rows that have no answer so blank fields are omitted entirely.
+          // Visibility is evaluated from current form values (#737) — the
+          // render-mutated conditionallyHidden flag goes stale for fields
+          // that never re-mounted after their controlling answer flipped.
           // Show-hide toggles are UI controls, not answers — never a row,
           // regardless of toggle state.
-          const rows = step.fields
-            .filter(
-              (field) =>
-                !field.hidden &&
-                !field.conditionallyHidden &&
-                field.htmlType !== "show-hide",
-            )
+          const rows = getVisibleFields(step, form)
+            .filter((field) => field.htmlType !== "show-hide")
             .map((field: ClientPrimitive) => ({
               field,
               value: getFieldDisplayValue(field),
             }))
             .filter(({ value }) => value !== null && value !== "");
 
+          // #801: repeat instances beyond the first carry a marker so the
+          // heading distinguishes e.g. "… — Dependent 2" from the first
+          // instance. Base steps / first instances return undefined.
+          const marker = getInstanceMarker(step);
+
           return (
             <section key={step.stepId} className="govbb-summary-section">
-              <h2 className="govbb-summary-section__title">{step.title}</h2>
+              <h2 className="govbb-summary-section__title">
+                {marker ? `${step.title} — ${marker.text}` : step.title}
+              </h2>
               <div className="govbb-summary-section__action">
                 <a
                   className="govbb-link"

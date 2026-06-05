@@ -12,9 +12,10 @@
 import {
   checkConditionalOn,
   getVisibleSteps,
+  getVisibleFields,
   getStepConditonalTargets,
 } from "./behavior-helper";
-import type { ClientFormStep } from "@forms/types";
+import type { ClientFormStep, ClientPrimitive } from "@forms/types";
 import type {
   FieldConditionalOnBehaviour,
   StepConditionalOnBehaviour,
@@ -216,6 +217,225 @@ describe("getVisibleSteps", () => {
     const visible = getVisibleSteps(steps, formApi);
     // step0 and step2 visible; step1 hidden
     expect(visible.map((s) => s.stepId)).toEqual(["step0", "step2"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getVisibleFields
+// ---------------------------------------------------------------------------
+
+function makeField(
+  stepId: string,
+  fieldId: string,
+  overrides: Partial<ClientPrimitive> = {},
+): ClientPrimitive {
+  return {
+    id: `${stepId}_${fieldId}`,
+    fieldId,
+    stepId,
+    name: fieldId,
+    label: `Field ${fieldId}`,
+    htmlType: "text",
+    disabled: false,
+    hidden: false,
+    conditionallyHidden: false,
+    ...overrides,
+  };
+}
+
+describe("getVisibleFields", () => {
+  const conditionalOn = (
+    overrides: Partial<FieldConditionalOnBehaviour> = {},
+  ): FieldConditionalOnBehaviour => ({
+    type: "fieldConditionalOn",
+    targetStepId: "step1",
+    targetFieldId: "hasJob",
+    operator: "equal",
+    value: "yes",
+    ...overrides,
+  });
+
+  it("includes a field with no behaviours", () => {
+    const step = makeStep("step1");
+    step.fields = [makeField("step1", "name")];
+    const visible = getVisibleFields(step, makeFormApi());
+    expect(visible.map((f) => f.fieldId)).toEqual(["name"]);
+  });
+
+  it("excludes a field with hidden: true", () => {
+    const step = makeStep("step1");
+    step.fields = [makeField("step1", "secret", { hidden: true })];
+    const visible = getVisibleFields(step, makeFormApi());
+    expect(visible).toHaveLength(0);
+  });
+
+  it("includes a conditional field when its 'equal' condition passes", () => {
+    const step = makeStep("step1");
+    step.fields = [
+      makeField("step1", "hasJob"),
+      makeField("step1", "employer", { behaviours: [conditionalOn()] }),
+    ];
+    const formApi = makeFormApi({ step1_hasJob: "yes" });
+    const visible = getVisibleFields(step, formApi);
+    expect(visible.map((f) => f.fieldId)).toEqual(["hasJob", "employer"]);
+  });
+
+  it("excludes a conditional field when its 'equal' condition fails — even if the stale flag says visible (#737)", () => {
+    const step = makeStep("step1");
+    const employer = makeField("step1", "employer", {
+      behaviours: [conditionalOn()],
+      // The render-time flag was never updated because the field never
+      // mounted after the controlling answer flipped — the #737 bug.
+      conditionallyHidden: false,
+    });
+    step.fields = [makeField("step1", "hasJob"), employer];
+    const formApi = makeFormApi({
+      step1_hasJob: "no",
+      step1_employer: "Acme Ltd", // stale answer kept in state (keep-but-hide)
+    });
+    const visible = getVisibleFields(step, formApi);
+    expect(visible.map((f) => f.fieldId)).toEqual(["hasJob"]);
+  });
+
+  it("ignores the conditionallyHidden flag when the condition passes", () => {
+    const step = makeStep("step1");
+    step.fields = [
+      makeField("step1", "employer", {
+        behaviours: [conditionalOn()],
+        conditionallyHidden: true, // stale flag from a previous render
+      }),
+    ];
+    const formApi = makeFormApi({ step1_hasJob: "yes" });
+    const visible = getVisibleFields(step, formApi);
+    expect(visible.map((f) => f.fieldId)).toEqual(["employer"]);
+  });
+
+  it("defaults targetStepId to the field's own step when absent", () => {
+    const step = makeStep("step1");
+    step.fields = [
+      makeField("step1", "employer", {
+        behaviours: [conditionalOn({ targetStepId: undefined })],
+      }),
+    ];
+    const visibleWhenYes = getVisibleFields(
+      step,
+      makeFormApi({ step1_hasJob: "yes" }),
+    );
+    const visibleWhenNo = getVisibleFields(
+      step,
+      makeFormApi({ step1_hasJob: "no" }),
+    );
+    expect(visibleWhenYes).toHaveLength(1);
+    expect(visibleWhenNo).toHaveLength(0);
+  });
+
+  it("evaluates 'notEqual' conditions", () => {
+    const step = makeStep("step1");
+    step.fields = [
+      makeField("step1", "details", {
+        behaviours: [conditionalOn({ operator: "notEqual", value: "none" })],
+      }),
+    ];
+    expect(
+      getVisibleFields(step, makeFormApi({ step1_hasJob: "none" })),
+    ).toHaveLength(0);
+    expect(
+      getVisibleFields(step, makeFormApi({ step1_hasJob: "part-time" })),
+    ).toHaveLength(1);
+  });
+
+  it("evaluates 'in' conditions", () => {
+    const step = makeStep("step1");
+    step.fields = [
+      makeField("step1", "details", {
+        behaviours: [
+          conditionalOn({ operator: "in", value: ["full-time", "part-time"] }),
+        ],
+      }),
+    ];
+    expect(
+      getVisibleFields(step, makeFormApi({ step1_hasJob: "part-time" })),
+    ).toHaveLength(1);
+    expect(
+      getVisibleFields(step, makeFormApi({ step1_hasJob: "retired" })),
+    ).toHaveLength(0);
+  });
+
+  it("evaluates 'exists' conditions", () => {
+    const step = makeStep("step1");
+    step.fields = [
+      makeField("step1", "details", {
+        behaviours: [conditionalOn({ operator: "exists", value: "" })],
+      }),
+    ];
+    expect(
+      getVisibleFields(step, makeFormApi({ step1_hasJob: "anything" })),
+    ).toHaveLength(1);
+    expect(getVisibleFields(step, makeFormApi({}))).toHaveLength(0);
+  });
+
+  it("keeps a field visible when its condition passes but the field itself is empty (requiredAndEmpty)", () => {
+    const step = makeStep("step1");
+    step.fields = [
+      makeField("step1", "employer", { behaviours: [conditionalOn()] }),
+    ];
+    // hasJob = yes reveals employer; the user hasn't typed anything yet —
+    // the field is required-and-empty, which is still visible.
+    const formApi = makeFormApi({ step1_hasJob: "yes" });
+    expect(getVisibleFields(step, formApi)).toHaveLength(1);
+  });
+
+  it("treats multiple fieldConditionalOn behaviours as OR — visible when any one passes", () => {
+    const step = makeStep("step1");
+    step.fields = [
+      makeField("step1", "details", {
+        behaviours: [
+          conditionalOn({ targetFieldId: "hasJob", value: "yes" }),
+          conditionalOn({ targetFieldId: "hadJobBefore", value: "yes" }),
+        ],
+      }),
+    ];
+    // Second condition passes, first fails → visible.
+    expect(
+      getVisibleFields(
+        step,
+        makeFormApi({ step1_hasJob: "no", step1_hadJobBefore: "yes" }),
+      ),
+    ).toHaveLength(1);
+    // Neither passes → hidden.
+    expect(
+      getVisibleFields(
+        step,
+        makeFormApi({ step1_hasJob: "no", step1_hadJobBefore: "no" }),
+      ),
+    ).toHaveLength(0);
+  });
+
+  it("ignores non-conditional behaviours (e.g. fieldArray)", () => {
+    const step = makeStep("step1");
+    step.fields = [
+      makeField("step1", "items", {
+        behaviours: [{ type: "fieldArray", addAnotherLabel: "Add" } as never],
+      }),
+    ];
+    expect(getVisibleFields(step, makeFormApi())).toHaveLength(1);
+  });
+
+  it("keeps flag-based behaviour for repeatable steps (per-instance visibility is out of scope)", () => {
+    const step = makeStep("step1", [{ type: "repeatable", min: 1, max: 3 }]);
+    step.fields = [
+      // Condition fails, but on a repeatable step the render-time flag stays
+      // authoritative — per-instance semantics live in form-conditions.
+      makeField("step1", "employer", {
+        behaviours: [conditionalOn()],
+        conditionallyHidden: false,
+      }),
+      makeField("step1", "occupation", { conditionallyHidden: true }),
+      makeField("step1", "secret", { hidden: true }),
+    ];
+    const formApi = makeFormApi({ step1_hasJob: "no" });
+    const visible = getVisibleFields(step, formApi);
+    expect(visible.map((f) => f.fieldId)).toEqual(["employer"]);
   });
 });
 

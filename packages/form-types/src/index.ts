@@ -144,3 +144,5 @@ export type {
   DateTimeFormat,
   ContactDetails,
 } from "./service-contract.type";
+
+export { deployBranchName, eraseBranchName } from "./deploy-branch";

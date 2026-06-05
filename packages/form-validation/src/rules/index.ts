@@ -9,6 +9,7 @@ import {
   containsRunner,
   strictEqualityRunner,
 } from "./string";
+import { phoneRunner } from "./phone";
 import {
   minRunner,
   maxRunner,
@@ -44,6 +45,7 @@ export const RULE_REGISTRY: Partial<Record<ValidationType, RuleRunner>> = {
   maxLength: maxLengthRunner,
   pattern: patternRunner,
   email: emailRunner,
+  phone: phoneRunner,
   contains: containsRunner,
   strictEquality: strictEqualityRunner,
   min: minRunner,

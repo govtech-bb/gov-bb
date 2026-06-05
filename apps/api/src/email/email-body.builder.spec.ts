@@ -1,4 +1,4 @@
-import { EmailBodyBuilder } from "./email-body.builder";
+import { EmailBodyBuilder, type EmailField } from "./email-body.builder";
 import type { FormDefinitionsService } from "../forms/form-definitions/form-definitions.service";
 import type { ServiceContract } from "@govtech-bb/form-types";
 import type { SubmissionCreatedEvent } from "../forms/submissions/submissions.types";
@@ -82,6 +82,7 @@ function makePayload(
 ): SubmissionCreatedEvent {
   return {
     submissionId: "sub-001",
+    referenceCode: "TST-20260604-130732-ABCDEF",
     formId: "test-form",
     formVersion: "1.0.0",
     idempotencyKey: "key-1",
@@ -151,9 +152,17 @@ describe("EmailBodyBuilder", () => {
       const ctx = await builder.build(makePayload());
 
       expect(ctx.formTitle).toBe("Test Form");
-      expect(ctx.submissionId).toBe("sub-001");
+      // submissionId in the template context is the referenceCode when present
+      expect(ctx.submissionId).toBe("TST-20260604-130732-ABCDEF");
       expect(ctx.submittedAt).toBe("2026-05-12T10:00:00.000Z");
       expect(typeof ctx.processedAt).toBe("string");
+    });
+
+    it("uses referenceCode as the template submissionId when present", async () => {
+      const ctx = await builder.build(
+        makePayload({ referenceCode: "JPP-20260604-130732-9JZRZC" }),
+      );
+      expect(ctx.submissionId).toBe("JPP-20260604-130732-9JZRZC");
     });
 
     it("fetches the contract using formId and formVersion from the payload", async () => {
@@ -311,12 +320,13 @@ describe("EmailBodyBuilder", () => {
       expect(labels).not.toContain("Last Name");
     });
 
-    it("omits file and show-hide fields entirely", async () => {
+    it("omits show-hide fields entirely", async () => {
       const contract = makeContract();
-      contract.steps[0].elements.push(
-        { fieldId: "cv", label: "CV", htmlType: "file", multiple: false },
-        { fieldId: "note", label: "Note", htmlType: "show-hide" },
-      );
+      contract.steps[0].elements.push({
+        fieldId: "note",
+        label: "Note",
+        htmlType: "show-hide",
+      });
       formSvc = makeFormDefinitionsService(contract);
       builder = new EmailBodyBuilder(formSvc);
 
@@ -328,14 +338,12 @@ describe("EmailBodyBuilder", () => {
         "interests",
         "country",
         "languages",
-        "cv",
         "note",
       ];
 
       const ctx = await builder.build(payload);
       const labels = ctx.sections[0].fields.map((f) => f.label);
 
-      expect(labels).not.toContain("CV");
       expect(labels).not.toContain("Note");
     });
 
@@ -359,6 +367,130 @@ describe("EmailBodyBuilder", () => {
       const field = ctx.sections[0].fields.find((f) => f.label === "Gender");
 
       expect(field?.value).toBe("other");
+    });
+  });
+
+  describe("file field rendering", () => {
+    /** Contract whose personal step also carries a file-upload field. */
+    function makeFileContract(): ServiceContract {
+      const contract = makeContract();
+      contract.steps[0].elements.push({
+        fieldId: "policeCert",
+        label: "Upload a Police Certificate of Character",
+        htmlType: "file",
+        multiple: false,
+      });
+      return contract;
+    }
+
+    /** Payload with the file field active and `items` as its stored answer. */
+    function makeFilePayload(items: unknown): SubmissionCreatedEvent {
+      const payload = makePayload();
+      payload.meta.activeFieldIds["personal"] = [
+        "firstName",
+        "lastName",
+        "gender",
+        "interests",
+        "country",
+        "languages",
+        "dob",
+        "policeCert",
+      ];
+      (payload.values.personal as Record<string, unknown>).policeCert = items;
+      return payload;
+    }
+
+    function fileField(ctx: { sections: Array<{ fields: EmailField[] }> }) {
+      return ctx.sections[0].fields.find(
+        (f) => f.label === "Upload a Police Certificate of Character",
+      );
+    }
+
+    beforeEach(() => {
+      formSvc = makeFormDefinitionsService(makeFileContract());
+      builder = new EmailBodyBuilder(formSvc);
+    });
+
+    it("renders an uploaded file's filename", async () => {
+      const ctx = await builder.build(
+        makeFilePayload([
+          {
+            key: "uploads/abc/police-certificate.pdf",
+            name: "police-certificate.pdf",
+            size: 12345,
+            type: "application/pdf",
+          },
+        ]),
+      );
+
+      expect(fileField(ctx)?.value).toBe("police-certificate.pdf");
+    });
+
+    it("joins multiple uploaded filenames with ', '", async () => {
+      const ctx = await builder.build(
+        makeFilePayload([
+          { key: "uploads/abc/first.pdf", name: "first.pdf" },
+          { key: "uploads/abc/second.pdf", name: "second.pdf" },
+        ]),
+      );
+
+      expect(fileField(ctx)?.value).toBe("first.pdf, second.pdf");
+    });
+
+    it("falls back to the key's basename when name is missing or empty", async () => {
+      const ctx = await builder.build(
+        makeFilePayload([
+          { key: "uploads/abc/from-key.pdf" },
+          { key: "uploads/abc/also-from-key.pdf", name: "" },
+        ]),
+      );
+
+      expect(fileField(ctx)?.value).toBe("from-key.pdf, also-from-key.pdf");
+    });
+
+    it("skips items without a non-empty string key", async () => {
+      const ctx = await builder.build(
+        makeFilePayload([
+          { name: "never-uploaded.pdf" },
+          { key: "", name: "empty-key.pdf" },
+          { key: "uploads/abc/durable.pdf", name: "durable.pdf" },
+        ]),
+      );
+
+      expect(fileField(ctx)?.value).toBe("durable.pdf");
+    });
+
+    it("ignores null and non-object items in the stored array", async () => {
+      const ctx = await builder.build(
+        makeFilePayload([
+          null,
+          42,
+          "stray-string",
+          { key: "uploads/abc/ok.pdf", name: "ok.pdf" },
+        ]),
+      );
+
+      expect(fileField(ctx)?.value).toBe("ok.pdf");
+    });
+
+    it("omits the row when no item has a durable key", async () => {
+      const ctx = await builder.build(
+        makeFilePayload([{ name: "never-uploaded.pdf" }, { key: "" }]),
+      );
+
+      expect(fileField(ctx)).toBeUndefined();
+    });
+
+    it("omits the row when the stored answer is an empty array", async () => {
+      const ctx = await builder.build(makeFilePayload([]));
+
+      expect(fileField(ctx)).toBeUndefined();
+    });
+
+    it("omits the row for a non-array stored answer", async () => {
+      const ctx = await builder.build(makeFilePayload("not-an-array"));
+
+      expect(fileField(ctx)).toBeUndefined();
     });
   });
 

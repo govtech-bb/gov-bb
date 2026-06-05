@@ -19,6 +19,7 @@ const expressions = {
 
 const EVENT: SubmissionCreatedEvent = {
   submissionId: "sub-1",
+  referenceCode: "TST-20260604-130732-000001",
   formId: "form-1",
   formVersion: "1.0.0",
   idempotencyKey: "key-1",

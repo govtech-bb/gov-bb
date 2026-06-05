@@ -14,6 +14,7 @@ const QUEUE_URL =
 
 const EVENT: SubmissionCreatedEvent = {
   submissionId: "sub-001",
+  referenceCode: "JPP-20260604-130732-9JZRZC",
   formId: "form-1",
   formVersion: "1.0.0",
   idempotencyKey: "idem-001",
@@ -152,5 +153,15 @@ describe("SqsProducerService", () => {
 
     expect(body.values).toEqual({ "step-1": { name: "Jane" } });
     expect(body.meta.submittedAt).toBe("2026-01-01T00:00:00.000Z");
+  });
+
+  it("serialises referenceCode into the message body", async () => {
+    const service = makeService();
+    await service.enqueue(EVENT, "email", 0);
+
+    const [cmd] = MockedSendMessageCommand.mock.calls[0];
+    const body = JSON.parse(cmd.MessageBody as string);
+
+    expect(body.referenceCode).toBe("JPP-20260604-130732-9JZRZC");
   });
 });
