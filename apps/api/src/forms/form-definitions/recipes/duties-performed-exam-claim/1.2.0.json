@@ -1,0 +1,596 @@
+{
+  "formId": "duties-performed-exam-claim",
+  "title": "Claim Form for Duties Performed During Examinations",
+  "version": "1.2.0",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "subject": "Your Duties Performed Examination claim has been received",
+        "recipientField": "applicant-info.email"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "stepId": "applicant-info",
+      "title": "Section A: Claimant Details",
+      "elements": [
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "label": "First name",
+            "fieldId": "first-name",
+            "validations": {
+              "required": { "value": true, "error": "First name is required" }
+            }
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "label": "Last name",
+            "fieldId": "last-name",
+            "validations": {
+              "required": { "value": true, "error": "Last name is required" }
+            }
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "label": "Other names",
+            "fieldId": "other-names"
+          }
+        },
+        {
+          "ref": "components/national-id-number",
+          "overrides": {
+            "label": "National ID number",
+            "fieldId": "id-number",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "National ID number is required"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address",
+            "fieldId": "address",
+            "validations": {
+              "required": { "value": true, "error": "Address is required" }
+            }
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "label": "Parish",
+            "fieldId": "parish",
+            "validations": {
+              "required": { "value": true, "error": "Parish is required" }
+            }
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "label": "Email address",
+            "fieldId": "email",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Email address is required"
+              },
+              "email": {
+                "value": true,
+                "error": "Enter a valid email address"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "label": "Telephone number",
+            "fieldId": "telephone",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Telephone number is required"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "claim-details",
+      "title": "Section A: Claim Details",
+      "elements": [
+        {
+          "ref": "components/tamis-number",
+          "overrides": {
+            "label": "TAMIS number",
+            "fieldId": "tamis-no",
+            "ui": { "width": "short" }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Supervisor",
+            "fieldId": "supervisor"
+          }
+        },
+        {
+          "ref": "components/national-insurance-number",
+          "overrides": {
+            "label": "National Insurance (NIS) number",
+            "fieldId": "nis-no",
+            "ui": { "width": "short" }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Examination period",
+            "fieldId": "exam-period"
+          }
+        },
+        {
+          "ref": "components/generic-date",
+          "overrides": {
+            "label": "Claim period from",
+            "fieldId": "claim-period-from",
+            "validations": {
+              "pastOrToday": {
+                "value": true,
+                "error": "Date cannot be in the future"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-date",
+          "overrides": {
+            "label": "Claim period to",
+            "fieldId": "claim-period-to",
+            "validations": {
+              "pastOrToday": {
+                "value": true,
+                "error": "Date cannot be in the future"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "section-b",
+      "title": "Section B: Duties Performed (Invigilators, Supervisors, Examination Assessors)",
+      "elements": [
+        {
+          "ref": "components/generic-date",
+          "overrides": {
+            "label": "Date",
+            "fieldId": "b-date",
+            "validations": {
+              "required": { "value": true, "error": "Date is required" },
+              "pastOrToday": {
+                "value": true,
+                "error": "Date cannot be in the future"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Centre",
+            "fieldId": "b-centre",
+            "validations": {
+              "required": { "value": true, "error": "Centre is required" }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Role",
+            "fieldId": "b-role",
+            "validations": {
+              "required": { "value": true, "error": "Role is required" }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "Rate (BBD $)",
+            "fieldId": "b-rate",
+            "ui": { "width": "short" },
+            "validations": {
+              "required": { "value": true, "error": "Rate is required" }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "Overtime (hours)",
+            "fieldId": "b-overtime-hours",
+            "ui": { "width": "short" },
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Overtime hours are required"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "Subtotal (BBD $)",
+            "fieldId": "b-subtotal",
+            "ui": { "width": "short" },
+            "validations": {
+              "required": { "value": true, "error": "Subtotal is required" }
+            }
+          }
+        }
+      ],
+      "behaviours": [{ "type": "repeatable", "min": 1, "max": 25 }]
+    },
+    {
+      "stepId": "section-b-total",
+      "title": "Section B: Total",
+      "elements": [
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "Section B total (BBD $)",
+            "fieldId": "section-b-total",
+            "hint": "Enter the sum of the Section B subtotals.",
+            "ui": { "width": "short" },
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Section B total is required"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "section-c",
+      "title": "Section C: Practical Examination Setup",
+      "elements": [
+        {
+          "ref": "components/generic-date",
+          "overrides": {
+            "label": "Date",
+            "fieldId": "c-date",
+            "validations": {
+              "required": { "value": true, "error": "Date is required" },
+              "pastOrToday": {
+                "value": true,
+                "error": "Date cannot be in the future"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Centre",
+            "fieldId": "c-centre",
+            "validations": {
+              "required": { "value": true, "error": "Centre is required" }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Subject",
+            "fieldId": "c-subject",
+            "validations": {
+              "required": { "value": true, "error": "Subject is required" }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "Total candidates",
+            "fieldId": "c-total-candidates",
+            "ui": { "width": "short" },
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Total candidates is required"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "Total personnel",
+            "fieldId": "c-total-personnel",
+            "ui": { "width": "short" },
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Total personnel is required"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "Subtotal (BBD $)",
+            "fieldId": "c-subtotal",
+            "ui": { "width": "short" },
+            "validations": {
+              "required": { "value": true, "error": "Subtotal is required" }
+            }
+          }
+        }
+      ],
+      "behaviours": [{ "type": "repeatable", "min": 1, "max": 7 }]
+    },
+    {
+      "stepId": "section-c-total",
+      "title": "Section C: Total",
+      "elements": [
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "Section C total (BBD $)",
+            "fieldId": "section-c-total",
+            "hint": "Enter the sum of the Section C subtotals.",
+            "ui": { "width": "short" },
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Section C total is required"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "section-d",
+      "title": "Section D: Reader, Writer, Interpreter, Model, Moderator or Dictator Duties",
+      "elements": [
+        {
+          "ref": "components/generic-date",
+          "overrides": {
+            "label": "Date",
+            "fieldId": "d-date",
+            "validations": {
+              "required": { "value": true, "error": "Date is required" },
+              "pastOrToday": {
+                "value": true,
+                "error": "Date cannot be in the future"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Centre",
+            "fieldId": "d-centre",
+            "validations": {
+              "required": { "value": true, "error": "Centre is required" }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Subject",
+            "fieldId": "d-subject",
+            "validations": {
+              "required": { "value": true, "error": "Subject is required" }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "label": "Duties",
+            "fieldId": "d-duties",
+            "ui": { "width": "long" },
+            "validations": {
+              "required": { "value": true, "error": "Duties are required" }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "No. of hours / passages",
+            "fieldId": "d-hours-passages",
+            "ui": { "width": "short" },
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "No. of hours / passages is required"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "Subtotal (BBD $)",
+            "fieldId": "d-subtotal",
+            "ui": { "width": "short" },
+            "validations": {
+              "required": { "value": true, "error": "Subtotal is required" }
+            }
+          }
+        }
+      ],
+      "behaviours": [{ "type": "repeatable", "min": 1, "max": 10 }]
+    },
+    {
+      "stepId": "section-d-total",
+      "title": "Section D: Total",
+      "elements": [
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "Section D total (BBD $)",
+            "fieldId": "section-d-total",
+            "hint": "Enter the sum of the Section D subtotals.",
+            "ui": { "width": "short" },
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Section D total is required"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "section-e",
+      "title": "Section E: Payee Information",
+      "elements": [
+        {
+          "ref": "components/bank",
+          "overrides": {
+            "label": "Bank",
+            "fieldId": "bank-branch",
+            "validations": {
+              "required": { "value": true, "error": "Bank is required" }
+            }
+          }
+        },
+        {
+          "ref": "components/account-name",
+          "overrides": {
+            "label": "Name on account",
+            "fieldId": "name-on-account",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Name on account is required"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/account-number",
+          "overrides": {
+            "label": "Account number",
+            "fieldId": "account-no",
+            "ui": { "width": "short" },
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Account number is required"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "BIC / SWIFT",
+            "fieldId": "bic-swift-no",
+            "ui": { "width": "short" }
+          }
+        },
+        {
+          "ref": "components/account-type",
+          "overrides": {
+            "label": "Account type",
+            "fieldId": "account-type",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Account type is required"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "section-f",
+      "title": "Section F: Payment Declaration",
+      "elements": [
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "Total amount claimed (BBD $)",
+            "fieldId": "claim-amount",
+            "ui": { "width": "short" },
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Total amount claimed is required"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "fieldId": "declaration-confirmed",
+            "label": "Declaration",
+            "options": [
+              {
+                "label": "I declare that the information provided in this claim is true and correct, and that the duties claimed were performed by me.",
+                "value": "confirmed"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "You must confirm the declaration to continue"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Submission Confirmation",
+      "elements": [],
+      "behaviours": []
+    }
+  ],
+  "createdAt": "2026-05-27T20:25:58.965Z",
+  "updatedAt": "2026-06-04T00:00:00.000Z"
+}
