@@ -93,30 +93,15 @@ test.describe("Referral to Student Support Services — Live Smoke", () => {
       "parent_guardian_address",
       "1 Test Street, St. Michael",
     );
-    await fillField(page, step, "mother_phone_home", faker.string.numeric(10));
-    await fillField(page, step, "mother_phone_work", faker.string.numeric(10));
-    await fillField(page, step, "mother_phone_cell", faker.string.numeric(10));
-    await fillField(page, step, "father_phone_home", faker.string.numeric(10));
-    await fillField(page, step, "father_phone_work", faker.string.numeric(10));
-    await fillField(page, step, "father_phone_cell", faker.string.numeric(10));
-    await fillField(
-      page,
-      step,
-      "guardian_phone_home",
-      faker.string.numeric(10),
-    );
-    await fillField(
-      page,
-      step,
-      "guardian_phone_work",
-      faker.string.numeric(10),
-    );
-    await fillField(
-      page,
-      step,
-      "guardian_phone_cell",
-      faker.string.numeric(10),
-    );
+    await fillField(page, step, "mother_phone_home", "246-418-1234");
+    await fillField(page, step, "mother_phone_work", "246-418-1234");
+    await fillField(page, step, "mother_phone_cell", "246-418-1234");
+    await fillField(page, step, "father_phone_home", "246-418-1234");
+    await fillField(page, step, "father_phone_work", "246-418-1234");
+    await fillField(page, step, "father_phone_cell", "246-418-1234");
+    await fillField(page, step, "guardian_phone_home", "246-418-1234");
+    await fillField(page, step, "guardian_phone_work", "246-418-1234");
+    await fillField(page, step, "guardian_phone_cell", "246-418-1234");
     await fillField(page, step, "child_resides_with", "Mother");
     await advance(page, step);
 
@@ -124,7 +109,7 @@ test.describe("Referral to Student Support Services — Live Smoke", () => {
     step = expectStep(page, "school-information");
     await fillField(page, step, "school_name", "Bridgetown Primary School");
     await fillField(page, step, "class_form", "Form 2");
-    await fillField(page, step, "school_telephone", faker.string.numeric(10));
+    await fillField(page, step, "school_telephone", "246-418-1234");
     await advance(page, step);
 
     // ─── Student Challenges ──────────────────────────────────────────────────

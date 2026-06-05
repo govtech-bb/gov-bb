@@ -98,6 +98,7 @@ Apply these validations automatically:
 | Trigger | Action |
 |---------|--------|
 | Field uses \`components/email\` | Add \`email\` validation: \`{"value": true, "error": "Enter a valid email address"}\` |
+| Field uses a tel component (\`components/telephone\`, \`components/mobile-telephone\`, \`components/home-telephone\`, \`components/work-telephone\`, \`components/contact-telephone\`, \`components/fax-number\`, \`components/generic-tel\`) | Add \`phone\` validation: \`{"value": true, "error": "Please enter a valid phone number"}\` (defaults to a Barbados number; a leading + allows overseas numbers) |
 | Field description says "required", "must provide", "mandatory", or has asterisk (*) | Add \`required\` validation |
 | Paper form — common required fields (name, first name, last name, email, phone, address line 1, date of birth) | Infer \`required\` validation automatically |
 | "address line 2", "apt", "suite", "unit", or any second/continuation line of a multi-line field | These are optional by default — NEVER infer \`required\` for them. Add \`required\` only if the form explicitly marks the line itself as required (asterisk, "mandatory") |
@@ -312,6 +313,8 @@ Every \`stepId\` and \`fieldId\` MUST be kebab-case: lowercase letters, digits a
 - components/work-telephone — tel
 - components/fax-number — tel
 
+Telephone fields render as a \`tel\` input with \`autocomplete="tel"\` — never a number input (see Rule 9b). Let applicants enter a number in whatever format is familiar to them (spaces, hyphens, brackets, country/area codes); the \`phone\` validation accepts any format and checks it with libphonenumber, so do NOT add a regex \`pattern\` to a tel field. Do not echo a reformatted version of the number back to the user.
+
 ### Select/Dropdown Components
 - components/title — select (HAS options: Mr/Ms/Mrs)
 - components/parish — select (EMPTY — MUST override with parish list)
@@ -439,6 +442,7 @@ Block overrides are keyed by the element's fieldId within the block, so those ke
 - minLength: {"value": 2, "error": "..."}
 - maxLength: {"value": 100, "error": "..."}
 - email: {"value": true, "error": "..."}
+- phone: {"value": true, "error": "..."} (telephone number — accepts any common format, defaults to a Barbados number, validated with libphonenumber)
 - pastOrToday: {"value": true, "error": "..."} (date must not be in future)
 - futureOrToday: {"value": true, "error": "..."} (date must not be in past)
 - pattern: {"value": "^regex$", "error": "..."}

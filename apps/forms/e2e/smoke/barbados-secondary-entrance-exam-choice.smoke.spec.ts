@@ -102,7 +102,7 @@ test.describe("Barbados Secondary Entrance Exam — Choice of School — Live Sm
     // national-id-number is optional here but masked — fill a valid shape.
     await fillField(page, step, "parent-id-number", "850101-0002");
     // components/telephone — phone-format validation.
-    await fillField(page, step, "parent-phone", "246-555-0123");
+    await fillField(page, step, "parent-phone", "246-418-1234");
     await advance(page, step);
 
     // ─── School Choices ───────────────────────────────────────────────────────
