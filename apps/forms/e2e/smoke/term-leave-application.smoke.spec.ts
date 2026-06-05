@@ -84,8 +84,10 @@ test.describe("Term Leave Application — Live Smoke", () => {
     await selectDropdown(page, step, "school", "bay-primary-school");
     await fillField(page, step, "first-name", firstName);
     await fillField(page, step, "last-name", lastName);
-    // `components/telephone` — phone-format validation.
-    await fillField(page, step, "contact-no", "246-555-0123");
+    // `components/telephone` — libphonenumber/max validates against real
+    // assignable ranges, so a 555-01xx fictional number is rejected; use a
+    // valid Barbados number.
+    await fillField(page, step, "contact-no", "246-418-1234");
     // Send the confirmation email to the monitored test inbox, not a real person.
     await fillField(page, step, "email", "testing@govtech.bb");
     await fillField(page, step, "post", "Mathematics Teacher");
