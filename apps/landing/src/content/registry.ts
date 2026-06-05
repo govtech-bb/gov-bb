@@ -21,6 +21,12 @@ function slugFromPath(path: string): string {
     .replace(/\.md$/, '')
 }
 
+/** The slug one level up (`a/b/c` → `a/b`), or undefined at the top level. */
+function parentSlug(slug: string): string | undefined {
+  const i = slug.lastIndexOf('/')
+  return i === -1 ? undefined : slug.slice(0, i)
+}
+
 /**
  * Strip a leading `<category>/<subcategory>/` or `<category>/` prefix from the slug
  * when content files are nested under those directories. The URL is then rebuilt
@@ -149,7 +155,25 @@ const featurePages: Array<ContentPage> = Object.entries(featureMetaModules).map(
   },
 )
 
-export const PAGES: Array<ContentPage> = [...markdownPages, ...featurePages]
+const ownUrlPages: Array<ContentPage> = [...markdownPages, ...featurePages]
+const pageBySlug = new Map(ownUrlPages.map((p) => [p.slug, p]))
+
+/**
+ * A step page (its parent slug is itself a page, e.g. `<service>/start`) hangs
+ * off its parent's URL, so it needs no `category` of its own.
+ */
+function urlWithParent(page: ContentPage): string {
+  const parent = parentSlug(page.slug)
+  const parentPage = parent ? pageBySlug.get(parent) : undefined
+  if (!parentPage) return page.url
+  const leaf = page.slug.slice(page.slug.lastIndexOf('/') + 1)
+  return `${urlWithParent(parentPage)}/${leaf}`
+}
+
+export const PAGES: Array<ContentPage> = ownUrlPages.map((page) => ({
+  ...page,
+  url: urlWithParent(page),
+}))
 
 const BY_URL = new Map(PAGES.map((p) => [p.url, p]))
 const BY_SLUG = new Map(PAGES.map((p) => [p.slug, p]))
@@ -172,9 +196,8 @@ export function findPage(urlPath: string): ContentPage | undefined {
  * page — are not sub-pages and stay listed.
  */
 export function isSubPage(page: ContentPage): boolean {
-  const i = page.slug.lastIndexOf('/')
-  if (i < 0) return false
-  return BY_SLUG.has(page.slug.slice(0, i))
+  const parent = parentSlug(page.slug)
+  return parent !== undefined && BY_SLUG.has(parent)
 }
 
 /**
@@ -182,8 +205,8 @@ export function isSubPage(page: ContentPage): boolean {
  * ancestor page is. Walking ancestors by slug means flagging a service's
  * `index.md` automatically hides its `/start` (and other) sub-pages, which sit
  * at `<service>/<leaf>`. Slug-keyed (not URL) so it is independent of the
- * category prefix — sub-pages frequently omit a category and resolve at a bare
- * URL, but their slug is always `<parentSlug>/<leaf>`.
+ * category prefix — a sub-page's URL hangs off its parent's, but its slug is
+ * always `<parentSlug>/<leaf>`.
  */
 export function isPreview(page: ContentPage): boolean {
   return resolveIsPreview(
@@ -205,8 +228,7 @@ export function resolveIsPreview(
   let current: string | undefined = slug
   while (current) {
     if (visibilityOf(current) === 'preview') return true
-    const i = current.lastIndexOf('/')
-    current = i < 0 ? undefined : current.slice(0, i)
+    current = parentSlug(current)
   }
   return false
 }
