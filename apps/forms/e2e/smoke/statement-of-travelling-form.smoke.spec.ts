@@ -15,19 +15,16 @@
  *   pnpm --filter @govtech-bb/forms test:smoke
  *   SMOKE_BASE_URL=https://forms.sandbox.alpha.gov.bb pnpm --filter @govtech-bb/forms test:smoke
  *
- * Notes:
- *  - v1.2.0 fixes the `business-exclusion-certify` certification checkbox, which
- *    in v1.1.0 had no options and so rendered no checkable input (an
- *    unsubmittable required field); it now carries a single `confirmed` option.
- *  - `travel-rates-info` and `school-reference-info` are readonly reference
- *    fields (rate table / school-distance note). v1.2.0 also makes them optional
- *    — as required readonly fields they were un-fillable and blocked their step —
- *    so the spec leaves them alone.
+ * Notes (v1.2.0):
+ *  - applicant-info uses `first-name` / `last-name`, `id-number`
+ *    (national-id-number, mask `999999-9999`), `email`, and `phone-number`
+ *    (telephone, libphonenumber-validated).
  *  - `travel-details` is repeatable (min 1): fill one row, answer
  *    "Add another?" No.
- *  - The official-use steps (examination / DPS / processing-officer) are
- *    required of the submitter in this recipe, so the spec fills them.
- *  - The trailing `declaration` step carries no fields — Submit posts directly.
+ *  - `travel-rates` shows the rate table as the step description; only the
+ *    numeric fields are inputs. `school-reference` is a readonly reference step
+ *    (its info field is optional) — just advance.
+ *  - The `declaration` step gates Submit behind a confirmation checkbox.
  */
 import { faker } from "@faker-js/faker";
 import { test } from "@playwright/test";
@@ -47,18 +44,22 @@ test.describe("Statement of Travelling — Live Smoke", () => {
   test("submits the real form end-to-end and reaches the confirmation screen", async ({
     page,
   }) => {
-    const fullName = faker.person.fullName();
+    const firstName = faker.person.firstName();
+    const lastName = faker.person.lastName();
 
     await page.goto(`/forms/${FORM_ID}`);
     await page.waitForURL((url) => !!url.searchParams.get("step"), {
       timeout: STEP_TIMEOUT,
     });
 
-    // ─── Applicant Information ───────────────────────────────────────────────
+    // ─── Personal Information ────────────────────────────────────────────────
     let step = expectStep(page, "applicant-info");
-    await fillField(page, step, "name", fullName);
-    await fillField(page, step, "id-number", faker.string.numeric(9));
+    await fillField(page, step, "first-name", firstName);
+    await fillField(page, step, "last-name", lastName);
+    // `national-id-number` — masked `999999-9999` (optional, filled for coverage).
+    await fillField(page, step, "id-number", "850101-0001");
     await fillField(page, step, "email", "testing@govtech.bb");
+    // `telephone` — libphonenumber/max validates real ranges.
     await fillField(page, step, "phone-number", "246-418-1234");
     await advance(page, step);
 
@@ -88,7 +89,7 @@ test.describe("Statement of Travelling — Live Smoke", () => {
     await selectRadio(page, step, "addAnother", "no");
     await advance(page, step);
 
-    // ─── Travel Rates (readonly reference fields preset) ─────────────────────
+    // ─── Travel Rates & Calculations (rate table is the step description) ────
     step = expectStep(page, "travel-rates");
     await fillField(page, step, "total-distance-travelled", "40");
     await fillField(page, step, "first320km-or-less", "102.40");
@@ -97,35 +98,7 @@ test.describe("Statement of Travelling — Live Smoke", () => {
     await fillField(page, step, "total-claimed", "102.40");
     await advance(page, step);
 
-    // ─── Certifications ──────────────────────────────────────────────────────
-    step = expectStep(page, "certifications");
-    await page
-      .locator(`input[id="${step}_business-exclusion-certify-confirmed"]`)
-      .check();
-    await fillField(page, step, "applicant-signature", fullName);
-    await fillField(page, step, "applicant-date", "05/06/2026");
-    await advance(page, step);
-
-    // ─── Official Examination ────────────────────────────────────────────────
-    step = expectStep(page, "official-examination");
-    await fillField(page, step, "examination-notes", "Checked and verified.");
-    await fillField(page, step, "examination-signature", "E. X. Aminer");
-    await fillField(page, step, "examination-date", "05/06/2026");
-    await advance(page, step);
-
-    // ─── DPS Approval ────────────────────────────────────────────────────────
-    step = expectStep(page, "dps-approval");
-    await fillField(page, step, "dps-signature", "D. P. Secretary");
-    await fillField(page, step, "dps-date", "05/06/2026");
-    await advance(page, step);
-
-    // ─── Processing Officer ──────────────────────────────────────────────────
-    step = expectStep(page, "processing-officer");
-    await fillField(page, step, "processing-officer-signature", "P. O. Fficer");
-    await fillField(page, step, "processing-officer-date", "05/06/2026");
-    await advance(page, step);
-
-    // ─── School Reference (readonly reference field preset) ──────────────────
+    // ─── School Distance Reference (readonly reference step) ─────────────────
     step = expectStep(page, "school-reference");
     await advance(page, step);
 
@@ -135,7 +108,10 @@ test.describe("Statement of Travelling — Live Smoke", () => {
     }
 
     // ─── Declaration ─────────────────────────────────────────────────────────
-    expectStep(page, "declaration", { exact: true });
+    step = expectStep(page, "declaration", { exact: true });
+    await page
+      .locator(`input[id="${step}_declaration-confirmed-confirmed"]`)
+      .check();
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────
     await submitAndConfirm(page, { heading: "Submission Confirmation" });
