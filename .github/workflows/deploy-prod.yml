@@ -66,8 +66,8 @@ env:
   API_SMOKE_URL: http://ssb-api-prod-1165104707.ca-central-1.elb.amazonaws.com/health
   AMPLIFY_FORMS_URL: https://prod.d2a6u3uw8mle6w.amplifyapp.com
   AMPLIFY_LANDING_URL: https://prod.d33h8dmrfcznn0.amplifyapp.com
-  AMPLIFY_CHAT_URL: https://prod.d2vz8oz84ndkv7.amplifyapp.com
-  AMPLIFY_CHAT_HEALTH_URL: https://prod.d2vz8oz84ndkv7.amplifyapp.com/api/health
+  AMPLIFY_CHAT_URL: https://prod.d3dc75921xrndn.amplifyapp.com
+  AMPLIFY_CHAT_HEALTH_URL: https://prod.d3dc75921xrndn.amplifyapp.com/api/health
 
 jobs:
   setup:
@@ -500,7 +500,7 @@ jobs:
 
       - name: Trigger and monitor Amplify build
         env:
-          AMPLIFY_APP_ID: d2vz8oz84ndkv7
+          AMPLIFY_APP_ID: d3dc75921xrndn
           AMPLIFY_BRANCH: prod
           APP_LABEL: chat
         run: |
@@ -537,7 +537,7 @@ jobs:
         run: |
           set -euo pipefail
           aws amplify update-app \
-            --app-id d2vz8oz84ndkv7 \
+            --app-id d3dc75921xrndn \
             --compute-role-arn arn:aws:iam::996501092968:role/gov-bb-chat-amplify-compute-prod \
             --region "$AWS_REGION" \
             --query "app.computeRoleArn" \
