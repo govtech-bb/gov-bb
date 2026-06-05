@@ -7,7 +7,11 @@ export const GenericTel: TelPrimitive = {
   validations: {
     required: {
       value: true,
-      error: "This field is required",
+      error: "Enter a telephone number",
+    },
+    phone: {
+      value: true,
+      error: "Please enter a valid phone number",
     },
   },
 };
