@@ -4,7 +4,7 @@ import { useReducer, useState, useMemo } from "react";
 import { getCatalogFn } from "../../server/registry";
 import { submitRecipe, updateRecipe, rekeyRecipe, deleteForm, disableForm, enableForm } from "../../server/forms";
 import { createMdaContact } from "../../server/mda-contacts";
-import { publishRecipe, getPublishBaseBranch, eraseRecipe } from "../../server/publish";
+import { publishRecipe, getPublishBaseBranch, getNextDeployVersion, eraseRecipe } from "../../server/publish";
 import { validateRecipe, previewRecipe } from "../../server/registry";
 import { serializeRecipeDraft, findRecipeIdCollisions, formatCollisionIssues, resolveFieldIds, extractDbProcessors, firstIncompletePaymentProcessor } from "@govtech-bb/form-builder";
 import { bumpMinor, bumpPatch } from "../../lib/version";
@@ -107,6 +107,10 @@ function BuilderPage() {
     { prUrl: string; prNumber: number } | null
   >(null);
   const [publishError, setPublishError] = useState<string | null>(null);
+  // Server-resolved Deploy target (#873): bumps past base-branch versions and
+  // open deploy PRs, not just the DB draft. Null while resolving; falls back
+  // to the client bump on error (publishRecipe re-checks server-side).
+  const [deployTarget, setDeployTarget] = useState<string | null>(null);
   const [lastSaveStatus, setLastSaveStatus] = useState<"idle" | "success" | "error" | "submitted">("idle");
   const [deleteTarget, setDeleteTarget] = useState<FormDefinitionSummary | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -479,10 +483,19 @@ function BuilderPage() {
     }
   };
 
-  const handleOpenPublish = () => {
+  const handleOpenPublish = async () => {
     setPublishSuccess(null);
     setPublishError(null);
+    setDeployTarget(null);
     setIsPublishOpen(true);
+    try {
+      const next = await getNextDeployVersion({
+        data: { formId: draft.formId, currentVersion },
+      });
+      setDeployTarget(next.version);
+    } catch {
+      setDeployTarget(deployVersion);
+    }
   };
 
   const handlePublish = async (description: string) => {
@@ -495,18 +508,26 @@ function BuilderPage() {
       setPublishError("Save draft before deploying.");
       return;
     }
+    if (!deployTarget) return; // still resolving — button is disabled anyway
     setIsPublishing(true);
     setPublishError(null);
     try {
-      // Deploy publishes a fresh minor of the current version — both the
-      // PublishModal display and the published recipe use deployVersion, so
-      // they can't diverge, and a redeploy never collides with the existing
-      // <current>.json on GitHub.
-      const recipe = serializeRecipeDraft(draft, { version: deployVersion });
-      const result = await publishRecipe({
-        data: { recipe, description },
-      });
+      const recipe = serializeRecipeDraft(draft, { version: deployTarget });
+      const result = await publishRecipe({ data: { recipe, description } });
       setPublishSuccess(result);
+      // The deploy reserved a draft row at deployTarget (#873) — make it the
+      // working version so a follow-up Save/Deploy bumps off it, and patch the
+      // picker row the same way handleSubmit does.
+      setCurrentVersion(deployTarget);
+      setVersion(deployTarget);
+      const existing = forms?.find((f) => f.formId === draft.formId);
+      upsertForm({
+        id: existing?.id ?? draft.formId,
+        formId: draft.formId,
+        title: draft.title,
+        version: deployTarget,
+        isPublished: false,
+      });
     } catch (e) {
       setPublishError(e instanceof Error ? e.message : "Publish failed");
     } finally {
@@ -1020,7 +1041,7 @@ function BuilderPage() {
       {isPublishOpen && (
         <PublishModal
           draft={draft}
-          version={deployVersion}
+          version={deployTarget}
           baseBranch={baseBranch}
           isPublishing={isPublishing}
           publishSuccess={publishSuccess}
