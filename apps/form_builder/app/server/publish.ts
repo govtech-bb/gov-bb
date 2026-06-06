@@ -247,7 +247,7 @@ export const publishRecipe = createServerFn({ method: "POST" })
         );
         if (checkRes.status === 200) {
           throw new Error(
-            `Version ${recipe.version} already exists on ${baseBranch}. Bump the version and try again.`,
+            `Version ${recipe.version} already exists on ${baseBranch}. Reopen the form to pick up the latest version, then deploy again.`,
           );
         }
         if (checkRes.status !== 404) {

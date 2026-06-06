@@ -226,7 +226,7 @@ describe("publishRecipe", () => {
     await expect(
       publishRecipe({ data: { recipe: RECIPE, description: "" } }),
     ).rejects.toThrow(
-      /Version 1\.2\.0 already exists on dev\. Bump the version and try again\./,
+      /Version 1\.2\.0 already exists on dev\. Reopen the form to pick up the latest version, then deploy again\./,
     );
 
     expect(fetchMock).toHaveBeenCalledTimes(5);
