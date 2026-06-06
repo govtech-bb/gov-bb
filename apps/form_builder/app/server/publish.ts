@@ -11,7 +11,7 @@ import {
   type ServiceContractRecipe,
   type ValidationResult,
 } from "@govtech-bb/form-types";
-import { api } from "./api-client";
+import { api, ApiError } from "./api-client";
 import { listVersions, RECIPES_BASE, compareSemver } from "./github-recipes";
 import { bumpMinor } from "../lib/version";
 import { REPO_NAME, repoOwner } from "./github-repo";
@@ -155,11 +155,62 @@ export const publishRecipe = createServerFn({ method: "POST" })
       throw new Error(`Recipe validation failed: ${detail}`);
     }
 
+    // Gate (#873): the deploy version must be strictly ahead of every version
+    // already on the base branch. The client computes its bump from the DB
+    // draft, which is blind to manual repo bumps — fail fast with the real
+    // latest rather than opening a doomed PR.
+    const published = await listVersions(token, recipe.formId, baseBranch);
+    const notAhead = published.filter(
+      (v) => compareSemver(v, recipe.version) >= 0,
+    );
+    if (notAhead.length > 0) {
+      const latest = published.reduce((b, v) =>
+        compareSemver(v, b) > 0 ? v : b,
+      );
+      throw new Error(
+        `Version ${recipe.version} is not ahead of ${baseBranch} (latest published: ${latest}). ` +
+          `Reopen the form to pick up the latest version, then deploy again.`,
+      );
+    }
+
+    // Reservation (#873): atomically claim (formId, version) in the builder DB
+    // before touching GitHub. POST /builder/forms 409s on the existing
+    // UNIQUE(form_id, version), so two concurrent deploys serialize here. The
+    // row doubles as the pending-deploy draft (other users' pickers see it) and
+    // is deleted post-merge by the archive-merged-drafts workflow.
+    try {
+      await api.post("/builder/forms", { recipe, isNew: false });
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        throw new Error(
+          `Version ${recipe.version} was just claimed by another deploy or save — ` +
+            `reopen the form and try again.`,
+        );
+      }
+      throw err;
+    }
+
+    // Any failure past this point must release the claim (best-effort — the
+    // delete-version endpoint only removes unpublished draft rows).
+    const releaseReservation = async (): Promise<void> => {
+      try {
+        await api.del(
+          `/builder/forms/${recipe.formId}/versions/${recipe.version}`,
+        );
+      } catch (releaseErr) {
+        console.warn(
+          `release of reservation ${recipe.formId}@${recipe.version} failed:`,
+          releaseErr,
+        );
+      }
+    };
+
     // Step 1: get base branch tip SHA
     const refRes = await fetch(repoUrl(`/git/ref/heads/${baseBranch}`), {
       headers: authHeaders(token),
     });
     if (!refRes.ok) {
+      await releaseReservation();
       throw await ghError(`Failed to read ${baseBranch} branch`, refRes);
     }
     const refJson = (await refRes.json()) as { object: { sha: string } };
@@ -176,6 +227,7 @@ export const publishRecipe = createServerFn({ method: "POST" })
       }),
     });
     if (!createRefRes.ok) {
+      await releaseReservation();
       throw await ghError("Failed to create branch", createRefRes);
     }
 
@@ -245,6 +297,7 @@ export const publishRecipe = createServerFn({ method: "POST" })
       return { prUrl: prJson.html_url, prNumber: prJson.number };
     } catch (err) {
       await deleteBranch(branch, token);
+      await releaseReservation();
       throw err;
     }
   });
