@@ -871,4 +871,26 @@ describe("publishRecipe — #873 guards", () => {
       `/builder/forms/${RECIPE.formId}/versions/${RECIPE.version}`,
     );
   });
+
+  it("releases the reservation when the base-ref read rejects (network error)", async () => {
+    (api.post as jest.Mock)
+      .mockResolvedValueOnce({ ok: true, issues: [] }) // validate
+      .mockResolvedValueOnce({ ok: true }); // reserve
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(200, dirListing(["1.1.0"]))) // listVersions
+      .mockRejectedValueOnce(new Error("socket hang up")); // base-ref fetch rejects
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    await expect(
+      publishRecipe({ data: { recipe: RECIPE, description: "" } }),
+    ).rejects.toThrow(/socket hang up/);
+
+    // The claim is freed even though no !ok branch ever ran…
+    expect(api.del).toHaveBeenCalledWith(
+      `/builder/forms/${RECIPE.formId}/versions/${RECIPE.version}`,
+    );
+    // …and no branch was created, so nothing else was touched.
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
 });

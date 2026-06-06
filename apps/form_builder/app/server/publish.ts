@@ -205,98 +205,104 @@ export const publishRecipe = createServerFn({ method: "POST" })
       }
     };
 
-    // Step 1: get base branch tip SHA
-    const refRes = await fetch(repoUrl(`/git/ref/heads/${baseBranch}`), {
-      headers: authHeaders(token),
-    });
-    if (!refRes.ok) {
-      await releaseReservation();
-      throw await ghError(`Failed to read ${baseBranch} branch`, refRes);
-    }
-    const refJson = (await refRes.json()) as { object: { sha: string } };
-    const baseSha = refJson.object.sha;
-
-    // Step 2: create namespaced branch (dot-free — see deployBranchName, #805)
-    const branch = deployBranchName(recipe.formId, recipe.version);
-    const createRefRes = await fetch(repoUrl("/git/refs"), {
-      method: "POST",
-      headers: { ...authHeaders(token), "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ref: `refs/heads/${branch}`,
-        sha: baseSha,
-      }),
-    });
-    if (!createRefRes.ok) {
-      await releaseReservation();
-      throw await ghError("Failed to create branch", createRefRes);
-    }
-
-    // From here on, any failure must attempt to delete `branch`.
+    // Single release point (#873): ANY post-reservation failure — including
+    // fetch rejections and malformed responses that never reach an !ok check —
+    // must free the claimed (formId, version). The inner catch only handles
+    // branch cleanup; its rethrow lands here.
     try {
-      // Step 3: check the file doesn't already exist on the new branch.
-      // (Checking on the base branch would be equivalent because the branch was
-      // just created from it; we use the new branch so the URL pattern matches
-      // step 4.)
-      const contentsPath = `/contents/apps/api/src/forms/form-definitions/recipes/${recipe.formId}/${recipe.version}.json`;
-      const checkRes = await fetch(
-        repoUrl(`${contentsPath}?ref=${encodeURIComponent(branch)}`),
-        { headers: authHeaders(token) },
-      );
-      if (checkRes.status === 200) {
-        throw new Error(
-          `Version ${recipe.version} already exists on ${baseBranch}. Bump the version and try again.`,
-        );
-      }
-      if (checkRes.status !== 404) {
-        throw await ghError("Failed to check existing recipe", checkRes);
-      }
-
-      // Step 4: write the file
-      const fileContent = JSON.stringify(recipe, null, 2) + "\n";
-      const putRes = await fetch(repoUrl(contentsPath), {
-        method: "PUT",
-        headers: {
-          ...authHeaders(token),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: `Publish ${recipe.formId} v${recipe.version}`,
-          content: Buffer.from(fileContent, "utf8").toString("base64"),
-          branch,
-        }),
+      // Step 1: get base branch tip SHA
+      const refRes = await fetch(repoUrl(`/git/ref/heads/${baseBranch}`), {
+        headers: authHeaders(token),
       });
-      if (!putRes.ok) {
-        throw await ghError("Failed to write recipe file", putRes);
+      if (!refRes.ok) {
+        throw await ghError(`Failed to read ${baseBranch} branch`, refRes);
       }
+      const refJson = (await refRes.json()) as { object: { sha: string } };
+      const baseSha = refJson.object.sha;
 
-      // Step 5: open the PR
-      const prRes = await fetch(repoUrl("/pulls"), {
+      // Step 2: create namespaced branch (dot-free — see deployBranchName, #805)
+      const branch = deployBranchName(recipe.formId, recipe.version);
+      const createRefRes = await fetch(repoUrl("/git/refs"), {
         method: "POST",
-        headers: {
-          ...authHeaders(token),
-          "Content-Type": "application/json",
-        },
+        headers: { ...authHeaders(token), "Content-Type": "application/json" },
         body: JSON.stringify({
-          base: baseBranch,
-          head: branch,
-          title: `Publish form: ${recipe.title} v${recipe.version}`,
-          body: renderPrBody({
-            recipe,
-            authorLogin: session.login,
-            description,
-          }),
+          ref: `refs/heads/${branch}`,
+          sha: baseSha,
         }),
       });
-      if (!prRes.ok) {
-        throw await ghError("Failed to open pull request", prRes);
+      if (!createRefRes.ok) {
+        throw await ghError("Failed to create branch", createRefRes);
       }
-      const prJson = (await prRes.json()) as {
-        number: number;
-        html_url: string;
-      };
-      return { prUrl: prJson.html_url, prNumber: prJson.number };
+
+      // From here on, any failure must attempt to delete `branch`.
+      try {
+        // Step 3: check the file doesn't already exist on the new branch.
+        // (Checking on the base branch would be equivalent because the branch was
+        // just created from it; we use the new branch so the URL pattern matches
+        // step 4.)
+        const contentsPath = `/contents/apps/api/src/forms/form-definitions/recipes/${recipe.formId}/${recipe.version}.json`;
+        const checkRes = await fetch(
+          repoUrl(`${contentsPath}?ref=${encodeURIComponent(branch)}`),
+          { headers: authHeaders(token) },
+        );
+        if (checkRes.status === 200) {
+          throw new Error(
+            `Version ${recipe.version} already exists on ${baseBranch}. Bump the version and try again.`,
+          );
+        }
+        if (checkRes.status !== 404) {
+          throw await ghError("Failed to check existing recipe", checkRes);
+        }
+
+        // Step 4: write the file
+        const fileContent = JSON.stringify(recipe, null, 2) + "\n";
+        const putRes = await fetch(repoUrl(contentsPath), {
+          method: "PUT",
+          headers: {
+            ...authHeaders(token),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            message: `Publish ${recipe.formId} v${recipe.version}`,
+            content: Buffer.from(fileContent, "utf8").toString("base64"),
+            branch,
+          }),
+        });
+        if (!putRes.ok) {
+          throw await ghError("Failed to write recipe file", putRes);
+        }
+
+        // Step 5: open the PR
+        const prRes = await fetch(repoUrl("/pulls"), {
+          method: "POST",
+          headers: {
+            ...authHeaders(token),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            base: baseBranch,
+            head: branch,
+            title: `Publish form: ${recipe.title} v${recipe.version}`,
+            body: renderPrBody({
+              recipe,
+              authorLogin: session.login,
+              description,
+            }),
+          }),
+        });
+        if (!prRes.ok) {
+          throw await ghError("Failed to open pull request", prRes);
+        }
+        const prJson = (await prRes.json()) as {
+          number: number;
+          html_url: string;
+        };
+        return { prUrl: prJson.html_url, prNumber: prJson.number };
+      } catch (err) {
+        await deleteBranch(branch, token);
+        throw err;
+      }
     } catch (err) {
-      await deleteBranch(branch, token);
       await releaseReservation();
       throw err;
     }
