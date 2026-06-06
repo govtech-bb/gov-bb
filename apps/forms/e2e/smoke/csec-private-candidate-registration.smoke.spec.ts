@@ -88,6 +88,10 @@ test.describe("CSEC Private Candidate Registration — Live Smoke", () => {
       .check();
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────
-    await submitAndConfirm(page, { heading: "Submission Confirmation" });
+    await submitAndConfirm(page, {
+      heading: "Your application has been submitted",
+      subheading:
+        "Your application to sit CSEC exams as a private candidate has been submitted.",
+    });
   });
 });

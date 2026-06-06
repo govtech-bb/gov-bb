@@ -166,6 +166,10 @@ test.describe("Duties Performed Exam Claim — Live Smoke", () => {
     expectStep(page, "declaration", { exact: true });
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────
-    await submitAndConfirm(page, { heading: "Submission Confirmation" });
+    await submitAndConfirm(page, {
+      heading: "Your claim has been submitted",
+      subheading:
+        "Your claim for duties performed during exams has been submitted.",
+    });
   });
 });

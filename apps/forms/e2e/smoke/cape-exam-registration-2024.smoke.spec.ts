@@ -87,6 +87,10 @@ test.describe("CAPE Exam Registration — Live Smoke", () => {
       .check();
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────
-    await submitAndConfirm(page, { heading: "Submission Confirmation" });
+    await submitAndConfirm(page, {
+      heading: "Your application has been submitted",
+      subheading:
+        "Your application to sit CAPE exams as a private candidate has been submitted.",
+    });
   });
 });
