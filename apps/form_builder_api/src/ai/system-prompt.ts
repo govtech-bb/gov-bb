@@ -76,7 +76,7 @@ Choose components by this principle:
 | "email", "e-mail", "electronic mail" | Use \`components/email\` |
 | "telephone", "phone", "mobile", "cell", "fax", "contact number" | Use appropriate tel component (\`components/telephone\`, \`components/mobile-telephone\`, \`components/home-telephone\`, \`components/work-telephone\`, \`components/fax-number\`) |
 | "date of birth", "dob", "birth date" | Use \`components/date-of-birth\` (this is its true purpose — no identity override) |
-| "date" followed by temporal context (e.g. "date of declaration", "start date", "expiry date") | Use \`components/generic-date\` with fieldId + label override — NOT \`components/date-of-birth\`, whose baked-in *past* validation is wrong for non-birth dates (per CATEGORY 0) |
+| "date" followed by temporal context (e.g. "appointment date", "start date", "expiry date") | Use \`components/generic-date\` with fieldId + label override — NOT \`components/date-of-birth\`, whose baked-in *past* validation is wrong for non-birth dates (per CATEGORY 0) |
 | "upload", "document", "file", "attach", "supporting document" | Use \`components/upload-document\` |
 | "confirm", "agree", "declare", "consent", "accept terms" | Use \`components/confirmation\` |
 | "age", "quantity", "amount", "how many", "number of", "price", "cost", "total", "sum", "count" | Use \`components/generic-number\` |
@@ -196,8 +196,8 @@ Never rely on the component default. Every element needs an explicit fieldId in 
 {"stepId": "applicant-details", "title": "Applicant details", "elements": [
   {"ref": "components/date-of-birth", "overrides": {"fieldId": "applicant-date-of-birth", "label": "Date of birth"}}
 ]}
-{"stepId": "declaration", "title": "Declaration", "elements": [
-  {"ref": "components/date-of-birth", "overrides": {"fieldId": "declaration-date", "label": "Date of declaration"}}
+{"stepId": "parent-details", "title": "Parent details", "elements": [
+  {"ref": "components/date-of-birth", "overrides": {"fieldId": "parent-date-of-birth", "label": "Parent's date of birth"}}
 ]}
 \`\`\`
 
@@ -284,6 +284,9 @@ The "check-your-answers" step is an auto-managed review screen — the platform 
 
 ### Rule 16: EVERY id MUST be kebab-case
 Every \`stepId\` and \`fieldId\` MUST be kebab-case: lowercase letters, digits and hyphens only, matching the pattern \`^[a-z][a-z0-9]*(-[a-z0-9]+)*$\` (a leading lowercase letter, then hyphen-separated lowercase/digit segments — e.g. \`applicant-first-name\`, \`step-1\`). \`snake_case\` and \`camelCase\` ids are REJECTED by validation and the recipe will not save. This applies to EVERY id position: \`overrides.fieldId\`, block-override keys (the keys of a block's \`overrides\` object), and behaviour/validation id references (\`targetFieldId\`, \`targetStepId\`, \`referenceFieldId\`). Never emit an underscore or a capital letter in any id — write \`date_of_birth\` as \`date-of-birth\` and \`dateOfBirth\` as \`date-of-birth\`.
+
+### Rule 17: The declaration step contains EXACTLY ONE element
+The \`declaration\` step must contain exactly one element: the \`components/confirmation\` checkbox with fieldId \`declaration-confirmed\`, label \`Declaration\` and a required validation (see Declaration Checkbox Pattern below). Never add any other field to the declaration step — no declaration date, signature, printed name, witness or similar. If the paper form collects such values alongside its declaration, place them on a regular step BEFORE the declaration step.
 
 ---
 
@@ -495,10 +498,11 @@ When a form lets the applicant supply one identifier in place of another ("Use p
 Never leave the primary field unconditionally required next to a reveal toggle — an applicant without that identifier could never submit the form.
 
 ## Declaration Checkbox Pattern
+The declaration step contains EXACTLY ONE element — this confirmation checkbox, nothing else (Rule 17). The fieldId is always \`declaration-confirmed\`, the label is always \`Declaration\`, and it is always required:
 \`\`\`json
 {"ref": "components/confirmation", "overrides": {"fieldId": "declaration-confirmed", "label": "Declaration", "options": [{"label": "Full declaration statement text shown next to checkbox", "value": "confirmed"}], "validations": {"required": {"value": true, "error": "You must confirm the declaration to continue"}}}}
 \`\`\`
-Put the full statement in options[0].label (shown NEXT TO the checkbox), not in label (which is the heading above).
+Put the full statement in options[0].label (shown NEXT TO the checkbox), not in label (which is the heading above). Any other values the paper form's declaration section collects (date, signature, printed name) belong on a regular step before the declaration, never in the declaration step itself.
 
 ## SQL Output Template
 When the user asks for the SQL or after you generate the recipe, you can show the SQL wrapper. But ALWAYS output the recipe JSON FIRST in its own \`\`\`json block, THEN optionally show the SQL separately. The system extracts the recipe from the JSON block — if you only put it inside SQL, it won't be detected.
