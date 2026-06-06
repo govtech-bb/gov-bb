@@ -18,7 +18,7 @@ jest.mock("./api-client", () => ({
 
 import { getSession } from "./session-cipher.server";
 import { api } from "./api-client";
-import { publishRecipe, eraseRecipe } from "./publish";
+import { publishRecipe, eraseRecipe, getNextDeployVersion } from "./publish";
 
 const SESSION = {
   login: "alice",
@@ -711,5 +711,63 @@ describe("eraseRecipe", () => {
 
     expect(api.get).not.toHaveBeenCalled();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("getNextDeployVersion", () => {
+  it("bumps past the highest of: current version, base-branch files, open deploy PRs", async () => {
+    const fetchMock = jest
+      .fn()
+      // listVersions on the base branch: 1.3.0 is published
+      .mockResolvedValueOnce(jsonResponse(200, dirListing(["1.2.0", "1.3.0"])))
+      // open PRs on the base: one deploy PR claims 1.4.0 for this form,
+      // one is for a different form, one is a human branch — both ignored
+      .mockResolvedValueOnce(
+        jsonResponse(200, [
+          {
+            number: 901,
+            head: { ref: "form-builder/passport-renewal-1-4-0-1699999999999" },
+          },
+          {
+            number: 902,
+            head: { ref: "form-builder/other-form-2-0-0-1699999999999" },
+          },
+          { number: 903, head: { ref: "fix/some-human-branch" } },
+        ]),
+      );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const result = await getNextDeployVersion({
+      data: { formId: "passport-renewal", currentVersion: "1.2.0" },
+    });
+
+    // max(1.2.0 client, 1.3.0 base, 1.4.0 claimed) = 1.4.0 → bumpMinor → 1.5.0
+    expect(result).toEqual({ version: "1.5.0" });
+  });
+
+  it("falls back to bumping the client version when nothing is published or claimed", async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(emptyResponse(404)) // listVersions: folder absent
+      .mockResolvedValueOnce(jsonResponse(200, [])); // no open PRs
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const result = await getNextDeployVersion({
+      data: { formId: "passport-renewal", currentVersion: "1.2.0" },
+    });
+    expect(result).toEqual({ version: "1.3.0" });
+  });
+
+  it("starts at 1.0.0 for a brand-new form", async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(emptyResponse(404))
+      .mockResolvedValueOnce(jsonResponse(200, []));
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const result = await getNextDeployVersion({
+      data: { formId: "brand-new", currentVersion: null },
+    });
+    expect(result).toEqual({ version: "1.0.0" });
   });
 });

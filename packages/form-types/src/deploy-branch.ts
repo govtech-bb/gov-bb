@@ -17,9 +17,16 @@ function dotless(segment: string): string {
   return segment.replace(/\./g, "-");
 }
 
+/** Prefix shared by every Deploy branch for a form — `deployBranchName` minus
+ * the version + timestamp. Exported so the publish flow can recognise open
+ * deploy PRs for a form (#873) without duplicating the naming scheme. */
+export function deployBranchPrefix(formId: string): string {
+  return `form-builder/${dotless(formId)}-`;
+}
+
 /** Branch for a Deploy PR, e.g. `form-builder/passport-renewal-1-2-0-<ts>`. */
 export function deployBranchName(formId: string, version: string): string {
-  return `form-builder/${dotless(formId)}-${dotless(version)}-${Date.now()}`;
+  return `${deployBranchPrefix(formId)}${dotless(version)}-${Date.now()}`;
 }
 
 /** Branch for an Erase PR, e.g. `form-builder/erase-passport-renewal-<ts>`. */

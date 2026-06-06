@@ -6,12 +6,14 @@ import { getSession } from "./session-cipher.server";
 import { getSessionSecret } from "./secrets";
 import {
   deployBranchName,
+  deployBranchPrefix,
   eraseBranchName,
   type ServiceContractRecipe,
   type ValidationResult,
 } from "@govtech-bb/form-types";
 import { api } from "./api-client";
-import { listVersions, RECIPES_BASE } from "./github-recipes";
+import { listVersions, RECIPES_BASE, compareSemver } from "./github-recipes";
+import { bumpMinor } from "../lib/version";
 import { REPO_NAME, repoOwner } from "./github-repo";
 
 const DEFAULT_BASE_BRANCH = "dev";
@@ -257,6 +259,70 @@ export const publishRecipe = createServerFn({ method: "POST" })
 export const getPublishBaseBranch = createServerFn({ method: "GET" }).handler(
   async (): Promise<string> => resolveBaseBranch(),
 );
+
+/**
+ * Versions claimed by OPEN deploy PRs for this form on the base branch (#873).
+ * Recognised by the deploy branch naming scheme
+ * (`form-builder/<formId>-<v1-v2-v3>-<ts>`); a branch that fails to parse is
+ * skipped (fail-open — the CI recipe-version-guard is the merge-time backstop).
+ */
+async function listOpenDeployClaims(
+  token: string,
+  formId: string,
+  baseBranch: string,
+): Promise<string[]> {
+  const prefix = deployBranchPrefix(formId);
+  const claims: string[] = [];
+  for (let page = 1; page <= 5; page++) {
+    const res = await fetch(
+      repoUrl(
+        `/pulls?state=open&base=${encodeURIComponent(baseBranch)}&per_page=100&page=${page}`,
+      ),
+      { headers: authHeaders(token) },
+    );
+    if (!res.ok) throw await ghError("Failed to list open pull requests", res);
+    const prs = (await res.json()) as { head: { ref: string } }[];
+    for (const pr of prs) {
+      if (!pr.head.ref.startsWith(prefix)) continue;
+      const m = /^(\d+)-(\d+)-(\d+)-\d+$/.exec(
+        pr.head.ref.slice(prefix.length),
+      );
+      if (m) claims.push(`${m[1]}.${m[2]}.${m[3]}`);
+    }
+    if (prs.length < 100) break;
+  }
+  return claims;
+}
+
+/**
+ * The next safe Deploy version for a form (#873): one minor bump past the
+ * highest of (a) the builder's loaded version, (b) every version on the base
+ * branch, and (c) every version claimed by an open deploy PR. Replaces the
+ * client-only `bumpMinor(currentVersion)`, which is blind to manual repo bumps
+ * and to other users' in-flight deploys.
+ */
+export const getNextDeployVersion = createServerFn({ method: "GET" })
+  .inputValidator(
+    z.object({
+      formId: z.string().min(1),
+      currentVersion: z.string().nullable(),
+    }),
+  )
+  .handler(async ({ data }): Promise<{ version: string }> => {
+    const session = await requireSession();
+    const token = session.accessToken;
+    const baseBranch = resolveBaseBranch();
+
+    const published = await listVersions(token, data.formId, baseBranch);
+    const claimed = await listOpenDeployClaims(token, data.formId, baseBranch);
+    const all = [...published, ...claimed];
+    if (data.currentVersion) all.push(data.currentVersion);
+    if (all.length === 0) return { version: "1.0.0" };
+    const highest = all.reduce((best, v) =>
+      compareSemver(v, best) > 0 ? v : best,
+    );
+    return { version: bumpMinor(highest) };
+  });
 
 function renderErasePrBody({
   formId,
