@@ -196,6 +196,29 @@ describe("createFormHandler — uniqueness", () => {
     );
   });
 
+  it("maps a unique-violation on the transactional save to the same 409 as the findOne duplicate path (true deploy race)", async () => {
+    // The non-atomic findOne sees no duplicate (null), but a concurrent deploy
+    // claims the same formId+version first, so the transactional save trips the
+    // Postgres unique constraint (23505). TypeORM surfaces it as a
+    // QueryFailedError carrying the driver code. Must surface as the SAME 409 the
+    // findOne duplicate path returns — not a generic 500.
+    const { ds, save } = fakeDataSource();
+    const uniqueViolation = Object.assign(
+      new Error("duplicate key value violates unique constraint"),
+      { code: "23505", driverError: { code: "23505" } },
+    );
+    save.mockRejectedValueOnce(uniqueViolation);
+    getDataSourceMock.mockResolvedValue(ds);
+
+    const res = mockRes();
+    await createFormHandler(mockReq({ recipe: recipe(), isNew: true }), res);
+
+    expect(res.statusCode).toBe(409);
+    expect((res.body as { error: string }).error).toMatch(
+      /v1\.0\.0 already exists/,
+    );
+  });
+
   it("creates a unique form", async () => {
     const { ds, save } = fakeDataSource();
     getDataSourceMock.mockResolvedValue(ds);
