@@ -1,6 +1,6 @@
 import "../../styles/builder.global.css";
 import { createFileRoute } from "@tanstack/react-router";
-import { useReducer, useState, useMemo } from "react";
+import { useReducer, useState, useMemo, useRef } from "react";
 import { getCatalogFn } from "../../server/registry";
 import { submitRecipe, updateRecipe, rekeyRecipe, deleteForm, disableForm, enableForm } from "../../server/forms";
 import { createMdaContact } from "../../server/mda-contacts";
@@ -111,6 +111,8 @@ function BuilderPage() {
   // open deploy PRs, not just the DB draft. Null while resolving; falls back
   // to the client bump on error (publishRecipe re-checks server-side).
   const [deployTarget, setDeployTarget] = useState<string | null>(null);
+  // Guards handleOpenPublish against a stale resolution overwriting a fresher one (open→close→reopen).
+  const publishResolveSeq = useRef(0);
   const [lastSaveStatus, setLastSaveStatus] = useState<"idle" | "success" | "error" | "submitted">("idle");
   const [deleteTarget, setDeleteTarget] = useState<FormDefinitionSummary | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -484,6 +486,7 @@ function BuilderPage() {
   };
 
   const handleOpenPublish = async () => {
+    const seq = ++publishResolveSeq.current;
     setPublishSuccess(null);
     setPublishError(null);
     setDeployTarget(null);
@@ -492,9 +495,9 @@ function BuilderPage() {
       const next = await getNextDeployVersion({
         data: { formId: draft.formId, currentVersion },
       });
-      setDeployTarget(next.version);
+      if (seq === publishResolveSeq.current) setDeployTarget(next.version);
     } catch {
-      setDeployTarget(deployVersion);
+      if (seq === publishResolveSeq.current) setDeployTarget(deployVersion);
     }
   };
 
