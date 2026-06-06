@@ -124,7 +124,8 @@ test.describe("Term Leave Application — Live Smoke", () => {
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────
     await submitAndConfirm(page, {
-      heading: "Submission Confirmation",
+      heading: "Your request has been submitted",
+      subheading: "Your request for term's leave has been submitted.",
       referenceLabel: "Submission ID",
     });
   });

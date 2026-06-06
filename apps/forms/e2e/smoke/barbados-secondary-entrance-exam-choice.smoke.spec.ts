@@ -130,6 +130,10 @@ test.describe("Barbados Secondary Entrance Exam — Choice of School — Live Sm
       .check();
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────
-    await submitAndConfirm(page, { heading: "Submission Confirmation" });
+    await submitAndConfirm(page, {
+      heading: "Your application has been submitted",
+      subheading:
+        "Your choice of school for the Barbados Secondary Schools' Entrance Examination (BSSEE) has been submitted.",
+    });
   });
 });
