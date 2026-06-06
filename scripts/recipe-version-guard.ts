@@ -6,7 +6,9 @@
  * Rules (recipe files = apps/api/src/forms/form-definitions/recipes/<id>/<semver>.json):
  *   1. Modifying or renaming an existing recipe version FAILS — a changed
  *      recipe must ship as a new version. Override: `recipe-version-override`
- *      label on the PR. Deletions are always allowed (erase / revert flows).
+ *      label on the PR (labels are read live from the API, so "add the label +
+ *      re-run the failed check" works without pushing a new commit).
+ *      Deletions are always allowed (erase / revert flows).
  *   2. Adding a version that an OLDER open PR (same base) also adds FAILS —
  *      the earlier claim wins; this PR must re-bump. No override: two PRs for
  *      one version is never legitimate. The older PR stays green (symmetric
@@ -138,7 +140,7 @@ async function main(): Promise<void> {
 
   const event = JSON.parse(fs.readFileSync(eventPath, "utf8")) as {
     number?: number;
-    pull_request?: { base?: { ref?: string }; labels?: { name: string }[] };
+    pull_request?: { base?: { ref?: string } };
   };
   const prNumber = event.number;
   const baseRef = event.pull_request?.base?.ref;
@@ -146,7 +148,15 @@ async function main(): Promise<void> {
     console.error("Not a pull_request event payload; nothing to check.");
     process.exit(1);
   }
-  const hasOverrideLabel = (event.pull_request?.labels ?? []).some(
+
+  // Labels are read LIVE (not from the event payload): the workflow doesn't
+  // retrigger on `labeled`, so the override path is "add the label, then
+  // re-run the failed check" — a stale payload would never see the new label.
+  const pr = await ghJson<{ labels?: { name: string }[] }>(
+    `${GH_API}/repos/${repo}/pulls/${prNumber}`,
+    token,
+  );
+  const hasOverrideLabel = (pr.labels ?? []).some(
     (l) => l.name === "recipe-version-override",
   );
 
