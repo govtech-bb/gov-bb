@@ -219,6 +219,26 @@ describe("createFormHandler — uniqueness", () => {
     );
   });
 
+  it("does NOT map a non-unique-violation save error to 409 (stays 500)", async () => {
+    // findOne sees no duplicate (null), but the transactional save fails for an
+    // unrelated reason (a dropped connection — no Postgres 23505, no
+    // driverError). Only 23505 maps to the deploy-race 409; anything else must
+    // surface as a generic 500, not a misleading "version already exists".
+    const { ds, save } = fakeDataSource();
+    save.mockRejectedValueOnce(
+      Object.assign(new Error("Connection terminated unexpectedly"), {
+        code: "ECONNRESET",
+      }),
+    );
+    getDataSourceMock.mockResolvedValue(ds);
+
+    const res = mockRes();
+    await createFormHandler(mockReq({ recipe: recipe(), isNew: true }), res);
+
+    expect(res.statusCode).toBe(500);
+    expect((res.body as { error: string }).error).not.toMatch(/already exists/);
+  });
+
   it("creates a unique form", async () => {
     const { ds, save } = fakeDataSource();
     getDataSourceMock.mockResolvedValue(ds);

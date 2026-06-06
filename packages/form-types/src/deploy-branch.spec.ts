@@ -1,4 +1,8 @@
-import { deployBranchName, eraseBranchName } from "./deploy-branch";
+import {
+  deployBranchName,
+  deployBranchPrefix,
+  eraseBranchName,
+} from "./deploy-branch";
 
 describe("deploy branch names", () => {
   beforeEach(() => {
@@ -19,6 +23,23 @@ describe("deploy branch names", () => {
       const branch = deployBranchName("weird.form.id", "2.0.0");
       expect(branch).toBe("form-builder/weird-form-id-2-0-0-1700000000000");
       expect(branch).not.toContain(".");
+    });
+  });
+
+  describe("deployBranchPrefix", () => {
+    it("sanitizes dots and ends with a trailing dash", () => {
+      expect(deployBranchPrefix("passport.renewal")).toBe(
+        "form-builder/passport-renewal-",
+      );
+    });
+
+    it("is the prefix of the full deploy branch name (produce/parse contract)", () => {
+      // listOpenDeployClaims relies on deployBranchName starting with the
+      // prefix so it can recognise open deploy PRs for a form (#873).
+      const prefix = deployBranchPrefix("passport.renewal");
+      expect(
+        deployBranchName("passport.renewal", "1.2.0").startsWith(prefix),
+      ).toBe(true);
     });
   });
 
