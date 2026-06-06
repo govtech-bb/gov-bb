@@ -196,6 +196,49 @@ describe("createFormHandler — uniqueness", () => {
     );
   });
 
+  it("maps a unique-violation on the transactional save to the same 409 as the findOne duplicate path (true deploy race)", async () => {
+    // The non-atomic findOne sees no duplicate (null), but a concurrent deploy
+    // claims the same formId+version first, so the transactional save trips the
+    // Postgres unique constraint (23505). TypeORM surfaces it as a
+    // QueryFailedError carrying the driver code. Must surface as the SAME 409 the
+    // findOne duplicate path returns — not a generic 500.
+    const { ds, save } = fakeDataSource();
+    const uniqueViolation = Object.assign(
+      new Error("duplicate key value violates unique constraint"),
+      { code: "23505", driverError: { code: "23505" } },
+    );
+    save.mockRejectedValueOnce(uniqueViolation);
+    getDataSourceMock.mockResolvedValue(ds);
+
+    const res = mockRes();
+    await createFormHandler(mockReq({ recipe: recipe(), isNew: true }), res);
+
+    expect(res.statusCode).toBe(409);
+    expect((res.body as { error: string }).error).toMatch(
+      /v1\.0\.0 already exists/,
+    );
+  });
+
+  it("does NOT map a non-unique-violation save error to 409 (stays 500)", async () => {
+    // findOne sees no duplicate (null), but the transactional save fails for an
+    // unrelated reason (a dropped connection — no Postgres 23505, no
+    // driverError). Only 23505 maps to the deploy-race 409; anything else must
+    // surface as a generic 500, not a misleading "version already exists".
+    const { ds, save } = fakeDataSource();
+    save.mockRejectedValueOnce(
+      Object.assign(new Error("Connection terminated unexpectedly"), {
+        code: "ECONNRESET",
+      }),
+    );
+    getDataSourceMock.mockResolvedValue(ds);
+
+    const res = mockRes();
+    await createFormHandler(mockReq({ recipe: recipe(), isNew: true }), res);
+
+    expect(res.statusCode).toBe(500);
+    expect((res.body as { error: string }).error).not.toMatch(/already exists/);
+  });
+
   it("creates a unique form", async () => {
     const { ds, save } = fakeDataSource();
     getDataSourceMock.mockResolvedValue(ds);
