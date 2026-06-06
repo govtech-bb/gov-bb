@@ -8,7 +8,9 @@
  *      recipe must ship as a new version. Override: `recipe-version-override`
  *      label on the PR (labels are read live from the API, so "add the label +
  *      re-run the failed check" works without pushing a new commit).
- *      Deletions are always allowed (erase / revert flows).
+ *      Allowed without override: deletions (erase / revert flows), additions
+ *      and copies (publish flows — a copy claims a new version), and
+ *      "unchanged" (GitHub elides the patch in very large PRs — a no-op).
  *   2. Adding a version that an OLDER open PR (same base) also adds FAILS —
  *      the earlier claim wins; this PR must re-bump. No override: two PRs for
  *      one version is never legitimate. The older PR stays green (symmetric
@@ -26,7 +28,7 @@ export const RECIPE_PATH_PATTERN =
 
 export interface ChangedFile {
   filename: string;
-  status: string; // "added" | "modified" | "removed" | "renamed" | "changed" | ...
+  status: string; // "added" | "modified" | "removed" | "renamed" | "changed" | "copied" | "unchanged" | ...
   previous_filename?: string;
 }
 
@@ -37,9 +39,14 @@ export interface OpenPr {
 
 const isRecipePath = (p: string): boolean => RECIPE_PATH_PATTERN.test(p);
 
+// "added" is the publish flow; "copied" lands a new destination file (the
+// source is untouched) and likewise claims its version.
+const isAddLike = (status: string): boolean =>
+  status === "added" || status === "copied";
+
 const recipeAdds = (files: ChangedFile[]): string[] =>
   files
-    .filter((f) => f.status === "added" && isRecipePath(f.filename))
+    .filter((f) => isAddLike(f.status) && isRecipePath(f.filename))
     .map((f) => f.filename);
 
 export function findGuardViolations(args: {
@@ -57,11 +64,24 @@ export function findGuardViolations(args: {
       (f.previous_filename !== undefined && isRecipePath(f.previous_filename));
     if (!touchesRecipe) continue;
 
-    // Rule 1 — immutability. "removed" is the erase/revert flow; "added" is the
-    // publish flow; everything else rewrites a shipped version in place.
-    if (f.status !== "added" && f.status !== "removed" && !hasOverrideLabel) {
+    // Rule 1 — immutability. "removed" is the erase/revert flow; "added"/"copied"
+    // are publish flows; "unchanged" is GitHub eliding the patch in a very large
+    // PR (a no-op). Everything else rewrites a shipped version in place.
+    if (
+      !isAddLike(f.status) &&
+      f.status !== "removed" &&
+      f.status !== "unchanged" &&
+      !hasOverrideLabel
+    ) {
+      // The destination filename may be a non-recipe path (a version renamed
+      // OUT of the recipes tree) — name the recipe path the operator cares
+      // about. When filename isn't a recipe path, previous_filename matched
+      // the pattern (guaranteed by the touchesRecipe check above).
+      const recipePath = isRecipePath(f.filename)
+        ? f.filename
+        : (f.previous_filename as string);
       violations.push(
-        `${f.filename}: recipe versions are immutable — ship the change as a new version, ` +
+        `${recipePath}: recipe versions are immutable — ship the change as a new version, ` +
           `or add the "recipe-version-override" label if this edit is intentional.`,
       );
     }

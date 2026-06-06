@@ -130,4 +130,71 @@ describe("findGuardViolations", () => {
       }),
     ).toEqual([]);
   });
+
+  it("treats a copied recipe file as an add (Rule 1 exempt)", () => {
+    expect(
+      findGuardViolations({
+        prNumber: 900,
+        changedFiles: [
+          {
+            filename: RECIPE("passport-renewal", "1.3.0"),
+            status: "copied",
+            previous_filename: RECIPE("passport-renewal", "1.2.0"),
+          },
+        ],
+        openPrs: [],
+        hasOverrideLabel: false,
+      }),
+    ).toEqual([]);
+  });
+
+  it("treats an unchanged recipe file as a no-op (Rule 1 exempt)", () => {
+    expect(
+      findGuardViolations({
+        prNumber: 900,
+        changedFiles: [
+          {
+            filename: RECIPE("passport-renewal", "1.2.0"),
+            status: "unchanged",
+          },
+        ],
+        openPrs: [],
+        hasOverrideLabel: false,
+      }),
+    ).toEqual([]);
+  });
+
+  it("counts a copied recipe file as a version claim (collides with older PR)", () => {
+    const violations = findGuardViolations({
+      prNumber: 900,
+      changedFiles: [
+        {
+          filename: RECIPE("x", "1.3.0"),
+          status: "copied",
+          previous_filename: RECIPE("x", "1.2.0"),
+        },
+      ],
+      openPrs: [{ number: 880, files: [added(RECIPE("x", "1.3.0"))] }],
+      hasOverrideLabel: false,
+    });
+    expect(violations).toHaveLength(1);
+    expect(violations[0]).toContain("#880");
+  });
+
+  it("names the recipe path when a version is renamed OUT of the recipes tree", () => {
+    const violations = findGuardViolations({
+      prNumber: 900,
+      changedFiles: [
+        {
+          filename: "apps/api/src/forms/old/1.2.0.json",
+          status: "renamed",
+          previous_filename: RECIPE("passport-renewal", "1.2.0"),
+        },
+      ],
+      openPrs: [],
+      hasOverrideLabel: false,
+    });
+    expect(violations).toHaveLength(1);
+    expect(violations[0]).toContain("passport-renewal/1.2.0.json");
+  });
 });
