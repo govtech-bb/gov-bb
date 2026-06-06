@@ -26,7 +26,7 @@
  * slug values, not labels:
  *   - `components/primary-school` (school)        → e.g. "charles-f-broome"
  *   - `components/secondary-school` (choice1/2)   → e.g. "harrison-college"
- *   - `components/parish`          (parish)       → e.g. "saint-michael"
+ *   - `components/parish`          (parish)       → e.g. "st-michael"
  *   - `components/country`         (birth-country)→ e.g. "barbados"
  *   - `components/title`           (parent-title) → e.g. "mr"
  * Radios:
@@ -84,7 +84,7 @@ test.describe("Barbados Secondary Entrance Exam — Choice of School — Live Sm
     await fillField(page, step, "email", "testing@govtech.bb");
     await fillField(page, step, "address", faker.location.streetAddress());
     // components/parish + components/country render native <select> dropdowns.
-    await selectDropdown(page, step, "parish", "saint-michael");
+    await selectDropdown(page, step, "parish", "st-michael");
     // id-number is optional (required:false) but masked — fill a valid shape.
     await fillField(page, step, "id-number", "850101-0001");
     await selectDropdown(page, step, "birth-country", "barbados");
