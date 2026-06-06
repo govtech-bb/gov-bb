@@ -17,7 +17,7 @@ describe("PaymentWebhookController", () => {
 
   beforeEach(() => jest.clearAllMocks());
 
-  describe("when verification is disabled (default)", () => {
+  describe("when verification is disabled explicitly", () => {
     it("accepts and forwards regardless of signature", async () => {
       const ctl = makeController({ EZPAY_WEBHOOK_VERIFY_SIGNATURE: "false" });
       const body = {
@@ -50,7 +50,7 @@ describe("PaymentWebhookController", () => {
       expect(result).toEqual({ acknowledged: true });
     });
 
-    it("accepts when neither flag nor secret is set (default behavior)", async () => {
+    it("rejects when neither flag nor secret is set", async () => {
       const ctl = makeController({});
       const body = {
         _reference: "ref-x",
@@ -58,11 +58,12 @@ describe("PaymentWebhookController", () => {
         _transaction_number: "tx-x",
         _amount: "5",
       };
-      const result = await ctl.ezpayCallback(body as never, undefined, {
-        rawBody: Buffer.from(JSON.stringify(body)),
-      } as never);
-      expect(service.handleEzpayCallback).toHaveBeenCalledWith(body);
-      expect(result).toEqual({ acknowledged: true });
+      await expect(
+        ctl.ezpayCallback(body as never, undefined, {
+          rawBody: Buffer.from(JSON.stringify(body)),
+        } as never),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(service.handleEzpayCallback).not.toHaveBeenCalled();
     });
   });
 

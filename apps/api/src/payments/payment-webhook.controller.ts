@@ -41,7 +41,7 @@ export class PaymentWebhookController {
     @Req() req: RawBodyRequest<Request>,
   ): Promise<{ acknowledged: boolean }> {
     const verifyEnabled =
-      this.config.get<string>("EZPAY_WEBHOOK_VERIFY_SIGNATURE") === "true";
+      this.config.get<string>("EZPAY_WEBHOOK_VERIFY_SIGNATURE") !== "false";
 
     if (verifyEnabled) {
       if (!req.rawBody) {

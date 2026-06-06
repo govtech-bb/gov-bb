@@ -7,6 +7,7 @@ const baseEnv = {
   DB_NAME: "modular_forms",
   EZPAY_BASE_URL: "https://test.ezpay.gov.bb",
   EZPAY_DEPARTMENT_API_KEYS: "{}",
+  EZPAY_WEBHOOK_SECRET: "test-webhook-secret",
 };
 
 describe("envValidationSchema", () => {
@@ -114,6 +115,55 @@ describe("envValidationSchema", () => {
         { allowUnknown: true, abortEarly: false },
       );
       expect(error?.message).toMatch(/NODE_ENV/);
+    });
+  });
+
+  describe("EZPAY webhook signature verification", () => {
+    it("defaults verification to enabled", () => {
+      const { error, value } = envValidationSchema.validate(
+        { ...baseEnv },
+        { allowUnknown: true, abortEarly: false },
+      );
+      expect(error).toBeUndefined();
+      expect(value.EZPAY_WEBHOOK_VERIFY_SIGNATURE).toBe("true");
+    });
+
+    it("requires a webhook secret when verification is enabled by default", () => {
+      const { EZPAY_WEBHOOK_SECRET: _secret, ...envWithoutSecret } = baseEnv;
+      const { error } = envValidationSchema.validate(
+        { ...envWithoutSecret },
+        { allowUnknown: true, abortEarly: false },
+      );
+      expect(error?.message).toMatch(/EZPAY_WEBHOOK_SECRET/);
+    });
+
+    it("allows explicit local development opt-out", () => {
+      const { error, value } = envValidationSchema.validate(
+        {
+          ...baseEnv,
+          NODE_ENV: "development",
+          EZPAY_WEBHOOK_VERIFY_SIGNATURE: "false",
+          EZPAY_WEBHOOK_SECRET: "",
+        },
+        { allowUnknown: true, abortEarly: false },
+      );
+      expect(error).toBeUndefined();
+      expect(value.EZPAY_WEBHOOK_VERIFY_SIGNATURE).toBe("false");
+    });
+
+    it("rejects disabled verification in production", () => {
+      const { error } = envValidationSchema.validate(
+        {
+          ...baseEnv,
+          NODE_ENV: "production",
+          CORS_ORIGIN: "https://forms.gov.bb",
+          EZPAY_WEBHOOK_VERIFY_SIGNATURE: "false",
+          EZPAY_WEBHOOK_SECRET: "",
+        },
+        { allowUnknown: true, abortEarly: false },
+      );
+      expect(error?.message).toMatch(/EZPAY_WEBHOOK_VERIFY_SIGNATURE/);
+      expect(error?.message).toMatch(/production/);
     });
   });
 

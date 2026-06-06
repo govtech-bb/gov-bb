@@ -74,7 +74,7 @@ export const envValidationSchema = Joi.object({
   EZPAY_DEPARTMENT_API_KEYS: Joi.string().required(),
   EZPAY_WEBHOOK_VERIFY_SIGNATURE: Joi.string()
     .valid("true", "false")
-    .default("false"),
+    .default("true"),
   EZPAY_WEBHOOK_SECRET: Joi.string().when("EZPAY_WEBHOOK_VERIFY_SIGNATURE", {
     is: "true",
     then: Joi.required(),
@@ -101,4 +101,17 @@ export const envValidationSchema = Joi.object({
   UPLOAD_MAX_SIZE_BYTES: Joi.number().integer().min(1).default(10485760),
   UPLOAD_PRESIGN_TTL_SECONDS: Joi.number().integer().min(60).default(900),
   UPLOAD_READ_URL_TTL_SECONDS: Joi.number().integer().min(60).default(604800),
-});
+})
+  .custom((value: Record<string, unknown>, helpers) => {
+    if (
+      value.NODE_ENV === "production" &&
+      value.EZPAY_WEBHOOK_VERIFY_SIGNATURE === "false"
+    ) {
+      return helpers.error("ezpay.signature.disabledInProduction");
+    }
+    return value;
+  })
+  .messages({
+    "ezpay.signature.disabledInProduction":
+      '"EZPAY_WEBHOOK_VERIFY_SIGNATURE" cannot be "false" when NODE_ENV=production',
+  });
