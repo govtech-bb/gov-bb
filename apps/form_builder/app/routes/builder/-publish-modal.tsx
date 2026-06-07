@@ -4,7 +4,7 @@ import styles from "../../styles/builder.module.css";
 
 interface PublishModalProps {
   draft: RecipeDraft;
-  version: string;
+  version: string | null;
   baseBranch: string;
   isPublishing: boolean;
   publishSuccess: { prUrl: string; prNumber: number } | null;
@@ -67,7 +67,7 @@ export function PublishModal({
               This opens a pull request against <code>{baseBranch}</code> that
               adds{" "}
               <code>
-                recipes/{draft.formId}/{version}.json
+                recipes/{draft.formId}/{version ?? "resolving…"}.json
               </code>
               . The PR is authored by your GitHub account.
             </p>
@@ -82,7 +82,7 @@ export function PublishModal({
             </div>
             <div className={styles.formGroup}>
               <label>Version</label>
-              <input type="text" value={version} readOnly />
+              <input type="text" value={version ?? "resolving…"} readOnly />
             </div>
             <div className={styles.formGroup}>
               <label htmlFor="publish-description">
@@ -111,7 +111,7 @@ export function PublishModal({
                 type="button"
                 className={styles.btnPrimary}
                 onClick={() => onPublish(description)}
-                disabled={isPublishing}
+                disabled={isPublishing || version === null}
               >
                 {isPublishing ? "Opening PR…" : "Deploy"}
               </button>

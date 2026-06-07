@@ -51,3 +51,17 @@ describe("PublishModal base branch", () => {
     expect(screen.getByText("dev").tagName).toBe("CODE");
   });
 });
+
+describe("PublishModal resolving state", () => {
+  it("shows 'resolving…' and disables Deploy while the version is null", () => {
+    renderModal({ version: null });
+    // The version input renders the placeholder text while unresolved.
+    expect(screen.getByText(/resolving…/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Deploy" })).toBeDisabled();
+  });
+
+  it("enables Deploy once a string version is resolved (and not publishing)", () => {
+    renderModal({ version: "1.1.0", isPublishing: false });
+    expect(screen.getByRole("button", { name: "Deploy" })).toBeEnabled();
+  });
+});

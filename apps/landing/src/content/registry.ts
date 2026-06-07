@@ -3,6 +3,7 @@ import { parseFrontmatter } from '../lib/parse-frontmatter'
 import type { Frontmatter } from '../lib/frontmatter'
 import { CATEGORIES, CATEGORY_BY_SLUG, getSubcategory } from './categories'
 import type { Category } from './categories'
+import { FeatureMetaSchema } from './feature-meta'
 
 export interface ContentPage {
   /** Relative slug derived from filename, e.g. "register-a-birth" or "register-a-birth/start". */
@@ -18,6 +19,12 @@ function slugFromPath(path: string): string {
     .replace(/^\.\//, '')
     .replace(/\/index\.md$/, '')
     .replace(/\.md$/, '')
+}
+
+/** The slug one level up (`a/b/c` → `a/b`), or undefined at the top level. */
+function parentSlug(slug: string): string | undefined {
+  const i = slug.lastIndexOf('/')
+  return i === -1 ? undefined : slug.slice(0, i)
 }
 
 /**
@@ -47,7 +54,7 @@ const modules = import.meta.glob('./**/*.md', {
   eager: true,
 })
 
-export const PAGES: Array<ContentPage> = Object.entries(modules).map(
+const markdownPages: Array<ContentPage> = Object.entries(modules).map(
   ([path, source]) => {
     const slug = slugFromPath(path)
     const { data, content } = parseFrontmatter(source as string)
@@ -103,6 +110,79 @@ export const PAGES: Array<ContentPage> = Object.entries(modules).map(
   },
 )
 
+/**
+ * Co-located feature modules self-register here. An interactive feature lives in
+ * its own folder under src/routes/<url>/ with a `-meta.ts` (the leading dash
+ * makes TanStack's router generator ignore it, and its sibling `-ui`/`-data`/
+ * `-lib` dirs, while the route files alongside become real routes). Each META is
+ * validated and folded into the same list as markdown services, so listings,
+ * search, breadcrumbs and the preview gate treat them identically with no
+ * per-feature code. Adding a feature never touches this file.
+ */
+// Import only the named `META` export, not each module's full namespace. The
+// namespace form makes the Rolldown-based bundler (Vite 8) wrap every matched
+// module in an `__exportAll(...)` helper call; in the SSR build that helper
+// collided with a hoisted local of the same name, throwing
+// "TypeError: __exportAll is not a function" at module init and 500ing every
+// page. Selecting the single export we use sidesteps the namespace wrappers
+// (and is what this code wants anyway).
+const featureMetaModules = import.meta.glob('../routes/**/-meta.ts', {
+  eager: true,
+  import: 'META',
+})
+
+const featurePages: Array<ContentPage> = Object.entries(featureMetaModules).map(
+  ([path, meta_]) => {
+    const parsed = FeatureMetaSchema.safeParse(meta_)
+    if (!parsed.success) {
+      throw new Error(
+        `Invalid META in ${path.replace(/^\.\.\//, 'src/')}: ${parsed.error.message}`,
+      )
+    }
+    const meta = parsed.data
+    if (!CATEGORY_BY_SLUG[meta.category]) {
+      throw new Error(
+        `Feature "${meta.url}" references unknown category "${meta.category}". Add it to src/content/categories.ts.`,
+      )
+    }
+    if (meta.subcategory && !getSubcategory(meta.category, meta.subcategory)) {
+      throw new Error(
+        `Feature "${meta.url}" sets subcategory "${meta.subcategory}" but category "${meta.category}" does not declare it.`,
+      )
+    }
+    const frontmatter: Frontmatter = {
+      title: meta.title,
+      description: meta.description,
+      categories: [meta.category],
+      subcategory: meta.subcategory,
+      visibility: meta.visibility,
+      keywords: meta.keywords,
+    }
+    const slug = meta.url.split('/').pop() ?? meta.url
+    return { slug, url: meta.url, frontmatter, body: '' }
+  },
+)
+
+const ownUrlPages: Array<ContentPage> = [...markdownPages, ...featurePages]
+const pageBySlug = new Map(ownUrlPages.map((p) => [p.slug, p]))
+
+/**
+ * A step page (its parent slug is itself a page, e.g. `<service>/start`) hangs
+ * off its parent's URL, so it needs no `category` of its own.
+ */
+function urlWithParent(page: ContentPage): string {
+  const parent = parentSlug(page.slug)
+  const parentPage = parent ? pageBySlug.get(parent) : undefined
+  if (!parentPage) return page.url
+  const leaf = page.slug.slice(page.slug.lastIndexOf('/') + 1)
+  return `${urlWithParent(parentPage)}/${leaf}`
+}
+
+export const PAGES: Array<ContentPage> = ownUrlPages.map((page) => ({
+  ...page,
+  url: urlWithParent(page),
+}))
+
 const BY_URL = new Map(PAGES.map((p) => [p.url, p]))
 const BY_SLUG = new Map(PAGES.map((p) => [p.slug, p]))
 
@@ -124,9 +204,8 @@ export function findPage(urlPath: string): ContentPage | undefined {
  * page — are not sub-pages and stay listed.
  */
 export function isSubPage(page: ContentPage): boolean {
-  const i = page.slug.lastIndexOf('/')
-  if (i < 0) return false
-  return BY_SLUG.has(page.slug.slice(0, i))
+  const parent = parentSlug(page.slug)
+  return parent !== undefined && BY_SLUG.has(parent)
 }
 
 /**
@@ -134,8 +213,8 @@ export function isSubPage(page: ContentPage): boolean {
  * ancestor page is. Walking ancestors by slug means flagging a service's
  * `index.md` automatically hides its `/start` (and other) sub-pages, which sit
  * at `<service>/<leaf>`. Slug-keyed (not URL) so it is independent of the
- * category prefix — sub-pages frequently omit a category and resolve at a bare
- * URL, but their slug is always `<parentSlug>/<leaf>`.
+ * category prefix — a sub-page's URL hangs off its parent's, but its slug is
+ * always `<parentSlug>/<leaf>`.
  */
 export function isPreview(page: ContentPage): boolean {
   return resolveIsPreview(
@@ -157,8 +236,7 @@ export function resolveIsPreview(
   let current: string | undefined = slug
   while (current) {
     if (visibilityOf(current) === 'preview') return true
-    const i = current.lastIndexOf('/')
-    current = i < 0 ? undefined : current.slice(0, i)
+    current = parentSlug(current)
   }
   return false
 }

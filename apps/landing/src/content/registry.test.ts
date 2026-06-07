@@ -80,6 +80,21 @@ describe('isSubPage', () => {
   })
 })
 
+describe('step pages hang off their parent service URL', () => {
+  it('resolves a category-less start.md under its parent, not at a bare URL', () => {
+    expect(
+      findPage('family-birth-relationships/get-death-certificate/start'),
+    ).toBeDefined()
+    expect(findPage('get-death-certificate/start')).toBeUndefined()
+  })
+
+  it('keeps a start step under a service that does declare its own category', () => {
+    expect(
+      findPage('money-financial-support/calculate-severance-pay/start'),
+    ).toBeDefined()
+  })
+})
+
 describe('resolveIsPreview (ancestor inheritance)', () => {
   // A small synthetic registry: a public service with a preview /start step,
   // and a fully-preview service.
@@ -164,9 +179,14 @@ describe('isCategoryVisible', () => {
     expect(isCategoryVisible(family, true)).toBe(true)
   })
 
-  it('shows a sub-categorised category whose services are public', () => {
+  it('hides youth-and-community for the public (all its services are preview)', () => {
     const youth = CATEGORY_BY_SLUG['youth-and-community']
-    expect(isCategoryVisible(youth, false)).toBe(true)
+    expect(isCategoryVisible(youth, false)).toBe(false)
+  })
+
+  it('shows the sub-categorised youth-and-community to a reviewer in preview mode', () => {
+    const youth = CATEGORY_BY_SLUG['youth-and-community']
+    expect(isCategoryVisible(youth, true)).toBe(true)
   })
 })
 

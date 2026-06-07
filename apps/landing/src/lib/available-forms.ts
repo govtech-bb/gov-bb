@@ -84,16 +84,13 @@ export function parseFormIds(payload: unknown): string[] {
     )
   }
 
-  const ids = (shape.data as Array<{ formId?: unknown }>)
-    .map((entry) => entry?.formId)
-    .filter(Boolean)
-
-  for (const id of ids) {
+  return shape.data.map((entry) => {
+    const id = entry?.formId
     if (typeof id !== 'string' || !ID_PATTERN.test(id)) {
       throw new Error(`form ID failed validation: ${JSON.stringify(id)}`)
     }
-  }
-  return ids as string[]
+    return id
+  })
 }
 
 async function fetchWithTimeout(url: string, ms: number): Promise<Response> {
@@ -172,7 +169,10 @@ export async function resolveAvailableForms({
   }
 
   if (cached) {
-    // Stale but present: keep serving the last-known-good list.
+    // Stale but present: keep serving the last-known-good list, and stamp the
+    // attempt so a down API isn't re-fetched (and blocked on the full timeout)
+    // on every request — it gets a fresh `ttlMs` cooldown before the next try.
+    cache.current = { ids: cached.ids, fetchedAt: now }
     return cached.ids
   }
 

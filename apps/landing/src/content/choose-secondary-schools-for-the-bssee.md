@@ -4,6 +4,7 @@ description: "Rank the secondary schools you would like your child to attend aft
 stage: "alpha"
 publish_date: 2026-06-02
 category: education
+visibility: preview
 form_id: barbados-secondary-entrance-exam-choice
 ---
 

@@ -4,6 +4,7 @@ description: "Claim reimbursement for travel you made on official examination bu
 stage: "alpha"
 publish_date: 2026-06-02
 category: education
+visibility: preview
 form_id: statement-of-travelling-form
 ---
 

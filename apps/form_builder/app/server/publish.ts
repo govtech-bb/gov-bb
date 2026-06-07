@@ -6,12 +6,14 @@ import { getSession } from "./session-cipher.server";
 import { getSessionSecret } from "./secrets";
 import {
   deployBranchName,
+  deployBranchPrefix,
   eraseBranchName,
   type ServiceContractRecipe,
   type ValidationResult,
 } from "@govtech-bb/form-types";
-import { api } from "./api-client";
-import { listVersions, RECIPES_BASE } from "./github-recipes";
+import { api, ApiError } from "./api-client";
+import { listVersions, RECIPES_BASE, compareSemver } from "./github-recipes";
+import { bumpMinor } from "../lib/version";
 import { REPO_NAME, repoOwner } from "./github-repo";
 
 const DEFAULT_BASE_BRANCH = "dev";
@@ -153,96 +155,155 @@ export const publishRecipe = createServerFn({ method: "POST" })
       throw new Error(`Recipe validation failed: ${detail}`);
     }
 
-    // Step 1: get base branch tip SHA
-    const refRes = await fetch(repoUrl(`/git/ref/heads/${baseBranch}`), {
-      headers: authHeaders(token),
-    });
-    if (!refRes.ok) {
-      throw await ghError(`Failed to read ${baseBranch} branch`, refRes);
-    }
-    const refJson = (await refRes.json()) as { object: { sha: string } };
-    const baseSha = refJson.object.sha;
-
-    // Step 2: create namespaced branch (dot-free — see deployBranchName, #805)
-    const branch = deployBranchName(recipe.formId, recipe.version);
-    const createRefRes = await fetch(repoUrl("/git/refs"), {
-      method: "POST",
-      headers: { ...authHeaders(token), "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ref: `refs/heads/${branch}`,
-        sha: baseSha,
-      }),
-    });
-    if (!createRefRes.ok) {
-      throw await ghError("Failed to create branch", createRefRes);
-    }
-
-    // From here on, any failure must attempt to delete `branch`.
-    try {
-      // Step 3: check the file doesn't already exist on the new branch.
-      // (Checking on the base branch would be equivalent because the branch was
-      // just created from it; we use the new branch so the URL pattern matches
-      // step 4.)
-      const contentsPath = `/contents/apps/api/src/forms/form-definitions/recipes/${recipe.formId}/${recipe.version}.json`;
-      const checkRes = await fetch(
-        repoUrl(`${contentsPath}?ref=${encodeURIComponent(branch)}`),
-        { headers: authHeaders(token) },
+    // Gate (#873): the deploy version must be strictly ahead of every version
+    // already on the base branch. The client computes its bump from the DB
+    // draft, which is blind to manual repo bumps — fail fast with the real
+    // latest rather than opening a doomed PR.
+    const published = await listVersions(token, recipe.formId, baseBranch);
+    const notAhead = published.filter(
+      (v) => compareSemver(v, recipe.version) >= 0,
+    );
+    if (notAhead.length > 0) {
+      const latest = published.reduce((b, v) =>
+        compareSemver(v, b) > 0 ? v : b,
       );
-      if (checkRes.status === 200) {
+      throw new Error(
+        `Version ${recipe.version} is not ahead of ${baseBranch} (latest published: ${latest}). ` +
+          `Reopen the form to pick up the latest version, then deploy again.`,
+      );
+    }
+
+    // Reservation (#873): atomically claim (formId, version) in the builder DB
+    // before touching GitHub. POST /builder/forms 409s on the existing
+    // UNIQUE(form_id, version), so two concurrent deploys serialize here. The
+    // row doubles as the pending-deploy draft (other users' pickers see it) and
+    // is deleted post-merge by the archive-merged-drafts workflow.
+    try {
+      await api.post("/builder/forms", { recipe, isNew: false });
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
         throw new Error(
-          `Version ${recipe.version} already exists on ${baseBranch}. Bump the version and try again.`,
+          `Version ${recipe.version} was just claimed by another deploy or save — ` +
+            `reopen the form and try again.`,
         );
       }
-      if (checkRes.status !== 404) {
-        throw await ghError("Failed to check existing recipe", checkRes);
-      }
+      throw err;
+    }
 
-      // Step 4: write the file
-      const fileContent = JSON.stringify(recipe, null, 2) + "\n";
-      const putRes = await fetch(repoUrl(contentsPath), {
-        method: "PUT",
-        headers: {
-          ...authHeaders(token),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: `Publish ${recipe.formId} v${recipe.version}`,
-          content: Buffer.from(fileContent, "utf8").toString("base64"),
-          branch,
-        }),
+    // Any failure past this point must release the claim (best-effort — the
+    // delete-version endpoint only removes unpublished draft rows).
+    const releaseReservation = async (): Promise<void> => {
+      try {
+        await api.del(
+          `/builder/forms/${recipe.formId}/versions/${recipe.version}`,
+        );
+      } catch (releaseErr) {
+        console.warn(
+          `release of reservation ${recipe.formId}@${recipe.version} failed:`,
+          releaseErr,
+        );
+      }
+    };
+
+    // Single release point (#873): ANY post-reservation failure — including
+    // fetch rejections and malformed responses that never reach an !ok check —
+    // must free the claimed (formId, version). The inner catch only handles
+    // branch cleanup; its rethrow lands here.
+    try {
+      // Step 1: get base branch tip SHA
+      const refRes = await fetch(repoUrl(`/git/ref/heads/${baseBranch}`), {
+        headers: authHeaders(token),
       });
-      if (!putRes.ok) {
-        throw await ghError("Failed to write recipe file", putRes);
+      if (!refRes.ok) {
+        throw await ghError(`Failed to read ${baseBranch} branch`, refRes);
       }
+      const refJson = (await refRes.json()) as { object: { sha: string } };
+      const baseSha = refJson.object.sha;
 
-      // Step 5: open the PR
-      const prRes = await fetch(repoUrl("/pulls"), {
+      // Step 2: create namespaced branch (dot-free — see deployBranchName, #805)
+      const branch = deployBranchName(recipe.formId, recipe.version);
+      const createRefRes = await fetch(repoUrl("/git/refs"), {
         method: "POST",
-        headers: {
-          ...authHeaders(token),
-          "Content-Type": "application/json",
-        },
+        headers: { ...authHeaders(token), "Content-Type": "application/json" },
         body: JSON.stringify({
-          base: baseBranch,
-          head: branch,
-          title: `Publish form: ${recipe.title} v${recipe.version}`,
-          body: renderPrBody({
-            recipe,
-            authorLogin: session.login,
-            description,
-          }),
+          ref: `refs/heads/${branch}`,
+          sha: baseSha,
         }),
       });
-      if (!prRes.ok) {
-        throw await ghError("Failed to open pull request", prRes);
+      if (!createRefRes.ok) {
+        throw await ghError("Failed to create branch", createRefRes);
       }
-      const prJson = (await prRes.json()) as {
-        number: number;
-        html_url: string;
-      };
-      return { prUrl: prJson.html_url, prNumber: prJson.number };
+
+      // From here on, any failure must attempt to delete `branch`.
+      try {
+        // Step 3: check the file doesn't already exist on the new branch.
+        // (Checking on the base branch would be equivalent because the branch was
+        // just created from it; we use the new branch so the URL pattern matches
+        // step 4.)
+        const contentsPath = `/contents/apps/api/src/forms/form-definitions/recipes/${recipe.formId}/${recipe.version}.json`;
+        const checkRes = await fetch(
+          repoUrl(`${contentsPath}?ref=${encodeURIComponent(branch)}`),
+          { headers: authHeaders(token) },
+        );
+        if (checkRes.status === 200) {
+          throw new Error(
+            `Version ${recipe.version} already exists on ${baseBranch}. Reopen the form to pick up the latest version, then deploy again.`,
+          );
+        }
+        if (checkRes.status !== 404) {
+          throw await ghError("Failed to check existing recipe", checkRes);
+        }
+
+        // Step 4: write the file
+        const fileContent = JSON.stringify(recipe, null, 2) + "\n";
+        const putRes = await fetch(repoUrl(contentsPath), {
+          method: "PUT",
+          headers: {
+            ...authHeaders(token),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            message: `Publish ${recipe.formId} v${recipe.version}`,
+            content: Buffer.from(fileContent, "utf8").toString("base64"),
+            branch,
+          }),
+        });
+        if (!putRes.ok) {
+          throw await ghError("Failed to write recipe file", putRes);
+        }
+
+        // Step 5: open the PR
+        const prRes = await fetch(repoUrl("/pulls"), {
+          method: "POST",
+          headers: {
+            ...authHeaders(token),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            base: baseBranch,
+            head: branch,
+            title: `Publish form: ${recipe.title} v${recipe.version}`,
+            body: renderPrBody({
+              recipe,
+              authorLogin: session.login,
+              description,
+            }),
+          }),
+        });
+        if (!prRes.ok) {
+          throw await ghError("Failed to open pull request", prRes);
+        }
+        const prJson = (await prRes.json()) as {
+          number: number;
+          html_url: string;
+        };
+        return { prUrl: prJson.html_url, prNumber: prJson.number };
+      } catch (err) {
+        await deleteBranch(branch, token);
+        throw err;
+      }
     } catch (err) {
-      await deleteBranch(branch, token);
+      await releaseReservation();
       throw err;
     }
   });
@@ -257,6 +318,70 @@ export const publishRecipe = createServerFn({ method: "POST" })
 export const getPublishBaseBranch = createServerFn({ method: "GET" }).handler(
   async (): Promise<string> => resolveBaseBranch(),
 );
+
+/**
+ * Versions claimed by OPEN deploy PRs for this form on the base branch (#873).
+ * Recognised by the deploy branch naming scheme
+ * (`form-builder/<formId>-<v1-v2-v3>-<ts>`); a branch that fails to parse is
+ * skipped (fail-open — the CI recipe-version-guard is the merge-time backstop).
+ */
+async function listOpenDeployClaims(
+  token: string,
+  formId: string,
+  baseBranch: string,
+): Promise<string[]> {
+  const prefix = deployBranchPrefix(formId);
+  const claims: string[] = [];
+  for (let page = 1; page <= 5; page++) {
+    const res = await fetch(
+      repoUrl(
+        `/pulls?state=open&base=${encodeURIComponent(baseBranch)}&per_page=100&page=${page}`,
+      ),
+      { headers: authHeaders(token) },
+    );
+    if (!res.ok) throw await ghError("Failed to list open pull requests", res);
+    const prs = (await res.json()) as { head: { ref: string } }[];
+    for (const pr of prs) {
+      if (!pr.head.ref.startsWith(prefix)) continue;
+      const m = /^(\d+)-(\d+)-(\d+)-\d+$/.exec(
+        pr.head.ref.slice(prefix.length),
+      );
+      if (m) claims.push(`${m[1]}.${m[2]}.${m[3]}`);
+    }
+    if (prs.length < 100) break;
+  }
+  return claims;
+}
+
+/**
+ * The next safe Deploy version for a form (#873): one minor bump past the
+ * highest of (a) the builder's loaded version, (b) every version on the base
+ * branch, and (c) every version claimed by an open deploy PR. Replaces the
+ * client-only `bumpMinor(currentVersion)`, which is blind to manual repo bumps
+ * and to other users' in-flight deploys.
+ */
+export const getNextDeployVersion = createServerFn({ method: "GET" })
+  .inputValidator(
+    z.object({
+      formId: z.string().min(1),
+      currentVersion: z.string().nullable(),
+    }),
+  )
+  .handler(async ({ data }): Promise<{ version: string }> => {
+    const session = await requireSession();
+    const token = session.accessToken;
+    const baseBranch = resolveBaseBranch();
+
+    const published = await listVersions(token, data.formId, baseBranch);
+    const claimed = await listOpenDeployClaims(token, data.formId, baseBranch);
+    const all = [...published, ...claimed];
+    if (data.currentVersion) all.push(data.currentVersion);
+    if (all.length === 0) return { version: "1.0.0" };
+    const highest = all.reduce((best, v) =>
+      compareSemver(v, best) > 0 ? v : best,
+    );
+    return { version: bumpMinor(highest) };
+  });
 
 function renderErasePrBody({
   formId,

@@ -18,8 +18,15 @@ import { Route as FeedbackRouteImport } from './routes/feedback'
 import { Route as BankHolidayCalendarRouteImport } from './routes/bank-holiday-calendar'
 import { Route as SplatRouteImport } from './routes/$'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as HealthAndEmergencyServicesStormreadyRouteRouteImport } from './routes/health-and-emergency-services/stormready/route'
+import { Route as HealthAndEmergencyServicesFindAnEmergencyShelterRouteRouteImport } from './routes/health-and-emergency-services/find-an-emergency-shelter/route'
+import { Route as HealthAndEmergencyServicesStormreadyIndexRouteImport } from './routes/health-and-emergency-services/stormready/index'
+import { Route as HealthAndEmergencyServicesFindAnEmergencyShelterIndexRouteImport } from './routes/health-and-emergency-services/find-an-emergency-shelter/index'
 import { Route as PensionsAndGratuitiesCalculateYourPensionFormRouteImport } from './routes/pensions-and-gratuities.calculate-your-pension.form'
 import { Route as MoneyFinancialSupportCalculateSeverancePayFormRouteImport } from './routes/money-financial-support.calculate-severance-pay.form'
+import { Route as HealthAndEmergencyServicesStormreadyChecklistRouteImport } from './routes/health-and-emergency-services/stormready/checklist'
+import { Route as HealthAndEmergencyServicesFindAnEmergencyShelterGuidanceRouteImport } from './routes/health-and-emergency-services/find-an-emergency-shelter/guidance'
+import { Route as HealthAndEmergencyServicesFindAnEmergencyShelterFindRouteImport } from './routes/health-and-emergency-services/find-an-emergency-shelter/find'
 import { Route as BusinessTradeCropOverPermitsFormRouteImport } from './routes/business-trade.crop-over-permits.form'
 
 const TellUsRoute = TellUsRouteImport.update({
@@ -67,6 +74,31 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const HealthAndEmergencyServicesStormreadyRouteRoute =
+  HealthAndEmergencyServicesStormreadyRouteRouteImport.update({
+    id: '/health-and-emergency-services/stormready',
+    path: '/health-and-emergency-services/stormready',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const HealthAndEmergencyServicesFindAnEmergencyShelterRouteRoute =
+  HealthAndEmergencyServicesFindAnEmergencyShelterRouteRouteImport.update({
+    id: '/health-and-emergency-services/find-an-emergency-shelter',
+    path: '/health-and-emergency-services/find-an-emergency-shelter',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const HealthAndEmergencyServicesStormreadyIndexRoute =
+  HealthAndEmergencyServicesStormreadyIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => HealthAndEmergencyServicesStormreadyRouteRoute,
+  } as any)
+const HealthAndEmergencyServicesFindAnEmergencyShelterIndexRoute =
+  HealthAndEmergencyServicesFindAnEmergencyShelterIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () =>
+      HealthAndEmergencyServicesFindAnEmergencyShelterRouteRoute,
+  } as any)
 const PensionsAndGratuitiesCalculateYourPensionFormRoute =
   PensionsAndGratuitiesCalculateYourPensionFormRouteImport.update({
     id: '/pensions-and-gratuities/calculate-your-pension/form',
@@ -78,6 +110,26 @@ const MoneyFinancialSupportCalculateSeverancePayFormRoute =
     id: '/money-financial-support/calculate-severance-pay/form',
     path: '/money-financial-support/calculate-severance-pay/form',
     getParentRoute: () => rootRouteImport,
+  } as any)
+const HealthAndEmergencyServicesStormreadyChecklistRoute =
+  HealthAndEmergencyServicesStormreadyChecklistRouteImport.update({
+    id: '/checklist',
+    path: '/checklist',
+    getParentRoute: () => HealthAndEmergencyServicesStormreadyRouteRoute,
+  } as any)
+const HealthAndEmergencyServicesFindAnEmergencyShelterGuidanceRoute =
+  HealthAndEmergencyServicesFindAnEmergencyShelterGuidanceRouteImport.update({
+    id: '/guidance',
+    path: '/guidance',
+    getParentRoute: () =>
+      HealthAndEmergencyServicesFindAnEmergencyShelterRouteRoute,
+  } as any)
+const HealthAndEmergencyServicesFindAnEmergencyShelterFindRoute =
+  HealthAndEmergencyServicesFindAnEmergencyShelterFindRouteImport.update({
+    id: '/find',
+    path: '/find',
+    getParentRoute: () =>
+      HealthAndEmergencyServicesFindAnEmergencyShelterRouteRoute,
   } as any)
 const BusinessTradeCropOverPermitsFormRoute =
   BusinessTradeCropOverPermitsFormRouteImport.update({
@@ -96,9 +148,16 @@ export interface FileRoutesByFullPath {
   '/service-unavailable': typeof ServiceUnavailableRoute
   '/services': typeof ServicesRoute
   '/tell-us': typeof TellUsRoute
+  '/health-and-emergency-services/find-an-emergency-shelter': typeof HealthAndEmergencyServicesFindAnEmergencyShelterRouteRouteWithChildren
+  '/health-and-emergency-services/stormready': typeof HealthAndEmergencyServicesStormreadyRouteRouteWithChildren
   '/business-trade/crop-over-permits/form': typeof BusinessTradeCropOverPermitsFormRoute
+  '/health-and-emergency-services/find-an-emergency-shelter/find': typeof HealthAndEmergencyServicesFindAnEmergencyShelterFindRoute
+  '/health-and-emergency-services/find-an-emergency-shelter/guidance': typeof HealthAndEmergencyServicesFindAnEmergencyShelterGuidanceRoute
+  '/health-and-emergency-services/stormready/checklist': typeof HealthAndEmergencyServicesStormreadyChecklistRoute
   '/money-financial-support/calculate-severance-pay/form': typeof MoneyFinancialSupportCalculateSeverancePayFormRoute
   '/pensions-and-gratuities/calculate-your-pension/form': typeof PensionsAndGratuitiesCalculateYourPensionFormRoute
+  '/health-and-emergency-services/find-an-emergency-shelter/': typeof HealthAndEmergencyServicesFindAnEmergencyShelterIndexRoute
+  '/health-and-emergency-services/stormready/': typeof HealthAndEmergencyServicesStormreadyIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -111,8 +170,13 @@ export interface FileRoutesByTo {
   '/services': typeof ServicesRoute
   '/tell-us': typeof TellUsRoute
   '/business-trade/crop-over-permits/form': typeof BusinessTradeCropOverPermitsFormRoute
+  '/health-and-emergency-services/find-an-emergency-shelter/find': typeof HealthAndEmergencyServicesFindAnEmergencyShelterFindRoute
+  '/health-and-emergency-services/find-an-emergency-shelter/guidance': typeof HealthAndEmergencyServicesFindAnEmergencyShelterGuidanceRoute
+  '/health-and-emergency-services/stormready/checklist': typeof HealthAndEmergencyServicesStormreadyChecklistRoute
   '/money-financial-support/calculate-severance-pay/form': typeof MoneyFinancialSupportCalculateSeverancePayFormRoute
   '/pensions-and-gratuities/calculate-your-pension/form': typeof PensionsAndGratuitiesCalculateYourPensionFormRoute
+  '/health-and-emergency-services/find-an-emergency-shelter': typeof HealthAndEmergencyServicesFindAnEmergencyShelterIndexRoute
+  '/health-and-emergency-services/stormready': typeof HealthAndEmergencyServicesStormreadyIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -125,9 +189,16 @@ export interface FileRoutesById {
   '/service-unavailable': typeof ServiceUnavailableRoute
   '/services': typeof ServicesRoute
   '/tell-us': typeof TellUsRoute
+  '/health-and-emergency-services/find-an-emergency-shelter': typeof HealthAndEmergencyServicesFindAnEmergencyShelterRouteRouteWithChildren
+  '/health-and-emergency-services/stormready': typeof HealthAndEmergencyServicesStormreadyRouteRouteWithChildren
   '/business-trade/crop-over-permits/form': typeof BusinessTradeCropOverPermitsFormRoute
+  '/health-and-emergency-services/find-an-emergency-shelter/find': typeof HealthAndEmergencyServicesFindAnEmergencyShelterFindRoute
+  '/health-and-emergency-services/find-an-emergency-shelter/guidance': typeof HealthAndEmergencyServicesFindAnEmergencyShelterGuidanceRoute
+  '/health-and-emergency-services/stormready/checklist': typeof HealthAndEmergencyServicesStormreadyChecklistRoute
   '/money-financial-support/calculate-severance-pay/form': typeof MoneyFinancialSupportCalculateSeverancePayFormRoute
   '/pensions-and-gratuities/calculate-your-pension/form': typeof PensionsAndGratuitiesCalculateYourPensionFormRoute
+  '/health-and-emergency-services/find-an-emergency-shelter/': typeof HealthAndEmergencyServicesFindAnEmergencyShelterIndexRoute
+  '/health-and-emergency-services/stormready/': typeof HealthAndEmergencyServicesStormreadyIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -141,9 +212,16 @@ export interface FileRouteTypes {
     | '/service-unavailable'
     | '/services'
     | '/tell-us'
+    | '/health-and-emergency-services/find-an-emergency-shelter'
+    | '/health-and-emergency-services/stormready'
     | '/business-trade/crop-over-permits/form'
+    | '/health-and-emergency-services/find-an-emergency-shelter/find'
+    | '/health-and-emergency-services/find-an-emergency-shelter/guidance'
+    | '/health-and-emergency-services/stormready/checklist'
     | '/money-financial-support/calculate-severance-pay/form'
     | '/pensions-and-gratuities/calculate-your-pension/form'
+    | '/health-and-emergency-services/find-an-emergency-shelter/'
+    | '/health-and-emergency-services/stormready/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -156,8 +234,13 @@ export interface FileRouteTypes {
     | '/services'
     | '/tell-us'
     | '/business-trade/crop-over-permits/form'
+    | '/health-and-emergency-services/find-an-emergency-shelter/find'
+    | '/health-and-emergency-services/find-an-emergency-shelter/guidance'
+    | '/health-and-emergency-services/stormready/checklist'
     | '/money-financial-support/calculate-severance-pay/form'
     | '/pensions-and-gratuities/calculate-your-pension/form'
+    | '/health-and-emergency-services/find-an-emergency-shelter'
+    | '/health-and-emergency-services/stormready'
   id:
     | '__root__'
     | '/'
@@ -169,9 +252,16 @@ export interface FileRouteTypes {
     | '/service-unavailable'
     | '/services'
     | '/tell-us'
+    | '/health-and-emergency-services/find-an-emergency-shelter'
+    | '/health-and-emergency-services/stormready'
     | '/business-trade/crop-over-permits/form'
+    | '/health-and-emergency-services/find-an-emergency-shelter/find'
+    | '/health-and-emergency-services/find-an-emergency-shelter/guidance'
+    | '/health-and-emergency-services/stormready/checklist'
     | '/money-financial-support/calculate-severance-pay/form'
     | '/pensions-and-gratuities/calculate-your-pension/form'
+    | '/health-and-emergency-services/find-an-emergency-shelter/'
+    | '/health-and-emergency-services/stormready/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -184,6 +274,8 @@ export interface RootRouteChildren {
   ServiceUnavailableRoute: typeof ServiceUnavailableRoute
   ServicesRoute: typeof ServicesRoute
   TellUsRoute: typeof TellUsRoute
+  HealthAndEmergencyServicesFindAnEmergencyShelterRouteRoute: typeof HealthAndEmergencyServicesFindAnEmergencyShelterRouteRouteWithChildren
+  HealthAndEmergencyServicesStormreadyRouteRoute: typeof HealthAndEmergencyServicesStormreadyRouteRouteWithChildren
   BusinessTradeCropOverPermitsFormRoute: typeof BusinessTradeCropOverPermitsFormRoute
   MoneyFinancialSupportCalculateSeverancePayFormRoute: typeof MoneyFinancialSupportCalculateSeverancePayFormRoute
   PensionsAndGratuitiesCalculateYourPensionFormRoute: typeof PensionsAndGratuitiesCalculateYourPensionFormRoute
@@ -254,6 +346,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/health-and-emergency-services/stormready': {
+      id: '/health-and-emergency-services/stormready'
+      path: '/health-and-emergency-services/stormready'
+      fullPath: '/health-and-emergency-services/stormready'
+      preLoaderRoute: typeof HealthAndEmergencyServicesStormreadyRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/health-and-emergency-services/find-an-emergency-shelter': {
+      id: '/health-and-emergency-services/find-an-emergency-shelter'
+      path: '/health-and-emergency-services/find-an-emergency-shelter'
+      fullPath: '/health-and-emergency-services/find-an-emergency-shelter'
+      preLoaderRoute: typeof HealthAndEmergencyServicesFindAnEmergencyShelterRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/health-and-emergency-services/stormready/': {
+      id: '/health-and-emergency-services/stormready/'
+      path: '/'
+      fullPath: '/health-and-emergency-services/stormready/'
+      preLoaderRoute: typeof HealthAndEmergencyServicesStormreadyIndexRouteImport
+      parentRoute: typeof HealthAndEmergencyServicesStormreadyRouteRoute
+    }
+    '/health-and-emergency-services/find-an-emergency-shelter/': {
+      id: '/health-and-emergency-services/find-an-emergency-shelter/'
+      path: '/'
+      fullPath: '/health-and-emergency-services/find-an-emergency-shelter/'
+      preLoaderRoute: typeof HealthAndEmergencyServicesFindAnEmergencyShelterIndexRouteImport
+      parentRoute: typeof HealthAndEmergencyServicesFindAnEmergencyShelterRouteRoute
+    }
     '/pensions-and-gratuities/calculate-your-pension/form': {
       id: '/pensions-and-gratuities/calculate-your-pension/form'
       path: '/pensions-and-gratuities/calculate-your-pension/form'
@@ -268,6 +388,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MoneyFinancialSupportCalculateSeverancePayFormRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/health-and-emergency-services/stormready/checklist': {
+      id: '/health-and-emergency-services/stormready/checklist'
+      path: '/checklist'
+      fullPath: '/health-and-emergency-services/stormready/checklist'
+      preLoaderRoute: typeof HealthAndEmergencyServicesStormreadyChecklistRouteImport
+      parentRoute: typeof HealthAndEmergencyServicesStormreadyRouteRoute
+    }
+    '/health-and-emergency-services/find-an-emergency-shelter/guidance': {
+      id: '/health-and-emergency-services/find-an-emergency-shelter/guidance'
+      path: '/guidance'
+      fullPath: '/health-and-emergency-services/find-an-emergency-shelter/guidance'
+      preLoaderRoute: typeof HealthAndEmergencyServicesFindAnEmergencyShelterGuidanceRouteImport
+      parentRoute: typeof HealthAndEmergencyServicesFindAnEmergencyShelterRouteRoute
+    }
+    '/health-and-emergency-services/find-an-emergency-shelter/find': {
+      id: '/health-and-emergency-services/find-an-emergency-shelter/find'
+      path: '/find'
+      fullPath: '/health-and-emergency-services/find-an-emergency-shelter/find'
+      preLoaderRoute: typeof HealthAndEmergencyServicesFindAnEmergencyShelterFindRouteImport
+      parentRoute: typeof HealthAndEmergencyServicesFindAnEmergencyShelterRouteRoute
+    }
     '/business-trade/crop-over-permits/form': {
       id: '/business-trade/crop-over-permits/form'
       path: '/business-trade/crop-over-permits/form'
@@ -277,6 +418,45 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface HealthAndEmergencyServicesFindAnEmergencyShelterRouteRouteChildren {
+  HealthAndEmergencyServicesFindAnEmergencyShelterFindRoute: typeof HealthAndEmergencyServicesFindAnEmergencyShelterFindRoute
+  HealthAndEmergencyServicesFindAnEmergencyShelterGuidanceRoute: typeof HealthAndEmergencyServicesFindAnEmergencyShelterGuidanceRoute
+  HealthAndEmergencyServicesFindAnEmergencyShelterIndexRoute: typeof HealthAndEmergencyServicesFindAnEmergencyShelterIndexRoute
+}
+
+const HealthAndEmergencyServicesFindAnEmergencyShelterRouteRouteChildren: HealthAndEmergencyServicesFindAnEmergencyShelterRouteRouteChildren =
+  {
+    HealthAndEmergencyServicesFindAnEmergencyShelterFindRoute:
+      HealthAndEmergencyServicesFindAnEmergencyShelterFindRoute,
+    HealthAndEmergencyServicesFindAnEmergencyShelterGuidanceRoute:
+      HealthAndEmergencyServicesFindAnEmergencyShelterGuidanceRoute,
+    HealthAndEmergencyServicesFindAnEmergencyShelterIndexRoute:
+      HealthAndEmergencyServicesFindAnEmergencyShelterIndexRoute,
+  }
+
+const HealthAndEmergencyServicesFindAnEmergencyShelterRouteRouteWithChildren =
+  HealthAndEmergencyServicesFindAnEmergencyShelterRouteRoute._addFileChildren(
+    HealthAndEmergencyServicesFindAnEmergencyShelterRouteRouteChildren,
+  )
+
+interface HealthAndEmergencyServicesStormreadyRouteRouteChildren {
+  HealthAndEmergencyServicesStormreadyChecklistRoute: typeof HealthAndEmergencyServicesStormreadyChecklistRoute
+  HealthAndEmergencyServicesStormreadyIndexRoute: typeof HealthAndEmergencyServicesStormreadyIndexRoute
+}
+
+const HealthAndEmergencyServicesStormreadyRouteRouteChildren: HealthAndEmergencyServicesStormreadyRouteRouteChildren =
+  {
+    HealthAndEmergencyServicesStormreadyChecklistRoute:
+      HealthAndEmergencyServicesStormreadyChecklistRoute,
+    HealthAndEmergencyServicesStormreadyIndexRoute:
+      HealthAndEmergencyServicesStormreadyIndexRoute,
+  }
+
+const HealthAndEmergencyServicesStormreadyRouteRouteWithChildren =
+  HealthAndEmergencyServicesStormreadyRouteRoute._addFileChildren(
+    HealthAndEmergencyServicesStormreadyRouteRouteChildren,
+  )
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -288,6 +468,10 @@ const rootRouteChildren: RootRouteChildren = {
   ServiceUnavailableRoute: ServiceUnavailableRoute,
   ServicesRoute: ServicesRoute,
   TellUsRoute: TellUsRoute,
+  HealthAndEmergencyServicesFindAnEmergencyShelterRouteRoute:
+    HealthAndEmergencyServicesFindAnEmergencyShelterRouteRouteWithChildren,
+  HealthAndEmergencyServicesStormreadyRouteRoute:
+    HealthAndEmergencyServicesStormreadyRouteRouteWithChildren,
   BusinessTradeCropOverPermitsFormRoute: BusinessTradeCropOverPermitsFormRoute,
   MoneyFinancialSupportCalculateSeverancePayFormRoute:
     MoneyFinancialSupportCalculateSeverancePayFormRoute,

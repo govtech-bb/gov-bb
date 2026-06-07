@@ -1,0 +1,524 @@
+{
+  "formId": "get-death-certificate",
+  "title": "Get a Death Certificate",
+  "description": "Apply for a certified copy of a death certificate",
+  "version": "1.2.0",
+  "processors": [
+    {
+      "type": "payment",
+      "config": {
+        "amount": 5,
+        "provider": "ezpay",
+        "allowDebit": true,
+        "department": "oag-registration",
+        "allowCredit": true,
+        "description": "Death certificate copy",
+        "paymentCode": "awR2Da5z7K",
+        "customerNamePath": "applicant-details.applicant-first-name",
+        "customerEmailPath": "applicant-details.applicant-email"
+      }
+    },
+    {
+      "type": "email",
+      "config": {
+        "subject": "Your death certificate request has been received",
+        "recipientField": "applicant-details.applicant-email"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "stepId": "applicant-details",
+      "title": "Tell us about yourself",
+      "elements": [
+        {
+          "ref": "components/title",
+          "overrides": {
+            "fieldId": "applicant-title",
+            "validations": {
+              "required": {
+                "error": "Title is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "label": "First name",
+            "fieldId": "applicant-first-name",
+            "validations": {
+              "required": {
+                "error": "First name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "First name must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "hint": "Optional. Provide only if known",
+            "label": "Middle name",
+            "fieldId": "applicant-middle-name"
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "label": "Last name",
+            "fieldId": "applicant-last-name",
+            "validations": {
+              "required": {
+                "error": "Last name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Last name must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address Line 1",
+            "fieldId": "applicant-address-line-1",
+            "validations": {
+              "required": {
+                "error": "Address line 1 is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Address must be at least 5 characters",
+                "value": 5
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address Line 2",
+            "fieldId": "applicant-address-line-2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "applicant-parish",
+            "options": [
+              {
+                "label": "Christ Church",
+                "value": "christ-church"
+              },
+              {
+                "label": "St. Andrew",
+                "value": "st-andrew"
+              },
+              {
+                "label": "St. George",
+                "value": "st-george"
+              },
+              {
+                "label": "St. James",
+                "value": "st-james"
+              },
+              {
+                "label": "St. John",
+                "value": "st-john"
+              },
+              {
+                "label": "St. Joseph",
+                "value": "st-joseph"
+              },
+              {
+                "label": "St. Lucy",
+                "value": "st-lucy"
+              },
+              {
+                "label": "St. Michael",
+                "value": "st-michael"
+              },
+              {
+                "label": "St. Peter",
+                "value": "st-peter"
+              },
+              {
+                "label": "St. Philip",
+                "value": "st-philip"
+              },
+              {
+                "label": "St. Thomas",
+                "value": "st-thomas"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Parish is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/postcode",
+          "overrides": {
+            "hint": "For example, BB17004 (optional)",
+            "fieldId": "applicant-postcode"
+          }
+        },
+        {
+          "ref": "components/national-id-number",
+          "overrides": {
+            "label": "National Identification (ID) Number",
+            "fieldId": "applicant-id-number",
+            "placeholder": "for example, 850101-0001",
+            "validations": {
+              "required": {
+                "error": "ID Number is required",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "optionalIf",
+                "targetFieldId": "passport-toggle",
+                "operator": "equal",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/show-hide",
+          "overrides": {
+            "hint": "If you don't have a National ID number, you can use your passport number instead.",
+            "label": "Use passport number instead",
+            "fieldId": "passport-toggle"
+          }
+        },
+        {
+          "ref": "components/passport-number",
+          "overrides": {
+            "label": "Passport Number",
+            "fieldId": "applicant-passport-number",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": true,
+                "operator": "equal",
+                "targetFieldId": "passport-toggle"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Passport number is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Passport number must be at least 6 characters",
+                "value": 6
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "fieldId": "applicant-email",
+            "validations": {
+              "required": {
+                "error": "Email address is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "label": "Telephone number",
+            "fieldId": "applicant-telephone",
+            "validations": {
+              "required": {
+                "error": "Telephone number is required",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "relationship-to-person",
+      "title": "Tell us your relationship with the deceased",
+      "description": "For example, spouse, child, parent, sibling, executor, or authorised representative.",
+      "elements": [
+        {
+          "ref": "components/name",
+          "overrides": {
+            "label": "Please describe your relationship",
+            "fieldId": "relationship-other-description",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "other",
+                "operator": "equal",
+                "targetFieldId": "relationship-to-person"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Please describe your relationship",
+                "value": true
+              },
+              "minLength": {
+                "error": "Please provide at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/relationship"
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "reason-for-certificate",
+      "title": "Tell us about why you need this certificate",
+      "description": "Give the reason in a short sentence.",
+      "elements": [
+        {
+          "ref": "components/name",
+          "overrides": {
+            "label": "Reason for requesting the certificate",
+            "fieldId": "reason-for-certificate",
+            "validations": {
+              "required": {
+                "error": "Reason is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Please provide at least 10 characters",
+                "value": 10
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "deceased-details",
+      "title": "Tell us about the deceased",
+      "description": "Provide as much information as you can to help us find the correct record.",
+      "elements": [
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "label": "First name",
+            "fieldId": "deceased-first-name",
+            "validations": {
+              "required": {
+                "error": "First name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "First name must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "hint": "Leave blank if not known",
+            "label": "Middle name",
+            "fieldId": "deceased-middle-name"
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "label": "Last name",
+            "fieldId": "deceased-last-name",
+            "validations": {
+              "required": {
+                "error": "Last name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Last name must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Do you know the date the person died?",
+            "fieldId": "deceased-known-date-of-death",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Whether date of death is known is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/date-of-birth",
+          "overrides": {
+            "label": "Date of death",
+            "fieldId": "deceased-date-of-death",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetFieldId": "deceased-known-date-of-death"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/name",
+          "overrides": {
+            "hint": "Enter a 2-year period, for example 1990 to 1991. If you are not sure, give your best estimate.",
+            "label": "Provide the two-year search range you want us to check",
+            "fieldId": "deceased-estimated-date-of-death",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "no",
+                "operator": "equal",
+                "targetFieldId": "deceased-known-date-of-death"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Estimate is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/national-id-number",
+          "overrides": {
+            "hint": "Enter only if known",
+            "label": "National Identification (ID) Number",
+            "fieldId": "deceased-id-number"
+          }
+        },
+        {
+          "ref": "components/name",
+          "overrides": {
+            "hint": "Enter the location where the person died. If you do not know the exact address, provide the town, city, or country.",
+            "label": "Place of death",
+            "fieldId": "deceased-place-of-death",
+            "validations": {
+              "required": {
+                "error": "Place of death is required",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "order-details",
+      "title": "How many copies do you need?",
+      "description": "Each copy costs $5.00 BBD for a certificate",
+      "elements": [
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "ui": {
+              "width": "short"
+            },
+            "label": "Number of copies",
+            "fieldId": "number-of-copies",
+            "validations": {
+              "required": {
+                "error": "Number of copies is required",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": "Declaration",
+            "fieldId": "declaration-confirmed",
+            "options": [
+              {
+                "label": "I confirm that my information is correct and I am happy for it to be verified. I understand that false details may lead to my application being rejected, and that the Government of Barbados will keep my information confidential.",
+                "value": "confirmed"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "You must confirm the declaration to continue",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/date-of-birth",
+          "overrides": {
+            "label": "Date of declaration",
+            "fieldId": "declaration-date"
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Application submitted",
+      "elements": [],
+      "behaviours": []
+    }
+  ],
+  "createdAt": "2026-06-01T21:13:48.417Z",
+  "updatedAt": "2026-06-05T00:00:00.000Z"
+}

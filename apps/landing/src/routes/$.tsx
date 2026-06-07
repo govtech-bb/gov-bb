@@ -78,6 +78,7 @@ export const Route = createFileRoute('/$')({
       const cat = CATEGORY_BY_SLUG[segments[0]]
       const sub = cat ? getSubcategory(cat.slug, segments[1]) : undefined
       if (cat && sub) {
+        if (!isCategoryVisible(cat, preview)) throw notFound()
         const items = categoryServices(cat.slug, preview)
           .filter((p) => p.frontmatter.subcategory === sub.slug)
           .map(toListItem)

@@ -148,6 +148,9 @@ test.describe("Get a Primary School Textbook Grant — Live Smoke", () => {
       .check();
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────
-    await submitAndConfirm(page, { heading: "Thank you for your request" });
+    await submitAndConfirm(page, {
+      heading: "Your application has been submitted",
+      subheading: "Thank you. We have received your application.",
+    });
   });
 });

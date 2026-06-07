@@ -167,6 +167,27 @@ describe("EMPTY_DRAFT", () => {
     );
   });
 
+  it("seeds the declaration step with the single confirmation checkbox", () => {
+    const decl = EMPTY_DRAFT.steps[1];
+    expect(decl.stepId).toBe("declaration");
+    expect(decl.fields).toHaveLength(1);
+    const field = decl.fields[0];
+    expect(field.kind).toBe("component");
+    expect(field.ref).toBe("components/confirmation");
+    expect(field.overrides.fieldId).toBe("declaration-confirmed");
+    expect(field.overrides.label).toBe("Declaration");
+    expect(field.overrides.validations?.required).toEqual({
+      value: true,
+      error: "You must confirm the declaration to continue",
+    });
+  });
+
+  it("gives the seeded declaration field a non-empty editor id", () => {
+    const field = EMPTY_DRAFT.steps[1].fields[0];
+    expect(typeof field.id).toBe("string");
+    expect(field.id).not.toBe("");
+  });
+
   it("seeds exactly one email processor", () => {
     expect(EMPTY_DRAFT.processors).toHaveLength(1);
     expect(EMPTY_DRAFT.processors!.every((p) => p.type === "email")).toBe(true);
@@ -238,6 +259,17 @@ describe("RESET", () => {
     expect(result.processors!.map((p) => emailConfig(p).label)).toEqual([
       "MDA Email",
     ]);
+  });
+
+  it("re-seeds the declaration confirmation field with a fresh id on consecutive resets", () => {
+    const state = { ...baseDraft(), steps: [...EMPTY_DRAFT.steps] };
+    const first = recipeReducer(state, { type: "RESET" });
+    const second = recipeReducer(state, { type: "RESET" });
+    const firstDecl = first.steps.find((s) => s.stepId === "declaration")!;
+    const secondDecl = second.steps.find((s) => s.stepId === "declaration")!;
+    expect(firstDecl.fields).toHaveLength(1);
+    expect(firstDecl.fields[0].ref).toBe("components/confirmation");
+    expect(firstDecl.fields[0].id).not.toBe(secondDecl.fields[0].id);
   });
 
   it("re-seeds processors with fresh ids on consecutive resets", () => {
@@ -472,6 +504,50 @@ describe("LOAD_DRAFT", () => {
       "declaration",
       "submission-confirmation",
     ]);
+  });
+
+  it("seeds a missing declaration step with the single confirmation checkbox (migration path)", () => {
+    const draft = {
+      ...baseDraft(),
+      steps: [editableStep("step-1"), editableStep("step-2")],
+    };
+    const result = recipeReducer(
+      { ...baseDraft(), steps: [] },
+      { type: "LOAD_DRAFT", draft },
+    );
+    const decl = result.steps.find((s) => s.stepId === "declaration")!;
+    expect(decl.fields).toHaveLength(1);
+    expect(decl.fields[0].kind).toBe("component");
+    expect(decl.fields[0].ref).toBe("components/confirmation");
+    expect(decl.fields[0].overrides.fieldId).toBe("declaration-confirmed");
+    expect(decl.fields[0].overrides.label).toBe("Declaration");
+    expect(decl.fields[0].overrides.validations?.required).toEqual({
+      value: true,
+      error: "You must confirm the declaration to continue",
+    });
+  });
+
+  it("preserves an existing declaration step's fields untouched (no re-seed)", () => {
+    // An author may have customised or emptied the declaration step; loading
+    // must keep whatever is there — the seed applies only when the step is
+    // missing entirely.
+    const emptyDeclaration: RecipeStepDraft = {
+      stepId: "declaration",
+      title: "Declaration",
+      description: undefined,
+      fields: [],
+      behaviours: [],
+    };
+    const draft = {
+      ...baseDraft(),
+      steps: [editableStep("step-1"), emptyDeclaration],
+    };
+    const result = recipeReducer(
+      { ...baseDraft(), steps: [] },
+      { type: "LOAD_DRAFT", draft },
+    );
+    const decl = result.steps.find((s) => s.stepId === "declaration");
+    expect(decl?.fields).toEqual([]);
   });
 
   it("seeds a missing check-your-answers with its default title/description (migration path)", () => {
