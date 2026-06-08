@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { getFormDefinition } from "#/lib/chat/form/defs";
+import { matchFormsFromText } from "#/lib/chat/form/detect";
 import { needsHandoff } from "#/lib/chat/form/schema";
 import { getServerEnv } from "#/config/env";
 
@@ -8,8 +9,11 @@ import { getServerEnv } from "#/config/env";
 async function handleGet(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const slug = url.searchParams.get("slug") ?? "get-birth-certificate";
+  const probeText =
+    url.searchParams.get("text") ?? "I want a copy of my birth certificate";
 
   const env = getServerEnv();
+  const matched = await matchFormsFromText(probeText);
   const contract = await getFormDefinition(slug);
 
   if (!contract) {
@@ -31,6 +35,10 @@ async function handleGet(req: Request): Promise<Response> {
 
   return Response.json({
     slug,
+    probeText,
+    matcherPicked: matched
+      ? { formId: matched.formId, title: matched.title }
+      : null,
     formApiUrl: env.FORM_API_URL,
     contractFound: true,
     formId: contract.formId,
