@@ -19,6 +19,10 @@ export interface ResolvedFieldId {
   // toggle). The behaviours editor uses this to capture a conditional value as
   // a boolean rather than a string. (#565)
   isBoolean: boolean;
+  // True when the resolved field holds a number at runtime. The amount editor's
+  // quantity multiplier restricts its field picker to numeric fields, so a
+  // per-unit × quantity price can only multiply by something numeric. (#961)
+  isNumeric: boolean;
 }
 
 // htmlTypes whose runtime value is a real boolean. Only `show-hide` qualifies:
@@ -26,6 +30,11 @@ export interface ResolvedFieldId {
 // stores its selected option *value* (a string, or a string array for
 // multi-option), so it is NOT boolean despite the name.
 const BOOLEAN_HTML_TYPES = new Set(["show-hide"]);
+
+// htmlTypes whose runtime value is a number — the only kind sensible as a
+// quantity multiplier. Only `number` qualifies (see HtmlTypes in
+// @govtech-bb/form-types).
+const NUMERIC_HTML_TYPES = new Set(["number"]);
 
 export interface FieldIdCollision {
   id: string;
@@ -181,6 +190,7 @@ export function resolveFieldIds(
             componentDef.primitive.label ??
             componentDef.displayName,
           isBoolean: BOOLEAN_HTML_TYPES.has(componentDef.primitive.htmlType),
+          isNumeric: NUMERIC_HTML_TYPES.has(componentDef.primitive.htmlType),
         });
       } else if (field.ref.startsWith("blocks/")) {
         const blockDef = item as BlockDefinition;
@@ -196,6 +206,7 @@ export function resolveFieldIds(
             display: `${blockDef.displayName} › ${childOverride?.label ?? element.label ?? element.fieldId}`,
             childFieldId: element.fieldId,
             isBoolean: BOOLEAN_HTML_TYPES.has(element.htmlType),
+            isNumeric: NUMERIC_HTML_TYPES.has(element.htmlType),
           });
         }
       }

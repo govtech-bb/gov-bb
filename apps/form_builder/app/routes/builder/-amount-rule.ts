@@ -40,9 +40,18 @@ export interface ConditionalAmount {
   default: number;
 }
 
+// `quantityPath` is set when the stored amount is a per-unit price multiplied by
+// a quantity field (e.g. per-copy × number-of-copies, #961). It carries the bare
+// `stepId.fieldId` of the quantity field alongside the fixed/conditional base —
+// the `advanced` branch never carries it, since an unrecognized expression is
+// surfaced read-only as a whole, not decomposed.
 export type ParsedAmount =
-  | { kind: "fixed"; amount: number | undefined }
-  | { kind: "conditional"; conditional: ConditionalAmount }
+  | { kind: "fixed"; amount: number | undefined; quantityPath?: string }
+  | {
+      kind: "conditional";
+      conditional: ConditionalAmount;
+      quantityPath?: string;
+    }
   | { kind: "advanced"; raw: Record<string, unknown> };
 
 // Submission answers live under `values` in the resolution context
@@ -78,8 +87,24 @@ function compileSubject(subject: AmountSubject): Record<string, unknown> {
  * Compile the editable table to the value stored in `amount`. With no rules the
  * `if`-chain would be a bare default, so we store the default number directly —
  * indistinguishable from a fixed amount, which is correct.
+ *
+ * When `quantityPath` is a non-empty bare `stepId.fieldId`, the base (number or
+ * `if`-chain) is wrapped in a JSONLogic multiply against that field —
+ * `{ "*": [ <base>, { var: "values.<path>" } ] }` — so the server resolves
+ * unit-price × quantity (#961). The `*` op already evaluates server-side
+ * (`@govtech-bb/expressions`); no runtime change. An empty/absent path leaves
+ * the base unwrapped.
  */
 export function compileAmount(
+  conditional: ConditionalAmount,
+  quantityPath?: string,
+): number | Record<string, unknown> {
+  const base = compileBase(conditional);
+  if (!quantityPath) return base;
+  return { "*": [base, { var: VALUES_PREFIX + quantityPath }] };
+}
+
+function compileBase(
   conditional: ConditionalAmount,
 ): number | Record<string, unknown> {
   if (conditional.rules.length === 0) return conditional.default;
@@ -147,13 +172,56 @@ function parseCondition(cond: unknown): Omit<AmountRule, "amount"> | null {
   return { subject, operator, value: rhs };
 }
 
+// Peel an outer quantity multiplier of *exactly* the shape `compileAmount`
+// emits — `{ "*": [ <base>, { var: "values.<path>" } ] }` — returning the bare
+// quantity path and the inner base. Anything else (different op, wrong arity,
+// the var first, a non-`values.` var, var × var) is not our shape and yields
+// null, so the whole expression falls through to the read-only advanced branch
+// rather than being partially re-interpreted.
+function peelQuantity(
+  value: Record<string, unknown>,
+): { inner: unknown; quantityPath: string } | null {
+  const keys = Object.keys(value);
+  if (keys.length !== 1 || keys[0] !== "*") return null;
+  const operands = value["*"];
+  if (!Array.isArray(operands) || operands.length !== 2) return null;
+  const quantityPath = parseVarPath(operands[1]);
+  if (quantityPath === null) return null;
+  return { inner: operands[0], quantityPath };
+}
+
 /**
  * Classify a stored `amount` for the editor. A plain number (or unset) is a
  * fixed amount; an `if`-chain in exactly the shape `compileAmount` emits is a
- * conditional table; anything else (a hand- or AI-authored expression) is
- * surfaced read-only as `advanced` so the editor never clobbers it.
+ * conditional table; a quantity-multiplier wrapper (`{ "*": […] }`) is peeled
+ * and its base classified, carrying the quantity path; anything else (a hand- or
+ * AI-authored expression) is surfaced read-only as `advanced` so the editor
+ * never clobbers it. A wrapper whose base is itself unrecognized stays advanced
+ * as a whole — we don't decompose an expression we can't fully round-trip.
  */
 export function parseAmount(value: unknown): ParsedAmount {
+  if (isPlainObject(value)) {
+    const peeled = peelQuantity(value);
+    if (peeled) {
+      const base = classifyBase(peeled.inner);
+      // Only peel when the base is something we authored and can round-trip: a
+      // real numeric unit price, or a conditional `if`-chain. `classifyBase`
+      // maps any non-number scalar (a string, null, a boolean) to
+      // `fixed/undefined`, but `compileAmount` never emits such a base under a
+      // `*`, so that shape is a hand-authored expression — keep the *whole*
+      // thing advanced rather than re-emitting `{ "*": [0, …] }` over it.
+      const isNumericBase =
+        base.kind === "fixed" && typeof base.amount === "number";
+      if (isNumericBase || base.kind === "conditional") {
+        return { ...base, quantityPath: peeled.quantityPath };
+      }
+      return { kind: "advanced", raw: value };
+    }
+  }
+  return classifyBase(value);
+}
+
+function classifyBase(value: unknown): ParsedAmount {
   if (value === undefined) return { kind: "fixed", amount: undefined };
   if (typeof value === "number") return { kind: "fixed", amount: value };
   if (!isPlainObject(value)) return { kind: "fixed", amount: undefined };

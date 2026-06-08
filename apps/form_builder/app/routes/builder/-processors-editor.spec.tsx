@@ -28,6 +28,7 @@ const FIELDS: ResolvedFieldId[] = [
     stepTitle: "Contact",
     display: "Email",
     isBoolean: false,
+    isNumeric: false,
   },
   {
     fieldId: "full-name",
@@ -36,6 +37,7 @@ const FIELDS: ResolvedFieldId[] = [
     stepTitle: "Applicant",
     display: "Full name",
     isBoolean: false,
+    isNumeric: false,
   },
 ];
 
@@ -116,6 +118,7 @@ it("offers every email-like field (incl. mixed-case and applicant-email) and exc
       stepTitle: "Contact",
       display: "Email",
       isBoolean: false,
+      isNumeric: false,
     },
     {
       fieldId: "applicant-email",
@@ -124,6 +127,7 @@ it("offers every email-like field (incl. mixed-case and applicant-email) and exc
       stepTitle: "Applicant",
       display: "Applicant email",
       isBoolean: false,
+      isNumeric: false,
     },
     {
       fieldId: "Email", // mixed-case id
@@ -132,6 +136,7 @@ it("offers every email-like field (incl. mixed-case and applicant-email) and exc
       stepTitle: "MDA",
       display: "MDA contact",
       isBoolean: false,
+      isNumeric: false,
     },
     {
       fieldId: "full-name", // not email-like
@@ -140,6 +145,7 @@ it("offers every email-like field (incl. mixed-case and applicant-email) and exc
       stepTitle: "Applicant",
       display: "Full name",
       isBoolean: false,
+      isNumeric: false,
     },
     {
       fieldId: "dob", // not email-like
@@ -148,6 +154,7 @@ it("offers every email-like field (incl. mixed-case and applicant-email) and exc
       stepTitle: "Applicant",
       display: "Date of birth",
       isBoolean: false,
+      isNumeric: false,
     },
   ];
   render(<Harness initial={emptyDraft} fields={fields} />);
@@ -179,6 +186,7 @@ it("shows only the placeholder and the always-on config.mdaEmail option when no 
       stepTitle: "Applicant",
       display: "Full name",
       isBoolean: false,
+      isNumeric: false,
     },
     {
       fieldId: "dob",
@@ -187,6 +195,7 @@ it("shows only the placeholder and the always-on config.mdaEmail option when no 
       stepTitle: "Applicant",
       display: "Date of birth",
       isBoolean: false,
+      isNumeric: false,
     },
   ];
   render(<Harness initial={emptyDraft} fields={fields} />);

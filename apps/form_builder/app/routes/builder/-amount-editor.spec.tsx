@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import "@testing-library/jest-dom";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import type { ResolvedFieldId } from "@govtech-bb/form-builder";
@@ -16,6 +16,7 @@ const FIELDS: ResolvedFieldId[] = [
     stepTitle: "Applicant",
     display: "Nationality",
     isBoolean: false,
+    isNumeric: false,
   },
   {
     fieldId: "dob",
@@ -24,6 +25,16 @@ const FIELDS: ResolvedFieldId[] = [
     stepTitle: "Applicant",
     display: "Date of birth",
     isBoolean: false,
+    isNumeric: false,
+  },
+  {
+    fieldId: "number-of-copies",
+    editorFieldId: "e3",
+    stepId: "order-details",
+    stepTitle: "Order details",
+    display: "Number of copies",
+    isBoolean: false,
+    isNumeric: true,
   },
 ];
 
@@ -184,6 +195,99 @@ describe("AmountEditor — conditional age band", () => {
     );
     expect(screen.getByLabelText("Comparison value")).toHaveValue(60);
     expect(screen.getByLabelText("Otherwise charge")).toHaveValue(25);
+  });
+});
+
+describe("AmountEditor — quantity multiplier", () => {
+  it("wraps a fixed amount in a `*` against the chosen numeric field", async () => {
+    render(<Harness initialAmount={10} />);
+
+    await userEvent.click(
+      screen.getByLabelText("Multiply by a quantity field"),
+    );
+    await userEvent.selectOptions(
+      screen.getByLabelText("Quantity field"),
+      "order-details.number-of-copies",
+    );
+
+    expect(amountState()).toEqual({
+      "*": [10, { var: "values.order-details.number-of-copies" }],
+    });
+  });
+
+  it("offers only numeric fields in the quantity picker", async () => {
+    render(<Harness initialAmount={10} />);
+    await userEvent.click(
+      screen.getByLabelText("Multiply by a quantity field"),
+    );
+
+    const picker = screen.getByLabelText("Quantity field");
+    expect(
+      within(picker).getByRole("option", { name: /Number of copies/ }),
+    ).toHaveValue("order-details.number-of-copies");
+    expect(
+      within(picker).queryByRole("option", { name: /Nationality/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(picker).queryByRole("option", { name: /Date of birth/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("drops the multiplier when the checkbox is unticked", async () => {
+    render(
+      <Harness
+        initialAmount={{
+          "*": [10, { var: "values.order-details.number-of-copies" }],
+        }}
+      />,
+    );
+    const checkbox = screen.getByLabelText("Multiply by a quantity field");
+    expect(checkbox).toBeChecked();
+    expect(screen.getByLabelText("Quantity field")).toHaveValue(
+      "order-details.number-of-copies",
+    );
+
+    await userEvent.click(checkbox);
+    expect(amountState()).toBe(10);
+  });
+
+  it("drops the multiplier when the quantity field is cleared, checkbox still ticked", async () => {
+    render(
+      <Harness
+        initialAmount={{
+          "*": [10, { var: "values.order-details.number-of-copies" }],
+        }}
+      />,
+    );
+    await userEvent.selectOptions(screen.getByLabelText("Quantity field"), "");
+
+    expect(screen.getByLabelText("Multiply by a quantity field")).toBeChecked();
+    expect(amountState()).toBe(10);
+  });
+
+  it("opens an existing conditional × quantity amount in the structured editor", () => {
+    render(
+      <Harness
+        initialAmount={{
+          "*": [
+            {
+              if: [
+                { ">=": [{ age: [{ var: "values.applicant.dob" }] }, 60] },
+                0,
+                25,
+              ],
+            },
+            { var: "values.order-details.number-of-copies" },
+          ],
+        }}
+      />,
+    );
+    expect(screen.getByLabelText("Amount type")).toHaveValue("conditional");
+    expect(screen.getByLabelText("Compare")).toHaveValue("age");
+    expect(screen.getByLabelText("Multiply by a quantity field")).toBeChecked();
+    expect(screen.getByLabelText("Quantity field")).toHaveValue(
+      "order-details.number-of-copies",
+    );
   });
 });
 
