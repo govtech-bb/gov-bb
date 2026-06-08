@@ -98,12 +98,17 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     session.slug = null;
   }
 
-  // During active field collection the user is answering field prompts, not
-  // asking knowledge questions, so skip the rewrite LLM call and RAG retrieval
-  // — both are dead weight on every field turn. A side question mid-form loses
-  // context for that turn, an acceptable trade for the per-turn token savings.
-  const skipRetrieval =
-    isGreetingOrTooShort(latest) || resolution.kind === "collect";
+  // Skip the rewrite LLM call and RAG retrieval only once the user is ACTIVELY
+  // collecting (we've already captured at least one field) — there they're
+  // answering field prompts, not asking knowledge questions, so retrieval is
+  // dead weight. On the FIRST turn a form is merely matched (no values yet) the
+  // user is often asking an info question ("what's the cost?"), so we must keep
+  // retrieval ON — otherwise grounded answers about form-backed services
+  // vanish and the chat jumps straight to collecting (inconsistent UX where the
+  // same question sometimes answers, sometimes form-fills).
+  const activelyCollecting =
+    resolution.kind === "collect" && Object.keys(session.values).length > 0;
+  const skipRetrieval = isGreetingOrTooShort(latest) || activelyCollecting;
   const query = skipRetrieval
     ? latest
     : await rewriteRetrievalQuery(messages, signal);
@@ -223,6 +228,15 @@ function buildSystemPrompts(
         .join("\n");
       parts.push(
         `Already collected (do NOT re-ask these unless the user wants to change them):\n${lines}`,
+      );
+    } else {
+      // Form matched but not started. If the user is asking a question (e.g.
+      // "what's the cost?", "what documents?"), ANSWER it from the context
+      // above first, then offer to begin the application. Only start collecting
+      // fields once the user signals they want to apply — do not jump straight
+      // into field prompts on an informational question.
+      parts.push(
+        "The user has not started this application yet. If their message is a question, answer it from the context above and then offer to begin the application. Only start collecting fields once they indicate they want to apply.",
       );
     }
     if (session.status === "submitted" && session.referenceNumber) {
