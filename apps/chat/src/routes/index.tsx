@@ -11,7 +11,14 @@ import {
   Text,
   TextArea,
 } from "@govtech-bb/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Bubble } from "#/components/chat/bubble";
 import { TridentAvatar } from "#/components/trident-avatar";
 import { extractText, hasAnyToolCall } from "#/lib/chat/messages";
@@ -27,8 +34,7 @@ export const Route = createFileRoute("/")({ component: ChatPage });
 
 const MAX_QUERY_LENGTH = 2000;
 
-// "Pinned to latest" tolerance (px). Within this of the bottom, streaming
-// growth and appended messages keep the viewport stuck to the end.
+// How close to the bottom (px) still counts as pinned to the latest message.
 const SCROLL_END_THRESHOLD = 80;
 
 const LANDING_URL =
@@ -48,7 +54,6 @@ type ChatRow =
 function ChatPage() {
   const [input, setInput] = useState("");
   const [pendingQuery, setPendingQuery] = useState<string | null>(null);
-  const [showJumpToLatest, setShowJumpToLatest] = useState(false);
   // True between the submit_form tool's "submitting" and "submitted"/"failed"
   // custom events, so the UI can show progress during the blocking POST.
   const [submitting, setSubmitting] = useState(false);
@@ -72,6 +77,7 @@ function ChatPage() {
     error,
     stop,
     clear,
+    reload,
     addToolApprovalResponse,
   } = useChat({
     id: "conversation",
@@ -110,18 +116,30 @@ function ChatPage() {
     if (!isStreaming) setSubmitting(false);
   }, [isStreaming]);
 
+  // Completed reply for the off-screen live region. Empty while streaming so
+  // it announces once, not token-by-token. Derived in render (not an effect)
+  // so it's present on first paint — aria-live ignores initial content, so a
+  // refresh with history doesn't re-announce the last reply.
+  const announcement = useMemo(() => {
+    if (isStreaming) return "";
+    const lastAssistant = [...messages]
+      .reverse()
+      .find((m) => m.role === "assistant");
+    return lastAssistant ? extractText(lastAssistant) : "";
+  }, [isStreaming, messages]);
+
   const rows = useMemo<ChatRow[]>(() => {
     const out: ChatRow[] = [{ kind: "welcome", key: "welcome" }];
     if (pendingQuery && messages.length === 0) {
       out.push({ kind: "optimistic", key: "optimistic", text: pendingQuery });
-      out.push({ kind: "thinking", key: "thinking" });
+      if (!error) out.push({ kind: "thinking", key: "thinking" });
     }
     messages.forEach((message, index) =>
       out.push({ kind: "message", key: message.id, message, index }),
     );
     if (submitting) {
       out.push({ kind: "submitting", key: "submitting" });
-    } else if (messages.length > 0 && shouldShowThinking(messages)) {
+    } else if (!error && messages.length > 0 && shouldShowThinking(messages)) {
       out.push({ kind: "thinking", key: "thinking" });
     }
     if (error) out.push({ kind: "error", key: "error", text: error.message });
@@ -143,10 +161,9 @@ function ChatPage() {
     getScrollElement: () => parentRef.current,
     estimateSize: () => 72,
     getItemKey: (index) => rows[index].key,
-    // Anchor to the bottom: streaming growth and appended messages keep the
-    // end pinned, and prepends (if added later) stay visually stable.
+    // Keep the end pinned as the last bubble grows during streaming.
     anchorTo: "end",
-    // Only follow new output when the reader is already near the bottom.
+    // Follow new output only when the reader is already near the bottom.
     followOnAppend: true,
     scrollEndThreshold: SCROLL_END_THRESHOLD,
     overscan: 6,
@@ -171,9 +188,10 @@ function ChatPage() {
     if (messages.length > 0) setPendingQuery(null);
   }, [messages.length]);
 
-  // Start pinned to the latest message once the scroll element is live.
+  // Jump to the latest message on mount, before paint so there's no flash of
+  // the transcript scrolled to the top.
   const didInitialScrollRef = useRef(false);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (didInitialScrollRef.current || !parentRef.current) return;
     didInitialScrollRef.current = true;
     virtualizer.scrollToEnd();
@@ -214,12 +232,6 @@ function ChatPage() {
     setInput("");
   }
 
-  // Surface "Jump to latest" only while the reader has scrolled up off the end.
-  // setState bails out when the boolean is unchanged, so this is cheap.
-  const handleScroll = useCallback(() => {
-    setShowJumpToLatest(!virtualizer.isAtEnd(SCROLL_END_THRESHOLD));
-  }, [virtualizer]);
-
   function renderRow(row: ChatRow) {
     switch (row.kind) {
       case "welcome":
@@ -231,9 +243,27 @@ function ChatPage() {
       case "submitting":
         return <ThinkingIndicator label="Submitting your application" />;
       case "error":
+        // role="alert" so it's announced. Plain-language guidance instead of
+        // the raw error; reload() re-runs the failed turn without a dup.
         return (
-          <div className="rounded-md bg-red-10 px-3 py-2 text-red-00 text-sm">
-            {row.text}
+          <div role="alert" className="flex max-w-[92%] items-start gap-2.5">
+            <TridentAvatar size="sm" tone="filled" />
+            <div className="flex min-w-0 flex-1 flex-col space-y-xs rounded-[16px_16px_16px_4px] bg-red-10 px-4 py-3 sm:px-5 sm:py-3.5">
+              <p className="text-bubble font-semibold text-red-00">
+                Something went wrong
+              </p>
+              <p className="text-bubble text-pretty text-black-00">
+                We couldn&rsquo;t get a response. Please check your connection
+                and try again.
+              </p>
+              <Button
+                className="self-start"
+                onClick={() => void reload()}
+                type="button"
+              >
+                Try again
+              </Button>
+            </div>
           </div>
         );
       case "message":
@@ -255,20 +285,16 @@ function ChatPage() {
       <ChatHeader onStartAgain={handleStartAgain} />
 
       <div className="relative flex-1 overflow-hidden">
-        {/* Not a <main> — the root layout already provides the single main
-            landmark. role="log" + aria-live announces streamed replies; the
-            streaming bubble stays mounted at the end, so it is announced even
-            though off-screen history is unmounted by the virtualizer. */}
+        {/* Not a live region: the virtualizer remounts rows on scroll, which a
+            live region would re-announce as new. The reply is announced via the
+            off-screen region below instead. */}
         <div
           ref={parentRef}
-          onScroll={handleScroll}
           className="h-full overflow-y-auto px-s py-s"
         >
           <div
             aria-label="Chat messages"
-            aria-live="polite"
             className="relative mx-auto w-full max-w-2xl"
-            role="log"
             style={{ height: virtualizer.getTotalSize() }}
           >
             {virtualizer.getVirtualItems().map((virtualItem) => (
@@ -285,7 +311,14 @@ function ChatPage() {
           </div>
         </div>
 
-        {showJumpToLatest && (
+        {/* Off-screen live region for the completed reply. */}
+        <div className="sr-only" aria-live="polite">
+          {announcement}
+        </div>
+
+        {/* Derived in render so it stays correct as a reply streams — the
+            virtualizer re-renders on scroll and re-measure. */}
+        {!virtualizer.isAtEnd(SCROLL_END_THRESHOLD) && (
           <button
             type="button"
             aria-label="Jump to latest message"
@@ -402,7 +435,9 @@ function shouldShowThinking(messages: UIMessage[]): boolean {
 
 function ThinkingIndicator({ label = "Thinking" }: { label?: string }) {
   return (
-    <div className="flex items-center gap-2.5">
+    // role="status" announces the working state to screen readers; the
+    // gradient text is otherwise visual-only.
+    <div role="status" className="flex items-center gap-2.5">
       <TridentAvatar size="sm" tone="filled" />
       <span
         className="text-bubble animate-[shimmer_2.5s_linear_infinite] bg-clip-text font-medium text-transparent"

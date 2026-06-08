@@ -99,16 +99,44 @@ export interface ActiveFormSchema {
   activeFieldIds: Set<string>;
 }
 
-// File uploads and payment can't happen in chat. If a form needs either, we
-// hand the user a link to the full form rather than collecting it inline.
-// Scans the whole contract (not just active fields) since a file field may be
-// conditionally revealed.
-function needsHandoff(contract: ServiceContract): boolean {
+// File uploads, payment, and a small set of explicitly listed forms can't
+// safely be collected in open chat. If a form is one of these, we hand the
+// user a link to the full form rather than collecting it inline.
+//
+// Why each input:
+//   - File: chat has no upload primitive.
+//   - Payment: read from the safe `requiresPayment` boolean on the public
+//     contract — `processors` is stripped server-side, so the previous
+//     `contract.processors?.some(...)` check was dead and payment forms
+//     (birth/death/marriage certs) got collected inline. See #965.
+//   - Form ID on the exclusion list below: forms that collect bank account
+//     details or otherwise can't be safely filled in chat. See #966 / #931.
+
+// Explicit handoff list. A form ID belongs here when it collects bank/account
+// details or has another structural reason the chat cannot collect it safely.
+// We list each form by ID instead of pattern-matching on step or field names
+// so the trigger stays auditable and stable as recipes evolve.
+//
+// Maintenance: when a new form is published that collects bank/financial
+// details (look for `bank-*`, `account-*`, `sort-code`, `routing-*` field IDs,
+// or a `bank-account` / `bank-details` step), add its formId here.
+const HANDOFF_FORM_IDS: ReadonlySet<string> = new Set([
+  "duties-performed-exam-claim",
+  "get-a-primary-school-textbook-grant",
+  "school-uniform-grant-barbados",
+  "smart-stream-vendor-registration",
+  "textbook-grant-application",
+]);
+
+export function needsHandoff(contract: ServiceContract): boolean {
   const hasFile = contract.steps.some((step) =>
     step.elements.some((el) => el.htmlType === "file"),
   );
-  const needsPayment = !!contract.processors?.some((p) => p.type === "payment");
-  return hasFile || needsPayment;
+  return (
+    hasFile ||
+    contract.requiresPayment === true ||
+    HANDOFF_FORM_IDS.has(contract.formId)
+  );
 }
 
 export type FormResolution =
