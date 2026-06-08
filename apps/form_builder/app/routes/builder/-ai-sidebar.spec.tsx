@@ -115,6 +115,43 @@ describe("AiSidebar — Edit Form", () => {
   });
 });
 
+describe("AiSidebar — prompt textarea", () => {
+  beforeEach(() => convertRecipe.mockReset());
+
+  it("renders the prompt field as a textarea", () => {
+    setup();
+    const field = screen.getByPlaceholderText(/make the email field required/i);
+    expect(field.tagName).toBe("TEXTAREA");
+  });
+
+  it("submits on Enter", async () => {
+    const recipe = { formId: "contact", steps: [] };
+    convertRecipe.mockResolvedValue({ recipe, reply: "Done." });
+    setup();
+
+    const field = screen.getByPlaceholderText(/make the email field required/i);
+    await userEvent.type(field, "make the email field required{Enter}");
+
+    await waitFor(() => expect(convertRecipe).toHaveBeenCalledTimes(1));
+    expect(convertRecipe.mock.calls[0][0].data.message).toBe(
+      "make the email field required",
+    );
+  });
+
+  it("inserts a newline on Shift+Enter without submitting", async () => {
+    convertRecipe.mockResolvedValue({ recipe: null, reply: "" });
+    setup();
+
+    const field = screen.getByPlaceholderText(
+      /make the email field required/i,
+    ) as HTMLTextAreaElement;
+    await userEvent.type(field, "line one{Shift>}{Enter}{/Shift}line two");
+
+    expect(field.value).toBe("line one\nline two");
+    expect(convertRecipe).not.toHaveBeenCalled();
+  });
+});
+
 describe("AiSidebar — outcome feedback", () => {
   beforeEach(() => convertRecipe.mockReset());
 
