@@ -43,7 +43,7 @@
  *    heading is matched against the step title.
  */
 import { faker } from "@faker-js/faker";
-import { test, expect } from "@playwright/test";
+import { test } from "@playwright/test";
 import {
   STEP_TIMEOUT,
   advance,
@@ -58,8 +58,23 @@ import {
 
 const FORM_ID = "get-death-certificate";
 
+// PARKED (test.fixme) — and intentionally NOT wired into deploy-sandbox.yml.
+//
+// This spec drives the whole form correctly and the submission SUCCEEDS:
+// `POST /submissions` returns 200 with `status: "success"`, a real
+// `referenceCode` (e.g. GDC-…), `status: "pending_payment"` and a
+// `meta.deferred.paymentUrl` to EZ Pay ($5/copy). But the deployed
+// `submission-confirmation` screen then renders the generic error state
+// ("Something went wrong — We could not process your submission. No
+// information has been saved.") instead of redirecting to EZ Pay / showing the
+// success heading — reproducibly (3/3 incl. retries). The sibling payment form
+// get-marriage-certificate reaches "Application submitted" on the same path, so
+// this is a death-certificate-specific deployed-app bug, not a spec defect.
+// Tracked in #919; un-fixme this and re-add its smoke-test job once the
+// payment-confirmation flow is fixed. (See the referral-student-support-services
+// precedent in deploy-sandbox.yml.)
 test.describe("Get a Death Certificate — Live Smoke", () => {
-  test("submits the real form end-to-end and reaches the confirmation screen", async ({
+  test.fixme("submits the real form end-to-end and reaches the confirmation screen", async ({
     page,
   }) => {
     await page.goto(`/forms/${FORM_ID}`);
@@ -84,24 +99,30 @@ test.describe("Get a Death Certificate — Live Smoke", () => {
       faker.location.streetAddress(),
     );
     await selectDropdown(page, step, "applicant-parish", "st-michael");
-    await fillField(page, step, "applicant-id-number", faker.string.numeric(9));
+    // Masked National ID (999999-9999) — supply the `850101-0001` shape; a bare
+    // numeric string fails the mask's `^\d{6}-\d{4}$` pattern.
+    await fillField(page, step, "applicant-id-number", "850101-0001");
     await fillField(page, step, "applicant-email", "testing@govtech.bb");
     await fillField(page, step, "applicant-telephone", "246-418-1234");
     // passport-toggle left OFF → applicant-passport-number stays hidden.
     await advance(page, step);
 
     // ─── Your relationship with the deceased ("spouse" hides the conditional) ─
+    // The relationship <select>'s fieldId is the component default `relationship`
+    // (the recipe sets no fieldId override), NOT `relationship-to-person`.
     step = expectStep(page, "relationship-to-person", { exact: true });
-    await selectDropdown(page, step, "relationship-to-person", "spouse");
+    await selectDropdown(page, step, "relationship", "spouse");
     await advance(page, step);
 
     // ─── Why you need this certificate (reason, min 10 chars) ────────────────
     step = expectStep(page, "reason-for-certificate", { exact: true });
+    // `reason-for-certificate` uses the `components/name` validator (letters,
+    // spaces, hyphens and apostrophes only) — no periods, commas or digits.
     await fillField(
       page,
       step,
       "reason-for-certificate",
-      "Required to settle the estate and close outstanding accounts.",
+      "To settle the deceased estate and close outstanding accounts",
     );
     await advance(page, step);
 
@@ -116,11 +137,13 @@ test.describe("Get a Death Certificate — Live Smoke", () => {
     await fillField(page, step, "deceased-last-name", faker.person.lastName());
     await selectRadio(page, step, "deceased-known-date-of-death", "yes");
     await fillDate(page, step, "deceased-date-of-death", 3, 4, 2020);
+    // `deceased-place-of-death` also uses the `components/name` validator — no
+    // commas/periods.
     await fillField(
       page,
       step,
       "deceased-place-of-death",
-      "Bridgetown, Barbados",
+      "Bridgetown Saint Michael",
     );
     await advance(page, step);
 

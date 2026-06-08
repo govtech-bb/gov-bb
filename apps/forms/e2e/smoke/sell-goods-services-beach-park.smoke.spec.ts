@@ -132,6 +132,14 @@ test.describe("Sell Goods or Services at a Beach or Park — Live Smoke", () => 
       "prof-ref-address-1",
       faker.location.streetAddress(),
     );
+    // Deployed form requires `*-address-2` on every referee/testimonial step
+    // (recipe-vs-deployed drift — the recipe marks line 2 optional).
+    await fillField(
+      page,
+      step,
+      "prof-ref-address-2",
+      faker.location.secondaryAddress(),
+    );
     await selectDropdown(page, step, "prof-ref-parish", "st-michael");
     await advance(page, step);
 
@@ -152,6 +160,12 @@ test.describe("Sell Goods or Services at a Beach or Park — Live Smoke", () => 
       step,
       "pers-ref-address-1",
       faker.location.streetAddress(),
+    );
+    await fillField(
+      page,
+      step,
+      "pers-ref-address-2",
+      faker.location.secondaryAddress(),
     );
     await selectDropdown(page, step, "pers-ref-parish", "st-michael");
     await advance(page, step);
@@ -176,6 +190,12 @@ test.describe("Sell Goods or Services at a Beach or Park — Live Smoke", () => 
       step,
       "testimonial1-address-1",
       faker.location.streetAddress(),
+    );
+    await fillField(
+      page,
+      step,
+      "testimonial1-address-2",
+      faker.location.secondaryAddress(),
     );
     await selectDropdown(page, step, "testimonial1-parish", "st-michael");
     await fillField(
@@ -206,6 +226,12 @@ test.describe("Sell Goods or Services at a Beach or Park — Live Smoke", () => 
       step,
       "testimonial2-address-1",
       faker.location.streetAddress(),
+    );
+    await fillField(
+      page,
+      step,
+      "testimonial2-address-2",
+      faker.location.secondaryAddress(),
     );
     await selectDropdown(page, step, "testimonial2-parish", "st-michael");
     await fillField(

@@ -45,7 +45,7 @@
  *    the generic "Your submission has been saved" (omitted below).
  */
 import { faker } from "@faker-js/faker";
-import { test, expect } from "@playwright/test";
+import { test } from "@playwright/test";
 import {
   STEP_TIMEOUT,
   advance,
@@ -131,6 +131,15 @@ test.describe("Community Sports Training Programme — Live Smoke", () => {
       step,
       "emergency-address-1",
       faker.location.streetAddress(),
+    );
+    // Deployed form marks `emergency-address-2` required (recipe-vs-deployed
+    // drift — the recipe treats line 2 as optional; the `contact` step does not
+    // require its line 2, so the drift is per-step).
+    await fillField(
+      page,
+      step,
+      "emergency-address-2",
+      faker.location.secondaryAddress(),
     );
     await selectDropdown(page, step, "emergency-parish", "st-michael");
     await fillField(page, step, "emergency-email", "testing@govtech.bb");

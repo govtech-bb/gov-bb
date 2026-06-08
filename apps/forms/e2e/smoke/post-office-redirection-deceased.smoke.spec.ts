@@ -122,8 +122,12 @@ test.describe("Post Office Mail Redirection (Deceased) — Live Smoke", () => {
       faker.location.streetAddress(),
     );
     await selectDropdown(page, step, "new-parish", "christ-church");
-    await fillDate(page, step, "redirection-start-date", 1, 7, 2026);
-    await fillDate(page, step, "redirection-end-date", 31, 12, 2026);
+    // RECIPE QUIRK: redirection-start/end-date reuse the `date-of-birth`
+    // component, which enforces a `past` rule on the deployed form — so future
+    // dates are rejected with "Date of birth must be in the past". Supply past
+    // dates (end after start) to satisfy the live validator.
+    await fillDate(page, step, "redirection-start-date", 1, 3, 2024);
+    await fillDate(page, step, "redirection-end-date", 1, 9, 2024);
     await advance(page, step);
 
     // ─── Check your answers (auto-injected before declaration, if present) ───

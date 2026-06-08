@@ -40,7 +40,7 @@
  *    helper default ("Your submission has been saved") and is omitted here.
  */
 import { faker } from "@faker-js/faker";
-import { test, expect } from "@playwright/test";
+import { test } from "@playwright/test";
 import {
   STEP_TIMEOUT,
   advance,
@@ -81,7 +81,9 @@ test.describe("Get a Marriage Certificate — Live Smoke", () => {
       faker.location.streetAddress(),
     );
     await selectDropdown(page, step, "applicant-parish", "st-michael");
-    await fillField(page, step, "applicant-id-number", faker.string.numeric(9));
+    // Masked National ID (999999-9999) — supply the `850101-0001` shape; a bare
+    // numeric string fails the mask's `^\d{6}-\d{4}$` pattern.
+    await fillField(page, step, "applicant-id-number", "850101-0001");
     await fillField(page, step, "applicant-email", "testing@govtech.bb");
     await fillField(page, step, "applicant-telephone", "246-418-1234");
     await selectRadio(page, step, "applicant-is-barbados-national", "yes");
@@ -96,24 +98,26 @@ test.describe("Get a Marriage Certificate — Live Smoke", () => {
     step = expectStep(page, "husband-details", { exact: true });
     await fillField(page, step, "husband-first-name", faker.person.firstName());
     await fillField(page, step, "husband-last-name", faker.person.lastName());
-    await fillField(page, step, "husband-id-number", faker.string.numeric(9));
+    await fillField(page, step, "husband-id-number", "780215-0002");
     await advance(page, step);
 
     // ─── Tell us about the wife (ID number; passport toggle left off) ────────
     step = expectStep(page, "wife-details", { exact: true });
     await fillField(page, step, "wife-first-name", faker.person.firstName());
     await fillField(page, step, "wife-maiden-name", faker.person.lastName());
-    await fillField(page, step, "wife-id-number", faker.string.numeric(9));
+    await fillField(page, step, "wife-id-number", "820310-0003");
     await advance(page, step);
 
     // ─── Provide your marriage details (date in the past) ────────────────────
     step = expectStep(page, "marriage-details", { exact: true });
     await fillDate(page, step, "date-of-marriage", 14, 2, 2015);
+    // `place-of-marriage` uses the `components/name` validator (letters, spaces,
+    // hyphens and apostrophes only) — no periods, commas or digits.
     await fillField(
       page,
       step,
       "place-of-marriage",
-      "St. Michael, St. Mary's Church",
+      "Saint Michael Parish Church",
     );
     await advance(page, step);
 

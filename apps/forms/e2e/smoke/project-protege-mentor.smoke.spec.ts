@@ -83,6 +83,14 @@ test.describe("Project Protege Mentor — Live Smoke", () => {
       "contact-address-1",
       faker.location.streetAddress(),
     );
+    // Deployed form marks `contact-address-2` required (recipe-vs-deployed
+    // drift — the recipe treats line 2 as optional).
+    await fillField(
+      page,
+      step,
+      "contact-address-2",
+      faker.location.secondaryAddress(),
+    );
     await selectDropdown(page, step, "contact-parish", "st-michael");
     await fillField(page, step, "contact-email", "testing@govtech.bb");
     await fillField(page, step, "contact-telephone", "246-418-1234");

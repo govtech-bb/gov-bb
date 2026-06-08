@@ -120,8 +120,12 @@ test.describe("Get a Birth Certificate — Live Smoke", () => {
     await fillField(page, step, "place-of-birth", "Bridgetown");
     await advance(page, step);
 
-    // ─── Parents (mother first/last required; father optional) ───────────────
+    // ─── Parents (the deployed form requires BOTH father and mother first/last
+    //     names — recipe-vs-deployed drift: the recipe marks father optional,
+    //     but the live renderer rejects the step without them). ──────────────
     step = expectStep(page, "parents", { exact: true });
+    await fillField(page, step, "father-first-name", faker.person.firstName());
+    await fillField(page, step, "father-last-name", faker.person.lastName());
     await fillField(page, step, "mother-first-name", faker.person.firstName());
     await fillField(page, step, "mother-last-name", faker.person.lastName());
     await advance(page, step);

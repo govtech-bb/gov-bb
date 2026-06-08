@@ -37,7 +37,7 @@
  *    "Your submission has been saved" subheading applies (omitted here).
  */
 import { faker } from "@faker-js/faker";
-import { test, expect } from "@playwright/test";
+import { test } from "@playwright/test";
 import {
   STEP_TIMEOUT,
   advance,
