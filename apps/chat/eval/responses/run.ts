@@ -12,11 +12,10 @@
 //   --reuse  skip collection, re-judge/re-report from results.json
 //   CHAT_URL defaults to the deployed sandbox.
 
-import { execFile } from "node:child_process";
+import { spawn } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { promisify } from "node:util";
 import { ChatClient, fetchServerSentEvents } from "@tanstack/ai-client";
 // The default no-op devtools bridge is missing mountWithTools (upstream bug),
 // so supply the real bridge — headless in Node, nothing listens to it.
@@ -24,7 +23,37 @@ import { createChatDevtoolsBridge } from "@tanstack/ai-client/devtools";
 import { extractText, findToolCall } from "../../src/lib/chat/messages";
 import type { Citation } from "../../src/lib/chat/types";
 
-const execFileAsync = promisify(execFile);
+// Run `claude -p` for the LLM judge. shell:true lets the npm `claude` shim
+// resolve cross-platform (on Windows it's a `.cmd`, which child_process won't
+// run without a shell -> "spawn claude ENOENT"). The prompt is piped via
+// stdin, NOT passed as an arg, so the multi-line text needs no shell escaping.
+function runClaude(prompt: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const child = spawn("claude", ["-p", "--output-format", "json"], {
+      shell: true,
+    });
+    let stdout = "";
+    let stderr = "";
+    const timer = setTimeout(() => {
+      child.kill();
+      reject(new Error(`claude judge timed out after ${JUDGE_TIMEOUT_MS}ms`));
+    }, JUDGE_TIMEOUT_MS);
+    child.stdout.on("data", (d) => (stdout += String(d)));
+    child.stderr.on("data", (d) => (stderr += String(d)));
+    child.on("error", (e) => {
+      clearTimeout(timer);
+      reject(e);
+    });
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      if (code !== 0)
+        reject(new Error(`claude exited ${code}: ${stderr.slice(0, 200)}`));
+      else resolve(stdout);
+    });
+    child.stdin.write(prompt);
+    child.stdin.end();
+  });
+}
 
 const HERE = fileURLToPath(new URL(".", import.meta.url));
 const CASES_PATH = join(HERE, "cases.json");
@@ -155,11 +184,7 @@ async function collect(cases: Case[]): Promise<CaseResult[]> {
 // ------------------------------------------------------------------ judge
 
 async function claudeJudge(prompt: string): Promise<Verdict> {
-  const { stdout } = await execFileAsync(
-    "claude",
-    ["-p", prompt, "--output-format", "json"],
-    { timeout: JUDGE_TIMEOUT_MS, maxBuffer: 10 * 1024 * 1024 },
-  );
+  const stdout = await runClaude(prompt);
   const result = (JSON.parse(stdout) as { result?: string }).result ?? "";
   const match = result.match(/\{[\s\S]*\}/);
   if (!match) throw new Error(`no JSON verdict in claude output: ${result}`);
