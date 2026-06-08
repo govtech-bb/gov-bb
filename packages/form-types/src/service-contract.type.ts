@@ -48,6 +48,11 @@ export const serviceContractSchema = z.object({
   contactDetails: contactDetailsSchema.optional(),
   steps: z.array(formStepSchema),
   processors: z.array(processorSchema).optional(),
+  // Safe public flag derived from `processors` server-side. Exposed on the
+  // public contract (which strips `processors`) so the chat handoff check can
+  // tell whether a form needs payment without leaking processor internals.
+  // See issue #965.
+  requiresPayment: z.boolean().optional(),
   createdAt: dateTimeFormatSchema,
   updatedAt: dateTimeFormatSchema,
   version: z.string(),

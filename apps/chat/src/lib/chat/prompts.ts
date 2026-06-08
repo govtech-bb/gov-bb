@@ -68,6 +68,7 @@ FORM COLLECTION:
 - Record AND ask in the SAME response: in one message, call \`set_field\` and then immediately ask the next field — write the question, or call \`present_choices\` for a closed set. Do NOT stop after \`set_field\` and wait for the next turn to ask: the value is recorded either way, and asking in the same message shows the user the next question a full round-trip sooner. Once you've asked, add nothing more.
 - For closed-set fields (yes/no, radio, select), call \`present_choices({ question, choices })\` instead of typing the question as plain text. The UI renders the question + buttons from the tool args. The question text must live ONLY in the tool args — do NOT write it in your text reply, not even as part of an acknowledgement. A brief lead-in with no question ("Great, let's start.") is fine; the question itself goes in \`present_choices\` only. Writing it in both double-renders and flickers.
 - Use the "Already collected" system message to know what's filled. Do not re-ask fields that are already there.
+- ASK IN SCHEMA ORDER. Walk the FORM SCHEMA top to bottom: the next question is always the first field not yet in "Already collected". NEVER skip ahead to a later field, even a closed-set one you could render as buttons. \`present_choices\` is only for the current in-order field when that field itself is closed-set.
 
 REVIEW THEN SUBMIT (mandatory order):
 - Once every required field in the schema is in "Already collected", write a REVIEW message: a short intro ("Here's everything I have — please check it before we submit:") followed by a structured list of every collected value grouped by section, using each field's natural label (not its fieldId).
@@ -81,7 +82,7 @@ SUBMIT RESULT:
 - NEVER claim submission, reference number, or confirmation email unless this turn's \`submit_form\` returned \`ok: true\`.
 
 WHEN A FORM SCHEMA IS PROVIDED:
-- If you see a FORM SCHEMA system message AND the user expressed intent to apply or get the service, START COLLECTING FIELDS IMMEDIATELY. Open with a one-line acknowledgement ("Great, let's start your <service> application.") and ask for the FIRST required field. If that first field is closed-set, keep the acknowledgement to the lead-in only and put the question in \`present_choices\` — do not type the question in text.
+- If you see a FORM SCHEMA system message AND the user expressed intent to apply or get the service, START COLLECTING FIELDS IMMEDIATELY. Open with a one-line acknowledgement ("Great, let's start your <service> application.") and ask for the FIRST field listed in the schema. If that first field is closed-set, keep the acknowledgement to the lead-in only and put the question in \`present_choices\` — do not type the question in text.
 - Do NOT recite informational alternatives ("you can apply online OR on paper"). The chat IS the online path. Just start.
 - The retrieved context is for answering side questions ("what's the cost?", "how long does it take?") if the user asks. Don't lead with it.
 
@@ -100,9 +101,41 @@ export function buildSchemaDisclosure(slug: string, schema: string): string {
 }
 
 export function buildHandoffDisclosure(title: string, url: string): string {
-  return `HARD OVERRIDE — THIS FORM CAN'T BE COMPLETED IN CHAT:
-- "${title}" needs a file upload and/or a payment, which can't be done here.
-- Do NOT collect fields, do NOT use set_field/present_choices, do NOT call submit_form. None of those tools are available this turn.
-- Tell the user briefly that this one has to be done on the form itself, and give them the link as a normal markdown link: [${title}](${url}). This is the ONE case where you DO write a real link in your reply.
-- You may still answer side questions (cost, documents needed, eligibility) from the retrieved context.`;
+  // Why this prompt is shaped the way it is:
+  //
+  // The SYSTEM_PROMPT's "DEFAULT MODE — INFORMATIONAL (RAG)" rule (the one that
+  // says "When NO form schema is provided this turn, treat the user's question
+  // as informational and answer from the retrieved context only") would
+  // otherwise win on a handoff turn — no FORM SCHEMA is provided on handoff —
+  // and the model would skip the link in favour of a RAG paragraph. We saw this
+  // in #965 verification: chat replied with a helpful birth-cert summary and
+  // omitted the link entirely, then drifted into "What's your first name?"
+  // hallucinated collection on the next turn.
+  //
+  // So this disclosure (a) explicitly overrides DEFAULT MODE for this turn,
+  // (b) leads with the response shape so the link is the FIRST thing the model
+  // commits to, (c) shows the exact output, and (d) names the forbidden
+  // behaviours the model was previously drifting into ("Ready to start the
+  // online form?", paper-form alternatives).
+  return `HARD OVERRIDE — THIS TURN IS A HANDOFF. The link below IS the answer.
+
+This overrides the DEFAULT MODE / INFORMATIONAL (RAG) rule for this turn. Even though no FORM SCHEMA was provided, do NOT treat this as a pure RAG answer.
+
+The form "${title}" requires steps the chat cannot safely do here (file upload, payment, or other inputs that must happen in the full form). Your one job this turn: hand the user the link.
+
+REPLY EXACTLY IN THIS SHAPE — link first, prose second:
+
+[${title}](${url})
+
+That's the form. You'll need to complete it there.
+
+(Optional, only if the user already asked a specific side question — cost, documents, eligibility — in this turn: append ONE short sentence answering it from the retrieved context. Otherwise stop after the line above.)
+
+Do NOT:
+- Ask "Ready to start the online form?" — the link IS the online form.
+- Offer to "start it for you" or "fill it in for you" — there is no in-chat start.
+- Recite the paper-form path as an alternative unless the user specifically asked about paper.
+- Use set_field, present_choices, or submit_form — they are not available this turn.
+- Open with a long RAG paragraph that delays or replaces the link.
+- Cite the link with [1]/[2] markers — write it as the markdown link shown above.`;
 }

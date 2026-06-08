@@ -84,7 +84,16 @@ const MOCK_HYDRATED = {
   steps: [],
 };
 
-const { processors: _processors, ...MOCK_HYDRATED_STRIPPED } = MOCK_HYDRATED;
+const { processors: _processors, ...MOCK_HYDRATED_STRIPPED_BASE } =
+  MOCK_HYDRATED;
+
+// All client-path responses now carry `requiresPayment` (computed from the
+// merged recipe + DB processors). The fixture mock has no payment processor in
+// either source, so the expected stripped shape is the base + `false`.
+const MOCK_HYDRATED_STRIPPED = {
+  ...MOCK_HYDRATED_STRIPPED_BASE,
+  requiresPayment: false,
+};
 
 function makeEntity(
   overrides: Partial<FormDefinitionEntity> = {},
@@ -372,6 +381,91 @@ describe("FormDefinitionsService", () => {
       });
     });
 
+    // #965: payment forms (birth/death/marriage cert) were collected inline
+    // by the chat because `processors` is stripped on the public contract, so
+    // the chat's `needsPayment` check was always false. We now expose a safe
+    // boolean `requiresPayment` derived server-side from the merged recipe +
+    // form_config processors.
+    describe("findByFormId — requiresPayment flag (#965)", () => {
+      const PAYMENT = {
+        type: "payment",
+        config: { paymentCode: "X", amount: 5 },
+      };
+      const EMAIL = { type: "email", config: { to: "x@example.com" } };
+
+      function hydratedWith(processors: unknown[]) {
+        return { ...MOCK_HYDRATED, processors };
+      }
+
+      it("is true when the recipe has a payment processor", async () => {
+        const { repo, registry, service } = makeMocks({
+          source: "db",
+          nodeEnv: "development",
+        });
+        (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
+        (registry.hydrateForm as jest.Mock).mockResolvedValue(
+          hydratedWith([PAYMENT]),
+        );
+
+        const result = await service.findByFormId({ formId: "f" });
+
+        expect(result.requiresPayment).toBe(true);
+        expect("processors" in result).toBe(false);
+      });
+
+      it("is true when only the DB form_config adds a payment processor", async () => {
+        const { repo, registry, formConfig, service } = makeMocks({
+          source: "db",
+          nodeEnv: "development",
+        });
+        (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
+        (registry.hydrateForm as jest.Mock).mockResolvedValue(
+          hydratedWith([EMAIL]),
+        );
+        (formConfig.resolveProcessors as jest.Mock).mockResolvedValue([
+          PAYMENT,
+        ]);
+
+        const result = await service.findByFormId({ formId: "f" });
+
+        expect(result.requiresPayment).toBe(true);
+      });
+
+      it("is false when no payment processor is present in either source", async () => {
+        const { repo, registry, service } = makeMocks({
+          source: "db",
+          nodeEnv: "development",
+        });
+        (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
+        (registry.hydrateForm as jest.Mock).mockResolvedValue(
+          hydratedWith([EMAIL]),
+        );
+
+        const result = await service.findByFormId({ formId: "f" });
+
+        expect(result.requiresPayment).toBe(false);
+      });
+
+      it("is also set when includeProcessors:true so both consumers see it", async () => {
+        const { repo, registry, service } = makeMocks({
+          source: "db",
+          nodeEnv: "development",
+        });
+        (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
+        (registry.hydrateForm as jest.Mock).mockResolvedValue(
+          hydratedWith([PAYMENT]),
+        );
+
+        const result = await service.findByFormId({
+          formId: "f",
+          includeProcessors: true,
+        });
+
+        expect(result.requiresPayment).toBe(true);
+        expect(result.processors).toEqual([PAYMENT]);
+      });
+    });
+
     describe("findByFormId — DB processors from form_config (#716)", () => {
       const RECIPE_EMAIL = { type: "email", config: { to: "ops@example.com" } };
       const RECIPE_PAYMENT = {
@@ -495,7 +589,7 @@ describe("FormDefinitionsService", () => {
         ).rejects.toThrow("invalid blob");
       });
 
-      it("does not call resolveProcessors on the client path (includeProcessors:false)", async () => {
+      it("calls resolveProcessors on the client path so requiresPayment can include DB-only payment processors (#965)", async () => {
         const { repo, registry, formConfig, service } = makeMocks({
           source: "db",
           nodeEnv: "development",
@@ -510,7 +604,9 @@ describe("FormDefinitionsService", () => {
           includeProcessors: false,
         });
 
-        expect(formConfig.resolveProcessors).not.toHaveBeenCalled();
+        expect(formConfig.resolveProcessors).toHaveBeenCalledWith(
+          "passport-renewal",
+        );
       });
     });
   });

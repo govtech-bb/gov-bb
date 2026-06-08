@@ -98,12 +98,28 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     session.slug = null;
   }
 
-  // During active field collection the user is answering field prompts, not
-  // asking knowledge questions, so skip the rewrite LLM call and RAG retrieval
-  // — both are dead weight on every field turn. A side question mid-form loses
-  // context for that turn, an acceptable trade for the per-turn token savings.
-  const skipRetrieval =
-    isGreetingOrTooShort(latest) || resolution.kind === "collect";
+  // Skip the rewrite LLM call and RAG retrieval only once the user is ACTIVELY
+  // collecting (we've already captured at least one field) — there they're
+  // answering field prompts, not asking knowledge questions, so retrieval is
+  // dead weight. On the FIRST turn a form is merely matched (no values yet) the
+  // user is often asking an info question ("what's the cost?"), so we must keep
+  // retrieval ON — otherwise grounded answers about form-backed services
+  // vanish and the chat jumps straight to collecting (inconsistent UX where the
+  // same question sometimes answers, sometimes form-fills).
+  const activelyCollecting =
+    resolution.kind === "collect" && Object.keys(session.values).length > 0;
+  const skipRetrieval = isGreetingOrTooShort(latest) || activelyCollecting;
+
+  // A form matched on an INFO question (nothing collected yet, the message is a
+  // question rather than apply-intent): answer from RAG and offer the form, but
+  // do NOT register the field-collection tools — so the model can't silently
+  // start field-prompting on a question. This makes "do you get an answer or a
+  // form prompt" deterministic instead of matcher/model dependent. Apply-intent
+  // ("I want to apply", "yes, start it") is not a question, so it enters collect.
+  const offerOnly =
+    resolution.kind === "collect" &&
+    Object.keys(session.values).length === 0 &&
+    isInfoQuestion(latest);
   const query = skipRetrieval
     ? latest
     : await rewriteRetrievalQuery(messages, signal);
@@ -125,7 +141,7 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
   const systemPrompts = buildSystemPrompts(contextBlock, resolution, session);
 
   const tools =
-    resolution.kind === "collect"
+    resolution.kind === "collect" && !offerOnly
       ? buildFormTools(session, resolution.form, signal)
       : [];
 
@@ -224,6 +240,15 @@ function buildSystemPrompts(
       parts.push(
         `Already collected (do NOT re-ask these unless the user wants to change them):\n${lines}`,
       );
+    } else {
+      // Form matched but not started. If the user is asking a question (e.g.
+      // "what's the cost?", "what documents?"), ANSWER it from the context
+      // above first, then offer to begin the application. Only start collecting
+      // fields once the user signals they want to apply — do not jump straight
+      // into field prompts on an informational question.
+      parts.push(
+        "The user has not started this application yet. If their message is a question, answer it from the context above and then offer to begin the application. Only start collecting fields once they indicate they want to apply.",
+      );
     }
     if (session.status === "submitted" && session.referenceNumber) {
       parts.push(
@@ -256,4 +281,41 @@ const JAILBREAK_PATTERNS: ReadonlyArray<RegExp> = [
 function looksLikeJailbreak(input: string): boolean {
   if (!input || input.length < 6) return false;
   return JAILBREAK_PATTERNS.some((re) => re.test(input));
+}
+
+// Does the message read as an information-seeking question rather than intent to
+// apply? Decides whether a matched form answers + offers (info) or enters field
+// collection (apply). A plain first-word list (not a pattern catalogue) keeps it
+// maintainable; bias is toward "info" — when unsure, answer the question and
+// offer the form rather than railroad the user into field prompts.
+const QUESTION_OPENERS: ReadonlySet<string> = new Set([
+  "what",
+  "how",
+  "where",
+  "when",
+  "why",
+  "who",
+  "which",
+  "whose",
+  "can",
+  "could",
+  "do",
+  "does",
+  "did",
+  "is",
+  "are",
+  "will",
+  "would",
+  "should",
+  "may",
+  "whats",
+  "hows",
+]);
+
+function isInfoQuestion(input: string): boolean {
+  const t = input.trim().toLowerCase();
+  if (!t) return false;
+  if (t.endsWith("?")) return true;
+  const firstWord = t.split(/[\s'.,]+/)[0];
+  return QUESTION_OPENERS.has(firstWord);
 }

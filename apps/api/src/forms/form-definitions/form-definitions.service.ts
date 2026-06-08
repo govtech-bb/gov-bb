@@ -118,31 +118,37 @@ export class FormDefinitionsService {
     }
 
     const contract = await this.registryService.hydrateForm(recipe);
-    if (!includeProcessors) {
-      // Client path: processors are stripped, so don't pay the DB cost of
-      // resolving per-form `form_config` processors that would be dropped anyway.
-      const { processors: _processors, ...stripped } = contract;
-      return stripped as ServiceContract;
-    }
 
-    // Submission path: merge per-form, per-environment processors from
-    // `form_config` over the recipe's (#716). DB wins on payment: the payment
-    // processor is first-wins on duplicate `type: "payment"` entries
-    // (payment.processor.ts), so a pure append would leave the committed recipe
-    // value silently winning. Drop recipe payments first when the DB set has one.
+    // Merge per-form, per-environment processors from `form_config` over the
+    // recipe's (#716). DB wins on payment: the payment processor is first-wins
+    // on duplicate `type: "payment"` entries (payment.processor.ts), so a pure
+    // append would leave the committed recipe value silently winning. Drop
+    // recipe payments first when the DB set has one.
     const dbProcessors = await this.formConfigService.resolveProcessors(formId);
-    if (dbProcessors.length === 0) return contract;
-
     const recipeProcessors = (contract.processors ?? []) as Processor[];
     const dbHasPayment = dbProcessors.some((p) => p.type === "payment");
     const baseProcessors = dbHasPayment
       ? recipeProcessors.filter((p) => p.type !== "payment")
       : recipeProcessors;
+    const mergedProcessors = [...baseProcessors, ...dbProcessors];
 
-    return {
-      ...contract,
-      processors: [...baseProcessors, ...dbProcessors],
-    };
+    // Safe public flag derived from the merged processor set. Exposed on every
+    // response (client and submission paths) so the chat handoff check can
+    // tell whether a form needs payment without seeing processor internals.
+    // See issue #965.
+    const requiresPayment = mergedProcessors.some((p) => p.type === "payment");
+
+    if (!includeProcessors) {
+      // Client path: strip processors, surface only the safe flag.
+      const { processors: _processors, ...stripped } = contract;
+      return { ...stripped, requiresPayment } as ServiceContract;
+    }
+
+    // Submission path: keep processors. Only swap in the merged set when DB
+    // actually contributes anything (matches pre-#965 behaviour for the empty
+    // DB case).
+    if (dbProcessors.length === 0) return { ...contract, requiresPayment };
+    return { ...contract, processors: mergedProcessors, requiresPayment };
   }
 
   /**

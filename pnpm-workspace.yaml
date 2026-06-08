@@ -7,8 +7,8 @@ packages:
 nodeLinker: hoisted
 
 catalog:
-  "@tanstack/ai": "^0.27.0"
-  "@tanstack/ai-react": "^0.15.2"
+  "@tanstack/ai": "^0.28.0"
+  "@tanstack/ai-react": "^0.15.4"
   "@tanstack/devtools-vite": "^0.7.0"
   "@tanstack/react-devtools": "^0.10.5"
   "@tanstack/react-form": "^1.29.0"
