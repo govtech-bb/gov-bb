@@ -215,18 +215,10 @@ export const markdownComponents: Components = {
 }
 
 /**
- * Inner component for `<a data-start-link>` anchors in Markdown.
- *
- * Two routes:
- *   1. Page frontmatter has `form_id` → look it up in the build-time manifest
- *      and render `StartLink` (button → FORMS_BASE_URL/forms/{form_id}).
- *   2. No `form_id`, but the markdown supplied an `href` → render a plain
- *      `LinkButton` with that href. Lets index.md pages link to local
- *      landing routes (built-in calculators etc.) while still getting the
- *      button affordance.
- *
- * Silent miss in production when neither path resolves; warns in dev so
- * authoring typos surface during review. See docs/decisions/0005.
+ * Renders an `<a data-start-link>` CTA. An authored `href` wins — an entry page
+ * links to its own start page, which the page's `form_id` must not override; a
+ * page with only `form_id` links to the form (suppressed if it isn't live).
+ * Warns in dev when neither resolves. See docs/decisions/0005.
  */
 function StartLinkFromContext({
   href,
@@ -239,6 +231,14 @@ function StartLinkFromContext({
 }) {
   const formId = useContext(PageFormIdContext)
   const availableForms = useContext(AvailableFormsContext)
+
+  if (href) {
+    return (
+      <LinkButton href={href} {...rest}>
+        {children}
+      </LinkButton>
+    )
+  }
 
   if (formId) {
     if (!availableForms.has(formId)) {
@@ -255,14 +255,6 @@ function StartLinkFromContext({
       <StartLink formId={formId} {...rest}>
         {children}
       </StartLink>
-    )
-  }
-
-  if (href) {
-    return (
-      <LinkButton href={href} {...rest}>
-        {children}
-      </LinkButton>
     )
   }
 

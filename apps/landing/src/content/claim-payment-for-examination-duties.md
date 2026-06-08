@@ -4,6 +4,7 @@ description: "Claim payment for duties you performed during an examination perio
 stage: "alpha"
 publish_date: 2026-06-02
 category: education
+visibility: preview
 form_id: duties-performed-exam-claim
 ---
 

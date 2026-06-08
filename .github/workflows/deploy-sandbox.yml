@@ -502,12 +502,56 @@ jobs:
       spec: term-leave-application.smoke.spec.ts
       artifact_name: term-leave-smoke-trace
 
-  # NOTE: referral-student-support-services and homeschooling-application-2024
-  # smoke specs exist but are test.fixme (skipped) — their deployed forms have a
-  # required-checkbox-with-empty-options recipe bug that makes them unsubmittable
-  # (see the spec headers + ADR 0027). They are intentionally NOT wired here
-  # until the recipes are fixed; wiring a never-passing live smoke would just
-  # make every forms deploy red.
+  smoke-test-homeschooling:
+    name: Smoke test forms (homeschooling)
+    needs: amplify-forms
+    uses: ./.github/workflows/forms-smoke.yml
+    with:
+      base_url: https://forms.sandbox.alpha.gov.bb
+      spec: homeschooling-application-2024.smoke.spec.ts
+      artifact_name: homeschooling-smoke-trace
+
+  smoke-test-statement-of-travelling:
+    name: Smoke test forms (statement-of-travelling)
+    needs: amplify-forms
+    uses: ./.github/workflows/forms-smoke.yml
+    with:
+      base_url: https://forms.sandbox.alpha.gov.bb
+      spec: statement-of-travelling-form.smoke.spec.ts
+      artifact_name: statement-of-travelling-smoke-trace
+
+  smoke-test-csec:
+    name: Smoke test forms (csec)
+    needs: amplify-forms
+    uses: ./.github/workflows/forms-smoke.yml
+    with:
+      base_url: https://forms.sandbox.alpha.gov.bb
+      spec: csec-private-candidate-registration.smoke.spec.ts
+      artifact_name: csec-smoke-trace
+
+  smoke-test-cape:
+    name: Smoke test forms (cape)
+    needs: amplify-forms
+    uses: ./.github/workflows/forms-smoke.yml
+    with:
+      base_url: https://forms.sandbox.alpha.gov.bb
+      spec: cape-exam-registration-2024.smoke.spec.ts
+      artifact_name: cape-smoke-trace
+
+  smoke-test-barbados-secondary:
+    name: Smoke test forms (barbados-secondary)
+    needs: amplify-forms
+    uses: ./.github/workflows/forms-smoke.yml
+    with:
+      base_url: https://forms.sandbox.alpha.gov.bb
+      spec: barbados-secondary-entrance-exam-choice.smoke.spec.ts
+      artifact_name: barbados-secondary-smoke-trace
+
+  # NOTE: the referral-student-support-services smoke spec exists but is
+  # test.fixme (skipped) — its deployed form has a required-checkbox-with-empty-
+  # options recipe bug that makes it unsubmittable (see the spec header + ADR
+  # 0027). It is intentionally NOT wired here until the recipe is fixed; wiring a
+  # never-passing live smoke would just make every forms deploy red.
 
   amplify-landing:
     name: Amplify build (landing)

@@ -489,6 +489,22 @@ export async function createFormHandler(
     });
     res.status(201).json({ ok: true });
   } catch (err: any) {
+    // The findOne duplicate check above is non-atomic: in a genuine concurrent
+    // deploy/save, two requests can both pass findOne and both reach the
+    // transactional save, where the second trips the DB unique constraint on
+    // (formId, version). Postgres reports that as SQLSTATE 23505, which TypeORM
+    // wraps in a QueryFailedError carrying the driver code (at `.code` or
+    // `.driverError.code` depending on version). Map that — and only that — to
+    // the same 409 the findOne duplicate path returns, so the caller's friendly
+    // "version was just claimed" message fires instead of a generic 500.
+    const recipe = req.body?.recipe as ServiceContractRecipe | undefined;
+    const pgCode = err?.code ?? err?.driverError?.code;
+    if (pgCode === "23505" && recipe?.formId && recipe?.version) {
+      res.status(409).json({
+        error: `Recipe ${recipe.formId} v${recipe.version} already exists`,
+      });
+      return;
+    }
     res.status(500).json({ error: err.message });
   }
 }

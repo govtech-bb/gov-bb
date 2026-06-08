@@ -1,5 +1,5 @@
 import MiniSearch from 'minisearch'
-import { isUrlPreview, PAGES } from '../content/registry'
+import { isSubPage, isUrlPreview, PAGES } from '../content/registry'
 import { CATEGORY_BY_SLUG } from '../content/categories'
 
 export type SearchKind = 'service'
@@ -184,6 +184,8 @@ function buildIndex(): {
   const docs = new Map<string, IndexDoc>()
 
   for (const page of PAGES) {
+    // Step pages (e.g. `<service>/start`) are reached from their entry page, not searched for.
+    if (isSubPage(page)) continue
     const firstCat = page.frontmatter.categories[0]
     const category =
       (firstCat && CATEGORY_BY_SLUG[firstCat]?.title) || 'Service'
@@ -194,7 +196,7 @@ function buildIndex(): {
       title,
       description,
       body: stripMarkdown(page.body),
-      keywords: buildKeywords(title, description),
+      keywords: buildKeywords(title, description, page.frontmatter.keywords),
       href: `/${page.url}`,
       category,
       kind: 'service',

@@ -145,4 +145,8 @@ export type {
   ContactDetails,
 } from "./service-contract.type";
 
-export { deployBranchName, eraseBranchName } from "./deploy-branch";
+export {
+  deployBranchPrefix,
+  deployBranchName,
+  eraseBranchName,
+} from "./deploy-branch";

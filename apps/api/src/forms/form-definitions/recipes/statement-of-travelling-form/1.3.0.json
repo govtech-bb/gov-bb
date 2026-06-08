@@ -1,0 +1,257 @@
+{
+  "formId": "statement-of-travelling-form",
+  "title": "Statement of Travelling Form",
+  "version": "1.3.0",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "subject": "Your Statement of Travelling submission has been received",
+        "recipientField": "applicant-info.email"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "stepId": "applicant-info",
+      "title": "Personal Information",
+      "elements": [
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "label": "First name",
+            "fieldId": "first-name",
+            "validations": {
+              "required": {
+                "error": "First name is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "label": "Last name",
+            "fieldId": "last-name",
+            "validations": {
+              "required": {
+                "error": "Last name is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/national-id-number",
+          "overrides": {
+            "label": "ID Number",
+            "fieldId": "id-number"
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "label": "Email",
+            "fieldId": "email"
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "label": "Phone Number",
+            "fieldId": "phone-number"
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "travel-certification",
+      "title": "Travel Certification",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Month",
+            "fieldId": "certification-month",
+            "placeholder": "MM"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Year",
+            "fieldId": "certification-year",
+            "placeholder": "YYYY"
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "label": "I certify that during the month of [month/year] the extent of my travelling in the performance of my public duties:",
+            "fieldId": "certification-statement"
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "travel-details",
+      "title": "Travel Details",
+      "description": "Add a row for each day of travel.",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "DAY",
+            "fieldId": "day"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Distance Travelled",
+            "fieldId": "distance-travelled"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "PARTICULARS",
+            "fieldId": "particulars",
+            "multiline": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "No. of Passengers",
+            "fieldId": "num-passengers"
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 1,
+          "max": 31
+        }
+      ]
+    },
+    {
+      "stepId": "travel-rates",
+      "title": "Travel Rates & Calculations",
+      "description": "FIRST 320 KM OR LESS: $2.56 PER KM\nREMAINDER OVER 320 KM: $1.03 PER KM\nPASSENGER RATE: # OF PASSENGERS * $0.11 PER KM",
+      "elements": [
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "Total Distance Travelled",
+            "fieldId": "total-distance-travelled",
+            "readonly": true
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "First 320 KM or Less",
+            "fieldId": "first320km-or-less",
+            "readonly": true
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "Remainder Over 320 KM",
+            "fieldId": "remainder-over320km",
+            "readonly": true
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "Passenger Subtotal",
+            "fieldId": "passenger-subtotal",
+            "readonly": true
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "Total Claimed",
+            "fieldId": "total-claimed",
+            "readonly": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "school-reference",
+      "title": "School Distance Reference",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "School Distances by Parish",
+            "value": "Reference table for distances to various schools by parish - see form pages 3-5 for complete listing",
+            "fieldId": "school-reference-info",
+            "multiline": true,
+            "readonly": true,
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [
+        {
+          "ref": "components/show-hide",
+          "overrides": {
+            "label": "Important notices",
+            "content": "Candidates should inform the CXC Local Registrar of any name changes that have occurred since their last examination sitting.\n\nCandidates should check all timetables before registering to avoid subject clashes with other examination boards.\n\nNo alternative arrangements will be made in respect of clashes.",
+            "fieldId": "important-notices"
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "fieldId": "declaration-confirmed",
+            "label": "",
+            "validations": {
+              "required": {
+                "error": "You must confirm the declaration to continue",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "I confirm that the information I have provided is true and complete to the best of my knowledge. I understand that providing false information may result in my registration being rejected.",
+                "value": "confirmed"
+              }
+            ]
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Your claim has been submitted",
+      "description": "Your travel claim for the exam period has been submitted.",
+      "elements": [],
+      "markdownContent": "## What happens next\n\n- Your claim will be reviewed.\n- You may be contacted if any details need to be confirmed.\n- You will be advised once your claim has been processed for payment.\n\n### Need help?\n\nContact the Ministry of Educational Transformation about your claim.\n\nKeep a copy of this claim for your records.",
+      "behaviours": []
+    }
+  ],
+  "createdAt": "2026-05-27T20:43:20.632Z",
+  "updatedAt": "2026-06-05T00:00:00.000Z"
+}

@@ -1,0 +1,411 @@
+{
+  "formId": "barbados-secondary-entrance-exam-choice",
+  "title": "Barbados Secondary School Entrance Examination - Choice of School Form",
+  "version": "1.2.0",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "subject": "Your Barbados Secondary Entrance Exam choice submission has been received",
+        "recipientField": "applicant-info.email"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "stepId": "applicant-info",
+      "title": "Student Information",
+      "elements": [
+        {
+          "ref": "components/primary-school",
+          "overrides": {
+            "label": "School",
+            "fieldId": "school",
+            "validations": {
+              "required": {
+                "error": "School is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "School must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "label": "First Name",
+            "fieldId": "first-name",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "label": "Middle Name (s)",
+            "fieldId": "middle-name",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "label": "Last Name",
+            "fieldId": "last-name",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/sex",
+          "overrides": {
+            "label": "Gender",
+            "fieldId": "gender"
+          }
+        },
+        {
+          "ref": "components/date-of-birth",
+          "overrides": {
+            "label": "Date of Birth",
+            "format": "mm/dd/yyyy",
+            "fieldId": "date-of-birth",
+            "validations": {
+              "required": {
+                "error": "Date of Birth is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "type": "email",
+            "label": "Email",
+            "fieldId": "email",
+            "validations": {
+              "required": {
+                "error": "Email is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Address",
+            "fieldId": "address",
+            "multiline": true,
+            "validations": {
+              "required": {
+                "error": "Address is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Address must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "label": "Parish",
+            "fieldId": "parish",
+            "validations": {
+              "required": {
+                "error": "Parish is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/national-id-number",
+          "overrides": {
+            "label": "ID Number",
+            "fieldId": "id-number",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/country",
+          "overrides": {
+            "label": "Birth Country",
+            "fieldId": "birth-country",
+            "validations": {
+              "required": {
+                "error": "Birth Country is required",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "parent-guardian-information",
+      "title": "Parent/Guardian Information",
+      "elements": [
+        {
+          "ref": "components/title",
+          "overrides": {
+            "label": "Title",
+            "fieldId": "parent-title",
+            "validations": {
+              "required": {
+                "error": "Title is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Title must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "label": "First Name",
+            "fieldId": "parent-first-name"
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "label": "Last Name",
+            "fieldId": "parent-last-name"
+          }
+        },
+        {
+          "ref": "components/national-id-number",
+          "overrides": {
+            "label": "ID Number",
+            "fieldId": "parent-id-number"
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "type": "tel",
+            "label": "Phone",
+            "fieldId": "parent-phone"
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "school-choices",
+      "title": "School Choices",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Zone",
+            "fieldId": "zone",
+            "validations": {
+              "required": {
+                "error": "Zone is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Zone must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Private School",
+            "fieldId": "private",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/secondary-school",
+          "overrides": {
+            "label": "1st Choice (Open Choice from any of the 21 Schools)",
+            "fieldId": "choice1",
+            "validations": {
+              "required": {
+                "error": "1st Choice (Open Choice from any of the 21 Schools) is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "1st Choice (Open Choice from any of the 21 Schools) must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/secondary-school",
+          "overrides": {
+            "label": "2nd Choice (Open Choice from any of the 21 Schools)",
+            "fieldId": "choice2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "3rd Choice (Zone Only)",
+            "fieldId": "choice3",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "4th Choice (Zone Only)",
+            "fieldId": "choice4",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "5th Choice (Zone Only)",
+            "fieldId": "choice5",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "6th Choice (Zone Only)",
+            "fieldId": "choice6",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "7th Choice (Zone Only)",
+            "fieldId": "choice7",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "8th Choice (Zone Only)",
+            "fieldId": "choice8",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "9th Choice (Zone Only)",
+            "fieldId": "choice9",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "fieldId": "declaration-confirmed",
+            "label": "",
+            "validations": {
+              "required": {
+                "error": "You must confirm the declaration to continue",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "I confirm that my information is correct and I am happy for it to be verified. I understand that false details may lead to my application being rejected, and that the Government of Barbados will keep my information confidential.",
+                "value": "confirmed"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/date-of-birth",
+          "overrides": {
+            "fieldId": "declaration-date",
+            "label": "Date of declaration",
+            "isHidden": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Your application has been submitted",
+      "description": "Your choice of school for the Barbados Secondary Schools' Entrance Examination (BSSEE) has been submitted.",
+      "elements": [],
+      "markdownContent": "## What happens next\n\n- Your choices will be reviewed.\n- You may be contacted if any details need to be confirmed.\n- You will be advised of your child's school placement once allocations are made.\n\n### Need help?\n\nContact the Ministry of Educational Transformation about your application.\n\nKeep a copy of this application for your records.",
+      "behaviours": []
+    }
+  ],
+  "createdAt": "2026-05-27T20:24:07.446Z",
+  "updatedAt": "2026-06-05T00:00:00.000Z"
+}

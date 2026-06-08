@@ -1,0 +1,699 @@
+{
+  "formId": "referral-student-support-services",
+  "title": "Referral to Student Support Services Unit Online Application",
+  "version": "1.2.0",
+  "steps": [
+    {
+      "stepId": "student-information",
+      "title": "Student Information",
+      "elements": [
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "label": "First Name",
+            "fieldId": "first-name",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "label": "Middle Name (s)",
+            "fieldId": "middle-name",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "label": "Last Name",
+            "fieldId": "last-name",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/national-id-number",
+          "overrides": {
+            "label": "ID Number",
+            "fieldId": "id-number",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/date-of-birth",
+          "overrides": {
+            "type": "date",
+            "label": "Date of Birth",
+            "fieldId": "dob",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/sex",
+          "overrides": {
+            "label": "Gender",
+            "fieldId": "gender",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Address",
+            "fieldId": "address",
+            "required": true,
+            "multiline": true,
+            "validations": {
+              "required": {
+                "error": "Enter the student's address",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "label": "Parish",
+            "fieldId": "parish",
+            "required": true,
+            "multiline": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "parent-guardian-information",
+      "title": "Parent/Guardian Information",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Mother",
+            "fieldId": "mother-name",
+            "required": false,
+            "validations": {
+              "required": {
+                "error": "Enter the mother's name",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Father",
+            "fieldId": "father-name",
+            "required": false,
+            "validations": {
+              "required": {
+                "error": "Enter the father's name",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Guardian",
+            "fieldId": "guardian-name",
+            "required": false,
+            "validations": {
+              "required": {
+                "error": "Enter the guardian's name",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "ADDRESS OF PARENT/GUARDIAN (If different from above)",
+            "fieldId": "parent-guardian-address",
+            "required": false,
+            "multiline": true,
+            "validations": {
+              "required": {
+                "error": "Enter the parent or guardian's address",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "tel",
+            "label": "TELEPHONE: Mother (H)",
+            "fieldId": "mother-phone-home",
+            "required": false,
+            "validations": {
+              "required": {
+                "error": "Enter the mother's home telephone number",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "tel",
+            "label": "TELEPHONE: Mother (W)",
+            "fieldId": "mother-phone-work",
+            "required": false,
+            "validations": {
+              "required": {
+                "error": "Enter the mother's work telephone number",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "tel",
+            "label": "TELEPHONE: Mother (C)",
+            "fieldId": "mother-phone-cell",
+            "required": false,
+            "validations": {
+              "required": {
+                "error": "Enter the mother's mobile telephone number",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "tel",
+            "label": "TELEPHONE: Father (H)",
+            "fieldId": "father-phone-home",
+            "required": false,
+            "validations": {
+              "required": {
+                "error": "Enter the father's home telephone number",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "tel",
+            "label": "TELEPHONE: Father (W)",
+            "fieldId": "father-phone-work",
+            "required": false,
+            "validations": {
+              "required": {
+                "error": "Enter the father's work telephone number",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "tel",
+            "label": "TELEPHONE: Father (C)",
+            "fieldId": "father-phone-cell",
+            "required": false,
+            "validations": {
+              "required": {
+                "error": "Enter the father's mobile telephone number",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "tel",
+            "label": "TELEPHONE: Guardian (H)",
+            "fieldId": "guardian-phone-home",
+            "required": false,
+            "validations": {
+              "required": {
+                "error": "Enter the guardian's home telephone number",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "tel",
+            "label": "TELEPHONE: Guardian (W)",
+            "fieldId": "guardian-phone-work",
+            "required": false,
+            "validations": {
+              "required": {
+                "error": "Enter the guardian's work telephone number",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "tel",
+            "label": "TELEPHONE: Guardian (C)",
+            "fieldId": "guardian-phone-cell",
+            "required": false,
+            "validations": {
+              "required": {
+                "error": "Enter the guardian's mobile telephone number",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Please Indicate with whom the child resides",
+            "fieldId": "child-resides-with",
+            "required": true,
+            "validations": {
+              "required": {
+                "error": "Enter who the child resides with",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "school-information",
+      "title": "School Information",
+      "elements": [
+        {
+          "ref": "components/primary-school",
+          "overrides": {
+            "label": "SCHOOL",
+            "fieldId": "school-name",
+            "required": true
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "CLASS/FORM",
+            "fieldId": "class-form",
+            "required": true,
+            "validations": {
+              "required": {
+                "error": "Enter the class or form",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "type": "tel",
+            "label": "SCHOOL TELEPHONE",
+            "fieldId": "school-telephone",
+            "required": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "student-challenges",
+      "title": "Student Challenges",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "STUDENT'S CHALLENGES (Please be specific)",
+            "fieldId": "student-challenges",
+            "required": true,
+            "multiline": true,
+            "validations": {
+              "required": {
+                "error": "Enter the student's challenges",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "additional-difficulties-challenges",
+      "title": "Additional Difficulties/Challenges",
+      "elements": [
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Hearing",
+            "fieldId": "difficulty-hearing",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Vision",
+            "fieldId": "difficulty-vision",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Physical",
+            "fieldId": "difficulty-physical",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Behavioural",
+            "fieldId": "difficulty-behavioural",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Social/Emotional Difficulties",
+            "fieldId": "difficulty-social-emotional",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Speech and Language Difficulties",
+            "fieldId": "difficulty-speech-language",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Learning Difficulties",
+            "fieldId": "difficulty-learning",
+            "required": false
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "school-attendance",
+      "title": "School Attendance",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "SCHOOL ATTENDANCE",
+            "fieldId": "school-attendance",
+            "options": [
+              {
+                "label": "Regular",
+                "value": "regular"
+              },
+              {
+                "label": "Irregular",
+                "value": "irregular"
+              },
+              {
+                "label": "Non Attendance",
+                "value": "non_attendance"
+              }
+            ],
+            "required": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "involvement-with-outside-agencies",
+      "title": "Involvement with Outside Agencies",
+      "elements": [
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Children's Development Centre",
+            "fieldId": "agency-childrens-dev-centre",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Probation Department",
+            "fieldId": "agency-probation-dept",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Juvenile Liaison Scheme",
+            "fieldId": "agency-juvenile-liaison",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Child Care Board",
+            "fieldId": "agency-child-care-board",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Child Guidance Clinic",
+            "fieldId": "agency-child-guidance",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Private Support Services",
+            "fieldId": "agency-private-support",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Edna Nicholls Centre",
+            "fieldId": "agency-edna-nicholls",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Welfare Department",
+            "fieldId": "agency-welfare-dept",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Government Industrial School",
+            "fieldId": "agency-gov-industrial-school",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Other (Specify)",
+            "fieldId": "agency-other",
+            "required": false,
+            "validations": {
+              "required": {
+                "error": "Enter the other agency",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "intervention-strategies",
+      "title": "Intervention Strategies",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Intervention Strategies used at the school to date (Please be specific)",
+            "fieldId": "intervention-strategies",
+            "required": false,
+            "multiline": true,
+            "validations": {
+              "required": {
+                "error": "Enter the intervention strategies used at the school",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "referral-details",
+      "title": "Referral Details",
+      "elements": [
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Parent consulted",
+            "fieldId": "parent-consulted",
+            "required": false
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "date",
+            "label": "Date",
+            "fieldId": "parent-consulted-date",
+            "required": false,
+            "validations": {
+              "required": {
+                "error": "Enter the date the parent was consulted",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Referral Initiated By",
+            "fieldId": "referral-initiated-by",
+            "required": true,
+            "validations": {
+              "required": {
+                "error": "Enter who initiated the referral",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "date",
+            "label": "Date",
+            "fieldId": "referral-initiated-date",
+            "required": true,
+            "validations": {
+              "required": {
+                "error": "Enter the date the referral was initiated",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Principal's Signature",
+            "fieldId": "principal-signature",
+            "required": true,
+            "validations": {
+              "required": {
+                "error": "Enter the principal's signature",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "type": "date",
+            "label": "Date",
+            "fieldId": "principal-signature-date",
+            "required": true,
+            "validations": {
+              "required": {
+                "error": "Enter the date of the principal's signature",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "fieldId": "declaration-confirmed",
+            "label": "",
+            "validations": {
+              "required": {
+                "error": "You must confirm the declaration to continue",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "I confirm that my information is correct and I am happy for it to be verified. I understand that false details may lead to my application being rejected, and that the Government of Barbados will keep my information confidential.",
+                "value": "confirmed"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/date-of-birth",
+          "overrides": {
+            "fieldId": "declaration-date",
+            "label": "Date of declaration",
+            "isHidden": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Your application has been submitted",
+      "description": "Your referral has been submitted to the Student Support Services Unit.",
+      "elements": [],
+      "markdownContent": "## What happens next\n\n- The referral will be reviewed.\n- The school may be contacted for further information.\n- You will be advised of the next steps once a case is assigned.",
+      "behaviours": []
+    }
+  ],
+  "createdAt": "2026-05-27T20:34:16.771Z",
+  "updatedAt": "2026-06-05T00:00:00.000Z"
+}

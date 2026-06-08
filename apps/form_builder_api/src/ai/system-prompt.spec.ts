@@ -164,6 +164,18 @@ describe("AI system prompt", () => {
     expect(prompt).toContain('"fieldId": "end-year"');
   });
 
+  it("pins the declaration step to exactly one element: the declaration-confirmed checkbox", () => {
+    // Rule 17 + the Declaration Checkbox Pattern: one confirmation checkbox,
+    // fixed fieldId/label, required — and nothing else in the step.
+    expect(prompt).toContain(
+      "The declaration step contains EXACTLY ONE element",
+    );
+    expect(prompt).toContain('"fieldId": "declaration-confirmed"');
+    expect(prompt).toContain('"label": "Declaration"');
+    // No worked example may place an extra field inside the declaration step.
+    expect(prompt).not.toContain('"fieldId": "declaration-date"');
+  });
+
   it("documents minYear/maxYear with literal value or currentYear, never a reference", () => {
     expect(prompt).toMatch(/^- minYear: /m);
     expect(prompt).toMatch(/^- maxYear: /m);

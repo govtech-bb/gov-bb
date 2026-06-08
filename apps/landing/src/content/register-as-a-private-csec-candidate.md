@@ -4,6 +4,7 @@ description: "Register online to sit the Caribbean Secondary Education Certifica
 stage: "alpha"
 publish_date: 2026-06-02
 category: education
+visibility: preview
 form_id: csec-private-candidate-registration
 ---
 
