@@ -62,11 +62,11 @@ describe("valueIsEmpty", () => {
   });
 
   it("returns true for DateValueInput that is incomplete", () => {
-    expect(valueIsEmpty({ day: 1, month: 1 })).toBe(true);
+    expect(valueIsEmpty({ day: "1", month: "1" })).toBe(true);
   });
 
   it("returns false for a complete DateValueInput", () => {
-    expect(valueIsEmpty({ day: 1, month: 1, year: 2024 })).toBe(false);
+    expect(valueIsEmpty({ day: "1", month: "1", year: "2024" })).toBe(false);
   });
 
   it("returns undefined for an unrecognised object shape", () => {
@@ -80,19 +80,24 @@ describe("valueIsEmpty", () => {
 
 describe("isDateComplete", () => {
   it("returns true when day, month, and year are all present", () => {
-    expect(isDateComplete({ day: 1, month: 1, year: 2024 })).toBe(true);
+    expect(isDateComplete({ day: "1", month: "1", year: "2024" })).toBe(true);
   });
 
   it("returns false when day is missing", () => {
-    expect(isDateComplete({ month: 1, year: 2024 })).toBe(false);
+    expect(isDateComplete({ month: "1", year: "2024" })).toBe(false);
   });
 
   it("returns false when month is missing", () => {
-    expect(isDateComplete({ day: 1, year: 2024 })).toBe(false);
+    expect(isDateComplete({ day: "1", year: "2024" })).toBe(false);
   });
 
   it("returns false when year is missing", () => {
-    expect(isDateComplete({ day: 1, month: 1 })).toBe(false);
+    expect(isDateComplete({ day: "1", month: "1" })).toBe(false);
+  });
+
+  it("returns false when a part is an empty string", () => {
+    // Agrees with isCompleteDateValue at the validation boundary (#815).
+    expect(isDateComplete({ day: "", month: "1", year: "2024" })).toBe(false);
   });
 
   it("returns false for an empty object", () => {
@@ -105,29 +110,35 @@ describe("isDateComplete", () => {
 // ---------------------------------------------------------------------------
 
 describe("parseDatePart", () => {
-  it("parses a numeric string to a number", () => {
-    expect(parseDatePart("12")).toBe(12);
-    expect(parseDatePart("2008")).toBe(2008);
+  it("returns the digits-only string", () => {
+    expect(parseDatePart("12")).toBe("12");
+    expect(parseDatePart("2008")).toBe("2008");
   });
 
-  it("returns undefined for an empty string (never 0)", () => {
+  it("preserves leading zeros the user typed", () => {
+    expect(parseDatePart("09")).toBe("09");
+    expect(parseDatePart("00")).toBe("00");
+    expect(parseDatePart("0925")).toBe("0925");
+  });
+
+  it("returns undefined for an empty string", () => {
     expect(parseDatePart("")).toBeUndefined();
   });
 
-  it("returns undefined for non-numeric input (never NaN)", () => {
+  it("returns undefined for non-numeric input", () => {
     expect(parseDatePart("abc")).toBeUndefined();
   });
 
-  it("strips non-digit characters rather than producing NaN", () => {
-    expect(parseDatePart("1a")).toBe(1);
-    expect(parseDatePart("a1")).toBe(1);
-    expect(parseDatePart("1.5")).toBe(15);
+  it("strips non-digit characters", () => {
+    expect(parseDatePart("1a")).toBe("1");
+    expect(parseDatePart("a1")).toBe("1");
+    expect(parseDatePart("1.5")).toBe("15");
   });
 
-  it("never returns NaN for any string input", () => {
+  it("never returns NaN-like output for any string input", () => {
     for (const input of ["", " ", "abc", "-", ".", "NaN", "1a", "e5"]) {
       const result = parseDatePart(input);
-      expect(Number.isNaN(result)).toBe(false);
+      expect(result === undefined || /^\d+$/.test(result)).toBe(true);
     }
   });
 });

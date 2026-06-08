@@ -202,7 +202,10 @@ export function validateDateField(
     };
   }
 
-  if (year < 1000 || year > 9999) {
+  // A sensible 4-digit year: 1900–9999. Anything below reads as a too-short or
+  // implausible year ("90", "925", "1899"); proper lower-bound messaging is
+  // what the configurable minYear rule is for.
+  if (year < 1900 || year > 9999) {
     return { message: "Year must include 4 numbers", parts: ["year"] };
   }
 
