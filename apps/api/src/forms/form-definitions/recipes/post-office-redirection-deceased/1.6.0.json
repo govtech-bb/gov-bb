@@ -2,13 +2,13 @@
   "formId": "post-office-redirection-deceased",
   "title": "Tell the Post Office someone has died",
   "description": "Request to redirect mail for a deceased person",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "processors": [
     {
       "type": "email",
       "config": {
-        "subject": "Your mail redirection request has been received",
-        "recipientField": "applicant-details.applicant-email"
+        "recipientField": "applicant-details.email",
+        "subject": "Your mail redirection request has been received"
       }
     }
   ],
@@ -52,9 +52,9 @@
         {
           "ref": "components/middle-name",
           "overrides": {
-            "hint": "Enter all middle names in order",
-            "label": "Middle name(s)",
             "fieldId": "deceased-middle-name",
+            "label": "Middle name(s)",
+            "hint": "Enter all middle names in order",
             "validations": {
               "pattern": {
                 "error": "Middle name must contain only letters, hyphens, or apostrophes",
@@ -90,8 +90,8 @@
         {
           "ref": "components/date-of-birth",
           "overrides": {
-            "label": "Date of death",
             "fieldId": "date-of-death",
+            "label": "Date of death",
             "validations": {
               "required": {
                 "error": "Date of death is required",
@@ -114,8 +114,8 @@
         {
           "ref": "components/address",
           "overrides": {
-            "label": "Address line 1",
             "fieldId": "deceased-address-line-1",
+            "label": "Address line 1",
             "validations": {
               "required": {
                 "error": "Address line 1 is required",
@@ -131,8 +131,8 @@
         {
           "ref": "components/address",
           "overrides": {
-            "label": "Address line 2",
             "fieldId": "deceased-address-line-2",
+            "label": "Address line 2",
             "validations": {
               "required": {
                 "value": false
@@ -144,6 +144,12 @@
           "ref": "components/parish",
           "overrides": {
             "fieldId": "deceased-parish",
+            "validations": {
+              "required": {
+                "error": "Parish is required",
+                "value": true
+              }
+            },
             "options": [
               {
                 "label": "Christ Church",
@@ -189,28 +195,22 @@
                 "label": "St. Thomas",
                 "value": "st-thomas"
               }
-            ],
-            "validations": {
-              "required": {
-                "error": "Parish is required",
-                "value": true
-              }
-            }
+            ]
           }
         },
         {
           "ref": "components/postcode",
           "overrides": {
-            "ui": {
-              "width": "short"
-            },
-            "hint": "For example, BB17004 (optional)",
             "fieldId": "deceased-postcode",
+            "hint": "For example, BB17004 (optional)",
             "validations": {
               "pattern": {
                 "error": "Enter a valid postcode (for example, BB17004)",
                 "value": "^[A-Z]{2}\\d{5}$"
               }
+            },
+            "ui": {
+              "width": "short"
             }
           }
         }
@@ -256,9 +256,9 @@
         {
           "ref": "components/middle-name",
           "overrides": {
-            "hint": "Optional. Enter only if known.",
-            "label": "Middle name(s)",
             "fieldId": "applicant-middle-name",
+            "label": "Middle name(s)",
+            "hint": "Optional. Enter only if known.",
             "validations": {
               "pattern": {
                 "error": "Middle name must contain only letters, hyphens, or apostrophes",
@@ -361,11 +361,8 @@
         {
           "ref": "components/additional-details",
           "overrides": {
-            "ui": {
-              "width": "long"
-            },
-            "label": "Tell us about your authority",
             "fieldId": "permission-details",
+            "label": "Tell us about your authority",
             "validations": {
               "required": {
                 "error": "Permission details is required",
@@ -375,6 +372,9 @@
                 "error": "Permission details must be at least 5 characters",
                 "value": 5
               }
+            },
+            "ui": {
+              "width": "long"
             }
           }
         }
@@ -388,8 +388,8 @@
         {
           "ref": "components/address",
           "overrides": {
-            "label": "Address line 1",
             "fieldId": "new-address-line-1",
+            "label": "Address line 1",
             "validations": {
               "required": {
                 "error": "Address line 1 is required",
@@ -405,8 +405,8 @@
         {
           "ref": "components/address",
           "overrides": {
-            "label": "Address line 2",
             "fieldId": "new-address-line-2",
+            "label": "Address line 2",
             "validations": {
               "required": {
                 "value": false
@@ -418,6 +418,12 @@
           "ref": "components/parish",
           "overrides": {
             "fieldId": "new-parish",
+            "validations": {
+              "required": {
+                "error": "Parish is required",
+                "value": true
+              }
+            },
             "options": [
               {
                 "label": "Christ Church",
@@ -463,36 +469,30 @@
                 "label": "St. Thomas",
                 "value": "st-thomas"
               }
-            ],
-            "validations": {
-              "required": {
-                "error": "Parish is required",
-                "value": true
-              }
-            }
+            ]
           }
         },
         {
           "ref": "components/postcode",
           "overrides": {
-            "ui": {
-              "width": "short"
-            },
-            "hint": "For example, BB17004 (optional)",
             "fieldId": "new-postcode",
+            "hint": "For example, BB17004 (optional)",
             "validations": {
               "pattern": {
                 "error": "Enter a valid postcode (for example, BB17004)",
                 "value": "^[A-Z]{2}\\d{5}$"
               }
+            },
+            "ui": {
+              "width": "short"
             }
           }
         },
         {
           "ref": "components/generic-date",
           "overrides": {
-            "label": "When do you want the redirection to start?",
             "fieldId": "redirection-start-date",
+            "label": "When do you want the redirection to start?",
             "validations": {
               "required": {
                 "error": "Start date is required",
@@ -508,9 +508,9 @@
         {
           "ref": "components/generic-date",
           "overrides": {
-            "hint": "A redirection notice lasts for a maximum of 6 months",
-            "label": "When do you want the redirection to end?",
             "fieldId": "redirection-end-date",
+            "label": "When do you want the redirection to end?",
+            "hint": "A redirection notice lasts for a maximum of 6 months",
             "validations": {
               "required": {
                 "error": "End date is required",
@@ -537,26 +537,33 @@
       "behaviours": []
     },
     {
+      "stepId": "check-your-answers",
+      "title": "Check your answers",
+      "description": "Review all the information you have provided before submitting your application.",
+      "elements": [],
+      "behaviours": []
+    },
+    {
       "stepId": "declaration",
       "title": "Declaration",
       "elements": [
         {
           "ref": "components/confirmation",
           "overrides": {
-            "label": "Declaration",
             "fieldId": "declaration-confirmed",
-            "options": [
-              {
-                "label": "I confirm that my information is correct and I am happy for it to be verified. I understand that false details may lead to my application being rejected, and that the Government of Barbados will keep my information confidential.",
-                "value": "confirmed"
-              }
-            ],
+            "label": "Declaration",
             "validations": {
               "required": {
                 "error": "You must confirm the declaration to continue",
                 "value": true
               }
-            }
+            },
+            "options": [
+              {
+                "label": "I confirm that my information is correct and I am happy for it to be verified. I understand that false details may lead to my application being rejected, and that the Government of Barbados will keep my information confidential.",
+                "value": "confirmed"
+              }
+            ]
           }
         }
       ],
@@ -566,10 +573,9 @@
       "stepId": "submission-confirmation",
       "title": "Thank you for your request",
       "elements": [],
-      "behaviours": [],
-      "markdownContent": "## What happens next\n\nWe will review the information you provided.\n\nIf we need more information or documents, we will contact you.\n\nOnce approved, mail will be redirected to the address you specified."
+      "behaviours": []
     }
   ],
-  "createdAt": "2026-06-01T18:50:01.845Z",
-  "updatedAt": "2026-06-08T16:30:00.000Z"
+  "createdAt": "2026-06-08T17:48:59.149Z",
+  "updatedAt": "2026-06-08T17:30:00.000Z"
 }
