@@ -28,24 +28,45 @@ const future = "2099-12-31";
 const todayStr = new Date().toISOString().split("T")[0]!;
 
 describe("parseDate — DateValue object format", () => {
-  it("parses a valid DateValue object", () => {
-    expect(pastRunner({ day: 1, month: 1, year: 2000 }, cfg(), {})).toBeNull();
+  it("parses a valid DateValue object with string parts", () => {
+    expect(
+      pastRunner({ day: "1", month: "1", year: "2000" }, cfg(), {}),
+    ).toBeNull();
   });
 
-  it("returns error when DateValue has day=0", () => {
+  it("parses string parts that carry leading zeros", () => {
+    expect(
+      pastRunner({ day: "01", month: "01", year: "2000" }, cfg(), {}),
+    ).toBeNull();
+  });
+
+  it("still parses numeric parts (migration tolerance)", () => {
+    expect(pastRunner({ day: 1, month: 1, year: 2000 }, cfg(), {})).toBeNull();
     expect(pastRunner({ day: 0, month: 1, year: 2000 }, cfg(), {})).toBe(
       "Date must be in the past",
     );
   });
 
-  it("returns error when DateValue has month=0", () => {
-    expect(pastRunner({ day: 1, month: 0, year: 2000 }, cfg(), {})).toBe(
+  it("returns error when DateValue has day='0'", () => {
+    expect(pastRunner({ day: "0", month: "1", year: "2000" }, cfg(), {})).toBe(
       "Date must be in the past",
     );
   });
 
-  it("returns error when DateValue has year=0", () => {
-    expect(pastRunner({ day: 1, month: 1, year: 0 }, cfg(), {})).toBe(
+  it("returns error when DateValue has month='0'", () => {
+    expect(pastRunner({ day: "1", month: "0", year: "2000" }, cfg(), {})).toBe(
+      "Date must be in the past",
+    );
+  });
+
+  it("returns error when DateValue has year='0'", () => {
+    expect(pastRunner({ day: "1", month: "1", year: "0" }, cfg(), {})).toBe(
+      "Date must be in the past",
+    );
+  });
+
+  it("returns error when a DateValue part is an empty string", () => {
+    expect(pastRunner({ day: "", month: "1", year: "2000" }, cfg(), {})).toBe(
       "Date must be in the past",
     );
   });

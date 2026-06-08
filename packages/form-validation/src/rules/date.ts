@@ -3,11 +3,19 @@ import { resolveReference, MISSING } from "./resolve-reference";
 
 export const parseDate = (v: unknown): Date | null => {
   if (!v) return null;
-  // Handle DateValue object format: { day, month, year }
+  // Handle DateValue object format: { day, month, year }. Parts are the
+  // digit-strings the date input stores (#815), so coerce each to a number
+  // explicitly. The falsy guard then rejects empty/absent parts (Number("") is
+  // 0), non-numeric parts (NaN is falsy), and a literal zero part — a string
+  // "0" would otherwise be truthy and let Date.UTC normalise day/month 0 into a
+  // plausible-but-wrong neighbouring date.
   if (typeof v === "object" && "day" in v && "month" in v && "year" in v) {
-    const obj = v as { day: number; month: number; year: number };
-    if (!obj.day || !obj.month || !obj.year) return null;
-    const d = new Date(Date.UTC(obj.year, obj.month - 1, obj.day));
+    const obj = v as { day: unknown; month: unknown; year: unknown };
+    const day = Number(obj.day);
+    const month = Number(obj.month);
+    const year = Number(obj.year);
+    if (!day || !month || !year) return null;
+    const d = new Date(Date.UTC(year, month - 1, day));
     return isNaN(d.getTime()) ? null : d;
   }
   if (typeof v !== "string") return null;
