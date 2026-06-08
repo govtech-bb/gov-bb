@@ -4,6 +4,7 @@ import type {
 } from "@govtech-bb/form-builder";
 import { ValuePathPicker } from "./-value-path-picker";
 import { KeyValueEditor } from "./-key-value-editor";
+import { AmountEditor } from "./-amount-editor";
 import styles from "../../styles/builder.module.css";
 
 interface ProcessorConfigFormProps {
@@ -214,17 +215,9 @@ export function ProcessorConfigForm({
       // Provider is fixed to ezpay (the only supported gateway) — shown
       // read-only so the author can't author an unsupported value. amount is
       // numeric; the path fields point at form fields via the same picker email
-      // uses; the three allow* flags are checkboxes. The whole config is
-      // validated against paymentConfigAuthorSchema on save (DB sibling, #716).
-      const setBool = (key: string, checked: boolean) => {
-        // Prune the flag to absent when unchecked (it's optional), mirroring how
-        // optional string fields prune to absent, so a false flag doesn't
-        // persist verbosely.
-        const next = { ...config };
-        if (checked) (next as Record<string, unknown>)[key] = true;
-        else delete (next as Record<string, unknown>)[key];
-        onConfigChange(next);
-      };
+      // uses. All payment methods (credit/debit/Payce) are always enabled, so
+      // there are no per-option toggles (#936). The whole config is validated
+      // against paymentConfigAuthorSchema on save (DB sibling, #716).
       return (
         <>
           <div className={styles.formGroup}>
@@ -259,24 +252,12 @@ export function ProcessorConfigForm({
               }
             />
           </div>
-          <div className={styles.formGroup}>
-            <label htmlFor={fid("amount")}>Amount</label>
-            <input
-              id={fid("amount")}
-              type="number"
-              min={0}
-              value={
-                typeof config.amount === "number" ? config.amount : ""
-              }
-              onChange={(e) =>
-                onConfigChange({
-                  ...config,
-                  amount:
-                    e.target.value === "" ? undefined : Number(e.target.value),
-                })
-              }
-            />
-          </div>
+          <AmountEditor
+            amount={config.amount}
+            fields={fields}
+            idPrefix={String(processor.id)}
+            onChange={(amount) => onConfigChange({ ...config, amount })}
+          />
           <div className={styles.formGroup}>
             <label htmlFor={fid("description")}>Description</label>
             <input
@@ -309,36 +290,6 @@ export function ProcessorConfigForm({
                 onConfigChange({ ...config, customerNamePath })
               }
             />
-          </div>
-          <div className={styles.formGroup}>
-            <label>
-              <input
-                type="checkbox"
-                checked={config.allowCredit === true}
-                onChange={(e) => setBool("allowCredit", e.target.checked)}
-              />{" "}
-              Allow credit card
-            </label>
-          </div>
-          <div className={styles.formGroup}>
-            <label>
-              <input
-                type="checkbox"
-                checked={config.allowDebit === true}
-                onChange={(e) => setBool("allowDebit", e.target.checked)}
-              />{" "}
-              Allow debit card
-            </label>
-          </div>
-          <div className={styles.formGroup}>
-            <label>
-              <input
-                type="checkbox"
-                checked={config.allowPayce === true}
-                onChange={(e) => setBool("allowPayce", e.target.checked)}
-              />{" "}
-              Allow Payce
-            </label>
           </div>
         </>
       );

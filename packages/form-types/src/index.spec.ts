@@ -45,6 +45,7 @@ import {
   formConfigBlobSchema,
   parseFormConfigBlob,
   dynamic,
+  shallowMergeDefined,
   validateFormContract,
   dateTimeFormatSchema,
   serviceContractSchema,
@@ -433,18 +434,35 @@ describe("fieldValueSchema", () => {
 });
 
 describe("dateValueInputSchema", () => {
-  it("accepts a full date object", () => {
+  // Tolerant during the number→string migration (ADR 0043): both shapes parse.
+  it("accepts a full date object with string parts", () => {
+    expect(
+      dateValueInputSchema.safeParse({ day: "1", month: "6", year: "2024" })
+        .success,
+    ).toBe(true);
+  });
+
+  it("accepts a full date object with numeric parts", () => {
     expect(
       dateValueInputSchema.safeParse({ day: 1, month: 6, year: 2024 }).success,
     ).toBe(true);
+  });
+
+  it("preserves string parts verbatim, including leading zeros", () => {
+    const parsed = dateValueInputSchema.parse({
+      day: "09",
+      month: "06",
+      year: "2024",
+    });
+    expect(parsed).toEqual({ day: "09", month: "06", year: "2024" });
   });
 
   it("accepts an empty object (all fields optional)", () => {
     expect(dateValueInputSchema.safeParse({}).success).toBe(true);
   });
 
-  it("rejects when a field is a string instead of number", () => {
-    expect(dateValueInputSchema.safeParse({ day: "1" }).success).toBe(false);
+  it("rejects a part that is neither string nor number", () => {
+    expect(dateValueInputSchema.safeParse({ day: true }).success).toBe(false);
   });
 });
 
@@ -856,6 +874,15 @@ describe("dynamic", () => {
     // 42 fails both z.string().min(1) and z.record(z.string(), z.unknown()), so
     // the union rejects it.
     expect(schema.safeParse(42).success).toBe(false);
+  });
+});
+
+describe("shallowMergeDefined (re-export)", () => {
+  it("merges override keys over the base", () => {
+    expect(shallowMergeDefined({ a: 1, b: 2 }, { b: 3 })).toEqual({
+      a: 1,
+      b: 3,
+    });
   });
 });
 

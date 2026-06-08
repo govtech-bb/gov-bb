@@ -3,19 +3,15 @@ import type { Request, Response } from "express";
 import {
   getRegistryItem,
   hydrateForm,
-  validateFormContract,
-  findRecipeIdCollisionsFromRecipe,
-  formatCollisionIssues,
-  collectUnknownRefs,
   BEHAVIOUR_TYPE_DESCRIPTORS,
   VALIDATION_RULE_DESCRIPTORS,
 } from "@govtech-bb/form-builder";
 import type {
   ServiceContractRecipe,
   ServiceContract,
-  ValidationIssue,
 } from "@govtech-bb/form-types";
 import { getFullCatalog } from "../catalog.js";
+import { validateRecipeFully } from "./validate-recipe.js";
 
 export const registryRouter = Router();
 
@@ -60,37 +56,10 @@ registryRouter.get("/metadata", async (_req, res) => {
 // POST /builder/registry/validate
 export async function validateHandler(req: Request, res: Response) {
   try {
-    const result = validateFormContract(req.body.recipe);
-    if (!result.ok) {
-      res.json(result);
-      return;
-    }
-    // Contract parse passed — now backstop recipe-wide fieldId/stepId
-    // uniqueness, which the Zod schema can't check (it has no catalog to
-    // resolve defaults). Catalog-dependent, so it lives here, not in
-    // validateFormContract (ADR 0010).
-    const catalog = await getFullCatalog();
-    const collisions = findRecipeIdCollisionsFromRecipe(result.data, catalog);
-    const issues = formatCollisionIssues(collisions);
-    if (issues.length > 0) {
-      res.json({ ok: false, issues });
-      return;
-    }
-    // Catalog-dependent ref existence check (also ADR 0010): the schema only
-    // validates ref *format*, so a ref to a removed/renamed component passes
-    // parse but would silently drop in preview / throw in the renderer. Catch
-    // it here via the shared collector, reporting every unknown ref together.
-    const unknownRefIssues: ValidationIssue[] = collectUnknownRefs(
-      result.data,
-      catalog,
-    ).map(({ ref, path }) => ({
-      path,
-      message: `Unknown component/block ref "${ref}"`,
-    }));
-    if (unknownRefIssues.length > 0) {
-      res.json({ ok: false, issues: unknownRefIssues });
-      return;
-    }
+    // The full schema + catalog-dependent (collision, unknown-ref) check lives
+    // in the shared helper so this endpoint and POST /builder/publish can't
+    // drift (ADR 0010).
+    const result = await validateRecipeFully(req.body.recipe);
     res.json(result);
   } catch (err: any) {
     res.status(500).json({ error: err.message });

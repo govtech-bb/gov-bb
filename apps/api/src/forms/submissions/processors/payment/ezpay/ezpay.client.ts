@@ -37,9 +37,12 @@ export class EzpayClient {
     form.set("ez_reference_email", p.customerEmail);
     form.set("ez_reference_name", p.customerName);
     form.set("ez_reference_number", p.reference);
-    form.set("ez_allow_credit", p.allowCredit === false ? "0" : "1");
-    form.set("ez_allow_debit", p.allowDebit === false ? "0" : "1");
-    form.set("ez_allow_payce", p.allowPayce === false ? "0" : "1");
+    // All payment methods are always enabled (#936) — the per-option toggles
+    // were removed from the form builder, so every EzPay session offers credit,
+    // debit and Payce.
+    form.set("ez_allow_credit", "1");
+    form.set("ez_allow_debit", "1");
+    form.set("ez_allow_payce", "1");
 
     const resp = await firstValueFrom(
       this.http.post<{ token?: string; error?: string; code?: string }>(

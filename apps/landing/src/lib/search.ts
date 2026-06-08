@@ -214,7 +214,7 @@ function buildIndex(): {
     },
     searchOptions: {
       boost: { keywords: 5, title: 4, description: 1.5, body: 0.3 },
-      fuzzy: (term) => (term.length > 3 ? 0.3 : 0),
+      fuzzy: (term) => (term.length > 3 ? 0.2 : 0),
       prefix: (term) => term.length >= 1,
       combineWith: 'AND',
       weights: { fuzzy: 0.3, prefix: 0.3 },

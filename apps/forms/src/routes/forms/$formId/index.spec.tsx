@@ -247,6 +247,20 @@ describe("RouteComponent", () => {
     expect(mockFormRendererProps.current.submissionState).toEqual(persisted);
   });
 
+  it("passes isPreview=true to FormRenderer when a preview token is in search", () => {
+    jest
+      .spyOn(Route, "useSearch")
+      .mockReturnValue({ step: "step1", preview: "tok" });
+    render(<Route.component />);
+    expect(mockFormRendererProps.current.isPreview).toBe(true);
+  });
+
+  it("passes isPreview=false to FormRenderer when no preview token is in search", () => {
+    jest.spyOn(Route, "useSearch").mockReturnValue({ step: "step1" });
+    render(<Route.component />);
+    expect(mockFormRendererProps.current.isPreview).toBe(false);
+  });
+
   it("ignores and clears any persisted submissionState on a fresh non-confirmation load", () => {
     jest.spyOn(Route, "useSearch").mockReturnValue({ step: "step1" });
     // A stale outcome from an earlier submission this session must not leak into

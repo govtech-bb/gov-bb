@@ -1086,6 +1086,93 @@ describe("FormRenderer", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("shows the preview banner on a normal step when isPreview is true", () => {
+    const step = makeStep("step-1");
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="step-1"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+        isPreview
+      />,
+    );
+    const banner = screen.getByTestId("preview-banner");
+    expect(banner).toBeInTheDocument();
+    expect(banner).toHaveTextContent(
+      /unpublished draft and cannot be submitted/i,
+    );
+  });
+
+  it("does NOT show the preview banner when isPreview is omitted", () => {
+    const step = makeStep("step-1");
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="step-1"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    expect(screen.queryByTestId("preview-banner")).not.toBeInTheDocument();
+  });
+
+  it("disables and relabels the submit button on the declaration step in preview, and shows the hint", () => {
+    const step = makeStep("declaration");
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="declaration"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+        isPreview
+      />,
+    );
+    const submit = screen.getByRole("button", { name: /submit \(preview\)/i });
+    expect(submit).toBeDisabled();
+    expect(screen.getByTestId("preview-submit-hint")).toBeInTheDocument();
+  });
+
+  it("keeps the submit button enabled and labelled 'Submit' on the declaration step without preview", () => {
+    const step = makeStep("declaration");
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="declaration"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    const submit = screen.getByRole("button", { name: /submit/i });
+    expect(submit).toBeEnabled();
+    expect(submit).toHaveTextContent("Submit");
+    expect(screen.queryByTestId("preview-submit-hint")).not.toBeInTheDocument();
+  });
+
+  it("does NOT show the preview banner on the submission-confirmation step even when isPreview is true", () => {
+    const step = makeStep("submission-confirmation");
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="submission-confirmation"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+        isPreview
+      />,
+    );
+    expect(screen.queryByTestId("preview-banner")).not.toBeInTheDocument();
+  });
+
   it("repeat instance marker: a labelled instance renders the caption inside the h1 (GOV.UK pattern)", () => {
     const { getInstanceMarker } = jest.requireMock("@forms/lib");
     (getInstanceMarker as jest.Mock).mockReturnValue({

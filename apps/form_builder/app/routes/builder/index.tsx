@@ -16,6 +16,8 @@ import { buildLoadArgs, draftsEqual } from "./-apply-recipe";
 import { AiSidebar, type ApplyRecipeResult } from "./-ai-sidebar";
 import { recipeReducer, EMPTY_DRAFT, nextStepId, REQUIRED_STEP_IDS, isRequiredStep, firstStepId } from "./-recipe-reducer";
 import { Toolbar } from "./-toolbar";
+import { usePresence } from "./-use-presence";
+import { PresenceBanner } from "./-presence-banner";
 import { StepList } from "./-step-list";
 import { StepEditor } from "./-step-editor";
 import { ProcessorsEditor } from "./-processors-editor";
@@ -184,6 +186,14 @@ function BuilderPage() {
   // brand-new form (no current version) starts at 1.0.0.
   const saveDraftVersion = currentVersion ? bumpPatch(currentVersion) : "1.0.0";
   const deployVersion = currentVersion ? bumpMinor(currentVersion) : "1.0.0";
+
+  // Editing presence / read-only lock (#874). Claim the open form's single
+  // editing session, keyed on the loaded form's id. A brand-new, unsaved form
+  // has no concurrent editor (and the API exempts brand-new creation), so we
+  // pass null until the form has been loaded/saved. When another user holds the
+  // fresh claim, `isReadOnly` disables the edit affordances, Save and Deploy,
+  // and the banner names the current editor.
+  const { isReadOnly, holder: presenceHolder } = usePresence(loadedFromId);
 
   // Handlers
   // Runs the full validation flow (pre-flight checks + server validate), sets
@@ -908,6 +918,9 @@ function BuilderPage() {
   return (
     <div className={styles.builderShell}>
       <div className={styles.builderRoot}>
+      {isReadOnly && presenceHolder && (
+        <PresenceBanner holder={presenceHolder} />
+      )}
       <Toolbar
         formId={draft.formId}
         title={draft.title}
@@ -919,6 +932,7 @@ function BuilderPage() {
         isPreviewing={isPreviewing}
         isSubmitting={isSubmitting}
         isPublishing={isPublishing}
+        isReadOnly={isReadOnly}
         lastSaveStatus={lastSaveStatus}
         onFormIdChange={handleFormIdChange}
         onTitleChange={handleTitleChange}
@@ -1036,6 +1050,7 @@ function BuilderPage() {
           isSubmitting={isSubmitting}
           submitSuccess={submitSuccess}
           submitError={submitError}
+          isReadOnly={isReadOnly}
           onSubmit={handleSubmit}
           onClose={() => setIsSubmitOpen(false)}
         />
@@ -1049,6 +1064,7 @@ function BuilderPage() {
           isPublishing={isPublishing}
           publishSuccess={publishSuccess}
           publishError={publishError}
+          isReadOnly={isReadOnly}
           onPublish={handlePublish}
           onClose={handleClosePublish}
         />
