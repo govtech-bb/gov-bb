@@ -11,7 +11,14 @@ import {
   Text,
   TextArea,
 } from "@govtech-bb/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Bubble } from "#/components/chat/bubble";
 import { TridentAvatar } from "#/components/trident-avatar";
 import { extractText, hasAnyToolCall } from "#/lib/chat/messages";
@@ -27,8 +34,7 @@ export const Route = createFileRoute("/")({ component: ChatPage });
 
 const MAX_QUERY_LENGTH = 2000;
 
-// "Pinned to latest" tolerance (px). Within this of the bottom, streaming
-// growth and appended messages keep the viewport stuck to the end.
+// How close to the bottom (px) still counts as pinned to the latest message.
 const SCROLL_END_THRESHOLD = 80;
 
 const LANDING_URL =
@@ -48,7 +54,6 @@ type ChatRow =
 function ChatPage() {
   const [input, setInput] = useState("");
   const [pendingQuery, setPendingQuery] = useState<string | null>(null);
-  const [showJumpToLatest, setShowJumpToLatest] = useState(false);
   // True between the submit_form tool's "submitting" and "submitted"/"failed"
   // custom events, so the UI can show progress during the blocking POST.
   const [submitting, setSubmitting] = useState(false);
@@ -111,13 +116,10 @@ function ChatPage() {
     if (!isStreaming) setSubmitting(false);
   }, [isStreaming]);
 
-  // Screen-reader announcement of the COMPLETED assistant reply, surfaced via
-  // the off-screen live region in the render. Empty while streaming so we
-  // announce the finished answer once rather than partial tokens; the
-  // "Thinking" indicator (role="status") covers the in-progress state.
-  // Derived in render (not an effect) so the text is part of the live region's
-  // FIRST paint on load — aria-live ignores initial content, so a refresh with
-  // persisted history doesn't read the last reply out unprompted.
+  // Completed reply for the off-screen live region. Empty while streaming so
+  // it announces once, not token-by-token. Derived in render (not an effect)
+  // so it's present on first paint — aria-live ignores initial content, so a
+  // refresh with history doesn't re-announce the last reply.
   const announcement = useMemo(() => {
     if (isStreaming) return "";
     const lastAssistant = [...messages]
@@ -159,10 +161,9 @@ function ChatPage() {
     getScrollElement: () => parentRef.current,
     estimateSize: () => 72,
     getItemKey: (index) => rows[index].key,
-    // Anchor to the bottom: streaming growth and appended messages keep the
-    // end pinned, and prepends (if added later) stay visually stable.
+    // Keep the end pinned as the last bubble grows during streaming.
     anchorTo: "end",
-    // Only follow new output when the reader is already near the bottom.
+    // Follow new output only when the reader is already near the bottom.
     followOnAppend: true,
     scrollEndThreshold: SCROLL_END_THRESHOLD,
     overscan: 6,
@@ -187,9 +188,10 @@ function ChatPage() {
     if (messages.length > 0) setPendingQuery(null);
   }, [messages.length]);
 
-  // Start pinned to the latest message once the scroll element is live.
+  // Jump to the latest message on mount, before paint so there's no flash of
+  // the transcript scrolled to the top.
   const didInitialScrollRef = useRef(false);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (didInitialScrollRef.current || !parentRef.current) return;
     didInitialScrollRef.current = true;
     virtualizer.scrollToEnd();
@@ -230,12 +232,6 @@ function ChatPage() {
     setInput("");
   }
 
-  // Surface "Jump to latest" only while the reader has scrolled up off the end.
-  // setState bails out when the boolean is unchanged, so this is cheap.
-  const handleScroll = useCallback(() => {
-    setShowJumpToLatest(!virtualizer.isAtEnd(SCROLL_END_THRESHOLD));
-  }, [virtualizer]);
-
   function renderRow(row: ChatRow) {
     switch (row.kind) {
       case "welcome":
@@ -247,10 +243,8 @@ function ChatPage() {
       case "submitting":
         return <ThinkingIndicator label="Submitting your application" />;
       case "error":
-        // role="alert" so screen readers announce the failure. The raw
-        // error (e.g. "Internal server error") is unhelpful to a citizen, so
-        // show plain-language guidance and a retry that re-runs the failed
-        // turn (useChat.reload — no duplicate user message).
+        // role="alert" so it's announced. Plain-language guidance instead of
+        // the raw error; reload() re-runs the failed turn without a dup.
         return (
           <div role="alert" className="flex max-w-[92%] items-start gap-2.5">
             <TridentAvatar size="sm" tone="filled" />
@@ -291,15 +285,11 @@ function ChatPage() {
       <ChatHeader onStartAgain={handleStartAgain} />
 
       <div className="relative flex-1 overflow-hidden">
-        {/* Not a <main> — the root layout already provides the single main
-            landmark. The transcript is deliberately NOT a live region: the
-            virtualizer mounts/unmounts rows on scroll, which a live region
-            announces as new content, re-reading history to screen readers.
-            The working state and the completed reply are announced via the
-            dedicated off-screen live region below. */}
+        {/* Not a live region: the virtualizer remounts rows on scroll, which a
+            live region would re-announce as new. The reply is announced via the
+            off-screen region below instead. */}
         <div
           ref={parentRef}
-          onScroll={handleScroll}
           className="h-full overflow-y-auto px-s py-s"
         >
           <div
@@ -321,13 +311,14 @@ function ChatPage() {
           </div>
         </div>
 
-        {/* Off-screen live region: announces the completed assistant reply
-            once, decoupled from the virtualized transcript above. */}
+        {/* Off-screen live region for the completed reply. */}
         <div className="sr-only" aria-live="polite">
           {announcement}
         </div>
 
-        {showJumpToLatest && (
+        {/* Derived in render so it stays correct as a reply streams — the
+            virtualizer re-renders on scroll and re-measure. */}
+        {!virtualizer.isAtEnd(SCROLL_END_THRESHOLD) && (
           <button
             type="button"
             aria-label="Jump to latest message"
