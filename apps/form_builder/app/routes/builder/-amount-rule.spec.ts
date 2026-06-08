@@ -216,3 +216,170 @@ describe("round-trip", () => {
     });
   });
 });
+
+describe("compileAmount — quantity multiplier", () => {
+  it("wraps a fixed (bare-default) base in `{ * : [base, values.qty] }`", () => {
+    expect(
+      compileAmount(
+        { rules: [], default: 15 },
+        "order-details.number-of-copies",
+      ),
+    ).toEqual({
+      "*": [15, { var: "values.order-details.number-of-copies" }],
+    });
+  });
+
+  it("wraps a conditional if-chain base, multiplier outermost", () => {
+    const conditional: ConditionalAmount = {
+      rules: [
+        {
+          subject: { kind: "age", path: "applicant.dob" },
+          operator: "greaterThanOrEqual",
+          value: 60,
+          amount: 0,
+        },
+      ],
+      default: 25,
+    };
+    expect(
+      compileAmount(conditional, "order-details.number-of-copies"),
+    ).toEqual({
+      "*": [
+        {
+          if: [
+            { ">=": [{ age: [{ var: "values.applicant.dob" }] }, 60] },
+            0,
+            25,
+          ],
+        },
+        { var: "values.order-details.number-of-copies" },
+      ],
+    });
+  });
+
+  it("does not wrap when the quantity path is absent or empty", () => {
+    expect(compileAmount({ rules: [], default: 15 })).toBe(15);
+    expect(compileAmount({ rules: [], default: 15 }, "")).toBe(15);
+    expect(compileAmount({ rules: [], default: 15 }, undefined)).toBe(15);
+  });
+});
+
+describe("parseAmount — quantity multiplier", () => {
+  it("peels a fixed × quantity wrapper, stripping the `values.` prefix", () => {
+    const value = {
+      "*": [15, { var: "values.order-details.number-of-copies" }],
+    };
+    expect(parseAmount(value)).toEqual({
+      kind: "fixed",
+      amount: 15,
+      quantityPath: "order-details.number-of-copies",
+    });
+  });
+
+  it("peels a conditional × quantity wrapper, classifying the inner if-chain", () => {
+    const value = {
+      "*": [
+        {
+          if: [
+            { ">=": [{ age: [{ var: "values.applicant.dob" }] }, 60] },
+            0,
+            25,
+          ],
+        },
+        { var: "values.order-details.number-of-copies" },
+      ],
+    };
+    expect(parseAmount(value)).toEqual({
+      kind: "conditional",
+      conditional: {
+        rules: [
+          {
+            subject: { kind: "age", path: "applicant.dob" },
+            operator: "greaterThanOrEqual",
+            value: 60,
+            amount: 0,
+          },
+        ],
+        default: 25,
+      },
+      quantityPath: "order-details.number-of-copies",
+    });
+  });
+
+  it("falls back to advanced (raw = whole expr) when the inner node is unrecognized", () => {
+    const value = {
+      "*": [
+        { if: [{ in: [{ var: "values.a.b" }, ["x"]] }, 1, 0] },
+        { var: "values.qty" },
+      ],
+    };
+    expect(parseAmount(value)).toEqual({ kind: "advanced", raw: value });
+  });
+
+  it("falls back to advanced when the quantity var lacks the `values.` prefix", () => {
+    const value = { "*": [15, { var: "qty" }] };
+    expect(parseAmount(value)).toEqual({ kind: "advanced", raw: value });
+  });
+
+  it("falls back to advanced when the multiplier is not a single var (e.g. var × var)", () => {
+    const value = {
+      "*": [{ var: "values.unit-price" }, { var: "values.qty" }],
+    };
+    expect(parseAmount(value)).toEqual({ kind: "advanced", raw: value });
+  });
+
+  it("falls back to advanced for a `*` with the wrong arity", () => {
+    const value = { "*": [1, 2, { var: "values.qty" }] };
+    expect(parseAmount(value)).toEqual({ kind: "advanced", raw: value });
+  });
+
+  it("falls back to advanced for a non-number scalar base (never clobbers it)", () => {
+    const value = { "*": ["foo", { var: "values.qty" }] };
+    expect(parseAmount(value)).toEqual({ kind: "advanced", raw: value });
+  });
+
+  it("falls back to advanced for a null base", () => {
+    const value = { "*": [null, { var: "values.qty" }] };
+    expect(parseAmount(value)).toEqual({ kind: "advanced", raw: value });
+  });
+
+  it("peels a zero unit price (a valid free-per-unit base)", () => {
+    const value = { "*": [0, { var: "values.qty" }] };
+    expect(parseAmount(value)).toEqual({
+      kind: "fixed",
+      amount: 0,
+      quantityPath: "qty",
+    });
+  });
+});
+
+describe("round-trip — quantity multiplier", () => {
+  it("round-trips fixed × quantity", () => {
+    const value = compileAmount({ rules: [], default: 15 }, "order.copies");
+    expect(parseAmount(value)).toEqual({
+      kind: "fixed",
+      amount: 15,
+      quantityPath: "order.copies",
+    });
+  });
+
+  it("round-trips conditional × quantity", () => {
+    const conditional: ConditionalAmount = {
+      rules: [
+        {
+          subject: { kind: "field", path: "applicant.nationality" },
+          operator: "notEqual",
+          value: "national",
+          amount: 20,
+        },
+      ],
+      default: 10,
+    };
+    const value = compileAmount(conditional, "order.copies");
+    expect(parseAmount(value)).toEqual({
+      kind: "conditional",
+      conditional,
+      quantityPath: "order.copies",
+    });
+  });
+});

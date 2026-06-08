@@ -70,6 +70,36 @@ function coerceValue(value: string | number, numeric: boolean): string | number 
   return typeof value === "string" ? value : String(value);
 }
 
+// All editor state in one object so a single `buildAmount` derives the stored
+// value from it — the mode, the fixed value, the table, and the optional
+// quantity multiplier all feed one emit path (#937, #961).
+interface EditorState {
+  mode: "fixed" | "conditional";
+  conditional: ConditionalAmount;
+  /** The fixed-mode value; `undefined` means unset (no amount stored). */
+  fixedAmount: number | undefined;
+  /** Whether the quantity multiplier is switched on (the picker is visible). */
+  quantityEnabled: boolean;
+  /** Bare `stepId.fieldId` of the quantity field; "" until one is chosen. */
+  quantityPath: string;
+}
+
+// Derive the stored `amount` from editor state. The multiplier only applies
+// when it's enabled *and* a field is chosen — an empty path stores no `*`.
+// Fixed mode with no multiplier preserves `undefined` (an unset amount); with a
+// multiplier the base is the fixed number (unset → 0, since a price of nothing
+// per unit is meaningless).
+function buildAmount(
+  state: EditorState,
+): number | Record<string, unknown> | undefined {
+  const path = state.quantityEnabled ? state.quantityPath.trim() : "";
+  if (state.mode === "fixed") {
+    if (!path) return state.fixedAmount;
+    return compileAmount({ rules: [], default: state.fixedAmount ?? 0 }, path);
+  }
+  return compileAmount(state.conditional, path || undefined);
+}
+
 export function AmountEditor({
   amount,
   fields,
@@ -79,21 +109,32 @@ export function AmountEditor({
   // Classify the stored value once, on mount. The mode can't be derived from
   // `amount` alone — an empty conditional table compiles to a bare default
   // number, indistinguishable from a fixed amount — so the toggle is local
-  // state seeded from the initial classification.
+  // state seeded from the initial classification. A quantity multiplier, if
+  // present, was peeled by parseAmount and surfaces as `quantityPath`.
   const [initial] = useState(() => parseAmount(amount));
-  const [mode, setMode] = useState<"fixed" | "conditional">(
-    initial.kind === "conditional" ? "conditional" : "fixed",
-  );
-  const [conditional, setConditional] = useState<ConditionalAmount>(() =>
-    initial.kind === "conditional"
-      ? initial.conditional
-      : {
-          rules: [],
-          default: initial.kind === "fixed" ? initial.amount ?? 0 : 0,
-        },
-  );
+  const [state, setState] = useState<EditorState>(() => {
+    const quantityPath =
+      initial.kind === "advanced" ? undefined : initial.quantityPath;
+    return {
+      mode: initial.kind === "conditional" ? "conditional" : "fixed",
+      conditional:
+        initial.kind === "conditional"
+          ? initial.conditional
+          : {
+              rules: [],
+              default: initial.kind === "fixed" ? initial.amount ?? 0 : 0,
+            },
+      fixedAmount: initial.kind === "fixed" ? initial.amount : undefined,
+      quantityEnabled: quantityPath != null,
+      quantityPath: quantityPath ?? "",
+    };
+  });
 
+  const { mode, conditional } = state;
   const fid = (name: string) => `${idPrefix}-${name}`;
+  // The quantity multiplier can only point at a numeric field, so a per-unit ×
+  // quantity price never multiplies by text or a date (#961).
+  const numericFields = fields.filter((f) => f.isNumeric);
 
   // A hand- or AI-authored expression we don't recognize: show it read-only so
   // the editor never clobbers it. No toggle, no editable inputs.
@@ -112,18 +153,23 @@ export function AmountEditor({
     );
   }
 
-  const emit = (next: ConditionalAmount) => {
-    setConditional(next);
-    onChange(compileAmount(next));
+  // The single emit path: patch state and re-derive the stored amount from it.
+  const update = (patch: Partial<EditorState>) => {
+    const next = { ...state, ...patch };
+    setState(next);
+    onChange(buildAmount(next));
   };
 
+  // Patch just the conditional table.
+  const emit = (next: ConditionalAmount) => update({ conditional: next });
+
   const switchMode = (next: "fixed" | "conditional") => {
-    setMode(next);
-    // Keep the stored value consistent with the visible mode. Fixed collapses
-    // to the table's default; conditional re-emits the (possibly bare-default)
-    // chain — neither clobbers a value the author can see.
-    if (next === "fixed") onChange(conditional.default);
-    else onChange(compileAmount(conditional));
+    // Carry the visible value across the switch so neither mode clobbers a
+    // value the author can see: fixed adopts the table's default; conditional
+    // re-emits its (possibly bare-default) chain. buildAmount handles the rest,
+    // including re-applying any quantity multiplier.
+    if (next === "fixed") update({ mode: "fixed", fixedAmount: conditional.default });
+    else update({ mode: "conditional" });
   };
 
   // Apply a patch to rule `i`, re-coercing its comparison value to the type its
@@ -159,13 +205,15 @@ export function AmountEditor({
             id={fid("amount")}
             type="number"
             min={0}
-            value={typeof amount === "number" ? amount : ""}
+            value={state.fixedAmount ?? ""}
             onChange={(e) => {
               const raw = e.target.value;
-              // Mirror the table's default so switching to conditional carries
-              // the value the author just typed.
-              setConditional((c) => ({ ...c, default: toNumber(raw) }));
-              onChange(raw === "" ? undefined : Number(raw));
+              // Mirror the value into the table's default too, so switching to
+              // conditional carries the value the author just typed.
+              update({
+                fixedAmount: raw === "" ? undefined : Number(raw),
+                conditional: { ...conditional, default: toNumber(raw) },
+              });
             }}
           />
         </div>
@@ -298,6 +346,31 @@ export function AmountEditor({
             />
           </div>
         </>
+      )}
+
+      {/* Quantity multiplier — applies to both modes. When on and a field is
+          chosen, the amount above is multiplied by that field (#961). */}
+      <div className={styles.formGroup}>
+        <label htmlFor={fid("quantityEnabled")}>
+          <input
+            id={fid("quantityEnabled")}
+            type="checkbox"
+            checked={state.quantityEnabled}
+            onChange={(e) => update({ quantityEnabled: e.target.checked })}
+          />{" "}
+          Multiply by a quantity field
+        </label>
+      </div>
+      {state.quantityEnabled && (
+        <div className={styles.formGroup}>
+          <label htmlFor={fid("quantityField")}>Quantity field</label>
+          <ValuePathPicker
+            id={fid("quantityField")}
+            value={state.quantityPath}
+            fields={numericFields}
+            onChange={(path) => update({ quantityPath: path })}
+          />
+        </div>
       )}
     </>
   );
