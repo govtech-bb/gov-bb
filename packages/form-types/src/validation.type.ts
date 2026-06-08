@@ -11,6 +11,12 @@ export const validationConfigSchema = z.object({
   // that must not be in the future. Resolved fresh on every run, so it never
   // goes stale the way a hardcoded year would.
   currentYear: z.boolean().optional(),
+  // Shifts the resolved reference date forward by N calendar months on the
+  // cross-field date rules (`after`/`before`/`onOrAfter`/`onOrBefore`), so the
+  // bound becomes "reference + N months" — e.g. an end date that must be on or
+  // before the start date plus 6 months. Day-of-month clamps to the target
+  // month's last day (31 Aug + 6 → 28/29 Feb). Ignored by non-date rules.
+  offsetMonths: z.number().optional(),
 });
 export type ValidationConfig = z.infer<typeof validationConfigSchema>;
 
