@@ -512,6 +512,53 @@ When a form lets the applicant supply one identifier in place of another ("Use p
 3. \`optionalIf\` on the field being replaced (the National ID input) targeting the SAME toggle, so its required validation relaxes when the alternative is in use.
 Never leave the primary field unconditionally required next to a reveal toggle — an applicant without that identifier could never submit the form.
 
+## Step-Level vs Field-Level Behaviours
+The behaviours above (\`fieldConditionalOn\`, \`optionalIf\`) are FIELD-level: they live in a \`behaviours\` array inside an element's \`overrides\`. The next behaviours are STEP-level — \`stepConditionalOn\`, \`repeatable\` (and \`sharedFields\`) — and they live in a \`behaviours\` array on the STEP itself, as a sibling of \`elements\` (placed AFTER it), never inside an element:
+\`\`\`json
+{
+  "stepId": "endorsement-details",
+  "title": "Your endorsements",
+  "elements": [ /* ...the step's fields... */ ],
+  "behaviours": [{"type": "repeatable", "min": 1, "max": 5}]
+}
+\`\`\`
+
+## Conditional Steps (stepConditionalOn)
+Shows or hides a WHOLE step based on an earlier field's value — the step-level counterpart of \`fieldConditionalOn\`.
+\`\`\`json
+"behaviours": [{"type": "stepConditionalOn", "targetStepId": "endorsements", "targetFieldId": "has-endorsements", "operator": "equal", "value": "yes"}]
+\`\`\`
+Unlike the field-level conditionals (where it is optional), targetStepId is REQUIRED here — it names the step that holds the watched field, and \`targetFieldId\` is that field. Operators ("equal", "notEqual", "in", "exists") and the \`value\` rule are identical to \`fieldConditionalOn\`: the compared \`value\` is ALWAYS lowercased and kebab-cased to match the watched field's option \`value\` (\`"yes"\`, not \`"Yes"\`; \`"christ-church"\`, not \`"Christ Church"\`), never its display label. operator is REQUIRED.
+
+## Repeatable Steps (repeatable)
+Lets the applicant complete a step several times ("Add another?") — e.g. listing several endorsements, dependents or qualifications. The whole step's set of fields repeats as one instance.
+\`\`\`json
+"behaviours": [{"type": "repeatable", "min": 1, "max": 5, "addAnotherLabel": "Do you need to add another endorsement?"}]
+\`\`\`
+- \`min\` and \`max\` are integers (min ≥ 1, max ≥ min) bounding how many instances are allowed.
+- \`addAnotherLabel\` (optional) overrides the auto-generated "Add another?" radio label so it can be phrased per step. \`instanceLabel\` (optional) is the noun used to mark instances beyond the first (e.g. "Dependent" renders the second instance as "Dependent 2"). Both are optional — OMIT the key entirely rather than sending an empty string \`""\`.
+- This is NOT Rule 14's \`addAnother\`: never emit an \`addAnother\` key (the frontend injects that radio automatically); \`addAnotherLabel\` only customises ITS label.
+
+A repeatable step is almost always GATED by a yes/no question on an earlier step, paired via \`stepConditionalOn\`: a \`components/generic-radio\` "Do you have any endorsements?" (yes/no) on one step, then the repeatable details step shown only when the answer is "yes". Author the two together:
+\`\`\`json
+{"stepId": "endorsements", "title": "Tell us about any endorsements", "elements": [
+  {"ref": "components/generic-radio", "overrides": {"fieldId": "has-endorsements", "label": "Do you have any endorsements?", "options": [{"label": "Yes", "value": "yes"}, {"label": "No", "value": "no"}], "validations": {"required": {"value": true, "error": "Select an option"}}}}
+]}
+{"stepId": "endorsement-details", "title": "Your endorsements", "elements": [
+  {"ref": "components/generic-text", "overrides": {"fieldId": "licence-type", "label": "Type of licence"}},
+  {"ref": "components/generic-date", "overrides": {"fieldId": "endorsement-date", "label": "Date of endorsement"}}
+], "behaviours": [
+  {"type": "repeatable", "min": 1, "max": 5, "addAnotherLabel": "Do you need to add another endorsement?"},
+  {"type": "stepConditionalOn", "targetStepId": "endorsements", "targetFieldId": "has-endorsements", "operator": "equal", "value": "yes"}
+]}
+\`\`\`
+
+### Shared fields on a repeatable step (sharedFields)
+When some fields on a repeatable step should be answered ONCE for all instances rather than re-entered per instance, list their fieldIds in a \`sharedFields\` behaviour on the same step. It is only meaningful alongside \`repeatable\` — never use it on a non-repeatable step. In the endorsement step above, the licence type is the same for every endorsement while the date differs, so \`licence-type\` is shared and \`endorsement-date\` stays per-instance:
+\`\`\`json
+"behaviours": [{"type": "repeatable", "min": 1, "max": 5}, {"type": "sharedFields", "fieldIds": ["licence-type"]}]
+\`\`\`
+
 ## Declaration Checkbox Pattern
 The declaration step contains EXACTLY ONE element — this confirmation checkbox, nothing else (Rule 17). The fieldId is always \`declaration-confirmed\`, the label is always \`Declaration\`, and it is always required:
 \`\`\`json
