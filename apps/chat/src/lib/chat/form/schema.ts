@@ -99,52 +99,34 @@ export interface ActiveFormSchema {
   activeFieldIds: Set<string>;
 }
 
-// File uploads, payment, and sensitive data (bank details / legal declarations)
-// can't safely happen in open chat. If a form involves any of these, we hand
-// the user a link to the full form rather than collecting it inline.
+// File uploads, payment, and a small set of explicitly listed forms can't
+// safely be collected in open chat. If a form is one of these, we hand the
+// user a link to the full form rather than collecting it inline.
 //
 // Why each input:
 //   - File: chat has no upload primitive.
 //   - Payment: read from the safe `requiresPayment` boolean on the public
 //     contract — `processors` is stripped server-side, so the previous
-//     `contract.processors?.some(...)` check was dead and payment forms (birth
-//     /death/marriage certs) got collected inline. See #965.
-//   - Sensitive data: bank fields and the declaration step belong in a
-//     structured UI with validation, secure framing, and the declaration
-//     wording visible — none of which chat can guarantee. See #966 / #931.
-//
-// Scans the whole contract (not just active fields) since the relevant elements
-// may be conditionally revealed.
+//     `contract.processors?.some(...)` check was dead and payment forms
+//     (birth/death/marriage certs) got collected inline. See #965.
+//   - Form ID on the exclusion list below: forms that collect bank account
+//     details or otherwise can't be safely filled in chat. See #966 / #931.
 
-// Conventional step IDs across published recipes. Author guide: any new form
-// step that collects bank/financial data or requires a legal agreement should
-// use one of these IDs (or be added here) so the chat hands off correctly.
+// Explicit handoff list. A form ID belongs here when it collects bank/account
+// details or has another structural reason the chat cannot collect it safely.
+// We list each form by ID instead of pattern-matching on step or field names
+// so the trigger stays auditable and stable as recipes evolve.
 //
-// Scope note: ~60 of ~62 published recipes end with a `declaration` step, so
-// including it here effectively turns the chat into a form-finder for almost
-// every form. That is the intended #966 / #931 policy — the chat cannot
-// reliably present declaration wording and accept agreement (it loops on "Do
-// you agree?"), so the only safe behaviour is to hand off. Reviewers: remove
-// `"declaration"` here to narrow the trigger.
-const SENSITIVE_STEP_IDS = new Set([
-  "declaration",
-  "bank-account",
-  "bank-details",
+// Maintenance: when a new form is published that collects bank/financial
+// details (look for `bank-*`, `account-*`, `sort-code`, `routing-*` field IDs,
+// or a `bank-account` / `bank-details` step), add its formId here.
+const HANDOFF_FORM_IDS: ReadonlySet<string> = new Set([
+  "duties-performed-exam-claim",
+  "get-a-primary-school-textbook-grant",
+  "school-uniform-grant-barbados",
+  "smart-stream-vendor-registration",
+  "textbook-grant-application",
 ]);
-
-// Field-level fallback for forms that don't use the conventional step IDs but
-// still collect bank/account details. Conservative — only matches identifiers
-// that are unambiguously financial.
-const SENSITIVE_FIELD_PATTERN =
-  /^(bank-|account-(name|number|holder|type)|sort-code|routing-)/;
-
-function collectsSensitiveData(contract: ServiceContract): boolean {
-  return contract.steps.some(
-    (step) =>
-      SENSITIVE_STEP_IDS.has(step.stepId) ||
-      step.elements.some((el) => SENSITIVE_FIELD_PATTERN.test(el.fieldId)),
-  );
-}
 
 export function needsHandoff(contract: ServiceContract): boolean {
   const hasFile = contract.steps.some((step) =>
@@ -153,7 +135,7 @@ export function needsHandoff(contract: ServiceContract): boolean {
   return (
     hasFile ||
     contract.requiresPayment === true ||
-    collectsSensitiveData(contract)
+    HANDOFF_FORM_IDS.has(contract.formId)
   );
 }
 

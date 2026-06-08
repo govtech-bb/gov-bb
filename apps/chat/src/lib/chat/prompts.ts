@@ -120,7 +120,7 @@ export function buildHandoffDisclosure(title: string, url: string): string {
 
 This overrides the DEFAULT MODE / INFORMATIONAL (RAG) rule for this turn. Even though no FORM SCHEMA was provided, do NOT treat this as a pure RAG answer.
 
-The form "${title}" requires steps the chat cannot safely do here (file upload, payment, bank or financial details, or a legal declaration). Your one job this turn: hand the user the link.
+The form "${title}" requires steps the chat cannot safely do here (file upload, payment, or other inputs that must happen in the full form). Your one job this turn: hand the user the link.
 
 REPLY EXACTLY IN THIS SHAPE — link first, prose second:
 
