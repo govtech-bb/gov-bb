@@ -1,12 +1,12 @@
 import { compileAmount, parseAmount } from "./-amount-rule";
 import type { ConditionalAmount } from "./-amount-rule";
 
-describe("compileAmount", () => {
-  it("compiles a single equality rule to an if-chain ending in the default", () => {
+describe("compileAmount — subject and operators", () => {
+  it("compiles a field-value equality rule, prefixing the var with `values.`", () => {
     const conditional: ConditionalAmount = {
       rules: [
         {
-          field: "applicant-details.nationality",
+          subject: { kind: "field", path: "applicant.nationality" },
           operator: "notEqual",
           value: "national",
           amount: 20,
@@ -16,38 +16,82 @@ describe("compileAmount", () => {
     };
     expect(compileAmount(conditional)).toEqual({
       if: [
-        { "!=": [{ var: "applicant-details.nationality" }, "national"] },
+        { "!=": [{ var: "values.applicant.nationality" }, "national"] },
         20,
         10,
       ],
     });
   });
 
-  it("maps `equal` to `==`", () => {
+  it("compiles an `age of field` rule to the `age` op over the prefixed var", () => {
     const conditional: ConditionalAmount = {
-      rules: [{ field: "a.b", operator: "equal", value: "x", amount: 5 }],
-      default: 0,
+      rules: [
+        {
+          subject: { kind: "age", path: "applicant.dob" },
+          operator: "greaterThanOrEqual",
+          value: 60,
+          amount: 0,
+        },
+      ],
+      default: 25,
     };
     expect(compileAmount(conditional)).toEqual({
-      if: [{ "==": [{ var: "a.b" }, "x"] }, 5, 0],
+      if: [{ ">=": [{ age: [{ var: "values.applicant.dob" }] }, 60] }, 0, 25],
     });
   });
 
-  it("chains multiple rules in order, default last", () => {
+  it("maps every operator to its JSONLogic key", () => {
+    const ops = [
+      ["equal", "=="],
+      ["notEqual", "!="],
+      ["lessThan", "<"],
+      ["lessThanOrEqual", "<="],
+      ["greaterThan", ">"],
+      ["greaterThanOrEqual", ">="],
+    ] as const;
+    for (const [operator, key] of ops) {
+      const compiled = compileAmount({
+        rules: [
+          {
+            subject: { kind: "field", path: "a.b" },
+            operator,
+            value: 1,
+            amount: 5,
+          },
+        ],
+        default: 0,
+      });
+      expect(compiled).toEqual({
+        if: [{ [key]: [{ var: "values.a.b" }, 1] }, 5, 0],
+      });
+    }
+  });
+
+  it("chains age bands in order, first match wins, default last", () => {
     const conditional: ConditionalAmount = {
       rules: [
-        { field: "a.b", operator: "equal", value: "x", amount: 1 },
-        { field: "c.d", operator: "notEqual", value: "y", amount: 2 },
+        {
+          subject: { kind: "age", path: "applicant.dob" },
+          operator: "lessThan",
+          value: 16,
+          amount: 5,
+        },
+        {
+          subject: { kind: "age", path: "applicant.dob" },
+          operator: "lessThan",
+          value: 66,
+          amount: 10,
+        },
       ],
-      default: 9,
+      default: 20,
     };
     expect(compileAmount(conditional)).toEqual({
       if: [
-        { "==": [{ var: "a.b" }, "x"] },
-        1,
-        { "!=": [{ var: "c.d" }, "y"] },
-        2,
-        9,
+        { "<": [{ age: [{ var: "values.applicant.dob" }] }, 16] },
+        5,
+        { "<": [{ age: [{ var: "values.applicant.dob" }] }, 66] },
+        10,
+        20,
       ],
     });
   });
@@ -69,10 +113,10 @@ describe("parseAmount", () => {
     });
   });
 
-  it("decompiles our if-chain shape back to a conditional table", () => {
+  it("decompiles a field-value if-chain, stripping the `values.` prefix", () => {
     const value = {
       if: [
-        { "!=": [{ var: "applicant-details.nationality" }, "national"] },
+        { "!=": [{ var: "values.applicant.nationality" }, "national"] },
         20,
         10,
       ],
@@ -82,7 +126,7 @@ describe("parseAmount", () => {
       conditional: {
         rules: [
           {
-            field: "applicant-details.nationality",
+            subject: { kind: "field", path: "applicant.nationality" },
             operator: "notEqual",
             value: "national",
             amount: 20,
@@ -93,68 +137,82 @@ describe("parseAmount", () => {
     });
   });
 
-  it("decompiles a multi-rule if-chain", () => {
+  it("decompiles an `age` if-chain back to an age subject", () => {
     const value = {
-      if: [
-        { "==": [{ var: "a.b" }, "x"] },
-        1,
-        { "!=": [{ var: "c.d" }, "y"] },
-        2,
-        9,
-      ],
+      if: [{ ">=": [{ age: [{ var: "values.applicant.dob" }] }, 60] }, 0, 25],
     };
     expect(parseAmount(value)).toEqual({
       kind: "conditional",
       conditional: {
         rules: [
-          { field: "a.b", operator: "equal", value: "x", amount: 1 },
-          { field: "c.d", operator: "notEqual", value: "y", amount: 2 },
+          {
+            subject: { kind: "age", path: "applicant.dob" },
+            operator: "greaterThanOrEqual",
+            value: 60,
+            amount: 0,
+          },
         ],
-        default: 9,
+        default: 25,
       },
     });
   });
 
-  it("falls back to advanced for an unrecognized expression object", () => {
-    const value = { age: [{ var: "applicant.dob" }] };
+  it("falls back to advanced for an unrecognized operator (e.g. `in`)", () => {
+    const value = {
+      if: [{ in: [{ var: "values.a.b" }, ["x"]] }, 1, 0],
+    };
     expect(parseAmount(value)).toEqual({ kind: "advanced", raw: value });
   });
 
-  it("falls back to advanced when an operator is outside equal/notEqual", () => {
-    const value = { if: [{ ">": [{ var: "a.b" }, 5] }, 1, 0] };
+  it("falls back to advanced for a var missing the `values.` prefix", () => {
+    // The pre-fix equality-slice shape; we don't recognize it, so it shows
+    // read-only rather than being silently re-prefixed.
+    const value = { if: [{ "==": [{ var: "applicant.x" }, "y"] }, 1, 0] };
+    expect(parseAmount(value)).toEqual({ kind: "advanced", raw: value });
+  });
+
+  it("falls back to advanced for a malformed `age` lhs", () => {
+    const value = {
+      if: [{ ">=": [{ age: { var: "values.a.b" } }, 60] }, 0, 1],
+    };
     expect(parseAmount(value)).toEqual({ kind: "advanced", raw: value });
   });
 
   it("falls back to advanced for a malformed (even-length) if array", () => {
-    const value = { if: [{ "==": [{ var: "a.b" }, "x"] }, 1] };
-    expect(parseAmount(value)).toEqual({ kind: "advanced", raw: value });
-  });
-
-  it("falls back to advanced when a comparison value is not a string", () => {
-    // Our editor only ever emits string comparison values; a numeric one is
-    // someone else's expression, so we must not claim it round-trips.
-    const value = { if: [{ "==": [{ var: "a.b" }, 5] }, 1, 0] };
+    const value = { if: [{ "==": [{ var: "values.a.b" }, "x"] }, 1] };
     expect(parseAmount(value)).toEqual({ kind: "advanced", raw: value });
   });
 
   it("falls back to advanced when an amount in the chain is not a number", () => {
     const value = {
-      if: [{ "==": [{ var: "a.b" }, "x"] }, { var: "fee" }, 0],
+      if: [{ "==": [{ var: "values.a.b" }, "x"] }, { var: "fee" }, 0],
     };
     expect(parseAmount(value)).toEqual({ kind: "advanced", raw: value });
   });
 });
 
 describe("round-trip", () => {
-  it("compile then parse returns an equivalent conditional table", () => {
+  it("round-trips a mixed field + age band table", () => {
     const conditional: ConditionalAmount = {
       rules: [
-        { field: "a.b", operator: "equal", value: "x", amount: 1 },
-        { field: "c.d", operator: "notEqual", value: "y", amount: 2 },
+        {
+          subject: { kind: "field", path: "applicant.nationality" },
+          operator: "equal",
+          value: "diplomat",
+          amount: 0,
+        },
+        {
+          subject: { kind: "age", path: "applicant.dob" },
+          operator: "lessThan",
+          value: 16,
+          amount: 5,
+        },
       ],
-      default: 9,
+      default: 20,
     };
-    const compiled = compileAmount(conditional);
-    expect(parseAmount(compiled)).toEqual({ kind: "conditional", conditional });
+    expect(parseAmount(compileAmount(conditional))).toEqual({
+      kind: "conditional",
+      conditional,
+    });
   });
 });

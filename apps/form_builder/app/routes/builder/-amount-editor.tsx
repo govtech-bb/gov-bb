@@ -5,6 +5,8 @@ import {
   compileAmount,
   parseAmount,
   type AmountOperator,
+  type AmountRule,
+  type AmountSubject,
   type ConditionalAmount,
 } from "./-amount-rule";
 import styles from "../../styles/builder.module.css";
@@ -22,13 +24,40 @@ interface AmountEditorProps {
 const OPERATOR_LABELS: Record<AmountOperator, string> = {
   equal: "is",
   notEqual: "is not",
+  lessThan: "is less than",
+  lessThanOrEqual: "is at most",
+  greaterThan: "is greater than",
+  greaterThanOrEqual: "is at least",
 };
+
+// Operators that compare numerically. Together with an `age` subject (always a
+// number of years), these decide whether a rule's comparison value is a number
+// or free text — so we don't store "national" against a `>=` or a string "16"
+// against an age band (string ordering would mis-sort multi-digit numbers).
+const ORDERING_OPERATORS: AmountOperator[] = [
+  "lessThan",
+  "lessThanOrEqual",
+  "greaterThan",
+  "greaterThanOrEqual",
+];
+
+function wantsNumber(subject: AmountSubject, operator: AmountOperator): boolean {
+  return subject.kind === "age" || ORDERING_OPERATORS.includes(operator);
+}
 
 // Empty input → 0: the default and each rule amount are mandatory numbers, so
 // the compiled if-chain always terminates in a real number and resolution can
 // never fail to produce one.
-function toAmount(raw: string): number {
+function toNumber(raw: string): number {
   return raw === "" ? 0 : Number(raw);
+}
+
+// Keep a rule's comparison value in the type its subject/operator imply, so a
+// subject or operator change never leaves a stale string under a numeric
+// comparison (or vice versa).
+function coerceValue(value: string | number, numeric: boolean): string | number {
+  if (numeric) return typeof value === "number" ? value : toNumber(value) || 0;
+  return typeof value === "string" ? value : String(value);
 }
 
 export function AmountEditor({
@@ -48,7 +77,10 @@ export function AmountEditor({
   const [conditional, setConditional] = useState<ConditionalAmount>(() =>
     initial.kind === "conditional"
       ? initial.conditional
-      : { rules: [], default: initial.kind === "fixed" ? initial.amount ?? 0 : 0 },
+      : {
+          rules: [],
+          default: initial.kind === "fixed" ? initial.amount ?? 0 : 0,
+        },
   );
 
   const fid = (name: string) => `${idPrefix}-${name}`;
@@ -84,6 +116,18 @@ export function AmountEditor({
     else onChange(compileAmount(conditional));
   };
 
+  // Apply a patch to rule `i`, re-coercing its comparison value to the type its
+  // (possibly changed) subject/operator now imply.
+  const patchRule = (i: number, patch: Partial<AmountRule>) =>
+    emit({
+      ...conditional,
+      rules: conditional.rules.map((r, j) => {
+        if (j !== i) return r;
+        const next = { ...r, ...patch };
+        return { ...next, value: coerceValue(next.value, wantsNumber(next.subject, next.operator)) };
+      }),
+    });
+
   return (
     <>
       <div className={styles.formGroup}>
@@ -110,93 +154,92 @@ export function AmountEditor({
               const raw = e.target.value;
               // Mirror the table's default so switching to conditional carries
               // the value the author just typed.
-              setConditional((c) => ({ ...c, default: toAmount(raw) }));
+              setConditional((c) => ({ ...c, default: toNumber(raw) }));
               onChange(raw === "" ? undefined : Number(raw));
             }}
           />
         </div>
       ) : (
         <>
-          {conditional.rules.map((rule, i) => (
-            <div key={i} className={styles.formGroup}>
-              <label htmlFor={fid(`ruleField-${i}`)}>Condition field</label>
-              <ValuePathPicker
-                id={fid(`ruleField-${i}`)}
-                value={rule.field}
-                fields={fields}
-                onChange={(field) =>
-                  emit({
-                    ...conditional,
-                    rules: conditional.rules.map((r, j) =>
-                      j === i ? { ...r, field } : r,
-                    ),
-                  })
-                }
-              />
-              <label htmlFor={fid(`ruleOp-${i}`)}>Condition operator</label>
-              <select
-                id={fid(`ruleOp-${i}`)}
-                value={rule.operator}
-                onChange={(e) =>
-                  emit({
-                    ...conditional,
-                    rules: conditional.rules.map((r, j) =>
-                      j === i
-                        ? { ...r, operator: e.target.value as AmountOperator }
-                        : r,
-                    ),
-                  })
-                }
-              >
-                {(Object.keys(OPERATOR_LABELS) as AmountOperator[]).map((op) => (
-                  <option key={op} value={op}>
-                    {OPERATOR_LABELS[op]}
-                  </option>
-                ))}
-              </select>
-              <label htmlFor={fid(`ruleValue-${i}`)}>Comparison value</label>
-              <input
-                id={fid(`ruleValue-${i}`)}
-                type="text"
-                value={rule.value}
-                onChange={(e) =>
-                  emit({
-                    ...conditional,
-                    rules: conditional.rules.map((r, j) =>
-                      j === i ? { ...r, value: e.target.value } : r,
-                    ),
-                  })
-                }
-              />
-              <label htmlFor={fid(`ruleAmount-${i}`)}>Rule amount</label>
-              <input
-                id={fid(`ruleAmount-${i}`)}
-                type="number"
-                min={0}
-                value={rule.amount}
-                onChange={(e) =>
-                  emit({
-                    ...conditional,
-                    rules: conditional.rules.map((r, j) =>
-                      j === i ? { ...r, amount: toAmount(e.target.value) } : r,
-                    ),
-                  })
-                }
-              />
-              <button
-                type="button"
-                className={styles.btnErase}
-                onClick={() =>
-                  emit({
-                    ...conditional,
-                    rules: conditional.rules.filter((_, j) => j !== i),
-                  })
-                }
-              >
-                Remove rule
-              </button>
-            </div>
-          ))}
+          {conditional.rules.map((rule, i) => {
+            const numeric = wantsNumber(rule.subject, rule.operator);
+            return (
+              <div key={i} className={styles.formGroup}>
+                <label htmlFor={fid(`ruleSubject-${i}`)}>Compare</label>
+                <select
+                  id={fid(`ruleSubject-${i}`)}
+                  value={rule.subject.kind}
+                  onChange={(e) =>
+                    patchRule(i, {
+                      subject: {
+                        kind: e.target.value as AmountSubject["kind"],
+                        path: rule.subject.path,
+                      },
+                    })
+                  }
+                >
+                  <option value="field">Field value</option>
+                  <option value="age">Age of field</option>
+                </select>
+                <label htmlFor={fid(`ruleField-${i}`)}>Condition field</label>
+                <ValuePathPicker
+                  id={fid(`ruleField-${i}`)}
+                  value={rule.subject.path}
+                  fields={fields}
+                  onChange={(path) =>
+                    patchRule(i, { subject: { ...rule.subject, path } })
+                  }
+                />
+                <label htmlFor={fid(`ruleOp-${i}`)}>Condition operator</label>
+                <select
+                  id={fid(`ruleOp-${i}`)}
+                  value={rule.operator}
+                  onChange={(e) =>
+                    patchRule(i, { operator: e.target.value as AmountOperator })
+                  }
+                >
+                  {(Object.keys(OPERATOR_LABELS) as AmountOperator[]).map((op) => (
+                    <option key={op} value={op}>
+                      {OPERATOR_LABELS[op]}
+                    </option>
+                  ))}
+                </select>
+                <label htmlFor={fid(`ruleValue-${i}`)}>Comparison value</label>
+                <input
+                  id={fid(`ruleValue-${i}`)}
+                  type={numeric ? "number" : "text"}
+                  value={rule.value}
+                  onChange={(e) =>
+                    patchRule(i, {
+                      value: numeric ? toNumber(e.target.value) : e.target.value,
+                    })
+                  }
+                />
+                <label htmlFor={fid(`ruleAmount-${i}`)}>Rule amount</label>
+                <input
+                  id={fid(`ruleAmount-${i}`)}
+                  type="number"
+                  min={0}
+                  value={rule.amount}
+                  onChange={(e) =>
+                    patchRule(i, { amount: toNumber(e.target.value) })
+                  }
+                />
+                <button
+                  type="button"
+                  className={styles.btnErase}
+                  onClick={() =>
+                    emit({
+                      ...conditional,
+                      rules: conditional.rules.filter((_, j) => j !== i),
+                    })
+                  }
+                >
+                  Remove rule
+                </button>
+              </div>
+            );
+          })}
           <button
             type="button"
             className={styles.btnPrimary}
@@ -205,7 +248,12 @@ export function AmountEditor({
                 ...conditional,
                 rules: [
                   ...conditional.rules,
-                  { field: "", operator: "equal", value: "", amount: 0 },
+                  {
+                    subject: { kind: "field", path: "" },
+                    operator: "equal",
+                    value: "",
+                    amount: 0,
+                  },
                 ],
               })
             }
@@ -220,7 +268,7 @@ export function AmountEditor({
               min={0}
               value={conditional.default}
               onChange={(e) =>
-                emit({ ...conditional, default: toAmount(e.target.value) })
+                emit({ ...conditional, default: toNumber(e.target.value) })
               }
             />
           </div>
