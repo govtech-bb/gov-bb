@@ -72,6 +72,7 @@ function ChatPage() {
     error,
     stop,
     clear,
+    retry,
     addToolApprovalResponse,
   } = useChat({
     id: "conversation",
@@ -231,9 +232,26 @@ function ChatPage() {
       case "submitting":
         return <ThinkingIndicator label="Submitting your application" />;
       case "error":
+        // role="alert" so screen readers announce the failure. The raw
+        // error (e.g. "Internal server error") is unhelpful to a citizen, so
+        // show plain-language guidance and a retry that re-runs the failed
+        // turn (useChat.retry — no duplicate user message).
         return (
-          <div className="rounded-md bg-red-10 px-3 py-2 text-red-00 text-sm">
-            {row.text}
+          <div
+            role="alert"
+            className="rounded-md bg-red-10 px-3 py-3 text-red-00 text-sm"
+          >
+            <p className="font-semibold">Something went wrong</p>
+            <p className="mt-1">
+              We couldn&rsquo;t get a response just now. Please try again.
+            </p>
+            <button
+              type="button"
+              onClick={() => void retry()}
+              className="mt-2 font-semibold underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+            >
+              Try again
+            </button>
           </div>
         );
       case "message":
