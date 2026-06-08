@@ -5,9 +5,6 @@ export interface CreatePaymentParams {
   reference: string;
   customerEmail: string;
   customerName: string;
-  allowCredit?: boolean;
-  allowDebit?: boolean;
-  allowPayce?: boolean;
 }
 
 export interface CreatePaymentResult {
