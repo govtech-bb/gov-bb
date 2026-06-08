@@ -29,6 +29,15 @@ describe("validateDateField", () => {
       expect(err?.message).toBe("Enter date of birth");
     });
 
+    it("treats empty-string parts as nothing entered", () => {
+      const err = validateDateField(
+        makeField(),
+        { day: "", month: "", year: "" },
+        {},
+      );
+      expect(err?.message).toBe("Enter date of birth");
+    });
+
     it("keeps an acronym label's casing in the 'Enter' message", () => {
       const field = {
         ...makeField(),
@@ -55,7 +64,11 @@ describe("validateDateField", () => {
     });
 
     it("names the single missing part and highlights it", () => {
-      const err = validateDateField(makeField(), { day: 5, year: 1990 }, {});
+      const err = validateDateField(
+        makeField(),
+        { day: "5", year: "1990" },
+        {},
+      );
       expect(err).toEqual({
         message: "Date of birth must include a month",
         parts: ["month"],
@@ -63,7 +76,7 @@ describe("validateDateField", () => {
     });
 
     it("names two missing parts and highlights both", () => {
-      const err = validateDateField(makeField(), { year: 1990 }, {});
+      const err = validateDateField(makeField(), { year: "1990" }, {});
       expect(err).toEqual({
         message: "Date of birth must include a day and month",
         parts: ["day", "month"],
@@ -72,11 +85,23 @@ describe("validateDateField", () => {
 
     it("flags incomplete dates even when the field is not required", () => {
       const field = { ...makeField(), validations: { past: {} } } as Primitive;
-      const err = validateDateField(field, { day: 5 }, {});
+      const err = validateDateField(field, { day: "5" }, {});
       expect(err?.message).toBe("Date of birth must include a month and year");
     });
 
     it("requires 4 numbers in the year", () => {
+      const err = validateDateField(
+        makeField(),
+        { day: "5", month: "6", year: "90" },
+        {},
+      );
+      expect(err).toEqual({
+        message: "Year must include 4 numbers",
+        parts: ["year"],
+      });
+    });
+
+    it("validates numeric parts identically to string parts (migration tolerance)", () => {
       const err = validateDateField(
         makeField(),
         { day: 5, month: 6, year: 90 },
@@ -93,7 +118,7 @@ describe("validateDateField", () => {
     it("rejects an impossible month and highlights the month field", () => {
       const err = validateDateField(
         makeField(),
-        { day: 5, month: 13, year: 1990 },
+        { day: "5", month: "13", year: "1990" },
         {},
       );
       expect(err).toEqual({
@@ -105,7 +130,7 @@ describe("validateDateField", () => {
     it("rejects an impossible day for the month and highlights the day field", () => {
       const err = validateDateField(
         makeField(),
-        { day: 31, month: 2, year: 1990 },
+        { day: "31", month: "2", year: "1990" },
         {},
       );
       expect(err).toEqual({
@@ -117,7 +142,16 @@ describe("validateDateField", () => {
     it("accepts 29 February in a leap year", () => {
       const err = validateDateField(
         makeField(),
-        { day: 29, month: 2, year: 2024 },
+        { day: "29", month: "2", year: "2024" },
+        {},
+      );
+      expect(err).toBeNull();
+    });
+
+    it("accepts a valid date whose parts carry leading zeros", () => {
+      const err = validateDateField(
+        makeField(),
+        { day: "09", month: "06", year: "1990" },
         {},
       );
       expect(err).toBeNull();
@@ -126,7 +160,7 @@ describe("validateDateField", () => {
     it("rejects 29 February in a non-leap year", () => {
       const err = validateDateField(
         makeField(),
-        { day: 29, month: 2, year: 2023 },
+        { day: "29", month: "2", year: "2023" },
         {},
       );
       expect(err?.message).toBe("Date of birth must be a real date");
@@ -135,7 +169,7 @@ describe("validateDateField", () => {
     it("highlights the whole input when more than one part is impossible", () => {
       const err = validateDateField(
         makeField(),
-        { day: 32, month: 13, year: 1990 },
+        { day: "32", month: "13", year: "1990" },
         {},
       );
       expect(err).toEqual({
@@ -148,7 +182,7 @@ describe("validateDateField", () => {
       const field = makeField({ past: {} });
       const err = validateDateField(
         field,
-        { day: 31, month: 2, year: 1990 },
+        { day: "31", month: "2", year: "1990" },
         {},
       );
       expect(err?.message).toBe("Date of birth must be a real date");
@@ -160,7 +194,7 @@ describe("validateDateField", () => {
       const field = makeField({ past: {} });
       const err = validateDateField(
         field,
-        { day: 1, month: 1, year: 9000 },
+        { day: "1", month: "1", year: "9000" },
         {},
       );
       expect(err).toEqual({
@@ -173,7 +207,7 @@ describe("validateDateField", () => {
       const field = makeField({ pastOrToday: {} });
       const err = validateDateField(
         field,
-        { day: 1, month: 1, year: 9000 },
+        { day: "1", month: "1", year: "9000" },
         {},
       );
       expect(err?.message).toBe("Date of birth must be today or in the past");
@@ -183,7 +217,7 @@ describe("validateDateField", () => {
       const field = makeField({ future: {} });
       const err = validateDateField(
         field,
-        { day: 1, month: 1, year: 2000 },
+        { day: "1", month: "1", year: "2000" },
         {},
       );
       expect(err?.message).toBe("Date of birth must be in the future");
@@ -193,7 +227,7 @@ describe("validateDateField", () => {
       const field = makeField({ futureOrToday: {} });
       const err = validateDateField(
         field,
-        { day: 1, month: 1, year: 2000 },
+        { day: "1", month: "1", year: "2000" },
         {},
       );
       expect(err?.message).toBe("Date of birth must be today or in the future");
@@ -203,7 +237,7 @@ describe("validateDateField", () => {
       const field = makeField({ after: { value: "01/09/2017" } });
       const err = validateDateField(
         field,
-        { day: 1, month: 1, year: 2017 },
+        { day: "1", month: "1", year: "2017" },
         {},
       );
       expect(err?.message).toBe("Date of birth must be after 1 September 2017");
@@ -213,7 +247,7 @@ describe("validateDateField", () => {
       const field = makeField({ onOrAfter: { value: "01/09/2017" } });
       const err = validateDateField(
         field,
-        { day: 1, month: 1, year: 2017 },
+        { day: "1", month: "1", year: "2017" },
         {},
       );
       expect(err?.message).toBe(
@@ -226,13 +260,13 @@ describe("validateDateField", () => {
         before: { referenceFieldId: "courseStart" },
       });
       const allValues = {
-        course: { courseStart: { day: 1, month: 9, year: 2017 } },
+        course: { courseStart: { day: "1", month: "9", year: "2017" } },
       };
       const err = validateDateField(
         field,
-        { day: 1, month: 1, year: 2020 },
+        { day: "1", month: "1", year: "2020" },
         allValues,
-        { courseStart: { day: 1, month: 9, year: 2017 } },
+        { courseStart: { day: "1", month: "9", year: "2017" } },
       );
       expect(err?.message).toBe(
         "Date of birth must be before 1 September 2017",
@@ -243,7 +277,7 @@ describe("validateDateField", () => {
       const field = makeField({ onOrBefore: { value: "31/08/2017" } });
       const err = validateDateField(
         field,
-        { day: 1, month: 1, year: 2020 },
+        { day: "1", month: "1", year: "2020" },
         {},
       );
       expect(err?.message).toBe(
@@ -255,7 +289,7 @@ describe("validateDateField", () => {
       const field = makeField({ past: { error: "Custom past message" } });
       const err = validateDateField(
         field,
-        { day: 1, month: 1, year: 9000 },
+        { day: "1", month: "1", year: "9000" },
         {},
       );
       expect(err?.message).toBe("Custom past message");
@@ -265,7 +299,7 @@ describe("validateDateField", () => {
       const field = makeField({ after: { referenceFieldId: "otherDate" } });
       const err = validateDateField(
         field,
-        { day: 1, month: 1, year: 2020 },
+        { day: "1", month: "1", year: "2020" },
         {},
       );
       expect(err).toBeNull();
@@ -275,7 +309,7 @@ describe("validateDateField", () => {
       const field = makeField({ past: {} });
       const err = validateDateField(
         field,
-        { day: 5, month: 6, year: 1990 },
+        { day: "5", month: "6", year: "1990" },
         {},
       );
       expect(err).toBeNull();
@@ -310,19 +344,35 @@ describe("validateDateField", () => {
       expect(isDateValidationError({ message: "x" })).toBe(false);
     });
 
-    it("isCompleteDateValue accepts only fully numeric { day, month, year }", () => {
+    it("isCompleteDateValue accepts both string and numeric { day, month, year }", () => {
+      // Tolerant during the migration (ADR 0043): either shape counts as complete.
+      expect(isCompleteDateValue({ day: "5", month: "6", year: "1990" })).toBe(
+        true,
+      );
+      expect(
+        isCompleteDateValue({ day: "09", month: "06", year: "2024" }),
+      ).toBe(true);
       expect(isCompleteDateValue({ day: 5, month: 6, year: 1990 })).toBe(true);
-      expect(isCompleteDateValue({ day: 5, month: 6 })).toBe(false);
-      expect(isCompleteDateValue({ day: "5", month: 6, year: 1990 })).toBe(
+      expect(isCompleteDateValue({ day: "5", month: "6" })).toBe(false);
+      expect(isCompleteDateValue({ day: "", month: "6", year: "1990" })).toBe(
         false,
       );
       expect(isCompleteDateValue("1990-06-05")).toBe(false);
       expect(isCompleteDateValue(null)).toBe(false);
     });
 
-    it("formatDateValue renders the GOV.UK long format", () => {
+    it("formatDateValue renders the GOV.UK long format from either shape", () => {
+      expect(formatDateValue({ day: "1", month: "9", year: "2017" })).toBe(
+        "1 September 2017",
+      );
       expect(formatDateValue({ day: 1, month: 9, year: 2017 })).toBe(
         "1 September 2017",
+      );
+    });
+
+    it("formatDateValue handles parts carrying leading zeros", () => {
+      expect(formatDateValue({ day: "09", month: "06", year: "2024" })).toBe(
+        "9 June 2024",
       );
     });
   });

@@ -230,6 +230,25 @@ describe("EmailBodyBuilder", () => {
       expect(field?.value).toBe("5 June 1990");
     });
 
+    it("formats string-part date values (forms migration tolerance, #815)", async () => {
+      // Once the forms frontend flips to string date parts, submissions arrive
+      // as { day: "5", month: "6", year: "1990" }. The validation boundary
+      // tolerates both shapes (ADR 0043), so the email renders the same.
+      const payload = makePayload();
+      (payload.values.personal as Record<string, unknown>).dob = {
+        day: "5",
+        month: "6",
+        year: "1990",
+      };
+
+      const ctx = await builder.build(payload);
+      const field = ctx.sections[0].fields.find(
+        (f) => f.label === "Date of birth",
+      );
+
+      expect(field?.value).toBe("5 June 1990");
+    });
+
     it("passes through legacy string date values unchanged", async () => {
       const payload = makePayload();
       (payload.values.personal as Record<string, unknown>).dob = "1990-06-05";
