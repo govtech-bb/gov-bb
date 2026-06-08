@@ -37,21 +37,25 @@ export const isDateValidationError = (e: unknown): e is DateValidationError => {
 
 /**
  * Returns true when `value` is the complete `{ day, month, year }` object the
- * text-input date picker stores (all three parts present and numeric).
+ * date picker stores: all three parts present. Tolerant of both shapes during
+ * the number→string parts migration (#815 / ADR 0043) — a part counts as
+ * present when it is a finite number or a non-empty string.
  */
 export const isCompleteDateValue = (value: unknown): value is DateValue => {
   if (typeof value !== "object" || value === null) return false;
   const { day, month, year } = value as Record<string, unknown>;
-  return (
-    typeof day === "number" &&
-    typeof month === "number" &&
-    typeof year === "number"
-  );
+  const isFilled = (p: unknown): boolean =>
+    typeof p === "number"
+      ? Number.isFinite(p)
+      : typeof p === "string" && p !== "";
+  return isFilled(day) && isFilled(month) && isFilled(year);
 };
 
 /** Formats a date value for display, e.g. "1 September 2017". */
 export const formatDateValue = ({ day, month, year }: DateValue): string =>
-  formatForMessage(new Date(Date.UTC(year, month - 1, day)));
+  formatForMessage(
+    new Date(Date.UTC(Number(year), Number(month) - 1, Number(day))),
+  );
 
 const formatForMessage = (d: Date): string =>
   d.toLocaleDateString("en-GB", {
@@ -120,8 +124,16 @@ const isPartsObject = (
 ): v is { day?: unknown; month?: unknown; year?: unknown } =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
-const asPart = (v: unknown): number | undefined =>
-  typeof v === "number" ? v : undefined;
+// Parts arrive as either numbers or the digit-strings the date input stores —
+// tolerant during the number→string migration (#815 / ADR 0043). Parse to a
+// number for the range arithmetic below; empty/absent/non-numeric → undefined
+// so the incompleteness checks still fire.
+const asPart = (v: unknown): number | undefined => {
+  if (typeof v === "number") return Number.isFinite(v) ? v : undefined;
+  if (typeof v !== "string" || v === "") return undefined;
+  const n = Number(v);
+  return Number.isNaN(n) ? undefined : n;
+};
 
 const joinParts = (parts: readonly DatePart[]): string => parts.join(" and ");
 

@@ -2,7 +2,7 @@
   "formId": "jobstart-plus-programme",
   "title": "Apply to Job start Plus Programme",
   "description": "Apply to the Jobstart Plus Programme run by the Ministry of Labour, Social Security and Third Sector.",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "processors": [
     {
       "type": "email",
@@ -831,9 +831,9 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "post-sec-courses-1",
-            "label": "Courses or subjects",
             "hint": "Separate each course with a comma",
+            "label": "Courses or subjects",
+            "fieldId": "post-sec-courses-1",
             "validations": {
               "required": {
                 "value": false
@@ -952,11 +952,11 @@
           }
         },
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
-            "hint": "Provide the month and year (for example, December 2023)",
-            "label": "When did you start this job?",
             "fieldId": "job-start-date",
+            "label": "When did you start this job?",
+            "hint": "Provide the month and year (for example, December 2023)",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -968,11 +968,11 @@
           }
         },
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
-            "hint": "Provide the month and year (for example, December 2023)",
-            "label": "When did you end this job?",
             "fieldId": "job-end-date",
+            "label": "When did you end this job?",
+            "hint": "Provide the month and year (for example, December 2023)",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -1275,6 +1275,6 @@
       "behaviours": []
     }
   ],
-  "createdAt": "2026-06-08T15:32:46.062Z",
-  "updatedAt": "2026-06-08T15:32:46.062Z"
+  "createdAt": "2026-06-08T15:52:45.625Z",
+  "updatedAt": "2026-06-08T15:52:45.625Z"
 }
