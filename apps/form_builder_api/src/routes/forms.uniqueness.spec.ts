@@ -9,13 +9,24 @@ jest.mock("@govtech-bb/database", () => ({
 
 jest.mock("../db.js", () => ({ getDataSource: jest.fn() }));
 
+// Presence (read-only lock, #874) is exercised in presence.spec.ts; here it's
+// out of scope, so treat every caller as the holder and let mockReq stamp a
+// userLogin so the save handlers' presence gate is satisfied transparently.
+jest.mock("./presence.js", () => ({
+  holdsFreshClaim: jest.fn().mockResolvedValue(true),
+}));
+
 import { getDataSource } from "../db.js";
 import { createFormHandler, updateFormHandler } from "./forms";
 
 const getDataSourceMock = getDataSource as jest.Mock;
 
 function mockReq(body: unknown, params: Record<string, string> = {}): Request {
-  return { body, params } as unknown as Request;
+  const withLogin =
+    body && typeof body === "object" && !Array.isArray(body)
+      ? { userLogin: "tester", ...(body as Record<string, unknown>) }
+      : body;
+  return { body: withLogin, params } as unknown as Request;
 }
 
 interface CapturingResponse extends Response {

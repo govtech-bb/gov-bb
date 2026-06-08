@@ -14,6 +14,40 @@ import {
   findTitleCollision,
   type FormTitleRow,
 } from "./form-uniqueness.js";
+import { holdsFreshClaim } from "./presence.js";
+
+// Read the optional `userLogin` (the editor's GitHub login, stamped by the SSR
+// session) off a request body, trimmed. Empty when absent.
+function readUserLogin(body: unknown): string {
+  const raw = (body as { userLogin?: unknown } | null)?.userLogin;
+  return typeof raw === "string" ? raw.trim() : "";
+}
+
+// Defense-in-depth presence gate shared by create/update: the caller must send
+// a non-empty userLogin (400) and must hold the current fresh editing claim on
+// the form (409). Returns true when the request may proceed; otherwise it has
+// already written the error response.
+async function enforcePresence(
+  db: Parameters<typeof holdsFreshClaim>[0],
+  formId: string,
+  body: unknown,
+  res: Response,
+): Promise<boolean> {
+  const userLogin = readUserLogin(body);
+  if (!userLogin) {
+    res.status(400).json({ error: "userLogin is required" });
+    return false;
+  }
+  if (!(await holdsFreshClaim(db, formId, userLogin))) {
+    res.status(409).json({
+      error:
+        "Another editor holds this form. Your session is read-only until their claim expires.",
+      code: "presence_conflict",
+    });
+    return false;
+  }
+  return true;
+}
 
 export const formsRouter = Router();
 
@@ -412,6 +446,13 @@ export async function createFormHandler(
       return;
     }
     const ds = await getDataSource();
+    // Read-only lock (#874): an *existing* form may only be saved by the current
+    // claim holder. A brand-new form (isNew) has no prior claim and isn't in
+    // anyone else's picker yet — formId uniqueness below guards concurrent
+    // creation — so the presence gate applies only to non-new saves (new
+    // versions of existing forms, including the deploy reservation).
+    if (!isNew && !(await enforcePresence(ds, recipe.formId, req.body, res)))
+      return;
     const repo = ds.getRepository(FormDefinitionEntity);
     const existing = await repo.findOne({
       where: { formId: recipe.formId, version: recipe.version },
@@ -518,6 +559,9 @@ export async function updateFormHandler(
   try {
     const recipe = req.body.recipe as ServiceContractRecipe;
     const ds = await getDataSource();
+    // Read-only lock (#874): only the current claim holder may save.
+    if (!(await enforcePresence(ds, String(req.params.formId), req.body, res)))
+      return;
     const rows = await ds.query(
       `SELECT id, version, published_at FROM form_definitions
        WHERE form_id = $1
@@ -626,6 +670,10 @@ export async function rekeyFormHandler(
     }
     const newFormId = recipe.formId;
     const ds = await getDataSource();
+    // Read-only lock (#874): a re-key moves an existing form (an identity change
+    // of a draft), so it's a write only the current claim holder may perform —
+    // gated on the OLD id, like update/publish.
+    if (!(await enforcePresence(ds, oldFormId, req.body, res))) return;
     const result = await ds.transaction(async (manager) => {
       // 1. Load the old-ID rows.
       const oldRows: {

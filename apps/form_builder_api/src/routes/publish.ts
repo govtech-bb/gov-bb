@@ -3,6 +3,8 @@ import {
   deployBranchName,
   type ServiceContractRecipe,
 } from "@govtech-bb/form-types";
+import { getDataSource } from "../db.js";
+import { holdsFreshClaim } from "./presence.js";
 
 export const publishRouter = Router();
 
@@ -24,15 +26,36 @@ function authHeaders(token: string): Record<string, string> {
 }
 
 // POST /builder/publish — create a GitHub PR with the recipe
-publishRouter.post("/", async (req, res) => {
+export async function publishHandler(
+  req: import("express").Request,
+  res: import("express").Response,
+): Promise<void> {
   try {
-    const { recipe, description, githubToken } = req.body;
+    const { recipe, description, githubToken, userLogin } = req.body;
     if (!recipe || !githubToken) {
       res.status(400).json({ error: "recipe and githubToken are required" });
       return;
     }
     const typedRecipe = recipe as ServiceContractRecipe;
     const token = githubToken as string;
+
+    // Read-only lock (#874): deploying is a write, so only the current fresh
+    // claim holder may publish. Require the SSR-stamped login (400) and verify
+    // the claim (409) before touching GitHub.
+    const login = typeof userLogin === "string" ? userLogin.trim() : "";
+    if (!login) {
+      res.status(400).json({ error: "userLogin is required" });
+      return;
+    }
+    const ds = await getDataSource();
+    if (!(await holdsFreshClaim(ds, typedRecipe.formId, login))) {
+      res.status(409).json({
+        error:
+          "Another editor holds this form. Your session is read-only until their claim expires.",
+        code: "presence_conflict",
+      });
+      return;
+    }
 
     // Get dev tip SHA
     const refRes = await fetch(repoUrl(`/git/ref/heads/${BASE_BRANCH}`), {
@@ -108,4 +131,5 @@ publishRouter.post("/", async (req, res) => {
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
-});
+}
+publishRouter.post("/", publishHandler);
