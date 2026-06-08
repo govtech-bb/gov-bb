@@ -75,4 +75,62 @@ describe("draftsEqual", () => {
     const b = draft([withReq]);
     expect(draftsEqual(a, b)).toBe(false);
   });
+
+  // #958: payment processors are stripped by serializeRecipeDraft (they persist
+  // to a DB sibling, not the recipe), so a serialize-only comparison can't see
+  // payment edits and the editor would never flag them as unsaved. draftsEqual
+  // must compare the in-memory processors directly.
+  const paymentDraft = (amount: number): RecipeDraft => ({
+    ...draft([]),
+    processors: [
+      {
+        id: "pay-1",
+        type: "payment",
+        config: {
+          provider: "ezpay",
+          department: "Treasury",
+          paymentCode: "FEE-001",
+          amount,
+          description: "Fee",
+          customerEmailPath: "contact.email",
+          customerNamePath: "applicant.full-name",
+        },
+      },
+    ],
+  });
+
+  it("treats a changed payment processor config as not equal under comparePayments (#958)", () => {
+    expect(
+      draftsEqual(paymentDraft(50), paymentDraft(75), {
+        comparePayments: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("treats an identical payment processor config as equal under comparePayments (#958)", () => {
+    expect(
+      draftsEqual(paymentDraft(50), paymentDraft(50), {
+        comparePayments: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("ignores the editor-only processor id under comparePayments (#958)", () => {
+    const a = paymentDraft(50);
+    const b = paymentDraft(50);
+    (b.processors![0] as { id: string }).id = "pay-2";
+    expect(draftsEqual(a, b, { comparePayments: true })).toBe(true);
+  });
+
+  // The AI no-op guard compares the working draft against a deserialized recipe,
+  // which never carries payment processors. Without comparePayments, a payment
+  // edit must NOT register as a change there (else an echoed-back form reapplies
+  // and bumps the version) — payment is the unsaved-changes guard's concern, not
+  // this one.
+  it("ignores payment processors by default so the AI no-op guard still matches (#958)", () => {
+    const working = paymentDraft(50);
+    // A recipe round-trips without payment processors at all.
+    const deserialized = { ...draft([]), processors: [] };
+    expect(draftsEqual(working, deserialized)).toBe(true);
+  });
 });

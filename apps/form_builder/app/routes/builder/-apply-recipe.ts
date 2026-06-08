@@ -31,7 +31,11 @@ export function buildLoadArgs(
  * deserialized drafts compare equal to the working draft), and a fixed version
  * neutralises the version field.
  */
-export function draftsEqual(a: RecipeDraft, b: RecipeDraft): boolean {
+export function draftsEqual(
+  a: RecipeDraft,
+  b: RecipeDraft,
+  opts: { comparePayments?: boolean } = {},
+): boolean {
   const normalize = (d: RecipeDraft): string => {
     const {
       createdAt: _c,
@@ -42,5 +46,26 @@ export function draftsEqual(a: RecipeDraft, b: RecipeDraft): boolean {
     });
     return JSON.stringify(rest);
   };
-  return normalize(a) === normalize(b);
+  if (normalize(a) !== normalize(b)) return false;
+  // `serializeRecipeDraft` strips payment processors — they persist to a
+  // per-environment DB sibling, never the recipe (#716, ADR 0033) — so the
+  // serialize-only compare above can't see edits to a payment processor.
+  //
+  // `comparePayments` is opt-in because the two callers want opposite things:
+  //   • the unsaved-changes guard compares two in-memory drafts that both still
+  //     hold payment config, and MUST flag a payment edit as a change (#958).
+  //   • the AI no-op guard compares the working draft against a *deserialized
+  //     recipe*, which never carries payment processors — folding payments in
+  //     there would make an unchanged payment form always read as "changed".
+  // So payments are only compared when the caller asks. Drop the editor-only
+  // `id` (never persisted, ADR 0009) so re-adding an identical processor isn't
+  // "a change".
+  if (!opts.comparePayments) return true;
+  const payments = (d: RecipeDraft): string =>
+    JSON.stringify(
+      (d.processors ?? [])
+        .filter((p) => p.type === "payment")
+        .map(({ id: _id, ...rest }) => rest),
+    );
+  return payments(a) === payments(b);
 }
