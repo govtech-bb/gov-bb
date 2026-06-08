@@ -7,6 +7,7 @@ import { mdaContactsRouter } from "./routes/mda-contacts";
 import { registryRouter } from "./routes/registry";
 import { aiRouter } from "./routes/ai";
 import { publishRouter } from "./routes/publish";
+import { presenceRouter } from "./routes/presence";
 import { authMiddleware } from "./middleware/auth";
 
 const app = express();
@@ -25,6 +26,9 @@ app.use("/builder", authMiddleware);
 
 // Routes
 app.use("/builder/forms", formsRouter);
+// Presence routes live under /builder/forms/:formId/presence; their subpaths
+// don't collide with formsRouter's /:formId routes, so order is immaterial.
+app.use("/builder/forms", presenceRouter);
 app.use("/builder/mda-contacts", mdaContactsRouter);
 app.use("/builder/registry", registryRouter);
 app.use("/builder/ai", aiRouter);

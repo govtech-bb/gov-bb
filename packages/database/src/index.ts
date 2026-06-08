@@ -11,6 +11,7 @@ import { CustomComponent } from "./entities/custom-component.entity";
 import { MdaContactEntity } from "./entities/mda-contact.entity";
 import { FormConfigEntity } from "./entities/form-config.entity";
 import { FormDisabledOverrideEntity } from "./entities/form-disabled-override.entity";
+import { FormEditingSessionEntity } from "./entities/form-editing-session.entity";
 
 // Migrations
 import { CreateFormsTables1774544962999 } from "./migrations/1774544962999-CreateFormsTables";
@@ -24,6 +25,7 @@ import { AddFormDefinitionUniqueConstraint1778500000000 } from "./migrations/177
 import { AddReferenceCodeToFormSubmissions1778841559000 } from "./migrations/1778841559000-AddReferenceCodeToFormSubmissions";
 import { CreateFormDisabledOverrides1779466523478 } from "./migrations/1779466523478-CreateFormDisabledOverrides";
 import { CreateMdaContactAndFormConfig1780520220084 } from "./migrations/1780520220084-CreateMdaContactAndFormConfig";
+import { CreateFormEditingSessions1780924594196 } from "./migrations/1780924594196-CreateFormEditingSessions";
 
 export const entities = [
   FormComponentEntity,
@@ -36,6 +38,7 @@ export const entities = [
   MdaContactEntity,
   FormConfigEntity,
   FormDisabledOverrideEntity,
+  FormEditingSessionEntity,
 ];
 
 export const migrations = [
@@ -50,6 +53,7 @@ export const migrations = [
   AddReferenceCodeToFormSubmissions1778841559000,
   CreateFormDisabledOverrides1779466523478,
   CreateMdaContactAndFormConfig1780520220084,
+  CreateFormEditingSessions1780924594196,
 ];
 
 /**

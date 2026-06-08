@@ -6,6 +6,14 @@ import { getCatalog } from "@govtech-bb/form-builder";
 // accessor so the spec drives a known builtin catalog without a DB.
 jest.mock("../catalog.js", () => ({ getFullCatalog: jest.fn() }));
 
+// The read-only lock (#874) gates publish behind a fresh editing claim, after
+// validation. Treat the caller as the holder so these backstop tests reach the
+// GitHub flow; presence enforcement has its own spec (publish.presence.spec.ts).
+jest.mock("../db.js", () => ({ getDataSource: jest.fn(async () => ({})) }));
+jest.mock("./presence.js", () => ({
+  holdsFreshClaim: jest.fn().mockResolvedValue(true),
+}));
+
 import { getFullCatalog } from "../catalog.js";
 import { publishHandler } from "./publish";
 
@@ -132,7 +140,11 @@ describe("POST /builder/publish — validation backstop", () => {
     const res = mockRes();
 
     await publishHandler(
-      mockReq({ recipe: validRecipe(), githubToken: "ghtok" }),
+      mockReq({
+        recipe: validRecipe(),
+        githubToken: "ghtok",
+        userLogin: "tester",
+      }),
       res,
     );
 

@@ -12,6 +12,9 @@ interface SubmitModalProps {
   isSubmitting: boolean;
   submitSuccess: boolean;
   submitError: string | null;
+  /** Read-only lock (#874): another user holds the editing claim. Warns and
+   *  disables the action even if the modal was already open when it flipped. */
+  isReadOnly?: boolean;
   onSubmit: (version: string) => void;
   onClose: () => void;
 }
@@ -24,6 +27,7 @@ export function SubmitModal({
   isSubmitting,
   submitSuccess,
   submitError,
+  isReadOnly = false,
   onSubmit,
   onClose,
 }: SubmitModalProps) {
@@ -74,6 +78,12 @@ export function SubmitModal({
           </div>
         ) : (
           <div>
+            {isReadOnly && (
+              <div className={styles.presenceBanner} role="alert" style={{ marginBottom: 8 }}>
+                Another user is currently editing this form. Saving is disabled
+                until their editing session ends.
+              </div>
+            )}
             <div className={styles.formGroup}>
               <label>Form ID</label>
               <input type="text" value={draft.formId} readOnly />
@@ -103,7 +113,7 @@ export function SubmitModal({
             )}
 
             <div style={{ display: "flex", gap: 8 }}>
-              <button type="button" className={styles.btnPrimary} onClick={handleSubmit} disabled={isSubmitting}>
+              <button type="button" className={styles.btnPrimary} onClick={handleSubmit} disabled={isSubmitting || isReadOnly}>
                 {isSubmitting ? "Submitting…" : mode}
               </button>
               <button type="button" onClick={onClose}>Cancel</button>
