@@ -1,25 +1,16 @@
-// Tuned by eval/sweep.ts on 2026-06-08 against the live sandbox vector DB,
-// after adding hard out-of-corpus cases to golden.json (48 entries: direct,
-// followup, ambig, and `none` queries a real/WhatsApp user might ask that the
-// corpus can't answer — passport, driver's licence, tax, firearm, etc.). With
-// those cases in the set the composite climbs with the cutoff (score 0.30 →
-// 0.732, 0.45 → 0.807), so SCORE_THRESHOLD moves 0.30 → 0.45: it rejects most
-// out-of-corpus queries that leaked at 0.30 (tax, firearm, company reg) without
-// the recall loss 0.50 starts to cause (e.g. ambiguous "register"). The SQL
-// floor is flat across the grid, so SIMILARITY_THRESHOLD stays 0.25.
-//
-// Caveat: a threshold is not a silver bullet. A few out-of-corpus queries still
-// leak because they're HIGH-similarity false matches to wrong-but-plausible
-// services (passport↔certificates, driver's licence↔conductor licence,
-// visa↔financial assistance). Those need content coverage or a relevance gate,
-// not a higher number — tracked separately.
+// Tuned by eval/sweep.ts on 2026-05-24 (post section-chunk ingest). Eval
+// set: 60 queries (52 expected hits, 3 ambig, 4 off-topic / greeting).
+// Winner: composite 0.927 (recall 1.0, MRR 0.991, P@1 0.981, ambig 0.833,
+// FP 0.0). Off-topic queries fell below sim 0.20, so the lenient floor is
+// safe. Service boosts dropped to 1.0 after section chunks made the rerank
+// prior unnecessary; news kept at 0.7 to deprioritise news pages.
 
 // Minimum raw cosine similarity for the SQL probe in retrieve.ts.
 export const SIMILARITY_THRESHOLD = 0.25;
 
 // Minimum weighted score (sim × kind weight) for the chat-side cutoff
 // in retrieval.ts after reranking.
-export const SCORE_THRESHOLD = 0.45;
+export const SCORE_THRESHOLD = 0.3;
 
 // How many reranked chunks to consider before applying SCORE_THRESHOLD.
 export const TOP_K = 10;
