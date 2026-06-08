@@ -70,14 +70,16 @@ test.describe("Get a Primary School Textbook Grant — Live Smoke", () => {
     await fillField(page, step, "child-last-name", lastName);
     await fillField(page, step, "child-id-number", nationalId());
     await selectRadio(page, step, "child-sex", "female");
-    await fillField(page, step, "child-school", "Bridgetown Primary School");
+    // child-school became a native <select> ("Name of institution"); use the
+    // option value, not free text.
+    await selectDropdown(page, step, "child-school", "all-saints-primary");
     await fillField(
       page,
       step,
       "child-principal-name",
       `${faker.person.firstName()} ${faker.person.lastName()}`,
     );
-    await fillField(page, step, "child-class-number", "Class 4");
+    await fillField(page, step, "child-class", "Class 4");
     await selectRadio(page, step, "is-parent-or-guardian", "yes");
     // Injected by the v1.2.0 repeatable behaviour — "no" keeps a single child.
     await selectRadio(page, step, "addAnother", "no");
