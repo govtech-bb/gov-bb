@@ -111,6 +111,9 @@ export const afterRuleSchema = z.object({
   ...baseRuleFields,
   ...referenceFields,
   value: z.string().optional(),
+  // Shifts the reference date forward by N calendar months before comparing —
+  // bound becomes "reference + N months" (see validation.type.ts).
+  offsetMonths: z.number().optional(),
 });
 export type AfterRule = z.infer<typeof afterRuleSchema>;
 
@@ -118,6 +121,9 @@ export const beforeRuleSchema = z.object({
   ...baseRuleFields,
   ...referenceFields,
   value: z.string().optional(),
+  // Shifts the reference date forward by N calendar months before comparing —
+  // bound becomes "reference + N months" (see validation.type.ts).
+  offsetMonths: z.number().optional(),
 });
 export type BeforeRule = z.infer<typeof beforeRuleSchema>;
 

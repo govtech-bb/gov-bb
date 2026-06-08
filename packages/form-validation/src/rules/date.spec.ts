@@ -300,6 +300,98 @@ describe("onOrBeforeRunner", () => {
   });
 });
 
+describe("offsetMonths — reference + N months bound", () => {
+  // The bound is the resolved reference date shifted forward by config.offsetMonths.
+  // Used to express "end date no more than 6 months after start date".
+  it("onOrBefore passes when date equals reference + offsetMonths (inclusive)", () => {
+    expect(
+      onOrBeforeRunner(
+        "2020-07-10",
+        { value: "2020-01-10", offsetMonths: 6 },
+        {},
+      ),
+    ).toBeNull();
+  });
+
+  it("onOrBefore passes when date is before reference + offsetMonths", () => {
+    expect(
+      onOrBeforeRunner(
+        "2020-05-01",
+        { value: "2020-01-10", offsetMonths: 6 },
+        {},
+      ),
+    ).toBeNull();
+  });
+
+  it("onOrBefore fails when date is past reference + offsetMonths", () => {
+    expect(
+      onOrBeforeRunner(
+        "2020-07-11",
+        { value: "2020-01-10", offsetMonths: 6, error: "Too far" },
+        {},
+      ),
+    ).toBe("Too far");
+  });
+
+  it("applies offsetMonths to a resolved reference field", () => {
+    expect(
+      onOrBeforeRunner(
+        "2020-07-10",
+        {
+          referenceFieldId: "startDate",
+          targetStepId: "step-1",
+          offsetMonths: 6,
+        },
+        { "step-1": { startDate: "2020-01-10" } },
+      ),
+    ).toBeNull();
+    expect(
+      onOrBeforeRunner(
+        "2020-07-11",
+        {
+          referenceFieldId: "startDate",
+          targetStepId: "step-1",
+          offsetMonths: 6,
+          error: "Too far",
+        },
+        { "step-1": { startDate: "2020-01-10" } },
+      ),
+    ).toBe("Too far");
+  });
+
+  it("clamps to the last day when the target month is shorter", () => {
+    // 31 Aug 2020 + 6 months → Feb 2021 has 28 days, so the bound clamps to 28 Feb.
+    expect(
+      onOrBeforeRunner(
+        "2021-02-28",
+        { value: "2020-08-31", offsetMonths: 6 },
+        {},
+      ),
+    ).toBeNull();
+    expect(
+      onOrBeforeRunner(
+        "2021-03-01",
+        { value: "2020-08-31", offsetMonths: 6, error: "Too far" },
+        {},
+      ),
+    ).toBe("Too far");
+  });
+
+  it("also shifts the bound for the after runner", () => {
+    // after reference + 1 month: must be strictly after 2020-02-01.
+    expect(
+      afterRunner("2020-02-02", { value: "2020-01-01", offsetMonths: 1 }, {}),
+    ).toBeNull();
+    expect(
+      afterRunner("2020-02-01", { value: "2020-01-01", offsetMonths: 1 }, {}),
+    ).toBe("Date must be after 2020-01-01");
+  });
+
+  it("leaves the bound unchanged when offsetMonths is absent", () => {
+    expect(onOrBeforeRunner("2020-01-01", cfg("2020-01-01"), {})).toBeNull();
+  });
+});
+
 describe("parseDate — DD/MM/YYYY literal thresholds (#633)", () => {
   // The comparison runners route the literal `config.value` threshold through
   // parseDate. Barbados authors type thresholds as DD/MM/YYYY (day-first), so a
