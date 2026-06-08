@@ -4,6 +4,7 @@ import type {
 } from "@govtech-bb/form-builder";
 import { ValuePathPicker } from "./-value-path-picker";
 import { KeyValueEditor } from "./-key-value-editor";
+import { AmountEditor } from "./-amount-editor";
 import styles from "../../styles/builder.module.css";
 
 interface ProcessorConfigFormProps {
@@ -259,24 +260,12 @@ export function ProcessorConfigForm({
               }
             />
           </div>
-          <div className={styles.formGroup}>
-            <label htmlFor={fid("amount")}>Amount</label>
-            <input
-              id={fid("amount")}
-              type="number"
-              min={0}
-              value={
-                typeof config.amount === "number" ? config.amount : ""
-              }
-              onChange={(e) =>
-                onConfigChange({
-                  ...config,
-                  amount:
-                    e.target.value === "" ? undefined : Number(e.target.value),
-                })
-              }
-            />
-          </div>
+          <AmountEditor
+            amount={config.amount}
+            fields={fields}
+            idPrefix={String(processor.id)}
+            onChange={(amount) => onConfigChange({ ...config, amount })}
+          />
           <div className={styles.formGroup}>
             <label htmlFor={fid("description")}>Description</label>
             <input
