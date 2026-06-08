@@ -32,6 +32,19 @@ function asText(value: unknown): string {
   return "";
 }
 
+// Whether a field's label OR id contains `keyword` (case-insensitive). Used to
+// restrict the payment customer email/name pickers to plausibly-correct fields
+// (#957) — broader than the email processor's id-only recipient filter, so a
+// field labelled "Email address" with an opaque id (or vice versa) still
+// qualifies.
+function fieldMatches(field: ResolvedFieldId, keyword: string): boolean {
+  const needle = keyword.toLowerCase();
+  return (
+    field.fieldId.toLowerCase().includes(needle) ||
+    field.display.toLowerCase().includes(needle)
+  );
+}
+
 export function ProcessorConfigForm({
   processor,
   fields,
@@ -218,6 +231,14 @@ export function ProcessorConfigForm({
       // uses. All payment methods (credit/debit/Payce) are always enabled, so
       // there are no per-option toggles (#936). The whole config is validated
       // against paymentConfigAuthorSchema on save (DB sibling, #716).
+      //
+      // Restrict the customer email/name pickers to fields whose label or id
+      // implies the right kind of value (#957): picking, say, a date field for
+      // the email path yields a payment that sends garbage to ezpay. The picker
+      // stays generic; we filter its input, and its `(current)` fallback still
+      // preserves any previously-saved out-of-list path.
+      const emailFields = fields.filter((f) => fieldMatches(f, "email"));
+      const nameFields = fields.filter((f) => fieldMatches(f, "name"));
       return (
         <>
           <div className={styles.formGroup}>
@@ -274,7 +295,7 @@ export function ProcessorConfigForm({
             <ValuePathPicker
               id={fid("customerEmailPath")}
               value={asText(config.customerEmailPath)}
-              fields={fields}
+              fields={emailFields}
               onChange={(customerEmailPath) =>
                 onConfigChange({ ...config, customerEmailPath })
               }
@@ -285,7 +306,7 @@ export function ProcessorConfigForm({
             <ValuePathPicker
               id={fid("customerNamePath")}
               value={asText(config.customerNamePath)}
-              fields={fields}
+              fields={nameFields}
               onChange={(customerNamePath) =>
                 onConfigChange({ ...config, customerNamePath })
               }
