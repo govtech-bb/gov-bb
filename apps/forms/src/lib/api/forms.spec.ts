@@ -370,7 +370,7 @@ describe("postFormSubmission", () => {
       values: {
         "personal-data": {
           firstName: "Edgardo",
-          dateOfBirth: { day: 15, month: 6, year: 1990 },
+          dateOfBirth: { day: "15", month: "6", year: "1990" },
         },
         "educational-record": [
           {

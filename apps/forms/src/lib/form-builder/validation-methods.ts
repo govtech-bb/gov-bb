@@ -37,23 +37,25 @@ export const valueIsEmpty = (value: FieldValue): boolean | undefined => {
 };
 
 /**
- * Parse a raw date-part input string (day/month/year) into a number for
- * storage in the field's DateValueInput.
+ * Parse a raw date-part input string (day/month/year) into the digit-string
+ * stored in the field's DateValueInput.
  *
- * Strips non-digit characters and returns `undefined` for empty input, so the
- * value is never `NaN` (which would render as the literal "NaN" in the field)
- * and never a stray `0` from `Number("")`. Coercion happens here on input only
- * to keep the stored shape numeric; date *validation* still runs on submit.
+ * Strips non-digit characters and returns `undefined` for empty input (so the
+ * emptiness/completeness checks still fire). The value stays a string — `"09"`
+ * is preserved verbatim rather than collapsing to `9`, and `"00"` stays
+ * distinct from `"0"` — following the GOV.UK guidance of treating date parts as
+ * text (#815). Numbers are derived only at the validation/formatting boundary
+ * in `@govtech-bb/form-validation`, which tolerates both shapes (ADR 0043).
  */
-export const parseDatePart = (raw: string): number | undefined => {
+export const parseDatePart = (raw: string): string | undefined => {
   const digits = raw.replace(/\D/g, "");
-  return digits === "" ? undefined : Number(digits);
+  return digits === "" ? undefined : digits;
 };
 
 export const isDateComplete = (value: DateValueInput): boolean => {
-  return (
-    value.day !== undefined &&
-    value.month !== undefined &&
-    value.year !== undefined
-  );
+  // A part is present only when it is non-empty — agrees with
+  // isCompleteDateValue at the validation boundary, which rejects "" (#815).
+  const isFilled = (part: string | number | undefined): boolean =>
+    part !== undefined && part !== "";
+  return isFilled(value.day) && isFilled(value.month) && isFilled(value.year);
 };

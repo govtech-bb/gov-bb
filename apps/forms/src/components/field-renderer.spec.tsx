@@ -510,7 +510,7 @@ describe("FieldRenderer", () => {
     it("changing the day input calls handleChange with updated day", async () => {
       const user = userEvent.setup();
       mockState = {
-        value: { day: 1, month: 6, year: 2024 },
+        value: { day: "1", month: "6", year: "2024" },
         meta: { isValid: true, errors: [] },
       };
       const { container } = renderField(primitive("date"));
@@ -524,7 +524,7 @@ describe("FieldRenderer", () => {
     it("typing a non-numeric character never stores NaN", async () => {
       const user = userEvent.setup();
       mockState = {
-        value: { day: 1, month: 6, year: 2024 },
+        value: { day: "1", month: "6", year: "2024" },
         meta: { isValid: true, errors: [] },
       };
       const { container } = renderField(primitive("date"));
@@ -532,17 +532,18 @@ describe("FieldRenderer", () => {
       const dayInput = dateParts[0].querySelector("input") as HTMLInputElement;
       await user.clear(dayInput);
       await user.type(dayInput, "a");
-      // Regression: non-numeric input must never be coerced to NaN (which used
-      // to render as the literal "NaN" in the field).
+      // Regression: non-numeric input must never be stored (#815 keeps parts as
+      // digit-strings, so a stray "a" yields `undefined`, never "NaN").
       for (const [arg] of mockFieldApi.handleChange.mock.calls) {
-        expect(Number.isNaN((arg as { day: number }).day)).toBe(false);
+        const day = (arg as { day?: string }).day;
+        expect(day === undefined || /^\d+$/.test(day)).toBe(true);
       }
     });
 
     it("changing the month input calls handleChange with updated month", async () => {
       const user = userEvent.setup();
       mockState = {
-        value: { day: 1, month: 6, year: 2024 },
+        value: { day: "1", month: "6", year: "2024" },
         meta: { isValid: true, errors: [] },
       };
       const { container } = renderField(primitive("date"));
@@ -558,7 +559,7 @@ describe("FieldRenderer", () => {
     it("changing the year input calls handleChange with updated year", async () => {
       const user = userEvent.setup();
       mockState = {
-        value: { day: 1, month: 6, year: 2024 },
+        value: { day: "1", month: "6", year: "2024" },
         meta: { isValid: true, errors: [] },
       };
       const { container } = renderField(primitive("date"));
@@ -590,7 +591,7 @@ describe("FieldRenderer", () => {
 
     it("renders the structured error's message and highlights only its parts", () => {
       mockState = {
-        value: { day: 5, year: 1990 },
+        value: { day: "5", year: "1990" },
         meta: {
           isValid: false,
           errors: [

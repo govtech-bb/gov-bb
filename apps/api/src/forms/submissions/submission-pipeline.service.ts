@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { evaluateFormConditions } from "@govtech-bb/form-conditions";
 import { validate as validateFields } from "@govtech-bb/form-validation";
 import type {
@@ -106,22 +106,63 @@ export class SubmissionPipelineService {
     dto: SubmitDto,
   ): Promise<{ draft: FormDraftEntity | null; contract: ServiceContract }> {
     if (!dto.draftId) {
-      const contract = await this.formDefinitionsService.findByFormId({
+      const contract = await this.resolveSubmittableContract({
         formId: dto.formId,
         version: dto.formVersion,
-        includeProcessors: true,
       });
       return { draft: null, contract };
     }
 
     const draft = await this.formDraftsService.findById(dto.draftId);
-    const contract = await this.formDefinitionsService.findByFormId({
+    const contract = await this.resolveSubmittableContract({
       formId: dto.formId,
       version: draft.formVersion,
-      includeProcessors: true,
     });
 
     return { draft, contract };
+  }
+
+  /**
+   * Resolve the recipe to submit against. `findByFormId` (with
+   * `includeProcessors`) resolves from published FILE recipes only (outside
+   * dev) and throws a NotFoundException when the version isn't a published
+   * file — including for a DB-only draft version previewed via `?preview=`.
+   *
+   * To avoid an opaque 404 for that case, on a NotFoundException we probe the
+   * DB-consulting preview path (`getRecipe({ preview: true })`): if the version
+   * exists as an unpublished draft, surface a clear 400; if it's genuinely
+   * unknown, re-throw the original 404. Any non-NotFound error is re-thrown
+   * unchanged.
+   */
+  private async resolveSubmittableContract({
+    formId,
+    version,
+  }: {
+    formId: string;
+    version: string;
+  }): Promise<ServiceContract> {
+    try {
+      return await this.formDefinitionsService.findByFormId({
+        formId,
+        version,
+        includeProcessors: true,
+      });
+    } catch (err) {
+      if (!(err instanceof NotFoundException)) throw err;
+
+      const previewRecipe = await this.formDefinitionsService.getRecipe({
+        formId,
+        version,
+        preview: true,
+      });
+      if (previewRecipe) {
+        throw AppError.badRequest(
+          "This version is an unpublished preview and cannot be submitted. Publish the form before submitting.",
+        );
+      }
+
+      throw err;
+    }
   }
 
   private validate(

@@ -15,6 +15,7 @@ export interface FormRendererProps {
   stepId: string;
   repeatableStepSettingsRef: React.MutableRefObject<RepeatableStepSettings>;
   submissionState?: SubmissionState;
+  isPreview?: boolean;
 }
 
 export type FormRouteProps = {

@@ -179,7 +179,13 @@ export const publishRecipe = createServerFn({ method: "POST" })
     // row doubles as the pending-deploy draft (other users' pickers see it) and
     // is deleted post-merge by the archive-merged-drafts workflow.
     try {
-      await api.post("/builder/forms", { recipe, isNew: false });
+      // userLogin (#874): the reservation save now passes the read-only-lock
+      // gate, so a non-holder is rejected here before any GitHub work.
+      await api.post("/builder/forms", {
+        recipe,
+        isNew: false,
+        userLogin: session.login,
+      });
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
         throw new Error(
