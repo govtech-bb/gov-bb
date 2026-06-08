@@ -112,6 +112,18 @@ describe("validateDateField", () => {
         parts: ["year"],
       });
     });
+
+    it("rejects a year before 1900 with the 4-numbers message", () => {
+      const err = validateDateField(
+        makeField(),
+        { day: "5", month: "6", year: "1899" },
+        {},
+      );
+      expect(err).toEqual({
+        message: "Year must include 4 numbers",
+        parts: ["year"],
+      });
+    });
   });
 
   describe("priority 2 — information that cannot be correct", () => {
