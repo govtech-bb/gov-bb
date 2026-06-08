@@ -72,7 +72,7 @@ function ChatPage() {
     error,
     stop,
     clear,
-    retry,
+    reload,
     addToolApprovalResponse,
   } = useChat({
     id: "conversation",
@@ -115,14 +115,14 @@ function ChatPage() {
     const out: ChatRow[] = [{ kind: "welcome", key: "welcome" }];
     if (pendingQuery && messages.length === 0) {
       out.push({ kind: "optimistic", key: "optimistic", text: pendingQuery });
-      out.push({ kind: "thinking", key: "thinking" });
+      if (!error) out.push({ kind: "thinking", key: "thinking" });
     }
     messages.forEach((message, index) =>
       out.push({ kind: "message", key: message.id, message, index }),
     );
     if (submitting) {
       out.push({ kind: "submitting", key: "submitting" });
-    } else if (messages.length > 0 && shouldShowThinking(messages)) {
+    } else if (!error && messages.length > 0 && shouldShowThinking(messages)) {
       out.push({ kind: "thinking", key: "thinking" });
     }
     if (error) out.push({ kind: "error", key: "error", text: error.message });
@@ -235,23 +235,24 @@ function ChatPage() {
         // role="alert" so screen readers announce the failure. The raw
         // error (e.g. "Internal server error") is unhelpful to a citizen, so
         // show plain-language guidance and a retry that re-runs the failed
-        // turn (useChat.retry — no duplicate user message).
+        // turn (useChat.reload — no duplicate user message).
         return (
-          <div
-            role="alert"
-            className="rounded-md bg-red-10 px-3 py-3 text-red-00 text-sm"
-          >
-            <p className="font-semibold">Something went wrong</p>
-            <p className="mt-1">
-              We couldn&rsquo;t get a response just now. Please try again.
-            </p>
-            <button
-              type="button"
-              onClick={() => void retry()}
-              className="mt-2 font-semibold underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
-            >
-              Try again
-            </button>
+          <div role="alert" className="flex max-w-[92%] items-start gap-2.5">
+            <TridentAvatar size="sm" tone="filled" />
+            <div className="flex min-w-0 flex-1 flex-col space-y-xs rounded-[16px_16px_16px_4px] bg-red-10 px-4 py-3 sm:px-5 sm:py-3.5">
+              <p className="font-semibold text-red-00">Something went wrong</p>
+              <p className="text-pretty text-black-00">
+                We couldn&rsquo;t get a response. Please check your connection
+                and try again.
+              </p>
+              <Button
+                className="self-start"
+                onClick={() => void reload()}
+                type="button"
+              >
+                Try again
+              </Button>
+            </div>
           </div>
         );
       case "message":
