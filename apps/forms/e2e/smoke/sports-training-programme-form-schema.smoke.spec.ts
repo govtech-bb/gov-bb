@@ -94,7 +94,14 @@ test.describe("Community Sports Training Programme — Live Smoke", () => {
     // hidden; `institution-name` is visible + optional, so we fill it.
     step = expectStep(page, "employment", { exact: true });
     await selectRadio(page, step, "employment-status", "employed");
-    await fillField(page, step, "institution-name", faker.company.name());
+    // Deterministic, validator-safe value: faker.company.name() can emit
+    // commas / periods / "&" that trip a letters-only name validator.
+    await fillField(
+      page,
+      step,
+      "institution-name",
+      "Barbados Community College",
+    );
     await advance(page, step);
 
     // ─── Do you belong to any organisations? ─────────────────────────────────

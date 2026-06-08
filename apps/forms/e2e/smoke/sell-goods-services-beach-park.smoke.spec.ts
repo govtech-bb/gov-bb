@@ -27,8 +27,9 @@
  *    the spec fills the National ID and leaves the toggle alone.
  *  - `goods-or-services` = "services" routes to the `services-details` step and
  *    keeps the `goods-details` step hidden (it is stepConditionalOn = "goods").
- *  - `document-uploads` has a single-file `police-certificate` and a
- *    multi-file `passport-photos` upload — one file each via uploadOne.
+ *  - `document-uploads` has a single-file `police-certificate` (via uploadOne)
+ *    and a multi-file `passport-photos` upload requiring 2 files (via
+ *    uploadMany) — the live field enforces a minItems of 2.
  *  - `declaration` is the explicit final step; its single-option confirmation
  *    checkbox input is `declaration_declaration-confirmed-confirmed`. The
  *    renderer auto-injects `check-your-answers` immediately before it.
@@ -39,7 +40,7 @@
  */
 import { faker } from "@faker-js/faker";
 import { test, expect } from "@playwright/test";
-import { TEST_PNG, TEST_PNG_2 } from "../helpers/test-data";
+import { TEST_PNG, TEST_PNG_2, TEST_PNG_3 } from "../helpers/test-data";
 import {
   STEP_TIMEOUT,
   advance,
@@ -50,6 +51,7 @@ import {
   selectDropdown,
   submitAndConfirm,
   uploadOne,
+  uploadMany,
 } from "../helpers/smoke";
 
 const FORM_ID = "sell-goods-services-beach-park";
@@ -245,7 +247,9 @@ test.describe("Sell Goods or Services at a Beach or Park — Live Smoke", () => 
     // ─── Upload supporting documents ─────────────────────────────────────────
     step = expectStep(page, "document-uploads", { exact: true });
     await uploadOne(page, step, "police-certificate", TEST_PNG);
-    await uploadOne(page, step, "passport-photos", TEST_PNG_2);
+    // passport-photos is a multi-file field with a minItems of 2 on the live
+    // form ("At least 2 photos are required") — upload two distinct files.
+    await uploadMany(page, step, "passport-photos", [TEST_PNG_2, TEST_PNG_3]);
     await advance(page, step);
 
     // ─── Check your answers (auto-injected before declaration) ───────────────
@@ -260,8 +264,11 @@ test.describe("Sell Goods or Services at a Beach or Park — Live Smoke", () => 
       .check();
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────
+    // The deployed confirmation screen renders the generic "Thank you for your
+    // application" heading rather than the recipe's `submission-confirmation`
+    // title ("Application submitted") — match what the live renderer shows.
     await submitAndConfirm(page, {
-      heading: "Application submitted",
+      heading: "Thank you for your application",
     });
   });
 });

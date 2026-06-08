@@ -89,7 +89,11 @@ test.describe("Post Office Redirection (Business) — Live Smoke", () => {
 
     // ─── Business Name ───────────────────────────────────────────────────────
     step = expectStep(page, "business-name", { exact: true });
-    await fillField(page, step, "business-name", faker.company.name());
+    // Use a deterministic, validator-safe name: business-name only accepts
+    // letters, spaces, hyphens and apostrophes, but faker.company.name() can
+    // emit commas / periods / "&" (e.g. "Oberbrunner, Nicolas and Rau"), which
+    // randomly trips "Name must contain only letters, hyphens, or apostrophes".
+    await fillField(page, step, "business-name", "Bridgetown Trading Company");
     await fillField(page, step, "registration-number", faker.string.numeric(8));
     await advance(page, step);
 

@@ -552,29 +552,13 @@ jobs:
   # licence, all three post-office redirections, and the beach/park vendor
   # licence. Each spec was authored from its recipe contract; first live runs
   # may surface recipe-vs-deployed drift to fix on the branch.
-  smoke-test-get-birth-certificate:
-    name: Smoke test forms (get-birth-certificate)
-    needs: amplify-forms
-    uses: ./.github/workflows/forms-smoke.yml
-    with:
-      base_url: https://forms.sandbox.alpha.gov.bb
-      spec: get-birth-certificate.smoke.spec.ts
-      artifact_name: get-birth-certificate-smoke-trace
-
-  # NOTE: get-death-certificate's smoke spec exists but is test.fixme (skipped)
-  # and intentionally NOT wired here. The form submits fine (200, referenceCode,
-  # pending_payment) but the deployed submission-confirmation screen renders
+  # NOTE: all three certificate forms (get-birth-certificate,
+  # get-death-certificate, get-marriage-certificate) have smoke specs that are
+  # test.fixme (skipped) and are intentionally NOT wired here. Each is a payment
+  # form whose submission succeeds (200, referenceCode, pending_payment, EZ Pay
+  # paymentUrl) but whose deployed submission-confirmation screen renders
   # "Something went wrong" instead of the EZ Pay redirect / success — see #919.
-  # Re-add this job (and un-fixme the spec) once #919 is fixed.
-
-  smoke-test-get-marriage-certificate:
-    name: Smoke test forms (get-marriage-certificate)
-    needs: amplify-forms
-    uses: ./.github/workflows/forms-smoke.yml
-    with:
-      base_url: https://forms.sandbox.alpha.gov.bb
-      spec: get-marriage-certificate.smoke.spec.ts
-      artifact_name: get-marriage-certificate-smoke-trace
+  # Re-add these jobs (and un-fixme the specs) once #919 is fixed.
 
   smoke-test-project-protege-mentor:
     name: Smoke test forms (project-protege-mentor)

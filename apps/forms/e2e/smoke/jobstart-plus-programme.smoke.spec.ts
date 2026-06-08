@@ -117,7 +117,12 @@ test.describe("JobStart Plus Programme — Live Smoke", () => {
       faker.person.firstName(),
     );
     await fillField(page, step, "emergency-last-name", faker.person.lastName());
-    await selectDropdown(page, step, "emergency-relationship", "parent");
+    // The deployed form's Relationship select offers family-relationship
+    // labels (Mother/Father/Grandmother/…/Legal Guardian/Other) rather than the
+    // repo registry's generic `components/relationship` values (spouse/parent/…)
+    // — selectOption matches a plain string by value OR label, so pass a label
+    // that exists on the live dropdown.
+    await selectDropdown(page, step, "emergency-relationship", "Father");
     await fillField(
       page,
       step,
