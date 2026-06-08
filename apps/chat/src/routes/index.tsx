@@ -240,8 +240,10 @@ function ChatPage() {
           <div role="alert" className="flex max-w-[92%] items-start gap-2.5">
             <TridentAvatar size="sm" tone="filled" />
             <div className="flex min-w-0 flex-1 flex-col space-y-xs rounded-[16px_16px_16px_4px] bg-red-10 px-4 py-3 sm:px-5 sm:py-3.5">
-              <p className="font-semibold text-red-00">Something went wrong</p>
-              <p className="text-pretty text-black-00">
+              <p className="text-bubble font-semibold text-red-00">
+                Something went wrong
+              </p>
+              <p className="text-bubble text-pretty text-black-00">
                 We couldn&rsquo;t get a response. Please check your connection
                 and try again.
               </p>
