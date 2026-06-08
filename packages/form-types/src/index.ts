@@ -125,6 +125,8 @@ export { KEBAB_ID_PATTERN, KEBAB_ID_ERROR } from "./id-pattern";
 
 export { dynamic } from "./dynamic";
 
+export { shallowMergeDefined } from "./merge";
+
 export { validateFormContract } from "./validate-form-contract";
 export type {
   ValidationIssue,
