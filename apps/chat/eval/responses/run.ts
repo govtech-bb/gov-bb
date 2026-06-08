@@ -15,6 +15,7 @@
 import { execFile } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { ChatClient, fetchServerSentEvents } from "@tanstack/ai-client";
 // The default no-op devtools bridge is missing mountWithTools (upstream bug),
@@ -25,7 +26,7 @@ import type { Citation } from "../../src/lib/chat/types";
 
 const execFileAsync = promisify(execFile);
 
-const HERE = new URL(".", import.meta.url).pathname;
+const HERE = fileURLToPath(new URL(".", import.meta.url));
 const CASES_PATH = join(HERE, "cases.json");
 const RESULTS_PATH = join(HERE, "results.json");
 const REPORT_PATH = join(HERE, "report.html");
