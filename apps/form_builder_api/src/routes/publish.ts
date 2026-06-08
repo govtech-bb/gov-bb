@@ -1,10 +1,12 @@
 import { Router } from "express";
+import type { Request, Response } from "express";
 import {
   deployBranchName,
   type ServiceContractRecipe,
 } from "@govtech-bb/form-types";
 import { getDataSource } from "../db.js";
 import { holdsFreshClaim } from "./presence.js";
+import { validateRecipeFully } from "./validate-recipe.js";
 
 export const publishRouter = Router();
 
@@ -26,16 +28,27 @@ function authHeaders(token: string): Record<string, string> {
 }
 
 // POST /builder/publish — create a GitHub PR with the recipe
-export async function publishHandler(
-  req: import("express").Request,
-  res: import("express").Response,
-): Promise<void> {
+export async function publishHandler(req: Request, res: Response) {
   try {
     const { recipe, description, githubToken, userLogin } = req.body;
     if (!recipe || !githubToken) {
       res.status(400).json({ error: "recipe and githubToken are required" });
       return;
     }
+
+    // Server-side backstop (#759): run the same validation the client Deploy
+    // gate runs, *before* any GitHub call, so a stale/non-UI client can't open
+    // a junk PR that only exists to fail CI. On failure nothing is created, so
+    // there's no branch/PR to clean up.
+    const validation = await validateRecipeFully(recipe);
+    if (!validation.ok) {
+      res.status(400).json({
+        error: "Recipe failed validation",
+        issues: validation.issues,
+      });
+      return;
+    }
+
     const typedRecipe = recipe as ServiceContractRecipe;
     const token = githubToken as string;
 
@@ -132,4 +145,5 @@ export async function publishHandler(
     res.status(500).json({ error: err.message });
   }
 }
+
 publishRouter.post("/", publishHandler);

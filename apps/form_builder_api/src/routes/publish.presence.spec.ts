@@ -2,6 +2,11 @@ import type { Request, Response } from "express";
 
 jest.mock("../db.js", () => ({ getDataSource: jest.fn() }));
 jest.mock("./presence.js", () => ({ holdsFreshClaim: jest.fn() }));
+// The #759 recipe-validation backstop runs before the presence check; stub it
+// as passing so these tests exercise the presence gate, not validation.
+jest.mock("./validate-recipe.js", () => ({
+  validateRecipeFully: jest.fn().mockResolvedValue({ ok: true }),
+}));
 
 import { getDataSource } from "../db.js";
 import { holdsFreshClaim } from "./presence.js";
