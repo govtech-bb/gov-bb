@@ -112,17 +112,18 @@ function ChatPage() {
   }, [isStreaming]);
 
   // Screen-reader announcement of the COMPLETED assistant reply, surfaced via
-  // the off-screen live region in the render. Guarding on isStreaming means we
-  // announce the finished answer once, rather than reading out partial tokens
-  // as they stream; the "Thinking" indicator (role="status") covers the
-  // in-progress state.
-  const [announcement, setAnnouncement] = useState("");
-  useEffect(() => {
-    if (isStreaming) return;
+  // the off-screen live region in the render. Empty while streaming so we
+  // announce the finished answer once rather than partial tokens; the
+  // "Thinking" indicator (role="status") covers the in-progress state.
+  // Derived in render (not an effect) so the text is part of the live region's
+  // FIRST paint on load — aria-live ignores initial content, so a refresh with
+  // persisted history doesn't read the last reply out unprompted.
+  const announcement = useMemo(() => {
+    if (isStreaming) return "";
     const lastAssistant = [...messages]
       .reverse()
       .find((m) => m.role === "assistant");
-    setAnnouncement(lastAssistant ? extractText(lastAssistant) : "");
+    return lastAssistant ? extractText(lastAssistant) : "";
   }, [isStreaming, messages]);
 
   const rows = useMemo<ChatRow[]>(() => {
