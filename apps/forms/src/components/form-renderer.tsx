@@ -24,6 +24,7 @@ import {
   buildFieldValidationProperties,
 } from "@forms/lib";
 import { trackEvent } from "../lib/analytics";
+import { StatusBanner } from "@govtech-bb/react";
 
 // ---------------------------------------------------------------------------
 // Field grouping (show-hide + radio/select conditional reveal)
@@ -138,6 +139,7 @@ export default function FormRenderer({
   visibleSteps,
   repeatableStepSettingsRef,
   submissionState,
+  isPreview = false,
 }: FormRendererProps) {
   const { navigateToStep, completeAndContinue, currentIndex } = useStepGuard({
     formId: formMeta.formId,
@@ -398,6 +400,11 @@ export default function FormRenderer({
   return (
     <div className="container pb-8 lg:pb-16">
       <div className="form-page form-width">
+        {isPreview && (
+          <StatusBanner variant="service-issue" data-testid="preview-banner">
+            Preview mode — this is an unpublished draft and cannot be submitted.
+          </StatusBanner>
+        )}
         <div className="form-page__header">
           <p className="form-page__service-title"> {formMeta.formTitle} </p>
           <h1 className="govbb-text-h1">
@@ -528,17 +535,30 @@ export default function FormRenderer({
               <button
                 className="govbb-btn"
                 type="button"
-                disabled={isLastFormStep && isSubmitting}
+                disabled={
+                  (isLastFormStep && isSubmitting) ||
+                  (isLastFormStep && isPreview)
+                }
                 onClick={isLastFormStep ? handleSubmit : handleContinue}
               >
                 {isLastFormStep && isSubmitting
                   ? "Submitting…"
-                  : isLastFormStep
-                    ? "Submit"
-                    : "Continue"}
+                  : isLastFormStep && isPreview
+                    ? "Submit (preview)"
+                    : isLastFormStep
+                      ? "Submit"
+                      : "Continue"}
               </button>
             </div>
           )}
+          {currentStep.stepId !== "submission-confirmation" &&
+            isLastFormStep &&
+            isPreview && (
+              <p className="govbb-hint" data-testid="preview-submit-hint">
+                Submitting is disabled in preview. Publish the form to enable
+                submission.
+              </p>
+            )}
         </div>
       </div>
     </div>
