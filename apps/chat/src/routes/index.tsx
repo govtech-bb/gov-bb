@@ -111,6 +111,20 @@ function ChatPage() {
     if (!isStreaming) setSubmitting(false);
   }, [isStreaming]);
 
+  // Screen-reader announcement of the COMPLETED assistant reply, surfaced via
+  // the off-screen live region in the render. Guarding on isStreaming means we
+  // announce the finished answer once, rather than reading out partial tokens
+  // as they stream; the "Thinking" indicator (role="status") covers the
+  // in-progress state.
+  const [announcement, setAnnouncement] = useState("");
+  useEffect(() => {
+    if (isStreaming) return;
+    const lastAssistant = [...messages]
+      .reverse()
+      .find((m) => m.role === "assistant");
+    setAnnouncement(lastAssistant ? extractText(lastAssistant) : "");
+  }, [isStreaming, messages]);
+
   const rows = useMemo<ChatRow[]>(() => {
     const out: ChatRow[] = [{ kind: "welcome", key: "welcome" }];
     if (pendingQuery && messages.length === 0) {
@@ -274,9 +288,11 @@ function ChatPage() {
 
       <div className="relative flex-1 overflow-hidden">
         {/* Not a <main> — the root layout already provides the single main
-            landmark. role="log" + aria-live announces streamed replies; the
-            streaming bubble stays mounted at the end, so it is announced even
-            though off-screen history is unmounted by the virtualizer. */}
+            landmark. The transcript is deliberately NOT a live region: the
+            virtualizer mounts/unmounts rows on scroll, which a live region
+            announces as new content, re-reading history to screen readers.
+            The working state and the completed reply are announced via the
+            dedicated off-screen live region below. */}
         <div
           ref={parentRef}
           onScroll={handleScroll}
@@ -284,9 +300,7 @@ function ChatPage() {
         >
           <div
             aria-label="Chat messages"
-            aria-live="polite"
             className="relative mx-auto w-full max-w-2xl"
-            role="log"
             style={{ height: virtualizer.getTotalSize() }}
           >
             {virtualizer.getVirtualItems().map((virtualItem) => (
@@ -301,6 +315,12 @@ function ChatPage() {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Off-screen live region: announces the completed assistant reply
+            once, decoupled from the virtualized transcript above. */}
+        <div className="sr-only" aria-live="polite">
+          {announcement}
         </div>
 
         {showJumpToLatest && (
@@ -420,7 +440,9 @@ function shouldShowThinking(messages: UIMessage[]): boolean {
 
 function ThinkingIndicator({ label = "Thinking" }: { label?: string }) {
   return (
-    <div className="flex items-center gap-2.5">
+    // role="status" announces the working state to screen readers; the
+    // gradient text is otherwise visual-only.
+    <div role="status" className="flex items-center gap-2.5">
       <TridentAvatar size="sm" tone="filled" />
       <span
         className="text-bubble animate-[shimmer_2.5s_linear_infinite] bg-clip-text font-medium text-transparent"
