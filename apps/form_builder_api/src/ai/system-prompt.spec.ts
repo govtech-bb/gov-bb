@@ -129,6 +129,34 @@ describe("AI system prompt", () => {
     );
   });
 
+  it("explains step-level behaviours live in a behaviours array on the step", () => {
+    // The lead-in must distinguish step-level from field-level placement.
+    expect(prompt).toContain("STEP-level");
+    expect(prompt).toContain("as a sibling of");
+  });
+
+  it("documents the stepConditionalOn behaviour with a required targetStepId", () => {
+    expect(prompt).toContain('"type": "stepConditionalOn"');
+    // targetStepId is optional on field-level conditionals but required here.
+    expect(prompt).toContain("targetStepId is REQUIRED here");
+  });
+
+  it("documents the repeatable behaviour as a step-level Add another? behaviour", () => {
+    expect(prompt).toContain('"type": "repeatable"');
+    expect(prompt).toContain("Add another?");
+  });
+
+  it("mentions sharedFields only as an adjunct to a repeatable step", () => {
+    expect(prompt).toContain('"type": "sharedFields"');
+    expect(prompt).toContain("only meaningful alongside");
+  });
+
+  it("never mentions the deliberately-excluded fieldArray behaviour", () => {
+    // fieldArray is intentionally withheld (overlaps a repeatable step and
+    // invites misuse). Pin its absence so an edit can't quietly reintroduce it.
+    expect(prompt).not.toContain("fieldArray");
+  });
+
   it("directs relationship fields to components/relationship, not a text input", () => {
     expect(prompt).toContain("Relationship fields use components/relationship");
     // The component reference must surface it as a select with baked-in options.
