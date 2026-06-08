@@ -139,8 +139,12 @@ function BuilderPage() {
   // saved baseline. Before any save/load there's no baseline, so a brand-new
   // form falls back to isDirty ("is the form non-empty"). draftsEqual ignores
   // version/timestamps/editor-only ids, so it goes clean right after a save.
+  // `comparePayments` so a payment-processor edit (stripped from the recipe,
+  // #958) still flags as unsaved — both sides here retain payment config.
   const hasUnsavedChanges =
-    savedDraft === null ? isDirty : !draftsEqual(draft, savedDraft);
+    savedDraft === null
+      ? isDirty
+      : !draftsEqual(draft, savedDraft, { comparePayments: true });
   const editableSteps = draft.steps.filter((s) => !isRequiredStep(s.stepId));
   const hasEditableSteps = editableSteps.length > 0;
   // Live recipe-wide uniqueness check over resolved field ids + step ids. Drives

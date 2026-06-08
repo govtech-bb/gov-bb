@@ -45,6 +45,16 @@ function wantsNumber(subject: AmountSubject, operator: AmountOperator): boolean 
   return subject.kind === "age" || ORDERING_OPERATORS.includes(operator);
 }
 
+// Whether a field is a date-of-birth field — its label or id mentions "birth"
+// (e.g. the registry's `date-of-birth` / "Date of birth", #959) or the common
+// "dob" abbreviation. An age comparison only makes sense against a DOB; any
+// other field yields NaN at runtime (packages/expressions age op). `ref` isn't
+// carried on ResolvedFieldId, so we match on label/id like the payment picker.
+function isDobField(field: ResolvedFieldId): boolean {
+  const hay = `${field.fieldId} ${field.display}`.toLowerCase();
+  return hay.includes("birth") || hay.includes("dob");
+}
+
 // Empty input → 0: the default and each rule amount are mandatory numbers, so
 // the compiled if-chain always terminates in a real number and resolution can
 // never fail to produce one.
@@ -211,20 +221,35 @@ export function AmountEditor({
         <>
           {conditional.rules.map((rule, i) => {
             const numeric = wantsNumber(rule.subject, rule.operator);
+            // An age comparison only makes sense against a date of birth, so
+            // restrict the picker to DOB fields when this rule compares age
+            // (#959). A value comparison stays unrestricted.
+            const dobFields = fields.filter(isDobField);
+            const conditionFields =
+              rule.subject.kind === "age" ? dobFields : fields;
             return (
               <div key={i} className={styles.formGroup}>
                 <label htmlFor={fid(`ruleSubject-${i}`)}>Compare</label>
                 <select
                   id={fid(`ruleSubject-${i}`)}
                   value={rule.subject.kind}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const kind = e.target.value as AmountSubject["kind"];
+                    // Switching to age drops a stale non-DOB path so the picker
+                    // (now DOB-only) can't keep an invalid selection alive via
+                    // its `(current)` fallback (#959).
+                    const stillValid =
+                      kind !== "age" ||
+                      dobFields.some(
+                        (f) => `${f.stepId}.${f.fieldId}` === rule.subject.path,
+                      );
                     patchRule(i, {
                       subject: {
-                        kind: e.target.value as AmountSubject["kind"],
-                        path: rule.subject.path,
+                        kind,
+                        path: stillValid ? rule.subject.path : "",
                       },
-                    })
-                  }
+                    });
+                  }}
                 >
                   <option value="field">Field value</option>
                   <option value="age">Age of field</option>
@@ -233,7 +258,7 @@ export function AmountEditor({
                 <ValuePathPicker
                   id={fid(`ruleField-${i}`)}
                   value={rule.subject.path}
-                  fields={fields}
+                  fields={conditionFields}
                   onChange={(path) =>
                     patchRule(i, { subject: { ...rule.subject, path } })
                   }

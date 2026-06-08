@@ -485,3 +485,159 @@ it("edits a payment processor's department field in place (#716)", async () => {
   await userEvent.type(dept, "Registry");
   expect(state()[0].config.department).toBe("Registry");
 });
+
+// ── Payment customer email/name path filtering (#957) ────────────────────────
+// The payment processor's customer email/name path pickers must only offer
+// fields whose label OR id implies email / name — picking a mismatched field
+// yields a payment that sends garbage to ezpay. Matching is on label OR id
+// (broader than the email processor's id-only recipient filter).
+
+const PAYMENT_FILTER_FIELDS: ResolvedFieldId[] = [
+  // email-like
+  { fieldId: "email", editorFieldId: "e1", stepId: "s", stepTitle: "S", display: "Email", isBoolean: false },
+  { fieldId: "q1", editorFieldId: "e2", stepId: "s", stepTitle: "S", display: "Email address", isBoolean: false }, // by label only
+  { fieldId: "applicant-email", editorFieldId: "e3", stepId: "s", stepTitle: "S", display: "Contact", isBoolean: false }, // by id only
+  // name-like
+  { fieldId: "full-name", editorFieldId: "e4", stepId: "s", stepTitle: "S", display: "Full name", isBoolean: false },
+  { fieldId: "q2", editorFieldId: "e5", stepId: "s", stepTitle: "S", display: "Your name", isBoolean: false }, // by label only
+  { fieldId: "business-name", editorFieldId: "e6", stepId: "s", stepTitle: "S", display: "Business", isBoolean: false }, // by id only
+  // neither
+  { fieldId: "phone", editorFieldId: "e7", stepId: "s", stepTitle: "S", display: "Phone", isBoolean: false },
+];
+
+it("offers only email-like fields (by label or id) in the customer email path picker (#957)", async () => {
+  render(<Harness initial={emptyDraft} fields={PAYMENT_FILTER_FIELDS} />);
+  await addProcessor("payment");
+  const picker = screen.getByLabelText(/customer email path/i);
+  // email-like fields are offered, whether matched by label or id
+  expect(within(picker).getByRole("option", { name: "Email (s.email)" })).toHaveValue("s.email");
+  expect(within(picker).getByRole("option", { name: /Email address/ })).toHaveValue("s.q1");
+  expect(within(picker).getByRole("option", { name: "Contact (s.applicant-email)" })).toHaveValue("s.applicant-email");
+  // name/other fields are filtered out
+  expect(within(picker).queryByRole("option", { name: /Full name/ })).not.toBeInTheDocument();
+  expect(within(picker).queryByRole("option", { name: /Your name/ })).not.toBeInTheDocument();
+  expect(within(picker).queryByRole("option", { name: /Business/ })).not.toBeInTheDocument();
+  expect(within(picker).queryByRole("option", { name: /Phone/ })).not.toBeInTheDocument();
+});
+
+it("offers only name-like fields (by label or id) in the customer name path picker (#957)", async () => {
+  render(<Harness initial={emptyDraft} fields={PAYMENT_FILTER_FIELDS} />);
+  await addProcessor("payment");
+  const picker = screen.getByLabelText(/customer name path/i);
+  // name-like fields are offered, whether matched by label or id
+  expect(within(picker).getByRole("option", { name: "Full name (s.full-name)" })).toHaveValue("s.full-name");
+  expect(within(picker).getByRole("option", { name: /Your name/ })).toHaveValue("s.q2");
+  expect(within(picker).getByRole("option", { name: "Business (s.business-name)" })).toHaveValue("s.business-name");
+  // email/other fields are filtered out
+  expect(within(picker).queryByRole("option", { name: /Email/ })).not.toBeInTheDocument();
+  expect(within(picker).queryByRole("option", { name: /Contact/ })).not.toBeInTheDocument();
+  expect(within(picker).queryByRole("option", { name: /Phone/ })).not.toBeInTheDocument();
+});
+
+it("filters the customer email/name pickers case-insensitively (#957)", async () => {
+  const fields: ResolvedFieldId[] = [
+    { fieldId: "Email", editorFieldId: "e1", stepId: "s", stepTitle: "S", display: "MDA contact", isBoolean: false },
+    { fieldId: "applicant-NAME", editorFieldId: "e2", stepId: "s", stepTitle: "S", display: "Applicant", isBoolean: false },
+  ];
+  render(<Harness initial={emptyDraft} fields={fields} />);
+  await addProcessor("payment");
+  expect(
+    within(screen.getByLabelText(/customer email path/i)).getByRole("option", { name: /MDA contact/ }),
+  ).toHaveValue("s.Email");
+  expect(
+    within(screen.getByLabelText(/customer name path/i)).getByRole("option", { name: /Applicant/ }),
+  ).toHaveValue("s.applicant-NAME");
+});
+
+it("preserves a previously-saved out-of-list customer email path via the (current) fallback (#957)", () => {
+  const initial: RecipeDraft = {
+    formId: "f",
+    title: "T",
+    steps: [],
+    processors: [
+      {
+        id: "pay-1",
+        type: "payment",
+        config: {
+          provider: "ezpay",
+          department: "Treasury",
+          paymentCode: "FEE-001",
+          amount: 50,
+          description: "Fee",
+          // A path that is NOT email-like — must still render so it isn't dropped.
+          customerEmailPath: "s.phone",
+          customerNamePath: "",
+        },
+      },
+    ],
+  };
+  render(<Harness initial={initial} fields={PAYMENT_FILTER_FIELDS} />);
+  const picker = screen.getByLabelText(/customer email path/i);
+  expect(within(picker).getByRole("option", { name: "s.phone (current)" })).toHaveValue("s.phone");
+});
+
+// ── Age-band condition: date-of-birth-only field options (#959) ───────────────
+// In a conditional (age-band) amount, when a rule compares the "Age of field",
+// the condition-field picker must only offer date-of-birth fields. Comparing a
+// field's value (subject = "field") stays unrestricted.
+
+const AGE_FILTER_FIELDS: ResolvedFieldId[] = [
+  { fieldId: "date-of-birth", editorFieldId: "e1", stepId: "s", stepTitle: "S", display: "Date of birth", isBoolean: false },
+  { fieldId: "dob", editorFieldId: "e2", stepId: "s", stepTitle: "S", display: "Applicant", isBoolean: false }, // by id (dob)
+  { fieldId: "q1", editorFieldId: "e3", stepId: "s", stepTitle: "S", display: "Birth date", isBoolean: false }, // by label (birth)
+  { fieldId: "email", editorFieldId: "e4", stepId: "s", stepTitle: "S", display: "Email", isBoolean: false },
+  { fieldId: "phone", editorFieldId: "e5", stepId: "s", stepTitle: "S", display: "Phone", isBoolean: false },
+];
+
+async function addConditionalRule() {
+  await addProcessor("payment");
+  await userEvent.selectOptions(screen.getByLabelText(/amount type/i), "conditional");
+  await userEvent.click(screen.getByRole("button", { name: /add rule/i }));
+}
+
+it("offers all fields in the condition-field picker when comparing a field value (#959)", async () => {
+  render(<Harness initial={emptyDraft} fields={AGE_FILTER_FIELDS} />);
+  await addConditionalRule();
+  // subject defaults to "field" — every field is selectable
+  const picker = screen.getByLabelText(/condition field/i);
+  expect(within(picker).getByRole("option", { name: /Email/ })).toBeInTheDocument();
+  expect(within(picker).getByRole("option", { name: /Phone/ })).toBeInTheDocument();
+  expect(within(picker).getByRole("option", { name: /Date of birth/ })).toBeInTheDocument();
+});
+
+it("offers only date-of-birth fields in the condition-field picker when comparing age (#959)", async () => {
+  render(<Harness initial={emptyDraft} fields={AGE_FILTER_FIELDS} />);
+  await addConditionalRule();
+  await userEvent.selectOptions(screen.getByLabelText(/compare/i), "age");
+  const picker = screen.getByLabelText(/condition field/i);
+  // date-of-birth-like fields (by label or id) are offered
+  expect(within(picker).getByRole("option", { name: "Date of birth (s.date-of-birth)" })).toHaveValue("s.date-of-birth");
+  expect(within(picker).getByRole("option", { name: "Applicant (s.dob)" })).toHaveValue("s.dob");
+  expect(within(picker).getByRole("option", { name: /Birth date/ })).toHaveValue("s.q1");
+  // non-DOB fields are filtered out
+  expect(within(picker).queryByRole("option", { name: /Email/ })).not.toBeInTheDocument();
+  expect(within(picker).queryByRole("option", { name: /Phone/ })).not.toBeInTheDocument();
+});
+
+it("clears a stale non-DOB selection when a rule switches to comparing age (#959)", async () => {
+  render(<Harness initial={emptyDraft} fields={AGE_FILTER_FIELDS} />);
+  await addConditionalRule();
+  // Pick a non-DOB field while comparing the field value...
+  await userEvent.selectOptions(screen.getByLabelText(/condition field/i), "s.email");
+  expect(screen.getByLabelText(/condition field/i)).toHaveValue("s.email");
+  // ...then switch to age: the now-invalid path must be cleared, not kept alive
+  // by the picker's (current) fallback.
+  await userEvent.selectOptions(screen.getByLabelText(/compare/i), "age");
+  expect(screen.getByLabelText(/condition field/i)).toHaveValue("");
+});
+
+it("keeps a DOB selection when a rule switches to comparing age (#959)", async () => {
+  render(<Harness initial={emptyDraft} fields={AGE_FILTER_FIELDS} />);
+  await addConditionalRule();
+  await userEvent.selectOptions(
+    screen.getByLabelText(/condition field/i),
+    "s.date-of-birth",
+  );
+  await userEvent.selectOptions(screen.getByLabelText(/compare/i), "age");
+  expect(screen.getByLabelText(/condition field/i)).toHaveValue("s.date-of-birth");
+});
