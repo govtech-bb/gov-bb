@@ -494,15 +494,15 @@ it("edits a payment processor's department field in place (#716)", async () => {
 
 const PAYMENT_FILTER_FIELDS: ResolvedFieldId[] = [
   // email-like
-  { fieldId: "email", editorFieldId: "e1", stepId: "s", stepTitle: "S", display: "Email", isBoolean: false },
-  { fieldId: "q1", editorFieldId: "e2", stepId: "s", stepTitle: "S", display: "Email address", isBoolean: false }, // by label only
-  { fieldId: "applicant-email", editorFieldId: "e3", stepId: "s", stepTitle: "S", display: "Contact", isBoolean: false }, // by id only
+  { fieldId: "email", editorFieldId: "e1", stepId: "s", stepTitle: "S", display: "Email", isBoolean: false, isNumeric: false },
+  { fieldId: "q1", editorFieldId: "e2", stepId: "s", stepTitle: "S", display: "Email address", isBoolean: false, isNumeric: false }, // by label only
+  { fieldId: "applicant-email", editorFieldId: "e3", stepId: "s", stepTitle: "S", display: "Contact", isBoolean: false, isNumeric: false }, // by id only
   // name-like
-  { fieldId: "full-name", editorFieldId: "e4", stepId: "s", stepTitle: "S", display: "Full name", isBoolean: false },
-  { fieldId: "q2", editorFieldId: "e5", stepId: "s", stepTitle: "S", display: "Your name", isBoolean: false }, // by label only
-  { fieldId: "business-name", editorFieldId: "e6", stepId: "s", stepTitle: "S", display: "Business", isBoolean: false }, // by id only
+  { fieldId: "full-name", editorFieldId: "e4", stepId: "s", stepTitle: "S", display: "Full name", isBoolean: false, isNumeric: false },
+  { fieldId: "q2", editorFieldId: "e5", stepId: "s", stepTitle: "S", display: "Your name", isBoolean: false, isNumeric: false }, // by label only
+  { fieldId: "business-name", editorFieldId: "e6", stepId: "s", stepTitle: "S", display: "Business", isBoolean: false, isNumeric: false }, // by id only
   // neither
-  { fieldId: "phone", editorFieldId: "e7", stepId: "s", stepTitle: "S", display: "Phone", isBoolean: false },
+  { fieldId: "phone", editorFieldId: "e7", stepId: "s", stepTitle: "S", display: "Phone", isBoolean: false, isNumeric: false },
 ];
 
 it("offers only email-like fields (by label or id) in the customer email path picker (#957)", async () => {
@@ -536,8 +536,8 @@ it("offers only name-like fields (by label or id) in the customer name path pick
 
 it("filters the customer email/name pickers case-insensitively (#957)", async () => {
   const fields: ResolvedFieldId[] = [
-    { fieldId: "Email", editorFieldId: "e1", stepId: "s", stepTitle: "S", display: "MDA contact", isBoolean: false },
-    { fieldId: "applicant-NAME", editorFieldId: "e2", stepId: "s", stepTitle: "S", display: "Applicant", isBoolean: false },
+    { fieldId: "Email", editorFieldId: "e1", stepId: "s", stepTitle: "S", display: "MDA contact", isBoolean: false, isNumeric: false },
+    { fieldId: "applicant-NAME", editorFieldId: "e2", stepId: "s", stepTitle: "S", display: "Applicant", isBoolean: false, isNumeric: false },
   ];
   render(<Harness initial={emptyDraft} fields={fields} />);
   await addProcessor("payment");
@@ -582,11 +582,11 @@ it("preserves a previously-saved out-of-list customer email path via the (curren
 // field's value (subject = "field") stays unrestricted.
 
 const AGE_FILTER_FIELDS: ResolvedFieldId[] = [
-  { fieldId: "date-of-birth", editorFieldId: "e1", stepId: "s", stepTitle: "S", display: "Date of birth", isBoolean: false },
-  { fieldId: "dob", editorFieldId: "e2", stepId: "s", stepTitle: "S", display: "Applicant", isBoolean: false }, // by id (dob)
-  { fieldId: "q1", editorFieldId: "e3", stepId: "s", stepTitle: "S", display: "Birth date", isBoolean: false }, // by label (birth)
-  { fieldId: "email", editorFieldId: "e4", stepId: "s", stepTitle: "S", display: "Email", isBoolean: false },
-  { fieldId: "phone", editorFieldId: "e5", stepId: "s", stepTitle: "S", display: "Phone", isBoolean: false },
+  { fieldId: "date-of-birth", editorFieldId: "e1", stepId: "s", stepTitle: "S", display: "Date of birth", isBoolean: false, isNumeric: false },
+  { fieldId: "dob", editorFieldId: "e2", stepId: "s", stepTitle: "S", display: "Applicant", isBoolean: false, isNumeric: false }, // by id (dob)
+  { fieldId: "q1", editorFieldId: "e3", stepId: "s", stepTitle: "S", display: "Birth date", isBoolean: false, isNumeric: false }, // by label (birth)
+  { fieldId: "email", editorFieldId: "e4", stepId: "s", stepTitle: "S", display: "Email", isBoolean: false, isNumeric: false },
+  { fieldId: "phone", editorFieldId: "e5", stepId: "s", stepTitle: "S", display: "Phone", isBoolean: false, isNumeric: false },
 ];
 
 async function addConditionalRule() {
