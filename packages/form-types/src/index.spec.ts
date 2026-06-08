@@ -45,6 +45,7 @@ import {
   formConfigBlobSchema,
   parseFormConfigBlob,
   dynamic,
+  shallowMergeDefined,
   validateFormContract,
   dateTimeFormatSchema,
   serviceContractSchema,
@@ -856,6 +857,15 @@ describe("dynamic", () => {
     // 42 fails both z.string().min(1) and z.record(z.string(), z.unknown()), so
     // the union rejects it.
     expect(schema.safeParse(42).success).toBe(false);
+  });
+});
+
+describe("shallowMergeDefined (re-export)", () => {
+  it("merges override keys over the base", () => {
+    expect(shallowMergeDefined({ a: 1, b: 2 }, { b: 3 })).toEqual({
+      a: 1,
+      b: 3,
+    });
   });
 });
 
