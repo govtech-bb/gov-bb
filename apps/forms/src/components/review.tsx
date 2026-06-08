@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { AnyFormApi } from "@tanstack/react-form";
 import { ClientFormStep, ClientPrimitive, FormMeta } from "@forms/types";
 import { getInstanceMarker, getVisibleFields } from "@forms/lib";
+import { DateValue } from "@govtech-bb/form-types";
 
 export default function Review({
   formMeta,
@@ -21,13 +22,11 @@ export default function Review({
     "submission-confirmation",
   ];
 
-  const formatDate = (dateValue: {
-    day: number;
-    month: number;
-    year: number;
-  }) => {
+  // Date parts are stored as digit-strings (#815); coerce to numbers for the
+  // Date constructor so leading zeros ("09") format correctly.
+  const formatDate = (dateValue: DateValue) => {
     const { day, month, year } = dateValue;
-    const formattedDate = new Date(year, month - 1, day)
+    const formattedDate = new Date(Number(year), Number(month) - 1, Number(day))
       .toDateString()
       .trim()
       .replace(/^\w+\s/, ""); // Remove the day of the week from the date string
@@ -83,13 +82,7 @@ export default function Review({
       }
       case "date": {
         if (!value) return null;
-        return formatDate(
-          value as {
-            day: number;
-            month: number;
-            year: number;
-          },
-        );
+        return formatDate(value as DateValue);
       }
       case "checkbox": {
         if (!field.options) return emptyToNull(value);

@@ -13,13 +13,16 @@ export type ValidationResult =
 type Coerced = { value: unknown } | { error: string };
 type Coercer = (field: Primitive, raw: string) => Coerced;
 
+// Date parts are stored as the literal digit-strings the user typed, not
+// numbers (#815) — matching the dateValueInputSchema the forms API validates
+// against. The regex capture groups are already strings; keep them verbatim.
 function parseDate(
   raw: string,
-): { day: number; month: number; year: number } | null {
+): { day: string; month: string; year: string } | null {
   const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
-  if (iso) return { year: +iso[1], month: +iso[2], day: +iso[3] };
+  if (iso) return { year: iso[1]!, month: iso[2]!, day: iso[3]! };
   const dmy = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(raw);
-  if (dmy) return { day: +dmy[1], month: +dmy[2], year: +dmy[3] };
+  if (dmy) return { day: dmy[1]!, month: dmy[2]!, year: dmy[3]! };
   return null;
 }
 

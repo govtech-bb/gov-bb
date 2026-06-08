@@ -748,8 +748,10 @@ describe("Review", () => {
     const steps: ClientFormStep[] = [
       makeStep({ stepId: "step-1", title: "Step One", fields: [dateField] }),
     ];
+    // Date parts are stored as the digit-strings the user typed (#815),
+    // including any leading zeros.
     const form = makeMockForm({
-      "step-1.dob": { day: 1, month: 1, year: 2026 },
+      "step-1.dob": { day: "09", month: "01", year: "2026" },
     });
 
     render(
@@ -760,7 +762,7 @@ describe("Review", () => {
       />,
     );
 
-    const expectedDate = new Date(2026, 0, 1)
+    const expectedDate = new Date(2026, 0, 9)
       .toDateString()
       .trim()
       .replace(/^\w+\s/, "");
