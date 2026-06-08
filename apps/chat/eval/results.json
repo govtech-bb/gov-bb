@@ -2,342 +2,1298 @@
   {
     "config": {
       "similarity": 0.25,
-      "scoreThresh": 0.3,
+      "scoreThresh": 0.5,
+      "topK": 6,
+      "maxSources": 4,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.25,
+      "scoreThresh": 0.5,
+      "topK": 6,
+      "maxSources": 5,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.25,
+      "scoreThresh": 0.5,
       "topK": 6,
       "maxSources": 6,
       "serviceWeight": 1,
-      "mdaWeight": 1,
       "newsWeight": 0.7
     },
     "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
   },
   {
     "config": {
       "similarity": 0.25,
-      "scoreThresh": 0.3,
-      "topK": 6,
-      "maxSources": 6,
-      "serviceWeight": 1.1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.25,
-      "scoreThresh": 0.3,
+      "scoreThresh": 0.5,
       "topK": 6,
       "maxSources": 7,
       "serviceWeight": 1,
-      "mdaWeight": 1,
       "newsWeight": 0.7
     },
     "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
   },
   {
     "config": {
       "similarity": 0.25,
-      "scoreThresh": 0.3,
+      "scoreThresh": 0.5,
+      "topK": 8,
+      "maxSources": 4,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.25,
+      "scoreThresh": 0.5,
+      "topK": 8,
+      "maxSources": 5,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.25,
+      "scoreThresh": 0.5,
+      "topK": 8,
+      "maxSources": 6,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.25,
+      "scoreThresh": 0.5,
+      "topK": 8,
+      "maxSources": 7,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.25,
+      "scoreThresh": 0.5,
+      "topK": 10,
+      "maxSources": 4,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.25,
+      "scoreThresh": 0.5,
+      "topK": 10,
+      "maxSources": 5,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.25,
+      "scoreThresh": 0.5,
+      "topK": 10,
+      "maxSources": 6,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.25,
+      "scoreThresh": 0.5,
+      "topK": 10,
+      "maxSources": 7,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.25,
+      "scoreThresh": 0.5,
+      "topK": 12,
+      "maxSources": 4,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.25,
+      "scoreThresh": 0.5,
+      "topK": 12,
+      "maxSources": 5,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.25,
+      "scoreThresh": 0.5,
+      "topK": 12,
+      "maxSources": 6,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.25,
+      "scoreThresh": 0.5,
+      "topK": 12,
+      "maxSources": 7,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.3,
+      "scoreThresh": 0.5,
       "topK": 6,
-      "maxSources": 7,
-      "serviceWeight": 1.1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.25,
-      "scoreThresh": 0.3,
-      "topK": 8,
-      "maxSources": 6,
+      "maxSources": 4,
       "serviceWeight": 1,
-      "mdaWeight": 1,
       "newsWeight": 0.7
     },
     "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
   },
   {
     "config": {
-      "similarity": 0.25,
-      "scoreThresh": 0.3,
-      "topK": 8,
-      "maxSources": 6,
-      "serviceWeight": 1.1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.25,
-      "scoreThresh": 0.3,
-      "topK": 8,
-      "maxSources": 7,
+      "similarity": 0.3,
+      "scoreThresh": 0.5,
+      "topK": 6,
+      "maxSources": 5,
       "serviceWeight": 1,
-      "mdaWeight": 1,
       "newsWeight": 0.7
     },
     "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
   },
   {
     "config": {
-      "similarity": 0.25,
-      "scoreThresh": 0.3,
-      "topK": 8,
-      "maxSources": 7,
-      "serviceWeight": 1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.25,
-      "scoreThresh": 0.3,
-      "topK": 8,
-      "maxSources": 7,
-      "serviceWeight": 1.1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.25,
-      "scoreThresh": 0.3,
-      "topK": 10,
-      "maxSources": 6,
-      "serviceWeight": 1,
-      "mdaWeight": 1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.25,
-      "scoreThresh": 0.3,
-      "topK": 10,
-      "maxSources": 6,
-      "serviceWeight": 1.1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.25,
-      "scoreThresh": 0.3,
-      "topK": 10,
-      "maxSources": 7,
-      "serviceWeight": 1,
-      "mdaWeight": 1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.25,
-      "scoreThresh": 0.3,
-      "topK": 10,
-      "maxSources": 7,
-      "serviceWeight": 1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.25,
-      "scoreThresh": 0.3,
-      "topK": 10,
-      "maxSources": 7,
-      "serviceWeight": 1.1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.25,
-      "scoreThresh": 0.3,
-      "topK": 12,
-      "maxSources": 6,
-      "serviceWeight": 1,
-      "mdaWeight": 1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.25,
-      "scoreThresh": 0.3,
-      "topK": 12,
-      "maxSources": 6,
-      "serviceWeight": 1.1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.25,
-      "scoreThresh": 0.3,
-      "topK": 12,
-      "maxSources": 7,
-      "serviceWeight": 1,
-      "mdaWeight": 1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.25,
-      "scoreThresh": 0.3,
-      "topK": 12,
-      "maxSources": 7,
-      "serviceWeight": 1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.25,
-      "scoreThresh": 0.3,
-      "topK": 12,
-      "maxSources": 7,
-      "serviceWeight": 1.1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.25,
-      "scoreThresh": 0.35,
+      "similarity": 0.3,
+      "scoreThresh": 0.5,
       "topK": 6,
       "maxSources": 6,
       "serviceWeight": 1,
-      "mdaWeight": 1,
       "newsWeight": 0.7
     },
     "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.3,
+      "scoreThresh": 0.5,
+      "topK": 6,
+      "maxSources": 7,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.3,
+      "scoreThresh": 0.5,
+      "topK": 8,
+      "maxSources": 4,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.3,
+      "scoreThresh": 0.5,
+      "topK": 8,
+      "maxSources": 5,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.3,
+      "scoreThresh": 0.5,
+      "topK": 8,
+      "maxSources": 6,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.3,
+      "scoreThresh": 0.5,
+      "topK": 8,
+      "maxSources": 7,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.3,
+      "scoreThresh": 0.5,
+      "topK": 10,
+      "maxSources": 4,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.3,
+      "scoreThresh": 0.5,
+      "topK": 10,
+      "maxSources": 5,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.3,
+      "scoreThresh": 0.5,
+      "topK": 10,
+      "maxSources": 6,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.3,
+      "scoreThresh": 0.5,
+      "topK": 10,
+      "maxSources": 7,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.3,
+      "scoreThresh": 0.5,
+      "topK": 12,
+      "maxSources": 4,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.3,
+      "scoreThresh": 0.5,
+      "topK": 12,
+      "maxSources": 5,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.3,
+      "scoreThresh": 0.5,
+      "topK": 12,
+      "maxSources": 6,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.3,
+      "scoreThresh": 0.5,
+      "topK": 12,
+      "maxSources": 7,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.35,
+      "scoreThresh": 0.5,
+      "topK": 6,
+      "maxSources": 4,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.35,
+      "scoreThresh": 0.5,
+      "topK": 6,
+      "maxSources": 5,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.35,
+      "scoreThresh": 0.5,
+      "topK": 6,
+      "maxSources": 6,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.35,
+      "scoreThresh": 0.5,
+      "topK": 6,
+      "maxSources": 7,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.35,
+      "scoreThresh": 0.5,
+      "topK": 8,
+      "maxSources": 4,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.35,
+      "scoreThresh": 0.5,
+      "topK": 8,
+      "maxSources": 5,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.35,
+      "scoreThresh": 0.5,
+      "topK": 8,
+      "maxSources": 6,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.35,
+      "scoreThresh": 0.5,
+      "topK": 8,
+      "maxSources": 7,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.35,
+      "scoreThresh": 0.5,
+      "topK": 10,
+      "maxSources": 4,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.35,
+      "scoreThresh": 0.5,
+      "topK": 10,
+      "maxSources": 5,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.35,
+      "scoreThresh": 0.5,
+      "topK": 10,
+      "maxSources": 6,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.35,
+      "scoreThresh": 0.5,
+      "topK": 10,
+      "maxSources": 7,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.35,
+      "scoreThresh": 0.5,
+      "topK": 12,
+      "maxSources": 4,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.35,
+      "scoreThresh": 0.5,
+      "topK": 12,
+      "maxSources": 5,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.35,
+      "scoreThresh": 0.5,
+      "topK": 12,
+      "maxSources": 6,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.35,
+      "scoreThresh": 0.5,
+      "topK": 12,
+      "maxSources": 7,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.4,
+      "scoreThresh": 0.5,
+      "topK": 6,
+      "maxSources": 4,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.4,
+      "scoreThresh": 0.5,
+      "topK": 6,
+      "maxSources": 5,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.4,
+      "scoreThresh": 0.5,
+      "topK": 6,
+      "maxSources": 6,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.4,
+      "scoreThresh": 0.5,
+      "topK": 6,
+      "maxSources": 7,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.4,
+      "scoreThresh": 0.5,
+      "topK": 8,
+      "maxSources": 4,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.4,
+      "scoreThresh": 0.5,
+      "topK": 8,
+      "maxSources": 5,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.4,
+      "scoreThresh": 0.5,
+      "topK": 8,
+      "maxSources": 6,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.4,
+      "scoreThresh": 0.5,
+      "topK": 8,
+      "maxSources": 7,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.4,
+      "scoreThresh": 0.5,
+      "topK": 10,
+      "maxSources": 4,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.4,
+      "scoreThresh": 0.5,
+      "topK": 10,
+      "maxSources": 5,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.4,
+      "scoreThresh": 0.5,
+      "topK": 10,
+      "maxSources": 6,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.4,
+      "scoreThresh": 0.5,
+      "topK": 10,
+      "maxSources": 7,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.4,
+      "scoreThresh": 0.5,
+      "topK": 12,
+      "maxSources": 4,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.4,
+      "scoreThresh": 0.5,
+      "topK": 12,
+      "maxSources": 5,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.4,
+      "scoreThresh": 0.5,
+      "topK": 12,
+      "maxSources": 6,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.4,
+      "scoreThresh": 0.5,
+      "topK": 12,
+      "maxSources": 7,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.45,
+      "scoreThresh": 0.5,
+      "topK": 6,
+      "maxSources": 4,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.45,
+      "scoreThresh": 0.5,
+      "topK": 6,
+      "maxSources": 5,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.45,
+      "scoreThresh": 0.5,
+      "topK": 6,
+      "maxSources": 6,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.45,
+      "scoreThresh": 0.5,
+      "topK": 6,
+      "maxSources": 7,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.45,
+      "scoreThresh": 0.5,
+      "topK": 8,
+      "maxSources": 4,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.45,
+      "scoreThresh": 0.5,
+      "topK": 8,
+      "maxSources": 5,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.45,
+      "scoreThresh": 0.5,
+      "topK": 8,
+      "maxSources": 6,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.45,
+      "scoreThresh": 0.5,
+      "topK": 8,
+      "maxSources": 7,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.45,
+      "scoreThresh": 0.5,
+      "topK": 10,
+      "maxSources": 4,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.45,
+      "scoreThresh": 0.5,
+      "topK": 10,
+      "maxSources": 5,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.45,
+      "scoreThresh": 0.5,
+      "topK": 10,
+      "maxSources": 6,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.45,
+      "scoreThresh": 0.5,
+      "topK": 10,
+      "maxSources": 7,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.45,
+      "scoreThresh": 0.5,
+      "topK": 12,
+      "maxSources": 4,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.45,
+      "scoreThresh": 0.5,
+      "topK": 12,
+      "maxSources": 5,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.45,
+      "scoreThresh": 0.5,
+      "topK": 12,
+      "maxSources": 6,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.45,
+      "scoreThresh": 0.5,
+      "topK": 12,
+      "maxSources": 7,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 0.5555555555555555,
+    "fp": 0.25,
+    "composite": 0.8207070707070708
+  },
+  {
+    "config": {
+      "similarity": 0.25,
+      "scoreThresh": 0.35,
+      "topK": 6,
+      "maxSources": 5,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 1,
+    "fp": 0.4166666666666667,
+    "composite": 0.8151515151515152
   },
   {
     "config": {
@@ -345,16 +1301,15 @@
       "scoreThresh": 0.35,
       "topK": 6,
       "maxSources": 6,
-      "serviceWeight": 1.1,
-      "mdaWeight": 1.1,
+      "serviceWeight": 1,
       "newsWeight": 0.7
     },
     "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 1,
+    "fp": 0.4166666666666667,
+    "composite": 0.8151515151515152
   },
   {
     "config": {
@@ -363,1340 +1318,285 @@
       "topK": 6,
       "maxSources": 7,
       "serviceWeight": 1,
-      "mdaWeight": 1,
       "newsWeight": 0.7
     },
     "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 1,
+    "fp": 0.4166666666666667,
+    "composite": 0.8151515151515152
   },
   {
     "config": {
       "similarity": 0.25,
       "scoreThresh": 0.35,
+      "topK": 8,
+      "maxSources": 5,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 1,
+    "fp": 0.4166666666666667,
+    "composite": 0.8151515151515152
+  },
+  {
+    "config": {
+      "similarity": 0.25,
+      "scoreThresh": 0.35,
+      "topK": 8,
+      "maxSources": 6,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 1,
+    "fp": 0.4166666666666667,
+    "composite": 0.8151515151515152
+  },
+  {
+    "config": {
+      "similarity": 0.25,
+      "scoreThresh": 0.35,
+      "topK": 8,
+      "maxSources": 7,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 1,
+    "fp": 0.4166666666666667,
+    "composite": 0.8151515151515152
+  },
+  {
+    "config": {
+      "similarity": 0.25,
+      "scoreThresh": 0.35,
+      "topK": 10,
+      "maxSources": 5,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 1,
+    "fp": 0.4166666666666667,
+    "composite": 0.8151515151515152
+  },
+  {
+    "config": {
+      "similarity": 0.25,
+      "scoreThresh": 0.35,
+      "topK": 10,
+      "maxSources": 6,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 1,
+    "fp": 0.4166666666666667,
+    "composite": 0.8151515151515152
+  },
+  {
+    "config": {
+      "similarity": 0.25,
+      "scoreThresh": 0.35,
+      "topK": 10,
+      "maxSources": 7,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 1,
+    "fp": 0.4166666666666667,
+    "composite": 0.8151515151515152
+  },
+  {
+    "config": {
+      "similarity": 0.25,
+      "scoreThresh": 0.35,
+      "topK": 12,
+      "maxSources": 5,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 1,
+    "fp": 0.4166666666666667,
+    "composite": 0.8151515151515152
+  },
+  {
+    "config": {
+      "similarity": 0.25,
+      "scoreThresh": 0.35,
+      "topK": 12,
+      "maxSources": 6,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 1,
+    "fp": 0.4166666666666667,
+    "composite": 0.8151515151515152
+  },
+  {
+    "config": {
+      "similarity": 0.25,
+      "scoreThresh": 0.35,
+      "topK": 12,
+      "maxSources": 7,
+      "serviceWeight": 1,
+      "newsWeight": 0.7
+    },
+    "recall": 1,
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 1,
+    "fp": 0.4166666666666667,
+    "composite": 0.8151515151515152
+  },
+  {
+    "config": {
+      "similarity": 0.25,
+      "scoreThresh": 0.42,
       "topK": 6,
-      "maxSources": 7,
-      "serviceWeight": 1.1,
-      "mdaWeight": 1.1,
+      "maxSources": 5,
+      "serviceWeight": 1.2,
       "newsWeight": 0.7
     },
     "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 1,
+    "fp": 0.4166666666666667,
+    "composite": 0.8151515151515152
   },
   {
     "config": {
       "similarity": 0.25,
-      "scoreThresh": 0.35,
-      "topK": 8,
-      "maxSources": 6,
-      "serviceWeight": 1,
-      "mdaWeight": 1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.25,
-      "scoreThresh": 0.35,
-      "topK": 8,
-      "maxSources": 6,
-      "serviceWeight": 1.1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.25,
-      "scoreThresh": 0.35,
-      "topK": 8,
-      "maxSources": 7,
-      "serviceWeight": 1,
-      "mdaWeight": 1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.25,
-      "scoreThresh": 0.35,
-      "topK": 8,
-      "maxSources": 7,
-      "serviceWeight": 1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.25,
-      "scoreThresh": 0.35,
-      "topK": 8,
-      "maxSources": 7,
-      "serviceWeight": 1.1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.25,
-      "scoreThresh": 0.35,
-      "topK": 10,
-      "maxSources": 6,
-      "serviceWeight": 1,
-      "mdaWeight": 1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.25,
-      "scoreThresh": 0.35,
-      "topK": 10,
-      "maxSources": 6,
-      "serviceWeight": 1.1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.25,
-      "scoreThresh": 0.35,
-      "topK": 10,
-      "maxSources": 7,
-      "serviceWeight": 1,
-      "mdaWeight": 1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.25,
-      "scoreThresh": 0.35,
-      "topK": 10,
-      "maxSources": 7,
-      "serviceWeight": 1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.25,
-      "scoreThresh": 0.35,
-      "topK": 10,
-      "maxSources": 7,
-      "serviceWeight": 1.1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.25,
-      "scoreThresh": 0.35,
-      "topK": 12,
-      "maxSources": 6,
-      "serviceWeight": 1,
-      "mdaWeight": 1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.25,
-      "scoreThresh": 0.35,
-      "topK": 12,
-      "maxSources": 6,
-      "serviceWeight": 1.1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.25,
-      "scoreThresh": 0.35,
-      "topK": 12,
-      "maxSources": 7,
-      "serviceWeight": 1,
-      "mdaWeight": 1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.25,
-      "scoreThresh": 0.35,
-      "topK": 12,
-      "maxSources": 7,
-      "serviceWeight": 1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.25,
-      "scoreThresh": 0.35,
-      "topK": 12,
-      "maxSources": 7,
-      "serviceWeight": 1.1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.3,
-      "scoreThresh": 0.3,
+      "scoreThresh": 0.42,
       "topK": 6,
       "maxSources": 6,
-      "serviceWeight": 1,
-      "mdaWeight": 1,
+      "serviceWeight": 1.2,
       "newsWeight": 0.7
     },
     "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 1,
+    "fp": 0.4166666666666667,
+    "composite": 0.8151515151515152
   },
   {
     "config": {
-      "similarity": 0.3,
-      "scoreThresh": 0.3,
-      "topK": 6,
-      "maxSources": 6,
-      "serviceWeight": 1.1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.3,
-      "scoreThresh": 0.3,
+      "similarity": 0.25,
+      "scoreThresh": 0.42,
       "topK": 6,
       "maxSources": 7,
-      "serviceWeight": 1,
-      "mdaWeight": 1,
+      "serviceWeight": 1.2,
       "newsWeight": 0.7
     },
     "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 1,
+    "fp": 0.4166666666666667,
+    "composite": 0.8151515151515152
   },
   {
     "config": {
-      "similarity": 0.3,
-      "scoreThresh": 0.3,
-      "topK": 6,
-      "maxSources": 7,
-      "serviceWeight": 1.1,
-      "mdaWeight": 1.1,
+      "similarity": 0.25,
+      "scoreThresh": 0.42,
+      "topK": 8,
+      "maxSources": 5,
+      "serviceWeight": 1.2,
       "newsWeight": 0.7
     },
     "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 1,
+    "fp": 0.4166666666666667,
+    "composite": 0.8151515151515152
   },
   {
     "config": {
-      "similarity": 0.3,
-      "scoreThresh": 0.3,
+      "similarity": 0.25,
+      "scoreThresh": 0.42,
       "topK": 8,
       "maxSources": 6,
-      "serviceWeight": 1,
-      "mdaWeight": 1,
+      "serviceWeight": 1.2,
       "newsWeight": 0.7
     },
     "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 1,
+    "fp": 0.4166666666666667,
+    "composite": 0.8151515151515152
   },
   {
     "config": {
-      "similarity": 0.3,
-      "scoreThresh": 0.3,
-      "topK": 8,
-      "maxSources": 6,
-      "serviceWeight": 1.1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.3,
-      "scoreThresh": 0.3,
+      "similarity": 0.25,
+      "scoreThresh": 0.42,
       "topK": 8,
       "maxSources": 7,
-      "serviceWeight": 1,
-      "mdaWeight": 1,
+      "serviceWeight": 1.2,
       "newsWeight": 0.7
     },
     "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 1,
+    "fp": 0.4166666666666667,
+    "composite": 0.8151515151515152
   },
   {
     "config": {
-      "similarity": 0.3,
-      "scoreThresh": 0.3,
-      "topK": 8,
-      "maxSources": 7,
-      "serviceWeight": 1,
-      "mdaWeight": 1.1,
+      "similarity": 0.25,
+      "scoreThresh": 0.42,
+      "topK": 10,
+      "maxSources": 5,
+      "serviceWeight": 1.2,
       "newsWeight": 0.7
     },
     "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 1,
+    "fp": 0.4166666666666667,
+    "composite": 0.8151515151515152
   },
   {
     "config": {
-      "similarity": 0.3,
-      "scoreThresh": 0.3,
-      "topK": 8,
-      "maxSources": 7,
-      "serviceWeight": 1.1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.3,
-      "scoreThresh": 0.3,
+      "similarity": 0.25,
+      "scoreThresh": 0.42,
       "topK": 10,
       "maxSources": 6,
-      "serviceWeight": 1,
-      "mdaWeight": 1,
+      "serviceWeight": 1.2,
       "newsWeight": 0.7
     },
     "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.3,
-      "scoreThresh": 0.3,
-      "topK": 10,
-      "maxSources": 6,
-      "serviceWeight": 1.1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.3,
-      "scoreThresh": 0.3,
-      "topK": 10,
-      "maxSources": 7,
-      "serviceWeight": 1,
-      "mdaWeight": 1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.3,
-      "scoreThresh": 0.3,
-      "topK": 10,
-      "maxSources": 7,
-      "serviceWeight": 1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.3,
-      "scoreThresh": 0.3,
-      "topK": 10,
-      "maxSources": 7,
-      "serviceWeight": 1.1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.3,
-      "scoreThresh": 0.3,
-      "topK": 12,
-      "maxSources": 6,
-      "serviceWeight": 1,
-      "mdaWeight": 1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.3,
-      "scoreThresh": 0.3,
-      "topK": 12,
-      "maxSources": 6,
-      "serviceWeight": 1.1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.3,
-      "scoreThresh": 0.3,
-      "topK": 12,
-      "maxSources": 7,
-      "serviceWeight": 1,
-      "mdaWeight": 1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.3,
-      "scoreThresh": 0.3,
-      "topK": 12,
-      "maxSources": 7,
-      "serviceWeight": 1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.3,
-      "scoreThresh": 0.3,
-      "topK": 12,
-      "maxSources": 7,
-      "serviceWeight": 1.1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.3,
-      "scoreThresh": 0.35,
-      "topK": 6,
-      "maxSources": 6,
-      "serviceWeight": 1,
-      "mdaWeight": 1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.3,
-      "scoreThresh": 0.35,
-      "topK": 6,
-      "maxSources": 6,
-      "serviceWeight": 1.1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.3,
-      "scoreThresh": 0.35,
-      "topK": 6,
-      "maxSources": 7,
-      "serviceWeight": 1,
-      "mdaWeight": 1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.3,
-      "scoreThresh": 0.35,
-      "topK": 6,
-      "maxSources": 7,
-      "serviceWeight": 1.1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.3,
-      "scoreThresh": 0.35,
-      "topK": 8,
-      "maxSources": 6,
-      "serviceWeight": 1,
-      "mdaWeight": 1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.3,
-      "scoreThresh": 0.35,
-      "topK": 8,
-      "maxSources": 6,
-      "serviceWeight": 1.1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.3,
-      "scoreThresh": 0.35,
-      "topK": 8,
-      "maxSources": 7,
-      "serviceWeight": 1,
-      "mdaWeight": 1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.3,
-      "scoreThresh": 0.35,
-      "topK": 8,
-      "maxSources": 7,
-      "serviceWeight": 1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.3,
-      "scoreThresh": 0.35,
-      "topK": 8,
-      "maxSources": 7,
-      "serviceWeight": 1.1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.3,
-      "scoreThresh": 0.35,
-      "topK": 10,
-      "maxSources": 6,
-      "serviceWeight": 1,
-      "mdaWeight": 1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.3,
-      "scoreThresh": 0.35,
-      "topK": 10,
-      "maxSources": 6,
-      "serviceWeight": 1.1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.3,
-      "scoreThresh": 0.35,
-      "topK": 10,
-      "maxSources": 7,
-      "serviceWeight": 1,
-      "mdaWeight": 1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.3,
-      "scoreThresh": 0.35,
-      "topK": 10,
-      "maxSources": 7,
-      "serviceWeight": 1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.3,
-      "scoreThresh": 0.35,
-      "topK": 10,
-      "maxSources": 7,
-      "serviceWeight": 1.1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.3,
-      "scoreThresh": 0.35,
-      "topK": 12,
-      "maxSources": 6,
-      "serviceWeight": 1,
-      "mdaWeight": 1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.3,
-      "scoreThresh": 0.35,
-      "topK": 12,
-      "maxSources": 6,
-      "serviceWeight": 1.1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.3,
-      "scoreThresh": 0.35,
-      "topK": 12,
-      "maxSources": 7,
-      "serviceWeight": 1,
-      "mdaWeight": 1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.3,
-      "scoreThresh": 0.35,
-      "topK": 12,
-      "maxSources": 7,
-      "serviceWeight": 1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.3,
-      "scoreThresh": 0.35,
-      "topK": 12,
-      "maxSources": 7,
-      "serviceWeight": 1.1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.35,
-      "scoreThresh": 0.3,
-      "topK": 6,
-      "maxSources": 6,
-      "serviceWeight": 1,
-      "mdaWeight": 1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.35,
-      "scoreThresh": 0.3,
-      "topK": 6,
-      "maxSources": 6,
-      "serviceWeight": 1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.35,
-      "scoreThresh": 0.3,
-      "topK": 6,
-      "maxSources": 6,
-      "serviceWeight": 1.1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.35,
-      "scoreThresh": 0.3,
-      "topK": 6,
-      "maxSources": 7,
-      "serviceWeight": 1,
-      "mdaWeight": 1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.35,
-      "scoreThresh": 0.3,
-      "topK": 6,
-      "maxSources": 7,
-      "serviceWeight": 1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.35,
-      "scoreThresh": 0.3,
-      "topK": 6,
-      "maxSources": 7,
-      "serviceWeight": 1.1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.35,
-      "scoreThresh": 0.3,
-      "topK": 8,
-      "maxSources": 6,
-      "serviceWeight": 1,
-      "mdaWeight": 1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.35,
-      "scoreThresh": 0.3,
-      "topK": 8,
-      "maxSources": 6,
-      "serviceWeight": 1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.35,
-      "scoreThresh": 0.3,
-      "topK": 8,
-      "maxSources": 6,
-      "serviceWeight": 1.1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.35,
-      "scoreThresh": 0.3,
-      "topK": 8,
-      "maxSources": 7,
-      "serviceWeight": 1,
-      "mdaWeight": 1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.35,
-      "scoreThresh": 0.3,
-      "topK": 8,
-      "maxSources": 7,
-      "serviceWeight": 1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.35,
-      "scoreThresh": 0.3,
-      "topK": 8,
-      "maxSources": 7,
-      "serviceWeight": 1.1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.35,
-      "scoreThresh": 0.3,
-      "topK": 10,
-      "maxSources": 6,
-      "serviceWeight": 1,
-      "mdaWeight": 1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.35,
-      "scoreThresh": 0.3,
-      "topK": 10,
-      "maxSources": 6,
-      "serviceWeight": 1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.35,
-      "scoreThresh": 0.3,
-      "topK": 10,
-      "maxSources": 6,
-      "serviceWeight": 1.1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.35,
-      "scoreThresh": 0.3,
-      "topK": 10,
-      "maxSources": 7,
-      "serviceWeight": 1,
-      "mdaWeight": 1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.35,
-      "scoreThresh": 0.3,
-      "topK": 10,
-      "maxSources": 7,
-      "serviceWeight": 1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.35,
-      "scoreThresh": 0.3,
-      "topK": 10,
-      "maxSources": 7,
-      "serviceWeight": 1.1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.35,
-      "scoreThresh": 0.3,
-      "topK": 12,
-      "maxSources": 6,
-      "serviceWeight": 1,
-      "mdaWeight": 1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.35,
-      "scoreThresh": 0.3,
-      "topK": 12,
-      "maxSources": 6,
-      "serviceWeight": 1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.35,
-      "scoreThresh": 0.3,
-      "topK": 12,
-      "maxSources": 6,
-      "serviceWeight": 1.1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.35,
-      "scoreThresh": 0.3,
-      "topK": 12,
-      "maxSources": 7,
-      "serviceWeight": 1,
-      "mdaWeight": 1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.35,
-      "scoreThresh": 0.3,
-      "topK": 12,
-      "maxSources": 7,
-      "serviceWeight": 1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
-  },
-  {
-    "config": {
-      "similarity": 0.35,
-      "scoreThresh": 0.3,
-      "topK": 12,
-      "maxSources": 7,
-      "serviceWeight": 1.1,
-      "mdaWeight": 1.1,
-      "newsWeight": 0.7
-    },
-    "recall": 1,
-    "mrr": 0.9905660377358491,
-    "precisionAt1": 0.9811320754716981,
-    "ambigCoverage": 0.8333333333333334,
-    "fp": 0,
-    "composite": 0.9272012578616352
+    "mrr": 0.9848484848484849,
+    "precisionAt1": 0.9696969696969697,
+    "ambigCoverage": 1,
+    "fp": 0.4166666666666667,
+    "composite": 0.8151515151515152
   }
 ]
