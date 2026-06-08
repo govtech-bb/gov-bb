@@ -441,7 +441,10 @@ it("renders an existing payment processor as an editable form (#716)", () => {
   // Editable inputs are present and pre-populated from the config.
   expect(screen.getByLabelText(/department/i)).toHaveValue("Treasury");
   expect(screen.getByLabelText(/payment code/i)).toHaveValue("FEE-001");
-  expect(screen.getByLabelText(/amount/i)).toHaveValue(50);
+  // Exact label: a literal amount opens in Fixed mode (there's also an
+  // "Amount type" toggle now — see -amount-editor).
+  expect(screen.getByLabelText("Amount")).toHaveValue(50);
+  expect(screen.getByLabelText("Amount type")).toHaveValue("fixed");
   // Provider is fixed (ezpay) and not user-editable.
   expect(screen.getByLabelText(/provider/i)).toBeDisabled();
 });
