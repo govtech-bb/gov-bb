@@ -229,7 +229,7 @@ export const generateRepeatableAddAnotherField = (
     validations: {
       required: {
         value: true,
-        error: "Add another is required.",
+        error: "This question is required",
       },
     },
   };
