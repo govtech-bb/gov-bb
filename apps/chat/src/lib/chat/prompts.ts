@@ -101,9 +101,41 @@ export function buildSchemaDisclosure(slug: string, schema: string): string {
 }
 
 export function buildHandoffDisclosure(title: string, url: string): string {
-  return `HARD OVERRIDE — THIS FORM CAN'T BE COMPLETED IN CHAT:
-- "${title}" needs a file upload and/or a payment, which can't be done here.
-- Do NOT collect fields, do NOT use set_field/present_choices, do NOT call submit_form. None of those tools are available this turn.
-- Tell the user briefly that this one has to be done on the form itself, and give them the link as a normal markdown link: [${title}](${url}). This is the ONE case where you DO write a real link in your reply.
-- You may still answer side questions (cost, documents needed, eligibility) from the retrieved context.`;
+  // Why this prompt is shaped the way it is:
+  //
+  // The SYSTEM_PROMPT's "DEFAULT MODE — INFORMATIONAL (RAG)" rule (the one that
+  // says "When NO form schema is provided this turn, treat the user's question
+  // as informational and answer from the retrieved context only") would
+  // otherwise win on a handoff turn — no FORM SCHEMA is provided on handoff —
+  // and the model would skip the link in favour of a RAG paragraph. We saw this
+  // in #965 verification: chat replied with a helpful birth-cert summary and
+  // omitted the link entirely, then drifted into "What's your first name?"
+  // hallucinated collection on the next turn.
+  //
+  // So this disclosure (a) explicitly overrides DEFAULT MODE for this turn,
+  // (b) leads with the response shape so the link is the FIRST thing the model
+  // commits to, (c) shows the exact output, and (d) names the forbidden
+  // behaviours the model was previously drifting into ("Ready to start the
+  // online form?", paper-form alternatives).
+  return `HARD OVERRIDE — THIS TURN IS A HANDOFF. The link below IS the answer.
+
+This overrides the DEFAULT MODE / INFORMATIONAL (RAG) rule for this turn. Even though no FORM SCHEMA was provided, do NOT treat this as a pure RAG answer.
+
+The form "${title}" requires steps the chat cannot safely do here (file upload, payment, or other inputs that must happen in the full form). Your one job this turn: hand the user the link.
+
+REPLY EXACTLY IN THIS SHAPE — link first, prose second:
+
+[${title}](${url})
+
+That's the form. You'll need to complete it there.
+
+(Optional, only if the user already asked a specific side question — cost, documents, eligibility — in this turn: append ONE short sentence answering it from the retrieved context. Otherwise stop after the line above.)
+
+Do NOT:
+- Ask "Ready to start the online form?" — the link IS the online form.
+- Offer to "start it for you" or "fill it in for you" — there is no in-chat start.
+- Recite the paper-form path as an alternative unless the user specifically asked about paper.
+- Use set_field, present_choices, or submit_form — they are not available this turn.
+- Open with a long RAG paragraph that delays or replaces the link.
+- Cite the link with [1]/[2] markers — write it as the markdown link shown above.`;
 }
