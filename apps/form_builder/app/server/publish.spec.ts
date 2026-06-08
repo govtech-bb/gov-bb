@@ -103,9 +103,12 @@ describe("publishRecipe", () => {
     expect(fetchMock).toHaveBeenCalledTimes(6);
 
     // The reservation is claimed in the builder DB before any GitHub write.
+    // userLogin (#874) is stamped so the reservation save clears the read-only
+    // lock gate.
     expect(api.post).toHaveBeenCalledWith("/builder/forms", {
       recipe: RECIPE,
       isNew: false,
+      userLogin: "alice",
     });
 
     // Step 1

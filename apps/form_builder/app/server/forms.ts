@@ -121,10 +121,14 @@ export const submitRecipe = createServerFn({ method: "POST" })
       processors: processorsSiblingSchema,
     }),
   )
-  .handler(async ({ data }): Promise<void> => {
+  .handler(async ({ data, context }): Promise<void> => {
     await api.post("/builder/forms", {
       recipe: data.recipe,
       isNew: data.isNew ?? false,
+      // Read-only lock (#874): the API rejects the save unless this login holds
+      // the fresh editing claim. Stamped from the SSR session — the API has no
+      // user concept of its own.
+      userLogin: context.session.login,
       // Only send the key when the caller supplied one, so a save that never
       // touched the contact selection doesn't clobber a stored value with null.
       ...(data.mdaContactId !== undefined
@@ -144,9 +148,11 @@ export const updateRecipe = createServerFn({ method: "POST" })
       processors: processorsSiblingSchema,
     }),
   )
-  .handler(async ({ data }): Promise<void> => {
+  .handler(async ({ data, context }): Promise<void> => {
     await api.put(`/builder/forms/${encodeURIComponent(data.formId)}`, {
       recipe: data.recipe,
+      // Read-only lock (#874): only the fresh claim holder may save.
+      userLogin: context.session.login,
       ...(data.mdaContactId !== undefined
         ? { mdaContactId: data.mdaContactId }
         : {}),
@@ -189,10 +195,11 @@ export const rekeyRecipe = createServerFn({ method: "POST" })
       recipe: z.unknown(),
     }),
   )
-  .handler(async ({ data }): Promise<void> => {
+  .handler(async ({ data, context }): Promise<void> => {
     await api.post(
       `/builder/forms/${encodeURIComponent(data.oldFormId)}/rekey`,
-      { recipe: data.recipe },
+      // Read-only lock (#874): only the current claim holder may re-key.
+      { recipe: data.recipe, userLogin: context.session.login },
     );
   });
 

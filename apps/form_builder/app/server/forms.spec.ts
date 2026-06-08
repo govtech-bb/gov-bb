@@ -36,7 +36,13 @@ jest.mock("./github-recipes", () => ({
 import { getSession } from "./session-cipher.server";
 import { api, ApiError } from "./api-client";
 import { getPublishedRecipe } from "./github-recipes";
-import { listForms, getRecipe, rekeyRecipe } from "./forms";
+import {
+  listForms,
+  getRecipe,
+  rekeyRecipe,
+  submitRecipe,
+  updateRecipe,
+} from "./forms";
 
 const getPublishedRecipeMock = getPublishedRecipe as jest.Mock;
 
@@ -351,6 +357,7 @@ describe("rekeyRecipe", () => {
 
     expect(apiPost).toHaveBeenCalledWith("/builder/forms/birth-reg-old/rekey", {
       recipe,
+      userLogin: "alice",
     });
   });
 
@@ -369,6 +376,43 @@ describe("rekeyRecipe", () => {
     expect(apiPost.mock.calls[0][0] as string).toBe(
       "/builder/forms/weird%20id%2Fwith%20slash/rekey",
     );
+  });
+});
+
+describe("submitRecipe — userLogin threading (#874)", () => {
+  it("stamps the session login onto the save so the read-only-lock gate passes", async () => {
+    const apiPost = api.post as jest.Mock;
+    apiPost.mockResolvedValue(undefined);
+    const recipe = { formId: "marriage-license", version: "1.0.0" };
+
+    await submitRecipe({
+      data: { recipe, isNew: true },
+      context: { session: SESSION },
+    } as never);
+
+    expect(apiPost).toHaveBeenCalledWith("/builder/forms", {
+      recipe,
+      isNew: true,
+      userLogin: "alice",
+    });
+  });
+});
+
+describe("updateRecipe — userLogin threading (#874)", () => {
+  it("stamps the session login onto the PUT save", async () => {
+    const apiPut = api.put as jest.Mock;
+    apiPut.mockResolvedValue(undefined);
+    const recipe = { formId: "marriage-license", version: "1.0.0" };
+
+    await updateRecipe({
+      data: { formId: "marriage-license", recipe },
+      context: { session: SESSION },
+    } as never);
+
+    expect(apiPut).toHaveBeenCalledWith("/builder/forms/marriage-license", {
+      recipe,
+      userLogin: "alice",
+    });
   });
 });
 

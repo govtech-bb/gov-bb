@@ -9,6 +9,9 @@ interface PublishModalProps {
   isPublishing: boolean;
   publishSuccess: { prUrl: string; prNumber: number } | null;
   publishError: string | null;
+  /** Read-only lock (#874): another user holds the editing claim. Warns and
+   *  disables Deploy even if the modal was already open when it flipped. */
+  isReadOnly?: boolean;
   onPublish: (description: string) => void;
   onClose: () => void;
 }
@@ -20,6 +23,7 @@ export function PublishModal({
   isPublishing,
   publishSuccess,
   publishError,
+  isReadOnly = false,
   onPublish,
   onClose,
 }: PublishModalProps) {
@@ -63,6 +67,12 @@ export function PublishModal({
           </div>
         ) : (
           <div>
+            {isReadOnly && (
+              <div className={styles.presenceBanner} role="alert" style={{ marginBottom: 8 }}>
+                Another user is currently editing this form. Deploying is
+                disabled until their editing session ends.
+              </div>
+            )}
             <p style={{ color: "#444", marginTop: 0 }}>
               This opens a pull request against <code>{baseBranch}</code> that
               adds{" "}
@@ -111,7 +121,7 @@ export function PublishModal({
                 type="button"
                 className={styles.btnPrimary}
                 onClick={() => onPublish(description)}
-                disabled={isPublishing || version === null}
+                disabled={isPublishing || version === null || isReadOnly}
               >
                 {isPublishing ? "Opening PR…" : "Deploy"}
               </button>

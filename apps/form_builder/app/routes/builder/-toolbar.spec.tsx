@@ -18,6 +18,7 @@ function renderToolbar(overrides: Partial<Parameters<typeof Toolbar>[0]> = {}) {
     isPreviewing: false,
     isSubmitting: false,
     isPublishing: false,
+    isReadOnly: false,
     lastSaveStatus: "idle" as const,
     onFormIdChange,
     onTitleChange: jest.fn(),
@@ -143,5 +144,25 @@ describe("Toolbar — unsaved changes + Discard", () => {
     renderToolbar({ hasUnsavedChanges: false });
 
     expect(screen.getByRole("button", { name: /deploy/i })).toBeEnabled();
+  });
+});
+
+describe("Toolbar — read-only lock (#874)", () => {
+  it("disables Save draft when read-only, even with unsaved changes", () => {
+    renderToolbar({ hasUnsavedChanges: true, isReadOnly: true });
+    expect(
+      screen.getByRole("button", { name: /save draft/i }),
+    ).toBeDisabled();
+  });
+
+  it("disables Deploy when read-only, even on a clean draft", () => {
+    renderToolbar({ hasUnsavedChanges: false, isReadOnly: true });
+    expect(screen.getByRole("button", { name: /deploy/i })).toBeDisabled();
+  });
+
+  it("disables the Form ID and Title inputs when read-only", () => {
+    renderToolbar({ isReadOnly: true });
+    expect(formIdInput()).toBeDisabled();
+    expect(screen.getByLabelText(/title/i)).toBeDisabled();
   });
 });
