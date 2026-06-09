@@ -5,7 +5,11 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { presentChoicesDef } from "#/lib/chat-tools";
 import { TridentAvatar } from "#/components/trident-avatar";
-import { extractText, findToolCall } from "#/lib/chat/messages";
+import {
+  extractText,
+  findToolCall,
+  stripLeakedToolCalls,
+} from "#/lib/chat/messages";
 import { normalizeMarkdown } from "#/lib/chat/normalize-markdown";
 import type { Citation } from "#/lib/chat/types";
 
@@ -147,7 +151,10 @@ function BubbleImpl({
   choicesDisabled?: boolean;
   citations?: Citation[];
 }) {
-  const text = useMemo(() => extractText(message), [message]);
+  const text = useMemo(
+    () => stripLeakedToolCalls(extractText(message)),
+    [message],
+  );
 
   const choicesPart = findToolCall(message, "present_choices");
   // present_choices is a no-op server tool: once it resolves, the part lands in
