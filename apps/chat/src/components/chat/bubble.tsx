@@ -1,10 +1,15 @@
-import type { UIMessage } from "@tanstack/ai";
+import type { InferToolInput, UIMessage } from "@tanstack/ai";
 import { Allow, parse as parsePartialJson } from "partial-json";
 import { memo, type ReactNode, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { presentChoicesDef } from "#/lib/chat-tools";
 import { TridentAvatar } from "#/components/trident-avatar";
-import { extractText, findToolCall } from "#/lib/chat/messages";
+import {
+  extractText,
+  findToolCall,
+  stripLeakedToolCalls,
+} from "#/lib/chat/messages";
 import { normalizeMarkdown } from "#/lib/chat/normalize-markdown";
 import type { Citation } from "#/lib/chat/types";
 
@@ -115,10 +120,7 @@ function annotateCitations(text: string, citations: Citation[]): string {
   );
 }
 
-interface ChoicesArgs {
-  question?: string;
-  choices?: string[];
-}
+type ChoicesArgs = Partial<InferToolInput<typeof presentChoicesDef>>;
 
 function parseChoiceArgs(raw: string | undefined): ChoicesArgs | undefined {
   if (!raw) return undefined;
@@ -149,7 +151,10 @@ function BubbleImpl({
   choicesDisabled?: boolean;
   citations?: Citation[];
 }) {
-  const text = useMemo(() => extractText(message), [message]);
+  const text = useMemo(
+    () => stripLeakedToolCalls(extractText(message)),
+    [message],
+  );
 
   const choicesPart = findToolCall(message, "present_choices");
   // present_choices is a no-op server tool: once it resolves, the part lands in
@@ -225,11 +230,23 @@ function BubbleImpl({
           {hasChoices && (
             <div className="flex flex-col gap-2.5">
               {choicesArgs?.question && (
-                <p className="text-bubble font-medium text-black-00">
+                <p
+                  id={`choices-q-${message.id}`}
+                  className="text-bubble font-medium text-black-00"
+                >
                   {choicesArgs.question}
                 </p>
               )}
-              <div className="flex flex-wrap gap-2">
+              {/* role=group ties the buttons to the question so screen readers
+                  announce them as one labelled set, not loose buttons. */}
+              <div
+                className="flex flex-wrap gap-2"
+                role="group"
+                aria-labelledby={
+                  choicesArgs?.question ? `choices-q-${message.id}` : undefined
+                }
+                aria-label={choicesArgs?.question ? undefined : "Answer choices"}
+              >
                 {choices.map((c) => (
                   <button
                     className="rounded-full border-[1.5px] border-teal-00 bg-transparent px-3.5 py-1.5 font-medium text-sm text-teal-00 transition-colors hover:bg-teal-00 hover:text-white-00 focus-visible:outline-2 focus-visible:outline-teal-00 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-teal-00"

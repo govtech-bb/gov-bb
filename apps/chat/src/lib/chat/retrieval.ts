@@ -18,6 +18,33 @@ export function isGreetingOrTooShort(line: string): boolean {
   return GREETING_RE.test(line) || line.length < 2;
 }
 
+// Service document ids are minted as `service-<slug>` by the ingest chunker.
+const SERVICE_ID_PREFIX = "service-";
+
+// Derive a form slug from the single top-ranked retrieved source, used by
+// run-turn to drive a form handoff from RAG when the title-token matcher didn't
+// pin a form. Semantic retrieval finds the right service even when the user's
+// wording doesn't overlap the form title (e.g. "how do I become a conductor"),
+// so if that service maps to a published form that must be completed in the
+// forms app, we hand over the link instead of a plain informational answer.
+//
+// Conservative on purpose: only the top source is considered (it represents the
+// turn's actual topic — we don't reach past it to a lower-ranked form), it must
+// clear the same score bar as a citation pill, and a non-service or
+// below-threshold top suppresses the fallback. `excludeSlug` skips a form
+// already handed off this thread so the user isn't re-handed the same link.
+export function topHandoffCandidateSlug(
+  sources: Source[],
+  excludeSlug?: string | null,
+): string | null {
+  const top = sources[0];
+  if (!top || top.score < SCORE_THRESHOLD) return null;
+  if (!top.id.startsWith(SERVICE_ID_PREFIX)) return null;
+  const slug = top.id.slice(SERVICE_ID_PREFIX.length);
+  if (!slug || slug === excludeSlug) return null;
+  return slug;
+}
+
 export type RetrieveResult =
   | { ok: true; data: RetrieveResponse }
   | { ok: false; status: number; reason: string };

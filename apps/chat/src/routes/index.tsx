@@ -20,6 +20,7 @@ import {
   useState,
 } from "react";
 import { Bubble } from "#/components/chat/bubble";
+import { StarterCards } from "#/components/chat/starter-cards";
 import { TridentAvatar } from "#/components/trident-avatar";
 import { extractText, hasAnyToolCall } from "#/lib/chat/messages";
 import {
@@ -45,6 +46,7 @@ const LANDING_URL =
 // same list as messages and carry stable keys.
 type ChatRow =
   | { kind: "welcome"; key: string }
+  | { kind: "starter-cards"; key: string }
   | { kind: "optimistic"; key: string; text: string }
   | { kind: "message"; key: string; message: UIMessage; index: number }
   | { kind: "thinking"; key: string }
@@ -130,6 +132,11 @@ function ChatPage() {
 
   const rows = useMemo<ChatRow[]>(() => {
     const out: ChatRow[] = [{ kind: "welcome", key: "welcome" }];
+    const isEmpty =
+      messages.length === 0 && !pendingQuery && !submitting && !error;
+    if (isEmpty) {
+      out.push({ kind: "starter-cards", key: "starter-cards" });
+    }
     if (pendingQuery && messages.length === 0) {
       out.push({ kind: "optimistic", key: "optimistic", text: pendingQuery });
       if (!error) out.push({ kind: "thinking", key: "thinking" });
@@ -197,6 +204,37 @@ function ChatPage() {
     virtualizer.scrollToEnd();
   }, [virtualizer]);
 
+  // Whether the reader is currently pinned to the bottom. We track this from
+  // the real-DOM distance (getDistanceFromEnd, i.e. scrollHeight-based) rather
+  // than the virtualizer's *virtual* distance, so it matches the same signal
+  // the "Jump to latest" button uses (isAtEnd) and the two never disagree.
+  const stickToBottomRef = useRef(true);
+  const handleScroll = useCallback(() => {
+    stickToBottomRef.current = virtualizer.isAtEnd(SCROLL_END_THRESHOLD);
+  }, [virtualizer]);
+
+  // HYPOTHESIS (confirm on the Amplify preview): the library's built-in
+  // follow-on-append + anchorTo="end" only re-pins reliably when the appended
+  // row has already been measured. During a turn the assistant bubble appends
+  // tiny/empty and then *grows* as text streams in via measureElement; its
+  // virtual size lags the real DOM height, so getVirtualDistanceFromEnd (which
+  // gates the library's streaming adjust) can read "not at end" and the view
+  // drifts up. We close that gap here: on every render that grows the list
+  // (new rows or a streaming delta), if the reader was pinned to the *real*
+  // bottom before this growth, re-pin with scrollToEnd. Reading the ref before
+  // the scroll means a reader who scrolled up is never yanked down — that
+  // preserves the "Jump to latest" affordance. Runs in a layout effect so the
+  // jump happens before paint, avoiding a visible lag behind the stream.
+  const totalSize = virtualizer.getTotalSize();
+  useLayoutEffect(() => {
+    if (!parentRef.current) return;
+    if (stickToBottomRef.current) {
+      virtualizer.scrollToEnd();
+    }
+    // Re-running on rows.length and totalSize covers both an appended row and
+    // the last bubble growing as tokens stream in.
+  }, [virtualizer, rows.length, totalSize, isStreaming]);
+
   const pickChoice = useCallback(
     (choice: string) => {
       sendMessage(choice);
@@ -236,6 +274,8 @@ function ChatPage() {
     switch (row.kind) {
       case "welcome":
         return <WelcomeBubble />;
+      case "starter-cards":
+        return <StarterCards onPick={submit} />;
       case "optimistic":
         return <OptimisticUserBubble text={row.text} />;
       case "thinking":
@@ -290,6 +330,7 @@ function ChatPage() {
             off-screen region below instead. */}
         <div
           ref={parentRef}
+          onScroll={handleScroll}
           className="h-full overflow-y-auto px-s py-s"
         >
           <div
@@ -439,8 +480,10 @@ function ThinkingIndicator({ label = "Thinking" }: { label?: string }) {
     // gradient text is otherwise visual-only.
     <div role="status" className="flex items-center gap-2.5">
       <TridentAvatar size="sm" tone="filled" />
+      {/* motion-reduce disables the shimmer under prefers-reduced-motion; the
+          gradient text stays legible static. */}
       <span
-        className="text-bubble animate-[shimmer_2.5s_linear_infinite] bg-clip-text font-medium text-transparent"
+        className="text-bubble animate-[shimmer_2.5s_linear_infinite] bg-clip-text font-medium text-transparent motion-reduce:animate-none"
         style={{
           backgroundImage:
             "linear-gradient(90deg, var(--color-blue-40) 0%, var(--color-teal-00) 35%, var(--color-teal-100) 50%, var(--color-teal-00) 65%, var(--color-blue-40) 100%)",
@@ -499,7 +542,11 @@ function Composer({
             value={input}
           />
           {streaming ? (
-            <Button onClick={onStop} type="button">
+            <Button
+              aria-label="Stop generating the response"
+              onClick={onStop}
+              type="button"
+            >
               Stop
             </Button>
           ) : (

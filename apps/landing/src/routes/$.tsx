@@ -2,7 +2,7 @@ import { createFileRoute, notFound } from '@tanstack/react-router'
 import { Heading, Text, linkVariants } from '@govtech-bb/react'
 import { Breadcrumbs } from '../components/Breadcrumbs'
 import { HelpfulBox } from '../components/HelpfulBox'
-import { MarkdownContent } from '../components/MarkdownContent'
+import { MarkdownContent } from '../components/markdown'
 import {
   categoryServices,
   findPage,
@@ -170,7 +170,8 @@ function PageView({
     <Shell>
       {isPreview(page) ? <PreviewBanner /> : null}
       <MarkdownContent
-        body={page.body}
+        hast={page.hast}
+        headings={page.headings}
         frontmatter={page.frontmatter}
         availableForms={new Set(availableForms)}
         hideStartLink={hideStartLink}

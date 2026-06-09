@@ -6,6 +6,10 @@ export type ValidationRuleDescriptor = {
   hasValue: boolean; // whether the rule takes a `value` parameter
   hasReference: boolean; // whether the rule takes a `referenceFieldId`
   valuePlaceholder?: string; // placeholder hint for the `value` input, e.g. "DD/MM/YYYY"
+  // Whether the rule can carry a date→number `transform` (#1020) — offered on
+  // a date field's numeric rules so the bound applies to a derived value (e.g.
+  // `min: 16` on an age derived from a date-of-birth via `yearsSince`).
+  hasTransform?: boolean;
 };
 
 export const VALIDATION_RULE_DESCRIPTORS: Record<
@@ -220,6 +224,37 @@ export const VALIDATION_RULE_DESCRIPTORS: Record<
       label: "Max Year",
       hasValue: true,
       hasReference: false,
+    },
+    // Duration-derived numeric rules (#1020): the bound applies to a number
+    // derived from the date via `transform` (e.g. an age from a DOB), so a form
+    // can require "at least 16 / at most 24 years since".
+    {
+      type: "min",
+      label: "Min (duration)",
+      hasValue: true,
+      hasReference: false,
+      hasTransform: true,
+    },
+    {
+      type: "max",
+      label: "Max (duration)",
+      hasValue: true,
+      hasReference: false,
+      hasTransform: true,
+    },
+    {
+      type: "gt",
+      label: "Greater Than (duration)",
+      hasValue: true,
+      hasReference: false,
+      hasTransform: true,
+    },
+    {
+      type: "lt",
+      label: "Less Than (duration)",
+      hasValue: true,
+      hasReference: false,
+      hasTransform: true,
     },
   ],
   tel: [
