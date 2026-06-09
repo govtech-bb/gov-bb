@@ -43,4 +43,4 @@ ENV NODE_ENV=development
 EXPOSE 3000
 
 WORKDIR /app/apps/forms
-CMD ["pnpm", "exec", "vite", "dev", "--host", "0.0.0.0", "--port", "3000"]
+CMD ["pnpm", "exec", "vite", "dev", "--host", "0.0.0.0", "--port", "3000", "--clearScreen", "false"]
