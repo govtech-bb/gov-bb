@@ -10,11 +10,9 @@ const blocksOf = (f: { Blocks: unknown[] }) => f.Blocks as Block[];
 const sendMock = jest.fn();
 jest.mock("@aws-sdk/client-textract", () => {
   return {
-    TextractClient: jest
-      .fn()
-      .mockImplementation(() => ({
-        send: (...args: unknown[]) => sendMock(...args),
-      })),
+    TextractClient: jest.fn().mockImplementation(() => ({
+      send: (...args: unknown[]) => sendMock(...args),
+    })),
     StartDocumentAnalysisCommand: jest
       .fn()
       .mockImplementation((args) => ({ name: "Start", args })),
@@ -125,5 +123,12 @@ describe("getAnalysisResult", () => {
     sendMock.mockResolvedValue({ JobStatus: "PARTIAL_SUCCESS" });
     const result = await getAnalysisResult("job-1");
     expect(result.status).toBe("failed");
+  });
+
+  it("throws if Textract response is missing JobStatus", async () => {
+    sendMock.mockResolvedValue({ Blocks: [], NextToken: "would-loop-forever" });
+    await expect(getAnalysisResult("job-1")).rejects.toThrow(
+      /missing JobStatus/i,
+    );
   });
 });

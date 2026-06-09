@@ -53,6 +53,10 @@ export async function getAnalysisResult(
       new GetDocumentAnalysisCommand({ JobId: jobId, NextToken: nextToken }),
     );
 
+    if (!response.JobStatus) {
+      throw new Error("Textract response is missing JobStatus");
+    }
+
     if (response.JobStatus === "IN_PROGRESS") return { status: "processing" };
     if (
       response.JobStatus === "FAILED" ||
