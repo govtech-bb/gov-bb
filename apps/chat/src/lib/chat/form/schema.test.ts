@@ -48,6 +48,22 @@ test("needsHandoff is true when any step has a file field", () => {
   assert.equal(needsHandoff(contract({ htmlTypes: ["text", "file"] })), true);
 });
 
+// CHAT_FILE_UPLOADS flips file fields from handoff to in-chat collection
+// (in-bubble upload via /api/form-file). Default-off is load-bearing: without
+// the upload bucket's CORS allowing the chat origin, collection would be a
+// dead-end where the handoff at least works.
+test("needsHandoff lets file forms collect when CHAT_FILE_UPLOADS is on", () => {
+  process.env.CHAT_FILE_UPLOADS = "true";
+  try {
+    assert.equal(
+      needsHandoff(contract({ htmlTypes: ["text", "file"] })),
+      false,
+    );
+  } finally {
+    delete process.env.CHAT_FILE_UPLOADS;
+  }
+});
+
 // Chat can't collect array inputs, so a REQUIRED repeatable field makes the
 // form unsubmittable inline — the gate must hand off. An optional repeatable
 // just gets skipped, so it must NOT trip the gate.

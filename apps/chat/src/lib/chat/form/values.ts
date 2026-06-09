@@ -86,8 +86,17 @@ const COERCERS: Record<HtmlTypes, Coercer> = {
   select: coerceEnum,
   radio: coerceEnum,
   checkbox: coerceCheckbox,
-  // Not chat-collectable; caller already filtered. Pass through.
-  file: (_f, raw) => ({ value: raw }),
+  // Chat-collected file values are JSON arrays of forms-API-confirmed upload
+  // refs, written by /api/form-file — never typed by the user or the model.
+  file: (_f, raw) => {
+    try {
+      const refs: unknown = JSON.parse(raw);
+      if (!Array.isArray(refs)) return { error: "invalid file reference" };
+      return { value: refs };
+    } catch {
+      return { error: "invalid file reference" };
+    }
+  },
   "show-hide": (_f, raw) => ({ value: raw }),
 };
 
@@ -166,6 +175,17 @@ export function validateAndReshape(
 // until submit. Validates the candidate against the OTHER already-collected
 // values so cross-field rules (e.g. date after/before a reference field) see
 // real context.
+// Pre-presign check for an upload candidate: runs the recipe's file rules
+// (fileTypes, maxSize, itemMaxSize) against the file's metadata so oversize or
+// wrong-type files are rejected with the recipe's message before an S3 URL is
+// minted.
+export function validateCollectedFile(
+  field: Primitive,
+  candidate: { name: string; size: number; type: string },
+): string | null {
+  return validateField(field, [candidate], {}, {})[0] ?? null;
+}
+
 export function validateCollectedField(
   contract: ServiceContract,
   field: Primitive,

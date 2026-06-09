@@ -14,6 +14,7 @@ import { memo, type ReactNode, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { askFieldDef, presentChoicesDef } from "#/lib/chat-tools";
+import { getSessionThreadId } from "#/lib/chat/persistence";
 import { TridentAvatar } from "#/components/trident-avatar";
 import {
   extractText,
@@ -235,6 +236,10 @@ function AskFieldWidget({
   } else if (spec.htmlType === "date") {
     widget = (
       <DateAnswer disabled={disabled} onAnswer={onAnswer} spec={spec} />
+    );
+  } else if (spec.htmlType === "file") {
+    widget = (
+      <FileAnswer disabled={disabled} onAnswer={onAnswer} spec={spec} />
     );
   } else {
     widget = (
@@ -479,6 +484,119 @@ function DateAnswer({
         value={date}
       />
       <Button disabled={disabled || !complete} onClick={submit} type="button">
+        Continue
+      </Button>
+    </div>
+  );
+}
+
+// In-bubble file upload. presign + confirm go through /api/form-file (the
+// forms API's CORS excludes the chat origin, so the server brokers both and
+// writes the verified ref into the form session); only the S3 PUT runs from
+// the browser. Continue just tells the model the upload happened — the value
+// is already recorded server-side.
+function FileAnswer({
+  spec,
+  disabled,
+  onAnswer,
+}: {
+  spec: FieldSpec;
+  disabled: boolean;
+  onAnswer: (text: string) => void;
+}) {
+  const [uploaded, setUploaded] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const upload = async (file: File) => {
+    setError(null);
+    const precheck = validateSpecValue(spec, [
+      { name: file.name, size: file.size, type: file.type },
+    ]);
+    if (precheck) {
+      setError(precheck);
+      return;
+    }
+    setBusy(true);
+    try {
+      const threadId = getSessionThreadId();
+      const presignRes = await fetch("/api/form-file", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "presign",
+          threadId,
+          fieldId: spec.fieldId,
+          fileName: file.name,
+          contentType: file.type || "application/octet-stream",
+          size: file.size,
+        }),
+      });
+      if (!presignRes.ok) {
+        const body = (await presignRes.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        throw new Error(body?.error ?? "Upload failed. Please try again.");
+      }
+      const { data: presign } = (await presignRes.json()) as {
+        data: { uploadUrl: string; key: string };
+      };
+
+      const put = await fetch(presign.uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": file.type || "application/octet-stream" },
+        body: file,
+      });
+      if (!put.ok) throw new Error("Upload failed. Please try again.");
+
+      const confirmRes = await fetch("/api/form-file", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "confirm",
+          threadId,
+          fieldId: spec.fieldId,
+          key: presign.key,
+        }),
+      });
+      if (!confirmRes.ok) throw new Error("Upload failed. Please try again.");
+
+      setUploaded((u) => [...u, file.name]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-2.5">
+      <HintOrError hint={spec.hint} error={error} />
+      {uploaded.map((name) => (
+        <p className="text-bubble text-black-00" key={name}>
+          ✓ {name}
+        </p>
+      ))}
+      <input
+        aria-label={spec.label}
+        className="text-bubble text-black-00 file:mr-3 file:rounded-full file:border-0 file:bg-teal-00 file:px-3.5 file:py-1.5 file:font-medium file:text-sm file:text-white-00 disabled:opacity-50"
+        disabled={disabled || busy}
+        multiple={spec.multiple}
+        onChange={(e) => {
+          for (const f of Array.from(e.target.files ?? [])) void upload(f);
+          e.target.value = "";
+        }}
+        type="file"
+      />
+      <Button
+        disabled={disabled || busy || uploaded.length === 0}
+        onClick={() =>
+          onAnswer(
+            `Uploaded ${uploaded.length} file${uploaded.length > 1 ? "s" : ""}: ${uploaded.join(", ")}`,
+          )
+        }
+        type="button"
+      >
         Continue
       </Button>
     </div>

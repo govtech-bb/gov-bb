@@ -1,6 +1,11 @@
 export { matchFormsFromText } from "./detect";
 export { getFormSlugs } from "./defs";
-export { resolveActiveForm, type FormResolution } from "./schema";
+export {
+  buildFieldIndex,
+  fileUploadsEnabled,
+  resolveActiveForm,
+  type FormResolution,
+} from "./schema";
 export {
   getOrCreateSession,
   resetSessionForNewForm,
