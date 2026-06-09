@@ -7,11 +7,14 @@ const CHAT_URL =
 
 const MAX_QUERY_LENGTH = 2000
 
+// Every question must be answerable from a service in src/content — chat can
+// only ground answers in that corpus, so an unbacked question (e.g. passports,
+// driver's licences) sends users straight to a dead end.
 const DEFAULT_QUESTIONS = [
-  'How do I get a passport?',
   'How do I register a birth?',
+  'How do I get a birth certificate?',
   'What financial assistance is available?',
-  "How do I apply for a driver's licence?",
+  'How do I apply for a school uniform grant?',
 ]
 
 type OnlineState = 'checking' | 'online' | 'offline'
