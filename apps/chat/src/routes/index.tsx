@@ -448,8 +448,10 @@ function ThinkingIndicator({ label = "Thinking" }: { label?: string }) {
     // gradient text is otherwise visual-only.
     <div role="status" className="flex items-center gap-2.5">
       <TridentAvatar size="sm" tone="filled" />
+      {/* motion-reduce disables the shimmer under prefers-reduced-motion; the
+          gradient text stays legible static. */}
       <span
-        className="text-bubble animate-[shimmer_2.5s_linear_infinite] bg-clip-text font-medium text-transparent"
+        className="text-bubble animate-[shimmer_2.5s_linear_infinite] bg-clip-text font-medium text-transparent motion-reduce:animate-none"
         style={{
           backgroundImage:
             "linear-gradient(90deg, var(--color-blue-40) 0%, var(--color-teal-00) 35%, var(--color-teal-100) 50%, var(--color-teal-00) 65%, var(--color-blue-40) 100%)",
@@ -508,7 +510,11 @@ function Composer({
             value={input}
           />
           {streaming ? (
-            <Button onClick={onStop} type="button">
+            <Button
+              aria-label="Stop generating the response"
+              onClick={onStop}
+              type="button"
+            >
               Stop
             </Button>
           ) : (

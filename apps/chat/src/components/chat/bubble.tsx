@@ -230,11 +230,23 @@ function BubbleImpl({
           {hasChoices && (
             <div className="flex flex-col gap-2.5">
               {choicesArgs?.question && (
-                <p className="text-bubble font-medium text-black-00">
+                <p
+                  id={`choices-q-${message.id}`}
+                  className="text-bubble font-medium text-black-00"
+                >
                   {choicesArgs.question}
                 </p>
               )}
-              <div className="flex flex-wrap gap-2">
+              {/* role=group ties the buttons to the question so screen readers
+                  announce them as one labelled set, not loose buttons. */}
+              <div
+                className="flex flex-wrap gap-2"
+                role="group"
+                aria-labelledby={
+                  choicesArgs?.question ? `choices-q-${message.id}` : undefined
+                }
+                aria-label={choicesArgs?.question ? undefined : "Answer choices"}
+              >
                 {choices.map((c) => (
                   <button
                     className="rounded-full border-[1.5px] border-teal-00 bg-transparent px-3.5 py-1.5 font-medium text-sm text-teal-00 transition-colors hover:bg-teal-00 hover:text-white-00 focus-visible:outline-2 focus-visible:outline-teal-00 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-teal-00"
