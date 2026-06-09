@@ -33,16 +33,30 @@ export const presentChoicesDef = toolDefinition({
   }),
 });
 
-export const presentMultiChoicesDef = toolDefinition({
-  name: "present_multi_choices",
+export const askFieldDef = toolDefinition({
+  name: "ask_field",
   description:
-    "Ask a closed-set question where the user may pick SEVERAL options (checkbox fields, multi-selects). Renders toggleable options with a confirm button; the answer arrives as a comma-separated list — record it with ONE set_field call whose value is the comma-separated option values. For single-pick fields (radio/select/yes-no) use present_choices instead. The question text goes ONLY in these args, never in your text reply. END YOUR TURN after calling.",
+    "Ask the user for ONE form field from the FORM SCHEMA. Pass ONLY the fieldId — the UI renders the right input (text box, date picker, choice buttons, multi-select) from the real form definition, including the label and options. Your visible text may hold only a brief lead-in or acknowledgement of the previous answer — never the question itself. END YOUR TURN after calling.",
   inputSchema: z.object({
-    question: z.string(),
-    choices: z.array(z.string()).min(2),
+    fieldId: z.string().meta({
+      description: "Exact fieldId from the FORM SCHEMA system message.",
+    }),
   }),
   outputSchema: z.object({
-    shown: z.boolean(),
+    ok: z.boolean(),
+    error: z.string().optional(),
+    field: z
+      .object({
+        fieldId: z.string(),
+        label: z.string(),
+        htmlType: z.string(),
+        hint: z.string().optional(),
+        multiple: z.boolean().optional(),
+        options: z
+          .array(z.object({ label: z.string(), value: z.string() }))
+          .optional(),
+      })
+      .optional(),
   }),
 });
 

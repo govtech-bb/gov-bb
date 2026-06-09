@@ -29,8 +29,8 @@ import {
 } from "#/lib/chat/persistence";
 import type { Citation } from "#/lib/chat/types";
 import {
+  askFieldDef,
   presentChoicesDef,
-  presentMultiChoicesDef,
   submitFormDef,
 } from "#/lib/chat-tools";
 
@@ -434,7 +434,7 @@ function shouldShowThinking(messages: UIMessage[]): boolean {
   if (
     hasAnyToolCall([last], [
       presentChoicesDef.name,
-      presentMultiChoicesDef.name,
+      askFieldDef.name,
       submitFormDef.name,
     ])
   ) {

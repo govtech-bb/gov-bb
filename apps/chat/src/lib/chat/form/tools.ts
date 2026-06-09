@@ -1,6 +1,6 @@
 import {
+  askFieldDef,
   presentChoicesDef,
-  presentMultiChoicesDef,
   setFieldDef,
   submitFormDef,
 } from "#/lib/chat-tools";
@@ -30,12 +30,34 @@ const presentChoicesTool = presentChoicesDef.server(async () => ({
   shown: true,
 }));
 
-// Same no-op contract as present_choices, for checkbox/multi-select fields:
-// the client renders toggleable options + confirm, and the confirmed picks
-// come back as a comma-separated user message next turn.
-const presentMultiChoicesTool = presentMultiChoicesDef.server(async () => ({
-  shown: true,
-}));
+// The model passes ONLY a fieldId; the canonical field spec (label, type,
+// options) is read from the CONTRACT and returned as the tool result. The
+// client renders its input widget from part.output — the model can't mangle
+// options or labels because it never authors them. The user's answer comes
+// back as a new user message next turn, same as present_choices.
+const askFieldTool = askFieldDef.server<FormTurnContext>(
+  async ({ fieldId }, ctx) => {
+    const { session, form } = ctx.context;
+    if (!form) return { ok: false, error: "no active form" };
+    const active = getActiveFieldIds(form.contract, session.values).flat;
+    const info = buildFieldIndex(form.contract).get(fieldId);
+    if (!info || !active.has(fieldId)) {
+      return { ok: false, error: `unknown or inactive fieldId: ${fieldId}` };
+    }
+    const f = info.field;
+    return {
+      ok: true,
+      field: {
+        fieldId: f.fieldId,
+        label: f.label,
+        htmlType: f.htmlType,
+        hint: f.hint ?? undefined,
+        multiple: f.multiple ?? undefined,
+        options: f.options?.map((o) => ({ label: o.label, value: o.value })),
+      },
+    };
+  },
+);
 
 const setFieldTool = setFieldDef.server<FormTurnContext>(
   async ({ fieldId, value }, ctx) => {
@@ -145,10 +167,5 @@ export function buildOfferTools() {
 }
 
 export function buildFormTools() {
-  return [
-    presentChoicesTool,
-    presentMultiChoicesTool,
-    setFieldTool,
-    submitFormTool,
-  ];
+  return [presentChoicesTool, askFieldTool, setFieldTool, submitFormTool];
 }

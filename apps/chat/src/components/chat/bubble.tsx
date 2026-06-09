@@ -1,9 +1,10 @@
-import type { InferToolInput, UIMessage } from "@tanstack/ai";
+import type { InferToolInput, InferToolOutput, UIMessage } from "@tanstack/ai";
+import { DateInput, type DateInputValue, Input, TextArea } from "@govtech-bb/react";
 import { Allow, parse as parsePartialJson } from "partial-json";
 import { memo, type ReactNode, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { presentChoicesDef } from "#/lib/chat-tools";
+import { askFieldDef, presentChoicesDef } from "#/lib/chat-tools";
 import { TridentAvatar } from "#/components/trident-avatar";
 import {
   extractText,
@@ -131,19 +132,245 @@ function parseChoiceArgs(raw: string | undefined): ChoicesArgs | undefined {
   }
 }
 
-// Checkbox-style multi-pick for present_multi_choices: toggle one or more
-// options, then confirm. The confirmed picks go back as ONE comma-separated
-// user message — the same list shape coerceList parses for checkbox /
-// multi-select fields.
+type AskFieldOutput = InferToolOutput<typeof askFieldDef>;
+type FieldSpec = NonNullable<AskFieldOutput["field"]>;
+
+const CONTINUE_BTN =
+  "self-start rounded-full bg-teal-00 px-4 py-1.5 font-medium text-sm text-white-00 transition-colors hover:bg-teal-100 focus-visible:outline-2 focus-visible:outline-teal-00 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:bg-mid-grey-00";
+
+const PILL_BTN =
+  "rounded-full border-[1.5px] border-teal-00 bg-transparent px-3.5 py-1.5 font-medium text-sm text-teal-00 transition-colors hover:bg-teal-00 hover:text-white-00 focus-visible:outline-2 focus-visible:outline-teal-00 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-teal-00";
+
+// Renders the right input widget for an ask_field spec. The spec comes from
+// the CONTRACT via the tool result (part.output) — never from model-authored
+// args — so labels and options can't be hallucinated. Every widget answers by
+// sending a plain user message (option labels; dates as YYYY-MM-DD), keeping
+// the flow turn-based and refresh-safe.
+function AskFieldWidget({
+  spec,
+  messageId,
+  disabled,
+  onAnswer,
+}: {
+  spec: FieldSpec;
+  messageId: string;
+  disabled: boolean;
+  onAnswer: (text: string) => void;
+}) {
+  const questionId = `ask-field-q-${messageId}`;
+  const options = spec.options ?? [];
+  const labels = options.map((o) => o.label);
+
+  let widget: ReactNode;
+  if (options.length > 0 && (spec.htmlType === "checkbox" || spec.multiple)) {
+    return (
+      <MultiChoices
+        questionId={questionId}
+        question={spec.label}
+        hint={spec.hint}
+        choices={labels}
+        disabled={disabled}
+        onConfirm={(picks) => onAnswer(picks.join(", "))}
+      />
+    );
+  } else if (options.length > 0) {
+    widget = (
+      <div
+        className="flex flex-wrap gap-2"
+        role="group"
+        aria-labelledby={questionId}
+      >
+        {labels.map((label) => (
+          <button
+            className={PILL_BTN}
+            disabled={disabled}
+            key={label}
+            onClick={() => onAnswer(label)}
+            type="button"
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    );
+  } else if (spec.htmlType === "checkbox") {
+    widget = (
+      <div
+        className="flex flex-wrap gap-2"
+        role="group"
+        aria-labelledby={questionId}
+      >
+        {["Yes", "No"].map((label) => (
+          <button
+            className={PILL_BTN}
+            disabled={disabled}
+            key={label}
+            onClick={() => onAnswer(label)}
+            type="button"
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    );
+  } else if (spec.htmlType === "date") {
+    widget = (
+      <DateAnswer
+        disabled={disabled}
+        name={spec.fieldId}
+        onAnswer={onAnswer}
+      />
+    );
+  } else {
+    widget = (
+      <TextAnswer
+        disabled={disabled}
+        htmlType={spec.htmlType}
+        label={spec.label}
+        onAnswer={onAnswer}
+      />
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2.5">
+      <p id={questionId} className="text-bubble font-medium text-black-00">
+        {spec.label}
+      </p>
+      {spec.hint && (
+        <p className="text-mid-grey-00 text-sm">{spec.hint}</p>
+      )}
+      {widget}
+    </div>
+  );
+}
+
+function TextAnswer({
+  htmlType,
+  label,
+  disabled,
+  onAnswer,
+}: {
+  htmlType: string;
+  label: string;
+  disabled: boolean;
+  onAnswer: (text: string) => void;
+}) {
+  const [value, setValue] = useState("");
+  const trimmed = value.trim();
+  const submit = () => {
+    if (trimmed) onAnswer(trimmed);
+  };
+
+  if (htmlType === "textarea") {
+    return (
+      <div className="flex flex-col gap-2">
+        <TextArea
+          aria-label={label}
+          className="bg-white-00 text-black-00"
+          disabled={disabled}
+          onChange={(e) => setValue(e.target.value)}
+          rows={3}
+          value={value}
+        />
+        <button
+          className={CONTINUE_BTN}
+          disabled={disabled || !trimmed}
+          onClick={submit}
+          type="button"
+        >
+          Continue
+        </button>
+      </div>
+    );
+  }
+
+  const inputType =
+    htmlType === "email" || htmlType === "tel" || htmlType === "number"
+      ? htmlType
+      : "text";
+  return (
+    <div className="flex items-end gap-2">
+      <Input
+        aria-label={label}
+        className="flex-1 bg-white-00 text-black-00"
+        disabled={disabled}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            submit();
+          }
+        }}
+        type={inputType}
+        value={value}
+      />
+      <button
+        className={CONTINUE_BTN}
+        disabled={disabled || !trimmed}
+        onClick={submit}
+        type="button"
+      >
+        Continue
+      </button>
+    </div>
+  );
+}
+
+// GOV-style day/month/year input; answers as ISO YYYY-MM-DD, the shape the
+// server's date coercion parses.
+function DateAnswer({
+  name,
+  disabled,
+  onAnswer,
+}: {
+  name: string;
+  disabled: boolean;
+  onAnswer: (text: string) => void;
+}) {
+  const [date, setDate] = useState<DateInputValue>({
+    day: "",
+    month: "",
+    year: "",
+  });
+  const { day, month, year } = date;
+  const complete = day !== "" && month !== "" && year.length === 4;
+  return (
+    <div className="flex flex-col gap-2">
+      <DateInput
+        disabled={disabled}
+        name={name}
+        onChange={setDate}
+        value={date}
+      />
+      <button
+        className={CONTINUE_BTN}
+        disabled={disabled || !complete}
+        onClick={() =>
+          onAnswer(`${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`)
+        }
+        type="button"
+      >
+        Continue
+      </button>
+    </div>
+  );
+}
+
+// Checkbox-style multi-pick: toggle one or more options, then confirm. The
+// confirmed picks go back as ONE comma-separated user message — the same list
+// shape coerceList parses for checkbox / multi-select fields.
 function MultiChoices({
   questionId,
   question,
+  hint,
   choices,
   disabled,
   onConfirm,
 }: {
   questionId: string;
   question?: string;
+  hint?: string;
   choices: string[];
   disabled: boolean;
   onConfirm: (picks: string[]) => void;
@@ -165,6 +392,7 @@ function MultiChoices({
           {question}
         </p>
       )}
+      {hint && <p className="text-mid-grey-00 text-sm">{hint}</p>}
       <div
         className="flex flex-wrap gap-2"
         role="group"
@@ -229,7 +457,7 @@ function BubbleImpl({
   );
 
   const choicesPart = findToolCall(message, "present_choices");
-  const multiChoicesPart = findToolCall(message, "present_multi_choices");
+  const askFieldPart = findToolCall(message, "ask_field");
   // present_choices is a no-op server tool: once it resolves, the part lands in
   // "complete". Keep rendering the buttons in that state (they go disabled, not
   // gone, once a later turn lands) — otherwise they flash on then vanish.
@@ -246,19 +474,18 @@ function BubbleImpl({
   );
   const hasChoices = choices.length > 0;
 
-  const multiChoicesArgs = ready(multiChoicesPart)
-    ? parseChoiceArgs(multiChoicesPart?.arguments)
-    : undefined;
-  const multiChoices = (multiChoicesArgs?.choices ?? []).filter(
-    (c): c is string => typeof c === "string" && c.length > 0,
-  );
-  const hasMultiChoices = multiChoices.length > 0;
+  // ask_field renders from the tool RESULT (the canonical field spec from the
+  // contract), so it's only available once the no-op server tool completed.
+  const askFieldOutput =
+    askFieldPart?.state === "complete"
+      ? (askFieldPart.output as AskFieldOutput | undefined)
+      : undefined;
+  const fieldSpec = askFieldOutput?.ok ? askFieldOutput.field : undefined;
 
   // Keep the lead-in text but drop the trailing question when buttons render it.
   const displayText = useMemo(
-    () =>
-      hasChoices || hasMultiChoices ? stripTrailingQuestion(text) : text,
-    [text, hasChoices, hasMultiChoices],
+    () => (hasChoices || fieldSpec ? stripTrailingQuestion(text) : text),
+    [text, hasChoices, fieldSpec],
   );
   const renderedMarkdown = useMemo(() => {
     const normalized = normalizeMarkdown(displayText);
@@ -293,7 +520,7 @@ function BubbleImpl({
   if (
     !showText &&
     !hasChoices &&
-    !hasMultiChoices &&
+    !fieldSpec &&
     !submitApproval &&
     !submitDeclined
   )
@@ -350,13 +577,12 @@ function BubbleImpl({
             </div>
           )}
 
-          {hasMultiChoices && (
-            <MultiChoices
-              questionId={`multi-choices-q-${message.id}`}
-              question={multiChoicesArgs?.question}
-              choices={multiChoices}
+          {fieldSpec && (
+            <AskFieldWidget
+              spec={fieldSpec}
+              messageId={message.id}
               disabled={choicesDisabled}
-              onConfirm={(picks) => onChoice(picks.join(", "))}
+              onAnswer={onChoice}
             />
           )}
 

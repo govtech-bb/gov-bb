@@ -1,8 +1,10 @@
 # ask_field: server-enriched field rendering (future design)
 
-**Status:** parked — do when a richer field widget (date picker) gets prioritized.
-**Context:** apps/chat form collection, 2026-06-09. Supersedes nothing; would
-eventually collapse `present_choices` + `present_multi_choices` into one tool.
+**Status:** implemented 2026-06-09 (same branch). `ask_field` asks every schema
+field; `present_choices` remains for non-field closed questions (e.g. the
+offer-turn "Start the application" affordance); `present_multi_choices` was
+absorbed before ever shipping.
+**Context:** apps/chat form collection, 2026-06-09.
 
 ## Problem
 

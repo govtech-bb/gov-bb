@@ -17,13 +17,13 @@ test("buildOfferTools registers present_choices only, not the field tools", () =
   assert.ok(!names.includes("submit_form"));
 });
 
-// Collection turns need both pickers: single-pick (radio/select/yes-no) and
-// multi-pick (checkbox/multi-select fields, answered as a comma list).
-test("buildFormTools registers both choice pickers and the field tools", () => {
+// Collection turns ask schema fields via ask_field (server-enriched spec →
+// typed widget); present_choices stays for non-field closed questions.
+test("buildFormTools registers ask_field and the field tools", () => {
   const names = buildFormTools().map((t) => (t as { name?: string }).name);
   assert.deepEqual(names, [
     "present_choices",
-    "present_multi_choices",
+    "ask_field",
     "set_field",
     "submit_form",
   ]);
