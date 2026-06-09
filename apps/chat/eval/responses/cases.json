@@ -31,6 +31,15 @@
       }
     },
     {
+      "id": "direct-birth-cert-multi-part",
+      "category": "direct",
+      "dialect": "standard",
+      "message": "How much is a birth certificate and how long does it take?",
+      "expect": {
+        "replyIncludes": ["business days", "5 to 7"]
+      }
+    },
+    {
       "id": "direct-register-birth-1",
       "category": "direct",
       "dialect": "standard",
