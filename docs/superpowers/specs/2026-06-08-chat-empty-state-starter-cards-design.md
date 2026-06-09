@@ -33,7 +33,7 @@ The user-facing symptoms today:
 | Card set | 4 cards: `register-a-birth`, `get-birth-certificate`, `apply-financial-assistance`, `apply-for-a-school-uniform-grant` | 3 cards (under-coverage); 6 cards (visual weight); passport/driver's-licence (no corpus content) |
 | Click behavior | Auto-send — clicking calls the same `submit()` path that typed input uses | Fill-input-only; fill + undo affordance |
 | Layout | 2×2 card grid; collapses to single column below the Tailwind `sm` breakpoint (640px) | Compact pill row (tap targets too small); vertical stack (too menu-like) |
-| Drift detection | Unit test loads `@govtech-bb/content` and asserts every starter slug resolves to an on-disk service | No test (manual review); separate CI guard script |
+| Drift detection | Build-time tsx script wired to chat's npm `prebuild` lifecycle; loads `@govtech-bb/content` and asserts every starter slug resolves on-disk. CI's `nx build chat` fails on drift. | Jest test in `apps/chat` (chat has no Jest setup today — scope creep); Jest test in `packages/content` (wrong ownership); no check at all (reintroduces the bug class) |
 
 ## Design
 
@@ -53,7 +53,7 @@ export const STARTER_PROMPTS: readonly StarterPrompt[] = [
 ];
 ```
 
-The `slug` field has no current UI consumer — it exists so the drift test
+The `slug` field has no current UI consumer — it exists so the drift check
 (§4) can verify each starter resolves to a corpus entry, and to give a v1.1
 "deeplink to the service page" feature a hook to wire into without changing
 the data shape. No `category`/`title`/`description` is duplicated from the
@@ -161,40 +161,69 @@ case "starter-cards":
 typed input and `?q=` URL auto-send — so cards add no new entry point to the
 conversation lifecycle.
 
-### 4. Testing — `apps/chat/src/lib/chat/starter-prompts.spec.ts`
+### 4. Drift detection — `apps/chat/scripts/check-starter-prompts.ts`
+
+`apps/chat` has no test runner configured today (no `jest.config.ts`, no
+`test` target in `project.json`, zero existing `*.spec.*` files under
+`src/`). Rather than stand up Jest in this PR (significant scope creep and
+a separate decision about chat's testing baseline), the drift check ships
+as a small `tsx` script wired to the npm `prebuild` lifecycle. The chat
+already runs seven `tsx` scripts (`ingest`, `eval:sweep`, `eval:responses`,
+`db:migrate`, etc.) so the pattern fits the file.
 
 ```ts
+#!/usr/bin/env tsx
 /**
- * @jest-environment node
- *
- * Requires monorepo workspace context — @govtech-bb/content resolves the
- * content dir by walking up to pnpm-workspace.yaml.
+ * Build-time invariant: every slug in STARTER_PROMPTS must resolve to a
+ * service in @govtech-bb/content. Wired into the chat's `prebuild` script
+ * so CI's `nx build chat` fails the build on drift.
  */
 import { loadContent } from "@govtech-bb/content";
-import { STARTER_PROMPTS } from "./starter-prompts";
+import { STARTER_PROMPTS } from "../src/lib/chat/starter-prompts.js";
 
-describe("STARTER_PROMPTS", () => {
-  it("every slug resolves to a service in @govtech-bb/content", async () => {
-    const { services } = await loadContent();
-    const onDisk = new Set(services.map((s) => s.slug));
-    const missing = STARTER_PROMPTS.filter(({ slug }) => !onDisk.has(slug));
-    expect(missing).toEqual([]);
-  });
-});
+const { services } = await loadContent();
+const onDisk = new Set(services.map((s) => s.slug));
+const missing = STARTER_PROMPTS.filter(({ slug }) => !onDisk.has(slug));
+
+if (missing.length > 0) {
+  console.error(
+    "starter-prompts drift: the following slugs are not in @govtech-bb/content:",
+  );
+  for (const { slug, prompt } of missing) {
+    console.error(`  - ${slug}  ("${prompt}")`);
+  }
+  console.error(
+    "\nFix: rename the slug to match the corpus, or remove the entry from STARTER_PROMPTS.",
+  );
+  process.exit(1);
+}
+
+console.log(
+  `✓ starter-prompts: all ${STARTER_PROMPTS.length} slugs resolve to corpus services`,
+);
 ```
 
-The per-file `@jest-environment node` pragma is required because
-`@govtech-bb/content/load` uses `node:fs`; the chat app's default test env
-may be jsdom (this is what kept the package itself usable in a browser SPA —
-the loader is never bundled into the SPA, only into tests/build scripts).
+Wire-up in `apps/chat/package.json`:
 
-The assertion compares `missing` against `[]` rather than looping with
-`expect(... .toBe(true))` per slug, so a failure lists every broken slug in
-one shot instead of bailing on the first.
+```json
+{
+  "scripts": {
+    "check:starter-prompts": "tsx scripts/check-starter-prompts.ts",
+    "prebuild": "npm run check:starter-prompts",
+    "build": "vite build"
+  }
+}
+```
 
-What this test catches:
-- Service renamed in the content repo without updating the starter array.
-- Service file removed during cleanup without the starter array being updated.
+The chat's nx `build` target executes `npm run build`, which triggers npm's
+`prebuild` lifecycle hook → the check runs → if any slug is missing the
+script exits non-zero and the build fails. CI runs `nx run-many -t build`,
+so the gate fires on every PR. The check is also runnable standalone via
+`npm run check:starter-prompts` for local feedback without a full build.
+
+What this check catches:
+- Service renamed in the content repo without `STARTER_PROMPTS` being updated.
+- Service file removed during cleanup without `STARTER_PROMPTS` being updated.
 - Typo in a starter slug.
 
 What it deliberately does **not** check:
@@ -202,11 +231,16 @@ What it deliberately does **not** check:
 - Whether the LLM gives a useful answer (covered by the RAG eval suite).
 - Whether a service is `featured`/published vs draft (out of scope).
 
-No new visual / interaction test is added for `<StarterCards>` itself in v1 —
-the component is pure render, zero state, and its only behavior (click →
+No interaction test is added for `<StarterCards>` itself in v1 — the
+component is pure render with one prop, and its only behavior (click →
 parent's `onPick`) is exercised end-to-end the moment a CI smoke run loads
 the empty state. If `<StarterCards>` later grows internal state, a focused
-component test should follow.
+component test should follow at the same time as chat's Jest setup.
+
+**Future migration note:** when `apps/chat` gets Jest, this check should
+migrate to a Jest test (the body is already test-shaped — `services →
+onDisk → missing → assert empty`). Keep the script trivially small so the
+migration is one commit.
 
 ## Alternatives considered
 
@@ -215,7 +249,7 @@ Add a flag to `serviceFrontmatterSchema`, write a small build-time script that
 emits `apps/chat/src/lib/chat/generated/starter-prompts.json` by calling
 `loadContent()`, and a CI step that fails the build on drift. *Rejected:*
 introduces a new flag, a new script, a new generated file, and a new CI step
-for content that changes at a monthly cadence. The drift-detection test
+for content that changes at a monthly cadence. The drift-detection check
 (§4) achieves the same correctness guarantee at fraction of the cost.
 Revisit when non-engineers start asking to curate cards without a chat PR,
 or when card count grows past ~8.
