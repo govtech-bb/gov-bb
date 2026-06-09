@@ -8,18 +8,32 @@ import { getActiveFieldIds } from "./schema";
 import type { FormSession } from "./session";
 import { submitFormUpstream, type SubmitOutcome } from "./submit";
 
+// Deliberate no-op. present_choices is a UI signal, not real work: the client
+// (bubble.tsx) reads the tool-call args off the message and renders the choice
+// buttons; clicking one sends the answer back as a NEW user message, which
+// re-runs field detection next turn. Do NOT turn this into a client tool — the
+// result here is irrelevant, the args are the payload.
+const presentChoicesTool = () =>
+  presentChoicesDef.server(async () => ({ shown: true }));
+
+// Tools for an OFFER-ONLY turn: a collect-type form matched on an info question
+// (nothing collected yet). We deliberately withhold set_field/submit_form so the
+// model can't silently start recording fields on what is still a question — but
+// present_choices IS available so the model can offer a clickable "Start the
+// application" affordance instead of a dead-end prose "want to start?". Clicking
+// it sends a non-question message next turn, which flips offerOnly off and lets
+// the real collection tools in. See run-turn.ts `offerOnly`.
+export function buildOfferTools() {
+  return [presentChoicesTool()];
+}
+
 export function buildFormTools(
   session: FormSession,
   schema: ActiveFormSchema,
   signal: AbortSignal,
 ) {
   return [
-    // Deliberate no-op. present_choices is a UI signal, not real work: the
-    // client (bubble.tsx) reads the tool-call args off the message and renders
-    // the choice buttons; clicking one sends the answer back as a NEW user
-    // message, which re-runs field detection next turn. Do NOT turn this into a
-    // client tool — the result here is irrelevant, the args are the payload.
-    presentChoicesDef.server(async () => ({ shown: true })),
+    presentChoicesTool(),
 
     setFieldDef.server(async ({ fieldId, value }) => {
       // A previous set_field in this turn may have activated a conditional
