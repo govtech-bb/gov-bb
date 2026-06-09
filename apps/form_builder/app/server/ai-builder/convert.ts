@@ -12,7 +12,12 @@ export const getAiStatus = createServerFn({ method: "GET" })
 
 // Text-only edits — synchronous. The PDF upload path uses presignPdfUpload +
 // startPdfConvert + getPdfConvertStatus below.
-export const editRecipe = createServerFn({ method: "POST" })
+//
+// strict:false matches the original convertRecipe fix (commit 9cca67d9):
+// ConvertResponse.recipe is Record<string, unknown>, and TanStack Start's
+// ValidateSerializable can't prove `unknown` is serializable, so the fetcher's
+// return type collapses to `unknown` and destructuring fails under ts-jest.
+export const editRecipe = createServerFn({ method: "POST", strict: false })
   .middleware([requireSession])
   .inputValidator(
     z
@@ -45,7 +50,12 @@ export const startPdfConvert = createServerFn({ method: "POST" })
     return api.post("/builder/ai/upload/process", { s3Key: data.s3Key });
   });
 
-export const getPdfConvertStatus = createServerFn({ method: "GET" })
+// strict:false for the same reason as editRecipe — UploadStatusResponse's
+// "done" branch carries ConvertResponse, which contains Record<string, unknown>.
+export const getPdfConvertStatus = createServerFn({
+  method: "GET",
+  strict: false,
+})
   .middleware([requireSession])
   .inputValidator(z.object({ jobId: z.string() }))
   .handler(async ({ data }): Promise<UploadStatusResponse> => {

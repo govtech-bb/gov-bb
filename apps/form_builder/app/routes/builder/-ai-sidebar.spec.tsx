@@ -2,16 +2,39 @@
  * @jest-environment jsdom
  */
 import "@testing-library/jest-dom";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { RecipeDraft } from "@govtech-bb/form-builder";
 
-// The convert server-fn is a createServerFn (ESM + RPC at module-eval); stub it.
-const convertRecipe = jest.fn();
+// The convert server-fn family is createServerFn (ESM + RPC at module-eval); stub each.
+const editRecipe = jest.fn();
+const presignPdfUpload = jest.fn();
+const startPdfConvert = jest.fn();
+const getPdfConvertStatus = jest.fn();
+
 jest.mock("../../server/ai-builder/convert", () => ({
-  convertRecipe: (...args: unknown[]) => convertRecipe(...args),
+  editRecipe: (...args: unknown[]) => editRecipe(...args),
+  presignPdfUpload: (...args: unknown[]) => presignPdfUpload(...args),
+  startPdfConvert: (...args: unknown[]) => startPdfConvert(...args),
+  getPdfConvertStatus: (...args: unknown[]) => getPdfConvertStatus(...args),
   getAiStatus: jest.fn(),
 }));
+
+// Stub global fetch for the direct browser → S3 PUT. jsdom (the test env) ships
+// neither fetch nor Response, so install a plain mock and a duck-typed fake
+// response — the sidebar only reads `.ok` off the result.
+const okResponse = { ok: true, status: 200 } as unknown as Response;
+const fetchSpy = jest.fn(async () => okResponse);
+(globalThis as unknown as { fetch: typeof fetch }).fetch = fetchSpy as unknown as typeof fetch;
+
+beforeEach(() => {
+  editRecipe.mockReset();
+  presignPdfUpload.mockReset();
+  startPdfConvert.mockReset();
+  getPdfConvertStatus.mockReset();
+  fetchSpy.mockClear();
+  fetchSpy.mockResolvedValue(okResponse);
+});
 
 import { AiSidebar } from "./-ai-sidebar";
 
@@ -29,11 +52,9 @@ function setup(onApplyRecipe = jest.fn().mockResolvedValue({ applied: true })) {
 }
 
 describe("AiSidebar — Edit Form", () => {
-  beforeEach(() => convertRecipe.mockReset());
-
   it("sends the message plus the serialized draft and applies the returned recipe", async () => {
     const recipe = { formId: "contact", steps: [] };
-    convertRecipe.mockResolvedValue({ recipe, reply: "Done — email is now required." });
+    editRecipe.mockResolvedValue({ recipe, reply: "Done — email is now required." });
     const { onApplyRecipe } = setup();
 
     await userEvent.type(
@@ -42,8 +63,8 @@ describe("AiSidebar — Edit Form", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: /edit form/i }));
 
-    await waitFor(() => expect(convertRecipe).toHaveBeenCalledTimes(1));
-    const arg = convertRecipe.mock.calls[0][0];
+    await waitFor(() => expect(editRecipe).toHaveBeenCalledTimes(1));
+    const arg = editRecipe.mock.calls[0][0];
     expect(arg.data.message).toBe("make the email field required");
     // The current draft rides along as serialized recipe JSON.
     expect(JSON.parse(arg.data.recipeJson).formId).toBe("contact");
@@ -61,7 +82,7 @@ describe("AiSidebar — Edit Form", () => {
     const unresolvableRefs = [
       { ref: "components/generic/text", path: "steps[step-1].elements[0].ref" },
     ];
-    convertRecipe.mockResolvedValue({
+    editRecipe.mockResolvedValue({
       recipe,
       reply: "Built it.",
       unresolvableRefs,
@@ -80,7 +101,7 @@ describe("AiSidebar — Edit Form", () => {
   });
 
   it("does not apply when the model replies conversationally (no recipe)", async () => {
-    convertRecipe.mockResolvedValue({ recipe: null, reply: "I can't do that." });
+    editRecipe.mockResolvedValue({ recipe: null, reply: "I can't do that." });
     const { onApplyRecipe } = setup();
 
     await userEvent.type(
@@ -94,7 +115,7 @@ describe("AiSidebar — Edit Form", () => {
   });
 
   it("surfaces a validation error returned by the apply pipeline", async () => {
-    convertRecipe.mockResolvedValue({
+    editRecipe.mockResolvedValue({
       recipe: { formId: "contact", steps: [] },
       reply: "Here you go.",
     });
@@ -116,8 +137,6 @@ describe("AiSidebar — Edit Form", () => {
 });
 
 describe("AiSidebar — prompt textarea", () => {
-  beforeEach(() => convertRecipe.mockReset());
-
   it("renders the prompt field as a textarea", () => {
     setup();
     const field = screen.getByPlaceholderText(/make the email field required/i);
@@ -126,20 +145,20 @@ describe("AiSidebar — prompt textarea", () => {
 
   it("submits on Enter", async () => {
     const recipe = { formId: "contact", steps: [] };
-    convertRecipe.mockResolvedValue({ recipe, reply: "Done." });
+    editRecipe.mockResolvedValue({ recipe, reply: "Done." });
     setup();
 
     const field = screen.getByPlaceholderText(/make the email field required/i);
     await userEvent.type(field, "make the email field required{Enter}");
 
-    await waitFor(() => expect(convertRecipe).toHaveBeenCalledTimes(1));
-    expect(convertRecipe.mock.calls[0][0].data.message).toBe(
+    await waitFor(() => expect(editRecipe).toHaveBeenCalledTimes(1));
+    expect(editRecipe.mock.calls[0][0].data.message).toBe(
       "make the email field required",
     );
   });
 
   it("inserts a newline on Shift+Enter without submitting", async () => {
-    convertRecipe.mockResolvedValue({ recipe: null, reply: "" });
+    editRecipe.mockResolvedValue({ recipe: null, reply: "" });
     setup();
 
     const field = screen.getByPlaceholderText(
@@ -148,15 +167,13 @@ describe("AiSidebar — prompt textarea", () => {
     await userEvent.type(field, "line one{Shift>}{Enter}{/Shift}line two");
 
     expect(field.value).toBe("line one\nline two");
-    expect(convertRecipe).not.toHaveBeenCalled();
+    expect(editRecipe).not.toHaveBeenCalled();
   });
 });
 
 describe("AiSidebar — outcome feedback", () => {
-  beforeEach(() => convertRecipe.mockReset());
-
   it("shows an 'applied' status when the recipe is applied", async () => {
-    convertRecipe.mockResolvedValue({
+    editRecipe.mockResolvedValue({
       recipe: { formId: "contact", steps: [] },
       reply: "Done.",
     });
@@ -175,7 +192,7 @@ describe("AiSidebar — outcome feedback", () => {
   });
 
   it("shows an 'unchanged' status when the apply pipeline reports a no-op", async () => {
-    convertRecipe.mockResolvedValue({
+    editRecipe.mockResolvedValue({
       recipe: { formId: "contact", steps: [] },
       reply: "No change needed.",
     });
@@ -196,7 +213,7 @@ describe("AiSidebar — outcome feedback", () => {
   });
 
   it("shows no status and no error when the user cancels the apply", async () => {
-    convertRecipe.mockResolvedValue({
+    editRecipe.mockResolvedValue({
       recipe: { formId: "contact", steps: [] },
       reply: "Here you go.",
     });
@@ -220,7 +237,7 @@ describe("AiSidebar — outcome feedback", () => {
   });
 
   it("flags a failed extraction when the reply has a ```json block but recipe is null", async () => {
-    convertRecipe.mockResolvedValue({
+    editRecipe.mockResolvedValue({
       recipe: null,
       reply: 'Sure:\n```json\n{ "formId": "x" }\n```',
     });
@@ -239,7 +256,7 @@ describe("AiSidebar — outcome feedback", () => {
   });
 
   it("shows no extraction-failed status for a plain conversational reply", async () => {
-    convertRecipe.mockResolvedValue({ recipe: null, reply: "I can't do that." });
+    editRecipe.mockResolvedValue({ recipe: null, reply: "I can't do that." });
     setup();
 
     await userEvent.type(
@@ -255,7 +272,7 @@ describe("AiSidebar — outcome feedback", () => {
   });
 
   it("strips the ```json block from the bubble when a recipe was extracted", async () => {
-    convertRecipe.mockResolvedValue({
+    editRecipe.mockResolvedValue({
       recipe: { formId: "contact", steps: [] },
       reply:
         'Added the step.\n```json\n{ "marker": "SHOULD_BE_STRIPPED" }\n```',
@@ -273,7 +290,7 @@ describe("AiSidebar — outcome feedback", () => {
   });
 
   it("shows a placeholder when the reply was only a ```json block", async () => {
-    convertRecipe.mockResolvedValue({
+    editRecipe.mockResolvedValue({
       recipe: { formId: "contact", steps: [] },
       reply: '```json\n{ "marker": "SHOULD_BE_STRIPPED" }\n```',
     });
@@ -290,45 +307,7 @@ describe("AiSidebar — outcome feedback", () => {
   });
 });
 
-describe("AiSidebar — mode-aware error messages", () => {
-  beforeEach(() => convertRecipe.mockReset());
-
-  it("shows the PDF-size hint when an upload fails with 'Invariant failed'", async () => {
-    convertRecipe.mockRejectedValue(new Error("Invariant failed"));
-    setup();
-
-    const file = new File(["%PDF-1.4"], "form.pdf", { type: "application/pdf" });
-    // jsdom's File doesn't implement arrayBuffer(); stub it so the upload flow
-    // reaches convertRecipe (and thus the error path) instead of throwing early.
-    Object.defineProperty(file, "arrayBuffer", {
-      value: () => Promise.resolve(new ArrayBuffer(8)),
-    });
-    await userEvent.upload(screen.getByLabelText(/attach pdf/i), file);
-    await userEvent.click(screen.getByRole("button", { name: /^upload$/i }));
-
-    const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent(/smaller pdf/i);
-  });
-
-  it("does not mention PDFs when an edit fails with 'Invariant failed'", async () => {
-    convertRecipe.mockRejectedValue(new Error("Invariant failed"));
-    setup();
-
-    await userEvent.type(
-      screen.getByPlaceholderText(/make the email field required/i),
-      "make the email field required",
-    );
-    await userEvent.click(screen.getByRole("button", { name: /edit form/i }));
-
-    const alert = await screen.findByRole("alert");
-    expect(alert).not.toHaveTextContent(/pdf/i);
-    expect(alert).toHaveTextContent(/edit request failed/i);
-  });
-});
-
 describe("AiSidebar — collapse", () => {
-  beforeEach(() => convertRecipe.mockReset());
-
   it("collapses and re-expands", async () => {
     setup();
     expect(screen.getByRole("button", { name: /edit form/i })).toBeInTheDocument();
@@ -346,5 +325,134 @@ describe("AiSidebar — collapse", () => {
     expect(
       screen.getByRole("button", { name: /edit form/i }),
     ).toBeInTheDocument();
+  });
+});
+
+describe("AiSidebar — Upload", () => {
+  // user-event v14 schedules its own micro-delays; without `advanceTimers` it
+  // hangs under fake timers. Wire the two together so userEvent.* can flush its
+  // queue while we drive the polling clock.
+  function setupUser() {
+    return userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+  }
+
+  async function pickPdf(
+    user: ReturnType<typeof setupUser>,
+    name = "form.pdf",
+    size = 1024,
+  ) {
+    const file = new File([new Uint8Array(size)], name, { type: "application/pdf" });
+    const input = screen.getByLabelText(/attach pdf/i, {
+      selector: "input",
+    }) as HTMLInputElement;
+    await user.upload(input, file);
+  }
+
+  it("runs presign → S3 PUT → process → poll → applies the returned recipe", async () => {
+    jest.useFakeTimers();
+    const user = setupUser();
+    presignPdfUpload.mockResolvedValue({ url: "https://s3/url", s3Key: "uploads/abc.pdf" });
+    startPdfConvert.mockResolvedValue({ jobId: "job-1" });
+    getPdfConvertStatus
+      .mockResolvedValueOnce({ status: "processing" })
+      .mockResolvedValueOnce({
+        status: "done",
+        recipe: { formId: "f", steps: [] },
+        reply: "Done.",
+        unresolvableRefs: [],
+      });
+    const { onApplyRecipe } = setup();
+
+    await pickPdf(user);
+    await user.click(screen.getByRole("button", { name: /upload/i }));
+
+    await waitFor(() => expect(presignPdfUpload).toHaveBeenCalled());
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "https://s3/url",
+      expect.objectContaining({ method: "PUT" }),
+    );
+    await waitFor(() =>
+      expect(startPdfConvert).toHaveBeenCalledWith({ data: { s3Key: "uploads/abc.pdf" } }),
+    );
+
+    // Advance the polling timer twice (processing → done). act() lets React
+    // flush the state updates triggered by the resolved status payload.
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(2000);
+    });
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(2000);
+    });
+
+    await waitFor(() => expect(onApplyRecipe).toHaveBeenCalled());
+    jest.useRealTimers();
+  });
+
+  it("surfaces the mapped reason when the server reports a password-protected PDF", async () => {
+    jest.useFakeTimers();
+    const user = setupUser();
+    presignPdfUpload.mockResolvedValue({ url: "https://s3/url", s3Key: "uploads/abc.pdf" });
+    startPdfConvert.mockResolvedValue({ jobId: "job-1" });
+    getPdfConvertStatus.mockResolvedValue({
+      status: "failed",
+      reason:
+        "This PDF appears to be password-protected. Please remove the password and re-upload.",
+    });
+    setup();
+
+    await pickPdf(user);
+    await user.click(screen.getByRole("button", { name: /upload/i }));
+
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(2000);
+    });
+
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent(/password-protected/i),
+    );
+    jest.useRealTimers();
+  });
+
+  it("stops polling when the component unmounts", async () => {
+    jest.useFakeTimers();
+    const user = setupUser();
+    presignPdfUpload.mockResolvedValue({ url: "https://s3/url", s3Key: "uploads/abc.pdf" });
+    startPdfConvert.mockResolvedValue({ jobId: "job-1" });
+    getPdfConvertStatus.mockResolvedValue({ status: "processing" });
+    const { unmount } = render(
+      <AiSidebar draft={DRAFT} version="1.0.0" onApplyRecipe={jest.fn()} />,
+    );
+
+    await pickPdf(user);
+    await user.click(screen.getByRole("button", { name: /upload/i }));
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(2000);
+    });
+
+    const callsBeforeUnmount = getPdfConvertStatus.mock.calls.length;
+    unmount();
+    await jest.advanceTimersByTimeAsync(10_000);
+    expect(getPdfConvertStatus.mock.calls.length).toBe(callsBeforeUnmount);
+    jest.useRealTimers();
+  });
+
+  it("times out after 3 minutes with a friendly error", async () => {
+    jest.useFakeTimers();
+    const user = setupUser();
+    presignPdfUpload.mockResolvedValue({ url: "https://s3/url", s3Key: "uploads/abc.pdf" });
+    startPdfConvert.mockResolvedValue({ jobId: "job-1" });
+    getPdfConvertStatus.mockResolvedValue({ status: "processing" });
+    setup();
+
+    await pickPdf(user);
+    await user.click(screen.getByRole("button", { name: /upload/i }));
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(3 * 60_000 + 2000);
+    });
+
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent(/taking longer than expected/i),
+    );
+    jest.useRealTimers();
   });
 });
