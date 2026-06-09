@@ -322,6 +322,17 @@ export const VALIDATION_RULE_DESCRIPTORS: Record<
       hasValue: false,
       hasReference: false,
     },
+    // Choice fields are closed sets, so string-length/pattern rules are
+    // meaningless on them — but equality against a literal value (or a
+    // reference field) lets an author gate progression on a specific answer
+    // (e.g. a Yes/No radio that must equal "yes"). See #1036.
+    { type: "equal", label: "Equal", hasValue: true, hasReference: true },
+    {
+      type: "notEqual",
+      label: "Not Equal",
+      hasValue: true,
+      hasReference: true,
+    },
   ],
   checkbox: [
     {
@@ -329,6 +340,16 @@ export const VALIDATION_RULE_DESCRIPTORS: Record<
       label: "Required",
       hasValue: false,
       hasReference: false,
+    },
+    // See the radio note above (#1036): equality gating is useful on a
+    // single-value checkbox; on a multi-select checkbox the array value is
+    // stringified before comparison, so it suits single-value choices.
+    { type: "equal", label: "Equal", hasValue: true, hasReference: true },
+    {
+      type: "notEqual",
+      label: "Not Equal",
+      hasValue: true,
+      hasReference: true,
     },
   ],
   file: [

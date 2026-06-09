@@ -2,7 +2,12 @@ import { useState, useRef, useEffect } from "react";
 import { serializeRecipeDraft } from "@govtech-bb/form-builder";
 import type { RecipeDraft, UnknownRef } from "@govtech-bb/form-builder";
 import type { ServiceContractRecipe } from "@govtech-bb/form-types";
-import { convertRecipe } from "../../server/ai-builder/convert";
+import {
+  editRecipe,
+  presignPdfUpload,
+  startPdfConvert,
+  getPdfConvertStatus,
+} from "../../server/ai-builder/convert";
 import type { ChatMessage } from "../../server/ai-builder/types";
 
 // What the editor's apply pipeline reports back. When `applied` is false and
@@ -45,23 +50,10 @@ interface AiSidebarProps {
   ) => Promise<ApplyRecipeResult>;
 }
 
-// Hard cap matches the Amplify SSR Lambda request-body limit. The PDF is
-// base64-encoded inside a JSON server-function body, which inflates the
-// on-the-wire size by ~1.4× — so a 4 MB raw PDF lands around 5.6 MB, under the
-// ~6 MB cap. Anything larger trips a 413 at the Amplify edge, which surfaces in
-// production as the cryptic "Invariant failed" (TanStack Start strips the
-// underlying message).
-const MAX_PDF_BYTES = 4 * 1024 * 1024;
-
-async function fileToBase64(file: File): Promise<string> {
-  const buf = await file.arrayBuffer();
-  let binary = "";
-  const bytes = new Uint8Array(buf);
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-}
+// Hard cap for the direct-to-S3 upload. The browser PUTs the raw file straight
+// to a presigned S3 URL (no base64, no Amplify Lambda body limit), so this can
+// be the same ceiling the API enforces on its presign side — 20 MB.
+const MAX_PDF_BYTES = 20 * 1024 * 1024;
 
 export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
@@ -72,22 +64,24 @@ export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  // Abort handle for the in-flight upload + poll loop. Held in a ref so the
+  // unmount cleanup and a follow-up upload can both cancel it without
+  // re-triggering effects.
+  const pollAbortRef = useRef<AbortController | null>(null);
+  useEffect(() => () => pollAbortRef.current?.abort(), []);
 
   useEffect(() => {
     // Optional-chain the method too: jsdom (test env) doesn't implement it.
     chatEndRef.current?.scrollIntoView?.({ behavior: "smooth" });
   }, [messages]);
 
-  // Surface a server-fn failure, decoding the 413-at-the-edge case that
-  // TanStack Start reduces to "Invariant failed". The decoded copy is
-  // mode-aware so an edit failure never tells the user to "try a smaller PDF"
-  // when no PDF was involved (#583).
-  const toMessage = (err: unknown, mode: "upload" | "edit"): string => {
-    const raw = err instanceof Error ? err.message : "Unknown error";
-    if (raw !== "Invariant failed") return raw;
-    return mode === "upload"
-      ? "Upload failed — the file may be too large or the connection was interrupted. Try a smaller PDF (under 4 MB)."
-      : "The edit request failed — your form may be too large or the connection was interrupted. Try again, or simplify your request.";
+  // Surface a server-fn failure. The async upload flow no longer pushes a
+  // large PDF body through the Amplify Lambda, so the cryptic "Invariant
+  // failed" 413 from #583 isn't reachable here — the API now returns
+  // user-friendly reasons (password-protected, too many pages, etc.) which we
+  // pass through verbatim.
+  const toMessage = (err: unknown): string => {
+    return err instanceof Error ? err.message : "Unknown error";
   };
 
   // Shared tail for both actions: append the assistant reply, then apply the
@@ -147,17 +141,58 @@ export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
       ...m,
       { role: "user", content: `📎 Uploaded ${pdfName ?? "file"}` },
     ]);
+
+    // Cancel any prior in-flight poll before starting a fresh one, then
+    // publish the new controller so unmount-cleanup and an overlapping click
+    // both see it.
+    pollAbortRef.current?.abort();
+    const abort = new AbortController();
+    pollAbortRef.current = abort;
+
     try {
-      const pdfBase64 = await fileToBase64(pdfFile);
-      const { recipe, reply, unresolvableRefs } = await convertRecipe({
-        data: { pdfBase64 },
+      const { url, s3Key } = await presignPdfUpload();
+      const putResponse = await fetch(url, {
+        method: "PUT",
+        headers: { "Content-Type": "application/pdf" },
+        body: pdfFile,
+        signal: abort.signal,
       });
-      setPdfFile(null);
-      setPdfName(null);
-      await handleResponse(reply, recipe, unresolvableRefs);
+      if (!putResponse.ok) {
+        throw new Error("Upload failed — please refresh and try again.");
+      }
+
+      const { jobId } = await startPdfConvert({ data: { s3Key } });
+
+      const start = Date.now();
+      const TIMEOUT_MS = 3 * 60_000;
+      const POLL_MS = 2000;
+
+      while (!abort.signal.aborted) {
+        if (Date.now() - start > TIMEOUT_MS) {
+          throw new Error(
+            "This upload is taking longer than expected. Please try a smaller PDF or try again later.",
+          );
+        }
+        await new Promise((r) => setTimeout(r, POLL_MS));
+        if (abort.signal.aborted) return;
+
+        const status = await getPdfConvertStatus({ data: { jobId } });
+        if (status.status === "processing") continue;
+        if (status.status === "failed") throw new Error(status.reason);
+
+        // done
+        setPdfFile(null);
+        setPdfName(null);
+        await handleResponse(status.reply, status.recipe, status.unresolvableRefs);
+        return;
+      }
     } catch (err) {
-      setError(toMessage(err, "upload"));
+      // Swallow errors caused by our own abort — the user (or unmount)
+      // requested cancellation, so we don't surface it.
+      if (abort.signal.aborted) return;
+      setError(toMessage(err));
     } finally {
+      if (pollAbortRef.current === abort) pollAbortRef.current = null;
       setLoading(false);
     }
   };
@@ -171,12 +206,12 @@ export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
     setMessages((m) => [...m, { role: "user", content: message }]);
     try {
       const recipeJson = JSON.stringify(serializeRecipeDraft(draft, { version }));
-      const { recipe, reply, unresolvableRefs } = await convertRecipe({
+      const { recipe, reply, unresolvableRefs } = await editRecipe({
         data: { message, recipeJson },
       });
       await handleResponse(reply, recipe, unresolvableRefs);
     } catch (err) {
-      setError(toMessage(err, "edit"));
+      setError(toMessage(err));
     } finally {
       setLoading(false);
     }
@@ -188,7 +223,7 @@ export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
     if (file.size > MAX_PDF_BYTES) {
       const mb = (file.size / 1024 / 1024).toFixed(1);
       setError(
-        `File is ${mb} MB; maximum is 4 MB. Please use a smaller file or split it into separate pages.`,
+        `File is ${mb} MB; maximum is 20 MB. Please use a smaller file or split it into separate pages.`,
       );
       // Clear the picker so the same file can be re-selected after shrinking it.
       e.target.value = "";
