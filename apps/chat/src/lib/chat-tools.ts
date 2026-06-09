@@ -63,6 +63,26 @@ export const askFieldDef = toolDefinition({
   }),
 });
 
+export const reviewFormDef = toolDefinition({
+  name: "review_form",
+  description:
+    "Show the user a structured check-your-answers summary of every collected value. Call with NO arguments once every required field is collected, then call submit_form in the SAME turn. The UI renders the summary from the form session — NEVER list the values in your text reply; a one-line lead-in is fine.",
+  inputSchema: z.object({}),
+  outputSchema: z.object({
+    ok: z.boolean(),
+    error: z.string().optional(),
+    items: z
+      .array(
+        z.object({
+          fieldId: z.string(),
+          label: z.string(),
+          value: z.string(),
+        }),
+      )
+      .optional(),
+  }),
+});
+
 export const submitFormDef = toolDefinition({
   name: "submit_form",
   description:

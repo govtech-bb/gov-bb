@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { Primitive, ServiceContract } from "@govtech-bb/form-types";
-import { validateAndReshape, validateCollectedField } from "./values";
+import {
+  buildReviewItems,
+  validateAndReshape,
+  validateCollectedField,
+} from "./values";
 
 // Minimal contract with real validations so the shared
 // @govtech-bb/form-validation engine actually runs its rules.
@@ -104,4 +108,38 @@ test("validateAndReshape reshapes valid values by step", () => {
       "household-size": 4,
     });
   }
+});
+
+// Review rows must show what the user would see on the forms review step:
+// option labels (not values), dates without the weekday, contract order,
+// uncollected fields omitted.
+test("buildReviewItems formats display values like the forms review", () => {
+  const fields = [
+    {
+      fieldId: "parish",
+      label: "Parish",
+      htmlType: "select",
+      options: [{ label: "Saint Michael", value: "st-michael" }],
+    },
+    { fieldId: "dob", label: "Date of birth", htmlType: "date" },
+    { fieldId: "notes", label: "Notes", htmlType: "textarea" },
+  ] as unknown as Primitive[];
+  const contract = {
+    formId: "review-form",
+    title: "Review Form",
+    version: "1.0.0",
+    createdAt: "2026-01-01T00:00:00",
+    updatedAt: "2026-01-01T00:00:00",
+    steps: [{ stepId: "step-1", title: "Step 1", elements: fields }],
+  } as unknown as ServiceContract;
+
+  const items = buildReviewItems(
+    contract,
+    { parish: "st-michael", dob: "1990-05-04" },
+    new Set(["parish", "dob", "notes"]),
+  );
+  assert.deepEqual(items, [
+    { fieldId: "parish", label: "Parish", value: "Saint Michael" },
+    { fieldId: "dob", label: "Date of birth", value: "May 04 1990" },
+  ]);
 });

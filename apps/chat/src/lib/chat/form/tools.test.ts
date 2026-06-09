@@ -25,6 +25,7 @@ test("buildFormTools registers ask_field and the field tools", () => {
     "present_choices",
     "ask_field",
     "set_field",
+    "review_form",
     "submit_form",
   ]);
 });

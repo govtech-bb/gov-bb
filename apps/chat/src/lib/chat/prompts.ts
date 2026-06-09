@@ -85,9 +85,9 @@ FORM COLLECTION:
 - When a step or section has its own title, use that step's actual distinguishing title verbatim when introducing it — do NOT collapse two similar steps into one generic phrase. A form with both a "professional referee" step and a "personal referee" step must be introduced as exactly those ("Now your personal referee" / "Another reference"), never a generic "add a reference" that makes the user think they're re-entering the first referee.
 
 REVIEW THEN SUBMIT (mandatory order):
-- Once every required field in the schema is in "Already collected", write a REVIEW message: a short intro ("Here's everything I have — please check it before we submit:") followed by a structured list of every collected value grouped by section, using each field's natural label (not its fieldId).
-- IN THE SAME TURN, after the review text, call \`submit_form\` (no arguments). The system will pause and show the user an Approve/Deny prompt — you do NOT need to ask "are you sure?" in chat. The user clicks Submit or Not yet.
-- If the user denies, the tool result will indicate denial; ask which field they want to change, then call \`set_field\` with the correction and re-run the review + submit_form pattern.
+- Once every required field in the schema is in "Already collected", call \`review_form\` (no arguments) — the UI renders a check-your-answers summary from the form session. Your text may hold ONE short lead-in line ("Here's everything I have — please check it before we submit:"). NEVER list the collected values in your text — the summary renders them.
+- IN THE SAME TURN, after \`review_form\`, call \`submit_form\` (no arguments). The system will pause and show the user an Approve/Deny prompt — you do NOT need to ask "are you sure?" in chat. The user clicks Submit or Not yet.
+- If the user denies or asks to change a field, call \`ask_field\` for that field, record the correction with \`set_field\`, then re-run review_form + submit_form.
 
 SUBMIT RESULT:
 - \`submit_form\` returns \`{ ok: true, referenceNumber }\` on success or \`{ ok: false, errors[] }\` on failure.
@@ -149,7 +149,7 @@ Do NOT:
 - Ask "Ready to start the online form?" — the link IS the online form.
 - Offer to "start it for you" or "fill it in for you" — there is no in-chat start.
 - Recite the paper-form path as an alternative unless the user specifically asked about paper.
-- Use set_field, ask_field, present_choices, or submit_form — they are not available this turn.
+- Use set_field, ask_field, present_choices, review_form, or submit_form — they are not available this turn.
 - Open with a long RAG paragraph that delays or replaces the link.
 - Cite the link with [1]/[2] markers — write it as the markdown link shown above.`;
 }
@@ -171,7 +171,7 @@ Do this, in order:
 
 Do NOT:
 - Paste a URL or markdown link this turn. No links at all.
-- Use set_field, ask_field, present_choices, or submit_form (not available this turn).
+- Use set_field, ask_field, present_choices, review_form, or submit_form (not available this turn).
 - Say there is no online form, or push a paper/in-person route as the only option.
 - Lead with the offer before you have answered the question.`;
 }
@@ -198,5 +198,5 @@ Answer their latest message informationally from the retrieved context (document
 Do NOT:
 - Start collecting field values or ask for their details ("What's your first name?", etc.) — there is no in-chat form-fill; the form is completed at the link.
 - Say or imply there is no online form / that they must apply in person or by paper — the online form DOES exist and is the link above.
-- Use set_field, ask_field, present_choices, or submit_form — they are not available this turn.`;
+- Use set_field, ask_field, present_choices, review_form, or submit_form — they are not available this turn.`;
 }

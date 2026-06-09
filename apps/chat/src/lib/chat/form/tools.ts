@@ -1,6 +1,7 @@
 import {
   askFieldDef,
   presentChoicesDef,
+  reviewFormDef,
   setFieldDef,
   submitFormDef,
 } from "#/lib/chat-tools";
@@ -8,7 +9,7 @@ import type { ActiveFormSchema } from "./schema";
 import { buildFieldIndex, getActiveFieldIds } from "./schema";
 import type { FormSession } from "./session";
 import { submitFormUpstream, type SubmitOutcome } from "./submit";
-import { validateCollectedField } from "./values";
+import { buildReviewItems, validateCollectedField } from "./values";
 
 // Request-scoped dependencies the form tools need, supplied per turn via
 // chat({ context }) and read back as ctx.context — the documented runtime-
@@ -107,6 +108,20 @@ const setFieldTool = setFieldDef.server<FormTurnContext>(
   },
 );
 
+// Check-your-answers summary, built from the SESSION + CONTRACT and rendered
+// by the client from part.output — the model never authors (and can't
+// misquote) the user's values.
+const reviewFormTool = reviewFormDef.server<FormTurnContext>(
+  async (_args, ctx) => {
+    const { session, form } = ctx.context;
+    if (!form) return { ok: false, error: "no active form" };
+    const active = getActiveFieldIds(form.contract, session.values).flat;
+    const items = buildReviewItems(form.contract, session.values, active);
+    if (!items.length) return { ok: false, error: "nothing collected yet" };
+    return { ok: true, items };
+  },
+);
+
 const submitFormTool = submitFormDef.server<FormTurnContext>(
   async (_args, ctx) => {
     const { session, signal } = ctx.context;
@@ -177,5 +192,11 @@ export function buildOfferTools() {
 }
 
 export function buildFormTools() {
-  return [presentChoicesTool, askFieldTool, setFieldTool, submitFormTool];
+  return [
+    presentChoicesTool,
+    askFieldTool,
+    setFieldTool,
+    reviewFormTool,
+    submitFormTool,
+  ];
 }

@@ -32,6 +32,7 @@ import type { Citation } from "#/lib/chat/types";
 import {
   askFieldDef,
   presentChoicesDef,
+  reviewFormDef,
   submitFormDef,
 } from "#/lib/chat-tools";
 
@@ -444,6 +445,7 @@ function shouldShowThinking(messages: UIMessage[]): boolean {
     hasAnyToolCall([last], [
       presentChoicesDef.name,
       askFieldDef.name,
+      reviewFormDef.name,
       submitFormDef.name,
     ])
   ) {

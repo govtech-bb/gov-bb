@@ -175,6 +175,63 @@ export function validateAndReshape(
 // until submit. Validates the candidate against the OTHER already-collected
 // values so cross-field rules (e.g. date after/before a reference field) see
 // real context.
+// Human display string for a collected raw value, mirroring the forms app's
+// review formatting: option labels (not values), dates without the weekday,
+// file names, Yes/No booleans.
+export function displayValue(field: Primitive, raw: string): string {
+  const coerced = COERCERS[field.htmlType](field, raw.trim());
+  if ("error" in coerced) return raw;
+  const value = coerced.value;
+
+  const optionLabel = (v: string) =>
+    field.options?.find((o) => o.value === v)?.label ?? v;
+
+  if (field.htmlType === "date") {
+    const { day, month, year } = value as {
+      day: string;
+      month: string;
+      year: string;
+    };
+    return new Date(Number(year), Number(month) - 1, Number(day))
+      .toDateString()
+      .replace(/^\w+\s/, "");
+  }
+  if (field.htmlType === "file") {
+    const refs = value as { name?: string }[];
+    return refs.map((r) => r.name ?? "file").join(", ") || raw;
+  }
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (Array.isArray(value)) {
+    return (value as string[]).map(optionLabel).join(", ");
+  }
+  if (typeof value === "string") return optionLabel(value);
+  return String(value);
+}
+
+// Review rows for check-your-answers: every chat-collectable, active field
+// that has a collected value, in contract order, with display formatting.
+export function buildReviewItems(
+  contract: ServiceContract,
+  fields: Record<string, string>,
+  activeFieldIds: Set<string>,
+): { fieldId: string; label: string; value: string }[] {
+  const items: { fieldId: string; label: string; value: string }[] = [];
+  for (const step of contract.steps) {
+    for (const el of step.elements) {
+      if (!activeFieldIds.has(el.fieldId)) continue;
+      if (!isChatCollectable(el)) continue;
+      const raw = fields[el.fieldId];
+      if (raw === undefined || raw.trim() === "") continue;
+      items.push({
+        fieldId: el.fieldId,
+        label: el.label,
+        value: displayValue(el, raw),
+      });
+    }
+  }
+  return items;
+}
+
 // Pre-presign check for an upload candidate: runs the recipe's file rules
 // (fileTypes, maxSize, itemMaxSize) against the file's metadata so oversize or
 // wrong-type files are rejected with the recipe's message before an S3 URL is
