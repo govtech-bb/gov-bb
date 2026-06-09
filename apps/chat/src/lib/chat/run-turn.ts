@@ -15,7 +15,7 @@ import {
   type FormResolution,
   type FormSession,
 } from "./form";
-import { citationsMiddleware } from "./citations-middleware";
+import { citationsMiddleware, turnLogMiddleware } from "./middleware";
 import { capMessageHistory, lastUserText, recentUserText } from "./messages";
 import {
   NO_FORM_DISCLOSURE,
@@ -34,7 +34,6 @@ import {
 } from "./retrieval";
 import { rewriteRetrievalQuery } from "./rewrite";
 import type { RetrievedContext, Source } from "./types";
-import { turnLogMiddleware } from "./turn-log";
 
 type SystemEntry = SystemPrompt<never>;
 
