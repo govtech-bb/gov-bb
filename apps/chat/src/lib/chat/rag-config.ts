@@ -30,7 +30,7 @@ export const MAX_SOURCES = 6;
 // Hard ceiling on context block characters.
 export const MAX_CONTEXT_CHARS = 6000;
 
-export const DOC_KIND_WEIGHTS: Record<string, number> = {
+const DOC_KIND_WEIGHTS: Record<string, number> = {
   service: 1.0,
   form: 1.0,
   news: 0.7,

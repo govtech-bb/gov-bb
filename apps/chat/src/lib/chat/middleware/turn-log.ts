@@ -23,7 +23,7 @@ export interface TurnRecord {
   toolCalls?: { tool: string; ok: boolean; ms: number }[];
 }
 
-export function logTurn(rec: TurnRecord): void {
+function logTurn(rec: TurnRecord): void {
   console.log(`[turn] ${JSON.stringify(rec)}`);
 }
 
