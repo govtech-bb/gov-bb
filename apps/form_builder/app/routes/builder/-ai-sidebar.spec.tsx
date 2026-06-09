@@ -355,6 +355,7 @@ describe("AiSidebar — Upload", () => {
     startPdfConvert.mockResolvedValue({ jobId: "job-1" });
     getPdfConvertStatus
       .mockResolvedValueOnce({ status: "processing" })
+      .mockResolvedValueOnce({ status: "generating" })
       .mockResolvedValueOnce({
         status: "done",
         recipe: { formId: "f", steps: [] },
@@ -375,13 +376,17 @@ describe("AiSidebar — Upload", () => {
       expect(startPdfConvert).toHaveBeenCalledWith({ data: { s3Key: "uploads/abc.pdf" } }),
     );
 
-    // Advance the polling timer twice (processing → done). act() lets React
-    // flush the state updates triggered by the resolved status payload.
+    // Advance the polling timer three times (processing → generating → done).
+    // act() lets React flush the state updates triggered by the resolved status
+    // payload.
     await act(async () => {
-      await jest.advanceTimersByTimeAsync(2000);
+      await jest.advanceTimersByTimeAsync(2000); // → processing
     });
     await act(async () => {
-      await jest.advanceTimersByTimeAsync(2000);
+      await jest.advanceTimersByTimeAsync(2000); // → generating
+    });
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(2000); // → done
     });
 
     await waitFor(() => expect(onApplyRecipe).toHaveBeenCalled());
