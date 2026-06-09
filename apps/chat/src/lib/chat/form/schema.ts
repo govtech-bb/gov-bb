@@ -20,6 +20,19 @@ function hasRepeatableBehaviour(field: {
   );
 }
 
+// A field the chat can actually ask for and record: not a file/show-hide, not
+// hidden or disabled, not a repeatable section (chat has no array input).
+// Shared by the schema disclosure (what the model is told to collect) and
+// submit validation (what counts against the form) so they can't drift.
+export function isChatCollectable(field: Primitive): boolean {
+  return (
+    !UNCOLLECTABLE.has(field.htmlType) &&
+    !field.isHidden &&
+    !field.isDisabled &&
+    !hasRepeatableBehaviour(field)
+  );
+}
+
 function isRequired(field: Primitive): boolean {
   return !!field.validations?.required;
 }
@@ -80,9 +93,7 @@ function summarizeActive(
     if (!ids) continue;
     for (const el of step.elements) {
       if (!ids.has(el.fieldId)) continue;
-      if (el.isHidden) continue;
-      if (UNCOLLECTABLE.has(el.htmlType)) continue;
-      if (hasRepeatableBehaviour(el)) continue;
+      if (!isChatCollectable(el)) continue;
       lines.push(describeField(el));
     }
   }
@@ -154,8 +165,16 @@ export function needsHandoff(contract: ServiceContract): boolean {
   const hasFile = contract.steps.some((step) =>
     step.elements.some((el) => el.htmlType === "file"),
   );
+  // A REQUIRED repeatable field is a structural dead-end in chat: the model is
+  // never told about it (not chat-collectable), so the upstream submit can
+  // never succeed. Hand off instead of trapping the user. Optional repeatables
+  // stay collectible — the form submits without them.
+  const hasRequiredRepeatable = contract.steps.some((step) =>
+    step.elements.some((el) => hasRepeatableBehaviour(el) && isRequired(el)),
+  );
   return (
     hasFile ||
+    hasRequiredRepeatable ||
     contract.requiresPayment === true ||
     HANDOFF_FORM_IDS.has(contract.formId) ||
     ALWAYS_HANDOFF_FORM_IDS.has(contract.formId)

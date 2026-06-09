@@ -4,9 +4,10 @@ import {
   submitFormDef,
 } from "#/lib/chat-tools";
 import type { ActiveFormSchema } from "./schema";
-import { getActiveFieldIds } from "./schema";
+import { buildFieldIndex, getActiveFieldIds } from "./schema";
 import type { FormSession } from "./session";
 import { submitFormUpstream, type SubmitOutcome } from "./submit";
+import { validateCollectedField } from "./values";
 
 // Request-scoped dependencies the form tools need, supplied per turn via
 // chat({ context }) and read back as ctx.context — the documented runtime-
@@ -42,6 +43,23 @@ const setFieldTool = setFieldDef.server<FormTurnContext>(
         ok: false,
         error: `unknown or inactive fieldId: ${fieldId}`,
       };
+    }
+    // Validate at collection time with the shared engine, so the model
+    // immediately re-asks with the same message the forms app would show —
+    // instead of parking a bad value until submit fails.
+    const info = buildFieldIndex(form.contract).get(fieldId);
+    if (!info) {
+      return { ok: false, error: `unknown fieldId: ${fieldId}` };
+    }
+    const error = validateCollectedField(
+      form.contract,
+      info.field,
+      info.stepId,
+      value,
+      session.values,
+    );
+    if (error) {
+      return { ok: false, error };
     }
     session.values[fieldId] = value;
     session.updatedAt = Date.now();
