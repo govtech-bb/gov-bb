@@ -9,6 +9,8 @@
     "node": ">=24"
   },
   "scripts": {
+    "check:starter-prompts": "tsx scripts/check-starter-prompts.ts",
+    "prebuild": "npm run check:starter-prompts",
     "dev": "vite dev --port 3000",
     "build": "vite build",
     "preview": "nitro preview",
