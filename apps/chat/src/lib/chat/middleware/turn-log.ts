@@ -1,5 +1,6 @@
 import type { ChatMiddleware } from "@tanstack/ai";
 import { isAbortError } from "#/lib/abort";
+import { emitTurnMetrics } from "./turn-metrics";
 
 export interface TurnRecord {
   ts: string;
@@ -47,7 +48,7 @@ export function turnLogMiddleware(
   const toolCalls: { tool: string; ok: boolean; ms: number }[] = [];
 
   const finish = (rest: Partial<TurnRecord>) => {
-    logTurn({
+    const rec: TurnRecord = {
       ...partial,
       durationMs: Date.now() - startedAt,
       promptTokens: sawUsage ? promptTokens : undefined,
@@ -57,7 +58,9 @@ export function turnLogMiddleware(
       cancelled: aborted || undefined,
       error: runError,
       ...rest,
-    });
+    };
+    logTurn(rec);
+    emitTurnMetrics(rec);
   };
 
   return {
