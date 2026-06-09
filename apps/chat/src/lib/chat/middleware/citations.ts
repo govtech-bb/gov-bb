@@ -1,6 +1,6 @@
 import { EventType } from "@tanstack/ai";
 import type { ChatMiddleware, CustomEvent } from "@tanstack/ai";
-import type { Citation } from "./types";
+import type { Citation } from "../types";
 
 // Emit the citations custom event right after the assistant message id is
 // known (TEXT_MESSAGE_START), so the client can store citations keyed by

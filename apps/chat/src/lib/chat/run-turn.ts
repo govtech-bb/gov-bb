@@ -15,7 +15,7 @@ import {
   type FormResolution,
   type FormSession,
 } from "./form";
-import { citationsMiddleware } from "./citations-middleware";
+import { citationsMiddleware, turnLogMiddleware } from "./middleware";
 import { capMessageHistory, lastUserText, recentUserText } from "./messages";
 import {
   NO_FORM_DISCLOSURE,
@@ -34,7 +34,6 @@ import {
 } from "./retrieval";
 import { rewriteRetrievalQuery } from "./rewrite";
 import type { RetrievedContext, Source } from "./types";
-import { withTurnLog } from "./turn-log";
 
 type SystemEntry = SystemPrompt<never>;
 
@@ -241,7 +240,7 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
   const abortController = childController(signal);
 
   const env = getServerEnv();
-  const llmStream = chat({
+  const stream = chat({
     adapter: bedrockText(model, {
       region: env.BEDROCK_REGION,
       cacheSystemPrompt: env.BEDROCK_PROMPT_CACHE,
@@ -251,27 +250,28 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     tools,
     modelOptions: { maxTokens: 600, temperature: 0 },
     abortController,
-    middleware: [citationsMiddleware(citations)],
-    // DEV-only: traces provider chunks, tool calls, and agent-loop iterations
-    // that withTurnLog (which only taps RUN_FINISHED) can't see. NEVER enable
-    // on the deployed Lambda — it logs message content (CloudWatch cost + PII).
-    debug: import.meta.env.DEV,
+    middleware: [
+      citationsMiddleware(citations),
+      turnLogMiddleware(
+        {
+          ts: new Date().toISOString(),
+          threadId,
+          runId,
+          model: String(model),
+          userChars: latest.length,
+          query: activelyCollecting ? undefined : latest.slice(0, 120),
+          retrieved: rawSources.map((s) => ({ id: s.id, score: s.score })),
+          formSlug: session.slug ?? undefined,
+          retrieveDegraded: degraded,
+        },
+        startedAt,
+      ),
+    ],
+    // DEV: full engine trace. PROD: `undefined` keeps the errors-only channel
+    // (`false` silences adapter failure logs too). Never `true` in prod — the
+    // full trace logs message content (CloudWatch cost + PII).
+    debug: import.meta.env.DEV ? true : undefined,
   });
-
-  const stream = withTurnLog(
-    llmStream,
-    {
-      ts: new Date().toISOString(),
-      threadId,
-      runId,
-      model: String(model),
-      userChars: latest.length,
-      retrieved: rawSources.map((s) => ({ id: s.id, score: s.score })),
-      formSlug: session.slug ?? undefined,
-      retrieveDegraded: degraded,
-    },
-    startedAt,
-  );
 
   return {
     kind: "ok",
