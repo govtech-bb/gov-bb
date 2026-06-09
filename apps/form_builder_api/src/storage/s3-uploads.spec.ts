@@ -31,6 +31,7 @@ describe("presignUpload", () => {
     expect(PutObjectCommandMock).toHaveBeenCalledWith(
       expect.objectContaining({
         Bucket: "form-builder-uploads-sandbox-7922",
+        Key: expect.stringMatching(/^uploads\/[0-9a-f-]{36}\.pdf$/),
         ContentType: "application/pdf",
       }),
     );

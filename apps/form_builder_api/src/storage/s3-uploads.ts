@@ -7,7 +7,7 @@ let client: S3Client | null = null;
 function getClient(): S3Client {
   if (!client) {
     client = new S3Client({
-      region: process.env.AWS_REGION ?? "ca-central-1",
+      region: process.env.S3_REGION ?? process.env.AWS_REGION ?? "ca-central-1",
     });
   }
   return client;
