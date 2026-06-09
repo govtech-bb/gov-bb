@@ -61,26 +61,21 @@ Browser ──(4) GET /upload/status/:jobId  ─► (every ~2 s, 3 min cap)
 
 ## Components
 
-### `alpha-infra` — new IaC
+### `alpha-infra` — extend existing IaC
 
-New file: `environments/sandbox/modular-forms-sandbox/form-builder-uploads.tf`.
+**The bucket `form-builder-uploads-sandbox-7922` already exists** in the modular-forms-sandbox environment, with public-access-block, SSE-S3, CORS (`https://builder.sandbox.alpha.gov.bb`), 7-day lifecycle, HTTPS-only policy, and versioning. It is **CLI-managed**, not tofu-managed, due to a known provider 5.100.0 bug in `ca-central-1` (see header comment in `environments/sandbox/modular-forms-sandbox/form-builder-s3.tf`). The bucket was originally created for the session-based AI flow that was retired; the infra survived the app removal.
 
-- `aws_s3_bucket` named `modular-forms-sandbox-form-builder-uploads`
-- `aws_s3_bucket_public_access_block` — all four flags `true`
-- `aws_s3_bucket_server_side_encryption_configuration` — SSE-S3 (`AES256`)
-- `aws_s3_bucket_lifecycle_configuration` — 24-hour expiry on `uploads/` prefix
-- `aws_s3_bucket_cors_configuration` — allow `PUT` from the form_builder Amplify origin; expose `ETag`
-- IAM policy attached to the existing `form_builder_api` ECS task role:
-  - `s3:PutObject`, `s3:GetObject` scoped to `arn:aws:s3:::modular-forms-sandbox-form-builder-uploads/uploads/*`
-  - `textract:StartDocumentAnalysis`, `textract:GetDocumentAnalysis` on `*` (Textract does not support resource-level perms)
+The existing IAM policy `aws_iam_role_policy.ecs_task_form_builder_uploads` already grants `s3:PutObject`, `s3:GetObject`, `s3:DeleteObject`, and `s3:ListBucket` on this bucket to the `form_builder_api` ECS task role. The existing ECS env vars `S3_BUCKET` and `S3_REGION` are already wired through.
 
-All resources inherit the required modular-forms sandbox tags from `default_tags` — no per-resource overrides.
+**This change adds one thing:** a Textract IAM grant. Implemented as an additional statement on the existing `aws_iam_role_policy.ecs_task_form_builder_uploads` policy (rename it, or add a sibling — see plan for the chosen approach), allowing `textract:StartDocumentAnalysis` + `textract:GetDocumentAnalysis` on `*` (Textract doesn't support resource-level perms).
+
+No bucket changes, no CORS changes, no lifecycle changes. The 7-day lifecycle is fine for this use case — Textract retains job results for 7 days anyway, so source PDFs are dead once the job resolves.
 
 ### `form_builder_api` — server-side
 
 **New file:** `src/storage/s3-uploads.ts`
 - Wraps `@aws-sdk/client-s3` + `@aws-sdk/s3-request-presigner`.
-- Exports `presignUpload(): Promise<{ url, s3Key }>`. Key shape: `uploads/<uuidv4>.pdf`. URL TTL: 5 minutes. Signed conditions: `Content-Type: application/pdf`, `Content-Length-Range: 0–20971520` (20 MB server-side enforcement).
+- Exports `presignUpload(): Promise<{ url, s3Key }>`. Reads bucket name from existing `S3_BUCKET` env var. Key shape: `uploads/<uuidv4>.pdf`. URL TTL: 5 minutes. Signed conditions: `Content-Type: application/pdf`, `Content-Length-Range: 0–20971520` (20 MB server-side enforcement).
 
 **New file:** `src/ai/textract.ts`
 - Wraps `@aws-sdk/client-textract`.
@@ -245,7 +240,8 @@ Adjust imports and route name. Handler logic unchanged.
 ## Migration & rollout
 
 - This is a clean swap: the old `pdfBase64` field is removed from `/builder/ai/convert` (renamed to `/builder/ai/edit`). There is exactly one client (`form_builder`), and it ships in the same PR. No staged rollout.
-- Infrastructure (S3 bucket, IAM, Textract permissions) lands in `alpha-infra` first, deployed before the application change merges to `sandbox`. The application PR will fail at runtime without the bucket; CI smoke tests are mock-based so they pass independently.
+- The S3 bucket already exists (CLI-managed `form-builder-uploads-sandbox-7922`) and the bucket-side IAM is already granted. The only missing piece is the Textract IAM grant, which lands in `alpha-infra` first. It's a small, additive policy change with no service disruption risk.
+- Application CI is mock-based, so the gov-bb PR can be opened in parallel with the alpha-infra PR. Merge order: alpha-infra (Textract grant) → gov-bb (the app change), so the API has Textract perms when the new routes go live.
 
 ## Open questions / follow-ups
 

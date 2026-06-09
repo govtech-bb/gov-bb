@@ -18,110 +18,43 @@
 
 ## Phase 1 — Infrastructure (`alpha-infra` repo)
 
-> This phase lands in **a separate repo and a separate PR**. It must be applied to the `modular-forms-sandbox` environment before the app changes in Phases 2–4 can be smoke-tested. Application CI is mock-based and is unaffected, so app PR can be opened in parallel — just don't merge it before the infra is live.
+> The bucket `form-builder-uploads-sandbox-7922` already exists (CLI-managed) with public-access-block, SSE-S3, CORS for the form_builder Amplify origin, a 7-day lifecycle, HTTPS-only policy, and versioning. The existing IAM policy `aws_iam_role_policy.ecs_task_form_builder_uploads` in `environments/sandbox/modular-forms-sandbox/form-builder-s3.tf` already grants the form_builder_api ECS task role `s3:PutObject`, `s3:GetObject`, `s3:DeleteObject`, `s3:ListBucket` on the bucket. The ECS task already has `S3_BUCKET` and `S3_REGION` env vars wired.
+>
+> **All that's missing is the Textract IAM grant.** This phase is a single-file change to `form-builder-s3.tf`, then commit, push, PR. The PR is small, additive, and zero-disruption.
 
-### Task 1: Create S3 bucket + IAM + CORS for form-builder uploads
+### Task 1: Add Textract IAM grant for form_builder_api
 
 **Files:**
-- Create: `environments/sandbox/modular-forms-sandbox/form-builder-uploads.tf`
-- Modify: `environments/sandbox/modular-forms-sandbox/outputs.tf` (add the bucket name output if outputs.tf exists; otherwise skip)
+- Modify: `environments/sandbox/modular-forms-sandbox/form-builder-s3.tf`
 
-- [ ] **Step 1: Confirm sandbox environment directory and default_tags shape**
+- [ ] **Step 1: Confirm the existing policy resource shape**
 
-Run: `ls environments/sandbox/modular-forms-sandbox/ && grep -A 20 "default_tags" environments/sandbox/modular-forms-sandbox/main.tf | head -30`
-Expected: confirms the directory exists and the provider's `default_tags` block contains `Environment, Project, Owner, OwnerEmail, ManagedBy, Repo, Component, CostCenter, DataClassification, Compliance, Criticality`. These auto-apply, so the new resources need no per-resource `tags` block.
+Run: `grep -B 2 -A 30 "ecs_task_form_builder_uploads" environments/sandbox/modular-forms-sandbox/form-builder-s3.tf`
+Expected: a single `aws_iam_role_policy.ecs_task_form_builder_uploads` resource with two statements (S3 read/write + ListBucket). This is what gets extended.
 
-- [ ] **Step 2: Locate the existing form_builder_api ECS task role to attach the new IAM policy to**
+- [ ] **Step 2: Add a sibling Textract policy**
 
-Run: `grep -rn "form_builder_api" environments/sandbox/modular-forms-sandbox/ | grep -i "iam_role\|task_role" | head -5`
-Expected: a resource like `aws_iam_role.form_builder_api_task` or similar. Note its Terraform address — call it `<TASK_ROLE_ADDR>` for the rest of this task.
-
-- [ ] **Step 3: Create the IaC file**
-
-Create `environments/sandbox/modular-forms-sandbox/form-builder-uploads.tf` with this content (replace `<TASK_ROLE_ADDR>` with the address from Step 2, and `<AMPLIFY_ORIGIN>` with the form_builder Amplify URL — find it in existing outputs or with `aws amplify list-apps --profile govtech-alpha-sandbox`):
+In `environments/sandbox/modular-forms-sandbox/form-builder-s3.tf`, right after the closing brace of `aws_iam_role_policy.ecs_task_form_builder_uploads`, add a new sibling resource:
 
 ```hcl
-# S3 bucket for transient PDF uploads from the form-builder AI sidebar.
-# Objects are read once by form_builder_api (handed to Textract), then expired
-# by lifecycle policy. See docs/superpowers/specs/2026-06-09-form-builder-pdf-textract-converter-design.md.
-
-resource "aws_s3_bucket" "form_builder_uploads" {
-  bucket = "modular-forms-sandbox-form-builder-uploads"
-}
-
-resource "aws_s3_bucket_public_access_block" "form_builder_uploads" {
-  bucket                  = aws_s3_bucket.form_builder_uploads.id
-  block_public_acls       = true
-  block_public_policy     = true
-  ignore_public_acls      = true
-  restrict_public_buckets = true
-}
-
-resource "aws_s3_bucket_server_side_encryption_configuration" "form_builder_uploads" {
-  bucket = aws_s3_bucket.form_builder_uploads.id
-
-  rule {
-    apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
-    }
-  }
-}
-
-resource "aws_s3_bucket_lifecycle_configuration" "form_builder_uploads" {
-  bucket = aws_s3_bucket.form_builder_uploads.id
-
-  rule {
-    id     = "expire-uploads-1d"
-    status = "Enabled"
-
-    filter {
-      prefix = "uploads/"
-    }
-
-    expiration {
-      days = 1
-    }
-
-    abort_incomplete_multipart_upload {
-      days_after_initiation = 1
-    }
-  }
-}
-
-resource "aws_s3_bucket_cors_configuration" "form_builder_uploads" {
-  bucket = aws_s3_bucket.form_builder_uploads.id
-
-  cors_rule {
-    allowed_methods = ["PUT"]
-    allowed_origins = ["<AMPLIFY_ORIGIN>"]
-    allowed_headers = ["Content-Type", "Content-Length"]
-    expose_headers  = ["ETag"]
-    max_age_seconds = 3000
-  }
-}
-
-# IAM policy: grant form_builder_api the minimum perms needed to sign uploads,
-# read the uploaded bytes for Textract, and run async document analysis.
-resource "aws_iam_policy" "form_builder_uploads" {
-  name        = "modular-forms-sandbox-form-builder-uploads"
-  description = "S3 + Textract access for form_builder_api PDF upload flow"
+# -----------------------------------------------------------------------------
+# Textract IAM — form_builder_api uses async AnalyzeDocument to extract form
+# structure from uploaded PDFs (replaces the prior Bedrock-document-block path,
+# which capped uploads at 4 MB due to the Amplify SSR Lambda body limit). See
+# gov-bb docs/superpowers/specs/2026-06-09-form-builder-pdf-textract-converter-design.md.
+# Textract does not support resource-level perms — it's an account-wide grant.
+# -----------------------------------------------------------------------------
+resource "aws_iam_role_policy" "ecs_task_textract" {
+  name = "form-builder-ecs-textract"
+  role = aws_iam_role.ecs_task.id
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "S3UploadsReadWrite"
+        Sid    = "FormBuilderTextractAnalyseDocument"
         Effect = "Allow"
         Action = [
-          "s3:PutObject",
-          "s3:GetObject",
-        ]
-        Resource = "${aws_s3_bucket.form_builder_uploads.arn}/uploads/*"
-      },
-      {
-        Sid      = "TextractAnalyseDocument"
-        Effect   = "Allow"
-        Action   = [
           "textract:StartDocumentAnalysis",
           "textract:GetDocumentAnalysis",
         ]
@@ -130,43 +63,48 @@ resource "aws_iam_policy" "form_builder_uploads" {
     ]
   })
 }
-
-resource "aws_iam_role_policy_attachment" "form_builder_api_uploads" {
-  role       = <TASK_ROLE_ADDR>.name
-  policy_arn = aws_iam_policy.form_builder_uploads.arn
-}
-
-output "form_builder_uploads_bucket" {
-  value       = aws_s3_bucket.form_builder_uploads.id
-  description = "S3 bucket for transient PDF uploads from the form-builder AI sidebar"
-}
 ```
 
-- [ ] **Step 4: Validate the IaC locally**
+- [ ] **Step 3: Validate locally**
 
-Run from the sandbox env dir: `tofu init -upgrade && tofu validate && tofu plan -no-color | head -80`
-Expected: `Success! The configuration is valid.` and a plan showing 6 resources to add (`aws_s3_bucket`, public_access_block, encryption, lifecycle, cors, iam_policy) plus `aws_iam_role_policy_attachment`.
+From `environments/sandbox/modular-forms-sandbox/`:
+```bash
+tofu init -upgrade
+tofu validate
+tofu plan -no-color | head -40
+```
+Expected: `Success! The configuration is valid.` and a plan showing **1 resource to add** (`aws_iam_role_policy.ecs_task_textract`), no resources to change or destroy.
 
-- [ ] **Step 5: Commit and open a PR against alpha-infra `main`**
+- [ ] **Step 4: Create branch, commit, push, open PR**
 
 ```bash
-git checkout -b feat/form-builder-uploads-bucket
-git add environments/sandbox/modular-forms-sandbox/form-builder-uploads.tf
-git commit -m "feat(modular-forms-sandbox): add S3 bucket + IAM for form-builder PDF uploads
+git checkout main && git pull
+git checkout -b feat/form-builder-textract-iam
+git add environments/sandbox/modular-forms-sandbox/form-builder-s3.tf
+git commit -m "feat(modular-forms-sandbox): add Textract IAM grant for form_builder_api
 
-Supports the new PDF → Textract converter flow (see gov-bb spec
-2026-06-09-form-builder-pdf-textract-converter-design.md).
+Adds aws_iam_role_policy.ecs_task_textract granting
+textract:StartDocumentAnalysis + textract:GetDocumentAnalysis to the
+form_builder_api ECS task role. Required for the new async PDF
+converter (gov-bb spec
+2026-06-09-form-builder-pdf-textract-converter-design.md) which calls
+Textract from S3 instead of forwarding raw PDFs to Bedrock.
 
-- Bucket modular-forms-sandbox-form-builder-uploads with SSE-S3,
-  public-access-block, 24h lifecycle on uploads/ prefix.
-- CORS allowing PUT from the form_builder Amplify origin.
-- IAM policy granting form_builder_api task role s3:PutObject,
-  s3:GetObject (scoped to uploads/*) and textract:Start/GetDocumentAnalysis."
-git push -u origin feat/form-builder-uploads-bucket
-gh pr create --base main --title "feat(modular-forms-sandbox): S3 bucket + IAM for form-builder PDF uploads" --body "Infra prerequisites for the PDF → Textract converter in gov-bb. Design: govtech-bb/gov-bb/blob/sandbox/docs/superpowers/specs/2026-06-09-form-builder-pdf-textract-converter-design.md"
+The pre-existing form-builder-uploads-sandbox-7922 bucket and its S3
+IAM grants are unchanged."
+git push -u origin feat/form-builder-textract-iam
+gh pr create --base main \
+  --title "feat(modular-forms-sandbox): Textract IAM grant for form_builder_api" \
+  --body "Adds Textract perms for the form_builder_api ECS task role. Single-resource, additive change. Required by the gov-bb PDF → Textract converter feature; the bucket + S3 IAM are already in place from the prior session-based design.
+
+Spec: gov-bb/docs/superpowers/specs/2026-06-09-form-builder-pdf-textract-converter-design.md"
 ```
 
-After merge, confirm the bucket exists: `aws s3 ls s3://modular-forms-sandbox-form-builder-uploads --profile govtech-alpha-sandbox` → empty listing (bucket exists, no objects). **Phase 1 complete.**
+After merge + apply, confirm the policy is attached:
+```bash
+aws iam list-role-policies --role-name <ecs_task_role_name> --profile <sandbox-profile>
+```
+Expected: includes `form-builder-ecs-textract`. **Phase 1 complete.**
 
 ---
 
@@ -482,7 +420,7 @@ describe("presignUpload", () => {
   beforeEach(() => {
     getSignedUrlMock.mockClear();
     PutObjectCommandMock.mockClear();
-    process.env.FORM_BUILDER_UPLOADS_BUCKET = "modular-forms-sandbox-form-builder-uploads";
+    process.env.S3_BUCKET = "form-builder-uploads-sandbox-7922";
   });
 
   it("returns a url and an uploads/<uuid>.pdf key", async () => {
@@ -495,7 +433,7 @@ describe("presignUpload", () => {
     await presignUpload();
     expect(PutObjectCommandMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        Bucket: "modular-forms-sandbox-form-builder-uploads",
+        Bucket: "form-builder-uploads-sandbox-7922",
         ContentType: "application/pdf",
       }),
     );
@@ -541,9 +479,9 @@ function getClient(): S3Client {
 // the form-builder uploads bucket. Browser uploads directly via this URL,
 // bypassing the Amplify SSR Lambda's 6 MB body cap.
 export async function presignUpload(): Promise<{ url: string; s3Key: string }> {
-  const bucket = process.env.FORM_BUILDER_UPLOADS_BUCKET;
+  const bucket = process.env.S3_BUCKET;
   if (!bucket) {
-    throw new Error("FORM_BUILDER_UPLOADS_BUCKET is not set");
+    throw new Error("S3_BUCKET is not set");
   }
   const s3Key = `uploads/${randomUUID()}.pdf`;
   const command = new PutObjectCommand({
@@ -598,7 +536,7 @@ jest.mock("@aws-sdk/client-textract", () => {
 
 beforeEach(() => {
   sendMock.mockReset();
-  process.env.FORM_BUILDER_UPLOADS_BUCKET = "modular-forms-sandbox-form-builder-uploads";
+  process.env.S3_BUCKET = "modular-forms-sandbox-form-builder-uploads";
 });
 
 describe("startAnalysis", () => {
@@ -702,8 +640,8 @@ function getClient(): TextractClient {
 // "processing". We always request FORMS + TABLES — both are useful for the
 // form-builder use case, and Textract bills per page regardless of feature set.
 export async function startAnalysis(s3Key: string): Promise<{ jobId: string }> {
-  const bucket = process.env.FORM_BUILDER_UPLOADS_BUCKET;
-  if (!bucket) throw new Error("FORM_BUILDER_UPLOADS_BUCKET is not set");
+  const bucket = process.env.S3_BUCKET;
+  if (!bucket) throw new Error("S3_BUCKET is not set");
 
   const response = await getClient().send(
     new StartDocumentAnalysisCommand({
@@ -1149,7 +1087,7 @@ const KEY_PATTERN = /^uploads\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[
 // POST /builder/ai/upload/presign — returns { url, s3Key }
 export async function presignHandler(_req: Request, res: Response): Promise<void> {
   try {
-    if (!process.env.FORM_BUILDER_UPLOADS_BUCKET) {
+    if (!process.env.S3_BUCKET) {
       res.status(503).json({ error: "Upload service not configured" });
       return;
     }
@@ -1722,9 +1660,7 @@ Investigate the failure, fix in code, re-run from Step 1.
 
 ### Task 12: Manual smoke (sandbox)
 
-> Pre-req: Phase 1 IaC PR is **merged and applied** to the modular-forms sandbox account. Confirm with: `aws s3 ls s3://modular-forms-sandbox-form-builder-uploads --profile govtech-alpha-sandbox`.
-
-Also confirm the `FORM_BUILDER_UPLOADS_BUCKET` environment variable is set on the `form_builder_api` ECS task definition. If not, that's a follow-up `alpha-infra` change before smoke begins (add it to the ECS task `environment` block, same place the existing `AI_MODEL` / `BEDROCK_REGION` vars live).
+> Pre-req: Phase 1 PR is **merged and applied**. Confirm the Textract policy is attached: `aws iam list-role-policies --role-name <ecs_task_role_name> --profile <sandbox-profile>` should include `form-builder-ecs-textract`. The bucket (`form-builder-uploads-sandbox-7922`) and `S3_BUCKET`/`S3_REGION` env vars are already in place.
 
 **Files:** none (browser-based verification)
 
