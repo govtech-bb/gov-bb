@@ -1,8 +1,9 @@
-import type { UIMessage } from "@tanstack/ai";
+import type { InferToolInput, UIMessage } from "@tanstack/ai";
 import { Allow, parse as parsePartialJson } from "partial-json";
 import { memo, type ReactNode, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { presentChoicesDef } from "#/lib/chat-tools";
 import { TridentAvatar } from "#/components/trident-avatar";
 import { extractText, findToolCall } from "#/lib/chat/messages";
 import { normalizeMarkdown } from "#/lib/chat/normalize-markdown";
@@ -115,10 +116,7 @@ function annotateCitations(text: string, citations: Citation[]): string {
   );
 }
 
-interface ChoicesArgs {
-  question?: string;
-  choices?: string[];
-}
+type ChoicesArgs = Partial<InferToolInput<typeof presentChoicesDef>>;
 
 function parseChoiceArgs(raw: string | undefined): ChoicesArgs | undefined {
   if (!raw) return undefined;
