@@ -60,60 +60,36 @@ aiRouter.get("/status", async (_req, res) => {
   });
 });
 
-// POST /builder/ai/convert — the one AI endpoint.
+// POST /builder/ai/edit — synchronous text-only AI edits.
 //
-// Body: { message?, recipeJson?, pdfBase64? }. At least one must be present.
-//   - Edit Form:  { message, recipeJson }  → modified recipe
-//   - Upload:     { pdfBase64 }            → converted recipe
-// Returns { recipe: <recipe>|null, reply: <assistant text>, unresolvableRefs }.
-// `recipe` is null when the model replies conversationally without emitting a
-// recipe; the editor surfaces `reply` and leaves the draft untouched in that
-// case. `unresolvableRefs` lists any refs in the emitted recipe that don't
-// resolve against the full catalog (a hallucinated/renamed component) — the
-// editor warns but still loads the draft so the author can fix them in place;
-// Deploy stays the hard gate (#504).
+// Body: { message?, recipeJson? }. At least one must be present.
+//   - Edit Form: { message, recipeJson } → modified recipe
+//   - Plain ask: { message }             → conversational reply, no recipe
 //
-// PDF is sent inline as base64. The Amplify SSR Lambda caps requests at ~6 MB,
-// so the SSR client guards uploads at 4 MB. (A presigned-S3 path once lived here
-// for lifting that cap; it was tied to the session model and removed with it.)
-export async function convertHandler(
-  req: Request,
-  res: Response,
-): Promise<void> {
+// PDF uploads use the separate /builder/ai/upload/* family (see ai-upload.ts).
+export async function editHandler(req: Request, res: Response): Promise<void> {
   try {
     if (!(await isAvailable())) {
       res.status(503).json({ error: "AI service not configured" });
       return;
     }
 
-    const { message, recipeJson, pdfBase64 } = req.body ?? {};
-    if (!message && !recipeJson && !pdfBase64) {
+    const { message, recipeJson } = req.body ?? {};
+    if (!message && !recipeJson) {
       res.status(400).json({
-        error: "Provide at least one of message, recipeJson, or pdfBase64",
+        error: "Provide at least one of message, recipeJson",
       });
       return;
     }
 
     const systemPrompt = await buildSystemPrompt();
     const userText = buildUserText(message, recipeJson);
-    const pdfPages = pdfBase64 ? [pdfBase64] : undefined;
 
-    const reply = await chat(
-      systemPrompt,
-      [{ role: "user", content: userText }],
-      pdfPages,
-    );
+    const reply = await chat(systemPrompt, [
+      { role: "user", content: userText },
+    ]);
     const recipe = extractRecipe(reply);
 
-    // If the model emitted a recipe, flag refs that don't resolve against the
-    // full catalog (builtins + registry + live custom components). The editor
-    // surfaces these as a non-blocking warning and still loads the draft.
-    //
-    // This runs on *unvalidated* model output, after an expensive chat() — so
-    // it must never sink the response. A catalog/DB hiccup or a malformed step
-    // (missing elements/ref) degrades to "no warnings"; the bad recipe is still
-    // caught downstream (the editor's strict /validate runs when refs are empty,
-    // and Deploy is the hard gate).
     let unresolvableRefs: UnknownRef[] = [];
     if (recipe && Array.isArray((recipe as { steps?: unknown }).steps)) {
       try {
@@ -123,7 +99,7 @@ export async function convertHandler(
           catalog,
         );
       } catch (err) {
-        console.warn("convert: ref pre-check skipped —", err);
+        console.warn("edit: ref pre-check skipped —", err);
       }
     }
 
@@ -132,4 +108,4 @@ export async function convertHandler(
     res.status(500).json({ error: err.message });
   }
 }
-aiRouter.post("/convert", convertHandler);
+aiRouter.post("/edit", editHandler);

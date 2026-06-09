@@ -16,7 +16,7 @@ jest.mock("../ai/recipe-extractor.js", () => ({ extractRecipe: jest.fn() }));
 import { chat, isAvailable } from "../ai/client.js";
 import { extractRecipe } from "../ai/recipe-extractor.js";
 import { getDataSource } from "../db.js";
-import { convertHandler } from "./ai";
+import { editHandler } from "./ai";
 
 const chatMock = chat as jest.Mock;
 const isAvailableMock = isAvailable as jest.Mock;
@@ -52,7 +52,7 @@ function mockDataSource(customs: unknown[]) {
   });
 }
 
-describe("POST /builder/ai/convert", () => {
+describe("POST /builder/ai/edit", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     isAvailableMock.mockResolvedValue(true);
@@ -64,21 +64,21 @@ describe("POST /builder/ai/convert", () => {
   it("503s when the AI service is not configured", async () => {
     isAvailableMock.mockResolvedValue(false);
     const res = mockRes();
-    await convertHandler(mockReq({ message: "hi" }), res);
+    await editHandler(mockReq({ message: "hi" }), res);
     expect(res.statusCode).toBe(503);
     expect(chatMock).not.toHaveBeenCalled();
   });
 
-  it("400s when no message, recipeJson, or pdfBase64 is provided", async () => {
+  it("400s when no message or recipeJson is provided", async () => {
     const res = mockRes();
-    await convertHandler(mockReq({}), res);
+    await editHandler(mockReq({}), res);
     expect(res.statusCode).toBe(400);
     expect(chatMock).not.toHaveBeenCalled();
   });
 
   it("fences the recipe JSON into the user turn for an Edit Form tweak", async () => {
     const res = mockRes();
-    await convertHandler(
+    await editHandler(
       mockReq({
         message: "make the email field required",
         recipeJson: '{"formId":"contact","steps":[]}',
@@ -92,21 +92,11 @@ describe("POST /builder/ai/convert", () => {
     expect(messages[0].role).toBe("user");
     expect(messages[0].content).toContain('{"formId":"contact","steps":[]}');
     expect(messages[0].content).toContain("make the email field required");
-    // No PDF on an Edit Form turn.
-    expect(chatMock.mock.calls[0][2]).toBeUndefined();
     expect(res.body).toEqual({
       recipe: { formId: "f", steps: [] },
       reply: "assistant reply",
       unresolvableRefs: [],
     });
-  });
-
-  it("passes pdfBase64 through as a PDF page for an Upload", async () => {
-    const res = mockRes();
-    await convertHandler(mockReq({ pdfBase64: "BASE64BYTES" }), res);
-
-    expect(res.statusCode).toBe(200);
-    expect(chatMock.mock.calls[0][2]).toEqual(["BASE64BYTES"]);
   });
 
   it("appends live custom components to the system prompt", async () => {
@@ -118,7 +108,7 @@ describe("POST /builder/ai/convert", () => {
       },
     ]);
     const res = mockRes();
-    await convertHandler(mockReq({ message: "build a form" }), res);
+    await editHandler(mockReq({ message: "build a form" }), res);
 
     const [systemPrompt] = chatMock.mock.calls[0];
     expect(systemPrompt).toContain("BASE_PROMPT");
@@ -130,7 +120,7 @@ describe("POST /builder/ai/convert", () => {
     extractRecipeMock.mockReturnValue(null);
     chatMock.mockResolvedValue("I can't help with that.");
     const res = mockRes();
-    await convertHandler(mockReq({ message: "hello", recipeJson: "{}" }), res);
+    await editHandler(mockReq({ message: "hello", recipeJson: "{}" }), res);
 
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual({
@@ -155,7 +145,7 @@ describe("POST /builder/ai/convert", () => {
       ],
     });
     const res = mockRes();
-    await convertHandler(mockReq({ message: "build a form" }), res);
+    await editHandler(mockReq({ message: "build a form" }), res);
 
     expect(res.statusCode).toBe(200);
     const body = res.body as { unresolvableRefs: unknown };
@@ -175,7 +165,7 @@ describe("POST /builder/ai/convert", () => {
       steps: [{ stepId: "step-1", title: "Step 1" }],
     });
     const res = mockRes();
-    await convertHandler(mockReq({ message: "build a form" }), res);
+    await editHandler(mockReq({ message: "build a form" }), res);
 
     expect(res.statusCode).toBe(200);
     const body = res.body as { reply: string; unresolvableRefs: unknown };
@@ -186,7 +176,7 @@ describe("POST /builder/ai/convert", () => {
   it("500s when chat() throws", async () => {
     chatMock.mockRejectedValue(new Error("bedrock exploded"));
     const res = mockRes();
-    await convertHandler(mockReq({ message: "hi" }), res);
+    await editHandler(mockReq({ message: "hi" }), res);
     expect(res.statusCode).toBe(500);
     expect(res.body).toEqual({ error: "bedrock exploded" });
   });
