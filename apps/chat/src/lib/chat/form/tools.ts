@@ -54,6 +54,7 @@ const askFieldTool = askFieldDef.server<FormTurnContext>(
         hint: f.hint ?? undefined,
         multiple: f.multiple ?? undefined,
         options: f.options?.map((o) => ({ label: o.label, value: o.value })),
+        validations: f.validations ?? undefined,
       },
     };
   },

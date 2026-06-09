@@ -55,6 +55,9 @@ export const askFieldDef = toolDefinition({
         options: z
           .array(z.object({ label: z.string(), value: z.string() }))
           .optional(),
+        // Raw validation rules from the contract, so the widget can run the
+        // shared validation engine client-side before sending the answer.
+        validations: z.record(z.string(), z.unknown()).optional(),
       })
       .optional(),
   }),
