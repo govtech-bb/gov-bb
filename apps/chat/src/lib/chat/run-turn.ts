@@ -5,6 +5,7 @@ import { childController } from "#/lib/abort";
 import { getServerEnv } from "#/config/env";
 import {
   buildFormTools,
+  getFormSlugs,
   getOrCreateSession,
   resolveActiveForm,
   matchFormsFromText,
@@ -20,7 +21,12 @@ import {
   buildHandoffDisclosure,
   buildSchemaDisclosure,
 } from "./prompts";
-import { buildCitedContext, isGreetingOrTooShort, retrieve } from "./retrieval";
+import {
+  buildCitedContext,
+  isGreetingOrTooShort,
+  retrieve,
+  topHandoffCandidateSlug,
+} from "./retrieval";
 import { rewriteRetrievalQuery } from "./rewrite";
 import type { Citation, RetrievedContext, Source } from "./types";
 import { withTurnLog } from "./turn-log";
@@ -85,7 +91,7 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     }
   }
 
-  const resolution: FormResolution = session.slug
+  let resolution: FormResolution = session.slug
     ? await resolveActiveForm(session.slug, session.values)
     : { kind: "none" };
   const retrievalBoostSlug = session.slug ?? undefined;
@@ -137,6 +143,37 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     rawSources,
     query,
   );
+
+  // RAG-driven handoff: the title-token matcher above only fires when the user's
+  // wording overlaps a form title (e.g. "conductor licence"). When it didn't pin
+  // a form, fall back to semantic retrieval — if the top retrieved service maps
+  // to a published form that must be completed in the forms app (file upload /
+  // payment), hand the user that link instead of a plain informational answer.
+  // This is what makes phrasings like "how do I become a conductor" reach the
+  // conductor application. Scoped to kind "none" so it never upgrades a matched
+  // collectible form into a handoff or starts inline collection.
+  // Only fall back when no form is pinned at all (session.slug null) — not when
+  // a pinned form merely failed to resolve, so a transient form-API blip can't
+  // silently redirect the user to a different RAG-derived form. This also means
+  // the matcher block above ran this turn, so the form index is warm-cached.
+  if (resolution.kind === "none" && !session.slug) {
+    const candidate = topHandoffCandidateSlug(
+      rawSources,
+      session.handedOffSlug,
+    );
+    // Gate on the form index (warm-cached from the matcher this turn) so a
+    // retrieved info-only service with no published form doesn't trigger a
+    // doomed form-definition fetch and a 404 warning on every turn.
+    if (candidate && (await getFormSlugs(signal)).includes(candidate)) {
+      const ragResolution = await resolveActiveForm(candidate, {});
+      if (ragResolution.kind === "handoff") {
+        resolution = ragResolution;
+        // Park it like the matcher-driven handoff does, so the user isn't
+        // re-handed the same link on every later turn.
+        session.handedOffSlug = candidate;
+      }
+    }
+  }
 
   const systemPrompts = buildSystemPrompts(contextBlock, resolution, session);
 
