@@ -14,6 +14,7 @@ import {
   withThreadLock,
   type FormResolution,
   type FormSession,
+  type FormTurnContext,
 } from "./form";
 import { citationsMiddleware, turnLogMiddleware } from "./middleware";
 import { capMessageHistory, lastUserText, recentUserText } from "./messages";
@@ -242,12 +243,18 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
   // (offerOnly) → present_choices ONLY, so the model offers a clickable "Start
   // the application" affordance rather than a dead-end prose "want to start?",
   // but still can't silently record fields on a question. Anything else → none.
+  // The field tools read session/form/signal from chat()'s runtime context.
   const tools =
     resolution.kind === "collect"
       ? offerOnly
         ? buildOfferTools()
-        : buildFormTools(session, resolution.form, signal)
+        : buildFormTools()
       : [];
+  const formContext: FormTurnContext = {
+    session,
+    form: resolution.kind === "collect" ? resolution.form : null,
+    signal,
+  };
 
   const abortController = childController(signal);
 
@@ -260,6 +267,7 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     messages,
     systemPrompts,
     tools,
+    context: formContext,
     modelOptions: { maxTokens: 600, temperature: 0 },
     abortController,
     middleware: [
