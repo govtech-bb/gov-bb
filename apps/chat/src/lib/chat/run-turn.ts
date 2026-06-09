@@ -13,7 +13,7 @@ import {
   type FormResolution,
   type FormSession,
 } from "./form";
-import { lastUserText, recentUserText } from "./messages";
+import { capMessageHistory, lastUserText, recentUserText } from "./messages";
 import {
   NO_FORM_DISCLOSURE,
   SYSTEM_PROMPT,
@@ -53,7 +53,10 @@ export async function runTurn(input: RunTurnInput): Promise<RunTurnResult> {
 }
 
 async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
-  const { messages, threadId, runId, signal, ragUrl, model } = input;
+  const { threadId, runId, signal, ragUrl, model } = input;
+  // Bound per-call token cost / cost-DoS: only the most recent turns reach the
+  // LLM. Safe because form-collection state lives server-side, not in history.
+  const messages = capMessageHistory(input.messages);
   const startedAt = Date.now();
   const latest = lastUserText(messages);
 

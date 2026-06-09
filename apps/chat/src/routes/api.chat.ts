@@ -49,11 +49,22 @@ function citationsEvent(
   };
 }
 
+// Max accepted request body (#973). Generous for legitimate chat history but
+// blocks oversized payloads before they're parsed. Per-call token cost is
+// further bounded by capMessageHistory (run-turn); per-IP/session rate limiting
+// is an edge/WAF concern tracked separately on #973.
+const MAX_BODY_BYTES = 256 * 1024;
+
 async function handlePost({
   request,
 }: {
   request: Request;
 }): Promise<Response> {
+  const declaredBytes = Number(request.headers.get("content-length") ?? 0);
+  if (declaredBytes > MAX_BODY_BYTES) {
+    return jsonError("Request body too large", 413);
+  }
+
   let messages: UIMessage[];
   let threadId: string;
   let runId: string | undefined;
