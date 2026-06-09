@@ -26,6 +26,7 @@ import {
   chatPersistence,
   citationsStore,
   getSessionThreadId,
+  resetSessionThreadId,
 } from "#/lib/chat/persistence";
 import type { Citation } from "#/lib/chat/types";
 import {
@@ -222,6 +223,10 @@ function ChatPage() {
   const handleStartAgain = useCallback(() => {
     stop();
     clear();
+    // Rotate the threadId so the server-side form session (collected values,
+    // submit status) is left behind too — clear() only empties the messages.
+    // The re-render flows the fresh id into the client via `body`.
+    resetSessionThreadId();
     setCitationsByMessageId({});
     setPendingQuery(null);
     setSubmitting(false);

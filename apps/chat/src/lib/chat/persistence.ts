@@ -68,3 +68,12 @@ export function getSessionThreadId(): string | undefined {
   }
   return threadId;
 }
+
+// "Start again" rotates the threadId instead of clearing the server session:
+// the next getSessionThreadId() mints a fresh id, the orphaned form session
+// (slug, collected values, submit status) is unreachable and TTL-swept.
+// Without this, a "new" conversation re-enters the old form mid-state.
+export function resetSessionThreadId(): void {
+  if (typeof sessionStorage === "undefined") return;
+  sessionStorage.removeItem(`${STORAGE_PREFIX}thread-id`);
+}

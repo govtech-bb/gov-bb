@@ -201,6 +201,15 @@ function AskFieldWidget({
   const questionId = `ask-field-q-${messageId}`;
   const options = spec.options ?? [];
 
+  // Once a later turn lands the field has been answered (the answer is the
+  // next user bubble) — drop the input and leave just the question label, so
+  // the transcript reads as Q/A instead of a trail of dead widgets.
+  if (disabled) {
+    return (
+      <p className="text-bubble font-medium text-black-00">{spec.label}</p>
+    );
+  }
+
   let widget: ReactNode;
   if (options.length > 0 && (spec.htmlType === "checkbox" || spec.multiple)) {
     widget = (
