@@ -1,45 +1,5 @@
 import { getFormIndex, type FormIndexEntry } from "./defs";
-
-const STOP = new Set([
-  "the",
-  "a",
-  "an",
-  "of",
-  "for",
-  "to",
-  "in",
-  "on",
-  "and",
-  "or",
-  "form",
-  "application",
-  "apply",
-  "register",
-  "registration",
-  "online",
-  "service",
-  "do",
-  "i",
-  "want",
-  "need",
-  "get",
-  "this",
-  "that",
-  "my",
-  "please",
-]);
-
-function tokens(s: string): Set<string> {
-  return new Set(
-    s
-      .toLowerCase()
-      .replace(/[^a-z0-9\s]+/g, " ")
-      .replace(/\s+/g, " ")
-      .trim()
-      .split(" ")
-      .filter((t) => t.length > 2 && !STOP.has(t)),
-  );
-}
+import { QUERY_STOP, tokenize } from "./tokenize";
 
 // 2 overlapping meaningful tokens (e.g. "post" + "office") is enough signal
 // to call it a match after stopwords are stripped.
@@ -51,7 +11,7 @@ export async function matchFormsFromText(
   if (!userText) return null;
   const index = await getFormIndex();
   if (!index.length) return null;
-  const textToks = tokens(userText);
+  const textToks = tokenize(userText, QUERY_STOP);
   if (!textToks.size) return null;
 
   let best: { entry: FormIndexEntry; score: number } | null = null;

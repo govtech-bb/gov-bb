@@ -17,7 +17,7 @@ export interface ProgressEvent {
 
 export type ProgressFn = (e: ProgressEvent) => void;
 
-export async function upsertDocuments(
+async function upsertDocuments(
   docs: PlannedDocument[],
   embeddingModel: string,
   onProgress?: ProgressFn,
@@ -63,7 +63,7 @@ export async function upsertDocuments(
   }
 }
 
-export async function embedAndUpsertChunks(
+async function embedAndUpsertChunks(
   chunks: PlannedChunk[],
   onProgress?: ProgressFn,
 ): Promise<void> {
