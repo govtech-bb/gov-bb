@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type { UIMessage } from "@tanstack/ai";
 import {
-  chatParamsFromRequest,
+  chatParamsFromRequestBody,
   toServerSentEventsResponse,
 } from "@tanstack/ai";
 import { getServerEnv } from "#/config/env";
@@ -20,6 +20,9 @@ async function handlePost({
 }: {
   request: Request;
 }): Promise<Response> {
+  // Early reject on the declared size, but don't trust it — a chunked or
+  // lying client can omit/understate Content-Length, so the real cap is
+  // enforced on the bytes actually read below.
   const declaredBytes = Number(request.headers.get("content-length") ?? 0);
   if (declaredBytes > MAX_BODY_BYTES) {
     return jsonError("Request body too large", 413);
@@ -29,7 +32,11 @@ async function handlePost({
   let threadId: string;
   let runId: string | undefined;
   try {
-    const params = await chatParamsFromRequest(request);
+    const raw = await request.text();
+    if (Buffer.byteLength(raw, "utf8") > MAX_BODY_BYTES) {
+      return jsonError("Request body too large", 413);
+    }
+    const params = await chatParamsFromRequestBody(JSON.parse(raw));
     messages = params.messages as unknown as UIMessage[];
     // The client can't set the wire-level threadId (useChat doesn't forward
     // one), so it sends its session-stable id via forwardedProps. Prefer it —
