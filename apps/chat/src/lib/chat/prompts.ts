@@ -142,3 +142,28 @@ Do NOT:
 - Open with a long RAG paragraph that delays or replaces the link.
 - Cite the link with [1]/[2] markers — write it as the markdown link shown above.`;
 }
+
+export function buildHandoffContinuationDisclosure(
+  title: string,
+  url: string,
+): string {
+  // Why this exists: on the turn(s) AFTER a handoff, the user often replies
+  // "ok let's begin" / "what do I do next". The matcher no longer pins the form
+  // (we parked it so we don't re-hand the strict link every turn), so the turn
+  // resolves to "none" — and the DEFAULT no-form path then makes the model
+  // either (a) hallucinate inline collection ("What's your first name?") or
+  // (b) falsely claim no online form exists and push the paper route. Both are
+  // wrong for a form that has a working online handoff. This disclosure keeps
+  // the model on-script: still helpful and informational, but always pointing
+  // back to the link, never collecting, never denying the form exists.
+  return `CONTINUATION OF A HANDOFF. The user has already been given the link to the online form "${title}" (it needs a file upload and/or payment, so it must be completed in the forms app, not here).
+
+Answer their latest message informationally from the retrieved context (documents, fees, eligibility, next steps). Then ALWAYS include the link so they can continue:
+
+[${title}](${url})
+
+Do NOT:
+- Start collecting field values or ask for their details ("What's your first name?", etc.) — there is no in-chat form-fill; the form is completed at the link.
+- Say or imply there is no online form / that they must apply in person or by paper — the online form DOES exist and is the link above.
+- Use set_field, present_choices, or submit_form — they are not available this turn.`;
+}

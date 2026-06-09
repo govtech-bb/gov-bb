@@ -31,18 +31,43 @@ const SERVICE_ID_PREFIX = "service-";
 // Conservative on purpose: only the top source is considered (it represents the
 // turn's actual topic — we don't reach past it to a lower-ranked form), it must
 // clear the same score bar as a citation pill, and a non-service or
-// below-threshold top suppresses the fallback. `excludeSlug` skips a form
-// already handed off this thread so the user isn't re-handed the same link.
-export function topHandoffCandidateSlug(
-  sources: Source[],
-  excludeSlug?: string | null,
-): string | null {
+// below-threshold top suppresses the fallback. run-turn decides what to do with
+// the slug — a fresh handoff, or a continuation reminder if it's the form the
+// user was already handed off to.
+export function topHandoffCandidateSlug(sources: Source[]): string | null {
   const top = sources[0];
   if (!top || top.score < SCORE_THRESHOLD) return null;
   if (!top.id.startsWith(SERVICE_ID_PREFIX)) return null;
   const slug = top.id.slice(SERVICE_ID_PREFIX.length);
-  if (!slug || slug === excludeSlug) return null;
+  if (!slug) return null;
   return slug;
+}
+
+export type RagFallbackDecision =
+  | { action: "none" }
+  | { action: "fresh-handoff" }
+  | { action: "continuation" };
+
+// Decide what the RAG fallback should do with the top retrieved service, given
+// whether it resolves to a handoff-required form and whether it's the form the
+// user was already handed off to. Split out as a pure function so the branching
+// is unit-testable without the network (getFormSlugs / resolveActiveForm).
+//
+// `candidate` is null when the matcher already pinned a form, the session is
+// mid-collection, or no eligible top service was retrieved (run-turn folds
+// those gates into computing it), so a null candidate means "do nothing".
+export function decideRagFallback(params: {
+  candidate: string | null;
+  candidateHandoff: boolean;
+  handedOffSlug: string | null;
+}): RagFallbackDecision {
+  const { candidate, candidateHandoff, handedOffSlug } = params;
+  if (!candidate || !candidateHandoff) return { action: "none" };
+  // Same form the user was already handed off to → they're following up; keep
+  // helping informationally with the link, don't re-issue the strict handoff.
+  return candidate === handedOffSlug
+    ? { action: "continuation" }
+    : { action: "fresh-handoff" };
 }
 
 export type RetrieveResult =
