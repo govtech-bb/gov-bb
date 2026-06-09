@@ -201,6 +201,14 @@ function AskFieldWidget({
   const questionId = `ask-field-q-${messageId}`;
   const options = spec.options ?? [];
 
+  // Answered (a later turn landed): keep the question label so the transcript
+  // reads as Q/A pairs, but drop the input itself.
+  if (disabled) {
+    return (
+      <p className="text-bubble font-medium text-black-00">{spec.label}</p>
+    );
+  }
+
   let widget: ReactNode;
   if (options.length > 0 && (spec.htmlType === "checkbox" || spec.multiple)) {
     widget = (
@@ -653,11 +661,6 @@ function BubbleImpl({
       ? (askFieldPart.output as AskFieldOutput | undefined)
       : undefined;
   const fieldSpec = askFieldOutput?.ok ? askFieldOutput.field : undefined;
-  // Once a later turn lands the field has been answered (the answer is the
-  // next user bubble) — the widget disappears entirely, leaving only the
-  // model's lead-in text. fieldSpec still drives the trailing-question strip
-  // so the bubble text doesn't reflow when the widget goes.
-  const showField = !!fieldSpec && !choicesDisabled;
 
   // Keep the lead-in text but drop the trailing question when buttons render it.
   const displayText = useMemo(
@@ -697,7 +700,7 @@ function BubbleImpl({
   if (
     !showText &&
     !hasChoices &&
-    !showField &&
+    !fieldSpec &&
     !submitApproval &&
     !submitDeclined
   )
@@ -754,11 +757,11 @@ function BubbleImpl({
             </div>
           )}
 
-          {showField && fieldSpec && (
+          {fieldSpec && (
             <AskFieldWidget
               spec={fieldSpec}
               messageId={message.id}
-              disabled={false}
+              disabled={choicesDisabled}
               onAnswer={onChoice}
             />
           )}
