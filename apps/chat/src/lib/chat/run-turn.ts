@@ -34,7 +34,7 @@ import {
 } from "./retrieval";
 import { rewriteRetrievalQuery } from "./rewrite";
 import type { RetrievedContext, Source } from "./types";
-import { withTurnLog } from "./turn-log";
+import { turnLogMiddleware } from "./turn-log";
 
 type SystemEntry = SystemPrompt<never>;
 
@@ -241,7 +241,7 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
   const abortController = childController(signal);
 
   const env = getServerEnv();
-  const llmStream = chat({
+  const stream = chat({
     adapter: bedrockText(model, {
       region: env.BEDROCK_REGION,
       cacheSystemPrompt: env.BEDROCK_PROMPT_CACHE,
@@ -251,27 +251,27 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     tools,
     modelOptions: { maxTokens: 600, temperature: 0 },
     abortController,
-    middleware: [citationsMiddleware(citations)],
+    middleware: [
+      citationsMiddleware(citations),
+      turnLogMiddleware(
+        {
+          ts: new Date().toISOString(),
+          threadId,
+          runId,
+          model: String(model),
+          userChars: latest.length,
+          retrieved: rawSources.map((s) => ({ id: s.id, score: s.score })),
+          formSlug: session.slug ?? undefined,
+          retrieveDegraded: degraded,
+        },
+        startedAt,
+      ),
+    ],
     // DEV-only: traces provider chunks, tool calls, and agent-loop iterations
-    // that withTurnLog (which only taps RUN_FINISHED) can't see. NEVER enable
-    // on the deployed Lambda — it logs message content (CloudWatch cost + PII).
+    // beyond what the turn-log middleware records. NEVER enable on the
+    // deployed Lambda — it logs message content (CloudWatch cost + PII).
     debug: import.meta.env.DEV,
   });
-
-  const stream = withTurnLog(
-    llmStream,
-    {
-      ts: new Date().toISOString(),
-      threadId,
-      runId,
-      model: String(model),
-      userChars: latest.length,
-      retrieved: rawSources.map((s) => ({ id: s.id, score: s.score })),
-      formSlug: session.slug ?? undefined,
-      retrieveDegraded: degraded,
-    },
-    startedAt,
-  );
 
   return {
     kind: "ok",
