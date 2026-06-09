@@ -7,6 +7,7 @@ import { getFullCatalog } from "../catalog.js";
 import { getSystemPrompt } from "../ai/system-prompt.js";
 import { chat, isAvailable } from "../ai/client.js";
 import { extractRecipe } from "../ai/recipe-extractor.js";
+import { presignHandler, processHandler, statusHandler } from "./ai-upload.js";
 
 export const aiRouter = Router();
 
@@ -111,3 +112,7 @@ export async function editHandler(req: Request, res: Response): Promise<void> {
   }
 }
 aiRouter.post("/edit", editHandler);
+
+aiRouter.post("/upload/presign", presignHandler);
+aiRouter.post("/upload/process", processHandler);
+aiRouter.get("/upload/status/:jobId", statusHandler);
