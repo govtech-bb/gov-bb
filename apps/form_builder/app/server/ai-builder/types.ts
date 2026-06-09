@@ -24,5 +24,6 @@ export interface ConvertResponse {
 // Polling response from /builder/ai/upload/status/:jobId
 export type UploadStatusResponse =
   | { status: "processing" }
+  | { status: "generating" }
   | ({ status: "done" } & ConvertResponse)
   | { status: "failed"; reason: string };

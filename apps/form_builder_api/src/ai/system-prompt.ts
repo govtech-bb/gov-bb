@@ -187,7 +187,7 @@ Every element's overrides may carry a \`ui\` object with two optional keys:
 
 ### CATEGORY 5: Standard Option Lists Ship With The Components
 
-The standard option lists (Barbados parishes, countries, nationalities, titles, relationships, banks, account types) live INSIDE their components in the central registry — \`components/parish\`, \`components/country\`, \`components/nationality\`, \`components/title\`, \`components/relationship\`, \`components/bank\`, \`components/account-type\`, \`components/sex\`. NEVER emit an \`options\` override for any of them: a recipe-local copy freezes the list and silently diverges when the central list is updated (per CATEGORY 0b). Reference the component bare and the current list is resolved at render time.
+The standard option lists (Barbados parishes, countries, nationalities, titles, relationships, account types) live INSIDE their components in the central registry — \`components/parish\`, \`components/country\`, \`components/nationality\`, \`components/title\`, \`components/relationship\`, \`components/account-type\`, \`components/sex\`. NEVER emit an \`options\` override for any of them: a recipe-local copy freezes the list and silently diverges when the central list is updated (per CATEGORY 0b). Reference the component bare and the current list is resolved at render time.
 
 When a conditional behaviour watches one of these fields, compare against the component's kebab-case option values (e.g. the parish list uses \`"christ-church"\`, \`"st-michael"\`, \`"st-andrew"\` — abbreviated "st", never spelled out as "saint").
 
@@ -234,7 +234,8 @@ The key after \`components/\` must match exactly — these are the common mistak
 ### Rule 3: Options — generics provide them, semantic selects ship them
 - components/generic-select — blank slate: MUST provide options for every use
 - components/generic-radio — blank slate: MUST provide options for every use
-- components/parish, components/nationality, components/country, components/title, components/sex, components/relationship, components/bank, components/account-type — ship centrally-managed option lists: NEVER override \`options\` on them (per CATEGORY 0b / CATEGORY 5); reference them bare so the central list resolves at render time
+- components/parish, components/nationality, components/country, components/title, components/sex, components/relationship, components/account-type — ship centrally-managed option lists: NEVER override \`options\` on them (per CATEGORY 0b / CATEGORY 5); reference them bare so the central list resolves at render time
+- components/bank — NOT a select: it is a free-text input with no option list (see Text Input Components). Reference it bare; do NOT emit \`options\` on it
 
 ### Rule 4: Relationship fields use components/relationship (a SELECT), not a text input
 For any relationship field ("relationship to applicant", "relationship to the deceased", "next of kin relationship") use \`components/relationship\` — bare when used once with its default wording, with a fieldId + label override only when reused or when the form's wording genuinely differs (per CATEGORY 0b). It is a select with baked-in options (Spouse, Parent, Child, Sibling, Grandparent, Grandchild, Friend, Colleague, Other) — NEVER override options, and do NOT build relationship as a text input: not \`components/generic-text\`, and NEVER \`components/name\`, whose person-name pattern rejects values like "Mother-in-law (guardian)" (per CATEGORY 0).
@@ -319,6 +320,7 @@ The \`declaration\` step must contain exactly one element: the \`components/conf
 - components/tamis-number — text
 - components/account-name — text
 - components/account-number — text
+- components/bank — text (free-text bank NAME — NOT a select; it ships no option list, so reference it bare and never emit \`options\`)
 
 ### Contact Components
 - components/email — email
@@ -332,12 +334,11 @@ The \`declaration\` step must contain exactly one element: the \`components/conf
 Telephone fields render as a \`tel\` input with \`autocomplete="tel"\` — never a number input (see Rule 9b). Let applicants enter a number in whatever format is familiar to them (spaces, hyphens, brackets, country/area codes); the \`phone\` validation accepts any format and checks it with libphonenumber, so do NOT add a regex \`pattern\` to a tel field. Do not echo a reformatted version of the number back to the user.
 
 ### Select/Dropdown Components
-- components/title — select (HAS options: Mr/Ms/Mrs)
+- components/title — select (HAS options: Mr/Miss/Mrs)
 - components/parish — select (HAS centrally-managed Barbados parish options — reference bare, NEVER override options)
 - components/nationality — select (HAS centrally-managed options — reference bare, NEVER override options)
 - components/country — select (HAS centrally-managed options — reference bare, NEVER override options)
 - components/account-type — select (HAS options)
-- components/bank — select (HAS options)
 - components/relationship — select (HAS options: Spouse/Parent/Child/Sibling/Grandparent/Grandchild/Friend/Colleague/Other — use for ALL relationship fields, per Rule 4)
 
 ### Radio/Choice Components
@@ -471,6 +472,14 @@ Block overrides are keyed by the element's fieldId within the block, so those ke
 - minYear: {"value": 1900, "error": "..."} (year must be the bound or later)
 - maxYear: {"currentYear": true, "error": "..."} (year must be the bound or earlier)
 
+### File Upload Validations (on \`components/upload-document\` / \`components/generic-file\` only)
+
+These three rules constrain what a file field will accept. Add them in the file element's \`validations\` object, and pair with \`"multiple": true\` when several files are allowed.
+
+- fileTypes: {"value": ["application/pdf", "image/jpeg", "image/png"], "error": "..."} — array of allowed types. Each entry may be a MIME type (\`"application/pdf"\`), a dotted extension (\`".pdf"\`) or a bare extension (\`"pdf"\`); a file is accepted when its extension OR its reported MIME type matches an entry. List the formats you actually want — there is no implicit default.
+- itemMaxSize: {"value": 5242880, "error": "..."} — maximum size of EACH individual file, in BYTES (5242880 = 5 MB).
+- maxSize: {"value": 10485760, "error": "..."} — maximum TOTAL size of all uploaded files combined, in BYTES (10485760 = 10 MB).
+
 ### Numeric Bounds (min / max / gt / lt) — literal value OR cross-field reference
 
 The numeric bound validations work on TEXT fields as well as number fields — the submitted value is compared numerically. Each takes EITHER a literal bound or a reference to another field, never both:
@@ -479,6 +488,16 @@ The numeric bound validations work on TEXT fields as well as number fields — t
 - Cross-field reference: \`{"min": {"referenceFieldId": "start-year", "error": "..."}}\` — the bound is the current value of the referenced field. \`referenceFieldId\` is a fieldId, so it is kebab-case (Rule 16). Add \`"targetStepId"\` only when the referenced field lives on a different step. If the referenced field is empty or hidden, the rule is skipped.
 
 There is NO gte/lte validation: "greater than or equal" is \`min\`, "less than or equal" is \`max\` — each with either a literal value or a referenceFieldId.
+
+#### Age and other duration limits — \`min\`/\`max\`/\`gt\`/\`lt\` with a \`transform\`
+
+To bound the AGE (or elapsed months/days) derived from a DATE field rather than the raw date, add a \`transform\` key — \`"yearsSince"\`, \`"monthsSince"\` or \`"daysSince"\` — to a \`min\`/\`max\`/\`gt\`/\`lt\` rule. The field's date is converted to that whole-number duration (Barbados timezone, truncated) before the bound is checked, so \`min: 18\` + \`transform: "yearsSince"\` enforces "at least 18 years old". An empty or invalid date yields NaN and fails the rule.
+
+This is the canonical way to add a minimum-age requirement to \`components/date-of-birth\`: it is ADDITIVE — the component still ships its \`past\` validation, and you are adding an age floor it does not carry, so this does NOT violate CATEGORY 2's "add nothing to date-of-birth" rule (which only forbids restating \`past\`/\`pastOrToday\`):
+
+\`\`\`json
+{"ref": "components/date-of-birth", "overrides": {"validations": {"min": {"value": 18, "transform": "yearsSince", "error": "You must be at least 18 years old"}}}}
+\`\`\`
 
 For paired range fields ("start"/"end", "from"/"to"), put the reference validation on the END field. Example — an "End year" that must be the same as or after "Start year":
 
@@ -495,9 +514,21 @@ For paired range fields ("start"/"end", "from"/"to"), put the reference validati
 \`\`\`json
 "behaviours": [{"type": "fieldConditionalOn", "targetFieldId": "field-to-watch", "operator": "equal", "value": "yes"}]
 \`\`\`
-Operators: "equal", "notEqual", "in", "exists". targetFieldId must match the watched field's fieldId — so it is kebab-case too (Rule 16). operator is REQUIRED.
+Operators: "equal", "notEqual", "in", "exists", plus the numeric comparisons "gt", "lt", "gte", "lte". targetFieldId must match the watched field's fieldId — so it is kebab-case too (Rule 16). operator is REQUIRED.
 
-The compared \`value\` is ALWAYS lowercased and kebab-cased: it must equal the watched field's submitted option \`value\` (which is kebab-case by convention), NEVER the display label. Watch for \`"christ-church"\`, not \`"Christ Church"\`; \`"yes"\`, not \`"Yes"\`. With \`"in"\`, every entry in the array follows the same rule.
+The compared \`value\` is ALWAYS lowercased and kebab-cased: it must equal the watched field's submitted option \`value\` (which is kebab-case by convention), NEVER the display label. Watch for \`"christ-church"\`, not \`"Christ Church"\`; \`"yes"\`, not \`"Yes"\`. With \`"in"\`, every entry in the array follows the same rule. (The numeric operators are the exception — their \`value\` is a number, and both sides are coerced to Number; a NaN on either side never matches.)
+
+### Numeric and age comparisons in conditionals (\`gt\`/\`lt\`/\`gte\`/\`lte\` + \`transform\`)
+
+The numeric operators compare the watched field's value as a number — e.g. show a field only when a declared quantity exceeds a threshold:
+\`\`\`json
+"behaviours": [{"type": "fieldConditionalOn", "targetFieldId": "number-of-dependents", "operator": "gte", "value": 1}]
+\`\`\`
+To gate on an AGE derived from a DATE field, add a \`transform\` key (\`"yearsSince"\`, \`"monthsSince"\` or \`"daysSince"\`) — the watched date is converted to that whole-number duration before the operator runs:
+\`\`\`json
+"behaviours": [{"type": "fieldConditionalOn", "targetFieldId": "date-of-birth", "transform": "yearsSince", "operator": "gte", "value": 18}]
+\`\`\`
+This reveals the field only when the date-of-birth works out to an age of 18 or more. \`transform\` works on all three conditional behaviours (\`fieldConditionalOn\`, \`optionalIf\`, \`stepConditionalOn\`). Express a range by stacking two conditions on the same field — they combine with implicit AND, so \`gte 16\` + \`lte 24\` reads as "16–24". An empty or invalid date yields NaN, which never matches.
 
 ## Optional Fields (optionalIf)
 \`\`\`json
@@ -528,7 +559,7 @@ Shows or hides a WHOLE step based on an earlier field's value — the step-level
 \`\`\`json
 "behaviours": [{"type": "stepConditionalOn", "targetStepId": "endorsements", "targetFieldId": "has-endorsements", "operator": "equal", "value": "yes"}]
 \`\`\`
-Unlike the field-level conditionals (where it is optional), targetStepId is REQUIRED here — it names the step that holds the watched field, and \`targetFieldId\` is that field. Operators ("equal", "notEqual", "in", "exists") and the \`value\` rule are identical to \`fieldConditionalOn\`: the compared \`value\` is ALWAYS lowercased and kebab-cased to match the watched field's option \`value\` (\`"yes"\`, not \`"Yes"\`; \`"christ-church"\`, not \`"Christ Church"\`), never its display label. operator is REQUIRED.
+Unlike the field-level conditionals (where it is optional), targetStepId is REQUIRED here — it names the step that holds the watched field, and \`targetFieldId\` is that field. Operators ("equal", "notEqual", "in", "exists", plus numeric "gt", "lt", "gte", "lte") and the \`value\` rule are identical to \`fieldConditionalOn\` — including the optional \`transform\` for age/duration gating on a date field. The compared \`value\` is ALWAYS lowercased and kebab-cased to match the watched field's option \`value\` (\`"yes"\`, not \`"Yes"\`; \`"christ-church"\`, not \`"Christ Church"\`), never its display label (numeric operators excepted — their \`value\` is a number). operator is REQUIRED.
 
 ## Repeatable Steps (repeatable)
 Lets the applicant complete a step several times ("Add another?") — e.g. listing several endorsements, dependents or qualifications. The whole step's set of fields repeats as one instance.

@@ -177,7 +177,7 @@ export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
         if (abort.signal.aborted) return;
 
         const status = await getPdfConvertStatus({ data: { jobId } });
-        if (status.status === "processing") continue;
+        if (status.status === "processing" || status.status === "generating") continue;
         if (status.status === "failed") throw new Error(status.reason);
 
         // done
