@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Element, Properties, Root, Text } from 'hast'
-import rehypeHideStartLinks from './rehype-hide-start-links'
+import rehypeHideStartLinks from './hideStartLinks'
 
 const text = (value: string): Text => ({ type: 'text', value })
 
