@@ -7,8 +7,7 @@ export interface TurnRecord {
   runId?: string;
   model: string;
   userChars: number;
-  // Truncated user query for correlating phrasing → tool calls. Omitted on
-  // active-collection turns, where the "query" is a field answer (PII).
+  // Omitted on collection turns — those messages are field answers (PII).
   query?: string;
   retrieved: { id: string; score: number; kind?: string }[];
   formSlug?: string;
@@ -20,7 +19,7 @@ export interface TurnRecord {
   retrieveDegraded?: boolean;
   cancelled?: boolean;
   error?: string;
-  // Per-tool outcomes (name/ok/duration) — names only, never args (PII).
+  // Names only, never args (PII).
   toolCalls?: { tool: string; ok: boolean; ms: number }[];
 }
 
@@ -28,20 +27,13 @@ export function logTurn(rec: TurnRecord): void {
   console.log(`[turn] ${JSON.stringify(rec)}`);
 }
 
-// Emits one structured [turn] record per chat() run via the middleware
-// lifecycle. Tokens accumulate in onUsage because FinishInfo.usage only
-// carries the LAST agent-loop iteration. durationMs runs from `startedAt`
-// (not the engine's info.duration) so it includes the rewrite + retrieval
-// work done before chat() was invoked. Exactly one terminal hook fires per
-// run.
-//
-// The Bedrock adapter never throws from chatStream — every failure (and an
-// external abort) is yielded as a RUN_ERROR chunk, after which the engine
-// ends the run via onFinish (or onAbort when the signal is aborted). Without
-// the onChunk tap a model failure would log as a normal-looking finish, so
-// RUN_ERROR is captured there: code "aborted" marks the record cancelled,
-// anything else lands in `error`. onError/onAbort stay as the safety net for
-// adapters or engine paths that do throw.
+// One [turn] record per chat() run. Tokens accumulate in onUsage —
+// FinishInfo.usage only carries the last agent-loop iteration. durationMs
+// runs from `startedAt` so the rewrite + retrieval work before chat() is
+// included. The Bedrock adapter yields RUN_ERROR chunks instead of throwing,
+// and the engine then ends the run via onFinish — so failures must be caught
+// in onChunk or they'd log as normal finishes; onError/onAbort cover paths
+// that do throw.
 export function turnLogMiddleware(
   partial: TurnRecord,
   startedAt: number,

@@ -267,11 +267,9 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
         startedAt,
       ),
     ],
-    // DEV: full trace of provider chunks, tool calls, and agent-loop
-    // iterations. PROD: `undefined`, which the engine resolves to its
-    // errors-only channel — `false` would resolve to ALL_OFF and silence
-    // adapter failure logs entirely. Never pass `true` on the deployed
-    // Lambda — the full trace logs message content (CloudWatch cost + PII).
+    // DEV: full engine trace. PROD: `undefined` keeps the errors-only channel
+    // (`false` silences adapter failure logs too). Never `true` in prod — the
+    // full trace logs message content (CloudWatch cost + PII).
     debug: import.meta.env.DEV ? true : undefined,
   });
 
