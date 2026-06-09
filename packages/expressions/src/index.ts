@@ -4,6 +4,8 @@ export { resolveConfig } from "./resolve-config";
 export { registerOperations } from "./operations/register";
 export { DEFAULT_ZONE } from "./operations/zone";
 export { age } from "./operations/age";
+export { durationSince } from "./operations/duration-since";
+export type { DurationUnit } from "./operations/duration-since";
 export { today } from "./operations/today";
 export { daysBetween } from "./operations/days-between";
 export { currency } from "./operations/currency";

@@ -12,5 +12,8 @@
   },
   "devDependencies": {
     "lint-staged": "^16.4.0"
+  },
+  "dependencies": {
+    "@govtech-bb/expressions": "workspace:*"
   }
 }

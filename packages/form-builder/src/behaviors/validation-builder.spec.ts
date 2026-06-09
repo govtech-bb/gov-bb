@@ -65,3 +65,24 @@ describe("VALIDATION_RULE_DESCRIPTORS scope guard", () => {
     expect(types).not.toContain("minYear");
   });
 });
+
+describe("VALIDATION_RULE_DESCRIPTORS.date — age/duration rules (#1020)", () => {
+  const date = VALIDATION_RULE_DESCRIPTORS.date;
+
+  it.each(["min", "max", "gt", "lt"] as const)(
+    "offers %s as a transform-capable numeric rule",
+    (type) => {
+      const rule = findRule(date, type);
+      expect(rule).toBeDefined();
+      expect(rule?.hasValue).toBe(true);
+      expect(rule?.hasTransform).toBe(true);
+    },
+  );
+
+  it("does not mark the plain number field's numeric rules as transform-capable", () => {
+    const number = VALIDATION_RULE_DESCRIPTORS.number;
+    for (const type of ["min", "max", "gt", "lt"] as const) {
+      expect(findRule(number, type)?.hasTransform).toBeFalsy();
+    }
+  });
+});

@@ -1021,6 +1021,10 @@ importers:
         version: link:../registry
 
   packages/form-conditions:
+    dependencies:
+      '@govtech-bb/expressions':
+        specifier: workspace:*
+        version: link:../expressions
     devDependencies:
       lint-staged:
         specifier: ^16.4.0
@@ -1038,6 +1042,9 @@ importers:
 
   packages/form-validation:
     dependencies:
+      '@govtech-bb/expressions':
+        specifier: workspace:*
+        version: link:../expressions
       libphonenumber-js:
         specifier: ^1.13.5
         version: 1.13.5

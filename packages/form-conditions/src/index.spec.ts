@@ -1049,3 +1049,144 @@ describe("package entry re-exports evaluateCondition & flattenStepValues", () =>
     expect(flattenStepValuesFromIndex).toBe(flattenStepValues);
   });
 });
+
+// ─── numeric operators + transform (issue #1020) ────────────────────────────
+
+// Build an ISO "YYYY-MM-DD" exactly `years` ago (same month/day), so the
+// derived age is deterministic regardless of when the suite runs.
+const isoYearsAgo = (years: number): string => {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - years);
+  return d.toISOString().slice(0, 10);
+};
+
+describe("evaluateCondition — numeric operators", () => {
+  const make = (
+    operator: "gte" | "lte" | "gt" | "lt",
+    value: number,
+  ): FieldConditionalOnBehaviour =>
+    ({
+      type: "fieldConditionalOn",
+      targetFieldId: "score",
+      operator,
+      value,
+    }) as unknown as FieldConditionalOnBehaviour;
+
+  it("gte: true when target >= value (boundary inclusive)", () => {
+    expect(
+      evaluateCondition(make("gte", 18), EMPTY_VALUES, { score: "18" }),
+    ).toBe(true);
+    expect(
+      evaluateCondition(make("gte", 18), EMPTY_VALUES, { score: "17" }),
+    ).toBe(false);
+  });
+
+  it("lte: true when target <= value (boundary inclusive)", () => {
+    expect(
+      evaluateCondition(make("lte", 24), EMPTY_VALUES, { score: "24" }),
+    ).toBe(true);
+    expect(
+      evaluateCondition(make("lte", 24), EMPTY_VALUES, { score: "25" }),
+    ).toBe(false);
+  });
+
+  it("gt: strict greater-than", () => {
+    expect(
+      evaluateCondition(make("gt", 18), EMPTY_VALUES, { score: "19" }),
+    ).toBe(true);
+    expect(
+      evaluateCondition(make("gt", 18), EMPTY_VALUES, { score: "18" }),
+    ).toBe(false);
+  });
+
+  it("lt: strict less-than", () => {
+    expect(
+      evaluateCondition(make("lt", 24), EMPTY_VALUES, { score: "23" }),
+    ).toBe(true);
+    expect(
+      evaluateCondition(make("lt", 24), EMPTY_VALUES, { score: "24" }),
+    ).toBe(false);
+  });
+
+  it("returns false when either side is non-numeric (NaN never matches)", () => {
+    expect(
+      evaluateCondition(make("gte", 18), EMPTY_VALUES, { score: "abc" }),
+    ).toBe(false);
+    expect(evaluateCondition(make("gte", 18), EMPTY_VALUES, {})).toBe(false);
+  });
+});
+
+describe("evaluateCondition — transform (yearsSince/monthsSince/daysSince)", () => {
+  const make = (
+    operator: "gte" | "lte",
+    value: number,
+    transform: "yearsSince" | "monthsSince" | "daysSince",
+  ): FieldConditionalOnBehaviour =>
+    ({
+      type: "fieldConditionalOn",
+      targetFieldId: "dob",
+      operator,
+      value,
+      transform,
+    }) as unknown as FieldConditionalOnBehaviour;
+
+  it("yearsSince: derives age from a DOB before comparing", () => {
+    expect(
+      evaluateCondition(make("gte", 16, "yearsSince"), EMPTY_VALUES, {
+        dob: isoYearsAgo(20),
+      }),
+    ).toBe(true);
+    expect(
+      evaluateCondition(make("gte", 16, "yearsSince"), EMPTY_VALUES, {
+        dob: isoYearsAgo(10),
+      }),
+    ).toBe(false);
+  });
+
+  it("yearsSince upper bound: lte 24 rejects an older applicant", () => {
+    expect(
+      evaluateCondition(make("lte", 24, "yearsSince"), EMPTY_VALUES, {
+        dob: isoYearsAgo(20),
+      }),
+    ).toBe(true);
+    expect(
+      evaluateCondition(make("lte", 24, "yearsSince"), EMPTY_VALUES, {
+        dob: isoYearsAgo(30),
+      }),
+    ).toBe(false);
+  });
+
+  it("accepts a { day, month, year } DateValue target", () => {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() - 40);
+    const value = {
+      day: d.getDate(),
+      month: d.getMonth() + 1,
+      year: d.getFullYear(),
+    };
+    expect(
+      evaluateCondition(make("gte", 16, "yearsSince"), EMPTY_VALUES, {
+        dob: value as unknown as string,
+      }),
+    ).toBe(true);
+  });
+
+  it("an invalid/empty date under transform never matches (NaN)", () => {
+    expect(
+      evaluateCondition(make("gte", 16, "yearsSince"), EMPTY_VALUES, {
+        dob: "",
+      }),
+    ).toBe(false);
+  });
+
+  it("composes an age range through stacked AND conditions (16–24)", () => {
+    const lower = make("gte", 16, "yearsSince");
+    const upper = make("lte", 24, "yearsSince");
+    const inRange = { dob: isoYearsAgo(20) };
+    const tooOld = { dob: isoYearsAgo(30) };
+    const both = (vals: Record<string, unknown>) =>
+      [lower, upper].every((b) => evaluateCondition(b, EMPTY_VALUES, vals));
+    expect(both(inRange)).toBe(true);
+    expect(both(tooOld)).toBe(false);
+  });
+});
