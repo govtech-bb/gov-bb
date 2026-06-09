@@ -178,7 +178,7 @@ export function validateAndReshape(
 // Human display string for a collected raw value, mirroring the forms app's
 // review formatting: option labels (not values), dates without the weekday,
 // file names, Yes/No booleans.
-export function displayValue(field: Primitive, raw: string): string {
+function displayValue(field: Primitive, raw: string): string {
   const coerced = COERCERS[field.htmlType](field, raw.trim());
   if ("error" in coerced) return raw;
   const value = coerced.value;
