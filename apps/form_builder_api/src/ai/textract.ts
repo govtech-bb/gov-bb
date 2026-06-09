@@ -5,6 +5,8 @@ import {
   type Block,
 } from "@aws-sdk/client-textract";
 
+export type { Block } from "@aws-sdk/client-textract";
+
 let client: TextractClient | null = null;
 
 function getClient(): TextractClient {

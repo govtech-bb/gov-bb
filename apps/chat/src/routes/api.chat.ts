@@ -6,6 +6,7 @@ import {
   toServerSentEventsResponse,
 } from "@tanstack/ai";
 import { getServerEnv } from "#/config/env";
+import { blockedMessageStream } from "#/lib/chat/blocked-stream";
 import { runTurn } from "#/lib/chat/run-turn";
 import type { Citation } from "#/lib/chat/types";
 import { jsonError } from "#/lib/http";
@@ -98,7 +99,17 @@ async function handlePost({
   });
 
   if (result.kind === "blocked") {
-    return jsonError(result.message, result.status);
+    // Deliver the refusal as a normal streamed assistant message (200), not an
+    // HTTP error — the user sees the polite message, not a generic error pill,
+    // and the LLM was never invoked. See blockedMessageStream.
+    return toServerSentEventsResponse(
+      blockedMessageStream(result.message, {
+        runId,
+        threadId,
+        model: env.LLM_MODEL,
+      }),
+      { abortController: new AbortController() },
+    );
   }
 
   return toServerSentEventsResponse(

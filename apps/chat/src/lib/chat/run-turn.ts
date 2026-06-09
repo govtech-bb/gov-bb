@@ -5,6 +5,7 @@ import { childController } from "#/lib/abort";
 import { getServerEnv } from "#/config/env";
 import {
   buildFormTools,
+  buildOfferTools,
   getFormSlugs,
   getOrCreateSession,
   resolveActiveForm,
@@ -210,11 +211,18 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     resolution,
     session,
     handoffContinuation,
+    offerOnly,
   );
 
+  // collect + apply-intent → full field tools. collect + info question
+  // (offerOnly) → present_choices ONLY, so the model offers a clickable "Start
+  // the application" affordance rather than a dead-end prose "want to start?",
+  // but still can't silently record fields on a question. Anything else → none.
   const tools =
-    resolution.kind === "collect" && !offerOnly
-      ? buildFormTools(session, resolution.form, signal)
+    resolution.kind === "collect"
+      ? offerOnly
+        ? buildOfferTools()
+        : buildFormTools(session, resolution.form, signal)
       : [];
 
   const abortController = childController(signal);
@@ -289,6 +297,7 @@ function buildSystemPrompts(
   resolution: FormResolution,
   session: FormSession,
   handoffContinuation?: { title: string; url: string },
+  offerOnly = false,
 ): SystemEntry[] {
   const prompts: SystemEntry[] = [
     SYSTEM_PROMPT,
@@ -313,14 +322,22 @@ function buildSystemPrompts(
       parts.push(
         `Already collected (do NOT re-ask these unless the user wants to change them):\n${lines}`,
       );
-    } else {
-      // Form matched but not started. If the user is asking a question (e.g.
-      // "what's the cost?", "what documents?"), ANSWER it from the context
-      // above first, then offer to begin the application. Only start collecting
-      // fields once the user signals they want to apply — do not jump straight
-      // into field prompts on an informational question.
+    } else if (offerOnly) {
+      // Collect-form matched on an INFO question, nothing collected yet. Answer
+      // the question from context, THEN offer a clickable path to start the
+      // application via present_choices — NOT a prose "want to start?", which
+      // leaves the user no button to act on (and the field tools are withheld
+      // this turn, so a prose offer is a dead end). Clicking "Start the
+      // application" sends a non-question message next turn, which flips this
+      // turn's info-question gate off and lets the real field tools in.
       parts.push(
-        "The user has not started this application yet. If their message is a question, answer it from the context above and then offer to begin the application. Only start collecting fields once they indicate they want to apply.",
+        'The user asked an INFORMATION question about this service and has NOT said they want to apply yet. First, answer their question from the context above. Then offer to begin by calling present_choices with a short question like "Want to start the application now?" and choices ["Start the application", "I have another question"]. Do NOT ask for any form field and do NOT call set_field this turn — only answer, then offer the choice.',
+      );
+    } else {
+      // Collect-form matched with apply-intent, first turn: begin collecting per
+      // the SYSTEM_PROMPT. Answer any side question they bundled in first.
+      parts.push(
+        "The user wants to apply and has not started yet. Open with a one-line acknowledgement and ask for the FIRST field in the schema (call present_choices if that field is closed-set; otherwise ask it in text). If they also asked a side question, answer it from the context first.",
       );
     }
     if (session.status === "submitted" && session.referenceNumber) {
