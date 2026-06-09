@@ -1,11 +1,33 @@
 import type { Block } from "@aws-sdk/client-textract";
-import { blocksToText } from "./textract";
+import { blocksToText, startAnalysis, getAnalysisResult } from "./textract";
 import simpleForm from "./__fixtures__/textract/simple-form.json";
 import checkboxes from "./__fixtures__/textract/checkboxes.json";
 import multiPage from "./__fixtures__/textract/multi-page.json";
 import empty from "./__fixtures__/textract/empty.json";
 
 const blocksOf = (f: { Blocks: unknown[] }) => f.Blocks as Block[];
+
+const sendMock = jest.fn();
+jest.mock("@aws-sdk/client-textract", () => {
+  return {
+    TextractClient: jest
+      .fn()
+      .mockImplementation(() => ({
+        send: (...args: unknown[]) => sendMock(...args),
+      })),
+    StartDocumentAnalysisCommand: jest
+      .fn()
+      .mockImplementation((args) => ({ name: "Start", args })),
+    GetDocumentAnalysisCommand: jest
+      .fn()
+      .mockImplementation((args) => ({ name: "Get", args })),
+  };
+});
+
+beforeEach(() => {
+  sendMock.mockReset();
+  process.env.S3_BUCKET = "form-builder-uploads-sandbox-7922";
+});
 
 describe("blocksToText", () => {
   it("returns empty string for an empty block array", () => {
@@ -35,5 +57,73 @@ describe("blocksToText", () => {
     expect(out).toContain("## Page 1");
     expect(out).toContain("## Page 2");
     expect(out.indexOf("## Page 1")).toBeLessThan(out.indexOf("## Page 2"));
+  });
+});
+
+describe("startAnalysis", () => {
+  it("returns the JobId from StartDocumentAnalysis", async () => {
+    sendMock.mockResolvedValue({ JobId: "job-abc" });
+    const result = await startAnalysis("uploads/abc.pdf");
+    expect(result.jobId).toBe("job-abc");
+  });
+
+  it("requests FORMS and TABLES features", async () => {
+    sendMock.mockResolvedValue({ JobId: "job-abc" });
+    await startAnalysis("uploads/abc.pdf");
+    const cmd = sendMock.mock.calls[0][0];
+    expect(cmd.name).toBe("Start");
+    expect(cmd.args.FeatureTypes).toEqual(["FORMS", "TABLES"]);
+    expect(cmd.args.DocumentLocation.S3Object.Name).toBe("uploads/abc.pdf");
+  });
+});
+
+describe("getAnalysisResult", () => {
+  it("returns status 'processing' when Textract is IN_PROGRESS", async () => {
+    sendMock.mockResolvedValue({ JobStatus: "IN_PROGRESS" });
+    const result = await getAnalysisResult("job-1");
+    expect(result.status).toBe("processing");
+  });
+
+  it("returns status 'done' with flat blocks when SUCCEEDED", async () => {
+    sendMock.mockResolvedValue({
+      JobStatus: "SUCCEEDED",
+      Blocks: [{ BlockType: "PAGE", Id: "p1", Page: 1 }],
+    });
+    const result = await getAnalysisResult("job-1");
+    expect(result.status).toBe("done");
+    if (result.status === "done") expect(result.blocks).toHaveLength(1);
+  });
+
+  it("follows NextToken pagination and concatenates blocks", async () => {
+    sendMock
+      .mockResolvedValueOnce({
+        JobStatus: "SUCCEEDED",
+        Blocks: [{ BlockType: "PAGE", Id: "p1", Page: 1 }],
+        NextToken: "tok-1",
+      })
+      .mockResolvedValueOnce({
+        JobStatus: "SUCCEEDED",
+        Blocks: [{ BlockType: "LINE", Id: "l1", Page: 1, Text: "hello" }],
+      });
+    const result = await getAnalysisResult("job-1");
+    expect(result.status).toBe("done");
+    if (result.status === "done") expect(result.blocks).toHaveLength(2);
+  });
+
+  it("returns status 'failed' with reason when FAILED", async () => {
+    sendMock.mockResolvedValue({
+      JobStatus: "FAILED",
+      StatusMessage: "Document is password-protected",
+    });
+    const result = await getAnalysisResult("job-1");
+    expect(result.status).toBe("failed");
+    if (result.status === "failed")
+      expect(result.reason).toBe("Document is password-protected");
+  });
+
+  it("treats PARTIAL_SUCCESS as failed", async () => {
+    sendMock.mockResolvedValue({ JobStatus: "PARTIAL_SUCCESS" });
+    const result = await getAnalysisResult("job-1");
+    expect(result.status).toBe("failed");
   });
 });

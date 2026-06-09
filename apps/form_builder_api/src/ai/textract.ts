@@ -1,4 +1,71 @@
-import type { Block } from "@aws-sdk/client-textract";
+import {
+  TextractClient,
+  StartDocumentAnalysisCommand,
+  GetDocumentAnalysisCommand,
+  type Block,
+} from "@aws-sdk/client-textract";
+
+let client: TextractClient | null = null;
+
+function getClient(): TextractClient {
+  if (!client) {
+    client = new TextractClient({
+      region: process.env.AWS_REGION ?? "ca-central-1",
+    });
+  }
+  return client;
+}
+
+// startAnalysis kicks off an async Textract job against an S3 object. The
+// caller polls getAnalysisResult with the returned jobId until status !==
+// "processing". We always request FORMS + TABLES — both are useful for the
+// form-builder use case, and Textract bills per page regardless of feature set.
+export async function startAnalysis(s3Key: string): Promise<{ jobId: string }> {
+  const bucket = process.env.S3_BUCKET;
+  if (!bucket) throw new Error("S3_BUCKET is not set");
+
+  const response = await getClient().send(
+    new StartDocumentAnalysisCommand({
+      DocumentLocation: { S3Object: { Bucket: bucket, Name: s3Key } },
+      FeatureTypes: ["FORMS", "TABLES"],
+    }),
+  );
+  if (!response.JobId) throw new Error("Textract did not return a JobId");
+  return { jobId: response.JobId };
+}
+
+export type AnalysisResult =
+  | { status: "processing" }
+  | { status: "done"; blocks: Block[] }
+  | { status: "failed"; reason?: string };
+
+// getAnalysisResult polls Textract once. On SUCCEEDED it walks the NextToken
+// pagination internally and returns a flat block array; the caller sees one
+// merged result.
+export async function getAnalysisResult(
+  jobId: string,
+): Promise<AnalysisResult> {
+  const blocks: Block[] = [];
+  let nextToken: string | undefined;
+
+  do {
+    const response = await getClient().send(
+      new GetDocumentAnalysisCommand({ JobId: jobId, NextToken: nextToken }),
+    );
+
+    if (response.JobStatus === "IN_PROGRESS") return { status: "processing" };
+    if (
+      response.JobStatus === "FAILED" ||
+      response.JobStatus === "PARTIAL_SUCCESS"
+    ) {
+      return { status: "failed", reason: response.StatusMessage };
+    }
+    if (response.Blocks) blocks.push(...response.Blocks);
+    nextToken = response.NextToken;
+  } while (nextToken);
+
+  return { status: "done", blocks };
+}
 
 // blocksToText walks Textract's block graph and emits a compact text
 // representation Claude can read. It preserves page boundaries, key/value
