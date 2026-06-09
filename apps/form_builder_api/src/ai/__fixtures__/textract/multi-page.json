@@ -1,0 +1,18 @@
+{
+  "Blocks": [
+    {
+      "BlockType": "PAGE",
+      "Id": "page-1",
+      "Page": 1,
+      "Relationships": [{ "Type": "CHILD", "Ids": ["l-1"] }]
+    },
+    { "BlockType": "LINE", "Id": "l-1", "Page": 1, "Text": "Page one text" },
+    {
+      "BlockType": "PAGE",
+      "Id": "page-2",
+      "Page": 2,
+      "Relationships": [{ "Type": "CHILD", "Ids": ["l-2"] }]
+    },
+    { "BlockType": "LINE", "Id": "l-2", "Page": 2, "Text": "Page two text" }
+  ]
+}
