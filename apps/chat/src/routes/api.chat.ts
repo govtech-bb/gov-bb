@@ -1,54 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import type { CustomEvent, StreamChunk, UIMessage } from "@tanstack/ai";
+import type { UIMessage } from "@tanstack/ai";
 import {
-  EventType,
   chatParamsFromRequest,
   toServerSentEventsResponse,
 } from "@tanstack/ai";
 import { getServerEnv } from "#/config/env";
 import { blockedMessageStream } from "#/lib/chat/blocked-stream";
 import { runTurn } from "#/lib/chat/run-turn";
-import type { Citation } from "#/lib/chat/types";
 import { jsonError } from "#/lib/http";
-
-// Emit the citations event right after the assistant message id is known
-// (TEXT_MESSAGE_START), so the client can store citations keyed by messageId
-// instead of by stream index.
-async function* withCitations(
-  inner: AsyncIterable<StreamChunk>,
-  citations: Citation[],
-): AsyncGenerator<StreamChunk> {
-  let emitted = false;
-  if (citations.length === 0) {
-    yield* inner;
-    return;
-  }
-  for await (const chunk of inner) {
-    yield chunk;
-    if (emitted) continue;
-    if (chunk.type === "TEXT_MESSAGE_START" && chunk.messageId) {
-      yield citationsEvent(chunk.messageId, citations);
-      emitted = true;
-    } else if (chunk.type === "RUN_FINISHED") {
-      // Tool-only turn: no TEXT_MESSAGE_START arrived. Emit unkeyed so the
-      // client can attach citations to the run rather than a message.
-      yield citationsEvent(undefined, citations);
-      emitted = true;
-    }
-  }
-}
-
-function citationsEvent(
-  messageId: string | undefined,
-  citations: Citation[],
-): CustomEvent {
-  return {
-    type: EventType.CUSTOM,
-    name: "citations",
-    value: { messageId, citations },
-    timestamp: Date.now(),
-  };
-}
 
 // Max accepted request body (#973). Generous for legitimate chat history but
 // blocks oversized payloads before they're parsed. Per-call token cost is
@@ -112,10 +71,9 @@ async function handlePost({
     );
   }
 
-  return toServerSentEventsResponse(
-    withCitations(result.stream, result.citations),
-    { abortController: result.abortController },
-  );
+  return toServerSentEventsResponse(result.stream, {
+    abortController: result.abortController,
+  });
 }
 
 async function handlePostSafely(request: Request): Promise<Response> {

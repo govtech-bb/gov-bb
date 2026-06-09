@@ -15,6 +15,7 @@ import {
   type FormResolution,
   type FormSession,
 } from "./form";
+import { citationsMiddleware } from "./citations-middleware";
 import { capMessageHistory, lastUserText, recentUserText } from "./messages";
 import {
   NO_FORM_DISCLOSURE,
@@ -31,7 +32,7 @@ import {
   topHandoffCandidateSlug,
 } from "./retrieval";
 import { rewriteRetrievalQuery } from "./rewrite";
-import type { Citation, RetrievedContext, Source } from "./types";
+import type { RetrievedContext, Source } from "./types";
 import { withTurnLog } from "./turn-log";
 
 type SystemEntry = SystemPrompt<never>;
@@ -52,7 +53,6 @@ export type RunTurnResult =
       stream: AsyncIterable<StreamChunk>;
       abortController: AbortController;
       activeFormSlug?: string;
-      citations: Citation[];
     };
 
 export async function runTurn(input: RunTurnInput): Promise<RunTurnResult> {
@@ -238,6 +238,7 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     tools,
     modelOptions: { maxTokens: 600, temperature: 0 },
     abortController,
+    middleware: [citationsMiddleware(citations)],
     // DEV-only: traces provider chunks, tool calls, and agent-loop iterations
     // that withTurnLog (which only taps RUN_FINISHED) can't see. NEVER enable
     // on the deployed Lambda — it logs message content (CloudWatch cost + PII).
@@ -264,7 +265,6 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     stream,
     abortController,
     activeFormSlug: session.slug ?? undefined,
-    citations,
   };
 }
 
