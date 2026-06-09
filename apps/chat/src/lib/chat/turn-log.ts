@@ -19,8 +19,55 @@ export interface TurnRecord {
   error?: string;
 }
 
+export function toEmf(rec: TurnRecord): Record<string, unknown> {
+  const metrics = [
+    { Name: "ChatTurn.LatencyMs", Unit: "Milliseconds" },
+    { Name: "ChatTurn.LlmInputTokens", Unit: "Count" },
+    { Name: "ChatTurn.LlmOutputTokens", Unit: "Count" },
+    { Name: "ChatTurn.RetrievalDegraded", Unit: "Count" },
+  ];
+
+  // EMF treats missing keys as no-op for that metric, so a partial turn
+  // (LLM aborted mid-stream, no usage chunk) emits whatever was captured
+  // without confusing CloudWatch.
+  return {
+    _aws: {
+      Timestamp: Date.now(),
+      CloudWatchMetrics: [
+        {
+          Namespace: "GovBB/Chat",
+          Dimensions: [["Service"]],
+          Metrics: metrics,
+        },
+      ],
+    },
+    Service: "chat",
+    ...(rec.durationMs !== undefined && {
+      "ChatTurn.LatencyMs": rec.durationMs,
+    }),
+    ...(rec.promptTokens !== undefined && {
+      "ChatTurn.LlmInputTokens": rec.promptTokens,
+    }),
+    ...(rec.completionTokens !== undefined && {
+      "ChatTurn.LlmOutputTokens": rec.completionTokens,
+    }),
+    "ChatTurn.RetrievalDegraded": rec.retrieveDegraded ? 1 : 0,
+    // Non-metric fields kept for CloudWatch Logs Insights searchability:
+    ts: rec.ts,
+    threadId: rec.threadId,
+    runId: rec.runId,
+    model: rec.model,
+    userChars: rec.userChars,
+    formSlug: rec.formSlug,
+    finishReason: rec.finishReason,
+    cancelled: rec.cancelled,
+    error: rec.error,
+    retrieved: rec.retrieved,
+  };
+}
+
 export function logTurn(rec: TurnRecord): void {
-  console.log(`[turn] ${JSON.stringify(rec)}`);
+  console.log(JSON.stringify(toEmf(rec)));
 }
 
 export async function* withTurnLog(
