@@ -35,9 +35,11 @@ async function buildSystemPrompt(): Promise<string> {
 }
 
 // Compose the single user turn from the parts the editor sends. An Edit Form
-// tweak arrives as `recipeJson` (the serialized current draft) + `message` (the
-// instruction); an Upload arrives as `pdfBase64` with no recipe. The recipe is
+// tweak arrives as `recipeJson` (the serialized current draft) + `message`
+// (the instruction); a plain ask arrives as just `message`. The recipe is
 // fenced so the model treats it as the form to modify rather than as prose.
+// PDF uploads have their own pipeline (see ai-upload.ts); they never reach
+// here.
 function buildUserText(message?: string, recipeJson?: string): string {
   if (recipeJson) {
     const instruction =
