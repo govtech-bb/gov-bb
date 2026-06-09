@@ -39,6 +39,20 @@ export function stripLeakedToolCalls(text: string): string {
     .trim();
 }
 
+// Hard cap on how many recent messages reach the LLM (#973). The form session's
+// collected values live server-side (keyed by threadId), NOT in the message
+// history, so trimming old turns never loses form state — it only bounds the
+// per-call token cost and blunts cost-DoS via an ever-growing history array.
+// Keeps the most recent turns (where the live context is).
+export const MAX_HISTORY_MESSAGES = 24;
+
+export function capMessageHistory(
+  messages: UIMessage[],
+  max: number = MAX_HISTORY_MESSAGES,
+): UIMessage[] {
+  return messages.length > max ? messages.slice(-max) : messages;
+}
+
 export function lastUserText(messages: UIMessage[]): string {
   for (let i = messages.length - 1; i >= 0; i--) {
     if (messages[i].role === "user") return extractText(messages[i]);

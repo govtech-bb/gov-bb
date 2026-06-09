@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { stripLeakedToolCalls } from "./messages";
+import type { UIMessage } from "@tanstack/ai";
+import {
+  capMessageHistory,
+  MAX_HISTORY_MESSAGES,
+  stripLeakedToolCalls,
+} from "./messages";
 
 // Regression guard for the form-fill tool-call leak: Haiku sometimes WRITES the
 // tool call into its text reply (on top of actually invoking it), e.g.
@@ -53,4 +58,35 @@ test("leaves legitimate prose untouched", () => {
   // Mentions the word but isn't a call (no parens) — must not be stripped.
   const b = "I use set_field internally but here is your question: name?";
   assert.equal(stripLeakedToolCalls(b), b);
+});
+
+// capMessageHistory bounds how many turns reach the LLM (#973 cost-DoS guard).
+const mkHistory = (n: number): UIMessage[] =>
+  Array.from(
+    { length: n },
+    (_, i) =>
+      ({
+        id: String(i),
+        role: i % 2 === 0 ? "user" : "assistant",
+        parts: [{ type: "text", content: String(i) }],
+      }) as unknown as UIMessage,
+  );
+
+test("capMessageHistory leaves a short history untouched", () => {
+  const h = mkHistory(10);
+  assert.equal(capMessageHistory(h), h);
+});
+
+test("capMessageHistory keeps only the most recent MAX_HISTORY_MESSAGES", () => {
+  const h = mkHistory(MAX_HISTORY_MESSAGES + 6);
+  const capped = capMessageHistory(h);
+  assert.equal(capped.length, MAX_HISTORY_MESSAGES);
+  // Keeps the tail (live context), drops the oldest, preserves order.
+  assert.equal(capped[0].id, "6");
+  assert.equal(capped.at(-1)!.id, String(MAX_HISTORY_MESSAGES + 5));
+});
+
+test("capMessageHistory honours a custom max", () => {
+  assert.equal(capMessageHistory(mkHistory(50), 5).length, 5);
+  assert.equal(capMessageHistory(mkHistory(3), 5).length, 3);
 });
