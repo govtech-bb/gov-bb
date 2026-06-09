@@ -1,13 +1,13 @@
 import { Link } from '@govtech-bb/react'
 import type { ReactNode } from 'react'
-import { StartLinkFromContext } from './StartLink'
+import { StartLink } from './StartLink'
 
 /**
  * Anchor renderer for markdown. A `data-start-link` anchor becomes a form CTA
- * (see {@link StartLinkFromContext}); the `#` link appended to headings by
- * rehype-autolink-headings stays a plain anchor; everything else is a
- * {@link Link}, marked external unless it is an in-site (`/`) or in-page (`#`)
- * target.
+ * (see {@link StartLink}), reading the `data-form-id` baked onto the node in the
+ * registry; the `#` link appended to headings stays a plain anchor; everything
+ * else is a {@link Link}, marked external unless it is an in-site (`/`) or
+ * in-page (`#`) target.
  */
 export function MarkdownLink({
   href,
@@ -25,10 +25,19 @@ export function MarkdownLink({
   const isExternal = !(safeHref.startsWith('/') || safeHref.startsWith('#'))
 
   if (isStartLink) {
+    const {
+      'data-start-link': _startLink,
+      'data-form-id': formId,
+      ...linkRest
+    } = rest
     return (
-      <StartLinkFromContext href={href} rest={rest}>
+      <StartLink
+        href={href}
+        formId={typeof formId === 'string' ? formId : undefined}
+        {...linkRest}
+      >
         {children}
-      </StartLinkFromContext>
+      </StartLink>
     )
   }
 

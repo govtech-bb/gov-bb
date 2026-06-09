@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { processMarkdown } from '../../utils/markdown/processor'
+import { bakeStartLinkFormId } from '../../utils/markdown/plugins'
 import { PAGES } from '../../content/registry'
 import { MarkdownBody } from './MarkdownContent'
 import { TableOfContents } from './TableOfContents'
@@ -17,10 +18,10 @@ async function renderBody(
   opts: { formId?: string; forms?: Set<string>; hideStartLink?: boolean } = {},
 ): Promise<string> {
   const { hast } = await processMarkdown(md)
+  bakeStartLinkFormId(hast, opts.formId)
   return renderToStaticMarkup(
     <MarkdownBody
       hast={hast}
-      formId={opts.formId}
       availableForms={opts.forms}
       hideStartLink={opts.hideStartLink}
     />,

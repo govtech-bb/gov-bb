@@ -1,6 +1,7 @@
 import { FrontmatterSchema, titleFromSlug } from '../lib/frontmatter'
 import type { Frontmatter } from '../lib/frontmatter'
 import type { Root } from 'hast'
+import { bakeStartLinkFormId } from '../utils/markdown/plugins'
 import type { MarkdownHeading } from '../utils/markdown/plugins'
 import { CATEGORIES, CATEGORY_BY_SLUG, getSubcategory } from './categories'
 import type { Category } from './categories'
@@ -127,6 +128,9 @@ const markdownPages: Array<ContentPage> = Object.entries(modules).map(
       (part): part is string => Boolean(part),
     )
     const url = urlParts.join('/')
+    // Bake the page form id onto its start-link nodes so the runtime start-link
+    // reads it from the node, not a React context (see bakeStartLinkFormId).
+    bakeStartLinkFormId(mod.hast, raw.form_id)
     return {
       slug,
       url,

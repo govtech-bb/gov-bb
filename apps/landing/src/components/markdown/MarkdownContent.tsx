@@ -10,7 +10,7 @@ import {
   type MarkdownHeading,
 } from '../../utils/markdown/plugins'
 import { markdownComponents } from './MdComponents'
-import { AvailableFormsContext, PageFormIdContext } from './StartLink'
+import { AvailableFormsContext } from './StartLink'
 import { TableOfContents } from './TableOfContents'
 import { MigrationBanner } from '../MigrationBanner'
 
@@ -24,12 +24,10 @@ import { MigrationBanner } from '../MigrationBanner'
  */
 export function MarkdownBody({
   hast,
-  formId,
   availableForms = new Set(),
   hideStartLink = false,
 }: {
   hast: Root
-  formId?: string
   availableForms?: ReadonlySet<string>
   hideStartLink?: boolean
 }) {
@@ -39,17 +37,15 @@ export function MarkdownBody({
 
   return (
     <AvailableFormsContext.Provider value={availableForms}>
-      <PageFormIdContext.Provider value={formId}>
-        {toJsxRuntime(tree, {
-          Fragment,
-          jsx,
-          jsxs,
-          components: markdownComponents,
-          ignoreInvalidStyle: true,
-          passKeys: true,
-          passNode: true,
-        })}
-      </PageFormIdContext.Provider>
+      {toJsxRuntime(tree, {
+        Fragment,
+        jsx,
+        jsxs,
+        components: markdownComponents,
+        ignoreInvalidStyle: true,
+        passKeys: true,
+        passNode: true,
+      })}
     </AvailableFormsContext.Provider>
   )
 }
@@ -91,7 +87,6 @@ export function MarkdownContent({
         </div>
         <MarkdownBody
           hast={hast}
-          formId={frontmatter.form_id}
           availableForms={availableForms}
           hideStartLink={hideStartLink}
         />
