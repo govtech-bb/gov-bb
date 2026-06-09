@@ -112,6 +112,8 @@ export function blocksToText(blocks: Block[]): string {
         if (labelId) consumedLineIds.add(labelId);
         const label = labelId ? (byId.get(labelId)?.Text ?? "") : "";
         out.push(`${mark} ${label}`);
+      } else if (child.BlockType === "TABLE") {
+        out.push(...renderTable(child, byId));
       }
     }
     out.push("");
@@ -176,4 +178,41 @@ function countSelectionsBefore(
     if (byId.get(siblingIds[i])?.BlockType === "SELECTION_ELEMENT") count++;
   }
   return count;
+}
+
+// renderTable walks a TABLE block's CELL grid and emits markdown-pipe rows.
+// First row becomes the header; a separator line follows. Empty cells render
+// as blank padding to keep column alignment. Missing rows or columns are
+// safe-defaulted (we don't trust Textract to deliver dense grids — sparse
+// scans happen).
+function renderTable(table: Block, byId: Map<string, Block>): string[] {
+  const cellIds =
+    table.Relationships?.find((r) => r.Type === "CHILD")?.Ids ?? [];
+  const cells = cellIds
+    .map((id) => byId.get(id))
+    .filter((b): b is Block => !!b && b.BlockType === "CELL");
+
+  if (cells.length === 0) return [];
+
+  const maxRow = Math.max(...cells.map((c) => c.RowIndex ?? 0));
+  const maxCol = Math.max(...cells.map((c) => c.ColumnIndex ?? 0));
+  if (maxRow === 0 || maxCol === 0) return [];
+
+  const grid: string[][] = Array.from({ length: maxRow }, () =>
+    Array.from({ length: maxCol }, () => ""),
+  );
+  for (const cell of cells) {
+    const r = (cell.RowIndex ?? 1) - 1;
+    const c = (cell.ColumnIndex ?? 1) - 1;
+    grid[r][c] = collectWords(cell, byId);
+  }
+
+  const rows: string[] = [];
+  rows.push(`| ${grid[0].join(" | ")} |`);
+  rows.push(`| ${grid[0].map(() => "---").join(" | ")} |`);
+  for (let r = 1; r < grid.length; r++) {
+    rows.push(`| ${grid[r].join(" | ")} |`);
+  }
+  rows.push("");
+  return rows;
 }

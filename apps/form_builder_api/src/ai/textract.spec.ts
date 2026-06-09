@@ -4,6 +4,7 @@ import simpleForm from "./__fixtures__/textract/simple-form.json";
 import checkboxes from "./__fixtures__/textract/checkboxes.json";
 import multiPage from "./__fixtures__/textract/multi-page.json";
 import empty from "./__fixtures__/textract/empty.json";
+import tableFixture from "./__fixtures__/textract/table.json";
 
 const blocksOf = (f: { Blocks: unknown[] }) => f.Blocks as Block[];
 
@@ -55,6 +56,17 @@ describe("blocksToText", () => {
     expect(out).toContain("## Page 1");
     expect(out).toContain("## Page 2");
     expect(out.indexOf("## Page 1")).toBeLessThan(out.indexOf("## Page 2"));
+  });
+
+  it("renders TABLE blocks as markdown-pipe tables with a header separator", () => {
+    const out = blocksToText(blocksOf(tableFixture));
+    expect(out).toContain("| Name | Age |");
+    expect(out).toMatch(/\|\s*-+\s*\|\s*-+\s*\|/);
+    expect(out).toContain("| Alice | 30 |");
+    // First data row must follow the separator
+    const sep = out.indexOf("---");
+    const aliceRow = out.indexOf("Alice");
+    expect(sep).toBeLessThan(aliceRow);
   });
 });
 
