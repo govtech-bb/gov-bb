@@ -20,7 +20,6 @@ import {
   useState,
 } from "react";
 import { Bubble } from "#/components/chat/bubble";
-import { StarterCards } from "#/components/chat/starter-cards";
 import { TridentAvatar } from "#/components/trident-avatar";
 import { extractText, hasAnyToolCall } from "#/lib/chat/messages";
 import {
@@ -46,7 +45,6 @@ const LANDING_URL =
 // same list as messages and carry stable keys.
 type ChatRow =
   | { kind: "welcome"; key: string }
-  | { kind: "starter-cards"; key: string }
   | { kind: "optimistic"; key: string; text: string }
   | { kind: "message"; key: string; message: UIMessage; index: number }
   | { kind: "thinking"; key: string }
@@ -132,11 +130,6 @@ function ChatPage() {
 
   const rows = useMemo<ChatRow[]>(() => {
     const out: ChatRow[] = [{ kind: "welcome", key: "welcome" }];
-    const isEmpty =
-      messages.length === 0 && !pendingQuery && !submitting && !error;
-    if (isEmpty) {
-      out.push({ kind: "starter-cards", key: "starter-cards" });
-    }
     if (pendingQuery && messages.length === 0) {
       out.push({ kind: "optimistic", key: "optimistic", text: pendingQuery });
       if (!error) out.push({ kind: "thinking", key: "thinking" });
@@ -243,8 +236,6 @@ function ChatPage() {
     switch (row.kind) {
       case "welcome":
         return <WelcomeBubble />;
-      case "starter-cards":
-        return <StarterCards onPick={submit} />;
       case "optimistic":
         return <OptimisticUserBubble text={row.text} />;
       case "thinking":
