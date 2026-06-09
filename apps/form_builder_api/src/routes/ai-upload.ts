@@ -59,11 +59,9 @@ export async function processHandler(
       return;
     }
     if (message.includes("LimitExceeded")) {
-      res
-        .status(429)
-        .json({
-          error: "Too many uploads in progress — please try again in a minute.",
-        });
+      res.status(429).json({
+        error: "Too many uploads in progress — please try again in a minute.",
+      });
       return;
     }
     res.status(500).json({ error: message });
@@ -76,10 +74,6 @@ export async function statusHandler(
   res: Response,
 ): Promise<void> {
   try {
-    if (!(await isAvailable())) {
-      res.status(503).json({ error: "AI service not configured" });
-      return;
-    }
     const jobId = req.params.jobId;
     if (typeof jobId !== "string" || !jobId) {
       res.status(400).json({ error: "Missing jobId" });
@@ -97,7 +91,14 @@ export async function statusHandler(
       return;
     }
 
-    // done: convert blocks → text → chat → recipe
+    // done: convert blocks → text → chat → recipe. Bedrock is needed only
+    // here, so we 503 only at this point if it's unavailable — polling
+    // requests for processing/failed don't need Bedrock at all.
+    if (!(await isAvailable())) {
+      res.status(503).json({ error: "AI service not configured" });
+      return;
+    }
+
     const documentText = blocksToText(result.blocks);
     const systemPrompt = getSystemPrompt();
     const userText =

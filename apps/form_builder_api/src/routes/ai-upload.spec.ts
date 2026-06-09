@@ -17,7 +17,7 @@ jest.mock("../ai/textract.js", () => ({
 }));
 jest.mock("../storage/s3-uploads.js", () => ({ presignUpload: jest.fn() }));
 
-import { chat } from "../ai/client.js";
+import { chat, isAvailable } from "../ai/client.js";
 import { extractRecipe } from "../ai/recipe-extractor.js";
 import {
   startAnalysis,
@@ -64,6 +64,7 @@ beforeEach(() => {
   getAnalysisResultMock.mockReset();
   blocksToTextMock.mockReset();
   presignUploadMock.mockReset();
+  (isAvailable as jest.Mock).mockResolvedValue(true);
   process.env.S3_BUCKET = "form-builder-uploads-sandbox-7922";
 });
 
@@ -80,6 +81,14 @@ describe("presignHandler", () => {
       url: "https://signed/x",
       s3Key: "uploads/abc.pdf",
     });
+  });
+
+  it("503s when S3_BUCKET is not set", async () => {
+    delete process.env.S3_BUCKET;
+    const res = mockRes();
+    await presignHandler(mockReq(), res);
+    expect(res.statusCode).toBe(503);
+    expect(res.body).toEqual({ error: "Upload service not configured" });
   });
 });
 
@@ -101,6 +110,43 @@ describe("processHandler", () => {
     );
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual({ jobId: "job-1" });
+  });
+
+  it("404s when Textract reports InvalidS3Object (uploaded file not found)", async () => {
+    startAnalysisMock.mockRejectedValue(
+      Object.assign(
+        new Error("InvalidS3ObjectException: object not found"),
+        {},
+      ),
+    );
+    const res = mockRes();
+    await processHandler(
+      mockReq({
+        s3Key: "uploads/abc-12345678-1234-1234-1234-1234567890ab.pdf",
+      }),
+      res,
+    );
+    expect(res.statusCode).toBe(404);
+    expect(res.body).toEqual({
+      error: "The uploaded file was not found. Please try again.",
+    });
+  });
+
+  it("429s when Textract reports LimitExceeded", async () => {
+    startAnalysisMock.mockRejectedValue(
+      new Error("LimitExceededException: quota"),
+    );
+    const res = mockRes();
+    await processHandler(
+      mockReq({
+        s3Key: "uploads/abc-12345678-1234-1234-1234-1234567890ab.pdf",
+      }),
+      res,
+    );
+    expect(res.statusCode).toBe(429);
+    expect(res.body).toEqual({
+      error: "Too many uploads in progress — please try again in a minute.",
+    });
   });
 });
 
@@ -159,5 +205,65 @@ describe("statusHandler", () => {
     expect((res.body as { reason: string }).reason).toBe(
       "We couldn't read this PDF — please try a different file.",
     );
+  });
+
+  it("404s when Textract reports InvalidJobId", async () => {
+    getAnalysisResultMock.mockRejectedValue(
+      new Error("InvalidJobIdException: bad job id"),
+    );
+    const res = mockRes();
+    await statusHandler(mockReq({}, { jobId: "j-1" }), res);
+    expect(res.statusCode).toBe(404);
+    expect(res.body).toEqual({
+      error: "This upload session expired. Please re-upload.",
+    });
+  });
+
+  it("maps corrupted-file reasons to a friendly message", async () => {
+    getAnalysisResultMock.mockResolvedValue({
+      status: "failed",
+      reason: "Unsupported document format",
+    });
+    const res = mockRes();
+    await statusHandler(mockReq({}, { jobId: "j-1" }), res);
+    expect(res.body).toEqual({
+      status: "failed",
+      reason:
+        "We couldn't read this PDF. It may be corrupted or in an unsupported format.",
+    });
+  });
+
+  it("maps partial-readability reasons to a friendly message", async () => {
+    getAnalysisResultMock.mockResolvedValue({
+      status: "failed",
+      reason: "Partial success",
+    });
+    const res = mockRes();
+    await statusHandler(mockReq({}, { jobId: "j-1" }), res);
+    expect(res.body).toEqual({
+      status: "failed",
+      reason:
+        "The PDF was only partially readable — please try a clearer scan.",
+    });
+  });
+
+  it("503s on done when AI service is unavailable", async () => {
+    (isAvailable as jest.Mock).mockResolvedValueOnce(false);
+    getAnalysisResultMock.mockResolvedValue({
+      status: "done",
+      blocks: [{ BlockType: "PAGE" }],
+    });
+    const res = mockRes();
+    await statusHandler(mockReq({}, { jobId: "j-1" }), res);
+    expect(res.statusCode).toBe(503);
+  });
+
+  it("still returns processing even when AI service is unavailable (no Bedrock needed yet)", async () => {
+    (isAvailable as jest.Mock).mockResolvedValueOnce(false);
+    getAnalysisResultMock.mockResolvedValue({ status: "processing" });
+    const res = mockRes();
+    await statusHandler(mockReq({}, { jobId: "j-1" }), res);
+    expect(res.body).toEqual({ status: "processing" });
+    expect(res.statusCode).toBe(200);
   });
 });
