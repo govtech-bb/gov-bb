@@ -166,6 +166,7 @@ export default function FileUpload({
           {...sharedProps}
           type="file"
           accept={sharedProps.accept ?? acceptAttr}
+          multiple={field.multiple ?? false}
           className="govbb-file-upload__input"
           aria-invalid={errorMessage ? true : undefined}
           onChange={handleInputChange}
