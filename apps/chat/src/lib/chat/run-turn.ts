@@ -15,12 +15,14 @@ import {
   type FormResolution,
   type FormSession,
 } from "./form";
+import { citationsMiddleware } from "./citations-middleware";
 import { capMessageHistory, lastUserText, recentUserText } from "./messages";
 import {
   NO_FORM_DISCLOSURE,
   SYSTEM_PROMPT,
   buildHandoffContinuationDisclosure,
   buildHandoffDisclosure,
+  buildHandoffOfferDisclosure,
   buildSchemaDisclosure,
 } from "./prompts";
 import {
@@ -31,7 +33,7 @@ import {
   topHandoffCandidateSlug,
 } from "./retrieval";
 import { rewriteRetrievalQuery } from "./rewrite";
-import type { Citation, RetrievedContext, Source } from "./types";
+import type { RetrievedContext, Source } from "./types";
 import { withTurnLog } from "./turn-log";
 
 type SystemEntry = SystemPrompt<never>;
@@ -52,7 +54,6 @@ export type RunTurnResult =
       stream: AsyncIterable<StreamChunk>;
       abortController: AbortController;
       activeFormSlug?: string;
-      citations: Citation[];
     };
 
 export async function runTurn(input: RunTurnInput): Promise<RunTurnResult> {
@@ -132,9 +133,13 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     resolution.kind === "collect" &&
     Object.keys(session.values).length === 0 &&
     isInfoQuestion(latest);
-  const query = skipRetrieval
-    ? latest
+  // The rewrite also classifies intent (info vs apply). Skipped turns (greeting
+  // / actively collecting) default to "apply" — the link-preserving default.
+  const rewrite = skipRetrieval
+    ? { query: latest, intent: "apply" as const }
     : await rewriteRetrievalQuery(messages, signal);
+  const query = rewrite.query;
+  const intent = rewrite.intent;
 
   const { contexts, rawSources, degraded } = await fetchContext(
     ragUrl,
@@ -206,12 +211,20 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     };
   }
 
+  // Info-intent on a handoff service: buildSystemPrompts offers the link in
+  // prose instead of pushing it. We deliberately leave the form PARKED (as the
+  // matcher/RAG paths above did, handedOffSlug set) rather than pinning it —
+  // pinning would skip the matcher next turn and trap the user on this form if
+  // they switch topics. The existing continuation path delivers the link on an
+  // affirmative follow-up: the rewrite expands "yes, send it" via history into a
+  // retrievable query, which re-surfaces the parked handoff as a continuation.
   const systemPrompts = buildSystemPrompts(
     contextBlock,
     resolution,
     session,
     handoffContinuation,
     offerOnly,
+    intent,
   );
 
   // collect + apply-intent → full field tools. collect + info question
@@ -238,6 +251,7 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     tools,
     modelOptions: { maxTokens: 600, temperature: 0 },
     abortController,
+    middleware: [citationsMiddleware(citations)],
     // DEV-only: traces provider chunks, tool calls, and agent-loop iterations
     // that withTurnLog (which only taps RUN_FINISHED) can't see. NEVER enable
     // on the deployed Lambda — it logs message content (CloudWatch cost + PII).
@@ -264,7 +278,6 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     stream,
     abortController,
     activeFormSlug: session.slug ?? undefined,
-    citations,
   };
 }
 
@@ -298,6 +311,7 @@ function buildSystemPrompts(
   session: FormSession,
   handoffContinuation?: { title: string; url: string },
   offerOnly = false,
+  intent: "info" | "apply" = "apply",
 ): SystemEntry[] {
   const prompts: SystemEntry[] = [
     SYSTEM_PROMPT,
@@ -305,7 +319,16 @@ function buildSystemPrompts(
   ];
 
   if (resolution.kind === "handoff") {
-    prompts.push(buildHandoffDisclosure(resolution.title, resolution.url));
+    // apply-intent → hand over the link (the link IS the answer). info-intent
+    // (a fact question that happens to map to a handoff service, e.g. "what
+    // does a conductor's licence cost and where do I apply?") → answer the
+    // question first and OFFER the link in prose, don't push it. The user
+    // asked for a fact, not the form.
+    prompts.push(
+      intent === "info"
+        ? buildHandoffOfferDisclosure(resolution.title)
+        : buildHandoffDisclosure(resolution.title, resolution.url),
+    );
     return prompts;
   }
 

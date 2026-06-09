@@ -128,6 +128,28 @@ const HANDOFF_FORM_IDS: ReadonlySet<string> = new Set([
   "textbook-grant-application",
 ]);
 
+// Belt-and-suspenders backstop for forms that SHOULD already be caught by the
+// `requiresPayment` / file-field heuristics above — but only when the published
+// recipe actually carries those signals. The chat reads the contract from the
+// live forms API, so a recipe shipped (or re-published) without
+// `requiresPayment: true`, or with its document upload modelled as anything
+// other than a `file` field, would silently re-open inline collection. That is
+// exactly how the payment certs leaked before (#965). Pinning these
+// known-sensitive forms by ID guarantees the handoff regardless of remote data,
+// so a recipe regression can no longer expose payments or document uploads in
+// chat. Slugs verified against apps/chat/eval/golden.json (doc id `service-<formId>`).
+//   - get-birth-certificate / get-death-certificate / get-marriage-certificate:
+//     payment (#916 / #917 / #918).
+//   - apply-for-conductor-licence / sell-goods-services-beach-park: document
+//     upload (#921 / #928).
+const ALWAYS_HANDOFF_FORM_IDS: ReadonlySet<string> = new Set([
+  "get-birth-certificate",
+  "get-death-certificate",
+  "get-marriage-certificate",
+  "apply-for-conductor-licence",
+  "sell-goods-services-beach-park",
+]);
+
 export function needsHandoff(contract: ServiceContract): boolean {
   const hasFile = contract.steps.some((step) =>
     step.elements.some((el) => el.htmlType === "file"),
@@ -135,7 +157,8 @@ export function needsHandoff(contract: ServiceContract): boolean {
   return (
     hasFile ||
     contract.requiresPayment === true ||
-    HANDOFF_FORM_IDS.has(contract.formId)
+    HANDOFF_FORM_IDS.has(contract.formId) ||
+    ALWAYS_HANDOFF_FORM_IDS.has(contract.formId)
   );
 }
 
