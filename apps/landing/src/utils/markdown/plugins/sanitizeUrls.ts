@@ -2,12 +2,8 @@ import type { Root, RootContent } from 'hast'
 
 const SAFE_PROTOCOL = /^(https?|ircs?|mailto|xmpp)$/i
 
-/**
- * react-markdown@9's `defaultUrlTransform`: blanks a URL whose protocol is not
- * on the safe list (e.g. `javascript:`), leaving protocol-relative, relative,
- * and anchor URLs untouched. Replicated verbatim so the build-time pipeline
- * sanitizes link/image URLs exactly as the old runtime renderer did.
- */
+// Verbatim copy of react-markdown@9's defaultUrlTransform: blanks URLs whose
+// protocol isn't on the safe list (e.g. javascript:). Note: `tel:` isn't listed.
 export function defaultUrlTransform(value: string): string {
   const colon = value.indexOf(':')
   const questionMark = value.indexOf('?')
@@ -41,7 +37,6 @@ function sanitize(node: RootContent): void {
   }
 }
 
-/** Build-time hast pass applying {@link defaultUrlTransform} to link/image URLs. */
 export default function rehypeSanitizeUrls() {
   return (tree: Root) => {
     for (const child of tree.children) sanitize(child)

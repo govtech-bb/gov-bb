@@ -1,13 +1,6 @@
 import { Text, linkVariants } from '@govtech-bb/react'
 import type { MarkdownHeading } from '../../utils/markdown/plugins'
 
-/**
- * GOV.UK-style "Contents" list, rendered in `MarkdownContent`'s spare third
- * column from the headings collected at build (see `collectHeadings`). Static
- * (not sticky): a blue top rule, a bold "Contents" title, and separated section
- * links. Lists top-level (`h2`) sections; hidden when a page has fewer than two,
- * where it would add noise rather than help.
- */
 export function TableOfContents({
   headings,
 }: {

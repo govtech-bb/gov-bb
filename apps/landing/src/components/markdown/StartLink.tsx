@@ -6,27 +6,17 @@ import type { ReactNode } from 'react'
 const FORMS_BASE_URL =
   import.meta.env.VITE_FORMS_URL ?? 'https://forms.sandbox.alpha.gov.bb'
 
-/**
- * The set of form IDs available right now, resolved server-side from the forms
- * API and threaded down through the route loader (see `lib/available-forms.ts`).
- * Checked against a start-link's form id to decide whether the button renders.
- * Empty by default so a render without a provider simply suppresses buttons.
- */
+// Live form ids, resolved server-side per request (see lib/available-forms.ts).
 export const AvailableFormsContext = createContext<ReadonlySet<string>>(new Set())
 
 type StartLinkProps = {
-  /** Authored href — an entry page linking to its own start page. Wins over `formId`. */
   href?: string
-  /** Page form id, baked onto the node in the registry (see `bakeStartLinkFormId`). */
   formId?: string
   children: ReactNode
 } & Record<string, unknown>
 
-/**
- * Renders an `<a data-start-link>` CTA. An authored `href` wins; otherwise the
- * `formId` baked onto the node links to the form (suppressed if it isn't live).
- * Warns in dev when neither resolves. See docs/decisions/0005.
- */
+// An authored href wins over formId; an unavailable formId suppresses the
+// button. See docs/decisions/0005.
 export function StartLink({ href, formId, children, ...rest }: StartLinkProps) {
   const availableForms = useContext(AvailableFormsContext)
   const { pathname } = useLocation()

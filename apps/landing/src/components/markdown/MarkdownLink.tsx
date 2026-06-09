@@ -2,13 +2,6 @@ import { Link } from '@govtech-bb/react'
 import type { ReactNode } from 'react'
 import { StartLink } from './StartLink'
 
-/**
- * Anchor renderer for markdown. A `data-start-link` anchor becomes a form CTA
- * (see {@link StartLink}), reading the `data-form-id` baked onto the node in the
- * registry; the `#` link appended to headings stays a plain anchor; everything
- * else is a {@link Link}, marked external unless it is an in-site (`/`) or
- * in-page (`#`) target.
- */
 export function MarkdownLink({
   href,
   children,

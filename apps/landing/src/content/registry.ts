@@ -65,13 +65,6 @@ function leafFromSlug(
   return slug
 }
 
-/**
- * Markdown services. `vite-plugin-markdown.ts` compiles each `*.md` to a module
- * exposing raw frontmatter + body + precompiled `hast` + `headings`, so the
- * heavy parse happens at build, not per render. Frontmatter is validated here
- * against `FrontmatterSchema`; the slug mirrors the file path (trailing
- * `/index` stripped).
- */
 const modules = import.meta.glob<MarkdownModule>('./**/*.md', { eager: true })
 
 const markdownPages: Array<ContentPage> = Object.entries(modules).map(
@@ -128,8 +121,6 @@ const markdownPages: Array<ContentPage> = Object.entries(modules).map(
       (part): part is string => Boolean(part),
     )
     const url = urlParts.join('/')
-    // Bake the page form id onto its start-link nodes so the runtime start-link
-    // reads it from the node, not a React context (see bakeStartLinkFormId).
     bakeStartLinkFormId(mod.hast, raw.form_id)
     return {
       slug,

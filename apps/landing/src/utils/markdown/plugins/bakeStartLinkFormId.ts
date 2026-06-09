@@ -1,12 +1,5 @@
 import type { Root, RootContent } from 'hast'
 
-/**
- * Stamp the page's `form_id` (from frontmatter) onto its `data-start-link`
- * anchors as `data-form-id`, so the runtime start-link reads its target from
- * the node instead of a React context threaded through the render. Anchors with
- * an authored `href` are left alone — an authored href wins over `form_id`.
- * Mutates in place; the registry runs it once per page.
- */
 export function bakeStartLinkFormId(
   tree: Root,
   formId: string | undefined,
@@ -18,6 +11,7 @@ export function bakeStartLinkFormId(
       if (
         node.tagName === 'a' &&
         node.properties.dataStartLink !== undefined &&
+        // An authored href wins over form_id, so leave those nodes alone.
         node.properties.href === undefined
       ) {
         node.properties.dataFormId = formId

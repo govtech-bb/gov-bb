@@ -6,7 +6,6 @@ export type MarkdownHeading = {
   level: number
 }
 
-/** Section headings worth listing in an "On this page" nav. */
 const HEADING_TAGS = new Set(['h2', 'h3'])
 
 function textOf(node: ElementContent): string {
@@ -15,13 +14,8 @@ function textOf(node: ElementContent): string {
   return ''
 }
 
-/**
- * Build-time hast pass that records `h2`/`h3` headings (id + text + level) into
- * the supplied array, so the page can render a table of contents. A slimmed
- * take on tanstack.com's `rehypeCollectHeadings` — no framework/tab handling,
- * which this site has no content for. Must run after `rehype-slug` (needs ids)
- * and before `rehype-autolink-headings` (so text excludes the `#` anchor).
- */
+// Run after rehype-slug (needs ids) and before rehype-autolink-headings (so
+// text excludes the appended `#`).
 export function collectHeadings(headings: Array<MarkdownHeading>) {
   const walk = (nodes: Array<RootContent>): void => {
     for (const node of nodes) {

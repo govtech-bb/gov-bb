@@ -11,17 +11,9 @@ import {
 } from '../../utils/markdown/plugins'
 import { markdownComponents } from './MdComponents'
 import { AvailableFormsContext } from './StartLink'
-import { TableOfContents } from './TableOfContents'
+// import { TableOfContents } from './TableOfContents'
 import { MigrationBanner } from '../MigrationBanner'
 
-/**
- * Render precompiled hast to React. The expensive markdown parse already ran at
- * build time (see `vite-plugin-markdown.ts`); here we only walk the tree. The
- * two request-dependent passes stay at runtime, in the original plugin order:
- * `hideStartLinks` (gated on the page's preview state) then `sectionise`. Both
- * mutate, so we work on a clone of the shared, imported hast. The
- * `toJsxRuntime` options mirror `react-markdown@9` so output is identical.
- */
 export function MarkdownBody({
   hast,
   availableForms = new Set(),
@@ -31,6 +23,8 @@ export function MarkdownBody({
   availableForms?: ReadonlySet<string>
   hideStartLink?: boolean
 }) {
+  // Clone: these passes mutate, and hast is shared across renders.
+  // toJsxRuntime options below match react-markdown@9.
   const tree = structuredClone(hast)
   hideStartLinks({ hideStartLink })(tree)
   sectionise()(tree)
@@ -61,7 +55,7 @@ export type MarkdownContentProps = {
 export function MarkdownContent({
   frontmatter,
   hast,
-  headings = [],
+  // headings = [],
   availableForms,
   hideStartLink = false,
 }: MarkdownContentProps) {
@@ -91,7 +85,7 @@ export function MarkdownContent({
           hideStartLink={hideStartLink}
         />
       </div>
-      <TableOfContents headings={headings} />
+      {/* <TableOfContents headings={headings} /> */}
     </div>
   )
 }

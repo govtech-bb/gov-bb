@@ -18,12 +18,6 @@ function extractCellText(children: ReactNode): string | null {
   return null
 }
 
-/**
- * Maps hast element types to design-system components. Passed to
- * `hast-util-to-jsx-runtime` at render time (see `MarkdownContent`). The same
- * map the old `react-markdown` setup used — react-markdown rendered through
- * this same runtime, so the props each component receives are unchanged.
- */
 export const markdownComponents: Partial<Components> = {
   h1: ({ node: _node, children, ...props }) => (
     <Heading as="h1" {...props}>
