@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { durationTransformSchema } from "./behavior.type";
 
 export const validationConfigSchema = z.object({
   error: z.string().optional(),
@@ -6,6 +7,12 @@ export const validationConfigSchema = z.object({
   targetStepId: z.string().optional(),
   referenceFieldId: z.string().optional(),
   referenceStepId: z.string().optional(),
+  // Optional date→number derivation (#1020). When set on a numeric rule
+  // (`min`/`max`/`gt`/`lt`), the field's date value is passed through
+  // `durationSince` before the bound is checked — e.g. `min: 16` +
+  // `transform: "yearsSince"` on a date-of-birth field enforces a minimum age.
+  // Invalid/empty date → NaN → the bound fails (validation-fail).
+  transform: durationTransformSchema.optional(),
   // When true on a `minYear`/`maxYear` rule, the bound resolves to the current
   // year at validation time instead of a literal `value` — e.g. a "Year" field
   // that must not be in the future. Resolved fresh on every run, so it never

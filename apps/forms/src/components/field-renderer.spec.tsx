@@ -321,16 +321,71 @@ describe("FieldRenderer", () => {
   });
 
   // -------------------------------------------------------------------------
-  // number / tel / email htmlType (same code path as text)
+  // tel / email htmlType (same code path as text)
   // -------------------------------------------------------------------------
-  describe("number, tel, email htmlType", () => {
-    it.each(["number", "tel", "email"] as ClientPrimitive["htmlType"][])(
+  describe("tel, email htmlType", () => {
+    it.each(["tel", "email"] as ClientPrimitive["htmlType"][])(
       "%s → renders an input element",
       (htmlType) => {
         const { container } = renderField(primitive(htmlType));
         expect(container.querySelector("input")).toBeTruthy();
       },
     );
+  });
+
+  // -------------------------------------------------------------------------
+  // number htmlType — design-system number input with custom steppers
+  // -------------------------------------------------------------------------
+  describe("number htmlType", () => {
+    it("renders a design-system number input with two custom steppers", () => {
+      const { container } = renderField(primitive("number"));
+      const input = container.querySelector("input.govbb-number-input");
+      expect(input).toBeTruthy();
+      expect(input).toHaveAttribute("type", "number");
+      expect(
+        container.querySelectorAll(".govbb-number-input__step"),
+      ).toHaveLength(2);
+    });
+
+    it("Increment steps the value up by 1", async () => {
+      const user = userEvent.setup();
+      mockState = { value: "5", meta: { isValid: true, errors: [] } };
+      renderField(primitive("number"));
+      await user.click(screen.getByRole("button", { name: "Increment" }));
+      expect(mockFieldApi.handleChange).toHaveBeenCalledWith("6");
+    });
+
+    it("Decrement steps the value down by 1", async () => {
+      const user = userEvent.setup();
+      mockState = { value: "5", meta: { isValid: true, errors: [] } };
+      renderField(primitive("number"));
+      await user.click(screen.getByRole("button", { name: "Decrement" }));
+      expect(mockFieldApi.handleChange).toHaveBeenCalledWith("4");
+    });
+
+    // The mock handleChange never feeds the new value back into mockState, so
+    // both clicks step from the same blank base (0) — this asserts blank → ±1
+    // in each direction independently, NOT a sequential increment-then-decrement.
+    it("steps from a blank value to 1 (up) and -1 (down)", async () => {
+      const user = userEvent.setup();
+      renderField(primitive("number")); // value is undefined
+      await user.click(screen.getByRole("button", { name: "Increment" }));
+      expect(mockFieldApi.handleChange).toHaveBeenLastCalledWith("1");
+      await user.click(screen.getByRole("button", { name: "Decrement" }));
+      expect(mockFieldApi.handleChange).toHaveBeenLastCalledWith("-1");
+    });
+
+    it("renders the number input and steppers in the Add-another array path", () => {
+      const { container } = renderField(
+        primitive("number", {
+          behaviours: [{ type: "fieldArray", min: 1, max: 3 } as any],
+        }),
+      );
+      expect(container.querySelector("input.govbb-number-input")).toBeTruthy();
+      expect(
+        container.querySelectorAll(".govbb-number-input__step").length,
+      ).toBeGreaterThanOrEqual(2);
+    });
   });
 
   // -------------------------------------------------------------------------

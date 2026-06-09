@@ -18,7 +18,24 @@ interface BehavioursEditorProps {
   currentStepId?: string;
 }
 
-const OPERATOR_OPTIONS = ["equal", "notEqual", "in", "exists"] as const;
+const OPERATOR_OPTIONS = [
+  "equal",
+  "notEqual",
+  "in",
+  "exists",
+  // Numeric comparison operators (#1020). A range is two stacked conditions
+  // (gte + lte) — the runtime ANDs them.
+  "gte",
+  "lte",
+  "gt",
+  "lt",
+] as const;
+
+// Operators that compare numbers — the only ones for which a date→number
+// `transform` is meaningful, so the transform selector is gated on them.
+const NUMERIC_OPERATORS = new Set(["gte", "lte", "gt", "lt"]);
+
+const TRANSFORM_OPTIONS = ["yearsSince", "monthsSince", "daysSince"] as const;
 
 type BehaviourDescriptor = (typeof BEHAVIOUR_TYPE_DESCRIPTORS)[number];
 
@@ -51,7 +68,8 @@ export function BehavioursEditor({
   currentStepId,
 }: BehavioursEditorProps) {
   const available = BEHAVIOUR_TYPE_DESCRIPTORS.filter(
-    (d) => d.scopes.includes(scope) && !behaviours.some((b) => b.type === d.type),
+    (d) =>
+      d.scopes.includes(scope) && !behaviours.some((b) => b.type === d.type),
   );
 
   function handleAdd(bType: string) {
@@ -64,7 +82,8 @@ export function BehavioursEditor({
         // only; step scope (which now also receives currentStepId for the
         // fieldRefArray list) stays empty so the field picker is gated and
         // stepConditionalOn can't target its own step by default. (#519)
-        newBehaviour[param.name] = scope === "field" ? (currentStepId ?? "") : "";
+        newBehaviour[param.name] =
+          scope === "field" ? (currentStepId ?? "") : "";
       } else if (param.kind === "fieldRef" || param.kind === "value") {
         newBehaviour[param.name] = "";
       } else if (param.kind === "operator") {
@@ -90,7 +109,9 @@ export function BehavioursEditor({
   function handleParamChange(index: number, paramName: string, value: unknown) {
     const updated = behaviours.map((b, i) => {
       if (i !== index) return b;
-      const descriptor = BEHAVIOUR_TYPE_DESCRIPTORS.find((d) => d.type === b.type);
+      const descriptor = BEHAVIOUR_TYPE_DESCRIPTORS.find(
+        (d) => d.type === b.type,
+      );
       const next = { ...b } as Record<string, unknown>;
       if (value === undefined) {
         // Blanked optional text param: remove the key entirely (storing "" or
@@ -122,11 +143,29 @@ export function BehavioursEditor({
         fieldParam &&
         (paramName === fieldParam.name || paramName === stepParam?.name)
       ) {
-        const targetIsBoolean = targetFieldIsBoolean(next, descriptor, fieldRefs);
+        const targetIsBoolean = targetFieldIsBoolean(
+          next,
+          descriptor,
+          fieldRefs,
+        );
         const valueIsBoolean = typeof next[valueParam.name] === "boolean";
         if (targetIsBoolean !== valueIsBoolean) {
           next[valueParam.name] = targetIsBoolean ? true : "";
         }
+      }
+      // Switching to a non-numeric operator strips any stale transform. The
+      // editor only exposes the transform control for numeric operators, so a
+      // leftover transform would otherwise silently derive a value at runtime
+      // with no visible control to clear it. (#1020)
+      const operatorParam = descriptor?.params.find(
+        (p) => p.kind === "operator",
+      );
+      if (
+        operatorParam &&
+        paramName === operatorParam.name &&
+        !NUMERIC_OPERATORS.has(value as string)
+      ) {
+        delete next.transform;
       }
       // When a number param changes, raise any sibling number param whose
       // `atLeastParam` points at this one and is now below it. Mirrors the
@@ -151,13 +190,28 @@ export function BehavioursEditor({
   return (
     <div>
       {behaviours.map((behaviour, index) => {
-        const descriptor = BEHAVIOUR_TYPE_DESCRIPTORS.find((d) => d.type === behaviour.type);
+        const descriptor = BEHAVIOUR_TYPE_DESCRIPTORS.find(
+          (d) => d.type === behaviour.type,
+        );
         const stepParam = descriptor?.params.find((p) => p.kind === "stepRef");
         return (
-          <div key={behaviour.type} className={styles.fieldRow} style={{ flexDirection: "column", alignItems: "flex-start" }}>
-            <div style={{ display: "flex", gap: 8, alignItems: "center", width: "100%" }}>
+          <div
+            key={behaviour.type}
+            className={styles.fieldRow}
+            style={{ flexDirection: "column", alignItems: "flex-start" }}
+          >
+            <div
+              style={{
+                display: "flex",
+                gap: 8,
+                alignItems: "center",
+                width: "100%",
+              }}
+            >
               <strong>{descriptor?.label ?? behaviour.type}</strong>
-              <button type="button" onClick={() => handleDelete(index)}>×</button>
+              <button type="button" onClick={() => handleDelete(index)}>
+                ×
+              </button>
             </div>
             {descriptor?.params.map((param) => {
               const bRecord = behaviour as Record<string, unknown>;
@@ -177,7 +231,9 @@ export function BehavioursEditor({
                       value={(bRecord[param.name] as string) ?? ""}
                       fieldRefs={scopedRefs}
                       disabled={!selectedStepId}
-                      onChange={(val) => handleParamChange(index, param.name, val)}
+                      onChange={(val) =>
+                        handleParamChange(index, param.name, val)
+                      }
                     />
                   </div>
                 );
@@ -188,7 +244,9 @@ export function BehavioursEditor({
                     <label>{param.label}</label>
                     <select
                       value={(bRecord[param.name] as string) ?? ""}
-                      onChange={(e) => handleParamChange(index, param.name, e.target.value)}
+                      onChange={(e) =>
+                        handleParamChange(index, param.name, e.target.value)
+                      }
                     >
                       <option value="">— select step —</option>
                       {stepRefs.map((s) => (
@@ -206,10 +264,43 @@ export function BehavioursEditor({
                     <label>{param.label}</label>
                     <select
                       value={(bRecord[param.name] as string) ?? "equal"}
-                      onChange={(e) => handleParamChange(index, param.name, e.target.value)}
+                      onChange={(e) =>
+                        handleParamChange(index, param.name, e.target.value)
+                      }
                     >
                       {OPERATOR_OPTIONS.map((op) => (
-                        <option key={op} value={op}>{op}</option>
+                        <option key={op} value={op}>
+                          {op}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                );
+              }
+              if (param.kind === "transform") {
+                // Only meaningful for a numeric operator (it derives a number
+                // from a date before the comparison). Hidden otherwise so the
+                // control can't be set against equal/in/exists. (#1020)
+                const operator = bRecord["operator"] as string | undefined;
+                if (!operator || !NUMERIC_OPERATORS.has(operator)) return null;
+                return (
+                  <div key={param.name} className={styles.formGroup}>
+                    <label>{param.label}</label>
+                    <select
+                      value={(bRecord[param.name] as string) ?? ""}
+                      onChange={(e) =>
+                        handleParamChange(
+                          index,
+                          param.name,
+                          e.target.value === "" ? undefined : e.target.value,
+                        )
+                      }
+                    >
+                      <option value="">— none —</option>
+                      {TRANSFORM_OPTIONS.map((t) => (
+                        <option key={t} value={t}>
+                          {t}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -227,7 +318,9 @@ export function BehavioursEditor({
                         const parsed = parseInt(e.target.value, 10);
                         const atLeastValue =
                           param.atLeastParam != null
-                            ? (bRecord[param.atLeastParam] as number | undefined) ?? -Infinity
+                            ? ((bRecord[param.atLeastParam] as
+                                | number
+                                | undefined) ?? -Infinity)
                             : -Infinity;
                         const floor = Math.max(
                           param.minValue ?? -Infinity,
@@ -275,7 +368,9 @@ export function BehavioursEditor({
                     <input
                       type="text"
                       value={(bRecord[param.name] as string) ?? ""}
-                      onChange={(e) => handleParamChange(index, param.name, e.target.value)}
+                      onChange={(e) =>
+                        handleParamChange(index, param.name, e.target.value)
+                      }
                     />
                   </div>
                 );
@@ -343,7 +438,9 @@ export function BehavioursEditor({
                         handleParamChange(
                           index,
                           param.name,
-                          e.target.value.trim() === "" ? undefined : e.target.value,
+                          e.target.value.trim() === ""
+                            ? undefined
+                            : e.target.value,
                         )
                       }
                     />
@@ -365,7 +462,9 @@ export function BehavioursEditor({
           >
             <option value="">+ Add Behaviour</option>
             {available.map((d) => (
-              <option key={d.type} value={d.type}>{d.label}</option>
+              <option key={d.type} value={d.type}>
+                {d.label}
+              </option>
             ))}
           </select>
         </div>

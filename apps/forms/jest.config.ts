@@ -27,6 +27,10 @@ const config: Config = {
       "<rootDir>/../../../packages/form-conditions/src/index.ts",
     "^@govtech-bb/form-validation$":
       "<rootDir>/../../../packages/form-validation/src/index.ts",
+    // form-conditions + form-validation transitively import `durationSince`
+    // from expressions (#1020), so the resolver needs it too.
+    "^@govtech-bb/expressions$":
+      "<rootDir>/../../../packages/expressions/src/index.ts",
     // Forms app path aliases
     "^@forms/types$": "<rootDir>/types/index.ts",
     "^@forms/lib$": "<rootDir>/lib/form-builder/index.ts",

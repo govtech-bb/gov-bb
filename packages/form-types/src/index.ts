@@ -66,6 +66,7 @@ export {
   sharedFieldsBehaviourSchema,
   behaviourSchema,
   equalityOperationsSchema,
+  durationTransformSchema,
 } from "./behavior.type";
 
 export type {
@@ -77,6 +78,7 @@ export type {
   FieldArrayBehaviour,
   SharedFieldsBehaviour,
   EqualityOperations,
+  DurationTransform,
 } from "./behavior.type";
 
 export type { Block } from "./block.type";
