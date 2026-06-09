@@ -71,6 +71,12 @@ function isRequiredRule(rule: { value?: unknown } | undefined): boolean {
   return rule !== undefined && rule.value !== false;
 }
 
+// Mirrors `DEFAULT_MSG` in packages/form-validation/src/rules/required.ts —
+// the message the runtime falls back to when `required.error` is unset. Shown
+// as the Required error-message placeholder (the inherited hint) so an author
+// sees what they'd get if they leave it blank.
+const DEFAULT_REQUIRED_MSG = "This field is required";
+
 // Per-key presentation metadata for the schema-driven `ui` editor. Keys absent
 // here fall back to a humanized key name; enum keys may declare the `default`
 // value that collapses the key to `undefined` (no persistence). A `ui` default
@@ -305,6 +311,38 @@ function OverrideForm({
           {" "}Required
         </label>
       </div>
+      {(overrides.validations?.required !== undefined
+        ? isRequiredRule(overrides.validations.required)
+        : defaultRequired) && (
+        <div className={fg(overrides.validations?.required?.error !== undefined)}>
+          <label>
+            Required error message
+            <input
+              type="text"
+              value={overrides.validations?.required?.error ?? ""}
+              placeholder={baseValidations?.required?.error ?? DEFAULT_REQUIRED_MSG}
+              onChange={(e) => {
+                const text = e.target.value;
+                const next = { ...(overrides.validations ?? {}) };
+                if (text) {
+                  // Carry both keys: validations merge shallow at the rule level
+                  // (`shallowMergeDefined`), so a bare `{ error }` would drop `value`.
+                  next.required = { value: true, error: text };
+                } else if (defaultRequired) {
+                  // Base already requires the field — drop the override to restore
+                  // the inherited message rather than persist a redundant rule.
+                  delete next.required;
+                } else {
+                  // Required only because the override says so; keep it required,
+                  // just without a custom message.
+                  next.required = { value: true };
+                }
+                patch({ validations: Object.keys(next).length > 0 ? next : undefined });
+              }}
+            />
+          </label>
+        </div>
+      )}
 
       <div className={styles.sectionTitle}>Validation Rules</div>
       <ValidationRulesEditor

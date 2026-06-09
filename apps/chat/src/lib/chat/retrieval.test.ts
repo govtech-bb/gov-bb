@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { SCORE_THRESHOLD } from "./rag-config";
-import { topHandoffCandidateSlug } from "./retrieval";
+import { decideRagFallback, topHandoffCandidateSlug } from "./retrieval";
 import type { Source } from "./types";
 
 // topHandoffCandidateSlug picks the slug of the single top-ranked retrieved
@@ -54,18 +54,61 @@ test("considers only the top source, not lower-ranked ones", () => {
   assert.equal(topHandoffCandidateSlug(sources), null);
 });
 
-test("skips a slug already handed off this thread", () => {
-  const sources = [src("service-apply-for-conductor-licence", 0.7)];
-  assert.equal(
-    topHandoffCandidateSlug(sources, "apply-for-conductor-licence"),
-    null,
+// decideRagFallback — the post-matcher branch: do nothing, hand off a fresh
+// form, or continue an already-handed-off form. run-turn folds the "no form
+// pinned" gates into producing `candidate` (null = do nothing).
+
+test("no candidate (matcher pinned a form, or nothing retrieved) → none", () => {
+  assert.deepEqual(
+    decideRagFallback({
+      candidate: null,
+      candidateHandoff: false,
+      handedOffSlug: null,
+    }),
+    { action: "none" },
   );
 });
 
-test("still returns a different slug when another was handed off", () => {
-  const sources = [src("service-get-death-certificate", 0.7)];
-  assert.equal(
-    topHandoffCandidateSlug(sources, "apply-for-conductor-licence"),
-    "get-death-certificate",
+test("candidate that isn't a handoff form → none (info-only / collectible)", () => {
+  assert.deepEqual(
+    decideRagFallback({
+      candidate: "register-a-birth",
+      candidateHandoff: false,
+      handedOffSlug: null,
+    }),
+    { action: "none" },
+  );
+});
+
+test("new handoff form (not the one already handed off) → fresh-handoff", () => {
+  assert.deepEqual(
+    decideRagFallback({
+      candidate: "apply-for-conductor-licence",
+      candidateHandoff: true,
+      handedOffSlug: null,
+    }),
+    { action: "fresh-handoff" },
+  );
+});
+
+test("a different handoff form after one was handed off → fresh-handoff", () => {
+  assert.deepEqual(
+    decideRagFallback({
+      candidate: "get-death-certificate",
+      candidateHandoff: true,
+      handedOffSlug: "apply-for-conductor-licence",
+    }),
+    { action: "fresh-handoff" },
+  );
+});
+
+test("same form the user was already handed off to → continuation", () => {
+  assert.deepEqual(
+    decideRagFallback({
+      candidate: "apply-for-conductor-licence",
+      candidateHandoff: true,
+      handedOffSlug: "apply-for-conductor-licence",
+    }),
+    { action: "continuation" },
   );
 });

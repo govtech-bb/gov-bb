@@ -420,7 +420,7 @@ function ChatHeader({ onStartAgain }: { onStartAgain: () => void }) {
     <header className="bg-white-00">
       <div className="container flex items-center gap-s py-xm">
         <div className="flex-1">
-          <GovLink href={LANDING_URL} external>
+          <GovLink href={LANDING_URL}>
             Close
           </GovLink>
         </div>

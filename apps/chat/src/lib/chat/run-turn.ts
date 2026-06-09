@@ -18,11 +18,13 @@ import { capMessageHistory, lastUserText, recentUserText } from "./messages";
 import {
   NO_FORM_DISCLOSURE,
   SYSTEM_PROMPT,
+  buildHandoffContinuationDisclosure,
   buildHandoffDisclosure,
   buildSchemaDisclosure,
 } from "./prompts";
 import {
   buildCitedContext,
+  decideRagFallback,
   isGreetingOrTooShort,
   retrieve,
   topHandoffCandidateSlug,
@@ -147,38 +149,68 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     query,
   );
 
-  // RAG-driven handoff: the title-token matcher above only fires when the user's
-  // wording overlaps a form title (e.g. "conductor licence"). When it didn't pin
-  // a form, fall back to semantic retrieval — if the top retrieved service maps
-  // to a published form that must be completed in the forms app (file upload /
-  // payment), hand the user that link instead of a plain informational answer.
-  // This is what makes phrasings like "how do I become a conductor" reach the
-  // conductor application. Scoped to kind "none" so it never upgrades a matched
-  // collectible form into a handoff or starts inline collection.
-  // Only fall back when no form is pinned at all (session.slug null) — not when
-  // a pinned form merely failed to resolve, so a transient form-API blip can't
-  // silently redirect the user to a different RAG-derived form. This also means
+  // RAG-driven handoff (and its follow-up continuation). The title-token matcher
+  // above only fires when the user's wording overlaps a form title (e.g.
+  // "conductor licence"). When it didn't pin a form, fall back to the top
+  // retrieved service — if it maps to a published form that must be completed in
+  // the forms app (file upload / payment), surface that link rather than a plain
+  // informational answer. This is what makes phrasings like "how do I become a
+  // conductor" reach the conductor application.
+  //
+  // Scoped to kind "none" && !session.slug: never upgrades a matched collectible
+  // form, and never fires when a pinned form merely failed to resolve (a
+  // transient form-API blip can't redirect the user elsewhere). It also means
   // the matcher block above ran this turn, so the form index is warm-cached.
-  if (resolution.kind === "none" && !session.slug) {
-    const candidate = topHandoffCandidateSlug(
-      rawSources,
-      session.handedOffSlug,
-    );
-    // Gate on the form index (warm-cached from the matcher this turn) so a
-    // retrieved info-only service with no published form doesn't trigger a
-    // doomed form-definition fetch and a 404 warning on every turn.
-    if (candidate && (await getFormSlugs(signal)).includes(candidate)) {
-      const ragResolution = await resolveActiveForm(candidate, {});
-      if (ragResolution.kind === "handoff") {
-        resolution = ragResolution;
-        // Park it like the matcher-driven handoff does, so the user isn't
-        // re-handed the same link on every later turn.
-        session.handedOffSlug = candidate;
-      }
-    }
+  let handoffContinuation: { title: string; url: string } | undefined;
+  // Compute a candidate only when no form is pinned (the gates fold into here):
+  // "none" so we never override a matched collectible form, and !session.slug so
+  // a pinned form that merely failed to resolve can't be redirected elsewhere.
+  const ragCandidate =
+    resolution.kind === "none" && !session.slug
+      ? topHandoffCandidateSlug(rawSources)
+      : null;
+  // Resolve against the forms API only when there's a candidate, and gate on the
+  // form index (warm-cached from the matcher this turn) so a retrieved info-only
+  // service with no published form doesn't trigger a doomed form-definition
+  // fetch and a 404 warning every turn.
+  let ragResolution: FormResolution = { kind: "none" };
+  if (ragCandidate && (await getFormSlugs(signal)).includes(ragCandidate)) {
+    ragResolution = await resolveActiveForm(ragCandidate, {});
+  }
+  const ragDecision = decideRagFallback({
+    candidate: ragCandidate,
+    candidateHandoff: ragResolution.kind === "handoff",
+    handedOffSlug: session.handedOffSlug ?? null,
+  });
+  if (
+    ragDecision.action === "fresh-handoff" &&
+    ragResolution.kind === "handoff"
+  ) {
+    resolution = ragResolution;
+    // Park it like the matcher-driven handoff does, so the user isn't re-handed
+    // the strict link on every later turn.
+    session.handedOffSlug = ragCandidate;
+  } else if (
+    ragDecision.action === "continuation" &&
+    ragResolution.kind === "handoff"
+  ) {
+    // The user was already handed this form's link and is following up ("ok
+    // let's begin", "what's next?"). Re-issuing the strict link-only handoff is
+    // noisy, but the no-form path makes the model hallucinate inline collection
+    // or deny the form exists. Instead keep answering informationally while
+    // pointing back to the link. (Already parked — no re-park.)
+    handoffContinuation = {
+      title: ragResolution.title,
+      url: ragResolution.url,
+    };
   }
 
-  const systemPrompts = buildSystemPrompts(contextBlock, resolution, session);
+  const systemPrompts = buildSystemPrompts(
+    contextBlock,
+    resolution,
+    session,
+    handoffContinuation,
+  );
 
   const tools =
     resolution.kind === "collect" && !offerOnly
@@ -256,6 +288,7 @@ function buildSystemPrompts(
   contextBlock: string,
   resolution: FormResolution,
   session: FormSession,
+  handoffContinuation?: { title: string; url: string },
 ): SystemEntry[] {
   const prompts: SystemEntry[] = [
     SYSTEM_PROMPT,
@@ -300,6 +333,15 @@ function buildSystemPrompts(
       );
     }
     prompts.push(parts.join("\n\n"));
+  } else if (handoffContinuation) {
+    // Follow-up after a handoff: keep helping informationally but keep the link
+    // in front of the user — never collect inline, never deny the form exists.
+    prompts.push(
+      buildHandoffContinuationDisclosure(
+        handoffContinuation.title,
+        handoffContinuation.url,
+      ),
+    );
   } else {
     prompts.push(NO_FORM_DISCLOSURE);
   }
