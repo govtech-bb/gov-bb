@@ -1,6 +1,7 @@
 import { FrontmatterSchema, titleFromSlug } from '../lib/frontmatter'
-import { parseFrontmatter } from '../lib/parse-frontmatter'
 import type { Frontmatter } from '../lib/frontmatter'
+import type { Root } from 'hast'
+import type { MarkdownHeading } from '../utils/markdown/plugins'
 import { CATEGORIES, CATEGORY_BY_SLUG, getSubcategory } from './categories'
 import type { Category } from './categories'
 import { FeatureMetaSchema } from './feature-meta'
@@ -11,8 +12,23 @@ export interface ContentPage {
   /** Full URL path with category prefix when present. */
   url: string
   frontmatter: Frontmatter
+  /** Raw markdown body, kept for the search index. Empty for feature pages. */
   body: string
+  /** Build-time compiled body (see `vite-plugin-markdown.ts`). Empty root for feature pages. */
+  hast: Root
+  /** Section headings for the "On this page" nav. Empty for feature pages. */
+  headings: Array<MarkdownHeading>
 }
+
+/** Shape each `*.md` file is compiled to by `vite-plugin-markdown.ts`. */
+interface MarkdownModule {
+  frontmatter: Record<string, unknown>
+  body: string
+  hast: Root
+  headings: Array<MarkdownHeading>
+}
+
+const EMPTY_HAST: Root = { type: 'root', children: [] }
 
 function slugFromPath(path: string): string {
   return path
@@ -48,17 +64,19 @@ function leafFromSlug(
   return slug
 }
 
-const modules = import.meta.glob('./**/*.md', {
-  query: '?raw',
-  import: 'default',
-  eager: true,
-})
+/**
+ * Markdown services. `vite-plugin-markdown.ts` compiles each `*.md` to a module
+ * exposing raw frontmatter + body + precompiled `hast` + `headings`, so the
+ * heavy parse happens at build, not per render. Frontmatter is validated here
+ * against `FrontmatterSchema`; the slug mirrors the file path (trailing
+ * `/index` stripped).
+ */
+const modules = import.meta.glob<MarkdownModule>('./**/*.md', { eager: true })
 
 const markdownPages: Array<ContentPage> = Object.entries(modules).map(
-  ([path, source]) => {
+  ([path, mod]) => {
     const slug = slugFromPath(path)
-    const { data, content } = parseFrontmatter(source as string)
-    const parsed = FrontmatterSchema.safeParse(data)
+    const parsed = FrontmatterSchema.safeParse(mod.frontmatter)
     if (!parsed.success) {
       throw new Error(
         `Invalid frontmatter in src/content/${path.replace(/^\.\//, '')}: ${parsed.error.message}`,
@@ -88,16 +106,19 @@ const markdownPages: Array<ContentPage> = Object.entries(modules).map(
         )
       }
     }
-    const {
-      category: _legacyCategory,
-      categories: _legacyCategories,
-      ...rest
-    } = raw
     const frontmatter: Frontmatter = {
-      ...rest,
       title: raw.title ?? titleFromSlug(slug),
+      description: raw.description,
       categories,
       subcategory: raw.subcategory,
+      publish_date: raw.publish_date,
+      source_url: raw.source_url,
+      stage: raw.stage,
+      visibility: raw.visibility,
+      featured: raw.featured,
+      section: raw.section,
+      service_type: raw.service_type,
+      form_id: raw.form_id,
     }
     /** Canonical URL: category + optional subcategory + leaf; uncategorised pages live at the root. */
     const primaryCategory = categories[0]
@@ -106,7 +127,14 @@ const markdownPages: Array<ContentPage> = Object.entries(modules).map(
       (part): part is string => Boolean(part),
     )
     const url = urlParts.join('/')
-    return { slug, url, frontmatter, body: content }
+    return {
+      slug,
+      url,
+      frontmatter,
+      body: mod.body,
+      hast: mod.hast,
+      headings: mod.headings,
+    }
   },
 )
 
@@ -159,7 +187,14 @@ const featurePages: Array<ContentPage> = Object.entries(featureMetaModules).map(
       keywords: meta.keywords,
     }
     const slug = meta.url.split('/').pop() ?? meta.url
-    return { slug, url: meta.url, frontmatter, body: '' }
+    return {
+      slug,
+      url: meta.url,
+      frontmatter,
+      body: '',
+      hast: EMPTY_HAST,
+      headings: [],
+    }
   },
 )
 

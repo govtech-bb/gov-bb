@@ -29,6 +29,8 @@ const fakePage: ContentPage = {
   url: 'secret-service',
   frontmatter: { title: 'Secret', categories: [], visibility: 'preview' },
   body: '',
+  hast: { type: 'root', children: [] },
+  headings: [],
 }
 
 function caught(fn: () => unknown): unknown {
