@@ -132,13 +132,25 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     resolution.kind === "collect" &&
     Object.keys(session.values).length === 0 &&
     isInfoQuestion(latest);
-  // The rewrite also classifies intent (info vs apply). Skipped turns (greeting
-  // / actively collecting) default to "apply" — the link-preserving default.
+  // The rewrite also classifies intent (info vs apply) and flags fraud/bribery-
+  // framed requests. Skipped turns (greeting / actively collecting) default to
+  // "apply" + legitimate — the link-preserving, no-false-refusal defaults.
   const rewrite = skipRetrieval
-    ? { query: latest, intent: "apply" as const }
+    ? { query: latest, intent: "apply" as const, illegitimate: false }
     : await rewriteRetrievalQuery(messages, signal);
   const query = rewrite.query;
   const intent = rewrite.intent;
+
+  // Fraud / bribery / falsification-framed request: NEVER offer a form. A
+  // bribery ask ("how much to pay to get my child into a better school") can
+  // match a legitimate form (school choice) and the offer path would then
+  // helpfully present it. Neutralise any matched form and skip the RAG-driven
+  // handoff below, so the model declines per the ILLEGITIMATE REQUESTS section
+  // of the system prompt (optionally naming the legitimate route) instead.
+  if (rewrite.illegitimate) {
+    resolution = { kind: "none" };
+    session.slug = null;
+  }
 
   const { contexts, rawSources, degraded } = await fetchContext(
     ragUrl,
@@ -171,7 +183,7 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
   // "none" so we never override a matched collectible form, and !session.slug so
   // a pinned form that merely failed to resolve can't be redirected elsewhere.
   const ragCandidate =
-    resolution.kind === "none" && !session.slug
+    resolution.kind === "none" && !session.slug && !rewrite.illegitimate
       ? topHandoffCandidateSlug(rawSources)
       : null;
   // Resolve against the forms API only when there's a candidate, and gate on the
