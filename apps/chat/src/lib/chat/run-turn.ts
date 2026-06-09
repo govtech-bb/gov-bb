@@ -18,6 +18,7 @@ import {
 import { citationsMiddleware, turnLogMiddleware } from "./middleware";
 import { capMessageHistory, lastUserText, recentUserText } from "./messages";
 import {
+  FORM_COLLECTION_PROTOCOL,
   NO_FORM_DISCLOSURE,
   SYSTEM_PROMPT,
   buildHandoffContinuationDisclosure,
@@ -346,6 +347,13 @@ function buildSystemPrompts(
 
   if (resolution.kind === "collect") {
     const { slug, schema } = resolution.form;
+    // The form-collection / review / submit protocol is injected ONLY here —
+    // when a form is actually active — rather than living in the always-on
+    // SYSTEM_PROMPT. On info / out-of-corpus / refusal / handoff turns (no
+    // collectible form) those ~1.3k tokens of set_field/submit rules would just
+    // compete for attention, so they stay out. Active-form behaviour is
+    // unchanged: SYSTEM_PROMPT + this protocol == the old combined prompt.
+    prompts.push(FORM_COLLECTION_PROTOCOL);
     // One combined form-state block instead of 3-4 separate system entries.
     // The schema disclosure already names the slug, so no separate marker.
     const parts = [buildSchemaDisclosure(slug, schema)];

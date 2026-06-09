@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  FORM_COLLECTION_PROTOCOL,
   SYSTEM_PROMPT,
   buildHandoffContinuationDisclosure,
   buildHandoffOfferDisclosure,
@@ -13,6 +14,21 @@ import {
 test("system prompt declines bribery / paying for unfair advantage", () => {
   assert.match(SYSTEM_PROMPT, /ILLEGITIMATE REQUESTS/);
   assert.match(SYSTEM_PROMPT, /brib|unfair advantage/i);
+});
+
+// The form-collection / submit machinery lives in FORM_COLLECTION_PROTOCOL,
+// injected only on active-form turns — NOT in the always-on SYSTEM_PROMPT.
+// Guards against it creeping back into every turn (the overloading concern).
+test("form-collection rules are out of the always-on system prompt", () => {
+  assert.ok(!/set_field|submit_form|FORM COLLECTION:/.test(SYSTEM_PROMPT));
+  // but the conversational + safety rules stay always-on
+  assert.match(SYSTEM_PROMPT, /CONTEXT USE|ILLEGITIMATE REQUESTS/);
+});
+
+test("FORM_COLLECTION_PROTOCOL carries the collection + submit rules", () => {
+  assert.match(FORM_COLLECTION_PROTOCOL, /set_field/);
+  assert.match(FORM_COLLECTION_PROTOCOL, /submit_form/);
+  assert.match(FORM_COLLECTION_PROTOCOL, /WHEN A FORM SCHEMA IS PROVIDED/);
 });
 
 // The continuation disclosure is shown on follow-up turns after a handoff. It
