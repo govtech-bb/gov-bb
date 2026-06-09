@@ -299,7 +299,11 @@ function ChatPage() {
             off-screen region below instead. */}
         <div
           ref={parentRef}
-          className="h-full overflow-y-auto px-s py-s"
+          // overscroll-contain: the root layout renders the site footer BELOW
+          // this h-dvh page (md+), so without it, hitting the bottom of the
+          // chat chains the scroll to the window and drags the footer into
+          // view — recoverable only by scrolling the page itself back up.
+          className="h-full overflow-y-auto overscroll-contain px-s py-s"
         >
           <div
             aria-label="Chat messages"
