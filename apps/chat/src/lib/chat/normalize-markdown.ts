@@ -5,14 +5,7 @@ const MAX_BULLET_LENGTH = 240;
 export function normalizeMarkdown(raw: string): string {
   if (!raw) return raw;
 
-  // Deterministic backstop for the system prompt's "no em/en dashes, anywhere,
-  // ever" rule (prompts.ts) — the model still emits them, so strip at render.
-  // Use [ \t] (not \s) around the em dash so adjacent newlines are preserved
-  // and lines aren't merged. En dashes collapse to a plain hyphen so ranges
-  // ("9–5" → "9-5") stay tight.
-  const dashed = raw.replace(/[ \t]*—[ \t]*/g, " - ").replace(/–/g, "-");
-
-  const lines = dashed.split("\n");
+  const lines = raw.split("\n");
   const out: string[] = [];
   let inSection = false;
   let prevWasBlank = false;

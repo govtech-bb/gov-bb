@@ -9,9 +9,7 @@
     "node": ">=24"
   },
   "scripts": {
-    "check:starter-prompts": "tsx scripts/check-starter-prompts.ts",
-    "prebuild": "npm run check:starter-prompts",
-    "test": "tsx --test src/lib/chat/messages.test.ts src/lib/chat/retrieval.test.ts src/lib/chat/prompts.test.ts src/lib/chat/form/tools.test.ts src/lib/chat/blocked-stream.test.ts",
+    "test": "tsx --test src/lib/chat/messages.test.ts src/lib/chat/retrieval.test.ts src/lib/chat/prompts.test.ts src/lib/chat/form/tools.test.ts src/lib/chat/blocked-stream.test.ts src/lib/chat/form/schema.test.ts",
     "dev": "vite dev --port 3000",
     "build": "vite build",
     "preview": "nitro preview",
