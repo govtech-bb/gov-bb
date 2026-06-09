@@ -24,7 +24,7 @@ export function extractText(message: UIMessage): string {
 // present_choices / submit_form). Defence-in-depth alongside the prompt rule
 // that tells the model not to narrate tool calls in the first place.
 const TOOL_CALL_BODY =
-  "(?:set_field|present_choices|submit_form)\\s*\\((?:\\s*\\{[\\s\\S]*?\\}\\s*|\\s*)\\)";
+  "(?:set_field|present_choices|present_multi_choices|submit_form)\\s*\\((?:\\s*\\{[\\s\\S]*?\\}\\s*|\\s*)\\)";
 const FENCED_TOOL_CALL = new RegExp(
   "```[a-zA-Z]*\\s*" + TOOL_CALL_BODY + "\\s*```",
   "g",

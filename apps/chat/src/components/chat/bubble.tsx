@@ -1,6 +1,6 @@
 import type { InferToolInput, UIMessage } from "@tanstack/ai";
 import { Allow, parse as parsePartialJson } from "partial-json";
-import { memo, type ReactNode, useMemo } from "react";
+import { memo, type ReactNode, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { presentChoicesDef } from "#/lib/chat-tools";
@@ -131,6 +131,78 @@ function parseChoiceArgs(raw: string | undefined): ChoicesArgs | undefined {
   }
 }
 
+// Checkbox-style multi-pick for present_multi_choices: toggle one or more
+// options, then confirm. The confirmed picks go back as ONE comma-separated
+// user message — the same list shape coerceList parses for checkbox /
+// multi-select fields.
+function MultiChoices({
+  questionId,
+  question,
+  choices,
+  disabled,
+  onConfirm,
+}: {
+  questionId: string;
+  question?: string;
+  choices: string[];
+  disabled: boolean;
+  onConfirm: (picks: string[]) => void;
+}) {
+  const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
+
+  const toggle = (choice: string) =>
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (next.has(choice)) next.delete(choice);
+      else next.add(choice);
+      return next;
+    });
+
+  return (
+    <div className="flex flex-col gap-2.5">
+      {question && (
+        <p id={questionId} className="text-bubble font-medium text-black-00">
+          {question}
+        </p>
+      )}
+      <div
+        className="flex flex-wrap gap-2"
+        role="group"
+        aria-labelledby={question ? questionId : undefined}
+        aria-label={question ? undefined : "Answer choices"}
+      >
+        {choices.map((c) => {
+          const selected = picked.has(c);
+          return (
+            <button
+              aria-pressed={selected}
+              className={`rounded-full border-[1.5px] px-3.5 py-1.5 font-medium text-sm transition-colors focus-visible:outline-2 focus-visible:outline-teal-00 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
+                selected
+                  ? "border-teal-00 bg-teal-00 text-white-00"
+                  : "border-teal-00 bg-transparent text-teal-00 hover:bg-teal-00/10"
+              }`}
+              disabled={disabled}
+              key={c}
+              onClick={() => toggle(c)}
+              type="button"
+            >
+              {c}
+            </button>
+          );
+        })}
+      </div>
+      <button
+        className="self-start rounded-full bg-teal-00 px-4 py-1.5 font-medium text-sm text-white-00 transition-colors hover:bg-teal-100 focus-visible:outline-2 focus-visible:outline-teal-00 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:bg-mid-grey-00"
+        disabled={disabled || picked.size === 0}
+        onClick={() => onConfirm(choices.filter((c) => picked.has(c)))}
+        type="button"
+      >
+        Confirm selection
+      </button>
+    </div>
+  );
+}
+
 // The model tends to narrate the question as text AND call present_choices.
 // Drop a trailing interrogative sentence so the question shows once (as the
 // buttons), keeping any lead-in. Without this the text+buttons double-render.
@@ -157,15 +229,16 @@ function BubbleImpl({
   );
 
   const choicesPart = findToolCall(message, "present_choices");
+  const multiChoicesPart = findToolCall(message, "present_multi_choices");
   // present_choices is a no-op server tool: once it resolves, the part lands in
   // "complete". Keep rendering the buttons in that state (they go disabled, not
   // gone, once a later turn lands) — otherwise they flash on then vanish.
-  const choicesReady =
-    choicesPart?.state === "input-complete" ||
-    choicesPart?.state === "approval-requested" ||
-    choicesPart?.state === "approval-responded" ||
-    choicesPart?.state === "complete";
-  const choicesArgs = choicesReady
+  const ready = (part: typeof choicesPart) =>
+    part?.state === "input-complete" ||
+    part?.state === "approval-requested" ||
+    part?.state === "approval-responded" ||
+    part?.state === "complete";
+  const choicesArgs = ready(choicesPart)
     ? parseChoiceArgs(choicesPart?.arguments)
     : undefined;
   const choices = (choicesArgs?.choices ?? []).filter(
@@ -173,10 +246,19 @@ function BubbleImpl({
   );
   const hasChoices = choices.length > 0;
 
+  const multiChoicesArgs = ready(multiChoicesPart)
+    ? parseChoiceArgs(multiChoicesPart?.arguments)
+    : undefined;
+  const multiChoices = (multiChoicesArgs?.choices ?? []).filter(
+    (c): c is string => typeof c === "string" && c.length > 0,
+  );
+  const hasMultiChoices = multiChoices.length > 0;
+
   // Keep the lead-in text but drop the trailing question when buttons render it.
   const displayText = useMemo(
-    () => (hasChoices ? stripTrailingQuestion(text) : text),
-    [text, hasChoices],
+    () =>
+      hasChoices || hasMultiChoices ? stripTrailingQuestion(text) : text,
+    [text, hasChoices, hasMultiChoices],
   );
   const renderedMarkdown = useMemo(() => {
     const normalized = normalizeMarkdown(displayText);
@@ -208,7 +290,13 @@ function BubbleImpl({
 
   const showText = displayText.length > 0;
 
-  if (!showText && !hasChoices && !submitApproval && !submitDeclined)
+  if (
+    !showText &&
+    !hasChoices &&
+    !hasMultiChoices &&
+    !submitApproval &&
+    !submitDeclined
+  )
     return null;
 
   return (
@@ -260,6 +348,16 @@ function BubbleImpl({
                 ))}
               </div>
             </div>
+          )}
+
+          {hasMultiChoices && (
+            <MultiChoices
+              questionId={`multi-choices-q-${message.id}`}
+              question={multiChoicesArgs?.question}
+              choices={multiChoices}
+              disabled={choicesDisabled}
+              onConfirm={(picks) => onChoice(picks.join(", "))}
+            />
           )}
 
           {submitApproval && (

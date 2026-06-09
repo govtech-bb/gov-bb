@@ -1,5 +1,6 @@
 import {
   presentChoicesDef,
+  presentMultiChoicesDef,
   setFieldDef,
   submitFormDef,
 } from "#/lib/chat-tools";
@@ -26,6 +27,13 @@ export interface FormTurnContext {
 // re-runs field detection next turn. Do NOT turn this into a client tool — the
 // result here is irrelevant, the args are the payload.
 const presentChoicesTool = presentChoicesDef.server(async () => ({
+  shown: true,
+}));
+
+// Same no-op contract as present_choices, for checkbox/multi-select fields:
+// the client renders toggleable options + confirm, and the confirmed picks
+// come back as a comma-separated user message next turn.
+const presentMultiChoicesTool = presentMultiChoicesDef.server(async () => ({
   shown: true,
 }));
 
@@ -137,5 +145,10 @@ export function buildOfferTools() {
 }
 
 export function buildFormTools() {
-  return [presentChoicesTool, setFieldTool, submitFormTool];
+  return [
+    presentChoicesTool,
+    presentMultiChoicesTool,
+    setFieldTool,
+    submitFormTool,
+  ];
 }

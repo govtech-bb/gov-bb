@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { buildOfferTools } from "./tools";
+import { buildFormTools, buildOfferTools } from "./tools";
 
 // An offer-only turn (a collect-type form matched on an info question) must give
 // the model present_choices — so it can offer a clickable "Start the
@@ -15,4 +15,16 @@ test("buildOfferTools registers present_choices only, not the field tools", () =
   assert.ok(names.includes("present_choices"));
   assert.ok(!names.includes("set_field"));
   assert.ok(!names.includes("submit_form"));
+});
+
+// Collection turns need both pickers: single-pick (radio/select/yes-no) and
+// multi-pick (checkbox/multi-select fields, answered as a comma list).
+test("buildFormTools registers both choice pickers and the field tools", () => {
+  const names = buildFormTools().map((t) => (t as { name?: string }).name);
+  assert.deepEqual(names, [
+    "present_choices",
+    "present_multi_choices",
+    "set_field",
+    "submit_form",
+  ]);
 });

@@ -28,7 +28,11 @@ import {
   getSessionThreadId,
 } from "#/lib/chat/persistence";
 import type { Citation } from "#/lib/chat/types";
-import { presentChoicesDef, submitFormDef } from "#/lib/chat-tools";
+import {
+  presentChoicesDef,
+  presentMultiChoicesDef,
+  submitFormDef,
+} from "#/lib/chat-tools";
 
 export const Route = createFileRoute("/")({ component: ChatPage });
 
@@ -427,7 +431,13 @@ function shouldShowThinking(messages: UIMessage[]): boolean {
   // Hide once something renderable lands: text deltas, a present_choices
   // tool call, or a submit_form approval prompt. set_field is invisible.
   if (extractText(last).length > 0) return false;
-  if (hasAnyToolCall([last], [presentChoicesDef.name, submitFormDef.name])) {
+  if (
+    hasAnyToolCall([last], [
+      presentChoicesDef.name,
+      presentMultiChoicesDef.name,
+      submitFormDef.name,
+    ])
+  ) {
     return false;
   }
   return true;
