@@ -87,6 +87,23 @@ describe("FileUpload", () => {
     mockUploadFile.mockResolvedValue(makeUploaded("default.pdf"));
   });
 
+  it("sets the multiple attribute on the input when field.multiple is true", () => {
+    const { fileInput } = renderComponent({
+      field: { ...baseField, multiple: true },
+    });
+    expect(fileInput.multiple).toBe(true);
+  });
+
+  it("does not set multiple on the input when field.multiple is false or absent", () => {
+    const { fileInput } = renderComponent({
+      field: { ...baseField, multiple: false },
+    });
+    expect(fileInput.multiple).toBe(false);
+
+    const { fileInput: defaultInput } = renderComponent();
+    expect(defaultInput.multiple).toBe(false);
+  });
+
   it("renders a file input with the accept attribute from sharedProps", () => {
     const { fileInput } = renderComponent({
       sharedProps: { ...baseSharedProps, accept: "image/png,image/jpeg" },
