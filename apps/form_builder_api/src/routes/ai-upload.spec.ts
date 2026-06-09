@@ -158,26 +158,86 @@ describe("statusHandler", () => {
     expect(res.body).toEqual({ status: "processing" });
   });
 
-  it("runs chat() and returns the recipe when Textract is done", async () => {
+  it("kicks off Bedrock on first 'done' poll, returns recipe on subsequent poll", async () => {
     getAnalysisResultMock.mockResolvedValue({
       status: "done",
       blocks: [{ BlockType: "PAGE" }],
     });
     blocksToTextMock.mockReturnValue("## Page 1\n\nName: ____");
-    chatMock.mockResolvedValue('```json\n{"formId":"f","steps":[]}\n```');
+
+    // Make chat() take a tick so the first poll returns "generating"
+    let resolveChat: (value: string) => void;
+    chatMock.mockReturnValue(
+      new Promise((r) => {
+        resolveChat = r;
+      }),
+    );
     extractRecipeMock.mockReturnValue({ formId: "f", steps: [] });
 
-    const res = mockRes();
-    await statusHandler(mockReq({}, { jobId: "j-1" }), res);
+    // First poll: Textract done, Bedrock kicked off, returns "generating"
+    const res1 = mockRes();
+    await statusHandler(mockReq({}, { jobId: "j-1" }), res1);
+    expect(res1.body).toMatchObject({ status: "generating" });
+    expect(chatMock).toHaveBeenCalledTimes(1);
 
-    expect(chatMock).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.any(Array),
-      "## Page 1\n\nName: ____",
-    );
-    expect(res.body).toMatchObject({
+    // Resolve Bedrock
+    resolveChat!('```json\n{"formId":"f","steps":[]}\n```');
+    // Let microtasks flush
+    await new Promise((r) => setImmediate(r));
+
+    // Second poll: Bedrock done, returns recipe
+    const res2 = mockRes();
+    await statusHandler(mockReq({}, { jobId: "j-1" }), res2);
+    expect(res2.body).toMatchObject({
       status: "done",
       recipe: { formId: "f", steps: [] },
+    });
+    // chat() was NOT called again
+    expect(chatMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns 'generating' on a poll that arrives while Bedrock is still running", async () => {
+    getAnalysisResultMock.mockResolvedValue({
+      status: "done",
+      blocks: [{ BlockType: "PAGE" }],
+    });
+    blocksToTextMock.mockReturnValue("...");
+    // chat() never resolves
+    chatMock.mockReturnValue(new Promise(() => {}));
+
+    const res1 = mockRes();
+    await statusHandler(mockReq({}, { jobId: "j-running" }), res1);
+    expect(res1.body).toMatchObject({ status: "generating" });
+
+    const res2 = mockRes();
+    await statusHandler(mockReq({}, { jobId: "j-running" }), res2);
+    expect(res2.body).toMatchObject({ status: "generating" });
+
+    expect(chatMock).toHaveBeenCalledTimes(1); // only kicked off once
+  });
+
+  it("returns 'failed' when Bedrock conversion throws", async () => {
+    getAnalysisResultMock.mockResolvedValue({
+      status: "done",
+      blocks: [{ BlockType: "PAGE" }],
+    });
+    blocksToTextMock.mockReturnValue("...");
+    chatMock.mockRejectedValue(new Error("bedrock blew up"));
+
+    // First poll kicks it off
+    const res1 = mockRes();
+    await statusHandler(mockReq({}, { jobId: "j-fail" }), res1);
+    expect(res1.body).toMatchObject({ status: "generating" });
+
+    // Flush microtasks so the rejection lands in the map
+    await new Promise((r) => setImmediate(r));
+
+    // Second poll observes the failure
+    const res2 = mockRes();
+    await statusHandler(mockReq({}, { jobId: "j-fail" }), res2);
+    expect(res2.body).toMatchObject({
+      status: "failed",
+      reason: "bedrock blew up",
     });
   });
 
@@ -254,7 +314,10 @@ describe("statusHandler", () => {
       blocks: [{ BlockType: "PAGE" }],
     });
     const res = mockRes();
-    await statusHandler(mockReq({}, { jobId: "j-1" }), res);
+    // Use a unique jobId so this test isn't seeing Bedrock state cached by an
+    // earlier test in the module (the module-level bedrockStateByJobId map
+    // persists across tests in the same file).
+    await statusHandler(mockReq({}, { jobId: "j-503-unique" }), res);
     expect(res.statusCode).toBe(503);
   });
 
