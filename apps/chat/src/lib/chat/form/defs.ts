@@ -3,6 +3,7 @@ import {
   type ServiceContract,
 } from "@govtech-bb/form-types";
 import { getServerEnv } from "#/config/env";
+import { isSurfaceableForm } from "./allowlist";
 import { TITLE_STOP, tokenize } from "./tokenize";
 
 const DEF_TTL_MS = 5 * 60_000;
@@ -80,7 +81,12 @@ export async function getFormIndex(
   try {
     const body = await fetchJson<ListResponse>(`/form-definitions`, signal);
     const entries: FormIndexEntry[] = body.data
-      .filter((d) => d.formId && d.title)
+      // Approval gate: the chat only matches / collects / hands off forms on the
+      // allowlist. Non-allowlisted forms stay on the API and the chat can still
+      // answer about them from retrieved context — it just won't surface the
+      // form. See ./allowlist.ts. This is the single chokepoint (the matcher and
+      // getFormSlugs both flow through getFormIndex).
+      .filter((d) => d.formId && d.title && isSurfaceableForm(d.formId))
       .map((d) => ({
         formId: d.formId,
         title: d.title,
