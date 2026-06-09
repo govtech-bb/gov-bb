@@ -7,6 +7,9 @@ export interface TurnRecord {
   runId?: string;
   model: string;
   userChars: number;
+  // Truncated user query for correlating phrasing → tool calls. Omitted on
+  // active-collection turns, where the "query" is a field answer (PII).
+  query?: string;
   retrieved: { id: string; score: number; kind?: string }[];
   formSlug?: string;
   promptTokens?: number;

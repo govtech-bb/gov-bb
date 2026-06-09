@@ -259,6 +259,7 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
           runId,
           model: String(model),
           userChars: latest.length,
+          query: activelyCollecting ? undefined : latest.slice(0, 120),
           retrieved: rawSources.map((s) => ({ id: s.id, score: s.score })),
           formSlug: session.slug ?? undefined,
           retrieveDegraded: degraded,
