@@ -300,11 +300,19 @@ export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
             handleEditForm();
           }}
         >
-          <input
-            type="text"
+          <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              // Enter submits; Shift+Enter inserts a newline. Mirrors the
+              // form's own onSubmit so the button and the keyboard agree.
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleEditForm();
+              }
+            }}
             placeholder="e.g. make the email field required"
+            rows={3}
             style={styles.textInput}
             disabled={loading}
           />
@@ -419,13 +427,20 @@ const styles: Record<string, React.CSSProperties> = {
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
   },
-  editRow: { display: "flex", gap: 8 },
+  editRow: { display: "flex", gap: 8, alignItems: "flex-start" },
   textInput: {
     flex: 1,
     padding: "8px 10px",
     border: "1px solid #ddd",
     borderRadius: 6,
     fontSize: 14,
+    fontFamily: "inherit",
+    lineHeight: 1.4,
+    resize: "vertical",
+    minHeight: 38,
+    // Wrap long prompts instead of scrolling them off to the right.
+    whiteSpace: "pre-wrap",
+    overflowWrap: "break-word",
   },
   button: {
     padding: "8px 14px",
