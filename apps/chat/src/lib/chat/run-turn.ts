@@ -81,7 +81,15 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
   }
 
   const session = getOrCreateSession(threadId);
-  if (!session.slug || session.status === "submitted") {
+  // Also re-run while an apply-options offer is pending (slug is pinned to the
+  // offered form): if the user's new message clearly matches a DIFFERENT form,
+  // switch to it instead of staying locked on the offered one. A same-form or
+  // no-match keeps the pin, so "Apply online" still resolves the offered form.
+  if (
+    !session.slug ||
+    session.status === "submitted" ||
+    session.applyOptionsOfferedFor !== null
+  ) {
     const windowMatch = await matchFormsFromText(recentUserText(messages));
     // A handed-off form (file upload / payment) isn't pinned to the session,
     // so it re-enters matching from the rolling window. If the window still

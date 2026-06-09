@@ -58,9 +58,17 @@ export function decideHandoffStep(params: {
   offeredSlug: string | null;
 }): HandoffStep {
   const { latest, candidateSlug, offeredSlug } = params;
+  // First encounter with this form → always present the apply options first,
+  // even if the message already mentions "online" (the user still gets to see
+  // the routes). The link only comes after the options have been shown.
+  if (offeredSlug !== candidateSlug) return "offer";
+  // Options already shown; interpret the user's choice. Check paper FIRST so a
+  // reply like "I can't apply online, give me the paper form" isn't misread as
+  // choosing online by the bare word "online".
+  if (/\b(paper|in[- ]?person)\b/i.test(latest)) return "continuation";
   if (/\bonline\b/i.test(latest)) return "link";
-  if (offeredSlug === candidateSlug) return "continuation";
-  return "offer";
+  // Ambiguous follow-up after the offer → informational answer + link.
+  return "continuation";
 }
 
 export type RetrieveResult =

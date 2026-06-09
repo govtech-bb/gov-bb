@@ -55,64 +55,89 @@ test("considers only the top source, not lower-ranked ones", () => {
 });
 
 // decideHandoffStep — given a turn that has a handoff-required form target,
-// choose: offer the apply options, hand over the link, or continue.
+// choose: offer the apply options, hand over the link, or continue. The link
+// and continuation only happen AFTER the options have been offered for the form
+// (offeredSlug === candidateSlug); the first encounter always offers.
 
-test("online intent in the latest message → link", () => {
+const CONDUCTOR = "apply-for-conductor-licence";
+
+test("first encounter → offer (even if the message mentions online)", () => {
+  assert.equal(
+    decideHandoffStep({
+      latest: "conductor licence",
+      candidateSlug: CONDUCTOR,
+      offeredSlug: null,
+    }),
+    "offer",
+  );
+  // "online" in the very first message must NOT skip the options step.
+  assert.equal(
+    decideHandoffStep({
+      latest: "is there an online form for a conductor licence",
+      candidateSlug: CONDUCTOR,
+      offeredSlug: null,
+    }),
+    "offer",
+  );
+});
+
+test("offered a different form → offer (the new form), not the old one", () => {
+  assert.equal(
+    decideHandoffStep({
+      latest: "get a death certificate",
+      candidateSlug: "get-death-certificate",
+      offeredSlug: CONDUCTOR,
+    }),
+    "offer",
+  );
+});
+
+test("after the offer, online intent → link", () => {
   assert.equal(
     decideHandoffStep({
       latest: "Apply online",
-      candidateSlug: "apply-for-conductor-licence",
-      offeredSlug: null,
+      candidateSlug: CONDUCTOR,
+      offeredSlug: CONDUCTOR,
     }),
     "link",
   );
   assert.equal(
     decideHandoffStep({
       latest: "I'd like to apply online please",
-      candidateSlug: "apply-for-conductor-licence",
-      offeredSlug: "apply-for-conductor-licence",
+      candidateSlug: CONDUCTOR,
+      offeredSlug: CONDUCTOR,
     }),
     "link",
   );
 });
 
-test("first encounter, no online intent → offer", () => {
-  assert.equal(
-    decideHandoffStep({
-      latest: "conductor licence",
-      candidateSlug: "apply-for-conductor-licence",
-      offeredSlug: null,
-    }),
-    "offer",
-  );
-});
-
-test("already offered this form, not online (e.g. paper) → continuation", () => {
+test("after the offer, paper choice → continuation (even if 'online' appears)", () => {
   assert.equal(
     decideHandoffStep({
       latest: "Get a paper form",
-      candidateSlug: "apply-for-conductor-licence",
-      offeredSlug: "apply-for-conductor-licence",
+      candidateSlug: CONDUCTOR,
+      offeredSlug: CONDUCTOR,
     }),
     "continuation",
   );
+  // paper preference wins over a bare "online" mention
   assert.equal(
     decideHandoffStep({
-      latest: "what documents do I need",
-      candidateSlug: "apply-for-conductor-licence",
-      offeredSlug: "apply-for-conductor-licence",
+      latest: "I can't apply online, can I get a paper form",
+      candidateSlug: CONDUCTOR,
+      offeredSlug: CONDUCTOR,
     }),
     "continuation",
   );
 });
 
-test("offered a different form, not online → offer (the new form)", () => {
+test("after the offer, ambiguous follow-up → continuation", () => {
   assert.equal(
     decideHandoffStep({
-      latest: "get a death certificate",
-      candidateSlug: "get-death-certificate",
-      offeredSlug: "apply-for-conductor-licence",
+      latest: "what documents do I need",
+      candidateSlug: CONDUCTOR,
+      offeredSlug: CONDUCTOR,
     }),
-    "offer",
+    "continuation",
   );
 });
