@@ -25,6 +25,9 @@ describe("blocksToText", () => {
     expect(out).toContain("Marital Status:");
     expect(out).toMatch(/\[x\]\s+Single/);
     expect(out).toMatch(/\[ \]\s+Married/);
+    // Consumed LINE labels must not be re-emitted as bare lines.
+    expect(out.match(/Single/g)?.length).toBe(1);
+    expect(out.match(/Married/g)?.length).toBe(1);
   });
 
   it("emits a page marker for each PAGE block", () => {

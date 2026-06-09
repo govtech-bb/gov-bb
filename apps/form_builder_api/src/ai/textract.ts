@@ -7,7 +7,10 @@ import type { Block } from "@aws-sdk/client-textract";
 // nothing parses it downstream.
 export function blocksToText(blocks: Block[]): string {
   if (!blocks.length) return "";
-  const byId = new Map<string, Block>(blocks.map((b) => [b.Id ?? "", b]));
+  const byId = new Map<string, Block>();
+  for (const b of blocks) {
+    if (b.Id) byId.set(b.Id, b);
+  }
   const pages = blocks.filter((b) => b.BlockType === "PAGE");
   const out: string[] = [];
 
@@ -55,16 +58,20 @@ function collectWords(parent: Block, byId: Map<string, Block>): string {
     .join(" ");
 }
 
-// Selection elements don't carry their own label; the convention is to pair
-// the N-th SELECTION_ELEMENT in a sibling group with the N-th LINE that
-// follows the last selection element. Returns the LINE block id (so the
-// caller can mark it consumed) or undefined if no match.
+// labelForSelection pairs the N-th SELECTION_ELEMENT in a sibling group with
+// the N-th LINE that follows the last selection in that group. This works for
+// the layouts our hand-crafted fixtures use AND for the layouts we've seen in
+// real Textract output during early testing. If real-world output ever
+// interleaves selections with their labels (e.g. [sel, line, sel, line] for
+// vertically stacked checkboxes), this would mis-pair — smoke-testing against
+// real PDFs in Phase 4 of the plan will surface that case if it exists. The
+// alternative (track a contiguous selection run and pair from the end of it)
+// is more code for a case we haven't yet observed; YAGNI until we have.
 function labelForSelection(
   selId: string,
   siblingIds: string[],
   byId: Map<string, Block>,
 ): string | undefined {
-  // Find this selection's rank (0-based) among contiguous SELECTION_ELEMENTs.
   let rank = 0;
   let groupEnd = -1;
   for (let i = 0; i < siblingIds.length; i++) {
@@ -77,7 +84,6 @@ function labelForSelection(
   }
   if (groupEnd < 0) return undefined;
 
-  // Walk forward from after the last selection, picking the rank-th LINE.
   let seen = 0;
   for (let i = groupEnd + 1; i < siblingIds.length; i++) {
     const next = byId.get(siblingIds[i]);
