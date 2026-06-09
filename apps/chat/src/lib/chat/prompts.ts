@@ -143,6 +143,28 @@ Do NOT:
 - Cite the link with [1]/[2] markers — write it as the markdown link shown above.`;
 }
 
+export function buildHandoffOfferDisclosure(title: string): string {
+  // The user asked an INFORMATION question (cost, eligibility, timing, "where do
+  // I apply") about a service whose application lives in the forms app (file
+  // upload / payment). Don't push the link at them — answer what they asked,
+  // then OFFER it. Crucially: do NOT print the URL this turn. The model is never
+  // given the handoff URL on an info turn, so it can't paste it; if the user
+  // then says yes, the next turn (apply-intent) hands over the real link.
+  return `THIS TURN IS AN INFORMATION ANSWER, NOT A HANDOFF.
+
+The user asked a question about "${title}". This service is completed on a separate application page (it needs a file upload and/or payment), but right now the user only wants information, so do NOT hand over the link yet.
+
+Do this, in order:
+1. ANSWER their actual question from the retrieved context above, the specific fact they asked for (cost, eligibility, timing, documents, or where). Be specific and grounded; cite with [n] markers as usual.
+2. THEN, in ONE short closing sentence, offer the link, e.g. "When you're ready to apply, just say so and I'll share the application link."
+
+Do NOT:
+- Paste a URL or markdown link this turn. No links at all.
+- Use set_field, present_choices, or submit_form (not available this turn).
+- Say there is no online form, or push a paper/in-person route as the only option.
+- Lead with the offer before you have answered the question.`;
+}
+
 export function buildHandoffContinuationDisclosure(
   title: string,
   url: string,

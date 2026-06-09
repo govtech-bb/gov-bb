@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { buildHandoffContinuationDisclosure } from "./prompts";
+import {
+  buildHandoffContinuationDisclosure,
+  buildHandoffOfferDisclosure,
+} from "./prompts";
 
 // The continuation disclosure is shown on follow-up turns after a handoff. It
 // must keep the form link in front of the user while preventing the two failure
@@ -33,4 +36,21 @@ test("forbids denying the online form exists", () => {
 test("allows informational answering from context", () => {
   const out = buildHandoffContinuationDisclosure(TITLE, URL);
   assert.match(out, /informational|informationally/i);
+});
+
+// The OFFER disclosure is shown when the user asked an INFO question about a
+// handoff service (e.g. "what does it cost and where do I apply?"). It must
+// answer the question and offer the link in prose — but NOT paste a URL this
+// turn (that's what keeps these off the "pushed a form" failure).
+test("offer disclosure answers first, then offers the link", () => {
+  const out = buildHandoffOfferDisclosure(TITLE);
+  assert.match(out, /answer/i);
+  assert.match(out, /offer the link|share the application link/i);
+});
+
+test("offer disclosure forbids pasting a URL or link this turn", () => {
+  const out = buildHandoffOfferDisclosure(TITLE);
+  assert.match(out, /no links at all|do not paste a url|paste a url/i);
+  // It takes no URL argument and must not embed one.
+  assert.ok(!/https?:\/\//.test(out), "offer disclosure must contain no URL");
 });
