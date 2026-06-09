@@ -15,6 +15,30 @@ export function extractText(message: UIMessage): string {
   return typeof content === "string" ? content.trim() : "";
 }
 
+// The model (especially smaller ones like Haiku) sometimes WRITES a tool call
+// into its text reply — e.g. `set_field({ fieldId: "x", value: "y" })` — on top
+// of actually invoking it. The real invocation is a separate `tool-call` part
+// and is handled/hidden by the renderer; this leaked prose must not reach the
+// bubble. Strip any text that is just a known tool call, whether bare or wrapped
+// in a ``` code fence. Tool names mirror chat-tools.ts (set_field /
+// present_choices / submit_form). Defence-in-depth alongside the prompt rule
+// that tells the model not to narrate tool calls in the first place.
+const TOOL_CALL_BODY =
+  "(?:set_field|present_choices|submit_form)\\s*\\((?:\\s*\\{[\\s\\S]*?\\}\\s*|\\s*)\\)";
+const FENCED_TOOL_CALL = new RegExp(
+  "```[a-zA-Z]*\\s*" + TOOL_CALL_BODY + "\\s*```",
+  "g",
+);
+const BARE_TOOL_CALL = new RegExp("\\b" + TOOL_CALL_BODY, "g");
+
+export function stripLeakedToolCalls(text: string): string {
+  return text
+    .replace(FENCED_TOOL_CALL, "")
+    .replace(BARE_TOOL_CALL, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 export function lastUserText(messages: UIMessage[]): string {
   for (let i = messages.length - 1; i >= 0; i--) {
     if (messages[i].role === "user") return extractText(messages[i]);
