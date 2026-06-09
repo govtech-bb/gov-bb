@@ -36,6 +36,7 @@
       "dialect": "standard",
       "message": "How much is a birth certificate and how long does it take?",
       "expect": {
+        "citationSlug": "__force-reply-check__",
         "replyIncludes": ["business days", "5 to 7"]
       }
     },
