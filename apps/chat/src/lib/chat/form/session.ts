@@ -6,6 +6,9 @@ export interface FormSession {
   threadId: string;
   slug: string | null;
   handedOffSlug: string | null;
+  /** Slug we've presented apply-options choices for, awaiting the user's
+   *  online/paper choice. Distinct from handedOffSlug (link already given). */
+  applyOptionsOfferedFor: string | null;
   values: Record<string, string>;
   submissionId: string;
   status: FormSessionStatus;
@@ -44,6 +47,7 @@ export function getOrCreateSession(threadId: string): FormSession {
       threadId,
       slug: null,
       handedOffSlug: null,
+      applyOptionsOfferedFor: null,
       values: {},
       submissionId: randomUUID(),
       status: "collecting",
@@ -60,6 +64,7 @@ export function getOrCreateSession(threadId: string): FormSession {
 export function resetSessionForNewForm(session: FormSession): void {
   session.slug = null;
   session.handedOffSlug = null;
+  session.applyOptionsOfferedFor = null;
   session.values = {};
   session.submissionId = randomUUID();
   session.status = "collecting";

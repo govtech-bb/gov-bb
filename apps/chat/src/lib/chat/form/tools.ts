@@ -8,6 +8,14 @@ import { getActiveFieldIds } from "./schema";
 import type { FormSession } from "./session";
 import { submitFormUpstream, type SubmitOutcome } from "./submit";
 
+// present_choices ONLY — used on the apply-options offer turn so the model can
+// render choice buttons but cannot collect fields or submit. Same deliberate
+// no-op server handler as buildFormTools (the args are the payload; the client
+// renders them and clicking sends the label back as a new user message).
+export function buildChoiceTools() {
+  return [presentChoicesDef.server(async () => ({ shown: true }))];
+}
+
 export function buildFormTools(
   session: FormSession,
   schema: ActiveFormSchema,

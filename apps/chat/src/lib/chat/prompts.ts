@@ -167,3 +167,19 @@ Do NOT:
 - Say or imply there is no online form / that they must apply in person or by paper — the online form DOES exist and is the link above.
 - Use set_field, present_choices, or submit_form — they are not available this turn.`;
 }
+
+export function buildApplyOptionsDisclosure(title: string): string {
+  // First turn for a handoff-required form. Before handing over the link, show
+  // the user HOW they can apply, inferred from the retrieved "How to apply"
+  // content (typically an online form plus a paper/in-person route). The link
+  // itself is withheld until the user chooses online (handled next turn, where
+  // the message carries "online" and resolves to the strict handoff link).
+  return `APPLY-OPTIONS STEP for "${title}". Do NOT give the form link yet and do NOT collect any field values.
+
+From the retrieved context, identify the ways to apply (e.g. an online form, and a paper/in-person route via a named office). Call present_choices with a short question like "How would you like to apply?" and one option per available method — e.g. "Apply online" and "Get a paper form". Keep any text to a single short orienting sentence.
+
+Do NOT:
+- Provide or hint at the online form link this turn — it comes after they choose "Apply online".
+- Use set_field or submit_form — they are not available this turn.
+- Start collecting the user's details.`;
+}

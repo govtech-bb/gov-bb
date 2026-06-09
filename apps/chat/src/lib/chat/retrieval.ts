@@ -43,31 +43,24 @@ export function topHandoffCandidateSlug(sources: Source[]): string | null {
   return slug;
 }
 
-export type RagFallbackDecision =
-  | { action: "none" }
-  | { action: "fresh-handoff" }
-  | { action: "continuation" };
+export type HandoffStep = "offer" | "link" | "continuation";
 
-// Decide what the RAG fallback should do with the top retrieved service, given
-// whether it resolves to a handoff-required form and whether it's the form the
-// user was already handed off to. Split out as a pure function so the branching
-// is unit-testable without the network (getFormSlugs / resolveActiveForm).
-//
-// `candidate` is null when the matcher already pinned a form, the session is
-// mid-collection, or no eligible top service was retrieved (run-turn folds
-// those gates into computing it), so a null candidate means "do nothing".
-export function decideRagFallback(params: {
-  candidate: string | null;
-  candidateHandoff: boolean;
-  handedOffSlug: string | null;
-}): RagFallbackDecision {
-  const { candidate, candidateHandoff, handedOffSlug } = params;
-  if (!candidate || !candidateHandoff) return { action: "none" };
-  // Same form the user was already handed off to → they're following up; keep
-  // helping informationally with the link, don't re-issue the strict handoff.
-  return candidate === handedOffSlug
-    ? { action: "continuation" }
-    : { action: "fresh-handoff" };
+// Decide what to do for a turn that has a handoff-required form target. Split
+// out as a pure function so the branching is unit-testable without the network.
+//   - online intent in the latest message → hand over the strict link
+//   - already offered this same form (the paper choice, or any other follow-up
+//     after the options were shown) → continuation: keep helping informationally
+//     with the link in front of the user (current post-handoff behaviour)
+//   - otherwise (first encounter) → offer the apply options as choices
+export function decideHandoffStep(params: {
+  latest: string;
+  candidateSlug: string;
+  offeredSlug: string | null;
+}): HandoffStep {
+  const { latest, candidateSlug, offeredSlug } = params;
+  if (/\bonline\b/i.test(latest)) return "link";
+  if (offeredSlug === candidateSlug) return "continuation";
+  return "offer";
 }
 
 export type RetrieveResult =

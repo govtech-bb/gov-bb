@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { buildHandoffContinuationDisclosure } from "./prompts";
+import {
+  buildApplyOptionsDisclosure,
+  buildHandoffContinuationDisclosure,
+} from "./prompts";
 
 // The continuation disclosure is shown on follow-up turns after a handoff. It
 // must keep the form link in front of the user while preventing the two failure
@@ -33,4 +36,14 @@ test("forbids denying the online form exists", () => {
 test("allows informational answering from context", () => {
   const out = buildHandoffContinuationDisclosure(TITLE, URL);
   assert.match(out, /informational|informationally/i);
+});
+
+// The apply-options disclosure is the first-turn step: present the ways to
+// apply as choices, withhold the link, and never collect.
+test("apply-options disclosure presents choices, withholds link, no collect", () => {
+  const out = buildApplyOptionsDisclosure(TITLE);
+  assert.match(out, /present_choices/);
+  assert.match(out, /do not (give|provide|share)[^.]*link/i);
+  assert.match(out, /set_field/);
+  assert.match(out, /Apply for a Conductor Licence/);
 });

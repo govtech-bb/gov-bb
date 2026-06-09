@@ -4,6 +4,7 @@ import { bedrockText } from "@govtech-bb/ai-bedrock";
 import { childController } from "#/lib/abort";
 import { getServerEnv } from "#/config/env";
 import {
+  buildChoiceTools,
   buildFormTools,
   getFormSlugs,
   getOrCreateSession,
@@ -18,13 +19,14 @@ import { capMessageHistory, lastUserText, recentUserText } from "./messages";
 import {
   NO_FORM_DISCLOSURE,
   SYSTEM_PROMPT,
+  buildApplyOptionsDisclosure,
   buildHandoffContinuationDisclosure,
   buildHandoffDisclosure,
   buildSchemaDisclosure,
 } from "./prompts";
 import {
   buildCitedContext,
-  decideRagFallback,
+  decideHandoffStep,
   isGreetingOrTooShort,
   retrieve,
   topHandoffCandidateSlug,
@@ -101,13 +103,8 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     : { kind: "none" };
   const retrievalBoostSlug = session.slug ?? undefined;
 
-  // Handoff carries no in-progress state. Don't pin the session to it, or the
-  // user stays stuck getting the same handoff link on every later turn. Record
-  // it so the matcher above won't immediately re-hand-off the same form.
-  if (resolution.kind === "handoff") {
-    session.handedOffSlug = session.slug;
-    session.slug = null;
-  }
+  // NOTE: handoff parking (clearing session.slug) now happens in the unified
+  // handoff finalization below, after retrieval, based on the chosen step.
 
   // Skip the rewrite LLM call and RAG retrieval only once the user is ACTIVELY
   // collecting (we've already captured at least one field) — there they're
@@ -149,73 +146,77 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     query,
   );
 
-  // RAG-driven handoff (and its follow-up continuation). The title-token matcher
-  // above only fires when the user's wording overlaps a form title (e.g.
-  // "conductor licence"). When it didn't pin a form, fall back to the top
-  // retrieved service — if it maps to a published form that must be completed in
-  // the forms app (file upload / payment), surface that link rather than a plain
-  // informational answer. This is what makes phrasings like "how do I become a
-  // conductor" reach the conductor application.
-  //
-  // Scoped to kind "none" && !session.slug: never upgrades a matched collectible
-  // form, and never fires when a pinned form merely failed to resolve (a
-  // transient form-API blip can't redirect the user elsewhere). It also means
-  // the matcher block above ran this turn, so the form index is warm-cached.
-  let handoffContinuation: { title: string; url: string } | undefined;
-  // Compute a candidate only when no form is pinned (the gates fold into here):
-  // "none" so we never override a matched collectible form, and !session.slug so
-  // a pinned form that merely failed to resolve can't be redirected elsewhere.
-  const ragCandidate =
-    resolution.kind === "none" && !session.slug
-      ? topHandoffCandidateSlug(rawSources)
-      : null;
-  // Resolve against the forms API only when there's a candidate, and gate on the
-  // form index (warm-cached from the matcher this turn) so a retrieved info-only
-  // service with no published form doesn't trigger a doomed form-definition
-  // fetch and a 404 warning every turn.
-  let ragResolution: FormResolution = { kind: "none" };
-  if (ragCandidate && (await getFormSlugs(signal)).includes(ragCandidate)) {
-    ragResolution = await resolveActiveForm(ragCandidate, {});
-  }
-  const ragDecision = decideRagFallback({
-    candidate: ragCandidate,
-    candidateHandoff: ragResolution.kind === "handoff",
-    handedOffSlug: session.handedOffSlug ?? null,
-  });
-  if (
-    ragDecision.action === "fresh-handoff" &&
-    ragResolution.kind === "handoff"
-  ) {
-    resolution = ragResolution;
-    // Park it like the matcher-driven handoff does, so the user isn't re-handed
-    // the strict link on every later turn.
-    session.handedOffSlug = ragCandidate;
-  } else if (
-    ragDecision.action === "continuation" &&
-    ragResolution.kind === "handoff"
-  ) {
-    // The user was already handed this form's link and is following up ("ok
-    // let's begin", "what's next?"). Re-issuing the strict link-only handoff is
-    // noisy, but the no-form path makes the model hallucinate inline collection
-    // or deny the form exists. Instead keep answering informationally while
-    // pointing back to the link. (Already parked — no re-park.)
-    handoffContinuation = {
-      title: ragResolution.title,
-      url: ragResolution.url,
+  // Determine this turn's handoff target — a form that must be completed in the
+  // forms app (file upload / payment) — from either the matched form or, when
+  // the matcher pinned nothing, the top retrieved service. The latter is what
+  // makes phrasings like "how do I become a conductor" reach the application.
+  let handoffTarget: { slug: string; title: string; url: string } | null = null;
+  if (resolution.kind === "handoff" && session.slug) {
+    handoffTarget = {
+      slug: session.slug,
+      title: resolution.title,
+      url: resolution.url,
     };
+  } else if (resolution.kind === "none" && !session.slug) {
+    // Gate on the form index (warm-cached from the matcher this turn) so a
+    // retrieved info-only service with no published form doesn't trigger a
+    // doomed form-definition fetch and a 404 warning every turn.
+    const candidate = topHandoffCandidateSlug(rawSources);
+    if (candidate && (await getFormSlugs(signal)).includes(candidate)) {
+      const r = await resolveActiveForm(candidate, {});
+      if (r.kind === "handoff") {
+        handoffTarget = { slug: candidate, title: r.title, url: r.url };
+      }
+    }
+  }
+
+  // Unified handoff finalization: offer the apply options first, hand over the
+  // strict link once the user chooses online, or continue (the paper choice and
+  // other follow-ups) — keeping the link in front of the user without collecting
+  // inline or denying the form exists.
+  let handoffMode: {
+    kind: "offer" | "link" | "continuation";
+    title: string;
+    url: string;
+  } | null = null;
+  if (handoffTarget) {
+    const step = decideHandoffStep({
+      latest,
+      candidateSlug: handoffTarget.slug,
+      offeredSlug: session.applyOptionsOfferedFor,
+    });
+    handoffMode = {
+      kind: step,
+      title: handoffTarget.title,
+      url: handoffTarget.url,
+    };
+    if (step === "offer") {
+      // Pin the form through the offer so "Apply online" next turn resolves it
+      // deterministically (no dependence on re-matching / re-retrieval).
+      session.slug = handoffTarget.slug;
+      session.applyOptionsOfferedFor = handoffTarget.slug;
+    } else {
+      // link or continuation: the form is completed in the forms app. Park it so
+      // the user isn't re-handed the strict link on every later turn.
+      session.handedOffSlug = handoffTarget.slug;
+      session.slug = null;
+      session.applyOptionsOfferedFor = null;
+    }
   }
 
   const systemPrompts = buildSystemPrompts(
     contextBlock,
     resolution,
     session,
-    handoffContinuation,
+    handoffMode,
   );
 
   const tools =
-    resolution.kind === "collect" && !offerOnly
-      ? buildFormTools(session, resolution.form, signal)
-      : [];
+    handoffMode?.kind === "offer"
+      ? buildChoiceTools()
+      : resolution.kind === "collect" && !offerOnly
+        ? buildFormTools(session, resolution.form, signal)
+        : [];
 
   const abortController = childController(signal);
 
@@ -288,15 +289,27 @@ function buildSystemPrompts(
   contextBlock: string,
   resolution: FormResolution,
   session: FormSession,
-  handoffContinuation?: { title: string; url: string },
+  handoffMode?: {
+    kind: "offer" | "link" | "continuation";
+    title: string;
+    url: string;
+  } | null,
 ): SystemEntry[] {
   const prompts: SystemEntry[] = [
     SYSTEM_PROMPT,
     `Context for this turn:\n${contextBlock}`,
   ];
 
-  if (resolution.kind === "handoff") {
-    prompts.push(buildHandoffDisclosure(resolution.title, resolution.url));
+  if (handoffMode) {
+    if (handoffMode.kind === "offer") {
+      prompts.push(buildApplyOptionsDisclosure(handoffMode.title));
+    } else if (handoffMode.kind === "link") {
+      prompts.push(buildHandoffDisclosure(handoffMode.title, handoffMode.url));
+    } else {
+      prompts.push(
+        buildHandoffContinuationDisclosure(handoffMode.title, handoffMode.url),
+      );
+    }
     return prompts;
   }
 
@@ -333,15 +346,6 @@ function buildSystemPrompts(
       );
     }
     prompts.push(parts.join("\n\n"));
-  } else if (handoffContinuation) {
-    // Follow-up after a handoff: keep helping informationally but keep the link
-    // in front of the user — never collect inline, never deny the form exists.
-    prompts.push(
-      buildHandoffContinuationDisclosure(
-        handoffContinuation.title,
-        handoffContinuation.url,
-      ),
-    );
   } else {
     prompts.push(NO_FORM_DISCLOSURE);
   }

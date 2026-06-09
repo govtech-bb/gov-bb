@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { SCORE_THRESHOLD } from "./rag-config";
-import { decideRagFallback, topHandoffCandidateSlug } from "./retrieval";
+import { decideHandoffStep, topHandoffCandidateSlug } from "./retrieval";
 import type { Source } from "./types";
 
 // topHandoffCandidateSlug picks the slug of the single top-ranked retrieved
@@ -54,61 +54,65 @@ test("considers only the top source, not lower-ranked ones", () => {
   assert.equal(topHandoffCandidateSlug(sources), null);
 });
 
-// decideRagFallback — the post-matcher branch: do nothing, hand off a fresh
-// form, or continue an already-handed-off form. run-turn folds the "no form
-// pinned" gates into producing `candidate` (null = do nothing).
+// decideHandoffStep — given a turn that has a handoff-required form target,
+// choose: offer the apply options, hand over the link, or continue.
 
-test("no candidate (matcher pinned a form, or nothing retrieved) → none", () => {
-  assert.deepEqual(
-    decideRagFallback({
-      candidate: null,
-      candidateHandoff: false,
-      handedOffSlug: null,
+test("online intent in the latest message → link", () => {
+  assert.equal(
+    decideHandoffStep({
+      latest: "Apply online",
+      candidateSlug: "apply-for-conductor-licence",
+      offeredSlug: null,
     }),
-    { action: "none" },
+    "link",
+  );
+  assert.equal(
+    decideHandoffStep({
+      latest: "I'd like to apply online please",
+      candidateSlug: "apply-for-conductor-licence",
+      offeredSlug: "apply-for-conductor-licence",
+    }),
+    "link",
   );
 });
 
-test("candidate that isn't a handoff form → none (info-only / collectible)", () => {
-  assert.deepEqual(
-    decideRagFallback({
-      candidate: "register-a-birth",
-      candidateHandoff: false,
-      handedOffSlug: null,
+test("first encounter, no online intent → offer", () => {
+  assert.equal(
+    decideHandoffStep({
+      latest: "conductor licence",
+      candidateSlug: "apply-for-conductor-licence",
+      offeredSlug: null,
     }),
-    { action: "none" },
+    "offer",
   );
 });
 
-test("new handoff form (not the one already handed off) → fresh-handoff", () => {
-  assert.deepEqual(
-    decideRagFallback({
-      candidate: "apply-for-conductor-licence",
-      candidateHandoff: true,
-      handedOffSlug: null,
+test("already offered this form, not online (e.g. paper) → continuation", () => {
+  assert.equal(
+    decideHandoffStep({
+      latest: "Get a paper form",
+      candidateSlug: "apply-for-conductor-licence",
+      offeredSlug: "apply-for-conductor-licence",
     }),
-    { action: "fresh-handoff" },
+    "continuation",
+  );
+  assert.equal(
+    decideHandoffStep({
+      latest: "what documents do I need",
+      candidateSlug: "apply-for-conductor-licence",
+      offeredSlug: "apply-for-conductor-licence",
+    }),
+    "continuation",
   );
 });
 
-test("a different handoff form after one was handed off → fresh-handoff", () => {
-  assert.deepEqual(
-    decideRagFallback({
-      candidate: "get-death-certificate",
-      candidateHandoff: true,
-      handedOffSlug: "apply-for-conductor-licence",
+test("offered a different form, not online → offer (the new form)", () => {
+  assert.equal(
+    decideHandoffStep({
+      latest: "get a death certificate",
+      candidateSlug: "get-death-certificate",
+      offeredSlug: "apply-for-conductor-licence",
     }),
-    { action: "fresh-handoff" },
-  );
-});
-
-test("same form the user was already handed off to → continuation", () => {
-  assert.deepEqual(
-    decideRagFallback({
-      candidate: "apply-for-conductor-licence",
-      candidateHandoff: true,
-      handedOffSlug: "apply-for-conductor-licence",
-    }),
-    { action: "continuation" },
+    "offer",
   );
 });
