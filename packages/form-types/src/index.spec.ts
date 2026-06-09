@@ -34,6 +34,7 @@ import {
   sharedFieldsBehaviourSchema,
   behaviourSchema,
   equalityOperationsSchema,
+  durationTransformSchema,
   formStepSchema,
   recipeComponentFieldSchema,
   recipeBlockFieldSchema,
@@ -479,6 +480,16 @@ describe("equalityOperationsSchema", () => {
     expect(equalityOperationsSchema.safeParse("greaterThan").success).toBe(
       false,
     );
+  });
+});
+
+describe("durationTransformSchema", () => {
+  it("accepts a known duration transform", () => {
+    expect(durationTransformSchema.safeParse("yearsSince").success).toBe(true);
+  });
+
+  it("rejects an unknown transform", () => {
+    expect(durationTransformSchema.safeParse("weeksSince").success).toBe(false);
   });
 });
 
