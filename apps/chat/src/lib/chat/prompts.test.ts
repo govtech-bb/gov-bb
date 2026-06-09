@@ -1,9 +1,19 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  SYSTEM_PROMPT,
   buildHandoffContinuationDisclosure,
   buildHandoffOfferDisclosure,
 } from "./prompts";
+
+// The ILLEGITIMATE REQUESTS section must name bribery/corruption, so a
+// fraud-framed "how much to pay to get my child into a better school" is
+// declined rather than answered. Pairs with run-turn suppressing the form
+// offer when the rewrite flags the request illegitimate.
+test("system prompt declines bribery / paying for unfair advantage", () => {
+  assert.match(SYSTEM_PROMPT, /ILLEGITIMATE REQUESTS/);
+  assert.match(SYSTEM_PROMPT, /brib|unfair advantage/i);
+});
 
 // The continuation disclosure is shown on follow-up turns after a handoff. It
 // must keep the form link in front of the user while preventing the two failure
