@@ -1,5 +1,6 @@
 import type { ChatMiddleware } from "@tanstack/ai";
 import { isAbortError } from "#/lib/abort";
+import { emitTurnMetrics } from "./turn-metrics";
 
 export interface TurnRecord {
   ts: string;
@@ -23,57 +24,8 @@ export interface TurnRecord {
   toolCalls?: { tool: string; ok: boolean; ms: number }[];
 }
 
-export function toEmf(rec: TurnRecord): Record<string, unknown> {
-  const metrics = [
-    { Name: "ChatTurn.LatencyMs", Unit: "Milliseconds" },
-    { Name: "ChatTurn.LlmInputTokens", Unit: "Count" },
-    { Name: "ChatTurn.LlmOutputTokens", Unit: "Count" },
-    { Name: "ChatTurn.RetrievalDegraded", Unit: "Count" },
-  ];
-
-  // EMF treats missing keys as no-op for that metric, so a partial turn
-  // (LLM aborted mid-stream, no usage chunk) emits whatever was captured
-  // without confusing CloudWatch.
-  return {
-    _aws: {
-      Timestamp: Date.now(),
-      CloudWatchMetrics: [
-        {
-          Namespace: "GovBB/Chat",
-          Dimensions: [["Service"]],
-          Metrics: metrics,
-        },
-      ],
-    },
-    Service: "chat",
-    ...(rec.durationMs !== undefined && {
-      "ChatTurn.LatencyMs": rec.durationMs,
-    }),
-    ...(rec.promptTokens !== undefined && {
-      "ChatTurn.LlmInputTokens": rec.promptTokens,
-    }),
-    ...(rec.completionTokens !== undefined && {
-      "ChatTurn.LlmOutputTokens": rec.completionTokens,
-    }),
-    "ChatTurn.RetrievalDegraded": rec.retrieveDegraded ? 1 : 0,
-    // Non-metric fields kept for CloudWatch Logs Insights searchability:
-    ts: rec.ts,
-    threadId: rec.threadId,
-    runId: rec.runId,
-    model: rec.model,
-    userChars: rec.userChars,
-    query: rec.query,
-    formSlug: rec.formSlug,
-    finishReason: rec.finishReason,
-    cancelled: rec.cancelled,
-    error: rec.error,
-    retrieved: rec.retrieved,
-    toolCalls: rec.toolCalls,
-  };
-}
-
 function logTurn(rec: TurnRecord): void {
-  console.log(JSON.stringify(toEmf(rec)));
+  console.log(`[turn] ${JSON.stringify(rec)}`);
 }
 
 // One [turn] record per chat() run. Tokens accumulate in onUsage —
@@ -96,7 +48,7 @@ export function turnLogMiddleware(
   const toolCalls: { tool: string; ok: boolean; ms: number }[] = [];
 
   const finish = (rest: Partial<TurnRecord>) => {
-    logTurn({
+    const rec: TurnRecord = {
       ...partial,
       durationMs: Date.now() - startedAt,
       promptTokens: sawUsage ? promptTokens : undefined,
@@ -106,7 +58,9 @@ export function turnLogMiddleware(
       cancelled: aborted || undefined,
       error: runError,
       ...rest,
-    });
+    };
+    logTurn(rec);
+    emitTurnMetrics(rec);
   };
 
   return {
