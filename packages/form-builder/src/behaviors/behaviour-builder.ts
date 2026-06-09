@@ -7,6 +7,7 @@ export type ParamKind =
   | "value" // renders a value input
   | "number" // renders a number input
   | "fieldRefArray" // renders a checkbox list of the current step's fields (for sharedFields.fieldIds, #792)
+  | "transform" // renders the date→number transform dropdown, shown only for numeric operators (#1020)
   | "text"; // renders a plain text input (free text, e.g. addAnotherLabel)
 
 export interface BehaviourParamDescriptor {
@@ -46,6 +47,14 @@ export const BEHAVIOUR_TYPE_DESCRIPTORS: BehaviourTypeDescriptor[] = [
       },
       { name: "targetFieldId", label: "Target Field", kind: "fieldRef" },
       { name: "operator", label: "Operator", kind: "operator" },
+      // Optional date→number derivation, surfaced only for numeric operators
+      // (gte/lte/gt/lt) — e.g. gate on an age derived from a DOB. (#1020)
+      {
+        name: "transform",
+        label: "Transform",
+        kind: "transform",
+        optional: true,
+      },
       { name: "value", label: "Value", kind: "value" },
     ],
   },
@@ -67,6 +76,14 @@ export const BEHAVIOUR_TYPE_DESCRIPTORS: BehaviourTypeDescriptor[] = [
       },
       { name: "targetFieldId", label: "Target Field", kind: "fieldRef" },
       { name: "operator", label: "Operator", kind: "operator" },
+      // Optional date→number derivation, surfaced only for numeric operators
+      // (gte/lte/gt/lt) — e.g. gate on an age derived from a DOB. (#1020)
+      {
+        name: "transform",
+        label: "Transform",
+        kind: "transform",
+        optional: true,
+      },
       { name: "value", label: "Value", kind: "value" },
     ],
   },
@@ -78,6 +95,14 @@ export const BEHAVIOUR_TYPE_DESCRIPTORS: BehaviourTypeDescriptor[] = [
       { name: "targetStepId", label: "Target Step", kind: "stepRef" },
       { name: "targetFieldId", label: "Target Field", kind: "fieldRef" },
       { name: "operator", label: "Operator", kind: "operator" },
+      // Optional date→number derivation, surfaced only for numeric operators
+      // (gte/lte/gt/lt) — e.g. gate on an age derived from a DOB. (#1020)
+      {
+        name: "transform",
+        label: "Transform",
+        kind: "transform",
+        optional: true,
+      },
       { name: "value", label: "Value", kind: "value" },
     ],
   },
