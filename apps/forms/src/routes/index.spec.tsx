@@ -16,6 +16,9 @@ jest.mock("@tanstack/react-router", () => ({
     ...routeConfig,
     useLoaderData: jest.fn(),
   }),
+  // Mirror redirect()'s throw-shape: a tagged object carrying the options, so
+  // beforeLoad tests can `throw`/catch it and assert the external href.
+  redirect: jest.fn((opts) => ({ isRedirect: true, options: opts })),
   Link: ({
     children,
     to,
@@ -34,6 +37,14 @@ jest.mock("@tanstack/react-router", () => ({
     </a>
   ),
 }));
+
+// getHomeUrl is the single env read for the index redirect. Mock it so each
+// test controls whether a home URL is configured (staging/prod) or not (local).
+jest.mock("../lib/env", () => ({
+  getHomeUrl: jest.fn(),
+}));
+import { getHomeUrl } from "../lib/env";
+const mockGetHomeUrl = getHomeUrl as jest.MockedFunction<typeof getHomeUrl>;
 
 // Stub the loader so we control the data returned by useLoaderData().
 // The real loader fetches from an API server that won't be available in Jest.
@@ -54,6 +65,8 @@ const MOCK_FORMS = [
 
 beforeEach(() => {
   jest.spyOn(Route, "useLoaderData").mockReturnValue(MOCK_FORMS);
+  // Default: no home URL configured (local dev) → index renders, no redirect.
+  mockGetHomeUrl.mockReturnValue(undefined);
 });
 
 afterEach(() => {
@@ -129,6 +142,30 @@ describe("Index route", () => {
     const { container } = render(<Route.component />);
     const results = await axe(container);
     expect(results).toHaveNoViolations();
+  });
+});
+
+describe("Index route redirect (beforeLoad)", () => {
+  it("redirects to the configured home URL when one is set", () => {
+    mockGetHomeUrl.mockReturnValue("https://staging.alpha.gov.bb");
+
+    // beforeLoad throws the redirect; catch it and assert the external href.
+    let thrown: unknown;
+    try {
+      Route.beforeLoad?.({} as never);
+    } catch (e) {
+      thrown = e;
+    }
+
+    expect(thrown).toMatchObject({
+      isRedirect: true,
+      options: { href: "https://staging.alpha.gov.bb", replace: true },
+    });
+  });
+
+  it("does not redirect (renders the index) when no home URL is set", () => {
+    mockGetHomeUrl.mockReturnValue(undefined);
+    expect(() => Route.beforeLoad?.({} as never)).not.toThrow();
   });
 });
 
