@@ -5,7 +5,7 @@ import {
   pinFeedbackForm,
   shouldBindFeedbackOffer,
 } from "./feedback";
-import { getOrCreateSession } from "./form/session";
+import { getOrCreateSession, resetSessionForNewForm } from "./form/session";
 
 test("offer is bound only on a no-form turn that hasn't offered yet", () => {
   assert.equal(shouldBindFeedbackOffer("none", false), true);
@@ -23,4 +23,17 @@ test("pinFeedbackForm pins the feedback form and marks the offer spent", () => {
   assert.equal(s.feedbackOffered, true);
   assert.deepEqual(s.values, {}); // prior form state cleared
   assert.equal(s.status, "collecting");
+});
+
+test("resetSessionForNewForm preserves feedbackOffered", () => {
+  // Load-bearing invariant: pinFeedbackForm resets the session for the feedback
+  // form via resetSessionForNewForm, so if that reset cleared feedbackOffered
+  // the offer could fire again. It must survive the reset.
+  const s = getOrCreateSession("t-reset-1");
+  s.feedbackOffered = true;
+  s.slug = "get-birth-certificate";
+  s.values = { x: "1" };
+  resetSessionForNewForm(s);
+  assert.equal(s.feedbackOffered, true); // must NOT be cleared
+  assert.equal(s.slug, null); // but the form state is reset
 });

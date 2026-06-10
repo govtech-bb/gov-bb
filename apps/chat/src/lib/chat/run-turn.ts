@@ -17,7 +17,7 @@ import {
   type FormSession,
   type FormTurnContext,
 } from "./form";
-import { shouldBindFeedbackOffer } from "./feedback";
+import { FEEDBACK_FORM_ID, shouldBindFeedbackOffer } from "./feedback";
 import { citationsMiddleware, turnLogMiddleware } from "./middleware";
 import { capMessageHistory, lastUserText, recentUserText } from "./messages";
 import {
@@ -182,7 +182,8 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
       session.feedbackOffered ?? false,
     ) &&
     !handoffContinuation &&
-    !ragCollectLink;
+    !ragCollectLink &&
+    !rewrite.illegitimate;
 
   const systemPrompts = buildSystemPrompts(
     contextBlock,
@@ -269,6 +270,13 @@ async function pinSessionForm(
   session: FormSession,
   messages: UIMessage[],
 ): Promise<void> {
+  // The feedback form is terminal: once submitted it can't be re-matched from
+  // conversation text (it was pinned programmatically, not by the matcher), so
+  // clear it instead of leaving the session stuck in feedback-collect forever.
+  // feedbackOffered is preserved, so it is never re-offered this session.
+  if (session.slug === FEEDBACK_FORM_ID && session.status === "submitted") {
+    resetSessionForNewForm(session);
+  }
   if (session.slug && session.status !== "submitted") return;
   const windowMatch = await matchFormsFromText(recentUserText(messages));
   const matched =

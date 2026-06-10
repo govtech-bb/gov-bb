@@ -31,6 +31,7 @@ import {
 import type { Citation } from "#/lib/chat/types";
 import {
   askFieldDef,
+  offerFeedbackDef,
   presentChoicesDef,
   reviewFormDef,
   submitFormDef,
@@ -467,6 +468,8 @@ function shouldShowThinking(messages: UIMessage[]): boolean {
   if (last.role === "user") return true;
   // Hide once something renderable lands: text deltas, a present_choices
   // tool call, or a submit_form approval prompt. set_field is invisible.
+  // offer_feedback also ends the turn's "work" (it pins the feedback form),
+  // so treat it as a stop signal to avoid a hung indicator if no text follows.
   if (extractText(last).length > 0) return false;
   if (
     hasAnyToolCall([last], [
@@ -474,6 +477,7 @@ function shouldShowThinking(messages: UIMessage[]): boolean {
       askFieldDef.name,
       reviewFormDef.name,
       submitFormDef.name,
+      offerFeedbackDef.name,
     ])
   ) {
     return false;

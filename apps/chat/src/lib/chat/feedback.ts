@@ -1,3 +1,4 @@
+import type { FormResolution } from "./form/schema";
 import { resetSessionForNewForm, type FormSession } from "./form/session";
 
 // In-chat feedback reuses the conversational form pipeline. This must equal the
@@ -8,7 +9,7 @@ export const FEEDBACK_FORM_ID = "chat-feedback";
 // hasn't already been offered this session — so the model can invite feedback
 // at a natural conclusion without pestering or interrupting an in-progress form.
 export function shouldBindFeedbackOffer(
-  resolutionKind: string,
+  resolutionKind: FormResolution["kind"],
   feedbackOffered: boolean,
 ): boolean {
   return resolutionKind === "none" && !feedbackOffered;
