@@ -4,7 +4,7 @@ description: "Ask the Ministry to change the secondary school your child was all
 stage: "alpha"
 publish_date: 2026-06-02
 category: education
-visibility: preview
+visibility: draft
 ---
 
 If your child has been allocated to a secondary school you would like to change after the BSSEE results have been published, you can ask the Ministry to reallocate them.

@@ -4,7 +4,7 @@ description: "Request an official statement of your past examination results fro
 stage: "alpha"
 publish_date: 2026-06-02
 category: education
-visibility: preview
+visibility: draft
 ---
 
 You can request an official statement of your past examination results from the Ministry of Educational Transformation. This covers exams such as CSEC, CAPE, BSSEE, City and Guilds, Cambridge and GCE.
