@@ -80,14 +80,6 @@ const setFieldTool = setFieldDef.server<FormTurnContext>(
     if (!info) {
       return { ok: false, error: `unknown fieldId: ${fieldId}` };
     }
-    // File values are written by /api/form-file, never via the model.
-    if (info.field.htmlType === "file") {
-      return {
-        ok: false,
-        error:
-          "file fields are uploaded by the user and record automatically; do not set them",
-      };
-    }
     const error = validateCollectedField(
       form.contract,
       info.field,

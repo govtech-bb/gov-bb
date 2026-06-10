@@ -6,12 +6,9 @@ import {
   Checkbox,
   DateInput,
   type DateInputValue,
-  Input,
-  TextArea,
 } from "@govtech-bb/react";
 import { type ReactNode, useState } from "react";
 import { askFieldDef } from "#/lib/chat-tools";
-import { getSessionThreadId } from "#/lib/chat/persistence";
 import { ChoicePills } from "./choice-pills";
 
 export type AskFieldOutput = InferToolOutput<typeof askFieldDef>;
@@ -95,10 +92,10 @@ export function AskFieldWidget({
     widget = <BooleanAnswer onAnswer={onAnswer} spec={spec} />;
   } else if (spec.htmlType === "date") {
     widget = <DateAnswer onAnswer={onAnswer} spec={spec} />;
-  } else if (spec.htmlType === "file") {
-    widget = <FileAnswer onAnswer={onAnswer} spec={spec} />;
   } else {
-    widget = <TextAnswer onAnswer={onAnswer} spec={spec} />;
+    // Free-text fields have no in-bubble input: the composer already is the
+    // text input, and a second box would duplicate it (focus + a11y cost).
+    widget = <HintOrError hint={spec.hint} error={null} />;
   }
 
   return (
@@ -199,77 +196,6 @@ function BooleanAnswer({ spec, onAnswer }: AnswerProps) {
   );
 }
 
-function TextAnswer({ spec, onAnswer }: AnswerProps) {
-  const [value, setValue] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const trimmed = value.trim();
-
-  const submit = () => {
-    if (!trimmed) return;
-    const err = validateSpecValue(
-      spec,
-      spec.htmlType === "number" ? Number(trimmed) : trimmed,
-    );
-    if (err) {
-      setError(err);
-      return;
-    }
-    onAnswer(trimmed);
-  };
-  const change = (next: string) => {
-    setError(null);
-    setValue(next);
-  };
-
-  if (spec.htmlType === "textarea") {
-    return (
-      <div className="flex flex-col gap-2.5">
-        <HintOrError hint={spec.hint} error={error} />
-        <TextArea
-          aria-label={spec.label}
-          className="bg-white-00 text-black-00"
-          onChange={(e) => change(e.target.value)}
-          rows={3}
-          value={value}
-        />
-        <Button disabled={!trimmed} onClick={submit} type="button">
-          Continue
-        </Button>
-      </div>
-    );
-  }
-
-  const inputType =
-    spec.htmlType === "email" ||
-    spec.htmlType === "tel" ||
-    spec.htmlType === "number"
-      ? spec.htmlType
-      : "text";
-  return (
-    <div className="flex flex-col gap-2.5">
-      <HintOrError hint={spec.hint} error={error} />
-      <div className="flex items-end gap-2">
-        <Input
-          aria-label={spec.label}
-          className="flex-1 bg-white-00 text-black-00"
-          onChange={(e) => change(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              submit();
-            }
-          }}
-          type={inputType}
-          value={value}
-        />
-        <Button disabled={!trimmed} onClick={submit} type="button">
-          Continue
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 // Answers as ISO YYYY-MM-DD (what the server's date coercion parses); date
 // rules run on Continue so "needs to be in the past" lands here, not as a turn.
 function DateAnswer({ spec, onAnswer }: AnswerProps) {
@@ -303,109 +229,6 @@ function DateAnswer({ spec, onAnswer }: AnswerProps) {
         value={date}
       />
       <Button disabled={!complete} onClick={submit} type="button">
-        Continue
-      </Button>
-    </div>
-  );
-}
-
-// presign + confirm go through /api/form-file (the forms API's CORS excludes
-// the chat origin); only the S3 PUT runs from the browser. Continue just tells
-// the model the upload happened — the value is already recorded server-side.
-function FileAnswer({ spec, onAnswer }: AnswerProps) {
-  const [uploaded, setUploaded] = useState<string[]>([]);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const upload = async (file: File) => {
-    setError(null);
-    const precheck = validateSpecValue(spec, [
-      { name: file.name, size: file.size, type: file.type },
-    ]);
-    if (precheck) {
-      setError(precheck);
-      return;
-    }
-    setBusy(true);
-    try {
-      const threadId = getSessionThreadId();
-      const presignRes = await fetch("/api/form-file", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "presign",
-          threadId,
-          fieldId: spec.fieldId,
-          fileName: file.name,
-          contentType: file.type || "application/octet-stream",
-          size: file.size,
-        }),
-      });
-      if (!presignRes.ok) {
-        const body = (await presignRes.json().catch(() => null)) as {
-          error?: string;
-        } | null;
-        throw new Error(body?.error ?? "Upload failed. Please try again.");
-      }
-      const { data: presign } = (await presignRes.json()) as {
-        data: { uploadUrl: string; key: string };
-      };
-
-      const put = await fetch(presign.uploadUrl, {
-        method: "PUT",
-        headers: { "Content-Type": file.type || "application/octet-stream" },
-        body: file,
-      });
-      if (!put.ok) throw new Error("Upload failed. Please try again.");
-
-      const confirmRes = await fetch("/api/form-file", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "confirm",
-          threadId,
-          fieldId: spec.fieldId,
-          key: presign.key,
-        }),
-      });
-      if (!confirmRes.ok) throw new Error("Upload failed. Please try again.");
-
-      setUploaded((u) => [...u, file.name]);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div className="flex flex-col gap-2.5">
-      <HintOrError hint={spec.hint} error={error} />
-      {uploaded.map((name) => (
-        <p className="text-bubble text-black-00" key={name}>
-          ✓ {name}
-        </p>
-      ))}
-      <input
-        aria-label={spec.label}
-        className="text-bubble text-black-00 file:mr-3 file:rounded-full file:border-0 file:bg-teal-00 file:px-3.5 file:py-1.5 file:font-medium file:text-sm file:text-white-00 disabled:opacity-50"
-        disabled={busy}
-        multiple={spec.multiple}
-        onChange={(e) => {
-          for (const f of Array.from(e.target.files ?? [])) void upload(f);
-          e.target.value = "";
-        }}
-        type="file"
-      />
-      <Button
-        disabled={busy || uploaded.length === 0}
-        onClick={() =>
-          onAnswer(
-            `Uploaded ${uploaded.length} file${uploaded.length > 1 ? "s" : ""}: ${uploaded.join(", ")}`,
-          )
-        }
-        type="button"
-      >
         Continue
       </Button>
     </div>
