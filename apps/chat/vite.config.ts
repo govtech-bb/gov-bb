@@ -32,7 +32,7 @@ export default defineConfig(({ mode }) => {
         pick("BEDROCK_REGION", "ca-central-1"),
       ),
       "process.env.LLM_MODEL": JSON.stringify(
-        pick("LLM_MODEL", "claude-haiku-4-5"),
+        pick("LLM_MODEL", "claude-sonnet-4-6"),
       ),
       "process.env.REWRITE_MODEL": JSON.stringify(
         pick("REWRITE_MODEL", "claude-haiku-4-5"),
