@@ -75,11 +75,29 @@ export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
     chatEndRef.current?.scrollIntoView?.({ behavior: "smooth" });
   }, [messages]);
 
-  // Surface a server-fn failure. The async upload flow no longer pushes a
+  // Surface a server-fn failure. The async *upload* flow no longer pushes a
   // large PDF body through the Amplify Lambda, so the cryptic "Invariant
-  // failed" 413 from #583 isn't reachable here — the API now returns
+  // failed" 413 from #583 isn't reachable on that path — the API returns
   // user-friendly reasons (password-protected, too many pages, etc.) which we
   // pass through verbatim.
+  //
+  // The synchronous Edit Form path is different: it makes a single long Bedrock
+  // call and can STILL exceed the Amplify/CloudFront origin-response timeout for
+  // large recipes. When that happens the gateway returns a 504 HTML page and
+  // TanStack Start's server-fn client throws Error("Invariant failed"). We now
+  // also fire our own client-side abort (api-client.ts) just under the gateway
+  // timeout, which surfaces as a timed-out message. Either way the raw string
+  // is useless to the user — map both to a clear, true edit-failure message.
+  const EDIT_TIMEOUT_MESSAGE =
+    "The edit request timed out or failed — your form may be too large. Try again, or simplify your request.";
+
+  const isTimeoutOrInvariant = (err: unknown): boolean => {
+    if (!(err instanceof Error)) return false;
+    return (
+      /invariant failed/i.test(err.message) || /timed out/i.test(err.message)
+    );
+  };
+
   const toMessage = (err: unknown): string => {
     return err instanceof Error ? err.message : "Unknown error";
   };
@@ -211,7 +229,10 @@ export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
       });
       await handleResponse(reply, recipe, unresolvableRefs);
     } catch (err) {
-      setError(toMessage(err));
+      // A timeout (our client-side abort) or a residual "Invariant failed" (the
+      // gateway 504 winning the race) both mean the synchronous edit didn't
+      // come back in time. Show one clear message rather than the raw string.
+      setError(isTimeoutOrInvariant(err) ? EDIT_TIMEOUT_MESSAGE : toMessage(err));
     } finally {
       setLoading(false);
     }
