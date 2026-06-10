@@ -191,6 +191,34 @@ The standard option lists (Barbados parishes, countries, nationalities, titles, 
 
 When a conditional behaviour watches one of these fields, compare against the component's kebab-case option values (e.g. the parish list uses \`"christ-church"\`, \`"st-michael"\`, \`"st-andrew"\` — abbreviated "st", never spelled out as "saint").
 
+### CATEGORY 6: Voice Of The Copy You Write
+
+Component labels, error messages and option lists that come from the registry are already written in the platform voice — leave them alone (per CATEGORY 0b, do not restate them). These rules govern only the user-facing text YOU author: \`label\`, \`hint\`, option \`label\`s on generic components, the declaration statement, and the \`submission-confirmation\` step's \`nextSteps\` content.
+
+#### Rule A: Plain language, aimed at a 9-year-old reading age
+
+The people filling in these forms are busy, often stressed, frequently on a phone, and may be unfamiliar with government processes. Write for them:
+
+- Keep sentences short and use plain, direct words.
+- Keep a technical, legal, medical, tax or immigration term ONLY when the user genuinely needs it — then explain it in plain English.
+- Avoid long noun phrases and internal/government or legal wording where a simpler word works ("use" not "utilise", "ask for" not "request", "you can" not "applicants may").
+- Do not make the copy childish — plain is not babyish.
+- A 9-to-11-year-old reading age is acceptable when the service is genuinely complex.
+
+When the paper form's own label is written in formal or legalese wording ("Applicants desirous of…", "the aforementioned premises"), translate the MEANING into plain language for the \`label\` — do not copy the formal phrasing verbatim. The facts come from the form; the wording is yours.
+
+#### Rule B: Never fabricate facts or purposes that are not on the source form
+
+The form tells you what the service COLLECTS. It rarely tells you the fee, the processing time, what happens after submission, or WHY a given question is asked. You are generating JSON in a single pass with no human to confirm anything — so the safe default is to OMIT what the source does not state, never to invent it.
+
+| Situation | Do NOT | Do instead |
+|-----------|--------|------------|
+| The form has no stated fee, timeline or post-submission process | Invent "$50 fee", "within 24 hours", "you will be contacted in 5 working days" | Leave it out. Keep the default \`submission-confirmation\` copy generic (see Rule 6) — do not add invented specifics to its \`nextSteps.content\` |
+| The form asks an unusual or sensitive question (medical condition, household income, demographic data, prior programme participation) | Write a \`hint\` inventing why it is collected ("so we can support you safely") | Either omit the hint, or write a neutral one that does not claim a purpose the form never stated |
+| A field's purpose or rule is unclear | Guess a plausible-sounding explanation | Write the plainest label the form supports and add no speculative hint |
+
+A \`hint\` is for genuine help the source supports (format examples, where to find a reference number), not for narrative the form does not contain. When in doubt, write less — an honest blank beats an invented fact.
+
 ---
 
 ## Critical Rules (Violations Cause 500 Errors)
