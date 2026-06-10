@@ -138,6 +138,33 @@ export async function uploadOne(
 }
 
 /**
+ * Upload several files to a multi-file upload field and wait until EVERY file
+ * is CONFIRMED. The widget is NOT an `<input multiple>` — it's a single
+ * (non-multiple) file input you reuse to add files one at a time, so each file
+ * must be set in its own `setInputFiles` call and confirmed (its "Remove
+ * {name}" button visible) before adding the next; passing an array at once
+ * fails with "Non-multiple file input can only accept single file". Advancing
+ * before all files commit trips the field's `minItems` validation (e.g. a "2
+ * photos" field rejecting a single file). Files must have distinct names so
+ * each "Remove {name}" button is uniquely addressable.
+ */
+export async function uploadMany(
+  page: Page,
+  stepId: string,
+  suffix: string,
+  files: { name: string; mimeType: string; buffer: Buffer }[],
+): Promise<void> {
+  for (const file of files) {
+    await page
+      .locator(`input[type=file][id="${stepId}_${suffix}"]`)
+      .setInputFiles(file);
+    await expect(
+      page.getByRole("button", { name: `Remove ${file.name}` }),
+    ).toBeVisible({ timeout: UPLOAD_TIMEOUT });
+  }
+}
+
+/**
  * Submit the form for real and assert the confirmation screen.
  *
  * Waits for the real `POST /submissions` call to return 2xx, then waits for the

@@ -547,6 +547,91 @@ jobs:
       spec: barbados-secondary-entrance-exam-choice.smoke.spec.ts
       artifact_name: barbados-secondary-smoke-trace
 
+  # Forms added for issue #912 — birth/death/marriage certificates, the
+  # protege-mentor / community-sports / jobstart-plus programmes, the conductor
+  # licence, all three post-office redirections, and the beach/park vendor
+  # licence. Each spec was authored from its recipe contract; first live runs
+  # may surface recipe-vs-deployed drift to fix on the branch.
+  # NOTE: all three certificate forms (get-birth-certificate,
+  # get-death-certificate, get-marriage-certificate) have smoke specs that are
+  # test.fixme (skipped) and are intentionally NOT wired here. Each is a payment
+  # form whose submission succeeds (200, referenceCode, pending_payment, EZ Pay
+  # paymentUrl) but whose deployed submission-confirmation screen renders
+  # "Something went wrong" instead of the EZ Pay redirect / success — see #919.
+  # Re-add these jobs (and un-fixme the specs) once #919 is fixed.
+
+  smoke-test-project-protege-mentor:
+    name: Smoke test forms (project-protege-mentor)
+    needs: amplify-forms
+    uses: ./.github/workflows/forms-smoke.yml
+    with:
+      base_url: https://forms.sandbox.alpha.gov.bb
+      spec: project-protege-mentor.smoke.spec.ts
+      artifact_name: project-protege-mentor-smoke-trace
+
+  smoke-test-sports-training-programme:
+    name: Smoke test forms (sports-training-programme)
+    needs: amplify-forms
+    uses: ./.github/workflows/forms-smoke.yml
+    with:
+      base_url: https://forms.sandbox.alpha.gov.bb
+      spec: sports-training-programme-form-schema.smoke.spec.ts
+      artifact_name: sports-training-programme-smoke-trace
+
+  smoke-test-jobstart-plus:
+    name: Smoke test forms (jobstart-plus)
+    needs: amplify-forms
+    uses: ./.github/workflows/forms-smoke.yml
+    with:
+      base_url: https://forms.sandbox.alpha.gov.bb
+      spec: jobstart-plus-programme.smoke.spec.ts
+      artifact_name: jobstart-plus-smoke-trace
+
+  smoke-test-conductor-licence:
+    name: Smoke test forms (conductor-licence)
+    needs: amplify-forms
+    uses: ./.github/workflows/forms-smoke.yml
+    with:
+      base_url: https://forms.sandbox.alpha.gov.bb
+      spec: apply-for-conductor-licence.smoke.spec.ts
+      artifact_name: conductor-licence-smoke-trace
+
+  smoke-test-post-office-individual:
+    name: Smoke test forms (post-office-individual)
+    needs: amplify-forms
+    uses: ./.github/workflows/forms-smoke.yml
+    with:
+      base_url: https://forms.sandbox.alpha.gov.bb
+      spec: post-office-redirection-individual.smoke.spec.ts
+      artifact_name: post-office-individual-smoke-trace
+
+  smoke-test-post-office-deceased:
+    name: Smoke test forms (post-office-deceased)
+    needs: amplify-forms
+    uses: ./.github/workflows/forms-smoke.yml
+    with:
+      base_url: https://forms.sandbox.alpha.gov.bb
+      spec: post-office-redirection-deceased.smoke.spec.ts
+      artifact_name: post-office-deceased-smoke-trace
+
+  smoke-test-post-office-business:
+    name: Smoke test forms (post-office-business)
+    needs: amplify-forms
+    uses: ./.github/workflows/forms-smoke.yml
+    with:
+      base_url: https://forms.sandbox.alpha.gov.bb
+      spec: post-office-redirection-business.smoke.spec.ts
+      artifact_name: post-office-business-smoke-trace
+
+  smoke-test-beach-park:
+    name: Smoke test forms (beach-park)
+    needs: amplify-forms
+    uses: ./.github/workflows/forms-smoke.yml
+    with:
+      base_url: https://forms.sandbox.alpha.gov.bb
+      spec: sell-goods-services-beach-park.smoke.spec.ts
+      artifact_name: beach-park-smoke-trace
+
   # NOTE: the referral-student-support-services smoke spec exists but is
   # test.fixme (skipped) — its deployed form has a required-checkbox-with-empty-
   # options recipe bug that makes it unsubmittable (see the spec header + ADR
