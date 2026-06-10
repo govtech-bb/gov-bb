@@ -25,6 +25,21 @@ test("form-collection rules are out of the always-on system prompt", () => {
   assert.match(SYSTEM_PROMPT, /CONTEXT USE|ILLEGITIMATE REQUESTS/);
 });
 
+// The CHANNEL PREFERENCE section nudges informational turns online-first, but
+// only WHEN the retrieved context shows an online path — it must stay silent /
+// in-person for services with no online option, so it can't fight
+// NO_FORM_DISCLOSURE or invent a path that isn't in the context (#1079).
+test("system prompt nudges online-first, conditioned on the context", () => {
+  assert.match(SYSTEM_PROMPT, /CHANNEL PREFERENCE|ONLINE FIRST/);
+  // The nudge is gated on the context actually showing an online option...
+  assert.match(
+    SYSTEM_PROMPT,
+    /context shows.*online|when.*online.*(exists|context)/i,
+  );
+  // ...and it must NOT invent an online path when the context has none.
+  assert.match(SYSTEM_PROMPT, /no online option|don't invent an online/i);
+});
+
 test("FORM_COLLECTION_PROTOCOL carries the collection + submit rules", () => {
   assert.match(FORM_COLLECTION_PROTOCOL, /set_field/);
   assert.match(FORM_COLLECTION_PROTOCOL, /submit_form/);
