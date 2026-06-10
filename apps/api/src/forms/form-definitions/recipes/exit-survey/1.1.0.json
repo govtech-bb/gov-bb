@@ -5,6 +5,20 @@
       "stepId": "difficulty-rating",
       "elements": [
         {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "referring-service",
+            "label": "Service you are giving feedback about",
+            "isDisabled": true,
+            "validations": {
+              "required": {
+                "value": false,
+                "error": ""
+              }
+            }
+          }
+        },
+        {
           "ref": "components/generic-radio",
           "overrides": {
             "label": "How easy or difficult was it to complete this form?",
@@ -175,9 +189,9 @@
   ],
   "title": "Help us improve this service",
   "formId": "exit-survey",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "createdAt": "2026-05-07T00:00:00Z",
-  "updatedAt": "2026-05-07T00:00:00Z",
+  "updatedAt": "2026-06-10T00:00:00Z",
   "processors": [],
   "description": "Your feedback helps us improve this service. This will take about 30 seconds and includes 4 short questions."
 }
