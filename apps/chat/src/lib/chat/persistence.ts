@@ -55,6 +55,30 @@ export const citationsStore = {
   },
 };
 
+// Beta notice "shown once per session" flag. sessionStorage (not localStorage)
+// so the friendly heads-up returns in a fresh tab/session but stays dismissed
+// across refreshes and "Start again" within the same session.
+const BETA_NOTICE_KEY = `${STORAGE_PREFIX}beta-dismissed`;
+
+export const betaNoticeStore = {
+  isDismissed(): boolean {
+    if (typeof sessionStorage === "undefined") return false;
+    try {
+      return sessionStorage.getItem(BETA_NOTICE_KEY) === "1";
+    } catch {
+      return false;
+    }
+  },
+  dismiss(): void {
+    if (typeof sessionStorage === "undefined") return;
+    try {
+      sessionStorage.setItem(BETA_NOTICE_KEY, "1");
+    } catch {
+      // best-effort, like the message persistence
+    }
+  },
+};
+
 // Keep the threadId stable across refreshes too — the server's in-memory form
 // session is keyed by it, so a mid-form conversation restored from storage
 // would otherwise lose its form state.

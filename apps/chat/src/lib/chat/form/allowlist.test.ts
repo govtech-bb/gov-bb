@@ -18,9 +18,10 @@ const EXPECTED = [
   "post-office-redirection-deceased",
   "post-office-redirection-business",
   "sell-goods-services-beach-park",
+  "chat-feedback",
 ];
 
-test("allowlist is exactly the 12 approved forms", () => {
+test("allowlist is exactly the approved forms", () => {
   assert.equal(SURFACEABLE_FORM_IDS.size, EXPECTED.length);
   for (const id of EXPECTED) assert.ok(isSurfaceableForm(id), `missing ${id}`);
 });
