@@ -21,7 +21,7 @@ import {
 } from "react";
 import { Bubble } from "#/components/chat/bubble";
 import { TridentAvatar } from "#/components/trident-avatar";
-import { FEEDBACK_TRIGGER_PHRASE } from "#/lib/chat/feedback";
+import { FEEDBACK_TRIGGER_PHRASE } from "#/lib/chat/feedback-trigger";
 import { extractText, hasAnyToolCall } from "#/lib/chat/messages";
 import {
   chatPersistence,
@@ -468,7 +468,7 @@ function NoticeBubble({ onGiveFeedback }: { onGiveFeedback: () => void }) {
         <button
           type="button"
           onClick={onGiveFeedback}
-          className="font-medium text-black-00 underline underline-offset-2"
+          className="cursor-pointer font-medium text-black-00 underline underline-offset-2"
         >
           feedback
         </button>{" "}
