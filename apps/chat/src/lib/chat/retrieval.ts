@@ -18,6 +18,81 @@ export function isGreetingOrTooShort(line: string): boolean {
   return GREETING_RE.test(line) || line.length < 2;
 }
 
+// Conversational closer detection (#1125). A user winding the chat down ("thanks,
+// bye", "no that's all") and a genuine retrieval miss BOTH produce zero
+// citations, so run-turn can't tell them apart by citation count. This
+// content-based check lets a closer route to a warm sign-off + feedback
+// invitation instead of the misapplied "guide toward the closest service" miss
+// path. Two tiers, because some replies are only closers in context:
+//
+// - UNAMBIGUOUS — farewells / thanks / "that's all" sign-offs. A closer
+//   regardless of what we just said: these can't be a mid-task answer.
+// - AMBIGUOUS — bare "no" / "ok" / "nope". A closer ONLY when our previous
+//   message asked the "anything else?" wrap-up question, so a terse "no"
+//   answering a real question mid-conversation isn't mistaken for a goodbye.
+
+// Composable fragments, combined below. Kept as named parts (cf. messages.ts's
+// TOOL_CALL_BODY) so the closer regex stays readable.
+const GRATITUDE = "(?:thank you|thanks|thankyou|thx|ty|cheers|ta)";
+const FAREWELL =
+  "(?:bye|goodbye|good bye|see (?:ya|you)(?: later)?|take care|catch you later)";
+const CONCLUSION =
+  "(?:that'?s (?:all|it|everything|fine|enough)|that is (?:all|it|everything)|that'?ll be all|nothing else|no (?:thanks|thank you)|all (?:good|set|done)|i'?m (?:good|done|fine|all set)|we'?re (?:good|done)|done here)";
+const FILLER_PREFIX =
+  "(?:ok(?:ay)?|alright|right|great|perfect|cool|awesome|brilliant|lovely|excellent)";
+const GRATITUDE_TAIL =
+  "(?:so much|a lot|very much|again|for (?:your |the )?help|for helping)";
+
+// Whole-message match: an optional upbeat prefix ("ok", "great"), one core
+// closer phrase, then any number of trailing closer fragments. Anchored, so
+// "thanks, where's the office?" (a real question riding on "thanks") is NOT a
+// closer — "where's the office" can't be consumed by the trailing group.
+const UNAMBIGUOUS_CLOSER_RE = new RegExp(
+  "^(?:" +
+    FILLER_PREFIX +
+    "[\\s,]+)?(?:" +
+    GRATITUDE +
+    "(?:[\\s,]+" +
+    GRATITUDE_TAIL +
+    ")?|" +
+    FAREWELL +
+    "|" +
+    CONCLUSION +
+    ")(?:[\\s,]+(?:" +
+    GRATITUDE +
+    "|" +
+    FAREWELL +
+    "|" +
+    GRATITUDE_TAIL +
+    "|then|now))*[\\s,]*$",
+  "i",
+);
+
+const AMBIGUOUS_CLOSER_RE =
+  /^(?:no|nope|nah|not really|ok(?:ay)?|sure|alright|fine|cool|great|i'?m good|im good|all good|that'?s (?:ok|fine)|no that'?s (?:all|it|fine))[\s,]*$/i;
+
+// We asked the wrap-up question last turn. The phrasing is fixed by WRAP_UP
+// guidance in the prompt so this stays in lockstep with what the model emits.
+const WRAP_UP_RE = /anything else/i;
+
+export function isConversationalCloser(
+  latest: string,
+  prevAssistantText: string,
+): boolean {
+  const t = latest.trim();
+  // A question is never a closer (it wants an answer, not a sign-off). Normalise
+  // sentence punctuation to spaces so "thanks!!" / "that's all." still match.
+  if (!t || t.endsWith("?")) return false;
+  const norm = t
+    .toLowerCase()
+    .replace(/[!.]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (UNAMBIGUOUS_CLOSER_RE.test(norm)) return true;
+  if (AMBIGUOUS_CLOSER_RE.test(norm)) return WRAP_UP_RE.test(prevAssistantText);
+  return false;
+}
+
 // Service document ids are minted as `service-<slug>` by the ingest chunker.
 const SERVICE_ID_PREFIX = "service-";
 
