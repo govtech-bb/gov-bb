@@ -1,11 +1,18 @@
 const HEADING_RE = /^\*\*[^*\n]+\*\*$/;
 const LIST_ITEM_RE = /^(?:[-*+]\s|\d+\.\s)/;
 const MAX_BULLET_LENGTH = 240;
+// The SYSTEM_PROMPT bans em/en dashes, but that's a soft instruction the model
+// doesn't always honour. Strip them deterministically here (this runs on every
+// render) so one can never reach the user. Replace with a comma per the prompt's
+// own guidance ("use a period, comma, colon, or parentheses instead"), absorbing
+// any surrounding spaces so "x — y" becomes "x, y" rather than "x ,  y". Plain
+// hyphens in compounds ("self-employed") are untouched.
+const DASH_RE = /\s*[—–]\s*/g;
 
 export function normalizeMarkdown(raw: string): string {
   if (!raw) return raw;
 
-  const lines = raw.split("\n");
+  const lines = raw.replace(DASH_RE, ", ").split("\n");
   const out: string[] = [];
   let inSection = false;
   let prevWasBlank = false;
