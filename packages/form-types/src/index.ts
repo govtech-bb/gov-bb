@@ -125,6 +125,8 @@ export type { RecipientKind } from "./recipient-field";
 
 export { KEBAB_ID_PATTERN, KEBAB_ID_ERROR } from "./id-pattern";
 
+export { SEMVER_PATTERN, SEMVER_ERROR, semverSchema } from "./version-pattern";
+
 export { dynamic } from "./dynamic";
 
 export { shallowMergeDefined } from "./merge";
