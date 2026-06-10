@@ -498,4 +498,63 @@ describe("AiSidebar — Upload", () => {
     );
     jest.useRealTimers();
   });
+
+  it("passes the typed prompt as context, clears the box, and shows it in the transcript", async () => {
+    const user = setupUser();
+    presignPdfUpload.mockResolvedValue({ url: "https://s3/url", s3Key: "uploads/abc.pdf" });
+    startPdfConvert.mockResolvedValue({ jobId: "job-1" });
+    getPdfConvertStatus.mockResolvedValue({ status: "processing" });
+    setup();
+
+    const box = screen.getByPlaceholderText(/make the email field required/i);
+    await user.type(box, "make every field optional");
+    await pickPdf(user);
+    await user.click(screen.getByRole("button", { name: /upload/i }));
+
+    await waitFor(() =>
+      expect(startPdfConvert).toHaveBeenCalledWith({
+        data: { s3Key: "uploads/abc.pdf", context: "make every field optional" },
+      }),
+    );
+    // The box is cleared once the context rides along with the upload.
+    expect((box as HTMLTextAreaElement).value).toBe("");
+    // The transcript bubble reflects both the file and the typed context.
+    expect(
+      screen.getByText(/📎 Uploaded.*make every field optional/s),
+    ).toBeInTheDocument();
+  });
+
+  it("restores the typed context to the box when the upload fails", async () => {
+    const user = setupUser();
+    presignPdfUpload.mockRejectedValue(
+      new Error("Upload failed — please refresh and try again."),
+    );
+    setup();
+
+    const box = screen.getByPlaceholderText(/make the email field required/i);
+    await user.type(box, "skip the payment page");
+    await pickPdf(user);
+    await user.click(screen.getByRole("button", { name: /upload/i }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent(/upload failed/i),
+    );
+    // The context is back in the box so the user doesn't have to retype it.
+    expect((box as HTMLTextAreaElement).value).toBe("skip the payment page");
+  });
+
+  it("omits context and keeps the box untouched when the prompt is empty", async () => {
+    const user = setupUser();
+    presignPdfUpload.mockResolvedValue({ url: "https://s3/url", s3Key: "uploads/abc.pdf" });
+    startPdfConvert.mockResolvedValue({ jobId: "job-1" });
+    getPdfConvertStatus.mockResolvedValue({ status: "processing" });
+    setup();
+
+    await pickPdf(user);
+    await user.click(screen.getByRole("button", { name: /upload/i }));
+
+    await waitFor(() =>
+      expect(startPdfConvert).toHaveBeenCalledWith({ data: { s3Key: "uploads/abc.pdf" } }),
+    );
+  });
 });

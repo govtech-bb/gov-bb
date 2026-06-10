@@ -155,10 +155,19 @@ export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
     if (!pdfFile || loading) return;
     setLoading(true);
     setError(null);
+    // Steering context typed in the prompt box rides along with the upload
+    // (e.g. "make every field optional"). Empty box → blind convert as before.
+    const context = input.trim();
     setMessages((m) => [
       ...m,
-      { role: "user", content: `📎 Uploaded ${pdfName ?? "file"}` },
+      {
+        role: "user",
+        content: context
+          ? `📎 Uploaded ${pdfName ?? "file"}\n${context}`
+          : `📎 Uploaded ${pdfName ?? "file"}`,
+      },
     ]);
+    if (context) setInput("");
 
     // Cancel any prior in-flight poll before starting a fresh one, then
     // publish the new controller so unmount-cleanup and an overlapping click
@@ -179,7 +188,9 @@ export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
         throw new Error("Upload failed — please refresh and try again.");
       }
 
-      const { jobId } = await startPdfConvert({ data: { s3Key } });
+      const { jobId } = await startPdfConvert({
+        data: { s3Key, ...(context ? { context } : {}) },
+      });
 
       const start = Date.now();
       const TIMEOUT_MS = 3 * 60_000;
@@ -209,6 +220,10 @@ export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
       // requested cancellation, so we don't surface it.
       if (abort.signal.aborted) return;
       setError(toMessage(err));
+      // The upload path has several failure points (presign, S3 PUT, convert).
+      // Restore the typed context so a failed upload doesn't make the user
+      // retype it — but only if they haven't started a new prompt meanwhile.
+      if (context) setInput((cur) => (cur ? cur : context));
     } finally {
       if (pollAbortRef.current === abort) pollAbortRef.current = null;
       setLoading(false);
