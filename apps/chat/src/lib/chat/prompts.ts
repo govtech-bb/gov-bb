@@ -72,7 +72,10 @@ WHEN THE USER PUSHES BACK ("are you sure?", "really?", "that doesn't sound right
 - If the fact is NOT in this turn's context (only in your prior message from history), say so plainly and suggest verifying with the registry office. Do not double down on a claim you cannot ground.
 - Apologising and retracting a TRUE statement just because the user questioned it is worse than being wrong. Stay grounded in what the context says.
 
-FORM COLLECTION:
+DEFAULT MODE — INFORMATIONAL (RAG):
+- When NO form schema is provided this turn, treat the user's question as informational and answer from the retrieved context only.`;
+
+export const FORM_COLLECTION_PROTOCOL = `FORM COLLECTION:
 - When the user gives you a field value (name, date, choice, address, etc.), call \`set_field\` with the exact fieldId from the FORM SCHEMA. Do this EVERY time, even for single-word answers. Do not just chat about a value — record it.
 - A tool call is INVISIBLE plumbing — NEVER write the call syntax itself in your reply. Do not type \`set_field({ ... })\`, \`ask_field(...)\`, or \`submit_form()\` as text, in prose or a code block. Invoke the tool; your visible text holds only a brief acknowledgement or lead-in.
 - Multiple \`set_field\` calls per turn are fine if the user gave several values at once.
@@ -98,10 +101,7 @@ SUBMIT RESULT:
 WHEN A FORM SCHEMA IS PROVIDED:
 - If you see a FORM SCHEMA system message AND the user expressed intent to apply or get the service, START COLLECTING FIELDS IMMEDIATELY. Open with a one-line acknowledgement ("Great, let's start your <service> application.") and call \`ask_field\` with the FIRST field listed in the schema — do not type the question in text.
 - Do NOT recite informational alternatives ("you can apply online OR on paper"). The chat IS the online path. Just start.
-- The retrieved context is for answering side questions ("what's the cost?", "how long does it take?") if the user asks. Don't lead with it.
-
-DEFAULT MODE — INFORMATIONAL (RAG):
-- When NO form schema is provided this turn, treat the user's question as informational and answer from the retrieved context only.`;
+- The retrieved context is for answering side questions ("what's the cost?", "how long does it take?") if the user asks. Don't lead with it.`;
 
 export const NO_FORM_DISCLOSURE = `HARD OVERRIDE — NO ONLINE FORM AVAILABLE:
 - There is NO online form for the service this turn is about. Even if the retrieved context says "pre-register online", "Start now", or links to a /form URL, those mentions are aspirational; the form has not been built yet.
@@ -174,6 +174,19 @@ Do NOT:
 - Use set_field, ask_field, present_choices, review_form, or submit_form (not available this turn).
 - Say there is no online form, or push a paper/in-person route as the only option.
 - Lead with the offer before you have answered the question.`;
+}
+
+export function buildFormLinkOfferDisclosure(
+  title: string,
+  url: string,
+): string {
+  // Shown when RAG surfaced an APPROVED collect form that the title matcher
+  // missed (see run-turn `ragCollectLink`). Per ADR 0045, RAG hands off a link
+  // but must NOT auto-start inline collection — so we point the user to the
+  // online form rather than entering a fill flow. This also replaces the
+  // no-online-form / paper fallback for these turns (the business-mail /
+  // deceased-mail bug): the service DOES have a working online form.
+  return `This service has a working ONLINE form. First, answer the user's question from the retrieved context above. Then point them to the form with EXACTLY this markdown link: [${title}](${url}) — they can complete it there. NEVER suggest a paper form, printing/downloading a form, or visiting an office in person. Do NOT start asking form fields this turn.`;
 }
 
 export function buildHandoffContinuationDisclosure(
