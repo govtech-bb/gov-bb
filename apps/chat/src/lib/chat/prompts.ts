@@ -114,6 +114,11 @@ export const NO_FORM_DISCLOSURE = `HARD OVERRIDE — NO ONLINE FORM AVAILABLE:
 - DO NOT end the message with "Want me to start the application/form for you?". Instead end with an informational follow-up (e.g. "Want the address of the registry office?", "Want the late-registration fees?").
 - Under NO circumstances call submit_form this turn. The tool is not even available.`;
 
+export const FEEDBACK_OFFER_GUIDANCE = `FEEDBACK (this assistant is in beta):
+- If the conversation has reached a natural conclusion — the user's question is fully answered or their task is done and they are wrapping up (e.g. "thanks", "that's all", "no, that's everything") — you MAY call offer_feedback ONCE to invite them to rate the assistant.
+- After calling offer_feedback, add one short sentence inviting their feedback (e.g. "Before you go, how was this? Your feedback helps us improve.").
+- Do NOT call offer_feedback if the user is mid-task, still asking questions, or has already been offered feedback. Never offer twice, and never pester a user who declines — just keep helping.`;
+
 export function buildSchemaDisclosure(slug: string, schema: string): string {
   return `FORM SCHEMA for "${slug}". Collect every required field before calling submit_form.\n\n${schema}`;
 }

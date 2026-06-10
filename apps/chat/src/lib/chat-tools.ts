@@ -102,3 +102,11 @@ export const submitFormDef = toolDefinition({
   }),
   needsApproval: true,
 });
+
+export const offerFeedbackDef = toolDefinition({
+  name: "offer_feedback",
+  description:
+    "Invite the user to give quick feedback on this assistant. Call with NO arguments, at most ONCE per conversation, and ONLY when the conversation has reached a natural conclusion — the user's need is met and they are wrapping up (e.g. 'thanks', 'that's all', 'no, that's everything'). Calling it starts a short feedback form; after calling it, ask in one short sentence how their experience was. Never call it twice and never interrupt an unfinished task.",
+  inputSchema: z.object({}),
+  outputSchema: z.object({ ok: z.boolean() }),
+});

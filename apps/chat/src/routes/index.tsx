@@ -19,13 +19,8 @@ import {
   useRef,
   useState,
 } from "react";
-import { BetaNotice } from "#/components/chat/beta-notice";
 import { Bubble } from "#/components/chat/bubble";
 import { TridentAvatar } from "#/components/trident-avatar";
-import {
-  FEEDBACK_TRIGGER_PHRASE,
-  shouldShowFeedbackAffordance,
-} from "#/lib/chat/feedback";
 import { extractText, hasAnyToolCall } from "#/lib/chat/messages";
 import {
   chatPersistence,
@@ -36,6 +31,7 @@ import {
 import type { Citation } from "#/lib/chat/types";
 import {
   askFieldDef,
+  offerFeedbackDef,
   presentChoicesDef,
   reviewFormDef,
   submitFormDef,
@@ -61,6 +57,7 @@ const LANDING_URL =
 // (welcome header, optimistic bubble, thinking indicator, error) live in the
 // same list as messages and carry stable keys.
 type ChatRow =
+  | { kind: "notice"; key: string }
   | { kind: "welcome"; key: string }
   | { kind: "optimistic"; key: string; text: string }
   | { kind: "message"; key: string; message: UIMessage; index: number }
@@ -146,7 +143,10 @@ function ChatPage() {
   }, [isStreaming, messages]);
 
   const rows = useMemo<ChatRow[]>(() => {
-    const out: ChatRow[] = [{ kind: "welcome", key: "welcome" }];
+    const out: ChatRow[] = [
+      { kind: "notice", key: "notice" },
+      { kind: "welcome", key: "welcome" },
+    ];
     if (pendingQuery && messages.length === 0) {
       out.push({ kind: "optimistic", key: "optimistic", text: pendingQuery });
       if (!error) out.push({ kind: "thinking", key: "thinking" });
@@ -251,36 +251,10 @@ function ChatPage() {
     setInput("");
   }
 
-  // "Give feedback" starts the chat-feedback form the same way any form starts:
-  // a plain user message the matcher pins to the recipe, then the normal
-  // collect -> submit_form flow emails it. No bespoke endpoint (issue #1066).
-  const handleGiveFeedback = useCallback(() => {
-    if (isStreaming) return;
-    sendMessage(FEEDBACK_TRIGGER_PHRASE);
-  }, [isStreaming, sendMessage]);
-
-  // A form is mid-collection when the latest assistant turn ended on a visible
-  // form prompt (ask_field / present_choices / review / submit approval). While
-  // it is, the feedback trigger would be swallowed by that form, so hide the
-  // affordance until it resolves. Matches shouldShowThinking's tool-call check.
-  const formActive = useMemo(
-    () =>
-      hasAnyToolCall(messages.slice(-1), [
-        askFieldDef.name,
-        presentChoicesDef.name,
-        reviewFormDef.name,
-        submitFormDef.name,
-      ]),
-    [messages],
-  );
-  const showFeedback = shouldShowFeedbackAffordance(
-    messages.length,
-    isStreaming,
-    formActive,
-  );
-
   function renderRow(row: ChatRow) {
     switch (row.kind) {
+      case "notice":
+        return <NoticeBubble />;
       case "welcome":
         return <WelcomeBubble />;
       case "optimistic":
@@ -329,12 +303,7 @@ function ChatPage() {
   return (
     <div className="flex h-dvh flex-col bg-white-00">
       <SiteHeader />
-      <ChatHeader
-        onStartAgain={handleStartAgain}
-        onGiveFeedback={handleGiveFeedback}
-        showFeedback={showFeedback}
-      />
-      <BetaNotice />
+      <ChatHeader onStartAgain={handleStartAgain} />
 
       <div className="relative flex-1 overflow-hidden">
         {/* Not a live region: the virtualizer remounts rows on scroll, which a
@@ -430,34 +399,15 @@ function SiteHeader() {
   );
 }
 
-function ChatHeader({
-  onStartAgain,
-  onGiveFeedback,
-  showFeedback,
-}: {
-  onStartAgain: () => void;
-  onGiveFeedback: () => void;
-  showFeedback: boolean;
-}) {
+function ChatHeader({ onStartAgain }: { onStartAgain: () => void }) {
   return (
     <header className="bg-white-00">
       <div className="container flex items-center gap-s py-xm">
         <div className="flex-1">
-          <GovLink href={LANDING_URL}>
-            Close
-          </GovLink>
+          <GovLink href={LANDING_URL}>Close</GovLink>
         </div>
         <TridentAvatar size="sm" tone="filled" />
-        <div className="flex flex-1 justify-end gap-s">
-          {showFeedback && (
-            <button
-              type="button"
-              onClick={onGiveFeedback}
-              className={cn(linkVariants())}
-            >
-              Give feedback
-            </button>
-          )}
+        <div className="flex flex-1 justify-end">
           <button
             type="button"
             onClick={onStartAgain}
@@ -481,6 +431,25 @@ function OptimisticUserBubble({ text }: { text: string }) {
   );
 }
 
+// Beta disclaimer rendered as the first chat row, above the welcome bubble.
+// Intentionally always shown — per product decision there is no dismiss or
+// once-per-session suppression — and intentionally avatar-less: it is a
+// standing disclaimer, not a message attributed to the assistant.
+function NoticeBubble() {
+  return (
+    <div className="mb-xs flex max-w-[92%]">
+      <Text
+        as="p"
+        size="caption"
+        className="rounded-[16px_16px_16px_4px] bg-blue-10 px-4 py-2.5 text-mid-grey-00"
+      >
+        This assistant is new and still learning, so it may sometimes get things
+        wrong. Please double check anything important.
+      </Text>
+    </div>
+  );
+}
+
 function WelcomeBubble() {
   return (
     <div className="flex max-w-[92%] items-start gap-2.5">
@@ -499,6 +468,8 @@ function shouldShowThinking(messages: UIMessage[]): boolean {
   if (last.role === "user") return true;
   // Hide once something renderable lands: text deltas, a present_choices
   // tool call, or a submit_form approval prompt. set_field is invisible.
+  // offer_feedback also ends the turn's "work" (it pins the feedback form),
+  // so treat it as a stop signal to avoid a hung indicator if no text follows.
   if (extractText(last).length > 0) return false;
   if (
     hasAnyToolCall([last], [
@@ -506,6 +477,7 @@ function shouldShowThinking(messages: UIMessage[]): boolean {
       askFieldDef.name,
       reviewFormDef.name,
       submitFormDef.name,
+      offerFeedbackDef.name,
     ])
   ) {
     return false;

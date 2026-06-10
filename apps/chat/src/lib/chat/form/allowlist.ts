@@ -29,7 +29,7 @@ export const SURFACEABLE_FORM_IDS: ReadonlySet<string> = new Set([
   "post-office-redirection-deceased", // Tell the Post Office someone has died
   "post-office-redirection-business", // Redirect my business mail
   "sell-goods-services-beach-park", // Apply for a licence to sell goods/services at a beach or park
-  "chat-feedback", // Give feedback on the assistant (issue #1066 — started by the end-of-chat "Give feedback" affordance)
+  "chat-feedback", // Give feedback on the assistant (issue #1066 — started by the model-initiated offer_feedback tool)
 ]);
 
 export function isSurfaceableForm(formId: string): boolean {

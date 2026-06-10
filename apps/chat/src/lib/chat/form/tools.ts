@@ -1,10 +1,12 @@
 import {
   askFieldDef,
+  offerFeedbackDef,
   presentChoicesDef,
   reviewFormDef,
   setFieldDef,
   submitFormDef,
 } from "#/lib/chat-tools";
+import { pinFeedbackForm } from "#/lib/chat/feedback";
 import type { ActiveFormSchema } from "./schema";
 import { buildFieldIndex, getActiveFieldIds } from "./schema";
 import type { FormSession } from "./session";
@@ -186,4 +188,20 @@ export function buildFormTools() {
     reviewFormTool,
     submitFormTool,
   ];
+}
+
+// End-of-chat feedback offer. The handler pins the chat-feedback form so the
+// normal collect flow runs from the next turn — the model only decides WHEN to
+// offer. No approval: pinning a form is not a user-visible side effect.
+const offerFeedbackTool = offerFeedbackDef.server<FormTurnContext>(
+  async (_args, ctx) => {
+    pinFeedbackForm(ctx.context.session);
+    return { ok: true };
+  },
+);
+
+// The only tool exposed on a no-form turn (until feedback is offered once):
+// lets the model invite feedback at a natural conclusion. See run-turn.ts.
+export function buildEndOfChatTools() {
+  return [offerFeedbackTool];
 }
