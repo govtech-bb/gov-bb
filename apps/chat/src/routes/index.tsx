@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import type { UIMessage } from "@tanstack/ai";
 import { fetchServerSentEvents, useChat } from "@tanstack/ai-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -30,6 +30,7 @@ import {
   resetSessionThreadId,
 } from "#/lib/chat/persistence";
 import type { Citation } from "#/lib/chat/types";
+import { LANDING_URL } from "#/config/landing";
 import {
   askFieldDef,
   offerFeedbackDef,
@@ -50,9 +51,6 @@ const MAX_QUERY_LENGTH = 2000;
 
 // How close to the bottom (px) still counts as pinned to the latest message.
 const SCROLL_END_THRESHOLD = 80;
-
-const LANDING_URL =
-  import.meta.env.VITE_LANDING_URL || "https://landing.sandbox.alpha.gov.bb";
 
 // Flat row model so the virtualizer has a single `count`. Decorations
 // (welcome header, optimistic bubble, thinking indicator, error) live in the
@@ -415,13 +413,13 @@ function SiteHeader() {
       </div>
       <header className="bg-yellow-100">
         <div className="container py-s md:py-m">
-          <Link to="/" aria-label="Go to the alpha.gov.bb homepage">
+          <a href={LANDING_URL} aria-label="Go to the alpha.gov.bb homepage">
             <Logo
               aria-hidden="true"
               width="auto"
               className="h-7 w-auto md:h-9"
             />
-          </Link>
+          </a>
         </div>
       </header>
     </div>
