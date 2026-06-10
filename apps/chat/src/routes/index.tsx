@@ -19,8 +19,13 @@ import {
   useRef,
   useState,
 } from "react";
+import { BetaNotice } from "#/components/chat/beta-notice";
 import { Bubble } from "#/components/chat/bubble";
 import { TridentAvatar } from "#/components/trident-avatar";
+import {
+  FEEDBACK_TRIGGER_PHRASE,
+  shouldShowFeedbackAffordance,
+} from "#/lib/chat/feedback";
 import { extractText, hasAnyToolCall } from "#/lib/chat/messages";
 import {
   chatPersistence,
@@ -246,6 +251,34 @@ function ChatPage() {
     setInput("");
   }
 
+  // "Give feedback" starts the chat-feedback form the same way any form starts:
+  // a plain user message the matcher pins to the recipe, then the normal
+  // collect -> submit_form flow emails it. No bespoke endpoint (issue #1066).
+  const handleGiveFeedback = useCallback(() => {
+    if (isStreaming) return;
+    sendMessage(FEEDBACK_TRIGGER_PHRASE);
+  }, [isStreaming, sendMessage]);
+
+  // A form is mid-collection when the latest assistant turn ended on a visible
+  // form prompt (ask_field / present_choices / review / submit approval). While
+  // it is, the feedback trigger would be swallowed by that form, so hide the
+  // affordance until it resolves. Matches shouldShowThinking's tool-call check.
+  const formActive = useMemo(
+    () =>
+      hasAnyToolCall(messages.slice(-1), [
+        askFieldDef.name,
+        presentChoicesDef.name,
+        reviewFormDef.name,
+        submitFormDef.name,
+      ]),
+    [messages],
+  );
+  const showFeedback = shouldShowFeedbackAffordance(
+    messages.length,
+    isStreaming,
+    formActive,
+  );
+
   function renderRow(row: ChatRow) {
     switch (row.kind) {
       case "welcome":
@@ -296,7 +329,12 @@ function ChatPage() {
   return (
     <div className="flex h-dvh flex-col bg-white-00">
       <SiteHeader />
-      <ChatHeader onStartAgain={handleStartAgain} />
+      <ChatHeader
+        onStartAgain={handleStartAgain}
+        onGiveFeedback={handleGiveFeedback}
+        showFeedback={showFeedback}
+      />
+      <BetaNotice />
 
       <div className="relative flex-1 overflow-hidden">
         {/* Not a live region: the virtualizer remounts rows on scroll, which a
@@ -392,7 +430,15 @@ function SiteHeader() {
   );
 }
 
-function ChatHeader({ onStartAgain }: { onStartAgain: () => void }) {
+function ChatHeader({
+  onStartAgain,
+  onGiveFeedback,
+  showFeedback,
+}: {
+  onStartAgain: () => void;
+  onGiveFeedback: () => void;
+  showFeedback: boolean;
+}) {
   return (
     <header className="bg-white-00">
       <div className="container flex items-center gap-s py-xm">
@@ -402,7 +448,16 @@ function ChatHeader({ onStartAgain }: { onStartAgain: () => void }) {
           </GovLink>
         </div>
         <TridentAvatar size="sm" tone="filled" />
-        <div className="flex flex-1 justify-end">
+        <div className="flex flex-1 justify-end gap-s">
+          {showFeedback && (
+            <button
+              type="button"
+              onClick={onGiveFeedback}
+              className={cn(linkVariants())}
+            >
+              Give feedback
+            </button>
+          )}
           <button
             type="button"
             onClick={onStartAgain}
