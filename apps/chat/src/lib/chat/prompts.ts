@@ -175,6 +175,19 @@ Do NOT:
 - Lead with the offer before you have answered the question.`;
 }
 
+export function buildFormLinkOfferDisclosure(
+  title: string,
+  url: string,
+): string {
+  // Shown when RAG surfaced an APPROVED collect form that the title matcher
+  // missed (see run-turn `ragCollectLink`). Per ADR 0045, RAG hands off a link
+  // but must NOT auto-start inline collection — so we point the user to the
+  // online form rather than entering a fill flow. This also replaces the
+  // no-online-form / paper fallback for these turns (the business-mail /
+  // deceased-mail bug): the service DOES have a working online form.
+  return `This service has a working ONLINE form. First, answer the user's question from the retrieved context above. Then point them to the form with EXACTLY this markdown link: [${title}](${url}) — they can complete it there. NEVER suggest a paper form, printing/downloading a form, or visiting an office in person. Do NOT start asking form fields this turn.`;
+}
+
 export function buildHandoffContinuationDisclosure(
   title: string,
   url: string,
