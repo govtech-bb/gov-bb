@@ -1409,7 +1409,10 @@
               },
               "fileTypes": {
                 "error": "Upload a JPEG or PNG image",
-                "value": ["image/jpeg", "image/png"]
+                "value": [
+                  "image/jpeg",
+                  "image/png"
+                ]
               },
               "itemMaxSize": {
                 "error": "File must be no larger than 5 MB",
@@ -1430,7 +1433,11 @@
               },
               "fileTypes": {
                 "error": "Upload a PDF or image",
-                "value": ["application/pdf", "image/jpeg", "image/png"]
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ]
               },
               "itemMaxSize": {
                 "error": "File must be no larger than 5 MB",
@@ -1451,7 +1458,11 @@
               },
               "fileTypes": {
                 "error": "Upload a PDF or image",
-                "value": ["application/pdf", "image/jpeg", "image/png"]
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ]
               },
               "itemMaxSize": {
                 "error": "File must be no larger than 5 MB",
@@ -1472,7 +1483,11 @@
               },
               "fileTypes": {
                 "error": "Upload a PDF or image",
-                "value": ["application/pdf", "image/jpeg", "image/png"]
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ]
               },
               "itemMaxSize": {
                 "error": "File must be no larger than 5 MB",
@@ -1493,7 +1508,11 @@
               },
               "fileTypes": {
                 "error": "Upload a PDF or image",
-                "value": ["application/pdf", "image/jpeg", "image/png"]
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ]
               },
               "itemMaxSize": {
                 "error": "File must be no larger than 5 MB",
