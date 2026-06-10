@@ -443,7 +443,8 @@ function NoticeBubble() {
         size="caption"
         className="rounded-[16px_16px_16px_4px] bg-blue-10 px-4 py-2.5 text-mid-grey-00"
       >
-        This assistant is new and we&rsquo;re still improving it.
+        This assistant is still new and improving. Your feedback helps us make
+        it better!
       </Text>
     </div>
   );
