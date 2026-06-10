@@ -106,6 +106,12 @@ export const CATEGORIES: Array<Category> = [
     description:
       'Prepare for hurricane season, find an emergency shelter, and reach key emergency contacts',
   },
+  {
+    slug: 'housing',
+    title: 'Housing',
+    description:
+      'Apply for National Housing Corporation homes and land, use State land, and exercise tenant rights to buy a freehold',
+  },
 ]
 
 export const CATEGORY_BY_SLUG: Record<string, Category> = Object.fromEntries(
