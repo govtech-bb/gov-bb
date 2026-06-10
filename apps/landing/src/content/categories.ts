@@ -73,6 +73,12 @@ export const CATEGORIES: Array<Category> = [
     ],
   },
   {
+    slug: 'ministry-of-youth',
+    title: 'Ministry of Youth',
+    description:
+      'Programmes, training and volunteering opportunities run by the Division of Youth Affairs',
+  },
+  {
     slug: 'travel-id-citizenship',
     title: 'Travel, ID and citizenship',
     description: 'Travel, drive or prove your identity and status',
