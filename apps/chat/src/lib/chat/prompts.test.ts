@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  FEEDBACK_COLLECTION_GUIDANCE,
   FORM_COLLECTION_PROTOCOL,
   SYSTEM_PROMPT,
   buildHandoffContinuationDisclosure,
@@ -70,6 +71,22 @@ test("miss disclosure: asks to clarify, invents nothing, doesn't fabricate a pap
   assert.match(out, /don't know yet|simply don't know/i);
   // Still defers to the fraud decline.
   assert.match(out, /illegitimate|fraud/i);
+});
+
+// On a successful feedback submit the model must thank the user and NOT recite
+// a reference number — the generic protocol's "report the referenceNumber
+// verbatim" rule would otherwise leak a permit-style reference onto a 30-second
+// feedback form. The guidance both names the thank-you and forbids the
+// reference, since it is the more specific instruction injected on feedback
+// turns.
+test("feedback guidance: a successful submit thanks the user with no reference number", () => {
+  assert.match(FEEDBACK_COLLECTION_GUIDANCE, /submit_form/);
+  assert.match(FEEDBACK_COLLECTION_GUIDANCE, /thank/i);
+  assert.match(FEEDBACK_COLLECTION_GUIDANCE, /reference number/i);
+  assert.match(
+    FEEDBACK_COLLECTION_GUIDANCE,
+    /no reference number|never.*reference|without.*reference/i,
+  );
 });
 
 test("FORM_COLLECTION_PROTOCOL carries the collection + submit rules", () => {
