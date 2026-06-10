@@ -9,7 +9,7 @@ import { Footer, textVariants } from '@govtech-bb/react'
 import Header from '../components/Header'
 import { ErrorPage } from '../components/ErrorPage'
 import { trackEvent } from '../lib/analytics'
-import { resolvePreview } from '../lib/preview'
+import { resolveViewLevel } from '../lib/preview'
 
 import appCss from '../styles.css?url'
 
@@ -48,14 +48,14 @@ const UMAMI_SRC =
   'https://cloud.umami.is/script.js'
 
 export const Route = createRootRouteWithContext<MyRouterContext>()({
-  // Resolve preview mode once, server-side, and expose it on the router context
-  // so every child loader/component can gate on it. Runs on the initial SSR
-  // load; the resolved boolean rides the dehydrated context across subsequent
-  // client navigations, so there's no per-navigation server round-trip.
+  // Resolve the viewer's content level once, server-side, and expose it on the
+  // router context so every child loader/component can gate on it. Runs on the
+  // initial SSR load; the resolved level rides the dehydrated context across
+  // subsequent client navigations, so there's no per-navigation server round-trip.
   beforeLoad: async () => {
-    const { preview, redirectTo } = await resolvePreview()
+    const { level, redirectTo } = await resolveViewLevel()
     if (redirectTo) throw redirect({ href: redirectTo })
-    return { preview }
+    return { level }
   },
   head: () => ({
     meta: [

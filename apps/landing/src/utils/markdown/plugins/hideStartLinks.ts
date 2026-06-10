@@ -5,8 +5,8 @@ export type RehypeHideStartLinksOptions = {
    * When true, remove the page's online-application method — the element (or
    * enclosing `<li>`) containing a `data-start-link` CTA — and rewrite the
    * "There are N ways…" count down by the number of methods removed. Driven by
-   * the route: it is set for a public visitor whose `/start` sub-page is in
-   * preview (see registry `startSubPageInPreview`). Left false for everyone
+   * the route: it is set for a visitor whose level cannot see the `/start`
+   * sub-page (see registry `isStartSubPageVisible`). Left false for everyone
    * else, in which case the plugin is a no-op.
    */
   hideStartLink?: boolean

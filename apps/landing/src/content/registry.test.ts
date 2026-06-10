@@ -3,16 +3,18 @@ import {
   categoryServices,
   findPage,
   isCategoryVisible,
-  isPreview,
+  isStartSubPageVisible,
   isSubPage,
-  isUrlPreview,
   isVisible,
   PAGES,
-  resolveIsPreview,
+  pageLevel,
+  resolvePageLevel,
   resolveServiceHref,
-  startSubPageInPreview,
+  startSubPageLevel,
+  urlLevel,
 } from './registry'
 import { CATEGORY_BY_SLUG } from './categories'
+import type { ViewLevel } from '../lib/frontmatter'
 
 describe('resolveServiceHref', () => {
   it('rewrites a bare service slug to its category-prefixed URL', () => {
@@ -95,69 +97,87 @@ describe('step pages hang off their parent service URL', () => {
   })
 })
 
-describe('resolveIsPreview (ancestor inheritance)', () => {
-  // A small synthetic registry: a public service with a preview /start step,
-  // and a fully-preview service.
-  const visibility: Record<string, 'public' | 'preview'> = {
+describe('resolvePageLevel (ancestor inheritance)', () => {
+  // A small synthetic registry: a public service with a preview /start step, a
+  // fully-preview service, and a draft service whose /start is (nominally)
+  // public but should inherit draft from its parent.
+  const visibility: Record<string, ViewLevel> = {
     'get-birth-certificate': 'public',
     'get-birth-certificate/start': 'preview',
     'fully-hidden': 'preview',
     'fully-hidden/start': 'public',
+    'draft-service': 'draft',
+    'draft-service/start': 'public',
   }
   const visibilityOf = (slug: string) => visibility[slug]
 
-  it('flags a page whose own visibility is preview', () => {
-    expect(resolveIsPreview('fully-hidden', visibilityOf)).toBe(true)
+  it('returns a page its own level', () => {
+    expect(resolvePageLevel('fully-hidden', visibilityOf)).toBe('preview')
+    expect(resolvePageLevel('draft-service', visibilityOf)).toBe('draft')
   })
 
-  it('flags a sub-page whose own visibility is preview', () => {
-    expect(resolveIsPreview('get-birth-certificate/start', visibilityOf)).toBe(
-      true,
+  it('returns a sub-page its own level', () => {
+    expect(resolvePageLevel('get-birth-certificate/start', visibilityOf)).toBe(
+      'preview',
     )
   })
 
-  it('inherits preview from an ancestor page even when the sub-page is public', () => {
-    expect(resolveIsPreview('fully-hidden/start', visibilityOf)).toBe(true)
+  it('inherits the most-restricted ancestor level even when the sub-page is public', () => {
+    expect(resolvePageLevel('fully-hidden/start', visibilityOf)).toBe('preview')
+    expect(resolvePageLevel('draft-service/start', visibilityOf)).toBe('draft')
   })
 
-  it('leaves a public page with a preview sub-page public', () => {
-    expect(resolveIsPreview('get-birth-certificate', visibilityOf)).toBe(false)
+  it('leaves a public page with a more-restricted sub-page public', () => {
+    expect(resolvePageLevel('get-birth-certificate', visibilityOf)).toBe(
+      'public',
+    )
   })
 
   it('treats an unknown slug as public', () => {
-    expect(resolveIsPreview('nothing-here', visibilityOf)).toBe(false)
+    expect(resolvePageLevel('nothing-here', visibilityOf)).toBe('public')
   })
 })
 
 describe('visibility helpers over real content', () => {
-  it('flags pages gated by visibility: preview and leaves the rest public', () => {
+  it('reflects each page-gated level and leaves the rest public', () => {
     const previewPages = PAGES.filter(
       (p) => p.frontmatter.visibility === 'preview',
     )
     expect(previewPages.length).toBeGreaterThan(0)
-    for (const p of previewPages) expect(isPreview(p)).toBe(true)
+    for (const p of previewPages) expect(pageLevel(p)).toBe('preview')
 
-    // Public top-level pages (no ancestor that could pull them into preview)
-    // stay public.
+    // Public top-level pages (no ancestor that could pull them into a higher
+    // level) stay public.
     const publicTopLevel = PAGES.filter(
-      (p) => p.frontmatter.visibility !== 'preview' && !p.slug.includes('/'),
+      (p) => p.frontmatter.visibility === 'public' && !p.slug.includes('/'),
     )
-    for (const p of publicTopLevel) expect(isPreview(p)).toBe(false)
+    for (const p of publicTopLevel) expect(pageLevel(p)).toBe('public')
   })
 
-  it('isVisible shows any page in preview mode and public pages otherwise', () => {
+  it('isVisible shows a public page at every level', () => {
     const page = findPage('money-financial-support/calculate-severance-pay')!
-    expect(isVisible(page, false)).toBe(true)
-    expect(isVisible(page, true)).toBe(true)
+    expect(isVisible(page, 'public')).toBe(true)
+    expect(isVisible(page, 'preview')).toBe(true)
+    expect(isVisible(page, 'draft')).toBe(true)
   })
 
-  it('startSubPageInPreview is false when the /start step is public', () => {
+  it('isVisible gates a preview page below preview level, opening it to preview and draft', () => {
+    const previewPage = PAGES.find((p) => pageLevel(p) === 'preview')
+    expect(previewPage).toBeDefined()
+    // The public cannot see it; preview and the higher draft level both can.
+    expect(isVisible(previewPage!, 'public')).toBe(false)
+    expect(isVisible(previewPage!, 'preview')).toBe(true)
+    expect(isVisible(previewPage!, 'draft')).toBe(true)
+  })
+
+  it('startSubPageLevel is public when the /start step is public', () => {
     const service = findPage('money-financial-support/calculate-severance-pay')!
-    expect(startSubPageInPreview(service)).toBe(false)
+    expect(startSubPageLevel(service)).toBe('public')
+    expect(isStartSubPageVisible(service, 'public')).toBe(true)
   })
 
-  it('isUrlPreview fails open for an unknown URL', () => {
-    expect(isUrlPreview('not-a-real-service')).toBe(false)
+  it('urlLevel fails open to public for an unknown URL', () => {
+    expect(urlLevel('not-a-real-service')).toBe('public')
   })
 })
 
@@ -165,34 +185,38 @@ describe('isCategoryVisible', () => {
   it('hides pensions-and-gratuities for the public (its only service is preview)', () => {
     const pensions = CATEGORY_BY_SLUG['pensions-and-gratuities']
     expect(pensions).toBeDefined()
-    expect(isCategoryVisible(pensions, false)).toBe(false)
+    expect(isCategoryVisible(pensions, 'public')).toBe(false)
   })
 
-  it('shows pensions-and-gratuities to a reviewer in preview mode', () => {
+  it('shows pensions-and-gratuities to a reviewer at preview level', () => {
     const pensions = CATEGORY_BY_SLUG['pensions-and-gratuities']
-    expect(isCategoryVisible(pensions, true)).toBe(true)
+    expect(isCategoryVisible(pensions, 'preview')).toBe(true)
   })
 
-  it('shows a category with public services in both modes', () => {
+  it('shows a category with public services at every level', () => {
     const family = CATEGORY_BY_SLUG['family-birth-relationships']
-    expect(isCategoryVisible(family, false)).toBe(true)
-    expect(isCategoryVisible(family, true)).toBe(true)
+    expect(isCategoryVisible(family, 'public')).toBe(true)
+    expect(isCategoryVisible(family, 'preview')).toBe(true)
+    expect(isCategoryVisible(family, 'draft')).toBe(true)
   })
 
   it('hides youth-and-community for the public (all its services are preview)', () => {
     const youth = CATEGORY_BY_SLUG['youth-and-community']
-    expect(isCategoryVisible(youth, false)).toBe(false)
+    expect(isCategoryVisible(youth, 'public')).toBe(false)
   })
 
-  it('shows the sub-categorised youth-and-community to a reviewer in preview mode', () => {
+  it('shows the sub-categorised youth-and-community to a reviewer at preview level', () => {
     const youth = CATEGORY_BY_SLUG['youth-and-community']
-    expect(isCategoryVisible(youth, true)).toBe(true)
+    expect(isCategoryVisible(youth, 'preview')).toBe(true)
   })
 })
 
 describe('categoryServices', () => {
   it('lists the severance service once, not its /start step', () => {
-    const severance = categoryServices('money-financial-support', false).filter(
+    const severance = categoryServices(
+      'money-financial-support',
+      'public',
+    ).filter(
       (p) =>
         p.frontmatter.title ===
         'Find out how much severance payment you are owed',
@@ -204,7 +228,7 @@ describe('categoryServices', () => {
   })
 
   it('lists severance under work-employment too, at the same canonical URL', () => {
-    const inWork = categoryServices('work-employment', false).filter(
+    const inWork = categoryServices('work-employment', 'public').filter(
       (p) => p.slug === 'calculate-severance-pay',
     )
     expect(inWork).toHaveLength(1)
@@ -214,9 +238,11 @@ describe('categoryServices', () => {
   })
 
   it('drops a category whose only service is preview from the public listing', () => {
-    expect(categoryServices('pensions-and-gratuities', false)).toHaveLength(0)
+    expect(categoryServices('pensions-and-gratuities', 'public')).toHaveLength(
+      0,
+    )
     expect(
-      categoryServices('pensions-and-gratuities', true).length,
+      categoryServices('pensions-and-gratuities', 'preview').length,
     ).toBeGreaterThan(0)
   })
 })

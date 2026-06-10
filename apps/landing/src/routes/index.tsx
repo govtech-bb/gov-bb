@@ -21,8 +21,8 @@ export const Route = createFileRoute('/')({
 })
 
 function Home() {
-  const { preview } = Route.useRouteContext()
-  const categories = CATEGORIES.filter((cat) => isCategoryVisible(cat, preview))
+  const { level } = Route.useRouteContext()
+  const categories = CATEGORIES.filter((cat) => isCategoryVisible(cat, level))
 
   const handleSearch = (q: string) => {
     trackEvent('search-submit', { query: q, source: 'home' })

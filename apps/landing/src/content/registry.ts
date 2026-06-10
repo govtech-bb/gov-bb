@@ -1,5 +1,5 @@
 import { FrontmatterSchema, titleFromSlug } from '../lib/frontmatter'
-import type { Frontmatter } from '../lib/frontmatter'
+import type { Frontmatter, ViewLevel } from '../lib/frontmatter'
 import type { Root } from 'hast'
 import { bakeStartLinkFormId } from '../utils/markdown/plugins'
 import type { MarkdownHeading } from '../utils/markdown/plugins'
@@ -238,64 +238,94 @@ export function isSubPage(page: ContentPage): boolean {
   return parent !== undefined && BY_SLUG.has(parent)
 }
 
+/** Numeric rank of a view level — higher is more restricted / more privileged. */
+const RANK: Record<ViewLevel, number> = { public: 0, preview: 1, draft: 2 }
+
+/** Whether a viewer holding `viewer` may see content requiring `required`. */
+function viewerMeets(viewer: ViewLevel, required: ViewLevel): boolean {
+  return RANK[viewer] >= RANK[required]
+}
+
 /**
- * A page is *effectively preview* if its own `visibility` is `preview` or any
- * ancestor page is. Walking ancestors by slug means flagging a service's
- * `index.md` automatically hides its `/start` (and other) sub-pages, which sit
- * at `<service>/<leaf>`. Slug-keyed (not URL) so it is independent of the
- * category prefix — a sub-page's URL hangs off its parent's, but its slug is
- * always `<parentSlug>/<leaf>`.
+ * A page's *effective* level: the most restricted of its own `visibility` and
+ * every ancestor page's. Walking ancestors by slug means flagging a service's
+ * `index.md` as `preview`/`draft` automatically gates its `/start` (and other)
+ * sub-pages, which sit at `<service>/<leaf>`. Slug-keyed (not URL) so it is
+ * independent of the category prefix — a sub-page's URL hangs off its parent's,
+ * but its slug is always `<parentSlug>/<leaf>`.
  */
-export function isPreview(page: ContentPage): boolean {
-  return resolveIsPreview(
+export function pageLevel(page: ContentPage): ViewLevel {
+  return resolvePageLevel(
     page.slug,
     (slug) => BY_SLUG.get(slug)?.frontmatter.visibility,
   )
 }
 
 /**
- * Pure core of {@link isPreview}, decoupled from module state for testing:
- * walk `slug` and each ancestor slug, returning true if any is `preview`.
+ * Pure core of {@link pageLevel}, decoupled from module state for testing: walk
+ * `slug` and each ancestor slug, returning the highest-ranked level found.
  * `visibilityOf` returns the *own* visibility of a slug, or undefined if no
  * page sits at that slug (intermediate directory).
  */
-export function resolveIsPreview(
+export function resolvePageLevel(
   slug: string,
-  visibilityOf: (slug: string) => 'public' | 'preview' | undefined,
-): boolean {
+  visibilityOf: (slug: string) => ViewLevel | undefined,
+): ViewLevel {
+  let effective: ViewLevel = 'public'
   let current: string | undefined = slug
   while (current) {
-    if (visibilityOf(current) === 'preview') return true
+    const own = visibilityOf(current)
+    if (own && RANK[own] > RANK[effective]) effective = own
     current = parentSlug(current)
   }
-  return false
+  return effective
 }
 
-/** A page is visible when in preview mode, or when it isn't effectively preview. */
-export function isVisible(page: ContentPage, inPreview: boolean): boolean {
-  return inPreview || !isPreview(page)
+/** A page is visible when the viewer's level meets the page's required level. */
+export function isVisible(page: ContentPage, viewer: ViewLevel): boolean {
+  return viewerMeets(viewer, pageLevel(page))
 }
 
 /**
- * Whether the page at `url` is effectively preview. Used by the static
- * `<service>/form` routes to gate themselves on their owning service page.
- * Unknown URLs are treated as not-preview (fail-open: a missing page already
- * 404s through its own route).
+ * The effective level of the page at `url`. Used by the static
+ * `<service>/form` routes to gate themselves on their owning service page, and
+ * to decide `noindex` (anything non-public is noindexed). Unknown URLs are
+ * treated as `public` (fail-open: a missing page already 404s through its own
+ * route).
  */
-export function isUrlPreview(url: string): boolean {
+export function urlLevel(url: string): ViewLevel {
   const page = findPage(url)
-  return page ? isPreview(page) : false
+  return page ? pageLevel(page) : 'public'
+}
+
+/** Whether a viewer at `viewer` may see the page at `url`. */
+export function isUrlVisible(url: string, viewer: ViewLevel): boolean {
+  return viewerMeets(viewer, urlLevel(url))
 }
 
 /**
- * Whether this page's `<slug>/start` sub-page exists and is effectively
- * preview. Drives hiding the online-application method on a still-public parent
- * page (see rehype-hide-start-links). Pages with no `/start` sub-page return
- * false and keep their existing manifest-gated behaviour.
+ * The effective level of this page's `<slug>/start` sub-page, or `public` when
+ * there is none. Drives hiding the online-application method on a still-public
+ * parent page (see rehype-hide-start-links) when the viewer can't see the
+ * `/start` step: a page with no `/start` sub-page resolves to `public` and
+ * keeps its existing manifest-gated behaviour.
  */
-export function startSubPageInPreview(page: ContentPage): boolean {
+export function startSubPageLevel(page: ContentPage): ViewLevel {
   const start = BY_SLUG.get(`${page.slug}/start`)
-  return start ? isPreview(start) : false
+  return start ? pageLevel(start) : 'public'
+}
+
+/**
+ * Whether a viewer at `viewer` may see this page's `/start` sub-page. False
+ * means the online-application method is hidden for them (the step is gated
+ * above their level); a page with no `/start` sub-page is always "visible"
+ * (its level resolves to `public`), so nothing is hidden.
+ */
+export function isStartSubPageVisible(
+  page: ContentPage,
+  viewer: ViewLevel,
+): boolean {
+  return viewerMeets(viewer, startSubPageLevel(page))
 }
 
 /**
@@ -340,7 +370,7 @@ export function resolveServiceHref(href: string): string {
 }
 
 /**
- * The listable service pages of a category under the current mode: non-sub-page
+ * The listable service pages of a category at the viewer's level: non-sub-page
  * pages that claim the category and are visible. Sub-category pages are included
  * (they carry the parent slug in `categories`); callers narrow by subcategory.
  * The single source for "what shows under a category" — both the category
@@ -348,27 +378,27 @@ export function resolveServiceHref(href: string): string {
  */
 export function categoryServices(
   categorySlug: string,
-  inPreview: boolean,
+  viewer: ViewLevel,
 ): Array<ContentPage> {
   return PAGES.filter(
     (p) =>
       p.frontmatter.categories.includes(categorySlug) &&
       !isSubPage(p) &&
-      isVisible(p, inPreview),
+      isVisible(p, viewer),
   )
 }
 
 /**
- * A category is visible when it has at least one listable service under the
- * current mode. A category whose only services are `preview` (or that has none)
- * is dropped from the public home list and 404s when visited directly; a
- * reviewer in preview mode still sees it.
+ * A category is visible when it has at least one listable service at the
+ * viewer's level. A category whose only services are gated above the viewer (or
+ * that has none) is dropped from the home list and 404s when visited directly; a
+ * reviewer whose level reaches those services still sees it.
  */
 export function isCategoryVisible(
   category: Category,
-  inPreview: boolean,
+  viewer: ViewLevel,
 ): boolean {
-  return categoryServices(category.slug, inPreview).length > 0
+  return categoryServices(category.slug, viewer).length > 0
 }
 
 export { CATEGORIES, CATEGORY_BY_SLUG }

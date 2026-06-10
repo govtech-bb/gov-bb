@@ -6,103 +6,135 @@ import {
   setCookie,
 } from '@tanstack/react-start/server'
 import { useRuntimeConfig } from 'nitro/runtime-config'
+import type { ViewLevel } from './frontmatter'
 
 /**
- * Preview-token handling for the content rollout gate.
+ * View-level handling for the content rollout gate.
  *
- * A reviewer unlocks `visibility: preview` content by visiting any URL with
- * `?preview=<token>` where the token matches `PREVIEW_SECRET` (a server-only
- * env var — never `VITE_`-prefixed, so it is not shipped to the client). On a
- * match the server sets an httpOnly cookie and redirects to the same path with
- * the token stripped, so the secret never lingers in the URL or browser
- * history. `?preview=exit` clears the cookie and sends the visitor home (the
- * page they were on may be preview-only and would otherwise 404 under them).
+ * There are three hierarchical levels (see `ViewLevel` in `frontmatter.ts`):
+ * `public` < `preview` < `draft`. A higher grant subsumes the lower ones — a
+ * `draft` reviewer also sees `preview` and `public` content.
  *
- * The cookie holds only the boolean grant ("1"), never the secret. httpOnly
- * means client JS cannot forge it — preview can only be granted by presenting
- * the token to the server.
+ * A reviewer unlocks content by visiting any URL with a matching token:
+ *   - `?preview=<PREVIEW_SECRET>` grants `preview`,
+ *   - `?draft=<DRAFT_SECRET>`     grants `draft`.
+ * The two secrets are deliberately distinct: `draft` content is hidden even
+ * from `preview`-token holders, so sharing one secret would let a preview
+ * reviewer reach draft content just by swapping the query param. On a match the
+ * server sets an httpOnly cookie holding only the granted *level* (never a
+ * secret) and redirects to the same path with the token stripped, so the secret
+ * never lingers in the URL or browser history. `?preview=exit` (or
+ * `?draft=exit`) clears the cookie and sends the visitor home (the page they
+ * were on may be gated and would otherwise 404 under them).
+ *
+ * httpOnly means client JS cannot forge the grant — a level can only be granted
+ * by presenting the matching token to the server.
  */
 export const COOKIE_NAME = 'preview'
-const COOKIE_VALUE = '1'
 
-export interface PreviewResolution {
-  /** Whether the current request is in preview mode. */
-  preview: boolean
+export interface ViewLevelResolution {
+  /** The view level granted to the current request. */
+  level: ViewLevel
   /** When set, the caller should redirect here (token consumed or cleared). */
   redirectTo?: string
 }
 
-type CookieAction = 'set' | 'clear' | 'none'
+/** What the adapter should do with the cookie: clear it, or set it to a level. */
+type CookieAction = 'none' | 'clear' | 'preview' | 'draft'
 
-interface PreviewDecision extends PreviewResolution {
-  /** What the adapter should do with the cookie. */
+interface ViewLevelDecision extends ViewLevelResolution {
   cookie: CookieAction
+}
+
+/**
+ * Read the level a previously-set grant cookie carries. The cookie stores the
+ * level name directly; a legacy `"1"` (the old boolean preview grant) is read
+ * as `preview` so existing reviewer sessions keep working.
+ */
+export function levelFromCookie(value: string | undefined): ViewLevel {
+  if (value === 'draft') return 'draft'
+  if (value === 'preview' || value === '1') return 'preview'
+  return 'public'
 }
 
 /**
  * Pure decision core, decoupled from the request/cookie helpers so it can be
  * tested without the server runtime. Given the request path, its query, the
- * `?preview=` value and whether a valid grant cookie is already present, decide
- * the resulting preview state, any redirect, and any cookie mutation.
+ * `?preview=`/`?draft=` values, the level already granted by cookie, and the
+ * two secrets, decide the resulting level, any redirect, and any cookie
+ * mutation.
+ *
+ * `draft` outranks `preview`: when both tokens are presented (or both must be
+ * checked), a valid draft token wins. An empty/undefined secret never matches,
+ * so a misconfigured deploy fails closed — it cannot accidentally unlock.
  */
-export function decidePreview({
+export function decideViewLevel({
   pathname,
   search,
-  paramValue,
-  hasValidCookie,
-  secret,
+  previewParam,
+  draftParam,
+  cookieLevel,
+  previewSecret,
+  draftSecret,
 }: {
   pathname: string
   search: URLSearchParams
-  paramValue: string | null
-  hasValidCookie: boolean
-  secret: string | undefined
-}): PreviewDecision {
-  if (paramValue === 'exit') {
-    return { preview: false, redirectTo: '/', cookie: 'clear' }
+  previewParam: string | null
+  draftParam: string | null
+  cookieLevel: ViewLevel
+  previewSecret: string | undefined
+  draftSecret: string | undefined
+}): ViewLevelDecision {
+  if (previewParam === 'exit' || draftParam === 'exit') {
+    return { level: 'public', redirectTo: '/', cookie: 'clear' }
   }
 
-  if (paramValue) {
+  if (previewParam !== null || draftParam !== null) {
     const next = new URLSearchParams(search)
     next.delete('preview')
+    next.delete('draft')
     const qs = next.toString()
     const cleanUrl = qs ? `${pathname}?${qs}` : pathname
-    if (secret && paramValue === secret) {
-      return { preview: true, redirectTo: cleanUrl, cookie: 'set' }
+
+    // Draft outranks preview, so check it first.
+    if (draftSecret && draftParam === draftSecret) {
+      return { level: 'draft', redirectTo: cleanUrl, cookie: 'draft' }
     }
-    // Wrong token: strip it from the URL but leave any existing grant intact.
-    return { preview: hasValidCookie, redirectTo: cleanUrl, cookie: 'none' }
+    if (previewSecret && previewParam === previewSecret) {
+      return { level: 'preview', redirectTo: cleanUrl, cookie: 'preview' }
+    }
+    // Wrong token(s): strip them from the URL but leave any existing grant intact.
+    return { level: cookieLevel, redirectTo: cleanUrl, cookie: 'none' }
   }
 
-  return { preview: hasValidCookie, cookie: 'none' }
+  return { level: cookieLevel, cookie: 'none' }
 }
 
-export const resolvePreview = createServerFn().handler(
-  async (): Promise<PreviewResolution> => {
+export const resolveViewLevel = createServerFn().handler(
+  async (): Promise<ViewLevelResolution> => {
     const url = new URL(getRequest().url)
-    const decision = decidePreview({
+    // Two sources per secret, because they reach the running server differently
+    // per environment:
+    //  - Production (Amplify): the SSR compute never sees Console env vars, so
+    //    process.env is empty. We rely on the build-baked runtime config (see
+    //    vite.config.ts), which inlines the value at build time.
+    //  - Local dev: vite.config runs before .env is loaded, so the baked value
+    //    is empty — but Nitro's dev server loads .env into process.env at
+    //    runtime, so process.env carries it.
+    const config = useRuntimeConfig()
+    const decision = decideViewLevel({
       pathname: url.pathname,
       search: url.searchParams,
-      paramValue: url.searchParams.get('preview'),
-      hasValidCookie: getCookie(COOKIE_NAME) === COOKIE_VALUE,
-      // Two sources, because the secret reaches the running server differently
-      // per environment:
-      //  - Production (Amplify): the SSR compute never sees Console env vars, so
-      //    process.env is empty. We rely on the build-baked runtime config (see
-      //    vite.config.ts), which inlines the value at build time.
-      //  - Local dev: vite.config runs before .env is loaded, so the baked value
-      //    is empty — but Nitro's dev server loads .env into process.env at
-      //    runtime, so process.env carries it.
-      // An empty result fails closed: decidePreview never matches an empty
-      // secret, so a misconfigured deploy can't accidentally unlock.
-      secret:
-        useRuntimeConfig().previewSecret ||
-        process.env.PREVIEW_SECRET ||
-        undefined,
+      previewParam: url.searchParams.get('preview'),
+      draftParam: url.searchParams.get('draft'),
+      cookieLevel: levelFromCookie(getCookie(COOKIE_NAME)),
+      previewSecret:
+        config.previewSecret || process.env.PREVIEW_SECRET || undefined,
+      draftSecret: config.draftSecret || process.env.DRAFT_SECRET || undefined,
     })
 
-    if (decision.cookie === 'set') {
-      setCookie(COOKIE_NAME, COOKIE_VALUE, {
+    if (decision.cookie === 'preview' || decision.cookie === 'draft') {
+      setCookie(COOKIE_NAME, decision.cookie, {
         httpOnly: true,
         sameSite: 'lax',
         path: '/',
@@ -112,6 +144,6 @@ export const resolvePreview = createServerFn().handler(
       deleteCookie(COOKIE_NAME)
     }
 
-    return { preview: decision.preview, redirectTo: decision.redirectTo }
+    return { level: decision.level, redirectTo: decision.redirectTo }
   },
 )
