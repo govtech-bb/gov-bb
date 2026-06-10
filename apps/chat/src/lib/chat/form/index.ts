@@ -1,8 +1,9 @@
 export { matchFormsFromText } from "./detect";
 export { getFormSlugs } from "./defs";
 export {
+  buildFieldIndex,
+  fileUploadsEnabled,
   resolveActiveForm,
-  type ActiveFormSchema,
   type FormResolution,
 } from "./schema";
 export {
@@ -11,5 +12,4 @@ export {
   withThreadLock,
   type FormSession,
 } from "./session";
-export { submitFormUpstream, type SubmitOutcome } from "./submit";
-export { buildFormTools, buildOfferTools } from "./tools";
+export { buildFormTools, buildOfferTools, type FormTurnContext } from "./tools";

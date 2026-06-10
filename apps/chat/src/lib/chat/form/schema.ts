@@ -12,12 +12,29 @@ const UNCOLLECTABLE: ReadonlySet<HtmlTypes> = new Set<HtmlTypes>([
   "show-hide",
 ]);
 
+// Off until the upload bucket's CORS allows the chat origin — otherwise the
+// in-bubble widget can't PUT and the handoff at least works. Reads process.env
+// directly: getServerEnv's schema would throw under unit tests.
+export function fileUploadsEnabled(): boolean {
+  const v = process.env.CHAT_FILE_UPLOADS;
+  return v === "1" || v === "true";
+}
+
 function hasRepeatableBehaviour(field: {
   behaviours?: Array<{ type: string }>;
 }): boolean {
   return !!field.behaviours?.some(
     (b) => b.type === "repeatable" || b.type === "fieldArray",
   );
+}
+
+// Shared by the schema disclosure (what the model is told to collect) and
+// submit validation (what counts against the form) so they can't drift.
+export function isChatCollectable(field: Primitive): boolean {
+  if (UNCOLLECTABLE.has(field.htmlType)) {
+    if (field.htmlType !== "file" || !fileUploadsEnabled()) return false;
+  }
+  return !field.isHidden && !field.isDisabled && !hasRepeatableBehaviour(field);
 }
 
 function isRequired(field: Primitive): boolean {
@@ -80,9 +97,7 @@ function summarizeActive(
     if (!ids) continue;
     for (const el of step.elements) {
       if (!ids.has(el.fieldId)) continue;
-      if (el.isHidden) continue;
-      if (UNCOLLECTABLE.has(el.htmlType)) continue;
-      if (hasRepeatableBehaviour(el)) continue;
+      if (!isChatCollectable(el)) continue;
       lines.push(describeField(el));
     }
   }
@@ -128,14 +143,45 @@ const HANDOFF_FORM_IDS: ReadonlySet<string> = new Set([
   "textbook-grant-application",
 ]);
 
+// Belt-and-suspenders backstop for forms that SHOULD already be caught by the
+// `requiresPayment` / file-field heuristics above — but only when the published
+// recipe actually carries those signals. The chat reads the contract from the
+// live forms API, so a recipe shipped (or re-published) without
+// `requiresPayment: true`, or with its document upload modelled as anything
+// other than a `file` field, would silently re-open inline collection. That is
+// exactly how the payment certs leaked before (#965). Pinning these
+// known-sensitive forms by ID guarantees the handoff regardless of remote data,
+// so a recipe regression can no longer expose payments or document uploads in
+// chat. Slugs verified against apps/chat/eval/golden.json (doc id `service-<formId>`).
+//   - get-birth-certificate / get-death-certificate / get-marriage-certificate:
+//     payment (#916 / #917 / #918).
+//   - apply-for-conductor-licence / sell-goods-services-beach-park: document
+//     upload (#921 / #928).
+const ALWAYS_HANDOFF_FORM_IDS: ReadonlySet<string> = new Set([
+  "get-birth-certificate",
+  "get-death-certificate",
+  "get-marriage-certificate",
+  "apply-for-conductor-licence",
+  "sell-goods-services-beach-park",
+]);
+
 export function needsHandoff(contract: ServiceContract): boolean {
-  const hasFile = contract.steps.some((step) =>
-    step.elements.some((el) => el.htmlType === "file"),
+  const hasFile =
+    !fileUploadsEnabled() &&
+    contract.steps.some((step) =>
+      step.elements.some((el) => el.htmlType === "file"),
+    );
+  // A REQUIRED repeatable field is unsubmittable in chat (no array input, the
+  // model is never told about it) — hand off. Optional repeatables just skip.
+  const hasRequiredRepeatable = contract.steps.some((step) =>
+    step.elements.some((el) => hasRepeatableBehaviour(el) && isRequired(el)),
   );
   return (
     hasFile ||
+    hasRequiredRepeatable ||
     contract.requiresPayment === true ||
-    HANDOFF_FORM_IDS.has(contract.formId)
+    HANDOFF_FORM_IDS.has(contract.formId) ||
+    ALWAYS_HANDOFF_FORM_IDS.has(contract.formId)
   );
 }
 

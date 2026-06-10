@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiRetrieveRouteImport } from './routes/api.retrieve'
 import { Route as ApiHealthRouteImport } from './routes/api.health'
+import { Route as ApiFormFileRouteImport } from './routes/api.form-file'
 import { Route as ApiDocumentsRouteImport } from './routes/api.documents'
 import { Route as ApiChatRouteImport } from './routes/api.chat'
 import { Route as ApiHealthPublicRouteImport } from './routes/api.health.public'
@@ -29,6 +30,11 @@ const ApiRetrieveRoute = ApiRetrieveRouteImport.update({
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiFormFileRoute = ApiFormFileRouteImport.update({
+  id: '/api/form-file',
+  path: '/api/form-file',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiDocumentsRoute = ApiDocumentsRouteImport.update({
@@ -51,6 +57,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/api/chat': typeof ApiChatRoute
   '/api/documents': typeof ApiDocumentsRoute
+  '/api/form-file': typeof ApiFormFileRoute
   '/api/health': typeof ApiHealthRouteWithChildren
   '/api/retrieve': typeof ApiRetrieveRoute
   '/api/health/public': typeof ApiHealthPublicRoute
@@ -59,6 +66,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/api/chat': typeof ApiChatRoute
   '/api/documents': typeof ApiDocumentsRoute
+  '/api/form-file': typeof ApiFormFileRoute
   '/api/health': typeof ApiHealthRouteWithChildren
   '/api/retrieve': typeof ApiRetrieveRoute
   '/api/health/public': typeof ApiHealthPublicRoute
@@ -68,6 +76,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/api/chat': typeof ApiChatRoute
   '/api/documents': typeof ApiDocumentsRoute
+  '/api/form-file': typeof ApiFormFileRoute
   '/api/health': typeof ApiHealthRouteWithChildren
   '/api/retrieve': typeof ApiRetrieveRoute
   '/api/health/public': typeof ApiHealthPublicRoute
@@ -78,6 +87,7 @@ export interface FileRouteTypes {
     | '/'
     | '/api/chat'
     | '/api/documents'
+    | '/api/form-file'
     | '/api/health'
     | '/api/retrieve'
     | '/api/health/public'
@@ -86,6 +96,7 @@ export interface FileRouteTypes {
     | '/'
     | '/api/chat'
     | '/api/documents'
+    | '/api/form-file'
     | '/api/health'
     | '/api/retrieve'
     | '/api/health/public'
@@ -94,6 +105,7 @@ export interface FileRouteTypes {
     | '/'
     | '/api/chat'
     | '/api/documents'
+    | '/api/form-file'
     | '/api/health'
     | '/api/retrieve'
     | '/api/health/public'
@@ -103,6 +115,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApiChatRoute: typeof ApiChatRoute
   ApiDocumentsRoute: typeof ApiDocumentsRoute
+  ApiFormFileRoute: typeof ApiFormFileRoute
   ApiHealthRoute: typeof ApiHealthRouteWithChildren
   ApiRetrieveRoute: typeof ApiRetrieveRoute
 }
@@ -128,6 +141,13 @@ declare module '@tanstack/react-router' {
       path: '/api/health'
       fullPath: '/api/health'
       preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/form-file': {
+      id: '/api/form-file'
+      path: '/api/form-file'
+      fullPath: '/api/form-file'
+      preLoaderRoute: typeof ApiFormFileRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/documents': {
@@ -170,6 +190,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApiChatRoute: ApiChatRoute,
   ApiDocumentsRoute: ApiDocumentsRoute,
+  ApiFormFileRoute: ApiFormFileRoute,
   ApiHealthRoute: ApiHealthRouteWithChildren,
   ApiRetrieveRoute: ApiRetrieveRoute,
 }

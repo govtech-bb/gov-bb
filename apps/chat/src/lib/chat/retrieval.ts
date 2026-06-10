@@ -3,7 +3,7 @@ import {
   MAX_SOURCES,
   SCORE_THRESHOLD,
   TOP_K,
-} from "./rag-config";
+} from "#/lib/rag/config";
 import type {
   Citation,
   RetrievedContext,
@@ -134,9 +134,7 @@ export function buildCitedContext(
     if (!s || s.score < SCORE_THRESHOLD) continue;
     const key = s.url + (s.section ?? "");
     if (seen.has(key)) continue;
-    // Colon separator (not an em dash) so we don't prime the model with the
-    // very character the system prompt forbids in output (prompts.ts).
-    const head = c.section ? `${c.title}: ${c.section}` : c.title;
+    const head = c.section ? `${c.title} — ${c.section}` : c.title;
     const idx = citations.length + 1;
     const linkUrl = withTextFragment(s.url, s.excerpt);
     const block = `[${idx}] ${head}\nURL: ${linkUrl}\n${c.text}`;

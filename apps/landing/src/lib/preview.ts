@@ -5,6 +5,7 @@ import {
   getRequest,
   setCookie,
 } from '@tanstack/react-start/server'
+import { useRuntimeConfig } from 'nitro/runtime-config'
 
 /**
  * Preview-token handling for the content rollout gate.
@@ -84,7 +85,20 @@ export const resolvePreview = createServerFn().handler(
       search: url.searchParams,
       paramValue: url.searchParams.get('preview'),
       hasValidCookie: getCookie(COOKIE_NAME) === COOKIE_VALUE,
-      secret: process.env.PREVIEW_SECRET,
+      // Two sources, because the secret reaches the running server differently
+      // per environment:
+      //  - Production (Amplify): the SSR compute never sees Console env vars, so
+      //    process.env is empty. We rely on the build-baked runtime config (see
+      //    vite.config.ts), which inlines the value at build time.
+      //  - Local dev: vite.config runs before .env is loaded, so the baked value
+      //    is empty — but Nitro's dev server loads .env into process.env at
+      //    runtime, so process.env carries it.
+      // An empty result fails closed: decidePreview never matches an empty
+      // secret, so a misconfigured deploy can't accidentally unlock.
+      secret:
+        useRuntimeConfig().previewSecret ||
+        process.env.PREVIEW_SECRET ||
+        undefined,
     })
 
     if (decision.cookie === 'set') {

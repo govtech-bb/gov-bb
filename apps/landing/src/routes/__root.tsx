@@ -33,6 +33,20 @@ interface MyRouterContext {
   queryClient: QueryClient
 }
 
+// Umami analytics. The website id is a `VITE_`-prefixed var, so Vite inlines it
+// at build time from the build-container env (`import.meta.env`) — no runtime
+// env needed, which is what makes it work on Amplify (the SSR compute never
+// sees Console env vars; see vite.config.ts for the server-only PREVIEW_SECRET
+// equivalent). The id is public — it ships in the rendered <script> tag — so it
+// must NOT be read via the server-only runtime config the way PREVIEW_SECRET is.
+// When the id is unset the script is omitted entirely, so no events are sent.
+const UMAMI_WEBSITE_ID = import.meta.env.VITE_UMAMI_WEBSITE_ID as
+  | string
+  | undefined
+const UMAMI_SRC =
+  (import.meta.env.VITE_UMAMI_SRC as string | undefined) ??
+  'https://cloud.umami.is/script.js'
+
 export const Route = createRootRouteWithContext<MyRouterContext>()({
   // Resolve preview mode once, server-side, and expose it on the router context
   // so every child loader/component can gate on it. Runs on the initial SSR
@@ -50,6 +64,16 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       { title: 'Government Services | Government of Barbados' },
     ],
     links: [{ rel: 'stylesheet', href: appCss }],
+    scripts: UMAMI_WEBSITE_ID
+      ? [
+          {
+            src: UMAMI_SRC,
+            defer: true,
+            'data-website-id': UMAMI_WEBSITE_ID,
+            'data-auto-track': 'false',
+          },
+        ]
+      : undefined,
   }),
   notFoundComponent: NotFoundPage,
   errorComponent: ServerErrorPage,

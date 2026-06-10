@@ -1,9 +1,36 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  FORM_COLLECTION_PROTOCOL,
+  SYSTEM_PROMPT,
   buildHandoffContinuationDisclosure,
   buildHandoffDisclosure,
+  buildHandoffOfferDisclosure,
 } from "./prompts";
+
+// The ILLEGITIMATE REQUESTS section must name bribery/corruption, so a
+// fraud-framed "how much to pay to get my child into a better school" is
+// declined rather than answered. Pairs with run-turn suppressing the form
+// offer when the rewrite flags the request illegitimate.
+test("system prompt declines bribery / paying for unfair advantage", () => {
+  assert.match(SYSTEM_PROMPT, /ILLEGITIMATE REQUESTS/);
+  assert.match(SYSTEM_PROMPT, /brib|unfair advantage/i);
+});
+
+// The form-collection / submit machinery lives in FORM_COLLECTION_PROTOCOL,
+// injected only on active-form turns — NOT in the always-on SYSTEM_PROMPT.
+// Guards against it creeping back into every turn (the overloading concern).
+test("form-collection rules are out of the always-on system prompt", () => {
+  assert.ok(!/set_field|submit_form|FORM COLLECTION:/.test(SYSTEM_PROMPT));
+  // but the conversational + safety rules stay always-on
+  assert.match(SYSTEM_PROMPT, /CONTEXT USE|ILLEGITIMATE REQUESTS/);
+});
+
+test("FORM_COLLECTION_PROTOCOL carries the collection + submit rules", () => {
+  assert.match(FORM_COLLECTION_PROTOCOL, /set_field/);
+  assert.match(FORM_COLLECTION_PROTOCOL, /submit_form/);
+  assert.match(FORM_COLLECTION_PROTOCOL, /WHEN A FORM SCHEMA IS PROVIDED/);
+});
 
 // The continuation disclosure is shown on follow-up turns after a handoff. It
 // must keep the form link in front of the user while preventing the two failure
@@ -36,6 +63,23 @@ test("forbids denying the online form exists", () => {
 test("allows informational answering from context", () => {
   const out = buildHandoffContinuationDisclosure(TITLE, URL);
   assert.match(out, /informational|informationally/i);
+});
+
+// The OFFER disclosure is shown when the user asked an INFO question about a
+// handoff service (e.g. "what does it cost and where do I apply?"). It must
+// answer the question and offer the link in prose — but NOT paste a URL this
+// turn (that's what keeps these off the "pushed a form" failure).
+test("offer disclosure answers first, then offers the link", () => {
+  const out = buildHandoffOfferDisclosure(TITLE);
+  assert.match(out, /answer/i);
+  assert.match(out, /offer the link|share the application link/i);
+});
+
+test("offer disclosure forbids pasting a URL or link this turn", () => {
+  const out = buildHandoffOfferDisclosure(TITLE);
+  assert.match(out, /no links at all|do not paste a url|paste a url/i);
+  // It takes no URL argument and must not embed one.
+  assert.ok(!/https?:\/\//.test(out), "offer disclosure must contain no URL");
 });
 
 // The handoff disclosure is the first reply that hands the user the form link.

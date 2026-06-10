@@ -20,18 +20,29 @@ import {
   useState,
 } from "react";
 import { Bubble } from "#/components/chat/bubble";
-import { StarterCards } from "#/components/chat/starter-cards";
 import { TridentAvatar } from "#/components/trident-avatar";
 import { extractText, hasAnyToolCall } from "#/lib/chat/messages";
 import {
   chatPersistence,
   citationsStore,
   getSessionThreadId,
+  resetSessionThreadId,
 } from "#/lib/chat/persistence";
 import type { Citation } from "#/lib/chat/types";
-import { presentChoicesDef, submitFormDef } from "#/lib/chat-tools";
+import {
+  askFieldDef,
+  presentChoicesDef,
+  reviewFormDef,
+  submitFormDef,
+} from "#/lib/chat-tools";
 
-export const Route = createFileRoute("/")({ component: ChatPage });
+export const Route = createFileRoute("/")({
+  component: ChatPage,
+  // ?q= auto-sends a query handed over from the landing page's chat box.
+  validateSearch: (search: Record<string, unknown>): { q?: string } => ({
+    q: typeof search.q === "string" && search.q ? search.q : undefined,
+  }),
+});
 
 const MAX_QUERY_LENGTH = 2000;
 
@@ -46,7 +57,6 @@ const LANDING_URL =
 // same list as messages and carry stable keys.
 type ChatRow =
   | { kind: "welcome"; key: string }
-  | { kind: "starter-cards"; key: string }
   | { kind: "optimistic"; key: string; text: string }
   | { kind: "message"; key: string; message: UIMessage; index: number }
   | { kind: "thinking"; key: string }
@@ -132,11 +142,6 @@ function ChatPage() {
 
   const rows = useMemo<ChatRow[]>(() => {
     const out: ChatRow[] = [{ kind: "welcome", key: "welcome" }];
-    const isEmpty =
-      messages.length === 0 && !pendingQuery && !submitting && !error;
-    if (isEmpty) {
-      out.push({ kind: "starter-cards", key: "starter-cards" });
-    }
     if (pendingQuery && messages.length === 0) {
       out.push({ kind: "optimistic", key: "optimistic", text: pendingQuery });
       if (!error) out.push({ kind: "thinking", key: "thinking" });
@@ -176,20 +181,19 @@ function ChatPage() {
     overscan: 6,
   });
 
+  const { q } = Route.useSearch();
+  const navigate = Route.useNavigate();
   const autoSentRef = useRef(false);
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot mount effect; sendMessage identity is irrelevant, autoSentRef guards re-entry.
   useEffect(() => {
     if (autoSentRef.current) return;
-    const params = new URLSearchParams(window.location.search);
-    const q = params.get("q")?.trim().slice(0, MAX_QUERY_LENGTH);
-    if (!q) return;
+    const query = q?.trim().slice(0, MAX_QUERY_LENGTH);
+    if (!query) return;
     autoSentRef.current = true;
-    const url = new URL(window.location.href);
-    url.searchParams.delete("q");
-    window.history.replaceState({}, "", url.toString());
-    setPendingQuery(q);
-    sendMessage(q);
-  }, []);
+    // Strip ?q= so a refresh doesn't re-send; replace keeps history clean.
+    void navigate({ search: {}, replace: true });
+    setPendingQuery(query);
+    sendMessage(query);
+  }, [q, navigate, sendMessage]);
 
   useEffect(() => {
     if (messages.length > 0) setPendingQuery(null);
@@ -203,37 +207,6 @@ function ChatPage() {
     didInitialScrollRef.current = true;
     virtualizer.scrollToEnd();
   }, [virtualizer]);
-
-  // Whether the reader is currently pinned to the bottom. We track this from
-  // the real-DOM distance (getDistanceFromEnd, i.e. scrollHeight-based) rather
-  // than the virtualizer's *virtual* distance, so it matches the same signal
-  // the "Jump to latest" button uses (isAtEnd) and the two never disagree.
-  const stickToBottomRef = useRef(true);
-  const handleScroll = useCallback(() => {
-    stickToBottomRef.current = virtualizer.isAtEnd(SCROLL_END_THRESHOLD);
-  }, [virtualizer]);
-
-  // HYPOTHESIS (confirm on the Amplify preview): the library's built-in
-  // follow-on-append + anchorTo="end" only re-pins reliably when the appended
-  // row has already been measured. During a turn the assistant bubble appends
-  // tiny/empty and then *grows* as text streams in via measureElement; its
-  // virtual size lags the real DOM height, so getVirtualDistanceFromEnd (which
-  // gates the library's streaming adjust) can read "not at end" and the view
-  // drifts up. We close that gap here: on every render that grows the list
-  // (new rows or a streaming delta), if the reader was pinned to the *real*
-  // bottom before this growth, re-pin with scrollToEnd. Reading the ref before
-  // the scroll means a reader who scrolled up is never yanked down — that
-  // preserves the "Jump to latest" affordance. Runs in a layout effect so the
-  // jump happens before paint, avoiding a visible lag behind the stream.
-  const totalSize = virtualizer.getTotalSize();
-  useLayoutEffect(() => {
-    if (!parentRef.current) return;
-    if (stickToBottomRef.current) {
-      virtualizer.scrollToEnd();
-    }
-    // Re-running on rows.length and totalSize covers both an appended row and
-    // the last bubble growing as tokens stream in.
-  }, [virtualizer, rows.length, totalSize, isStreaming]);
 
   const pickChoice = useCallback(
     (choice: string) => {
@@ -256,6 +229,9 @@ function ChatPage() {
   const handleStartAgain = useCallback(() => {
     stop();
     clear();
+    // clear() only empties messages; rotating the threadId sheds the
+    // server-side form session too.
+    resetSessionThreadId();
     setCitationsByMessageId({});
     setPendingQuery(null);
     setSubmitting(false);
@@ -274,8 +250,6 @@ function ChatPage() {
     switch (row.kind) {
       case "welcome":
         return <WelcomeBubble />;
-      case "starter-cards":
-        return <StarterCards onPick={submit} />;
       case "optimistic":
         return <OptimisticUserBubble text={row.text} />;
       case "thinking":
@@ -330,8 +304,11 @@ function ChatPage() {
             off-screen region below instead. */}
         <div
           ref={parentRef}
-          onScroll={handleScroll}
-          className="h-full overflow-y-auto px-s py-s"
+          // overscroll-contain: the root layout renders the site footer BELOW
+          // this h-dvh page (md+), so without it, hitting the bottom of the
+          // chat chains the scroll to the window and drags the footer into
+          // view — recoverable only by scrolling the page itself back up.
+          className="h-full overflow-y-auto overscroll-contain px-s py-s"
         >
           <div
             aria-label="Chat messages"
@@ -468,7 +445,14 @@ function shouldShowThinking(messages: UIMessage[]): boolean {
   // Hide once something renderable lands: text deltas, a present_choices
   // tool call, or a submit_form approval prompt. set_field is invisible.
   if (extractText(last).length > 0) return false;
-  if (hasAnyToolCall([last], [presentChoicesDef.name, submitFormDef.name])) {
+  if (
+    hasAnyToolCall([last], [
+      presentChoicesDef.name,
+      askFieldDef.name,
+      reviewFormDef.name,
+      submitFormDef.name,
+    ])
+  ) {
     return false;
   }
   return true;
