@@ -28,7 +28,13 @@ export const formSubmissionResponseBodySchema = z.object({
   // submit time.
   values: z.record(z.string(), z.unknown()),
   meta: z.unknown(),
-  submittedAt: z.string(),
+  // Nullable: payment ("gated") forms return `status: "pending_payment"` with
+  // `submittedAt: null` — the submission isn't finalised until the citizen
+  // pays. A non-nullable `z.string()` here rejected those responses, making
+  // postFormSubmission throw and bouncing the citizen to the generic
+  // "Something went wrong" screen instead of the EZ Pay redirect (#919).
+  // Non-payment forms still return an ISO timestamp string.
+  submittedAt: z.string().nullable(),
   // Human-readable reference shown on the confirmation screen (e.g.
   // "JPP-20260604-130732-9JZRZC"). Optional so an older API deploy that does
   // not yet return this field still passes validation — the client falls back

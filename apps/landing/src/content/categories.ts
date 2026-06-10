@@ -73,6 +73,12 @@ export const CATEGORIES: Array<Category> = [
     ],
   },
   {
+    slug: 'ministry-of-youth',
+    title: 'Ministry of Youth',
+    description:
+      'Programmes, training and volunteering opportunities run by the Division of Youth Affairs',
+  },
+  {
     slug: 'travel-id-citizenship',
     title: 'Travel, ID and citizenship',
     description: 'Travel, drive or prove your identity and status',
@@ -99,6 +105,12 @@ export const CATEGORIES: Array<Category> = [
     title: 'Health and emergency services',
     description:
       'Prepare for hurricane season, find an emergency shelter, and reach key emergency contacts',
+  },
+  {
+    slug: 'housing',
+    title: 'Housing',
+    description:
+      'Apply for National Housing Corporation homes and land, use State land, and exercise tenant rights to buy a freehold',
   },
 ]
 

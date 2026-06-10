@@ -60,6 +60,16 @@ export function lastUserText(messages: UIMessage[]): string {
   return "";
 }
 
+// Text of the most recent ASSISTANT message. Used to read what we just said —
+// e.g. whether we asked the "anything else?" wrap-up question, which decides
+// whether a terse "no"/"ok" reply is a conversational closer or a mid-task answer.
+export function lastAssistantText(messages: UIMessage[]): string {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role === "assistant") return extractText(messages[i]);
+  }
+  return "";
+}
+
 // Concatenated text of the last `limit` user messages. Used by intent-style
 // matchers that need conversational context but not the whole history.
 export function recentUserText(messages: UIMessage[], limit = 5): string {

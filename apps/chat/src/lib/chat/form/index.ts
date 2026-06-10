@@ -13,6 +13,7 @@ export {
 } from "./session";
 export {
   buildEndOfChatTools,
+  buildFeedbackTools,
   buildFormTools,
   buildOfferTools,
   type FormTurnContext,

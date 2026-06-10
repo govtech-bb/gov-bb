@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  FEEDBACK_COLLECTION_GUIDANCE,
   FORM_COLLECTION_PROTOCOL,
   SYSTEM_PROMPT,
   buildHandoffContinuationDisclosure,
   buildHandoffDisclosure,
   buildHandoffOfferDisclosure,
+  buildMissDisclosure,
 } from "./prompts";
 
 // The ILLEGITIMATE REQUESTS section must name bribery/corruption, so a
@@ -39,6 +41,52 @@ test("system prompt nudges online-first, conditioned on the context", () => {
   );
   // ...and it must NOT invent an online path when the context has none.
   assert.match(SYSTEM_PROMPT, /no online option|don't invent an online/i);
+});
+
+// STRICT RAG recovery (#1099): a retrieval miss must not dead-end. The
+// grounding rule still forbids inventing facts/services, but the recovery half
+// now actively guides — name what was found, or ask a clarifying question —
+// rather than stopping at a bare decline. It stays subordinate to ILLEGITIMATE
+// REQUESTS (a fraud miss is declined, not "guided").
+test("system prompt: a retrieval miss guides forward instead of hard-stopping", () => {
+  assert.match(SYSTEM_PROMPT, /CONTEXT USE|STRICT RAG/);
+  assert.match(SYSTEM_PROMPT, /never hard-stop/i);
+  assert.match(SYSTEM_PROMPT, /clarifying question/i);
+  // The no-invented-services guarantee stays explicit.
+  assert.match(SYSTEM_PROMPT, /invent a service/i);
+});
+
+// buildMissDisclosure replaces the misapplied NO_FORM_DISCLOSURE on a genuine
+// no-context turn (retrieval attempted, zero citations). It must keep guiding:
+// ask a clarifying question, invent nothing, and NOT fabricate a "no online
+// form" / paper conclusion it has no basis for.
+test("miss disclosure: asks to clarify, invents nothing, doesn't fabricate a paper route", () => {
+  const out = buildMissDisclosure();
+  // Keeps guiding rather than dead-ending.
+  assert.match(out, /clarifying question/i);
+  assert.match(out, /DO NOT DEAD-END|nowhere to go/i);
+  // Never invents a service it can't see in context.
+  assert.match(out, /invent|guess a service/i);
+  // Doesn't claim it knows there's no online form — it doesn't know the service.
+  assert.match(out, /don't know yet|simply don't know/i);
+  // Still defers to the fraud decline.
+  assert.match(out, /illegitimate|fraud/i);
+});
+
+// On a successful feedback submit the model must thank the user and NOT recite
+// a reference number — the generic protocol's "report the referenceNumber
+// verbatim" rule would otherwise leak a permit-style reference onto a 30-second
+// feedback form. The guidance both names the thank-you and forbids the
+// reference, since it is the more specific instruction injected on feedback
+// turns.
+test("feedback guidance: a successful submit thanks the user with no reference number", () => {
+  assert.match(FEEDBACK_COLLECTION_GUIDANCE, /submit_form/);
+  assert.match(FEEDBACK_COLLECTION_GUIDANCE, /thank/i);
+  assert.match(FEEDBACK_COLLECTION_GUIDANCE, /reference number/i);
+  assert.match(
+    FEEDBACK_COLLECTION_GUIDANCE,
+    /no reference number|never.*reference|without.*reference/i,
+  );
 });
 
 test("FORM_COLLECTION_PROTOCOL carries the collection + submit rules", () => {
