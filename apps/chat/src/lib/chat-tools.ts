@@ -80,6 +80,10 @@ export const reviewFormDef = toolDefinition({
         }),
       )
       .optional(),
+    // Lets the client word the submit step for feedback ("Submit your feedback
+    // now?") rather than the default application copy. The submit_form approval
+    // carries no args, but review_form runs in the same turn just before it.
+    isFeedback: z.boolean().optional(),
   }),
 });
 

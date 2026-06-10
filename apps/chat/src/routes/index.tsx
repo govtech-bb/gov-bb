@@ -72,6 +72,10 @@ function ChatPage() {
   // True between the submit_form tool's "submitting" and "submitted"/"failed"
   // custom events, so the UI can show progress during the blocking POST.
   const [submitting, setSubmitting] = useState(false);
+  // Whether the in-flight submission is the feedback form, so the indicator can
+  // read "Submitting your feedback" instead of "...your application". Only
+  // meaningful while `submitting` is true; carried on the submit_status event.
+  const [submittingIsFeedback, setSubmittingIsFeedback] = useState(false);
   const parentRef = useRef<HTMLDivElement>(null);
   // Citations keyed by assistant messageId. Populated from the `citations`
   // custom event the server emits right after TEXT_MESSAGE_START.
@@ -117,8 +121,12 @@ function ChatPage() {
         return;
       }
       if (eventType === "submit_status") {
-        const state = (data as { state?: string } | undefined)?.state;
-        setSubmitting(state === "submitting");
+        const payload = data as
+          | { state?: string; isFeedback?: boolean }
+          | undefined;
+        const isSubmitting = payload?.state === "submitting";
+        setSubmitting(isSubmitting);
+        if (isSubmitting) setSubmittingIsFeedback(payload?.isFeedback === true);
       }
     },
   });
@@ -272,7 +280,15 @@ function ChatPage() {
       case "thinking":
         return <ThinkingIndicator />;
       case "submitting":
-        return <ThinkingIndicator label="Submitting your application" />;
+        return (
+          <ThinkingIndicator
+            label={
+              submittingIsFeedback
+                ? "Submitting your feedback"
+                : "Submitting your application"
+            }
+          />
+        );
       case "error":
         // role="alert" so it's announced. Plain-language guidance instead of
         // the raw error; reload() re-runs the failed turn without a dup.
