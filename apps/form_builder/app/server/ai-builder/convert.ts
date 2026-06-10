@@ -53,9 +53,14 @@ export const presignPdfUpload = createServerFn({ method: "POST" })
 
 export const startPdfConvert = createServerFn({ method: "POST" })
   .middleware([requireSession])
-  .inputValidator(z.object({ s3Key: z.string() }))
+  .inputValidator(
+    z.object({ s3Key: z.string(), context: z.string().optional() }),
+  )
   .handler(async ({ data }): Promise<{ jobId: string }> => {
-    return api.post("/builder/ai/upload/process", { s3Key: data.s3Key });
+    return api.post("/builder/ai/upload/process", {
+      s3Key: data.s3Key,
+      ...(data.context ? { context: data.context } : {}),
+    });
   });
 
 // strict:false for the same reason as editRecipe — UploadStatusResponse's
