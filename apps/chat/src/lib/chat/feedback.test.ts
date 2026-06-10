@@ -6,6 +6,7 @@ import {
   FEEDBACK_TRIGGER_PHRASE,
   pinFeedbackForm,
   shouldBindFeedbackOffer,
+  submitSuccessForModel,
 } from "./feedback";
 import { getOrCreateSession, resetSessionForNewForm } from "./form/session";
 import { QUERY_STOP, TITLE_STOP, tokenize } from "./form/tokenize";
@@ -56,6 +57,21 @@ test("cancelFeedbackForm unpins the form but keeps the offer spent", () => {
   cancelFeedbackForm(s);
   assert.equal(s.slug, null); // back to normal chat
   assert.equal(s.feedbackOffered, true); // but never offered again
+});
+
+test("submitSuccessForModel hides the reference for feedback, keeps it for real forms", () => {
+  // Feedback is conversational, not transactional: the model must thank the
+  // user, not recite a permit-style reference number. The upstream reference is
+  // still kept on the session (no-resubmit guard) — it's just withheld from the
+  // model's success result so it has nothing to report.
+  assert.deepEqual(submitSuccessForModel(FEEDBACK_FORM_ID, "REF-123"), {
+    ok: true,
+  });
+  // Every real service form keeps its reference in the success result.
+  assert.deepEqual(submitSuccessForModel("get-birth-certificate", "REF-123"), {
+    ok: true,
+    referenceNumber: "REF-123",
+  });
 });
 
 test("resetSessionForNewForm preserves feedbackOffered", () => {

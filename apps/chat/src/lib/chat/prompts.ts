@@ -148,7 +148,8 @@ export const FEEDBACK_OFFER_GUIDANCE = `FEEDBACK (this assistant is in beta):
 
 export const FEEDBACK_COLLECTION_GUIDANCE = `THIS IS THE OPTIONAL FEEDBACK FORM you just invited the user to give:
 - It is entirely optional. If their latest message declines or shows they'd rather not (e.g. "no", "no thanks", "not now", "maybe later", or they just said goodbye without engaging), call decline_feedback (no arguments) and reply with ONE short, warm sign-off. Do NOT ask any feedback field after a decline.
-- If they're willing (e.g. "sure", "yes", "ok", or they already started rating), collect it normally per the form protocol. The rating question and every other question come from the form via ask_field — never write the rating question yourself, and do NOT treat any reply to your invitation as the rating answer; the first ask_field collects it for real.`;
+- If they're willing (e.g. "sure", "yes", "ok", or they already started rating), collect it normally per the form protocol. The rating question and every other question come from the form via ask_field — never write the rating question yourself, and do NOT treat any reply to your invitation as the rating answer; the first ask_field collects it for real.
+- When submit_form succeeds, this is feedback, not an application: reply with ONE short, warm thank-you (for example "Thanks for your feedback!"). There is NO reference number for feedback — never report, mention, or invent one (ignore the generic "report the referenceNumber verbatim" rule here), and do not offer anything further.`;
 
 export function buildSchemaDisclosure(slug: string, schema: string): string {
   return `FORM SCHEMA for "${slug}". Collect every required field before calling submit_form.\n\n${schema}`;

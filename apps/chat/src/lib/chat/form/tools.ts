@@ -7,7 +7,11 @@ import {
   setFieldDef,
   submitFormDef,
 } from "#/lib/chat-tools";
-import { cancelFeedbackForm, pinFeedbackForm } from "#/lib/chat/feedback";
+import {
+  cancelFeedbackForm,
+  pinFeedbackForm,
+  submitSuccessForModel,
+} from "#/lib/chat/feedback";
 import type { ActiveFormSchema } from "./schema";
 import { buildFieldIndex, getActiveFieldIds } from "./schema";
 import type { FormSession } from "./session";
@@ -122,7 +126,7 @@ const submitFormTool = submitFormDef.server<FormTurnContext>(
       };
     }
     if (session.status === "submitted" && session.referenceNumber) {
-      return { ok: true, referenceNumber: session.referenceNumber };
+      return submitSuccessForModel(session.slug, session.referenceNumber);
     }
     if (session.status === "submitting") {
       return {
@@ -161,7 +165,7 @@ const submitFormTool = submitFormDef.server<FormTurnContext>(
       session.status = "submitted";
       session.referenceNumber = result.referenceNumber;
       ctx.emitCustomEvent("submit_status", { state: "submitted" });
-      return { ok: true, referenceNumber: result.referenceNumber };
+      return submitSuccessForModel(session.slug, result.referenceNumber);
     }
     session.status = "failed";
     session.lastError = result.errors[0]?.message;

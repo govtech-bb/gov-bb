@@ -30,6 +30,22 @@ export function pinFeedbackForm(session: FormSession): void {
   session.updatedAt = Date.now();
 }
 
+// Shape the submit_form success result the MODEL sees. Feedback is
+// conversational, not transactional: the user gets a warm thank-you, not a
+// permit-style reference number. submit_form still records the upstream
+// reference on the session (the no-resubmit guard reads it) — we just withhold
+// it from the model's result for the feedback form, so it has nothing to
+// recite. Every real service form keeps its reference unchanged. Paired with
+// FEEDBACK_COLLECTION_GUIDANCE, which tells the model to thank rather than
+// report a reference on a feedback submit.
+export function submitSuccessForModel(
+  slug: string | null | undefined,
+  referenceNumber: string,
+): { ok: true; referenceNumber?: string } {
+  if (slug === FEEDBACK_FORM_ID) return { ok: true };
+  return { ok: true, referenceNumber };
+}
+
 // The user was invited to give feedback (which pins the form) but declined, or
 // bailed mid-form. Unpin so the session returns to normal chat. feedbackOffered
 // survives resetSessionForNewForm, so the offer is never repeated this session —
