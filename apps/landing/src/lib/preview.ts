@@ -5,6 +5,7 @@ import {
   getRequest,
   setCookie,
 } from '@tanstack/react-start/server'
+import { useRuntimeConfig } from 'nitro/runtime-config'
 
 /**
  * Preview-token handling for the content rollout gate.
@@ -84,7 +85,10 @@ export const resolvePreview = createServerFn().handler(
       search: url.searchParams,
       paramValue: url.searchParams.get('preview'),
       hasValidCookie: getCookie(COOKIE_NAME) === COOKIE_VALUE,
-      secret: process.env.PREVIEW_SECRET,
+      // Baked into the server-only runtime config at build time (see
+      // vite.config.ts). An empty string here means the gate fails closed:
+      // decidePreview never matches an empty secret, so no accidental unlock.
+      secret: useRuntimeConfig().previewSecret || undefined,
     })
 
     if (decision.cookie === 'set') {
