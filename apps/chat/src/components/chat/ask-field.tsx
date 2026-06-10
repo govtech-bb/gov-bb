@@ -17,12 +17,10 @@ import { ChoicePills } from "./choice-pills";
 export type AskFieldOutput = InferToolOutput<typeof askFieldDef>;
 export type FieldSpec = NonNullable<AskFieldOutput["field"]>;
 
-// Run the SAME validation engine the forms app uses, client-side, before the
-// answer is ever sent — a bad value swaps the hint for the error message in
-// this bubble instead of spawning an error turn. The server-side set_field
-// validation stays as the backstop (cross-field rules need the full session).
-// The cast is the wire boundary: the spec is the contract field serialized
-// through the tool result, exactly the fields the engine reads.
+// Same engine the forms app runs: a bad value swaps the hint for the error in
+// this bubble instead of spawning an error turn. set_field re-validates
+// server-side (cross-field rules need the full session). The cast is the wire
+// boundary — the spec is the contract field serialized through the tool result.
 function validateSpecValue(spec: FieldSpec, value: unknown): string | null {
   const field = {
     fieldId: spec.fieldId,
@@ -53,16 +51,11 @@ function HintOrError({
   return null;
 }
 
-// Renders the right input widget for an ask_field spec. The spec comes from
-// the CONTRACT via the tool result (part.output) — never from model-authored
-// args — so labels and options can't be hallucinated. Every widget answers by
-// sending a plain user message (option labels; dates as YYYY-MM-DD), keeping
-// the flow turn-based and refresh-safe.
-//
-// Widgets render only while the question is live — once a later turn lands
-// (`answered`), the input collapses to its question label so the transcript
-// reads as Q/A pairs. That's why the answer components carry no disabled
-// plumbing.
+// The spec comes from the CONTRACT via the tool result — never model-authored
+// args — so labels and options can't be hallucinated. Answers go back as plain
+// user messages (option labels; dates as YYYY-MM-DD): turn-based, refresh-safe.
+// Once a later turn lands (`answered`) the input collapses to its label, so
+// the transcript reads as Q/A pairs.
 export function AskFieldWidget({
   spec,
   messageId,
@@ -123,9 +116,8 @@ type AnswerProps = {
   onAnswer: (text: string) => void;
 };
 
-// Forms-parity checkbox list (declarations, multi-option checkbox fields,
-// multi-selects): real checkboxes with the EXACT contract wording, then
-// confirm. Picks go back as ONE comma-separated user message.
+// Real checkboxes with the EXACT contract wording (forms parity); picks go
+// back as ONE comma-separated message.
 function CheckboxAnswer({ spec, onAnswer }: AnswerProps) {
   const options = spec.options ?? [];
   const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
@@ -278,10 +270,8 @@ function TextAnswer({ spec, onAnswer }: AnswerProps) {
   );
 }
 
-// GOV-style day/month/year input; answers as ISO YYYY-MM-DD, the shape the
-// server's date coercion parses. Date rules (past, after/before) run in the
-// engine on Continue, so "needs to be in the past" appears here, not as a
-// new chat turn.
+// Answers as ISO YYYY-MM-DD (what the server's date coercion parses); date
+// rules run on Continue so "needs to be in the past" lands here, not as a turn.
 function DateAnswer({ spec, onAnswer }: AnswerProps) {
   const [date, setDate] = useState<DateInputValue>({
     day: "",
@@ -319,11 +309,9 @@ function DateAnswer({ spec, onAnswer }: AnswerProps) {
   );
 }
 
-// In-bubble file upload. presign + confirm go through /api/form-file (the
-// forms API's CORS excludes the chat origin, so the server brokers both and
-// writes the verified ref into the form session); only the S3 PUT runs from
-// the browser. Continue just tells the model the upload happened — the value
-// is already recorded server-side.
+// presign + confirm go through /api/form-file (the forms API's CORS excludes
+// the chat origin); only the S3 PUT runs from the browser. Continue just tells
+// the model the upload happened — the value is already recorded server-side.
 function FileAnswer({ spec, onAnswer }: AnswerProps) {
   const [uploaded, setUploaded] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);

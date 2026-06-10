@@ -11,12 +11,10 @@ import { getFormDefinition } from "#/lib/chat/form/defs";
 import { validateCollectedFile } from "#/lib/chat/form/values";
 import { jsonError } from "#/lib/http";
 
-// File-upload broker for in-chat file fields. The browser never talks to the
-// forms API (its CORS allowlist excludes the chat origin): presign and confirm
-// are proxied server-to-server here, and the confirmed reference — verified by
-// the forms API, never client-claimed — is written straight into the form
-// session. Only the S3 PUT happens from the browser, against the presigned
-// URL. The model is not involved: it just sees the user's "uploaded" message.
+// File-upload broker. The forms API's CORS excludes the chat origin, so
+// presign/confirm are proxied server-to-server and the confirmed ref —
+// verified by the forms API, never client-claimed — is written straight into
+// the form session. Only the S3 PUT runs from the browser.
 
 const presignSchema = z.object({
   action: z.literal("presign"),
@@ -94,8 +92,6 @@ async function handlePost(request: Request): Promise<Response> {
   };
 
   if (body.action === "presign") {
-    // Reject oversize/wrong-type files with the recipe's own message before
-    // an S3 URL is ever minted.
     const error = validateCollectedFile(info.field, {
       name: body.fileName,
       size: body.size,
@@ -123,8 +119,7 @@ async function handlePost(request: Request): Promise<Response> {
   );
   const { url: _url, ...ref } = confirmed;
 
-  // Serialize against concurrent runTurn writes; refs accumulate so multi-file
-  // fields collect across several uploads.
+  // Serialize against concurrent runTurn writes.
   await withThreadLock(body.threadId, async () => {
     const existing = session.values[body.fieldId];
     const refs: UploadedFileRef[] = existing

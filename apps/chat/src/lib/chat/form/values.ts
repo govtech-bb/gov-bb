@@ -86,8 +86,7 @@ const COERCERS: Record<HtmlTypes, Coercer> = {
   select: coerceEnum,
   radio: coerceEnum,
   checkbox: coerceCheckbox,
-  // Chat-collected file values are JSON arrays of forms-API-confirmed upload
-  // refs, written by /api/form-file — never typed by the user or the model.
+  // JSON arrays of forms-API-confirmed upload refs, written by /api/form-file.
   file: (_f, raw) => {
     try {
       const refs: unknown = JSON.parse(raw);
@@ -100,9 +99,8 @@ const COERCERS: Record<HtmlTypes, Coercer> = {
   "show-hide": (_f, raw) => ({ value: raw }),
 };
 
-// Coerce every present raw value into the step-scoped shape the validation
-// engine and the forms API both consume. Coercion failures are collected per
-// field; other fields still coerce so cross-field rules see full context.
+// Coercion failures are collected per field; other fields still coerce so
+// cross-field rules see full context.
 function coerceToSteps(
   contract: ServiceContract,
   fields: Record<string, string>,
@@ -135,10 +133,8 @@ function coerceToSteps(
   return { valuesByStep, errors };
 }
 
-// Full-form validation before submit. Coercion first, then the shared
-// @govtech-bb/form-validation engine — the same rule registry (required,
-// pattern, min/max, email, cross-field dates) and the same human error
-// messages the forms app shows.
+// Coercion first, then the shared @govtech-bb/form-validation engine — the
+// same rules and error messages the forms app shows.
 export function validateAndReshape(
   contract: ServiceContract,
   fields: Record<string, string>,
@@ -169,15 +165,8 @@ export function validateAndReshape(
   return { ok: true, valuesByStep };
 }
 
-// Single-field validation at collection time, so set_field rejects a bad
-// value the moment the model records it (and the model re-asks with the same
-// message the forms app would show) instead of parking garbage in the session
-// until submit. Validates the candidate against the OTHER already-collected
-// values so cross-field rules (e.g. date after/before a reference field) see
-// real context.
-// Human display string for a collected raw value, mirroring the forms app's
-// review formatting: option labels (not values), dates without the weekday,
-// file names, Yes/No booleans.
+// Mirrors the forms app's review formatting: option labels (not values),
+// dates without the weekday, file names, Yes/No booleans.
 function displayValue(field: Primitive, raw: string): string {
   const coerced = COERCERS[field.htmlType](field, raw.trim());
   if ("error" in coerced) return raw;
@@ -208,8 +197,6 @@ function displayValue(field: Primitive, raw: string): string {
   return String(value);
 }
 
-// Review rows for check-your-answers: every chat-collectable, active field
-// that has a collected value, in contract order, with display formatting.
 export function buildReviewItems(
   contract: ServiceContract,
   fields: Record<string, string>,
@@ -232,10 +219,8 @@ export function buildReviewItems(
   return items;
 }
 
-// Pre-presign check for an upload candidate: runs the recipe's file rules
-// (fileTypes, maxSize, itemMaxSize) against the file's metadata so oversize or
-// wrong-type files are rejected with the recipe's message before an S3 URL is
-// minted.
+// Runs the recipe's file rules against the file's metadata so oversize or
+// wrong-type files are rejected before an S3 URL is minted.
 export function validateCollectedFile(
   field: Primitive,
   candidate: { name: string; size: number; type: string },
@@ -243,6 +228,8 @@ export function validateCollectedFile(
   return validateField(field, [candidate], {}, {})[0] ?? null;
 }
 
+// set_field-time validation; the candidate is checked against the OTHER
+// already-collected values so cross-field rules see real context.
 export function validateCollectedField(
   contract: ServiceContract,
   field: Primitive,

@@ -12,10 +12,9 @@ const UNCOLLECTABLE: ReadonlySet<HtmlTypes> = new Set<HtmlTypes>([
   "show-hide",
 ]);
 
-// File collection is flag-gated: the upload bucket's CORS must allow the chat
-// origin before the in-bubble widget can PUT, so the handoff stays the default
-// until alpha-infra confirms it. Reads process.env directly (not getServerEnv,
-// whose schema requires the full env and would throw under unit tests).
+// Off until the upload bucket's CORS allows the chat origin — otherwise the
+// in-bubble widget can't PUT and the handoff at least works. Reads process.env
+// directly: getServerEnv's schema would throw under unit tests.
 export function fileUploadsEnabled(): boolean {
   const v = process.env.CHAT_FILE_UPLOADS;
   return v === "1" || v === "true";
@@ -29,8 +28,6 @@ function hasRepeatableBehaviour(field: {
   );
 }
 
-// A field the chat can actually ask for and record: not a file/show-hide, not
-// hidden or disabled, not a repeatable section (chat has no array input).
 // Shared by the schema disclosure (what the model is told to collect) and
 // submit validation (what counts against the form) so they can't drift.
 export function isChatCollectable(field: Primitive): boolean {
@@ -174,10 +171,8 @@ export function needsHandoff(contract: ServiceContract): boolean {
     contract.steps.some((step) =>
       step.elements.some((el) => el.htmlType === "file"),
     );
-  // A REQUIRED repeatable field is a structural dead-end in chat: the model is
-  // never told about it (not chat-collectable), so the upstream submit can
-  // never succeed. Hand off instead of trapping the user. Optional repeatables
-  // stay collectible — the form submits without them.
+  // A REQUIRED repeatable field is unsubmittable in chat (no array input, the
+  // model is never told about it) — hand off. Optional repeatables just skip.
   const hasRequiredRepeatable = contract.steps.some((step) =>
     step.elements.some((el) => hasRepeatableBehaviour(el) && isRequired(el)),
   );

@@ -19,10 +19,8 @@ const envSchema = z.object({
     .string()
     .optional()
     .transform((v) => v === "1" || v === "true"),
-  // Opt-in: collect file fields in chat (presign/confirm proxied through
-  // /api/form-file, browser PUTs to S3). Requires the upload bucket's CORS to
-  // allow the chat origin — leave off until alpha-infra confirms it, or
-  // file-field forms become an in-chat dead-end instead of a handoff.
+  // Opt-in: collect file fields in chat. Leave off until the upload bucket's
+  // CORS allows the chat origin, or file forms become an in-chat dead-end.
   CHAT_FILE_UPLOADS: z
     .string()
     .optional()

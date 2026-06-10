@@ -286,9 +286,7 @@ async function applyRagFallback(
 ): Promise<{
   resolution: FormResolution;
   handoffContinuation?: { title: string; url: string };
-  // RAG surfaced an approved COLLECT form the title matcher missed: offer its
-  // form link (ADR 0045 — RAG may hand off a link but must never auto-start
-  // inline collection), instead of falling to the no-form/paper path.
+  // Approved collect form RAG surfaced that the matcher missed (ADR 0045).
   ragCollectLink?: { title: string; url: string };
 }> {
   const ragCandidate =

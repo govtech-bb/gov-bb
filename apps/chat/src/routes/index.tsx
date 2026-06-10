@@ -229,9 +229,8 @@ function ChatPage() {
   const handleStartAgain = useCallback(() => {
     stop();
     clear();
-    // Rotate the threadId so the server-side form session (collected values,
-    // submit status) is left behind too — clear() only empties the messages.
-    // The re-render flows the fresh id into the client via `body`.
+    // clear() only empties messages; rotating the threadId sheds the
+    // server-side form session too.
     resetSessionThreadId();
     setCitationsByMessageId({});
     setPendingQuery(null);

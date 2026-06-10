@@ -31,11 +31,9 @@ const presentChoicesTool = presentChoicesDef.server(async () => ({
   shown: true,
 }));
 
-// The model passes ONLY a fieldId; the canonical field spec (label, type,
-// options) is read from the CONTRACT and returned as the tool result. The
-// client renders its input widget from part.output — the model can't mangle
-// options or labels because it never authors them. The user's answer comes
-// back as a new user message next turn, same as present_choices.
+// The model passes ONLY a fieldId; the canonical spec is read from the
+// CONTRACT and returned as the tool result, so the client renders from
+// part.output and the model never authors labels or options.
 const askFieldTool = askFieldDef.server<FormTurnContext>(
   async ({ fieldId }, ctx) => {
     const { session, form } = ctx.context;
@@ -76,15 +74,13 @@ const setFieldTool = setFieldDef.server<FormTurnContext>(
         error: `unknown or inactive fieldId: ${fieldId}`,
       };
     }
-    // Validate at collection time with the shared engine, so the model
-    // immediately re-asks with the same message the forms app would show —
-    // instead of parking a bad value until submit fails.
+    // Validate at collection time so the model re-asks immediately, instead
+    // of parking a bad value until submit fails.
     const info = buildFieldIndex(form.contract).get(fieldId);
     if (!info) {
       return { ok: false, error: `unknown fieldId: ${fieldId}` };
     }
-    // File values are written by /api/form-file after a verified upload —
-    // never via the model.
+    // File values are written by /api/form-file, never via the model.
     if (info.field.htmlType === "file") {
       return {
         ok: false,
@@ -108,9 +104,8 @@ const setFieldTool = setFieldDef.server<FormTurnContext>(
   },
 );
 
-// Check-your-answers summary, built from the SESSION + CONTRACT and rendered
-// by the client from part.output — the model never authors (and can't
-// misquote) the user's values.
+// Check-your-answers rows built from the SESSION + CONTRACT — the model never
+// authors (and can't misquote) the user's values.
 const reviewFormTool = reviewFormDef.server<FormTurnContext>(
   async (_args, ctx) => {
     const { session, form } = ctx.context;
