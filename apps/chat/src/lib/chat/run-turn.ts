@@ -29,6 +29,7 @@ import {
   buildHandoffContinuationDisclosure,
   buildHandoffDisclosure,
   buildHandoffOfferDisclosure,
+  buildMissDisclosure,
   buildSchemaDisclosure,
 } from "./prompts";
 import {
@@ -174,8 +175,20 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
   // they switch topics. The existing continuation path delivers the link on an
   // affirmative follow-up: the rewrite expands "yes, send it" via history into a
   // retrievable query, which re-surfaces the parked handoff as a continuation.
+
+  // A genuine retrieval miss: we actually queried RAG (not a greeting / active
+  // collection) and it returned no grounded context (zero citations). Route the
+  // miss disclosure (keep guiding, ask to clarify) instead of the misapplied
+  // NO_FORM_DISCLOSURE. Illegitimate requests are excluded so they stay on the
+  // existing decline path rather than being invited to "clarify" (#1099).
+  const noContext =
+    citations.length === 0 && !skipRetrieval && !rewrite.illegitimate;
+
   // No active form, feedback not yet offered, and not parked mid-handoff:
   // expose offer_feedback so the model can invite feedback at a natural stop.
+  // A retrieval miss (noContext) is never a natural stop — the user asked
+  // something we couldn't answer and we're asking them to clarify — so it
+  // suppresses the offer too.
   const offerFeedback =
     shouldBindFeedbackOffer(
       resolution.kind,
@@ -183,7 +196,8 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     ) &&
     !handoffContinuation &&
     !ragCollectLink &&
-    !rewrite.illegitimate;
+    !rewrite.illegitimate &&
+    !noContext;
 
   const systemPrompts = buildSystemPrompts(
     contextBlock,
@@ -193,6 +207,7 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     offerOnly,
     intent,
     ragCollectLink,
+    noContext,
     offerFeedback,
   );
 
@@ -413,6 +428,7 @@ function buildSystemPrompts(
   offerOnly = false,
   intent: "info" | "apply" = "apply",
   ragCollectLink?: { title: string; url: string },
+  noContext = false,
   offerFeedback = false,
 ): SystemEntry[] {
   const prompts: SystemEntry[] = [
@@ -508,6 +524,12 @@ function buildSystemPrompts(
     prompts.push(
       buildFormLinkOfferDisclosure(ragCollectLink.title, ragCollectLink.url),
     );
+  } else if (noContext) {
+    // Retrieval ran and returned nothing grounded: keep guiding the user toward
+    // the closest service (ask to clarify) instead of dead-ending. Replaces the
+    // misapplied NO_FORM_DISCLOSURE, which assumes there IS context to answer
+    // from and would frame a non-existent service as in-person-only (#1099).
+    prompts.push(buildMissDisclosure());
   } else {
     prompts.push(NO_FORM_DISCLOSURE);
     if (offerFeedback) prompts.push(FEEDBACK_OFFER_GUIDANCE);
