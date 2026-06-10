@@ -19,12 +19,6 @@ const envSchema = z.object({
     .string()
     .optional()
     .transform((v) => v === "1" || v === "true"),
-  // Opt-in: collect file fields in chat. Leave off until the upload bucket's
-  // CORS allows the chat origin, or file forms become an in-chat dead-end.
-  CHAT_FILE_UPLOADS: z
-    .string()
-    .optional()
-    .transform((v) => v === "1" || v === "true"),
 });
 
 // Each `process.env.X` is a literal so Vite's `define` substitution can
@@ -39,5 +33,4 @@ export const getServerEnv = () =>
     LLM_MODEL: process.env.LLM_MODEL,
     REWRITE_MODEL: process.env.REWRITE_MODEL,
     BEDROCK_PROMPT_CACHE: process.env.BEDROCK_PROMPT_CACHE,
-    CHAT_FILE_UPLOADS: process.env.CHAT_FILE_UPLOADS,
   });

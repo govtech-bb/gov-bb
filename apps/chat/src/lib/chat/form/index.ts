@@ -2,7 +2,6 @@ export { matchFormsFromText } from "./detect";
 export { getFormSlugs } from "./defs";
 export {
   buildFieldIndex,
-  fileUploadsEnabled,
   resolveActiveForm,
   type FormResolution,
 } from "./schema";

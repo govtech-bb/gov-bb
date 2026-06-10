@@ -37,9 +37,6 @@ export default defineConfig(({ mode }) => {
       "process.env.REWRITE_MODEL": JSON.stringify(
         pick("REWRITE_MODEL", "claude-haiku-4-5"),
       ),
-      "process.env.CHAT_FILE_UPLOADS": JSON.stringify(
-        pick("CHAT_FILE_UPLOADS"),
-      ),
     },
     plugins: [
       tailwindcss(),

@@ -86,16 +86,9 @@ const COERCERS: Record<HtmlTypes, Coercer> = {
   select: coerceEnum,
   radio: coerceEnum,
   checkbox: coerceCheckbox,
-  // JSON arrays of forms-API-confirmed upload refs, written by /api/form-file.
-  file: (_f, raw) => {
-    try {
-      const refs: unknown = JSON.parse(raw);
-      if (!Array.isArray(refs)) return { error: "invalid file reference" };
-      return { value: refs };
-    } catch {
-      return { error: "invalid file reference" };
-    }
-  },
+  // Unreachable: forms with file fields hand off (needsHandoff) and the
+  // fields are never chat-collectable. The key only satisfies the Record type.
+  file: () => ({ error: "file fields are not collected in chat" }),
   "show-hide": (_f, raw) => ({ value: raw }),
 };
 
@@ -166,7 +159,7 @@ export function validateAndReshape(
 }
 
 // Mirrors the forms app's review formatting: option labels (not values),
-// dates without the weekday, file names, Yes/No booleans.
+// dates without the weekday, Yes/No booleans.
 function displayValue(field: Primitive, raw: string): string {
   const coerced = COERCERS[field.htmlType](field, raw.trim());
   if ("error" in coerced) return raw;
@@ -184,10 +177,6 @@ function displayValue(field: Primitive, raw: string): string {
     return new Date(Number(year), Number(month) - 1, Number(day))
       .toDateString()
       .replace(/^\w+\s/, "");
-  }
-  if (field.htmlType === "file") {
-    const refs = value as { name?: string }[];
-    return refs.map((r) => r.name ?? "file").join(", ") || raw;
   }
   if (typeof value === "boolean") return value ? "Yes" : "No";
   if (Array.isArray(value)) {
@@ -217,15 +206,6 @@ export function buildReviewItems(
     }
   }
   return items;
-}
-
-// Runs the recipe's file rules against the file's metadata so oversize or
-// wrong-type files are rejected before an S3 URL is minted.
-export function validateCollectedFile(
-  field: Primitive,
-  candidate: { name: string; size: number; type: string },
-): string | null {
-  return validateField(field, [candidate], {}, {})[0] ?? null;
 }
 
 // set_field-time validation; the candidate is checked against the OTHER
