@@ -3,7 +3,7 @@ import {
   MAX_SOURCES,
   SCORE_THRESHOLD,
   TOP_K,
-} from "./rag-config";
+} from "#/lib/rag/config";
 import type {
   Citation,
   RetrievedContext,
