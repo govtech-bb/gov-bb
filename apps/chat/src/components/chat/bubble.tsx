@@ -1,9 +1,10 @@
 import type { InferToolInput, UIMessage } from "@tanstack/ai";
 import { Allow, parse as parsePartialJson } from "partial-json";
-import { memo, useMemo } from "react";
+import { memo, useCallback, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { presentChoicesDef } from "#/lib/chat-tools";
+import { FEEDBACK_FORM_ID } from "#/lib/chat/feedback";
 import { TridentAvatar } from "#/components/trident-avatar";
 import {
   extractText,
@@ -104,6 +105,31 @@ function BubbleImpl({
     [citations],
   );
 
+  // Latch the bubble's interactive controls to fire ONCE. They otherwise gate
+  // re-clicks only on `choicesDisabled`, which flips a network round-trip later
+  // (when the next message lands) — leaving a window where a fast second click
+  // sends a duplicate. A double-picked choice spawns two turns (two review +
+  // submit prompts); a double-clicked Submit sends the approval twice. The ref
+  // blocks synchronously (before React repaints the disabled state); the state
+  // drives the disabled styling.
+  const respondedRef = useRef(false);
+  const [responded, setResponded] = useState(false);
+  const respondOnce = useCallback((fire: () => void) => {
+    if (respondedRef.current) return;
+    respondedRef.current = true;
+    setResponded(true);
+    fire();
+  }, []);
+  const handleChoice = useCallback(
+    (choice: string) => respondOnce(() => onChoice(choice)),
+    [respondOnce, onChoice],
+  );
+  const handleApproval = useCallback(
+    (id: string, approved: boolean) =>
+      respondOnce(() => onApproval(id, approved)),
+    [respondOnce, onApproval],
+  );
+
   if (message.role === "user") {
     return (
       <div className="flex justify-end">
@@ -122,6 +148,16 @@ function BubbleImpl({
   const submitDeclined =
     submitPart?.state === "approval-responded" &&
     submitPart.approval?.approved === false;
+
+  // The submit prompt's noun depends on the active form, which the approval
+  // metadata can't carry — read it from review_form's output (same bubble, same
+  // turn). Falls back to "application" if review isn't present.
+  const isFeedbackForm =
+    reviewOutput?.ok === true && reviewOutput.formId === FEEDBACK_FORM_ID;
+
+  // Once any control in this bubble has fired, lock them all — both the
+  // historical-staleness gate and the just-clicked latch.
+  const controlsDisabled = choicesDisabled || responded;
 
   const showText = displayText.length > 0;
 
@@ -156,8 +192,8 @@ function BubbleImpl({
               questionId={`choices-q-${message.id}`}
               question={choicesArgs?.question}
               choices={choices}
-              disabled={choicesDisabled}
-              onPick={onChoice}
+              disabled={controlsDisabled}
+              onPick={handleChoice}
             />
           )}
 
@@ -165,37 +201,39 @@ function BubbleImpl({
             <AskFieldWidget
               spec={fieldSpec}
               messageId={message.id}
-              answered={choicesDisabled}
-              onAnswer={onChoice}
+              answered={controlsDisabled}
+              onAnswer={handleChoice}
             />
           )}
 
           {reviewItems.length > 0 && (
             <ReviewSummary
               items={reviewItems}
-              disabled={choicesDisabled}
-              onChange={(label) => onChoice(`I'd like to change ${label}`)}
+              disabled={controlsDisabled}
+              onChange={(label) => handleChoice(`I'd like to change ${label}`)}
             />
           )}
 
           {submitApproval && (
             <div className="flex flex-col gap-2.5">
               <p className="text-bubble font-medium text-black-00">
-                Submit your application now?
+                {isFeedbackForm
+                  ? "Submit your feedback?"
+                  : "Submit your application now?"}
               </p>
               <div className="flex flex-wrap gap-2">
                 <button
                   className="rounded-full bg-teal-00 px-4 py-1.5 font-medium text-sm text-white-00 transition-colors hover:bg-teal-100 focus-visible:outline-2 focus-visible:outline-teal-00 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:bg-mid-grey-00"
-                  disabled={choicesDisabled}
-                  onClick={() => onApproval(submitApproval.id, true)}
+                  disabled={controlsDisabled}
+                  onClick={() => handleApproval(submitApproval.id, true)}
                   type="button"
                 >
                   Submit
                 </button>
                 <button
                   className="rounded-full border-[1.5px] border-mid-grey-00 bg-transparent px-3.5 py-1.5 font-medium text-sm text-mid-grey-00 transition-colors hover:border-black-00 hover:text-black-00 focus-visible:outline-2 focus-visible:outline-teal-00 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  disabled={choicesDisabled}
-                  onClick={() => onApproval(submitApproval.id, false)}
+                  disabled={controlsDisabled}
+                  onClick={() => handleApproval(submitApproval.id, false)}
                   type="button"
                 >
                   Not yet

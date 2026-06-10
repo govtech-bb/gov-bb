@@ -108,7 +108,7 @@ const reviewFormTool = reviewFormDef.server<FormTurnContext>(
     const active = getActiveFieldIds(form.contract, session.values).flat;
     const items = buildReviewItems(form.contract, session.values, active);
     if (!items.length) return { ok: false, error: "nothing collected yet" };
-    return { ok: true, items };
+    return { ok: true, formId: session.slug ?? undefined, items };
   },
 );
 

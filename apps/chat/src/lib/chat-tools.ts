@@ -71,6 +71,11 @@ export const reviewFormDef = toolDefinition({
   outputSchema: z.object({
     ok: z.boolean(),
     error: z.string().optional(),
+    // The active form's id, so the client can tailor copy that the approval
+    // metadata can't carry — e.g. the submit prompt says "feedback" vs
+    // "application". Present on success (review renders in the same bubble as
+    // the submit approval, so it's the natural carrier).
+    formId: z.string().optional(),
     items: z
       .array(
         z.object({
