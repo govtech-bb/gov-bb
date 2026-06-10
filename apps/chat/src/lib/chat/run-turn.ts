@@ -502,6 +502,11 @@ function buildSystemPrompts(
     parts.push(
       `ONLINE FORM LINK for this service: [${formTitle}](${formUrl}). If the user wants the link or prefers to do it themselves, share exactly that markdown link. NEVER suggest a paper form, printing/downloading a form, or going to an office in person — the only options to offer are filling it out here with you, or this online link.`,
     );
+    // Reciting the reference number here is intentionally NOT feedback-safe:
+    // it's never reached for the feedback form because pinSessionForm resets a
+    // submitted feedback session (clearing slug + referenceNumber) before
+    // resolution runs, so a post-submit feedback turn resolves to "none" and
+    // never re-enters this collect branch. Real service forms still report it.
     if (session.status === "submitted" && session.referenceNumber) {
       parts.push(
         `Submission complete. Reference number: ${session.referenceNumber}. Do NOT submit again.`,
