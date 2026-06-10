@@ -5,6 +5,7 @@ stage: "alpha"
 category: ministry-of-youth
 visibility: preview
 service_type: digital
+form_id: camp-director-application
 ---
 
 Use this service to apply to volunteer as a Camp Director or Assistant Camp
@@ -12,7 +13,7 @@ Director with the National Summer Camp Programme 2026.
 
 Applications close on **[date — to be confirmed]**.
 
-<a data-start-link href="https://forms.sandbox.alpha.gov.bb/forms/camp-director-application?preview=demo&amp;step=application-type">Start now</a>
+<a data-start-link>Start now</a>
 
 ## What you need before you start
 
@@ -55,4 +56,4 @@ Minister's Office if you need help with your application.
 
 ## Start the service
 
-<a data-start-link href="https://forms.sandbox.alpha.gov.bb/forms/camp-director-application?preview=demo&amp;step=application-type">Start now</a>
+<a data-start-link>Start now</a>
