@@ -2,6 +2,7 @@ import { z } from "zod";
 import { formStepSchema, recipeFormStepSchema } from "./form-step.type";
 import { processorSchema } from "./processor.type";
 import { KEBAB_ID_PATTERN, KEBAB_ID_ERROR } from "./id-pattern";
+import { semverSchema } from "./version-pattern";
 
 // Form ID and Title identify a form before deploy, so neither may be empty and
 // the Form ID must be a well-formed kebab-case identifier (same rule as
@@ -55,7 +56,7 @@ export const serviceContractSchema = z.object({
   requiresPayment: z.boolean().optional(),
   createdAt: dateTimeFormatSchema,
   updatedAt: dateTimeFormatSchema,
-  version: z.string(),
+  version: semverSchema,
 });
 export type ServiceContract = z.infer<typeof serviceContractSchema>;
 
@@ -68,6 +69,6 @@ export const serviceContractRecipeSchema = z.object({
   processors: z.array(processorSchema).optional(),
   createdAt: dateTimeFormatSchema,
   updatedAt: dateTimeFormatSchema,
-  version: z.string(),
+  version: semverSchema,
 });
 export type ServiceContractRecipe = z.infer<typeof serviceContractRecipeSchema>;

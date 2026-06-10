@@ -85,7 +85,10 @@ export interface SubmissionState {
   submissionSuccess: boolean;
   paymentSuccess?: boolean;
   referenceNumber: string;
-  date: string;
+  // Optional: payment ("gated") submissions are not finalised yet, so the
+  // server returns `submittedAt: null` — there is no submission date to show
+  // until payment completes (#919). formatDate() renders nothing for undefined.
+  date?: string;
   paymentUrl?: string;
   paymentId?: string;
   paymentDescription?: string;

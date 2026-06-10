@@ -75,6 +75,18 @@ produced the duplicate in the report).
   and (b) rapidly double-clicking a rating or Submit no longer duplicates the
   block.
 
+## Merge note
+
+When this branch was merged up to `sandbox`, it turned out `sandbox` had
+**independently fixed the same copy bug** — via an `isFeedback` boolean on
+`review_form`'s output rather than the `formId` field this session added (the
+reasoning was nearly identical: review runs in the same turn as the
+argument-less submit approval, so it's the carrier). The conflict was resolved
+by **converging on sandbox's `isFeedback`** and dropping this session's `formId`
+plumbing. The shipped copy is sandbox's wording — `Submit your {feedback |
+application} now?`. The double-submit latch (this session's unique contribution)
+was preserved unchanged.
+
 ## Notes
 
 - **Known narrow gap (accepted):** the latch is component-local, and the

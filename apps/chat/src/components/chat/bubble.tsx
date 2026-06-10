@@ -4,7 +4,6 @@ import { memo, useCallback, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { presentChoicesDef } from "#/lib/chat-tools";
-import { FEEDBACK_FORM_ID } from "#/lib/chat/feedback";
 import { TridentAvatar } from "#/components/trident-avatar";
 import {
   extractText,
@@ -90,6 +89,10 @@ function BubbleImpl({
       ? (reviewPart.output as ReviewOutput | undefined)
       : undefined;
   const reviewItems = reviewOutput?.ok ? (reviewOutput.items ?? []) : [];
+  // The feedback form reads as "feedback", not "application". review_form runs
+  // in the same turn as the submit_form approval below, so its output is the
+  // signal for wording the approval prompt.
+  const isFeedbackForm = reviewOutput?.ok && reviewOutput.isFeedback === true;
 
   // Keep the lead-in text but drop the trailing question when buttons render it.
   const displayText = useMemo(
@@ -148,12 +151,6 @@ function BubbleImpl({
   const submitDeclined =
     submitPart?.state === "approval-responded" &&
     submitPart.approval?.approved === false;
-
-  // The submit prompt's noun depends on the active form, which the approval
-  // metadata can't carry — read it from review_form's output (same bubble, same
-  // turn). Falls back to "application" if review isn't present.
-  const isFeedbackForm =
-    reviewOutput?.ok === true && reviewOutput.formId === FEEDBACK_FORM_ID;
 
   // Once any control in this bubble has fired, lock them all — both the
   // historical-staleness gate and the just-clicked latch.
@@ -217,9 +214,7 @@ function BubbleImpl({
           {submitApproval && (
             <div className="flex flex-col gap-2.5">
               <p className="text-bubble font-medium text-black-00">
-                {isFeedbackForm
-                  ? "Submit your feedback?"
-                  : "Submit your application now?"}
+                Submit your {isFeedbackForm ? "feedback" : "application"} now?
               </p>
               <div className="flex flex-wrap gap-2">
                 <button

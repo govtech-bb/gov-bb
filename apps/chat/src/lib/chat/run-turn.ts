@@ -20,8 +20,14 @@ import {
 } from "./form";
 import { FEEDBACK_FORM_ID, shouldBindFeedbackOffer } from "./feedback";
 import { citationsMiddleware, turnLogMiddleware } from "./middleware";
-import { capMessageHistory, lastUserText, recentUserText } from "./messages";
 import {
+  capMessageHistory,
+  lastAssistantText,
+  lastUserText,
+  recentUserText,
+} from "./messages";
+import {
+  CLOSER_GUIDANCE,
   FEEDBACK_COLLECTION_GUIDANCE,
   FEEDBACK_OFFER_GUIDANCE,
   FORM_COLLECTION_PROTOCOL,
@@ -37,6 +43,7 @@ import {
 import {
   buildCitedContext,
   decideRagFallback,
+  isConversationalCloser,
   isGreetingOrTooShort,
   retrieve,
   topHandoffCandidateSlug,
@@ -113,7 +120,18 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
   // same question sometimes answers, sometimes form-fills).
   const activelyCollecting =
     resolution.kind === "collect" && Object.keys(session.values).length > 0;
-  const skipRetrieval = isGreetingOrTooShort(latest) || activelyCollecting;
+
+  // A conversational closer ("thanks, bye", or "no"/"ok" right after we asked
+  // "anything else?") winds the chat down. Detected here so the turn routes to a
+  // warm sign-off + feedback invitation rather than being mistaken for a
+  // retrieval miss (a closer and a miss BOTH return zero citations — #1125).
+  // Gated to non-collect turns: while a form is active, a terse "no"/"ok" is a
+  // field answer, not a goodbye. Skips retrieval — there's nothing to ground.
+  const closer =
+    resolution.kind !== "collect" &&
+    isConversationalCloser(latest, lastAssistantText(messages));
+  const skipRetrieval =
+    isGreetingOrTooShort(latest) || activelyCollecting || closer;
 
   // A form matched on an INFO question (nothing collected yet, the message is a
   // question rather than apply-intent): answer from RAG and offer the form, but
@@ -211,6 +229,7 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     ragCollectLink,
     noContext,
     offerFeedback,
+    closer,
   );
 
   // collect + apply-intent → full field tools. collect + info question
@@ -434,6 +453,7 @@ function buildSystemPrompts(
   ragCollectLink?: { title: string; url: string },
   noContext = false,
   offerFeedback = false,
+  closer = false,
 ): SystemEntry[] {
   const prompts: SystemEntry[] = [
     SYSTEM_PROMPT,
@@ -502,6 +522,11 @@ function buildSystemPrompts(
     parts.push(
       `ONLINE FORM LINK for this service: [${formTitle}](${formUrl}). If the user wants the link or prefers to do it themselves, share exactly that markdown link. NEVER suggest a paper form, printing/downloading a form, or going to an office in person — the only options to offer are filling it out here with you, or this online link.`,
     );
+    // Reciting the reference number here is intentionally NOT feedback-safe:
+    // it's never reached for the feedback form because pinSessionForm resets a
+    // submitted feedback session (clearing slug + referenceNumber) before
+    // resolution runs, so a post-submit feedback turn resolves to "none" and
+    // never re-enters this collect branch. Real service forms still report it.
     if (session.status === "submitted" && session.referenceNumber) {
       parts.push(
         `Submission complete. Reference number: ${session.referenceNumber}. Do NOT submit again.`,
@@ -532,6 +557,15 @@ function buildSystemPrompts(
     prompts.push(
       buildFormLinkOfferDisclosure(ragCollectLink.title, ragCollectLink.url),
     );
+  } else if (closer) {
+    // The user is winding the chat down (goodbye / thanks / "that's all", or a
+    // terse "no"/"ok" after we asked "anything else?"). A brief warm sign-off,
+    // NOT the miss disclosure's "guide toward the closest service" or
+    // NO_FORM_DISCLOSURE's "answer the substance" — there's no substance on a
+    // goodbye. If the feedback offer is still available this turn, invite it once
+    // (#1125 — this is the natural-conclusion moment the offer was designed for).
+    prompts.push(CLOSER_GUIDANCE);
+    if (offerFeedback) prompts.push(FEEDBACK_OFFER_GUIDANCE);
   } else if (noContext) {
     // Retrieval ran and returned nothing grounded: keep guiding the user toward
     // the closest service (ask to clarify) instead of dead-ending. Replaces the

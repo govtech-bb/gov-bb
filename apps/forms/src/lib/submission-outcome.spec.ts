@@ -1,16 +1,21 @@
 import { resolveSubmissionOutcome } from "./submission-outcome";
 import { FormSubmissionResponse } from "@forms/types";
 
+// `status` is the SUBMISSION status and belongs on `data.status`. The API
+// envelope `status` is always "success" for a 2xx (ApiResponse.success) —
+// modelling that here is what catches regressions where the mapper reads the
+// wrong level (it previously switched on the envelope and dropped payments).
 const response = (
   status: string,
   meta?: FormSubmissionResponse["meta"],
   referenceCode?: string,
 ): FormSubmissionResponse =>
   ({
-    status,
+    status: "success",
     message: "",
     data: {
       id: "ref-001",
+      status,
       submittedAt: "2026-05-22T00:00:00Z",
       formId: "test-form",
       ...(referenceCode !== undefined ? { referenceCode } : {}),

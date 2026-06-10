@@ -21,7 +21,7 @@ import {
 } from "react";
 import { Bubble } from "#/components/chat/bubble";
 import { TridentAvatar } from "#/components/trident-avatar";
-import { FEEDBACK_TRIGGER_PHRASE } from "#/lib/chat/feedback";
+import { FEEDBACK_TRIGGER_PHRASE } from "#/lib/chat/feedback-trigger";
 import { extractText, hasAnyToolCall } from "#/lib/chat/messages";
 import {
   chatPersistence,
@@ -72,6 +72,10 @@ function ChatPage() {
   // True between the submit_form tool's "submitting" and "submitted"/"failed"
   // custom events, so the UI can show progress during the blocking POST.
   const [submitting, setSubmitting] = useState(false);
+  // Whether the in-flight submission is the feedback form, so the indicator can
+  // read "Submitting your feedback" instead of "...your application". Only
+  // meaningful while `submitting` is true; carried on the submit_status event.
+  const [submittingIsFeedback, setSubmittingIsFeedback] = useState(false);
   const parentRef = useRef<HTMLDivElement>(null);
   // Citations keyed by assistant messageId. Populated from the `citations`
   // custom event the server emits right after TEXT_MESSAGE_START.
@@ -117,8 +121,12 @@ function ChatPage() {
         return;
       }
       if (eventType === "submit_status") {
-        const state = (data as { state?: string } | undefined)?.state;
-        setSubmitting(state === "submitting");
+        const payload = data as
+          | { state?: string; isFeedback?: boolean }
+          | undefined;
+        const isSubmitting = payload?.state === "submitting";
+        setSubmitting(isSubmitting);
+        if (isSubmitting) setSubmittingIsFeedback(payload?.isFeedback === true);
       }
     },
   });
@@ -252,38 +260,19 @@ function ChatPage() {
     setInput("");
   }
 
-  // The notice banner's "Give feedback" link starts the chat-feedback form the
+  // The notice banner's inline "feedback" link starts the chat-feedback form the
   // same way the model's offer does — a matcher phrase the server pins. Manual
-  // counterpart to offer_feedback; see #1066.
+  // counterpart to offer_feedback; see #1066. No-op while streaming (sending is
+  // disabled then), but the link stays visible — it never disappears on click.
   const handleGiveFeedback = useCallback(() => {
     if (isStreaming) return;
     sendMessage(FEEDBACK_TRIGGER_PHRASE);
   }, [isStreaming, sendMessage]);
 
-  // Hide the feedback link while a form is mid-collection (the latest assistant
-  // turn ended on a visible form prompt) — otherwise the trigger phrase would be
-  // swallowed by that form instead of starting feedback. Mirrors shouldShowThinking.
-  const formActive = useMemo(
-    () =>
-      hasAnyToolCall(messages.slice(-1), [
-        askFieldDef.name,
-        presentChoicesDef.name,
-        reviewFormDef.name,
-        submitFormDef.name,
-      ]),
-    [messages],
-  );
-  const canGiveFeedback = !isStreaming && !formActive;
-
   function renderRow(row: ChatRow) {
     switch (row.kind) {
       case "notice":
-        return (
-          <NoticeBubble
-            onGiveFeedback={handleGiveFeedback}
-            canGiveFeedback={canGiveFeedback}
-          />
-        );
+        return <NoticeBubble onGiveFeedback={handleGiveFeedback} />;
       case "welcome":
         return <WelcomeBubble />;
       case "optimistic":
@@ -291,7 +280,15 @@ function ChatPage() {
       case "thinking":
         return <ThinkingIndicator />;
       case "submitting":
-        return <ThinkingIndicator label="Submitting your application" />;
+        return (
+          <ThinkingIndicator
+            label={
+              submittingIsFeedback
+                ? "Submitting your feedback"
+                : "Submitting your application"
+            }
+          />
+        );
       case "error":
         // role="alert" so it's announced. Plain-language guidance instead of
         // the raw error; reload() re-runs the failed turn without a dup.
@@ -463,16 +460,10 @@ function OptimisticUserBubble({ text }: { text: string }) {
 // Beta disclaimer rendered as the first chat row, above the welcome bubble.
 // Intentionally always shown (no dismiss / once-per-session suppression) and
 // styled as a full-width yellow WARNING banner — not a chat bubble — so it
-// reads as a standing notice rather than a message from the assistant. Carries
-// a "Give feedback" link (the manual counterpart to the model's offer); it is
-// hidden while a form is mid-collection so its trigger isn't swallowed.
-function NoticeBubble({
-  onGiveFeedback,
-  canGiveFeedback,
-}: {
-  onGiveFeedback: () => void;
-  canGiveFeedback: boolean;
-}) {
+// reads as a standing notice rather than a message from the assistant. The word
+// "feedback" is an inline link (the manual counterpart to the model's offer)
+// that starts the feedback form; it stays put — it never hides on click.
+function NoticeBubble({ onGiveFeedback }: { onGiveFeedback: () => void }) {
   return (
     <div
       role="note"
@@ -489,17 +480,15 @@ function NoticeBubble({
         />
       </svg>
       <Text as="p" size="caption" className="text-black-00">
-        This assistant is still new and improving. Your feedback helps us make
-        it better!{" "}
-        {canGiveFeedback && (
-          <button
-            type="button"
-            onClick={onGiveFeedback}
-            className="font-medium text-black-00 underline underline-offset-2"
-          >
-            Give feedback
-          </button>
-        )}
+        This assistant is still new and improving. Your{" "}
+        <button
+          type="button"
+          onClick={onGiveFeedback}
+          className="cursor-pointer font-medium text-black-00 underline underline-offset-2"
+        >
+          feedback
+        </button>{" "}
+        helps us make it better!
       </Text>
     </div>
   );

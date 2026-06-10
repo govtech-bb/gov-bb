@@ -7,7 +7,12 @@ import {
   setFieldDef,
   submitFormDef,
 } from "#/lib/chat-tools";
-import { cancelFeedbackForm, pinFeedbackForm } from "#/lib/chat/feedback";
+import {
+  cancelFeedbackForm,
+  FEEDBACK_FORM_ID,
+  pinFeedbackForm,
+  submitSuccessForModel,
+} from "#/lib/chat/feedback";
 import type { ActiveFormSchema } from "./schema";
 import { buildFieldIndex, getActiveFieldIds } from "./schema";
 import type { FormSession } from "./session";
@@ -108,7 +113,10 @@ const reviewFormTool = reviewFormDef.server<FormTurnContext>(
     const active = getActiveFieldIds(form.contract, session.values).flat;
     const items = buildReviewItems(form.contract, session.values, active);
     if (!items.length) return { ok: false, error: "nothing collected yet" };
-    return { ok: true, formId: session.slug ?? undefined, items };
+    // isFeedback lets the client word the submit approval as "Submit your
+    // feedback now?" — review_form runs in the same turn just before the
+    // (argument-less) submit_form approval prompt, so it's the carrier.
+    return { ok: true, items, isFeedback: session.slug === FEEDBACK_FORM_ID };
   },
 );
 
@@ -122,7 +130,7 @@ const submitFormTool = submitFormDef.server<FormTurnContext>(
       };
     }
     if (session.status === "submitted" && session.referenceNumber) {
-      return { ok: true, referenceNumber: session.referenceNumber };
+      return submitSuccessForModel(session.slug, session.referenceNumber);
     }
     if (session.status === "submitting") {
       return {
@@ -137,7 +145,11 @@ const submitFormTool = submitFormDef.server<FormTurnContext>(
     // The upstream POST blocks for a few seconds and produces no text, so the
     // client has nothing to show after the user approves. Stream a status so
     // the UI can render a "Submitting…" indicator instead of dead air.
-    ctx.emitCustomEvent("submit_status", { state: "submitting" });
+    // isFeedback lets the indicator read "Submitting your feedback".
+    ctx.emitCustomEvent("submit_status", {
+      state: "submitting",
+      isFeedback: session.slug === FEEDBACK_FORM_ID,
+    });
     let result: SubmitOutcome;
     try {
       result = await submitFormUpstream(
@@ -161,7 +173,7 @@ const submitFormTool = submitFormDef.server<FormTurnContext>(
       session.status = "submitted";
       session.referenceNumber = result.referenceNumber;
       ctx.emitCustomEvent("submit_status", { state: "submitted" });
-      return { ok: true, referenceNumber: result.referenceNumber };
+      return submitSuccessForModel(session.slug, result.referenceNumber);
     }
     session.status = "failed";
     session.lastError = result.errors[0]?.message;
