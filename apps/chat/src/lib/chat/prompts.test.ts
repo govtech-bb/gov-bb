@@ -84,8 +84,9 @@ test("offer disclosure forbids pasting a URL or link this turn", () => {
 
 // The handoff disclosure is the first reply that hands the user the form link.
 // Issue #1065: the copy must read warm and supportive, not curt, while keeping
-// the strict link-first shape and every guardrail that stops the #965 drift
-// (skipping the link, hallucinating inline collection, pushing the paper route).
+// the link-prominent shape and the guardrails that stop the #965 drift
+// (skipping the link, hallucinating inline collection). #1079 follow-up: it no
+// longer forbids the in-person / paper route, so both paths can be shown.
 
 test("handoff: embeds the form link as a markdown link", () => {
   const out = buildHandoffDisclosure(TITLE, URL);
@@ -124,4 +125,22 @@ test("handoff: copy the model reproduces is free of em/en dashes", () => {
     /[—–]/,
     "no em/en dashes anywhere in the disclosure",
   );
+});
+
+test("handoff: uses the reshaped lead-in + closing copy", () => {
+  const out = buildHandoffDisclosure(TITLE, URL);
+  assert.match(out, /Here's the form to get started:/);
+  assert.match(out, /complete your application there when you're ready/i);
+});
+
+// #1079 follow-up: we now show BOTH paths. The disclosure must no longer forbid
+// the paper / in-person route, and must explicitly allow it as a fallback after
+// the online link.
+test("handoff: allows the in-person / paper fallback instead of forbidding it", () => {
+  const out = buildHandoffDisclosure(TITLE, URL);
+  // The old prohibition is gone.
+  assert.doesNotMatch(out, /recite the paper-form path/i);
+  // Both paths are explicitly permitted, online still leading.
+  assert.match(out, /BOTH PATHS/);
+  assert.match(out, /in person|in-person/i);
 });

@@ -127,38 +127,47 @@ export function buildHandoffDisclosure(title: string, url: string): string {
   // hallucinated collection on the next turn.
   //
   // So this disclosure (a) explicitly overrides DEFAULT MODE for this turn,
-  // (b) leads with the response shape so the link is the FIRST thing the model
-  // commits to, (c) shows the exact output, and (d) names the forbidden
-  // behaviours the model was previously drifting into ("Ready to start the
-  // online form?", paper-form alternatives).
+  // (b) puts the link near the top so it's the thing the model commits to,
+  // (c) shows the exact output, and (d) names the forbidden behaviours the
+  // model was previously drifting into ("Ready to start the online form?",
+  // offering to fill it in here).
   //
   // #1065: the reproduced copy was curt ("That's the form. You'll need to
   // complete it there."). It now reads warm and supportive and surfaces any
   // prerequisites from context as helpful guidance, WITHOUT loosening the
-  // link-first shape or the anti-drift guardrails. The reproduced copy is kept
-  // free of em/en dashes per the SYSTEM_PROMPT punctuation rule.
+  // link-prominent shape or the anti-drift guardrails.
+  //
+  // #1079 follow-up: we no longer forbid the paper / in-person path. Per the
+  // SYSTEM_PROMPT CHANNEL PREFERENCE rule the online form stays the lead, but
+  // the model MAY note the in-person alternative as a fallback when the context
+  // has it, so the user sees both routes. Em/en dashes in the model's prose are
+  // stripped deterministically in normalizeMarkdown, so no prompt rule has to
+  // enforce that here.
   return `HARD OVERRIDE: THIS TURN IS A HANDOFF. The link below IS the answer.
 
 This overrides the DEFAULT MODE / INFORMATIONAL (RAG) rule for this turn. Even though no FORM SCHEMA was provided, do NOT treat this as a pure RAG answer.
 
 The form "${title}" requires steps the chat cannot safely do here (file upload, payment, or other inputs that must happen in the full form). Your one job this turn: warmly hand the user the link.
 
-REPLY EXACTLY IN THIS SHAPE (link first, then a warm line, then optional guidance):
+REPLY EXACTLY IN THIS SHAPE (a short lead-in, then the link, then a warm closing line, then optional guidance):
+
+Here's the form to get started:
 
 [${title}](${url})
 
-Here's the form to get started. You can finish the rest there.
+You can complete your application there when you're ready.
 
 GUIDANCE LINE: include this ONLY when THIS turn's retrieved context names documents or requirements the user needs before they begin (for example a Police Certificate of Character). Add ONE short, friendly sentence presenting them as something to have ready, cited with a [N] marker, for example: "It helps to have your Police Certificate of Character handy before you start [1]." If the context names no prerequisites, skip this line entirely. NEVER invent a prerequisite that is not in the context.
 
-TONE: warm and supportive, never curt. Acknowledge what the user is trying to do and frame the link as the helpful next step, not a dismissal. Stay concise: the warm line, plus at most the one guidance sentence.
+BOTH PATHS: the online form is the recommended route, so it leads. If the retrieved context also describes an in-person or paper way to apply, you MAY add ONE short sentence offering it as a fallback after the link (for example "If you'd rather, you can also apply in person at the District office [1]."), cited with a [N] marker. Keep it secondary to the online form, and never invent a path the context doesn't mention.
+
+TONE: warm and supportive, never curt. Acknowledge what the user is trying to do and frame the link as the helpful next step, not a dismissal. Stay concise: the lead-in and closing line, plus at most the one guidance sentence and the one fallback sentence.
 
 (Optional, only if the user already asked a specific side question this turn, for example cost, documents, or eligibility: append ONE short sentence answering it from the retrieved context. Otherwise stop after the lines above.)
 
 Do NOT:
 - Ask "Ready to start the online form?". The link IS the online form.
 - Offer to "start it for you" or "fill it in for you". There is no in-chat start.
-- Recite the paper-form path as an alternative unless the user specifically asked about paper.
 - Use set_field, ask_field, present_choices, review_form, or submit_form. They are not available this turn.
 - Open with a long RAG paragraph that delays or replaces the link.
 - Cite the link with [1]/[2] markers. Write it as the markdown link shown above.`;
