@@ -19,13 +19,8 @@ import {
   useRef,
   useState,
 } from "react";
-import { BetaNotice } from "#/components/chat/beta-notice";
 import { Bubble } from "#/components/chat/bubble";
 import { TridentAvatar } from "#/components/trident-avatar";
-import {
-  FEEDBACK_TRIGGER_PHRASE,
-  shouldShowFeedbackAffordance,
-} from "#/lib/chat/feedback";
 import { extractText, hasAnyToolCall } from "#/lib/chat/messages";
 import {
   chatPersistence,
@@ -61,6 +56,7 @@ const LANDING_URL =
 // (welcome header, optimistic bubble, thinking indicator, error) live in the
 // same list as messages and carry stable keys.
 type ChatRow =
+  | { kind: "notice"; key: string }
   | { kind: "welcome"; key: string }
   | { kind: "optimistic"; key: string; text: string }
   | { kind: "message"; key: string; message: UIMessage; index: number }
@@ -146,7 +142,10 @@ function ChatPage() {
   }, [isStreaming, messages]);
 
   const rows = useMemo<ChatRow[]>(() => {
-    const out: ChatRow[] = [{ kind: "welcome", key: "welcome" }];
+    const out: ChatRow[] = [
+      { kind: "notice", key: "notice" },
+      { kind: "welcome", key: "welcome" },
+    ];
     if (pendingQuery && messages.length === 0) {
       out.push({ kind: "optimistic", key: "optimistic", text: pendingQuery });
       if (!error) out.push({ kind: "thinking", key: "thinking" });
@@ -251,36 +250,10 @@ function ChatPage() {
     setInput("");
   }
 
-  // "Give feedback" starts the chat-feedback form the same way any form starts:
-  // a plain user message the matcher pins to the recipe, then the normal
-  // collect -> submit_form flow emails it. No bespoke endpoint (issue #1066).
-  const handleGiveFeedback = useCallback(() => {
-    if (isStreaming) return;
-    sendMessage(FEEDBACK_TRIGGER_PHRASE);
-  }, [isStreaming, sendMessage]);
-
-  // A form is mid-collection when the latest assistant turn ended on a visible
-  // form prompt (ask_field / present_choices / review / submit approval). While
-  // it is, the feedback trigger would be swallowed by that form, so hide the
-  // affordance until it resolves. Matches shouldShowThinking's tool-call check.
-  const formActive = useMemo(
-    () =>
-      hasAnyToolCall(messages.slice(-1), [
-        askFieldDef.name,
-        presentChoicesDef.name,
-        reviewFormDef.name,
-        submitFormDef.name,
-      ]),
-    [messages],
-  );
-  const showFeedback = shouldShowFeedbackAffordance(
-    messages.length,
-    isStreaming,
-    formActive,
-  );
-
   function renderRow(row: ChatRow) {
     switch (row.kind) {
+      case "notice":
+        return <NoticeBubble />;
       case "welcome":
         return <WelcomeBubble />;
       case "optimistic":
@@ -329,12 +302,7 @@ function ChatPage() {
   return (
     <div className="flex h-dvh flex-col bg-white-00">
       <SiteHeader />
-      <ChatHeader
-        onStartAgain={handleStartAgain}
-        onGiveFeedback={handleGiveFeedback}
-        showFeedback={showFeedback}
-      />
-      <BetaNotice />
+      <ChatHeader onStartAgain={handleStartAgain} />
 
       <div className="relative flex-1 overflow-hidden">
         {/* Not a live region: the virtualizer remounts rows on scroll, which a
@@ -430,34 +398,15 @@ function SiteHeader() {
   );
 }
 
-function ChatHeader({
-  onStartAgain,
-  onGiveFeedback,
-  showFeedback,
-}: {
-  onStartAgain: () => void;
-  onGiveFeedback: () => void;
-  showFeedback: boolean;
-}) {
+function ChatHeader({ onStartAgain }: { onStartAgain: () => void }) {
   return (
     <header className="bg-white-00">
       <div className="container flex items-center gap-s py-xm">
         <div className="flex-1">
-          <GovLink href={LANDING_URL}>
-            Close
-          </GovLink>
+          <GovLink href={LANDING_URL}>Close</GovLink>
         </div>
         <TridentAvatar size="sm" tone="filled" />
-        <div className="flex flex-1 justify-end gap-s">
-          {showFeedback && (
-            <button
-              type="button"
-              onClick={onGiveFeedback}
-              className={cn(linkVariants())}
-            >
-              Give feedback
-            </button>
-          )}
+        <div className="flex flex-1 justify-end">
           <button
             type="button"
             onClick={onStartAgain}
@@ -477,6 +426,21 @@ function OptimisticUserBubble({ text }: { text: string }) {
       <div className="text-bubble max-w-[75%] rounded-[16px_16px_4px_16px] bg-blue-100 px-4 py-2.5 text-white-00">
         {text}
       </div>
+    </div>
+  );
+}
+
+function NoticeBubble() {
+  return (
+    <div className="mb-xs flex justify-start">
+      <Text
+        as="p"
+        size="caption"
+        className="max-w-[92%] rounded-2xl bg-blue-10 px-3.5 py-2 text-mid-grey-00"
+      >
+        This assistant is new and still learning, so it may sometimes get things
+        wrong. Please double check anything important.
+      </Text>
     </div>
   );
 }
