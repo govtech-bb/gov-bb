@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  cancelFeedbackForm,
   FEEDBACK_FORM_ID,
   FEEDBACK_TRIGGER_PHRASE,
   pinFeedbackForm,
@@ -43,6 +44,18 @@ test("the Give feedback trigger phrase matches the chat-feedback recipe title", 
   assert.ok(phraseToks.has("assistant"));
   // Statement, not a question, so run-turn enters collection rather than offer-only.
   assert.ok(!FEEDBACK_TRIGGER_PHRASE.trim().endsWith("?"));
+});
+
+test("cancelFeedbackForm unpins the form but keeps the offer spent", () => {
+  // A declined offer must return the session to normal chat (slug cleared) so a
+  // later question isn't trapped in feedback-collection — but feedbackOffered
+  // must stay set so we don't re-pester the user who already said no.
+  const s = getOrCreateSession("t-cancel-1");
+  pinFeedbackForm(s);
+  assert.equal(s.slug, FEEDBACK_FORM_ID);
+  cancelFeedbackForm(s);
+  assert.equal(s.slug, null); // back to normal chat
+  assert.equal(s.feedbackOffered, true); // but never offered again
 });
 
 test("resetSessionForNewForm preserves feedbackOffered", () => {

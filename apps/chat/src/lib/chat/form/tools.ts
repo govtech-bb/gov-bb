@@ -1,12 +1,13 @@
 import {
   askFieldDef,
+  declineFeedbackDef,
   offerFeedbackDef,
   presentChoicesDef,
   reviewFormDef,
   setFieldDef,
   submitFormDef,
 } from "#/lib/chat-tools";
-import { pinFeedbackForm } from "#/lib/chat/feedback";
+import { cancelFeedbackForm, pinFeedbackForm } from "#/lib/chat/feedback";
 import type { ActiveFormSchema } from "./schema";
 import { buildFieldIndex, getActiveFieldIds } from "./schema";
 import type { FormSession } from "./session";
@@ -204,4 +205,21 @@ const offerFeedbackTool = offerFeedbackDef.server<FormTurnContext>(
 // lets the model invite feedback at a natural conclusion. See run-turn.ts.
 export function buildEndOfChatTools() {
   return [offerFeedbackTool];
+}
+
+// Closes the optional feedback form when the user declines the invitation (or
+// bails mid-form). Unpins the session — the offer stays spent, so it is not
+// repeated. Bound only while the feedback form is the active form.
+const declineFeedbackTool = declineFeedbackDef.server<FormTurnContext>(
+  async (_args, ctx) => {
+    cancelFeedbackForm(ctx.context.session);
+    return { ok: true };
+  },
+);
+
+// Tools while the optional feedback form is active: the normal collect tools
+// PLUS decline_feedback, so a user who only agreed to *consider* feedback can
+// bow out instead of being railroaded into the form. See run-turn.ts.
+export function buildFeedbackTools() {
+  return [...buildFormTools(), declineFeedbackTool];
 }

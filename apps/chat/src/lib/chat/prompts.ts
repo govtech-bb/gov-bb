@@ -143,8 +143,12 @@ If the request is illegitimate per the ILLEGITIMATE REQUESTS rule (fraud, falsif
 
 export const FEEDBACK_OFFER_GUIDANCE = `FEEDBACK (this assistant is in beta):
 - If the conversation has reached a natural conclusion — the user's question is fully answered or their task is done and they are wrapping up (e.g. "thanks", "that's all", "no, that's everything") — you MAY call offer_feedback ONCE to invite them to rate the assistant.
-- After calling offer_feedback, add one short sentence inviting their feedback (e.g. "Before you go, how was this? Your feedback helps us improve.").
+- After calling offer_feedback, add one short sentence ASKING WHETHER they'd like to give feedback — an invitation they can accept or decline, NOT the rating question itself (e.g. "Before you go, would you like to give us quick feedback on the assistant? It helps us improve."). Do NOT phrase it as "how was this?" or "how was your experience?" — that mimics the form's first question, but a reply here is not recorded; the rating is asked by the feedback form once they accept.
 - Do NOT call offer_feedback if the user is mid-task, still asking questions, or has already been offered feedback. Never offer twice, and never pester a user who declines — just keep helping.`;
+
+export const FEEDBACK_COLLECTION_GUIDANCE = `THIS IS THE OPTIONAL FEEDBACK FORM you just invited the user to give:
+- It is entirely optional. If their latest message declines or shows they'd rather not (e.g. "no", "no thanks", "not now", "maybe later", or they just said goodbye without engaging), call decline_feedback (no arguments) and reply with ONE short, warm sign-off. Do NOT ask any feedback field after a decline.
+- If they're willing (e.g. "sure", "yes", "ok", or they already started rating), collect it normally per the form protocol. The rating question and every other question come from the form via ask_field — never write the rating question yourself, and do NOT treat any reply to your invitation as the rating answer; the first ask_field collects it for real.`;
 
 export function buildSchemaDisclosure(slug: string, schema: string): string {
   return `FORM SCHEMA for "${slug}". Collect every required field before calling submit_form.\n\n${schema}`;

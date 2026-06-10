@@ -5,6 +5,7 @@ import { childController } from "#/lib/abort";
 import { getServerEnv } from "#/config/env";
 import {
   buildEndOfChatTools,
+  buildFeedbackTools,
   buildFormTools,
   buildOfferTools,
   getFormSlugs,
@@ -21,6 +22,7 @@ import { FEEDBACK_FORM_ID, shouldBindFeedbackOffer } from "./feedback";
 import { citationsMiddleware, turnLogMiddleware } from "./middleware";
 import { capMessageHistory, lastUserText, recentUserText } from "./messages";
 import {
+  FEEDBACK_COLLECTION_GUIDANCE,
   FEEDBACK_OFFER_GUIDANCE,
   FORM_COLLECTION_PROTOCOL,
   NO_FORM_DISCLOSURE,
@@ -220,7 +222,9 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     resolution.kind === "collect"
       ? offerOnly
         ? buildOfferTools()
-        : buildFormTools()
+        : resolution.form.slug === FEEDBACK_FORM_ID
+          ? buildFeedbackTools()
+          : buildFormTools()
       : offerFeedback
         ? buildEndOfChatTools()
         : [];
@@ -508,6 +512,10 @@ function buildSystemPrompts(
       );
     }
     prompts.push(parts.join("\n\n"));
+    // The optional feedback form was offered as an invitation the user can
+    // decline — give the model the accept/decline guidance and remind it the
+    // rating comes from ask_field, not from any reply to the invitation.
+    if (slug === FEEDBACK_FORM_ID) prompts.push(FEEDBACK_COLLECTION_GUIDANCE);
   } else if (handoffContinuation) {
     // Follow-up after a handoff: keep helping informationally but keep the link
     // in front of the user — never collect inline, never deny the form exists.

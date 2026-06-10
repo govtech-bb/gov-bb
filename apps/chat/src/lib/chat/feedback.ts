@@ -33,3 +33,11 @@ export function pinFeedbackForm(session: FormSession): void {
   session.feedbackOffered = true;
   session.updatedAt = Date.now();
 }
+
+// The user was invited to give feedback (which pins the form) but declined, or
+// bailed mid-form. Unpin so the session returns to normal chat. feedbackOffered
+// survives resetSessionForNewForm, so the offer is never repeated this session —
+// we don't pester someone who already said no.
+export function cancelFeedbackForm(session: FormSession): void {
+  resetSessionForNewForm(session);
+}
