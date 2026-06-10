@@ -12,4 +12,9 @@ export {
   withThreadLock,
   type FormSession,
 } from "./session";
-export { buildFormTools, buildOfferTools, type FormTurnContext } from "./tools";
+export {
+  buildEndOfChatTools,
+  buildFormTools,
+  buildOfferTools,
+  type FormTurnContext,
+} from "./tools";

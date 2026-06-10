@@ -4,6 +4,7 @@ import { bedrockText } from "@govtech-bb/ai-bedrock";
 import { childController } from "#/lib/abort";
 import { getServerEnv } from "#/config/env";
 import {
+  buildEndOfChatTools,
   buildFormTools,
   buildOfferTools,
   getFormSlugs,
@@ -16,9 +17,11 @@ import {
   type FormSession,
   type FormTurnContext,
 } from "./form";
+import { shouldBindFeedbackOffer } from "./feedback";
 import { citationsMiddleware, turnLogMiddleware } from "./middleware";
 import { capMessageHistory, lastUserText, recentUserText } from "./messages";
 import {
+  FEEDBACK_OFFER_GUIDANCE,
   FORM_COLLECTION_PROTOCOL,
   NO_FORM_DISCLOSURE,
   SYSTEM_PROMPT,
@@ -171,6 +174,16 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
   // they switch topics. The existing continuation path delivers the link on an
   // affirmative follow-up: the rewrite expands "yes, send it" via history into a
   // retrievable query, which re-surfaces the parked handoff as a continuation.
+  // No active form, feedback not yet offered, and not parked mid-handoff:
+  // expose offer_feedback so the model can invite feedback at a natural stop.
+  const offerFeedback =
+    shouldBindFeedbackOffer(
+      resolution.kind,
+      session.feedbackOffered ?? false,
+    ) &&
+    !handoffContinuation &&
+    !ragCollectLink;
+
   const systemPrompts = buildSystemPrompts(
     contextBlock,
     resolution,
@@ -179,6 +192,7 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     offerOnly,
     intent,
     ragCollectLink,
+    offerFeedback,
   );
 
   // collect + apply-intent → full field tools. collect + info question
@@ -191,7 +205,9 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
       ? offerOnly
         ? buildOfferTools()
         : buildFormTools()
-      : [];
+      : offerFeedback
+        ? buildEndOfChatTools()
+        : [];
   const formContext: FormTurnContext = {
     session,
     form: resolution.kind === "collect" ? resolution.form : null,
@@ -385,6 +401,7 @@ function buildSystemPrompts(
   offerOnly = false,
   intent: "info" | "apply" = "apply",
   ragCollectLink?: { title: string; url: string },
+  offerFeedback = false,
 ): SystemEntry[] {
   const prompts: SystemEntry[] = [
     SYSTEM_PROMPT,
@@ -481,6 +498,7 @@ function buildSystemPrompts(
     );
   } else {
     prompts.push(NO_FORM_DISCLOSURE);
+    if (offerFeedback) prompts.push(FEEDBACK_OFFER_GUIDANCE);
   }
   return prompts;
 }
