@@ -69,13 +69,16 @@ jest.mock("../../server/publish", () => ({
   getPublishBaseBranch: jest.fn(),
 }));
 // The AI sidebar's convert server-fns are createServerFn; stub them so
-// importing the editor doesn't pull a real RPC at module-eval. `editRecipe` is
-// the one the Edit Form flow reaches, so route it through a swappable spy.
-const editRecipe = jest.fn();
+// importing the editor doesn't pull a real RPC at module-eval. The Edit Form
+// flow is now an async job — startEditRecipe → poll getEditStatus — so route
+// both through swappable spies.
+const startEditRecipe = jest.fn();
+const getEditStatus = jest.fn();
 jest.mock("../../server/ai-builder/convert", () => ({
   convertRecipe: jest.fn(),
   getAiStatus: jest.fn(),
-  editRecipe: (...args: unknown[]) => editRecipe(...args),
+  startEditRecipe: (...args: unknown[]) => startEditRecipe(...args),
+  getEditStatus: (...args: unknown[]) => getEditStatus(...args),
   presignPdfUpload: jest.fn(),
   startPdfConvert: jest.fn(),
   getPdfConvertStatus: jest.fn(),
@@ -1071,7 +1074,8 @@ describe("BuilderPage — AI apply loads with a warning (#1051)", () => {
   };
 
   beforeEach(() => {
-    editRecipe.mockReset();
+    startEditRecipe.mockReset();
+    getEditStatus.mockReset();
     validateRecipe.mockReset();
     mockForms = [];
     mockCollisions = { fieldIdCollisions: [], stepIdCollisions: [] };
@@ -1093,8 +1097,19 @@ describe("BuilderPage — AI apply loads with a warning (#1051)", () => {
     await userEvent.click(screen.getByRole("button", { name: /edit form/i }));
   }
 
+  // The async Edit Form flow: start returns a jobId, then a single status poll
+  // returns the terminal "done" payload the sidebar applies.
+  function mockEditResult(payload: {
+    recipe: Record<string, unknown> | null;
+    reply: string;
+    unresolvableRefs?: unknown[];
+  }) {
+    startEditRecipe.mockResolvedValue({ jobId: "edit-1" });
+    getEditStatus.mockResolvedValue({ status: "done", ...payload });
+  }
+
   it("loads a contract-invalid recipe and lights up the validation panel", async () => {
-    editRecipe.mockResolvedValue({ recipe: EDITED_RECIPE, reply: "Here you go." });
+    mockEditResult({ recipe: EDITED_RECIPE, reply: "Here you go." });
     validateRecipe.mockResolvedValue({
       ok: false,
       issues: [
@@ -1120,7 +1135,7 @@ describe("BuilderPage — AI apply loads with a warning (#1051)", () => {
   }, 30_000);
 
   it("loads a recipe with an id collision and warns instead of rejecting", async () => {
-    editRecipe.mockResolvedValue({ recipe: EDITED_RECIPE, reply: "Here you go." });
+    mockEditResult({ recipe: EDITED_RECIPE, reply: "Here you go." });
     validateRecipe.mockResolvedValue({ ok: true });
     mockCollisions = {
       fieldIdCollisions: [
@@ -1167,7 +1182,7 @@ describe("BuilderPage — AI apply loads with a warning (#1051)", () => {
   }, 30_000);
 
   it("still loads with a warning when convert flags unresolvable refs", async () => {
-    editRecipe.mockResolvedValue({
+    mockEditResult({
       recipe: EDITED_RECIPE,
       reply: "Built it.",
       unresolvableRefs: [
@@ -1188,7 +1203,7 @@ describe("BuilderPage — AI apply loads with a warning (#1051)", () => {
 
   it("hard-errors and does not load a structurally unreadable recipe", async () => {
     // No `steps` array → deserializeRecipe throws → buildLoadArgs throws.
-    editRecipe.mockResolvedValue({
+    mockEditResult({
       recipe: { formId: "broken", title: "Broken", version: "1.0.1" },
       reply: "Here you go.",
     });
@@ -1204,7 +1219,7 @@ describe("BuilderPage — AI apply loads with a warning (#1051)", () => {
   }, 30_000);
 
   it("hard-errors when the validate request itself fails", async () => {
-    editRecipe.mockResolvedValue({ recipe: EDITED_RECIPE, reply: "Here you go." });
+    mockEditResult({ recipe: EDITED_RECIPE, reply: "Here you go." });
     validateRecipe.mockRejectedValue(new Error("Validation service unavailable"));
     renderBuilder();
 
@@ -1219,7 +1234,7 @@ describe("BuilderPage — AI apply loads with a warning (#1051)", () => {
 
   it("reports 'unchanged' without validating when the recipe matches the draft", async () => {
     mockEmptyDraft = EDITED_DRAFT;
-    editRecipe.mockResolvedValue({ recipe: EDITED_RECIPE, reply: "No change needed." });
+    mockEditResult({ recipe: EDITED_RECIPE, reply: "No change needed." });
     renderBuilder();
 
     await driveEditForm();
@@ -1233,7 +1248,7 @@ describe("BuilderPage — AI apply loads with a warning (#1051)", () => {
   }, 30_000);
 
   it("stays silent and does not load when the dirty-overwrite confirm is declined", async () => {
-    editRecipe.mockResolvedValue({ recipe: EDITED_RECIPE, reply: "Here you go." });
+    mockEditResult({ recipe: EDITED_RECIPE, reply: "Here you go." });
     validateRecipe.mockResolvedValue({ ok: true });
     confirmSpy.mockReturnValue(false);
     renderBuilder();
@@ -1248,7 +1263,7 @@ describe("BuilderPage — AI apply loads with a warning (#1051)", () => {
   }, 30_000);
 
   it("keeps Deploy blocked after a load-with-warning", async () => {
-    editRecipe.mockResolvedValue({ recipe: EDITED_RECIPE, reply: "Here you go." });
+    mockEditResult({ recipe: EDITED_RECIPE, reply: "Here you go." });
     validateRecipe.mockResolvedValue({
       ok: false,
       issues: [

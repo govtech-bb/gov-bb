@@ -7,13 +7,15 @@ import userEvent from "@testing-library/user-event";
 import type { RecipeDraft } from "@govtech-bb/form-builder";
 
 // The convert server-fn family is createServerFn (ESM + RPC at module-eval); stub each.
-const editRecipe = jest.fn();
+const startEditRecipe = jest.fn();
+const getEditStatus = jest.fn();
 const presignPdfUpload = jest.fn();
 const startPdfConvert = jest.fn();
 const getPdfConvertStatus = jest.fn();
 
 jest.mock("../../server/ai-builder/convert", () => ({
-  editRecipe: (...args: unknown[]) => editRecipe(...args),
+  startEditRecipe: (...args: unknown[]) => startEditRecipe(...args),
+  getEditStatus: (...args: unknown[]) => getEditStatus(...args),
   presignPdfUpload: (...args: unknown[]) => presignPdfUpload(...args),
   startPdfConvert: (...args: unknown[]) => startPdfConvert(...args),
   getPdfConvertStatus: (...args: unknown[]) => getPdfConvertStatus(...args),
@@ -28,7 +30,8 @@ const fetchSpy = jest.fn(async () => okResponse);
 (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchSpy as unknown as typeof fetch;
 
 beforeEach(() => {
-  editRecipe.mockReset();
+  startEditRecipe.mockReset();
+  getEditStatus.mockReset();
   presignPdfUpload.mockReset();
   startPdfConvert.mockReset();
   getPdfConvertStatus.mockReset();
@@ -51,10 +54,25 @@ function setup(onApplyRecipe = jest.fn().mockResolvedValue({ applied: true })) {
   return { onApplyRecipe };
 }
 
+// Edit Form is now an async job: startEditRecipe → poll getEditStatus. The
+// first poll fires at ~400ms (real timers), well inside findByText/waitFor's
+// 1s window, so most tests can return a terminal status on the first poll and
+// stay on real timers. `doneStatus` builds the terminal "done" payload.
+function doneStatus(
+  recipe: Record<string, unknown> | null,
+  reply: string,
+  unresolvableRefs: unknown[] = [],
+) {
+  return { status: "done", recipe, reply, unresolvableRefs };
+}
+
 describe("AiSidebar — Edit Form", () => {
-  it("sends the message plus the serialized draft and applies the returned recipe", async () => {
+  it("starts an edit job with the message + serialized draft and applies the returned recipe", async () => {
     const recipe = { formId: "contact", steps: [] };
-    editRecipe.mockResolvedValue({ recipe, reply: "Done — email is now required." });
+    startEditRecipe.mockResolvedValue({ jobId: "edit-1" });
+    getEditStatus.mockResolvedValue(
+      doneStatus(recipe, "Done — email is now required."),
+    );
     const { onApplyRecipe } = setup();
 
     await userEvent.type(
@@ -63,30 +81,33 @@ describe("AiSidebar — Edit Form", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: /edit form/i }));
 
-    await waitFor(() => expect(editRecipe).toHaveBeenCalledTimes(1));
-    const arg = editRecipe.mock.calls[0][0];
+    await waitFor(() => expect(startEditRecipe).toHaveBeenCalledTimes(1));
+    const arg = startEditRecipe.mock.calls[0][0];
     expect(arg.data.message).toBe("make the email field required");
     // The current draft rides along as serialized recipe JSON.
     expect(JSON.parse(arg.data.recipeJson).formId).toBe("contact");
 
-    expect(onApplyRecipe).toHaveBeenCalledWith(recipe, []);
-    // Both turns land in the transcript.
+    // The job id from start is polled for status.
+    await waitFor(() =>
+      expect(getEditStatus).toHaveBeenCalledWith({ data: { jobId: "edit-1" } }),
+    );
+
+    await waitFor(() => expect(onApplyRecipe).toHaveBeenCalledWith(recipe, []));
     expect(screen.getByText("make the email field required")).toBeInTheDocument();
     expect(
       await screen.findByText("Done — email is now required."),
     ).toBeInTheDocument();
   });
 
-  it("forwards unresolvableRefs from the convert response to the apply pipeline", async () => {
+  it("forwards unresolvableRefs from the status response to the apply pipeline", async () => {
     const recipe = { formId: "contact", steps: [] };
     const unresolvableRefs = [
       { ref: "components/generic/text", path: "steps[step-1].elements[0].ref" },
     ];
-    editRecipe.mockResolvedValue({
-      recipe,
-      reply: "Built it.",
-      unresolvableRefs,
-    });
+    startEditRecipe.mockResolvedValue({ jobId: "edit-1" });
+    getEditStatus.mockResolvedValue(
+      doneStatus(recipe, "Built it.", unresolvableRefs),
+    );
     const { onApplyRecipe } = setup();
 
     await userEvent.type(
@@ -101,7 +122,8 @@ describe("AiSidebar — Edit Form", () => {
   });
 
   it("does not apply when the model replies conversationally (no recipe)", async () => {
-    editRecipe.mockResolvedValue({ recipe: null, reply: "I can't do that." });
+    startEditRecipe.mockResolvedValue({ jobId: "edit-1" });
+    getEditStatus.mockResolvedValue(doneStatus(null, "I can't do that."));
     const { onApplyRecipe } = setup();
 
     await userEvent.type(
@@ -114,12 +136,14 @@ describe("AiSidebar — Edit Form", () => {
     expect(onApplyRecipe).not.toHaveBeenCalled();
   });
 
-  it("maps a raw 'Invariant failed' edit failure to a clear, true message", async () => {
-    // The synchronous Edit Form path can still 504 at the CloudFront/Amplify
-    // gateway for large recipes; TanStack Start's server-fn client then throws
-    // Error("Invariant failed") because it got a CloudFront error page instead
-    // of its JSON envelope. The user must never see that raw string.
-    editRecipe.mockRejectedValue(new Error("Invariant failed"));
+  it("shows the failure reason when the edit job fails", async () => {
+    // The async edit can't 504 anymore — a failed Bedrock generation comes back
+    // as a terminal { status: "failed", reason } the user sees verbatim.
+    startEditRecipe.mockResolvedValue({ jobId: "edit-1" });
+    getEditStatus.mockResolvedValue({
+      status: "failed",
+      reason: "The model could not produce a valid recipe. Please rephrase.",
+    });
     setup();
 
     await userEvent.type(
@@ -129,16 +153,15 @@ describe("AiSidebar — Edit Form", () => {
     await userEvent.click(screen.getByRole("button", { name: /edit form/i }));
 
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent(/timed out or failed/i);
-    expect(alert).toHaveTextContent(/too large|simplify/i);
-    expect(alert).not.toHaveTextContent(/invariant/i);
+    expect(alert).toHaveTextContent(/could not produce a valid recipe/i);
   });
 
-  it("maps a timeout error from the edit call to a clear message", async () => {
-    editRecipe.mockRejectedValue(
-      new Error(
-        "The AI request timed out. Try a smaller form or a simpler edit.",
-      ),
+  it("shows an interrupted message when the edit session is not found (404)", async () => {
+    // A single-task restart mid-edit loses the in-memory job; the next status
+    // poll 404s, surfaced by the API client as the expired-session message.
+    startEditRecipe.mockResolvedValue({ jobId: "edit-1" });
+    getEditStatus.mockRejectedValue(
+      new Error("This edit session expired — please try again."),
     );
     setup();
 
@@ -149,14 +172,14 @@ describe("AiSidebar — Edit Form", () => {
     await userEvent.click(screen.getByRole("button", { name: /edit form/i }));
 
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent(/timed out or failed/i);
+    expect(alert).toHaveTextContent(/edit session expired/i);
   });
 
   it("surfaces a validation error returned by the apply pipeline", async () => {
-    editRecipe.mockResolvedValue({
-      recipe: { formId: "contact", steps: [] },
-      reply: "Here you go.",
-    });
+    startEditRecipe.mockResolvedValue({ jobId: "edit-1" });
+    getEditStatus.mockResolvedValue(
+      doneStatus({ formId: "contact", steps: [] }, "Here you go."),
+    );
     const onApplyRecipe = jest
       .fn()
       .mockResolvedValue({ applied: false, error: "Duplicate field id: email." });
@@ -183,20 +206,20 @@ describe("AiSidebar — prompt textarea", () => {
 
   it("submits on Enter", async () => {
     const recipe = { formId: "contact", steps: [] };
-    editRecipe.mockResolvedValue({ recipe, reply: "Done." });
+    startEditRecipe.mockResolvedValue({ jobId: "edit-1" });
+    getEditStatus.mockResolvedValue(doneStatus(recipe, "Done."));
     setup();
 
     const field = screen.getByPlaceholderText(/make the email field required/i);
     await userEvent.type(field, "make the email field required{Enter}");
 
-    await waitFor(() => expect(editRecipe).toHaveBeenCalledTimes(1));
-    expect(editRecipe.mock.calls[0][0].data.message).toBe(
+    await waitFor(() => expect(startEditRecipe).toHaveBeenCalledTimes(1));
+    expect(startEditRecipe.mock.calls[0][0].data.message).toBe(
       "make the email field required",
     );
   });
 
   it("inserts a newline on Shift+Enter without submitting", async () => {
-    editRecipe.mockResolvedValue({ recipe: null, reply: "" });
     setup();
 
     const field = screen.getByPlaceholderText(
@@ -205,16 +228,16 @@ describe("AiSidebar — prompt textarea", () => {
     await userEvent.type(field, "line one{Shift>}{Enter}{/Shift}line two");
 
     expect(field.value).toBe("line one\nline two");
-    expect(editRecipe).not.toHaveBeenCalled();
+    expect(startEditRecipe).not.toHaveBeenCalled();
   });
 });
 
 describe("AiSidebar — outcome feedback", () => {
   it("shows an 'applied' status when the recipe is applied", async () => {
-    editRecipe.mockResolvedValue({
-      recipe: { formId: "contact", steps: [] },
-      reply: "Done.",
-    });
+    startEditRecipe.mockResolvedValue({ jobId: "edit-1" });
+    getEditStatus.mockResolvedValue(
+      doneStatus({ formId: "contact", steps: [] }, "Done."),
+    );
     setup(); // default onApplyRecipe resolves { applied: true }
 
     await userEvent.type(
@@ -230,10 +253,10 @@ describe("AiSidebar — outcome feedback", () => {
   });
 
   it("shows an 'unchanged' status when the apply pipeline reports a no-op", async () => {
-    editRecipe.mockResolvedValue({
-      recipe: { formId: "contact", steps: [] },
-      reply: "No change needed.",
-    });
+    startEditRecipe.mockResolvedValue({ jobId: "edit-1" });
+    getEditStatus.mockResolvedValue(
+      doneStatus({ formId: "contact", steps: [] }, "No change needed."),
+    );
     const onApplyRecipe = jest
       .fn()
       .mockResolvedValue({ applied: false, reason: "unchanged" });
@@ -251,10 +274,10 @@ describe("AiSidebar — outcome feedback", () => {
   });
 
   it("shows no status and no error when the user cancels the apply", async () => {
-    editRecipe.mockResolvedValue({
-      recipe: { formId: "contact", steps: [] },
-      reply: "Here you go.",
-    });
+    startEditRecipe.mockResolvedValue({ jobId: "edit-1" });
+    getEditStatus.mockResolvedValue(
+      doneStatus({ formId: "contact", steps: [] }, "Here you go."),
+    );
     const onApplyRecipe = jest
       .fn()
       .mockResolvedValue({ applied: false, reason: "cancelled" });
@@ -275,10 +298,10 @@ describe("AiSidebar — outcome feedback", () => {
   });
 
   it("flags a failed extraction when the reply has a ```json block but recipe is null", async () => {
-    editRecipe.mockResolvedValue({
-      recipe: null,
-      reply: 'Sure:\n```json\n{ "formId": "x" }\n```',
-    });
+    startEditRecipe.mockResolvedValue({ jobId: "edit-1" });
+    getEditStatus.mockResolvedValue(
+      doneStatus(null, 'Sure:\n```json\n{ "formId": "x" }\n```'),
+    );
     const { onApplyRecipe } = setup();
 
     await userEvent.type(
@@ -294,7 +317,8 @@ describe("AiSidebar — outcome feedback", () => {
   });
 
   it("shows no extraction-failed status for a plain conversational reply", async () => {
-    editRecipe.mockResolvedValue({ recipe: null, reply: "I can't do that." });
+    startEditRecipe.mockResolvedValue({ jobId: "edit-1" });
+    getEditStatus.mockResolvedValue(doneStatus(null, "I can't do that."));
     setup();
 
     await userEvent.type(
@@ -310,11 +334,13 @@ describe("AiSidebar — outcome feedback", () => {
   });
 
   it("strips the ```json block from the bubble when a recipe was extracted", async () => {
-    editRecipe.mockResolvedValue({
-      recipe: { formId: "contact", steps: [] },
-      reply:
+    startEditRecipe.mockResolvedValue({ jobId: "edit-1" });
+    getEditStatus.mockResolvedValue(
+      doneStatus(
+        { formId: "contact", steps: [] },
         'Added the step.\n```json\n{ "marker": "SHOULD_BE_STRIPPED" }\n```',
-    });
+      ),
+    );
     setup();
 
     await userEvent.type(
@@ -328,10 +354,13 @@ describe("AiSidebar — outcome feedback", () => {
   });
 
   it("shows a placeholder when the reply was only a ```json block", async () => {
-    editRecipe.mockResolvedValue({
-      recipe: { formId: "contact", steps: [] },
-      reply: '```json\n{ "marker": "SHOULD_BE_STRIPPED" }\n```',
-    });
+    startEditRecipe.mockResolvedValue({ jobId: "edit-1" });
+    getEditStatus.mockResolvedValue(
+      doneStatus(
+        { formId: "contact", steps: [] },
+        '```json\n{ "marker": "SHOULD_BE_STRIPPED" }\n```',
+      ),
+    );
     setup();
 
     await userEvent.type(
