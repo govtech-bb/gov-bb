@@ -5,6 +5,7 @@ import { childController } from "#/lib/abort";
 import { getServerEnv } from "#/config/env";
 import {
   buildEndOfChatTools,
+  buildFeedbackTools,
   buildFormTools,
   buildOfferTools,
   getFormSlugs,
@@ -19,8 +20,15 @@ import {
 } from "./form";
 import { FEEDBACK_FORM_ID, shouldBindFeedbackOffer } from "./feedback";
 import { citationsMiddleware, turnLogMiddleware } from "./middleware";
-import { capMessageHistory, lastUserText, recentUserText } from "./messages";
 import {
+  capMessageHistory,
+  lastAssistantText,
+  lastUserText,
+  recentUserText,
+} from "./messages";
+import {
+  CLOSER_GUIDANCE,
+  FEEDBACK_COLLECTION_GUIDANCE,
   FEEDBACK_OFFER_GUIDANCE,
   FORM_COLLECTION_PROTOCOL,
   NO_FORM_DISCLOSURE,
@@ -29,11 +37,13 @@ import {
   buildHandoffContinuationDisclosure,
   buildHandoffDisclosure,
   buildHandoffOfferDisclosure,
+  buildMissDisclosure,
   buildSchemaDisclosure,
 } from "./prompts";
 import {
   buildCitedContext,
   decideRagFallback,
+  isConversationalCloser,
   isGreetingOrTooShort,
   retrieve,
   topHandoffCandidateSlug,
@@ -110,7 +120,18 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
   // same question sometimes answers, sometimes form-fills).
   const activelyCollecting =
     resolution.kind === "collect" && Object.keys(session.values).length > 0;
-  const skipRetrieval = isGreetingOrTooShort(latest) || activelyCollecting;
+
+  // A conversational closer ("thanks, bye", or "no"/"ok" right after we asked
+  // "anything else?") winds the chat down. Detected here so the turn routes to a
+  // warm sign-off + feedback invitation rather than being mistaken for a
+  // retrieval miss (a closer and a miss BOTH return zero citations — #1125).
+  // Gated to non-collect turns: while a form is active, a terse "no"/"ok" is a
+  // field answer, not a goodbye. Skips retrieval — there's nothing to ground.
+  const closer =
+    resolution.kind !== "collect" &&
+    isConversationalCloser(latest, lastAssistantText(messages));
+  const skipRetrieval =
+    isGreetingOrTooShort(latest) || activelyCollecting || closer;
 
   // A form matched on an INFO question (nothing collected yet, the message is a
   // question rather than apply-intent): answer from RAG and offer the form, but
@@ -174,8 +195,20 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
   // they switch topics. The existing continuation path delivers the link on an
   // affirmative follow-up: the rewrite expands "yes, send it" via history into a
   // retrievable query, which re-surfaces the parked handoff as a continuation.
+
+  // A genuine retrieval miss: we actually queried RAG (not a greeting / active
+  // collection) and it returned no grounded context (zero citations). Route the
+  // miss disclosure (keep guiding, ask to clarify) instead of the misapplied
+  // NO_FORM_DISCLOSURE. Illegitimate requests are excluded so they stay on the
+  // existing decline path rather than being invited to "clarify" (#1099).
+  const noContext =
+    citations.length === 0 && !skipRetrieval && !rewrite.illegitimate;
+
   // No active form, feedback not yet offered, and not parked mid-handoff:
   // expose offer_feedback so the model can invite feedback at a natural stop.
+  // A retrieval miss (noContext) is never a natural stop — the user asked
+  // something we couldn't answer and we're asking them to clarify — so it
+  // suppresses the offer too.
   const offerFeedback =
     shouldBindFeedbackOffer(
       resolution.kind,
@@ -183,7 +216,8 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     ) &&
     !handoffContinuation &&
     !ragCollectLink &&
-    !rewrite.illegitimate;
+    !rewrite.illegitimate &&
+    !noContext;
 
   const systemPrompts = buildSystemPrompts(
     contextBlock,
@@ -193,7 +227,9 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     offerOnly,
     intent,
     ragCollectLink,
+    noContext,
     offerFeedback,
+    closer,
   );
 
   // collect + apply-intent → full field tools. collect + info question
@@ -205,7 +241,9 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     resolution.kind === "collect"
       ? offerOnly
         ? buildOfferTools()
-        : buildFormTools()
+        : resolution.form.slug === FEEDBACK_FORM_ID
+          ? buildFeedbackTools()
+          : buildFormTools()
       : offerFeedback
         ? buildEndOfChatTools()
         : [];
@@ -286,6 +324,10 @@ async function pinSessionForm(
   if (matched) {
     if (matched.formId !== session.slug) resetSessionForNewForm(session);
     session.slug = matched.formId;
+    // Feedback can be started manually (the banner "Give feedback" link sends a
+    // matcher phrase) as well as by the model's offer_feedback tool. Either way,
+    // mark it spent so the model never also offers feedback later this session.
+    if (matched.formId === FEEDBACK_FORM_ID) session.feedbackOffered = true;
   }
 }
 
@@ -409,7 +451,9 @@ function buildSystemPrompts(
   offerOnly = false,
   intent: "info" | "apply" = "apply",
   ragCollectLink?: { title: string; url: string },
+  noContext = false,
   offerFeedback = false,
+  closer = false,
 ): SystemEntry[] {
   const prompts: SystemEntry[] = [
     SYSTEM_PROMPT,
@@ -478,6 +522,11 @@ function buildSystemPrompts(
     parts.push(
       `ONLINE FORM LINK for this service: [${formTitle}](${formUrl}). If the user wants the link or prefers to do it themselves, share exactly that markdown link. NEVER suggest a paper form, printing/downloading a form, or going to an office in person — the only options to offer are filling it out here with you, or this online link.`,
     );
+    // Reciting the reference number here is intentionally NOT feedback-safe:
+    // it's never reached for the feedback form because pinSessionForm resets a
+    // submitted feedback session (clearing slug + referenceNumber) before
+    // resolution runs, so a post-submit feedback turn resolves to "none" and
+    // never re-enters this collect branch. Real service forms still report it.
     if (session.status === "submitted" && session.referenceNumber) {
       parts.push(
         `Submission complete. Reference number: ${session.referenceNumber}. Do NOT submit again.`,
@@ -488,6 +537,10 @@ function buildSystemPrompts(
       );
     }
     prompts.push(parts.join("\n\n"));
+    // The optional feedback form was offered as an invitation the user can
+    // decline — give the model the accept/decline guidance and remind it the
+    // rating comes from ask_field, not from any reply to the invitation.
+    if (slug === FEEDBACK_FORM_ID) prompts.push(FEEDBACK_COLLECTION_GUIDANCE);
   } else if (handoffContinuation) {
     // Follow-up after a handoff: keep helping informationally but keep the link
     // in front of the user — never collect inline, never deny the form exists.
@@ -504,6 +557,21 @@ function buildSystemPrompts(
     prompts.push(
       buildFormLinkOfferDisclosure(ragCollectLink.title, ragCollectLink.url),
     );
+  } else if (closer) {
+    // The user is winding the chat down (goodbye / thanks / "that's all", or a
+    // terse "no"/"ok" after we asked "anything else?"). A brief warm sign-off,
+    // NOT the miss disclosure's "guide toward the closest service" or
+    // NO_FORM_DISCLOSURE's "answer the substance" — there's no substance on a
+    // goodbye. If the feedback offer is still available this turn, invite it once
+    // (#1125 — this is the natural-conclusion moment the offer was designed for).
+    prompts.push(CLOSER_GUIDANCE);
+    if (offerFeedback) prompts.push(FEEDBACK_OFFER_GUIDANCE);
+  } else if (noContext) {
+    // Retrieval ran and returned nothing grounded: keep guiding the user toward
+    // the closest service (ask to clarify) instead of dead-ending. Replaces the
+    // misapplied NO_FORM_DISCLOSURE, which assumes there IS context to answer
+    // from and would frame a non-existent service as in-person-only (#1099).
+    prompts.push(buildMissDisclosure());
   } else {
     prompts.push(NO_FORM_DISCLOSURE);
     if (offerFeedback) prompts.push(FEEDBACK_OFFER_GUIDANCE);

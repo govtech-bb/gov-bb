@@ -1,12 +1,18 @@
 import {
   askFieldDef,
+  declineFeedbackDef,
   offerFeedbackDef,
   presentChoicesDef,
   reviewFormDef,
   setFieldDef,
   submitFormDef,
 } from "#/lib/chat-tools";
-import { pinFeedbackForm } from "#/lib/chat/feedback";
+import {
+  cancelFeedbackForm,
+  FEEDBACK_FORM_ID,
+  pinFeedbackForm,
+  submitSuccessForModel,
+} from "#/lib/chat/feedback";
 import type { ActiveFormSchema } from "./schema";
 import { buildFieldIndex, getActiveFieldIds } from "./schema";
 import type { FormSession } from "./session";
@@ -107,7 +113,10 @@ const reviewFormTool = reviewFormDef.server<FormTurnContext>(
     const active = getActiveFieldIds(form.contract, session.values).flat;
     const items = buildReviewItems(form.contract, session.values, active);
     if (!items.length) return { ok: false, error: "nothing collected yet" };
-    return { ok: true, items };
+    // isFeedback lets the client word the submit approval as "Submit your
+    // feedback now?" — review_form runs in the same turn just before the
+    // (argument-less) submit_form approval prompt, so it's the carrier.
+    return { ok: true, items, isFeedback: session.slug === FEEDBACK_FORM_ID };
   },
 );
 
@@ -121,7 +130,7 @@ const submitFormTool = submitFormDef.server<FormTurnContext>(
       };
     }
     if (session.status === "submitted" && session.referenceNumber) {
-      return { ok: true, referenceNumber: session.referenceNumber };
+      return submitSuccessForModel(session.slug, session.referenceNumber);
     }
     if (session.status === "submitting") {
       return {
@@ -136,7 +145,11 @@ const submitFormTool = submitFormDef.server<FormTurnContext>(
     // The upstream POST blocks for a few seconds and produces no text, so the
     // client has nothing to show after the user approves. Stream a status so
     // the UI can render a "Submitting…" indicator instead of dead air.
-    ctx.emitCustomEvent("submit_status", { state: "submitting" });
+    // isFeedback lets the indicator read "Submitting your feedback".
+    ctx.emitCustomEvent("submit_status", {
+      state: "submitting",
+      isFeedback: session.slug === FEEDBACK_FORM_ID,
+    });
     let result: SubmitOutcome;
     try {
       result = await submitFormUpstream(
@@ -160,7 +173,7 @@ const submitFormTool = submitFormDef.server<FormTurnContext>(
       session.status = "submitted";
       session.referenceNumber = result.referenceNumber;
       ctx.emitCustomEvent("submit_status", { state: "submitted" });
-      return { ok: true, referenceNumber: result.referenceNumber };
+      return submitSuccessForModel(session.slug, result.referenceNumber);
     }
     session.status = "failed";
     session.lastError = result.errors[0]?.message;
@@ -204,4 +217,21 @@ const offerFeedbackTool = offerFeedbackDef.server<FormTurnContext>(
 // lets the model invite feedback at a natural conclusion. See run-turn.ts.
 export function buildEndOfChatTools() {
   return [offerFeedbackTool];
+}
+
+// Closes the optional feedback form when the user declines the invitation (or
+// bails mid-form). Unpins the session — the offer stays spent, so it is not
+// repeated. Bound only while the feedback form is the active form.
+const declineFeedbackTool = declineFeedbackDef.server<FormTurnContext>(
+  async (_args, ctx) => {
+    cancelFeedbackForm(ctx.context.session);
+    return { ok: true };
+  },
+);
+
+// Tools while the optional feedback form is active: the normal collect tools
+// PLUS decline_feedback, so a user who only agreed to *consider* feedback can
+// bow out instead of being railroaded into the form. See run-turn.ts.
+export function buildFeedbackTools() {
+  return [...buildFormTools(), declineFeedbackTool];
 }

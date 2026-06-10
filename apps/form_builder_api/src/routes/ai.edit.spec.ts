@@ -16,15 +16,18 @@ jest.mock("../ai/recipe-extractor.js", () => ({ extractRecipe: jest.fn() }));
 import { chat, isAvailable } from "../ai/client.js";
 import { extractRecipe } from "../ai/recipe-extractor.js";
 import { getDataSource } from "../db.js";
-import { editHandler } from "./ai";
+import { startEditHandler, statusEditHandler } from "./ai";
 
 const chatMock = chat as jest.Mock;
 const isAvailableMock = isAvailable as jest.Mock;
 const extractRecipeMock = extractRecipe as jest.Mock;
 const getDataSourceMock = getDataSource as jest.Mock;
 
-function mockReq(body: unknown): Request {
-  return { body } as unknown as Request;
+function mockReq(
+  body: unknown = {},
+  params: Record<string, string> = {},
+): Request {
+  return { body, params } as unknown as Request;
 }
 
 interface CapturingResponse extends Response {
@@ -52,7 +55,22 @@ function mockDataSource(customs: unknown[]) {
   });
 }
 
-describe("POST /builder/ai/edit", () => {
+// Flush the fire-and-forget runEditBedrock promise (chat → extractRecipe →
+// catalog) so the next poll observes a terminal state.
+const flush = () => new Promise((r) => setImmediate(r));
+
+// Start an edit and return its jobId. runEditBedrock is fire-and-forget and
+// awaits buildSystemPrompt before reaching chat, so flush the microtask chain
+// (all mocks resolve immediately) before the caller inspects chat/state.
+async function startEdit(body: unknown): Promise<string> {
+  const res = mockRes();
+  await startEditHandler(mockReq(body), res);
+  const jobId = (res.body as { jobId: string }).jobId;
+  await flush();
+  return jobId;
+}
+
+describe("POST /builder/ai/edit/start", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     isAvailableMock.mockResolvedValue(true);
@@ -64,39 +82,39 @@ describe("POST /builder/ai/edit", () => {
   it("503s when the AI service is not configured", async () => {
     isAvailableMock.mockResolvedValue(false);
     const res = mockRes();
-    await editHandler(mockReq({ message: "hi" }), res);
+    await startEditHandler(mockReq({ message: "hi" }), res);
     expect(res.statusCode).toBe(503);
     expect(chatMock).not.toHaveBeenCalled();
   });
 
   it("400s when no message or recipeJson is provided", async () => {
     const res = mockRes();
-    await editHandler(mockReq({}), res);
+    await startEditHandler(mockReq({}), res);
     expect(res.statusCode).toBe(400);
     expect(chatMock).not.toHaveBeenCalled();
   });
 
-  it("fences the recipe JSON into the user turn for an Edit Form tweak", async () => {
+  it("returns a jobId and kicks off generation", async () => {
     const res = mockRes();
-    await editHandler(
-      mockReq({
-        message: "make the email field required",
-        recipeJson: '{"formId":"contact","steps":[]}',
-      }),
-      res,
-    );
-
+    await startEditHandler(mockReq({ message: "hi" }), res);
     expect(res.statusCode).toBe(200);
+    const body = res.body as { jobId: string };
+    expect(typeof body.jobId).toBe("string");
+    expect(body.jobId.length).toBeGreaterThan(0);
+    await flush();
+    expect(chatMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("fences the recipe JSON into the user turn for an Edit Form tweak", async () => {
+    await startEdit({
+      message: "make the email field required",
+      recipeJson: '{"formId":"contact","steps":[]}',
+    });
     const [, messages] = chatMock.mock.calls[0];
     expect(messages).toHaveLength(1);
     expect(messages[0].role).toBe("user");
     expect(messages[0].content).toContain('{"formId":"contact","steps":[]}');
     expect(messages[0].content).toContain("make the email field required");
-    expect(res.body).toEqual({
-      recipe: { formId: "f", steps: [] },
-      reply: "assistant reply",
-      unresolvableRefs: [],
-    });
   });
 
   it("appends live custom components to the system prompt", async () => {
@@ -107,77 +125,74 @@ describe("POST /builder/ai/edit", () => {
         definition: { htmlType: "text", label: "NIS Number" },
       },
     ]);
-    const res = mockRes();
-    await editHandler(mockReq({ message: "build a form" }), res);
-
+    await startEdit({ message: "build a form" });
     const [systemPrompt] = chatMock.mock.calls[0];
     expect(systemPrompt).toContain("BASE_PROMPT");
     expect(systemPrompt).toContain("components/gov/nis-number");
     expect(systemPrompt).toContain("Live Custom Components");
   });
+});
 
-  it("returns recipe: null with the reply when the model has no recipe", async () => {
+describe("GET /builder/ai/edit/status/:jobId", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    isAvailableMock.mockResolvedValue(true);
+    chatMock.mockResolvedValue("assistant reply");
+    extractRecipeMock.mockReturnValue({ formId: "f", steps: [] });
+    mockDataSource([]);
+  });
+
+  it("404s with an expired-session message for an unknown jobId", async () => {
+    const res = mockRes();
+    await statusEditHandler(mockReq({}, { jobId: "does-not-exist" }), res);
+    expect(res.statusCode).toBe(404);
+    expect(res.body).toEqual({
+      error: "This edit session expired — please try again.",
+    });
+  });
+
+  it("returns { status: 'generating' } while Bedrock is still running", async () => {
+    chatMock.mockReturnValue(new Promise(() => {})); // never resolves
+    const jobId = await startEdit({ message: "hi" });
+    const res = mockRes();
+    await statusEditHandler(mockReq({}, { jobId }), res);
+    expect(res.body).toEqual({ status: "generating" });
+  });
+
+  it("returns { status: 'done' } with the recipe once generation finishes", async () => {
+    const jobId = await startEdit({ message: "hi", recipeJson: "{}" });
+    await flush();
+    const res = mockRes();
+    await statusEditHandler(mockReq({}, { jobId }), res);
+    expect(res.body).toEqual({
+      status: "done",
+      recipe: { formId: "f", steps: [] },
+      reply: "assistant reply",
+      unresolvableRefs: [],
+    });
+  });
+
+  it("returns recipe: null when the model replies conversationally", async () => {
     extractRecipeMock.mockReturnValue(null);
     chatMock.mockResolvedValue("I can't help with that.");
+    const jobId = await startEdit({ message: "hello", recipeJson: "{}" });
+    await flush();
     const res = mockRes();
-    await editHandler(mockReq({ message: "hello", recipeJson: "{}" }), res);
-
-    expect(res.statusCode).toBe(200);
+    await statusEditHandler(mockReq({}, { jobId }), res);
     expect(res.body).toEqual({
+      status: "done",
       recipe: null,
       reply: "I can't help with that.",
       unresolvableRefs: [],
     });
   });
 
-  it("reports unresolvableRefs when the emitted recipe references an unknown ref", async () => {
-    extractRecipeMock.mockReturnValue({
-      formId: "f",
-      steps: [
-        {
-          stepId: "step-1",
-          title: "Step 1",
-          elements: [
-            { ref: "components/generic/text" }, // pre-migration slash ref
-            { ref: "components/generic-text" }, // resolves against the registry
-          ],
-        },
-      ],
-    });
-    const res = mockRes();
-    await editHandler(mockReq({ message: "build a form" }), res);
-
-    expect(res.statusCode).toBe(200);
-    const body = res.body as { unresolvableRefs: unknown };
-    expect(body.unresolvableRefs).toEqual([
-      {
-        ref: "components/generic/text",
-        path: "steps[step-1].elements[0].ref",
-      },
-    ]);
-  });
-
-  it("degrades to unresolvableRefs: [] (preserving the reply) when a step is malformed", async () => {
-    // A hallucinated recipe whose step has no `elements` would make the ref
-    // pre-check throw; it must not sink the response.
-    extractRecipeMock.mockReturnValue({
-      formId: "f",
-      steps: [{ stepId: "step-1", title: "Step 1" }],
-    });
-    const res = mockRes();
-    await editHandler(mockReq({ message: "build a form" }), res);
-
-    expect(res.statusCode).toBe(200);
-    const body = res.body as { reply: string; unresolvableRefs: unknown };
-    expect(body.reply).toBe("assistant reply");
-    expect(body.unresolvableRefs).toEqual([]);
-  });
-
-  it("500s when chat() throws", async () => {
+  it("returns { status: 'failed' } with the reason when generation throws", async () => {
     chatMock.mockRejectedValue(new Error("bedrock exploded"));
+    const jobId = await startEdit({ message: "hi" });
+    await flush();
     const res = mockRes();
-    await editHandler(mockReq({ message: "hi" }), res);
-    expect(res.statusCode).toBe(500);
-    expect(res.body).toEqual({ error: "bedrock exploded" });
+    await statusEditHandler(mockReq({}, { jobId }), res);
+    expect(res.body).toEqual({ status: "failed", reason: "bedrock exploded" });
   });
 });

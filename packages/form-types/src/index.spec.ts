@@ -54,6 +54,9 @@ import {
   contactDetailsSchema,
   KEBAB_ID_PATTERN,
   KEBAB_ID_ERROR,
+  SEMVER_PATTERN,
+  SEMVER_ERROR,
+  semverSchema,
   classifyRecipientField,
   CONTACT_DETAILS_PREFIX,
   CONFIG_RECIPIENT_PREFIX,
@@ -1015,6 +1018,28 @@ describe("KEBAB_ID_PATTERN (re-export)", () => {
 describe("KEBAB_ID_ERROR (re-export)", () => {
   it("is a non-empty string", () => {
     expect(KEBAB_ID_ERROR.length).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// version-pattern exports
+// ---------------------------------------------------------------------------
+
+describe("SEMVER_PATTERN / semverSchema (re-export)", () => {
+  it("accepts a plain X.Y.Z version", () => {
+    expect(SEMVER_PATTERN.test("1.2.0")).toBe(true);
+    expect(semverSchema.safeParse("1.2.0").success).toBe(true);
+  });
+
+  it("rejects a non-semver version", () => {
+    expect(SEMVER_PATTERN.test("latest")).toBe(false);
+    expect(semverSchema.safeParse("latest").success).toBe(false);
+  });
+});
+
+describe("SEMVER_ERROR (re-export)", () => {
+  it("is a non-empty string", () => {
+    expect(SEMVER_ERROR.length).toBeGreaterThan(0);
   });
 });
 

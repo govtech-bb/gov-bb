@@ -25,11 +25,21 @@ export function resolveSubmissionOutcome(
     // returned by the API; fall back to the UUID `id` for older API deploys that
     // don't yet include it (see issue #791).
     referenceNumber: response.data.referenceCode ?? response.data.id,
-    date: response.data.submittedAt,
+    // `submittedAt` is null on pending_payment submissions (not finalised until
+    // paid, #919); normalise to undefined so the optional `date` field and
+    // formatDate() handle it cleanly.
+    date: response.data.submittedAt ?? undefined,
     serviceName: response.data.formId,
   };
 
-  switch (response.status) {
+  // Drive the UI off the SUBMISSION status (`data.status`: submitted /
+  // pending_payment / …). The API envelope `status` is always "success" for a
+  // 2xx (ApiResponse.success), so the previous `switch (response.status)` sent
+  // every payment form to the no-payment success branch — the confirmation
+  // rendered "submission saved" with no EZ Pay redirect, dropping
+  // `meta.deferred`. Fall back to the envelope status only if `data.status` is
+  // absent (defensive for older/edge response shapes).
+  switch (response.data.status ?? response.status) {
     case "submitted":
     case "success":
     case "complete":

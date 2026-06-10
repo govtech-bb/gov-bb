@@ -112,6 +112,34 @@ describe("processHandler", () => {
     expect(res.body).toEqual({ jobId: "job-1" });
   });
 
+  it("accepts an optional context and returns jobId", async () => {
+    startAnalysisMock.mockResolvedValue({ jobId: "job-ctx-1" });
+    const res = mockRes();
+    await processHandler(
+      mockReq({
+        s3Key: "uploads/abc-12345678-1234-1234-1234-1234567890ab.pdf",
+        context: "make every field optional",
+      }),
+      res,
+    );
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({ jobId: "job-ctx-1" });
+  });
+
+  it("400s when context exceeds the length cap", async () => {
+    startAnalysisMock.mockResolvedValue({ jobId: "job-ctx-toolong" });
+    const res = mockRes();
+    await processHandler(
+      mockReq({
+        s3Key: "uploads/abc-12345678-1234-1234-1234-1234567890ab.pdf",
+        context: "x".repeat(2001),
+      }),
+      res,
+    );
+    expect(res.statusCode).toBe(400);
+    expect(startAnalysisMock).not.toHaveBeenCalled();
+  });
+
   it("404s when Textract reports InvalidS3Object (uploaded file not found)", async () => {
     startAnalysisMock.mockRejectedValue(
       Object.assign(
@@ -239,6 +267,54 @@ describe("statusHandler", () => {
       status: "failed",
       reason: "bedrock blew up",
     });
+  });
+
+  it("injects stashed context into the Bedrock user prompt", async () => {
+    startAnalysisMock.mockResolvedValue({ jobId: "job-inject" });
+    const procRes = mockRes();
+    await processHandler(
+      mockReq({
+        s3Key: "uploads/abc-12345678-1234-1234-1234-1234567890ab.pdf",
+        context: "skip the payment page",
+      }),
+      procRes,
+    );
+    expect(procRes.statusCode).toBe(200);
+
+    getAnalysisResultMock.mockResolvedValue({
+      status: "done",
+      blocks: [{ BlockType: "PAGE" }],
+    });
+    blocksToTextMock.mockReturnValue("...");
+    chatMock.mockResolvedValue('```json\n{"formId":"f","steps":[]}\n```');
+    extractRecipeMock.mockReturnValue({ formId: "f", steps: [] });
+
+    const res = mockRes();
+    await statusHandler(mockReq({}, { jobId: "job-inject" }), res);
+    await new Promise((r) => setImmediate(r));
+
+    const userMessage = chatMock.mock.calls[0][1][0].content as string;
+    expect(userMessage).toContain("skip the payment page");
+    expect(userMessage).toContain("Additional instructions from the user:");
+  });
+
+  it("keeps the verbatim base prompt when no context was stashed", async () => {
+    getAnalysisResultMock.mockResolvedValue({
+      status: "done",
+      blocks: [{ BlockType: "PAGE" }],
+    });
+    blocksToTextMock.mockReturnValue("...");
+    chatMock.mockResolvedValue('```json\n{"formId":"f","steps":[]}\n```');
+    extractRecipeMock.mockReturnValue({ formId: "f", steps: [] });
+
+    const res = mockRes();
+    await statusHandler(mockReq({}, { jobId: "job-no-ctx" }), res);
+    await new Promise((r) => setImmediate(r));
+
+    const userMessage = chatMock.mock.calls[0][1][0].content as string;
+    expect(userMessage).toBe(
+      "Convert this uploaded form into a complete, valid recipe.",
+    );
   });
 
   it("maps password-protected reasons to a friendly message", async () => {

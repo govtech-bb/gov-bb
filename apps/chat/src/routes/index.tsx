@@ -21,6 +21,7 @@ import {
 } from "react";
 import { Bubble } from "#/components/chat/bubble";
 import { TridentAvatar } from "#/components/trident-avatar";
+import { FEEDBACK_TRIGGER_PHRASE } from "#/lib/chat/feedback-trigger";
 import { extractText, hasAnyToolCall } from "#/lib/chat/messages";
 import {
   chatPersistence,
@@ -71,6 +72,10 @@ function ChatPage() {
   // True between the submit_form tool's "submitting" and "submitted"/"failed"
   // custom events, so the UI can show progress during the blocking POST.
   const [submitting, setSubmitting] = useState(false);
+  // Whether the in-flight submission is the feedback form, so the indicator can
+  // read "Submitting your feedback" instead of "...your application". Only
+  // meaningful while `submitting` is true; carried on the submit_status event.
+  const [submittingIsFeedback, setSubmittingIsFeedback] = useState(false);
   const parentRef = useRef<HTMLDivElement>(null);
   // Citations keyed by assistant messageId. Populated from the `citations`
   // custom event the server emits right after TEXT_MESSAGE_START.
@@ -116,8 +121,12 @@ function ChatPage() {
         return;
       }
       if (eventType === "submit_status") {
-        const state = (data as { state?: string } | undefined)?.state;
-        setSubmitting(state === "submitting");
+        const payload = data as
+          | { state?: string; isFeedback?: boolean }
+          | undefined;
+        const isSubmitting = payload?.state === "submitting";
+        setSubmitting(isSubmitting);
+        if (isSubmitting) setSubmittingIsFeedback(payload?.isFeedback === true);
       }
     },
   });
@@ -251,10 +260,19 @@ function ChatPage() {
     setInput("");
   }
 
+  // The notice banner's inline "feedback" link starts the chat-feedback form the
+  // same way the model's offer does — a matcher phrase the server pins. Manual
+  // counterpart to offer_feedback; see #1066. No-op while streaming (sending is
+  // disabled then), but the link stays visible — it never disappears on click.
+  const handleGiveFeedback = useCallback(() => {
+    if (isStreaming) return;
+    sendMessage(FEEDBACK_TRIGGER_PHRASE);
+  }, [isStreaming, sendMessage]);
+
   function renderRow(row: ChatRow) {
     switch (row.kind) {
       case "notice":
-        return <NoticeBubble />;
+        return <NoticeBubble onGiveFeedback={handleGiveFeedback} />;
       case "welcome":
         return <WelcomeBubble />;
       case "optimistic":
@@ -262,7 +280,15 @@ function ChatPage() {
       case "thinking":
         return <ThinkingIndicator />;
       case "submitting":
-        return <ThinkingIndicator label="Submitting your application" />;
+        return (
+          <ThinkingIndicator
+            label={
+              submittingIsFeedback
+                ? "Submitting your feedback"
+                : "Submitting your application"
+            }
+          />
+        );
       case "error":
         // role="alert" so it's announced. Plain-language guidance instead of
         // the raw error; reload() re-runs the failed turn without a dup.
@@ -432,19 +458,37 @@ function OptimisticUserBubble({ text }: { text: string }) {
 }
 
 // Beta disclaimer rendered as the first chat row, above the welcome bubble.
-// Intentionally always shown — per product decision there is no dismiss or
-// once-per-session suppression — and intentionally avatar-less: it is a
-// standing disclaimer, not a message attributed to the assistant.
-function NoticeBubble() {
+// Intentionally always shown (no dismiss / once-per-session suppression) and
+// styled as a full-width yellow WARNING banner — not a chat bubble — so it
+// reads as a standing notice rather than a message from the assistant. The word
+// "feedback" is an inline link (the manual counterpart to the model's offer)
+// that starts the feedback form; it stays put — it never hides on click.
+function NoticeBubble({ onGiveFeedback }: { onGiveFeedback: () => void }) {
   return (
-    <div className="mb-xs flex max-w-[92%]">
-      <Text
-        as="p"
-        size="caption"
-        className="rounded-[16px_16px_16px_4px] bg-blue-10 px-4 py-2.5 text-mid-grey-00"
+    <div
+      role="note"
+      className="mb-s flex items-start gap-2.5 rounded-lg bg-yellow-10 px-4 py-3"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+        className="mt-px size-5 shrink-0 text-yellow-00"
       >
-        This assistant is still new and improving. Your feedback helps us make
-        it better!
+        <path
+          fill="currentColor"
+          d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"
+        />
+      </svg>
+      <Text as="p" size="caption" className="text-black-00">
+        This assistant is still new and improving. Your{" "}
+        <button
+          type="button"
+          onClick={onGiveFeedback}
+          className="cursor-pointer font-medium text-black-00 underline underline-offset-2"
+        >
+          feedback
+        </button>{" "}
+        helps us make it better!
       </Text>
     </div>
   );

@@ -98,7 +98,18 @@ export function SubmitModal({
                 type="text"
                 value={versionInput}
                 onChange={(e) => setVersionInput(e.target.value)}
+                // Save Changes overwrites the loaded draft in place at its
+                // current version (#329), so the version is pinned and read-only
+                // on the update path — Deploy is how a new version is cut. A
+                // brand-new form still picks its initial version here.
+                readOnly={isUpdate}
               />
+              {isUpdate && (
+                <small className={styles.fieldHint}>
+                  Save Changes overwrites this draft in place at v{versionInput}.
+                  Use Deploy to cut a new version.
+                </small>
+              )}
             </div>
 
             {clientError && (
