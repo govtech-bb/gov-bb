@@ -114,6 +114,44 @@ describe("AiSidebar — Edit Form", () => {
     expect(onApplyRecipe).not.toHaveBeenCalled();
   });
 
+  it("maps a raw 'Invariant failed' edit failure to a clear, true message", async () => {
+    // The synchronous Edit Form path can still 504 at the CloudFront/Amplify
+    // gateway for large recipes; TanStack Start's server-fn client then throws
+    // Error("Invariant failed") because it got a CloudFront error page instead
+    // of its JSON envelope. The user must never see that raw string.
+    editRecipe.mockRejectedValue(new Error("Invariant failed"));
+    setup();
+
+    await userEvent.type(
+      screen.getByPlaceholderText(/make the email field required/i),
+      "rebuild the entire 40-field form",
+    );
+    await userEvent.click(screen.getByRole("button", { name: /edit form/i }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(/timed out or failed/i);
+    expect(alert).toHaveTextContent(/too large|simplify/i);
+    expect(alert).not.toHaveTextContent(/invariant/i);
+  });
+
+  it("maps a timeout error from the edit call to a clear message", async () => {
+    editRecipe.mockRejectedValue(
+      new Error(
+        "The AI request timed out. Try a smaller form or a simpler edit.",
+      ),
+    );
+    setup();
+
+    await userEvent.type(
+      screen.getByPlaceholderText(/make the email field required/i),
+      "do a huge edit",
+    );
+    await userEvent.click(screen.getByRole("button", { name: /edit form/i }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(/timed out or failed/i);
+  });
+
   it("surfaces a validation error returned by the apply pipeline", async () => {
     editRecipe.mockResolvedValue({
       recipe: { formId: "contact", steps: [] },
