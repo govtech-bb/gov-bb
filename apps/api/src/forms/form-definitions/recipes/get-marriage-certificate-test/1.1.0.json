@@ -5,20 +5,6 @@
   "version": "1.1.0",
   "processors": [
     {
-      "type": "payment",
-      "config": {
-        "amount": 10,
-        "provider": "ezpay",
-        "allowDebit": true,
-        "department": "oag-registration",
-        "allowCredit": true,
-        "description": "Marriage certificate copy",
-        "paymentCode": "awR2Da5z7K",
-        "customerNamePath": "applicant-details.applicant-first-name",
-        "customerEmailPath": "applicant-details.applicant-email"
-      }
-    },
-    {
       "type": "email",
       "config": {
         "subject": "Your marriage certificate request has been received",

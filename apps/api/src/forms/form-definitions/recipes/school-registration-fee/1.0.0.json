@@ -89,18 +89,6 @@
   "updatedAt": "2026-05-06T00:00:00Z",
   "processors": [
     {
-      "type": "payment",
-      "config": {
-        "amount": 25,
-        "provider": "ezpay",
-        "department": "default",
-        "description": "School registration fee",
-        "paymentCode": "awR2Da5z7K",
-        "customerNamePath": "applicant.name",
-        "customerEmailPath": "applicant.email"
-      }
-    },
-    {
       "type": "email",
       "config": {
         "subject": "School registration confirmed",
