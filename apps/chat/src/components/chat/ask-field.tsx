@@ -14,6 +14,12 @@ import { ChoicePills } from "./choice-pills";
 export type AskFieldOutput = InferToolOutput<typeof askFieldDef>;
 export type FieldSpec = NonNullable<AskFieldOutput["field"]>;
 
+// Secondary "Skip" affordance for an optional free-text field. Styled like the
+// dismissive "Not yet" submit-decline button (grey outline), not the teal
+// answer pills — skipping is declining to answer, not picking an answer.
+const SKIP_BTN =
+  "self-start rounded-full border-[1.5px] border-mid-grey-00 bg-transparent px-3.5 py-1.5 font-medium text-sm text-mid-grey-00 transition-colors hover:border-black-00 hover:text-black-00 focus-visible:outline-2 focus-visible:outline-teal-00 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
+
 // Same engine the forms app runs: a bad value swaps the hint for the error in
 // this bubble instead of spawning an error turn. set_field re-validates
 // server-side (cross-field rules need the full session). The cast is the wire
@@ -92,9 +98,25 @@ export function AskFieldWidget({
     widget = <BooleanAnswer onAnswer={onAnswer} spec={spec} />;
   } else if (spec.htmlType === "date") {
     widget = <DateAnswer onAnswer={onAnswer} spec={spec} />;
+  } else if (!spec.validations?.required) {
+    // Optional free-text field. The composer is the text input, so there's no
+    // in-bubble box — but in chat there's also no "Continue" button to press
+    // past an unanswered field, which would force the user to invent a comment.
+    // Offer a Skip button instead: clicking it sends a plain "Skip" message
+    // (same path the choice pills use), which the collection prompt treats as
+    // "leave blank, advance to review". (presence of the `required` rule means
+    // required — mirrors isRequired() in form/schema.ts.)
+    widget = (
+      <div className="flex flex-col gap-2.5">
+        <HintOrError hint={spec.hint} error={null} />
+        <button className={SKIP_BTN} onClick={() => onAnswer("Skip")} type="button">
+          Skip
+        </button>
+      </div>
+    );
   } else {
-    // Free-text fields have no in-bubble input: the composer already is the
-    // text input, and a second box would duplicate it (focus + a11y cost).
+    // Required free-text field: the composer is the input, and a second box
+    // would duplicate it (focus + a11y cost). No skip — the answer is required.
     widget = <HintOrError hint={spec.hint} error={null} />;
   }
 

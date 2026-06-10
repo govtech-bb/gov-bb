@@ -80,6 +80,10 @@ export const reviewFormDef = toolDefinition({
         }),
       )
       .optional(),
+    // Lets the client word the submit step for feedback ("Submit your feedback
+    // now?") rather than the default application copy. The submit_form approval
+    // carries no args, but review_form runs in the same turn just before it.
+    isFeedback: z.boolean().optional(),
   }),
 });
 
@@ -106,7 +110,15 @@ export const submitFormDef = toolDefinition({
 export const offerFeedbackDef = toolDefinition({
   name: "offer_feedback",
   description:
-    "Invite the user to give quick feedback on this assistant. Call with NO arguments, at most ONCE per conversation, and ONLY when the conversation has reached a natural conclusion — the user's need is met and they are wrapping up (e.g. 'thanks', 'that's all', 'no, that's everything'). Calling it starts a short feedback form; after calling it, ask in one short sentence how their experience was. Never call it twice and never interrupt an unfinished task.",
+    "Invite the user to give quick feedback on this assistant. Call with NO arguments, at most ONCE per conversation, and ONLY when the conversation has reached a natural conclusion — the user's need is met and they are wrapping up (e.g. 'thanks', 'that's all', 'no, that's everything'). Calling it opens a short, optional feedback form; after calling it, ask in one short sentence WHETHER they'd like to give feedback (an invitation they can decline) — do NOT ask how their experience was. The rating question itself is collected by the form once they accept. Never call it twice and never interrupt an unfinished task.",
+  inputSchema: z.object({}),
+  outputSchema: z.object({ ok: z.boolean() }),
+});
+
+export const declineFeedbackDef = toolDefinition({
+  name: "decline_feedback",
+  description:
+    "Call with NO arguments when the user declines the feedback invitation, or no longer wants to continue the feedback form — e.g. 'no', 'no thanks', 'not now', 'maybe later', or they simply say goodbye without engaging. It closes the optional feedback form and returns to normal chat. Do NOT call it if the user is willing to give feedback.",
   inputSchema: z.object({}),
   outputSchema: z.object({ ok: z.boolean() }),
 });

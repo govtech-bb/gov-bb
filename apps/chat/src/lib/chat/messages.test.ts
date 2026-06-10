@@ -3,9 +3,17 @@ import { test } from "node:test";
 import type { UIMessage } from "@tanstack/ai";
 import {
   capMessageHistory,
+  lastAssistantText,
   MAX_HISTORY_MESSAGES,
   stripLeakedToolCalls,
 } from "./messages";
+
+const msg = (role: "user" | "assistant", content: string): UIMessage =>
+  ({
+    id: `${role}-${content}`,
+    role,
+    parts: [{ type: "text", content }],
+  }) as unknown as UIMessage;
 
 // Regression guard for the form-fill tool-call leak: Haiku sometimes WRITES the
 // tool call into its text reply (on top of actually invoking it), e.g.
@@ -58,6 +66,23 @@ test("leaves legitimate prose untouched", () => {
   // Mentions the word but isn't a call (no parens) — must not be stripped.
   const b = "I use set_field internally but here is your question: name?";
   assert.equal(stripLeakedToolCalls(b), b);
+});
+
+test("lastAssistantText returns the most recent assistant message", () => {
+  const h = [
+    msg("user", "how do I apply?"),
+    msg("assistant", "Here's the form. Anything else I can help with?"),
+    msg("user", "no"),
+  ];
+  assert.equal(
+    lastAssistantText(h),
+    "Here's the form. Anything else I can help with?",
+  );
+});
+
+test("lastAssistantText returns empty string when there is no assistant turn", () => {
+  assert.equal(lastAssistantText([msg("user", "hi")]), "");
+  assert.equal(lastAssistantText([]), "");
 });
 
 // capMessageHistory bounds how many turns reach the LLM (#973 cost-DoS guard).

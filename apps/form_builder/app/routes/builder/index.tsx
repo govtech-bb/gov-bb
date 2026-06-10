@@ -186,9 +186,14 @@ function BuilderPage() {
   // Versioning is deterministic and client-side — no async round-trip on the
   // load path (that fetch was the source of the version flicker). The loaded /
   // working version (`version`, set by handleLoad / handleNew / handleSubmit) is
-  // the single source of truth. Save draft cuts a patch; Deploy cuts a minor; a
-  // brand-new form (no current version) starts at 1.0.0.
-  const saveDraftVersion = currentVersion ? bumpPatch(currentVersion) : "1.0.0";
+  // the single source of truth. Save Changes overwrites the loaded draft in
+  // place at its current version (#329) — defaulting the modal to currentVersion
+  // makes the isInPlaceUpdate branch fire (updateRecipe/PUT) so repeated saves
+  // don't mint duplicate drafts. The SubmitModal pins this field read-only on
+  // the update path, so there's no fork-a-new-version escape hatch from Save
+  // Changes — Deploy still cuts a minor. A brand-new form (no current version)
+  // starts at 1.0.0 and keeps an editable version picker.
+  const saveDraftVersion = currentVersion ?? "1.0.0";
   const deployVersion = currentVersion ? bumpMinor(currentVersion) : "1.0.0";
 
   // Editing presence / read-only lock (#874). Claim the open form's single
@@ -586,15 +591,22 @@ function BuilderPage() {
   };
 
   // Apply a recipe the AI sidebar produced, in place, against the live draft:
-  // deserialize → uniqueness pre-flight → server validate → (no-op guard) →
-  // confirm-if-dirty → LOAD_DRAFT → bump patch. Returns a result the sidebar
-  // surfaces. The draft is only ever replaced on the changed, confirmed path —
-  // an unchanged recipe or a structurally-broken one never clobbers good work.
+  // deserialize → (no-op guard) → collect non-blocking defects → confirm-if-dirty
+  // → LOAD_DRAFT → bump patch. Returns a result the sidebar surfaces. The draft
+  // is only ever replaced on the changed, confirmed path — an unchanged recipe
+  // or a structurally-unreadable one never clobbers good work.
   //
-  // `unresolvableRefs` (flagged by the convert endpoint against the full
-  // catalog) is the one tolerated defect: rather than reject, we load the draft
-  // and light up the validation panel so the author can fix the bad fields in
-  // place. Deploy stays the hard gate (#504).
+  // Recipe-level defects — unresolvable refs (flagged by convert against the
+  // full catalog), id collisions, and server contract-validation failures — are
+  // loaded-with-a-warning rather than rejected: the draft loads and the defects
+  // are surfaced (contract issues + unresolvable refs in the validation panel;
+  // id collisions in the always-on collision panel) so the author can fix the
+  // bad fields in place or steer with a follow-up prompt (#1051). Deploy/Save
+  // re-run their own hard checks, so an invalid form can never publish (#504).
+  //
+  // Only two cases stay hard errors (nothing to load): a structurally-unreadable
+  // recipe where buildLoadArgs throws, and the validate *request* itself failing
+  // (an infrastructure error, not a recipe defect — there's no issue to show).
   const applyAiRecipe = async (
     recipe: ServiceContractRecipe,
     unresolvableRefs: UnknownRef[] = [],
@@ -616,25 +628,24 @@ function BuilderPage() {
       return { applied: false, reason: "unchanged" };
     }
 
-    // Uniqueness pre-flight — the same resolved-id check Save draft / Deploy
-    // run. The server contract validator can't resolve catalog defaults.
-    const collisions = findRecipeIdCollisions(incoming, catalog);
-    if (
-      collisions.fieldIdCollisions.length > 0 ||
-      collisions.stepIdCollisions.length > 0
-    ) {
-      return {
-        applied: false,
-        error: formatCollisionIssues(collisions)
-          .map((i) => i.message)
-          .join(" "),
-      };
-    }
+    // Collect non-blocking defects to surface in the validation panel instead of
+    // rejecting. unresolvableRefs (from convert) map to the same issue shape.
+    const warnings: ValidationIssue[] = unresolvableRefs.map((r) => ({
+      path: r.path,
+      message: `Unknown component/block ref "${r.ref}" — fix this field before deploying.`,
+    }));
 
-    // Server validate; a recipe that fails the contract must not overwrite.
-    // The exception is unresolvable refs (already flagged by convert): those
-    // are loaded-with-a-warning below rather than rejected, so skip the gate —
-    // it would only fail on the very refs we're choosing to tolerate.
+    // Note: id collisions are *not* re-checked or collected here. Loading the
+    // draft is enough — the always-on collision panel (hasIdCollisions, computed
+    // from the live draft) surfaces them automatically, and Deploy/Save re-run
+    // findRecipeIdCollisions as their own hard gate, so a duplicate id can never
+    // be published. Collecting them into `warnings` too would render the same
+    // collision twice. (Was a hard reject before #1051.)
+
+    // Server validate → warn-and-load on contract failure. Skip when
+    // unresolvableRefs are already flagged: the gate would only fail on the very
+    // refs we're choosing to tolerate. The request *itself* throwing is an
+    // infrastructure error, not a recipe defect, so it stays a hard error.
     if (unresolvableRefs.length === 0) {
       try {
         const serialized = serializeRecipeDraft(incoming, { version });
@@ -642,12 +653,9 @@ function BuilderPage() {
           data: { recipe: serialized },
         })) as ValidationResult;
         if (!raw.ok) {
-          return {
-            applied: false,
-            error: raw.issues
-              .map((i) => (i.path ? `${i.path}: ${i.message}` : i.message))
-              .join("; "),
-          };
+          warnings.push(
+            ...raw.issues.map((i) => ({ path: i.path ?? "", message: i.message })),
+          );
         }
       } catch (e) {
         return {
@@ -675,16 +683,10 @@ function BuilderPage() {
     // Mirror handleLoad: open the first step of the freshly applied recipe.
     setSelectedStepId(firstStepId(incoming));
     setMainView("step");
-    // Surface unresolvable refs as a non-blocking warning in the existing
+    // Surface any collected defects as non-blocking warnings in the existing
     // validation panel; otherwise clear it.
-    if (unresolvableRefs.length > 0) {
-      setValidateResult({
-        valid: false,
-        issues: unresolvableRefs.map((r) => ({
-          path: r.path,
-          message: `Unknown component/block ref "${r.ref}" — fix this field before deploying.`,
-        })),
-      });
+    if (warnings.length > 0) {
+      setValidateResult({ valid: false, issues: warnings });
       setLastSaveStatus("error");
     } else {
       setValidateResult(null);

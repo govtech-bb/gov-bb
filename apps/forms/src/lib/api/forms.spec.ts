@@ -397,6 +397,44 @@ describe("postFormSubmission", () => {
     expect(result?.data).toMatchObject({ formId: "test-form" });
   });
 
+  // Regression for #919: payment forms return `status: "pending_payment"` with
+  // `submittedAt: null` (the submission isn't finalised until the citizen pays).
+  // A non-nullable `submittedAt` schema rejected this, making postFormSubmission
+  // throw and rendering the generic "Something went wrong" screen instead of the
+  // EZ Pay redirect. The null `submittedAt` must parse, and the envelope's
+  // `meta.deferred.paymentUrl` must survive so the confirmation can redirect.
+  it("accepts a pending_payment response with null submittedAt and preserves the deferred paymentUrl (#919)", async () => {
+    const pendingPaymentBody = {
+      ...minimalSubmissionBody,
+      status: "pending_payment",
+      submittedAt: null,
+    };
+    const deferred = {
+      paymentUrl: "https://test.ezpay.gov.bb/payment_page?token=abc123",
+      paymentId: "pay-1",
+      amount: 5,
+      description: "Birth certificate copy",
+    };
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        status: "success",
+        message: "Payment required",
+        data: pendingPaymentBody,
+        meta: { deferred },
+      }),
+    } as unknown as Response);
+
+    const result = await postFormSubmission(minimalFormMeta as FormMeta, {});
+    expect(result?.data).toMatchObject({
+      formId: "test-form",
+      status: "pending_payment",
+      submittedAt: null,
+    });
+    expect(result?.meta?.deferred).toEqual(deferred);
+  });
+
   it("sends a POST request with the idempotency-key header, correct URL, and {formId, formVersion, values} body", async () => {
     mockFetch.mockResolvedValue(makeOkResponse(minimalSubmissionBody));
     const valuesBySteps = {
