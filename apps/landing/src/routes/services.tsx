@@ -19,7 +19,7 @@ export const Route = createFileRoute('/services')({
 })
 
 function ServicesPage() {
-  const { preview } = Route.useRouteContext()
+  const { level } = Route.useRouteContext()
   const startSlugs = new Set(
     PAGES.filter((p) => p.slug.endsWith('/start')).map((p) => p.slug),
   )
@@ -27,7 +27,7 @@ function ServicesPage() {
     (p) =>
       p.frontmatter.stage === 'alpha' &&
       !p.slug.endsWith('/start') &&
-      isVisible(p, preview),
+      isVisible(p, level),
   )
     .map((p) => ({
       title: p.frontmatter.title,

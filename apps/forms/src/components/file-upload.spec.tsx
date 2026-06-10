@@ -139,6 +139,24 @@ describe("FileUpload", () => {
     expect(calledWith[0].key).toBeDefined();
   });
 
+  it("forwards the previewToken prop to uploadFile", async () => {
+    const user = userEvent.setup();
+    const { fileInput } = renderComponent({
+      formId: "f1",
+      previewToken: "preview-tok",
+    });
+
+    await user.upload(
+      fileInput,
+      makeFile("report.pdf", "application/pdf", 512),
+    );
+
+    await waitFor(() => expect(mockUploadFile).toHaveBeenCalled());
+    expect(mockUploadFile).toHaveBeenCalledWith(
+      expect.objectContaining({ previewToken: "preview-tok" }),
+    );
+  });
+
   it("appends a newly uploaded file to existing files in the list", async () => {
     const user = userEvent.setup();
     mockUploadFile.mockResolvedValue(

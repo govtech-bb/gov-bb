@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { SIMILARITY_THRESHOLD, weightForKind } from "#/lib/chat/rag-config";
+import { SIMILARITY_THRESHOLD, weightForKind } from "./config";
 import type { RetrievedContext, Source } from "#/lib/chat/types";
 import { getDb } from "#/lib/db";
 import { embed } from "./embed";

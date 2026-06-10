@@ -30,7 +30,7 @@ You will also need documents ready to upload, including a timetable that covers 
 
 It takes about 20 minutes to apply online.
 
-<a data-start-link href="/education/apply-to-home-school-your-child/start">Start now</a>
+<a data-start-link>Start now</a>
 
 ## What the form asks for
 

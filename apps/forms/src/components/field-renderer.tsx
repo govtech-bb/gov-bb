@@ -89,6 +89,7 @@ export default function FieldRenderer({
   insetFieldsByOption,
   formId,
   formVersion,
+  previewToken,
 }: {
   form: any;
   field: ClientPrimitive;
@@ -99,6 +100,8 @@ export default function FieldRenderer({
   formId?: string;
   /** Form version, forwarded to FileUpload for presigned uploads. */
   formVersion?: string;
+  /** Preview token, forwarded to FileUpload so draft uploads resolve. */
+  previewToken?: string;
 }) {
   if (field.hidden) return null;
 
@@ -549,6 +552,8 @@ export default function FieldRenderer({
                           field={insetField}
                           validationProperties={insetValidation}
                           formId={formId}
+                          formVersion={formVersion}
+                          previewToken={previewToken}
                         />
                       ),
                     )}
@@ -697,6 +702,8 @@ export default function FieldRenderer({
                                   field={insetField}
                                   validationProperties={insetValidation}
                                   formId={formId}
+                                  formVersion={formVersion}
+                                  previewToken={previewToken}
                                 />
                               ),
                             )}
@@ -719,6 +726,7 @@ export default function FieldRenderer({
                 errorId={errorId}
                 formId={formId}
                 formVersion={formVersion}
+                previewToken={previewToken}
               />
             );
           case "show-hide": {

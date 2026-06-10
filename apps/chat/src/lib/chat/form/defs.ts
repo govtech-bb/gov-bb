@@ -3,6 +3,8 @@ import {
   type ServiceContract,
 } from "@govtech-bb/form-types";
 import { getServerEnv } from "#/config/env";
+import { isSurfaceableForm } from "./allowlist";
+import { TITLE_STOP, tokenize } from "./tokenize";
 
 const DEF_TTL_MS = 5 * 60_000;
 const MISS_TTL_MS = 30_000;
@@ -38,38 +40,6 @@ export type FormIndexEntry = {
 type ListResponse = {
   data: Array<{ formId: string; title: string } & Record<string, unknown>>;
 };
-
-const TITLE_STOP = new Set([
-  "the",
-  "a",
-  "an",
-  "of",
-  "for",
-  "to",
-  "in",
-  "on",
-  "and",
-  "or",
-  "form",
-  "application",
-  "apply",
-  "register",
-  "registration",
-  "online",
-  "service",
-]);
-
-function titleTokens(s: string): Set<string> {
-  return new Set(
-    s
-      .toLowerCase()
-      .replace(/[^a-z0-9\s]+/g, " ")
-      .replace(/\s+/g, " ")
-      .trim()
-      .split(" ")
-      .filter((t) => t.length > 2 && !TITLE_STOP.has(t)),
-  );
-}
 
 export async function getFormDefinition(
   slug: string,
@@ -111,11 +81,16 @@ export async function getFormIndex(
   try {
     const body = await fetchJson<ListResponse>(`/form-definitions`, signal);
     const entries: FormIndexEntry[] = body.data
-      .filter((d) => d.formId && d.title)
+      // Approval gate: the chat only matches / collects / hands off forms on the
+      // allowlist. Non-allowlisted forms stay on the API and the chat can still
+      // answer about them from retrieved context — it just won't surface the
+      // form. See ./allowlist.ts. This is the single chokepoint (the matcher and
+      // getFormSlugs both flow through getFormIndex).
+      .filter((d) => d.formId && d.title && isSurfaceableForm(d.formId))
       .map((d) => ({
         formId: d.formId,
         title: d.title,
-        titleToks: titleTokens(d.title),
+        titleToks: tokenize(d.title, TITLE_STOP),
       }));
     indexCache = { value: entries, expiresAt: Date.now() + INDEX_TTL_MS };
     return entries;

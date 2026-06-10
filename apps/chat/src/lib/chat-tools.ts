@@ -33,6 +33,56 @@ export const presentChoicesDef = toolDefinition({
   }),
 });
 
+export const askFieldDef = toolDefinition({
+  name: "ask_field",
+  description:
+    "Ask the user for ONE form field from the FORM SCHEMA. Pass ONLY the fieldId — the UI renders the right input (text box, date picker, choice buttons, multi-select) from the real form definition, including the label and options. Your visible text may hold only a brief lead-in or acknowledgement of the previous answer — never the question itself. END YOUR TURN after calling.",
+  inputSchema: z.object({
+    fieldId: z.string().meta({
+      description: "Exact fieldId from the FORM SCHEMA system message.",
+    }),
+  }),
+  outputSchema: z.object({
+    ok: z.boolean(),
+    error: z.string().optional(),
+    field: z
+      .object({
+        fieldId: z.string(),
+        label: z.string(),
+        htmlType: z.string(),
+        hint: z.string().optional(),
+        multiple: z.boolean().optional(),
+        options: z
+          .array(z.object({ label: z.string(), value: z.string() }))
+          .optional(),
+        // Raw validation rules from the contract, so the widget can run the
+        // shared validation engine client-side before sending the answer.
+        validations: z.record(z.string(), z.unknown()).optional(),
+      })
+      .optional(),
+  }),
+});
+
+export const reviewFormDef = toolDefinition({
+  name: "review_form",
+  description:
+    "Show the user a structured check-your-answers summary of every collected value. Call with NO arguments once every required field is collected, then call submit_form in the SAME turn. The UI renders the summary from the form session — NEVER list the values in your text reply; a one-line lead-in is fine.",
+  inputSchema: z.object({}),
+  outputSchema: z.object({
+    ok: z.boolean(),
+    error: z.string().optional(),
+    items: z
+      .array(
+        z.object({
+          fieldId: z.string(),
+          label: z.string(),
+          value: z.string(),
+        }),
+      )
+      .optional(),
+  }),
+});
+
 export const submitFormDef = toolDefinition({
   name: "submit_form",
   description:
@@ -51,4 +101,12 @@ export const submitFormDef = toolDefinition({
       .optional(),
   }),
   needsApproval: true,
+});
+
+export const offerFeedbackDef = toolDefinition({
+  name: "offer_feedback",
+  description:
+    "Invite the user to give quick feedback on this assistant. Call with NO arguments, at most ONCE per conversation, and ONLY when the conversation has reached a natural conclusion — the user's need is met and they are wrapping up (e.g. 'thanks', 'that's all', 'no, that's everything'). Calling it starts a short feedback form; after calling it, ask in one short sentence how their experience was. Never call it twice and never interrupt an unfinished task.",
+  inputSchema: z.object({}),
+  outputSchema: z.object({ ok: z.boolean() }),
 });

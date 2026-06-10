@@ -42,7 +42,7 @@ You will need:
 
 You can apply online. It takes about 15 to 45 minutes, depending on how many duties you are claiming for.
 
-<a data-start-link href="/education/claim-payment-for-examination-duties/start">Start now</a>
+<a data-start-link>Start now</a>
 
 ## What the form asks for
 
