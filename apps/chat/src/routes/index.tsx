@@ -430,13 +430,17 @@ function OptimisticUserBubble({ text }: { text: string }) {
   );
 }
 
+// Beta disclaimer rendered as the first chat row, above the welcome bubble.
+// Intentionally always shown — per product decision there is no dismiss or
+// once-per-session suppression — and intentionally avatar-less: it is a
+// standing disclaimer, not a message attributed to the assistant.
 function NoticeBubble() {
   return (
-    <div className="mb-xs flex justify-start">
+    <div className="mb-xs flex max-w-[92%]">
       <Text
         as="p"
         size="caption"
-        className="max-w-[92%] rounded-2xl bg-blue-10 px-3.5 py-2 text-mid-grey-00"
+        className="rounded-[16px_16px_16px_4px] bg-blue-10 px-4 py-2.5 text-mid-grey-00"
       >
         This assistant is new and still learning, so it may sometimes get things
         wrong. Please double check anything important.
