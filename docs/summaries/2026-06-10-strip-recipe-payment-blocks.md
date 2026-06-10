@@ -2,19 +2,32 @@
 
 ## What changed
 
-Removed the `{ "type": "payment", ... }` processor element from the `processors`
-array in **9** recipe files, leaving the `email` processors and the rest of each
-recipe untouched:
+Removed the `{ "type": "payment", ... }` processor element from the served
+recipe of every payment form, so the payment now resolves from
+`form_config.config.processors` at hydration. Two mechanisms, chosen per the
+recipe-immutability rule:
 
-- `get-birth-certificate` — 1.0.0, 1.1.0, **1.5.0**
+**Superseded older versions — stripped in place** (their forms already have a
+newer clean latest, so they aren't served; covered by the
+`recipe-version-override` label):
+
+- `get-birth-certificate` — 1.0.0, 1.1.0
 - `get-death-certificate` — 1.1.0, 1.2.0
 - `get-marriage-certificate` — 1.1.0
 - `get-marriage-certificate-test` — 1.1.0
 - `post-office-redirection-business` — 1.1.0
-- `school-registration-fee` — 1.0.0
 
-Pure deletion (124 lines, 0 added). No code changed — the hydration overlay,
-builder save/read path, and blob schema all shipped with #716 (PR #762).
+**Live/served versions — bumped to a new clean version** (the published version
+is left immutable, payment intact; a new minor version without the payment
+processor becomes the max-semver winner):
+
+- `get-birth-certificate` — 1.5.0 kept, **1.6.0** added (clean)
+- `school-registration-fee` — 1.0.0 kept, **1.1.0** added (clean)
+
+No application code changed — the hydration overlay, builder save/read path, and
+blob schema all shipped with #716 (PR #762). `awR2Da5z7K` now remains only in the
+two immutable historical versions (1.5.0, 1.0.0), which are runtime-harmless
+because the DB overlay wins on payment.
 
 ## Why
 
