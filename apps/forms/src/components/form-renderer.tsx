@@ -140,6 +140,7 @@ export default function FormRenderer({
   repeatableStepSettingsRef,
   submissionState,
   isPreview = false,
+  previewToken,
 }: FormRendererProps) {
   const { navigateToStep, completeAndContinue, currentIndex } = useStepGuard({
     formId: formMeta.formId,
@@ -458,6 +459,7 @@ export default function FormRenderer({
                     validationProperties={resolveValidators(group.toggle)}
                     formId={formMeta.formId}
                     formVersion={formMeta.version}
+                    previewToken={previewToken}
                   />
                   {isOpen && (
                     <div className="form-page__show-hide-content">
@@ -472,6 +474,7 @@ export default function FormRenderer({
                           validationProperties={resolveValidators(field)}
                           formId={formMeta.formId}
                           formVersion={formMeta.version}
+                          previewToken={previewToken}
                         />
                       ))}
                     </div>
@@ -505,6 +508,7 @@ export default function FormRenderer({
                   insetFieldsByOption={insetFieldsByOption}
                   formId={formMeta.formId}
                   formVersion={formMeta.version}
+                  previewToken={previewToken}
                 />
               );
             }
@@ -517,6 +521,7 @@ export default function FormRenderer({
                 validationProperties={resolveValidators(group.field)}
                 formId={formMeta.formId}
                 formVersion={formMeta.version}
+                previewToken={previewToken}
               />
             );
           })}

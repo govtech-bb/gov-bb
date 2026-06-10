@@ -260,6 +260,7 @@ function RouteComponent() {
       repeatableStepSettingsRef={repeatableStepSettingsRef}
       submissionState={submissionState}
       isPreview={isPreview}
+      previewToken={preview}
     />
   );
 }

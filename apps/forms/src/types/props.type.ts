@@ -16,6 +16,11 @@ export interface FormRendererProps {
   repeatableStepSettingsRef: React.MutableRefObject<RepeatableStepSettings>;
   submissionState?: SubmissionState;
   isPreview?: boolean;
+  /**
+   * The raw `?preview=` token, forwarded to file uploads so presign/confirm
+   * resolve an unpublished draft. `isPreview` is the boolean derived from it.
+   */
+  previewToken?: string;
 }
 
 export type FormRouteProps = {
@@ -64,6 +69,11 @@ export type FileUploadProps = {
   formId?: string;
   /** Form version, required for the presigned-upload requests. */
   formVersion?: string;
+  /**
+   * The `?preview=` token, present only when previewing an unpublished draft.
+   * Forwarded on presign + confirm so uploads resolve the DB-only draft.
+   */
+  previewToken?: string;
 };
 
 export interface SubmissionState {
