@@ -112,4 +112,11 @@ export interface SubmissionConfirmationProps {
   contactDetails?: ContactDetails;
   onTryAgain?: () => void;
   submissionState?: SubmissionState;
+  /**
+   * Target for the "Give feedback on this service" link. When set, the feedback
+   * section renders an exit-survey link carrying the originating form id as
+   * `?source=`. Omitted (e.g. on the exit survey's own confirmation) hides the
+   * section so the feedback form never links back to itself.
+   */
+  feedbackUrl?: string;
 }

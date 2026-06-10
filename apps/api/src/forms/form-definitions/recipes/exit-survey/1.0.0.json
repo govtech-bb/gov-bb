@@ -5,6 +5,20 @@
       "stepId": "difficulty-rating",
       "elements": [
         {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "referring-service",
+            "label": "Service you are giving feedback about",
+            "isDisabled": true,
+            "validations": {
+              "required": {
+                "value": false,
+                "error": ""
+              }
+            }
+          }
+        },
+        {
           "ref": "components/generic-radio",
           "overrides": {
             "label": "How easy or difficult was it to complete this form?",

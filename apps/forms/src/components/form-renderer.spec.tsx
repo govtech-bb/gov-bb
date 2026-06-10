@@ -308,6 +308,29 @@ describe("FormRenderer", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("shows 'Submit' on the step before submission-confirmation even without a declaration step", () => {
+    // Surveys like the exit survey carry no `declaration` step; build-form
+    // injects check-your-answers immediately before submission-confirmation, so
+    // that becomes the submit step. Without this the survey could never be
+    // submitted (its Continue button would skip the submission entirely).
+    const cya = makeStep("check-your-answers");
+    const confirmation = makeStep("submission-confirmation");
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="check-your-answers"
+        visibleSteps={[cya, confirmation]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    expect(screen.getByRole("button", { name: /submit/i })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /continue/i }),
+    ).not.toBeInTheDocument();
+  });
+
   it("does not show navigation buttons on submission-confirmation step", () => {
     const step = makeStep("submission-confirmation");
     render(
@@ -871,6 +894,28 @@ describe("FormRenderer", () => {
     // invalid form must keep the user on the step.
     expect(mockForm.handleSubmit).toHaveBeenCalledTimes(1);
     expect(mockCompleteAndContinue).not.toHaveBeenCalled();
+  });
+
+  it("clicking Submit on the pre-confirmation step (no declaration) submits and advances", async () => {
+    // The exit-survey path: the submit handler must fire from whichever step
+    // precedes submission-confirmation, not only from a `declaration` step.
+    const user = userEvent.setup();
+    mockForm.state = { isValid: true, isSubmitting: false, values: {} };
+    const cya = makeStep("check-your-answers");
+    const confirmation = makeStep("submission-confirmation");
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="check-your-answers"
+        visibleSteps={[cya, confirmation]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /submit/i }));
+    expect(mockForm.handleSubmit).toHaveBeenCalled();
+    expect(mockCompleteAndContinue).toHaveBeenCalledWith("check-your-answers");
   });
 
   it("clicking Continue with validation errors does NOT call completeAndContinue", async () => {
