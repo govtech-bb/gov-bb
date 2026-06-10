@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { SCORE_THRESHOLD } from "#/lib/rag/config";
-import { decideRagFallback, topHandoffCandidateSlug } from "./retrieval";
+import {
+  decideRagFallback,
+  isConversationalCloser,
+  topHandoffCandidateSlug,
+} from "./retrieval";
 import type { Source } from "./types";
 
 // topHandoffCandidateSlug picks the slug of the single top-ranked retrieved
@@ -111,4 +115,76 @@ test("same form the user was already handed off to → continuation", () => {
     }),
     { action: "continuation" },
   );
+});
+
+// isConversationalCloser — content-based wrap-up detection (#1125). The second
+// arg is the previous assistant message, which only matters for the ambiguous
+// tier (does it gate on us having asked "anything else?").
+
+const NO_PRIOR = "";
+const ASKED_WRAP_UP = "Here's the form link. Anything else I can help with?";
+
+test("unambiguous closers fire regardless of the prior assistant message", () => {
+  for (const m of [
+    "bye",
+    "goodbye",
+    "thanks",
+    "thank you",
+    "thank you, bye", // the exact #1125 bug transcript
+    "thanks so much!",
+    "cheers",
+    "that's all",
+    "thats all",
+    "no thanks",
+    "see you later",
+    "all good",
+    "ok thanks",
+  ]) {
+    assert.equal(isConversationalCloser(m, NO_PRIOR), true, m);
+  }
+});
+
+test("more text riding on a closer word is NOT a closer", () => {
+  // A question is never a closer, even when it opens with "thanks".
+  assert.equal(
+    isConversationalCloser("thanks, where's the office?", ASKED_WRAP_UP),
+    false,
+  );
+  // "thanks for your help" IS a recognised sign-off, but "thanks for <arbitrary
+  // noun>" is not — only the fixed gratitude tails close. Keeps the matcher from
+  // swallowing "thanks for the form, now how do I pay" style turns.
+  assert.equal(isConversationalCloser("thanks for your help", NO_PRIOR), true);
+  assert.equal(isConversationalCloser("thanks for helping", NO_PRIOR), true);
+  assert.equal(
+    isConversationalCloser("thanks for the form link", NO_PRIOR),
+    false,
+  );
+  // An ambiguous opener followed by a real question is not a closer.
+  assert.equal(
+    isConversationalCloser("ok but how much does it cost", ASKED_WRAP_UP),
+    false,
+  );
+});
+
+test("ambiguous replies are closers ONLY after we asked the wrap-up question", () => {
+  for (const m of ["no", "nope", "nah", "ok", "okay", "no that's all"]) {
+    assert.equal(
+      isConversationalCloser(m, ASKED_WRAP_UP),
+      true,
+      `${m} (asked)`,
+    );
+    assert.equal(
+      isConversationalCloser(m, NO_PRIOR),
+      false,
+      `${m} (not asked)`,
+    );
+  }
+});
+
+test("a question is never a closer, even if it ends with thanks-y words", () => {
+  assert.equal(
+    isConversationalCloser("is that all I need?", ASKED_WRAP_UP),
+    false,
+  );
+  assert.equal(isConversationalCloser("", NO_PRIOR), false);
 });
