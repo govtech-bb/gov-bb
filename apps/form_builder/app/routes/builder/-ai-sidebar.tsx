@@ -3,7 +3,8 @@ import { serializeRecipeDraft } from "@govtech-bb/form-builder";
 import type { RecipeDraft, UnknownRef } from "@govtech-bb/form-builder";
 import type { ServiceContractRecipe } from "@govtech-bb/form-types";
 import {
-  editRecipe,
+  startEditRecipe,
+  getEditStatus,
   presignPdfUpload,
   startPdfConvert,
   getPdfConvertStatus,
@@ -38,6 +39,49 @@ function hasRecipeJson(reply: string): boolean {
 function stripRecipeJson(reply: string): string {
   const prose = reply.replace(JSON_BLOCK, "").trim();
   return prose.length > 0 ? prose : "Generated a form recipe.";
+}
+
+// Shared poll loop for both async jobs (Edit Form + PDF upload). Sleeps
+// `firstPollMs` before the first poll (aggressive-first so a fast edit returns
+// almost synchronously), then `intervalMs` between subsequent polls, giving up
+// after `timeoutMs`. Non-terminal statuses ("processing"/"generating") keep
+// polling; "failed" throws its reason; "done" returns that branch of the union.
+// Throws on abort so the caller's `abort.signal.aborted` check swallows it.
+async function pollUntilDone<T extends { status: string }>(
+  getStatus: () => Promise<T>,
+  abort: AbortController,
+  opts: { firstPollMs: number; intervalMs: number; timeoutMs: number },
+): Promise<Extract<T, { status: "done" }>> {
+  const start = Date.now();
+  let delay = opts.firstPollMs;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    if (abort.signal.aborted) throw new DOMException("Aborted", "AbortError");
+    await new Promise((r) => setTimeout(r, delay));
+    delay = opts.intervalMs;
+    if (abort.signal.aborted) throw new DOMException("Aborted", "AbortError");
+    if (Date.now() - start > opts.timeoutMs) {
+      throw new Error(
+        "This is taking longer than expected. Please try again later.",
+      );
+    }
+
+    const status = await getStatus();
+    if (status.status === "processing" || status.status === "generating") {
+      continue;
+    }
+    if (status.status === "done") {
+      return status as Extract<T, { status: "done" }>;
+    }
+    if (status.status === "failed") {
+      const reason = (status as { reason?: string }).reason;
+      throw new Error(reason ?? "The request failed — please try again.");
+    }
+    // Any other status is unexpected (the server unions are exhaustive, and a
+    // non-200 throws ApiError before reaching here) — surface it rather than
+    // returning a recipe-less "done".
+    throw new Error(`Unexpected status: ${status.status}`);
+  }
 }
 
 interface AiSidebarProps {
@@ -75,29 +119,12 @@ export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
     chatEndRef.current?.scrollIntoView?.({ behavior: "smooth" });
   }, [messages]);
 
-  // Surface a server-fn failure. The async *upload* flow no longer pushes a
-  // large PDF body through the Amplify Lambda, so the cryptic "Invariant
-  // failed" 413 from #583 isn't reachable on that path — the API returns
-  // user-friendly reasons (password-protected, too many pages, etc.) which we
+  // Surface a server-fn failure. Both AI actions are now async jobs (start →
+  // poll), so neither makes a single long Bedrock call that could hit the
+  // Amplify ~28s SSR timeout and surface as the cryptic "Invariant failed"
+  // (#1129). start/status calls are sub-second; the API returns user-friendly
+  // reasons (a failed generation's reason, an expired-session 404) which we
   // pass through verbatim.
-  //
-  // The synchronous Edit Form path is different: it makes a single long Bedrock
-  // call and can STILL exceed the Amplify/CloudFront origin-response timeout for
-  // large recipes. When that happens the gateway returns a 504 HTML page and
-  // TanStack Start's server-fn client throws Error("Invariant failed"). We now
-  // also fire our own client-side abort (api-client.ts) just under the gateway
-  // timeout, which surfaces as a timed-out message. Either way the raw string
-  // is useless to the user — map both to a clear, true edit-failure message.
-  const EDIT_TIMEOUT_MESSAGE =
-    "The edit request timed out or failed — your form may be too large. Try again, or simplify your request.";
-
-  const isTimeoutOrInvariant = (err: unknown): boolean => {
-    if (!(err instanceof Error)) return false;
-    return (
-      /invariant failed/i.test(err.message) || /timed out/i.test(err.message)
-    );
-  };
-
   const toMessage = (err: unknown): string => {
     return err instanceof Error ? err.message : "Unknown error";
   };
@@ -192,29 +219,16 @@ export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
         data: { s3Key, ...(context ? { context } : {}) },
       });
 
-      const start = Date.now();
-      const TIMEOUT_MS = 3 * 60_000;
-      const POLL_MS = 2000;
+      // Textract + Bedrock can take a while, so poll at a steady 2s up to 3 min.
+      const status = await pollUntilDone(
+        () => getPdfConvertStatus({ data: { jobId } }),
+        abort,
+        { firstPollMs: 2000, intervalMs: 2000, timeoutMs: 3 * 60_000 },
+      );
 
-      while (!abort.signal.aborted) {
-        if (Date.now() - start > TIMEOUT_MS) {
-          throw new Error(
-            "This upload is taking longer than expected. Please try a smaller PDF or try again later.",
-          );
-        }
-        await new Promise((r) => setTimeout(r, POLL_MS));
-        if (abort.signal.aborted) return;
-
-        const status = await getPdfConvertStatus({ data: { jobId } });
-        if (status.status === "processing" || status.status === "generating") continue;
-        if (status.status === "failed") throw new Error(status.reason);
-
-        // done
-        setPdfFile(null);
-        setPdfName(null);
-        await handleResponse(status.reply, status.recipe, status.unresolvableRefs);
-        return;
-      }
+      setPdfFile(null);
+      setPdfName(null);
+      await handleResponse(status.reply, status.recipe, status.unresolvableRefs);
     } catch (err) {
       // Swallow errors caused by our own abort — the user (or unmount)
       // requested cancellation, so we don't surface it.
@@ -237,18 +251,34 @@ export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
     setLoading(true);
     setError(null);
     setMessages((m) => [...m, { role: "user", content: message }]);
+
+    // Cancel any prior in-flight poll before starting a fresh one, then publish
+    // the new controller so unmount-cleanup and an overlapping submit both see
+    // it (shared with handleUpload).
+    pollAbortRef.current?.abort();
+    const abort = new AbortController();
+    pollAbortRef.current = abort;
+
     try {
       const recipeJson = JSON.stringify(serializeRecipeDraft(draft, { version }));
-      const { recipe, reply, unresolvableRefs } = await editRecipe({
-        data: { message, recipeJson },
-      });
-      await handleResponse(reply, recipe, unresolvableRefs);
+      const { jobId } = await startEditRecipe({ data: { message, recipeJson } });
+
+      // Fast-first cadence: a 2–3s edit returns on the first or second poll and
+      // feels essentially synchronous; the 3-min cap matches the upload path.
+      const status = await pollUntilDone(
+        () => getEditStatus({ data: { jobId } }),
+        abort,
+        { firstPollMs: 400, intervalMs: 2000, timeoutMs: 3 * 60_000 },
+      );
+      await handleResponse(status.reply, status.recipe, status.unresolvableRefs);
     } catch (err) {
-      // A timeout (our client-side abort) or a residual "Invariant failed" (the
-      // gateway 504 winning the race) both mean the synchronous edit didn't
-      // come back in time. Show one clear message rather than the raw string.
-      setError(isTimeoutOrInvariant(err) ? EDIT_TIMEOUT_MESSAGE : toMessage(err));
+      // Swallow errors caused by our own abort (overlapping submit / unmount).
+      // A failed generation surfaces its reason; an expired-session 404 (the
+      // job was lost to a restart) surfaces the API's interrupted message.
+      if (abort.signal.aborted) return;
+      setError(toMessage(err));
     } finally {
+      if (pollAbortRef.current === abort) pollAbortRef.current = null;
       setLoading(false);
     }
   };

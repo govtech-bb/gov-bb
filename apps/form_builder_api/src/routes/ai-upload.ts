@@ -1,6 +1,4 @@
 import type { Request, Response } from "express";
-import { collectUnknownRefs, type UnknownRef } from "@govtech-bb/form-builder";
-import type { ServiceContractRecipe } from "@govtech-bb/form-types";
 
 import { presignUpload } from "../storage/s3-uploads.js";
 import {
@@ -9,10 +7,12 @@ import {
   blocksToText,
   type Block,
 } from "../ai/textract.js";
-import { chat, isAvailable } from "../ai/client.js";
-import { extractRecipe } from "../ai/recipe-extractor.js";
-import { getFullCatalog } from "../catalog.js";
+import { isAvailable } from "../ai/client.js";
 import { getSystemPrompt } from "../ai/system-prompt.js";
+import {
+  generateRecipeResponse,
+  type RecipeResponse,
+} from "../ai/recipe-generation.js";
 
 // Safe S3 key shape: prevents path traversal / arbitrary keys. We accept the
 // canonical uploads/<uuid>.pdf produced by presignUpload, as well as a slightly
@@ -93,15 +93,7 @@ export async function processHandler(
 //   3. State is meant to be ephemeral — the sweep below caps memory.
 type BedrockState =
   | { kind: "running"; startedAt: number }
-  | {
-      kind: "done";
-      result: {
-        recipe: Record<string, unknown> | null;
-        reply: string;
-        unresolvableRefs: UnknownRef[];
-      };
-      finishedAt: number;
-    }
+  | { kind: "done"; result: RecipeResponse; finishedAt: number }
   | { kind: "failed"; reason: string; finishedAt: number };
 
 const bedrockStateByJobId = new Map<string, BedrockState>();
@@ -141,29 +133,15 @@ async function runBedrock(
       ? "Convert this uploaded form into a complete, valid recipe.\n\n" +
         `Additional instructions from the user:\n${context}`
       : "Convert this uploaded form into a complete, valid recipe.";
-    const reply = await chat(
+    const result = await generateRecipeResponse(
       systemPrompt,
       [{ role: "user", content: userText }],
       documentText,
     );
-    const recipe = extractRecipe(reply);
-
-    let unresolvableRefs: UnknownRef[] = [];
-    if (recipe && Array.isArray((recipe as { steps?: unknown }).steps)) {
-      try {
-        const catalog = await getFullCatalog();
-        unresolvableRefs = collectUnknownRefs(
-          recipe as unknown as ServiceContractRecipe,
-          catalog,
-        );
-      } catch (err) {
-        console.warn("upload/status: ref pre-check skipped —", err);
-      }
-    }
 
     bedrockStateByJobId.set(jobId, {
       kind: "done",
-      result: { recipe, reply, unresolvableRefs },
+      result,
       finishedAt: Date.now(),
     });
   } catch (err) {
