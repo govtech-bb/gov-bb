@@ -5,3 +5,9 @@ node_modules
 pnpm-lock.yaml
 package-lock.json
 yarn.lock
+
+# Published form recipes are immutable, versioned artifacts (enforced by
+# scripts/recipe-version-guard.ts). Prettier would reformat their JSON and the
+# lint-staged hook would silently rewrite a published version on any commit that
+# happens to stage one (e.g. a merge), tripping the guard. Leave them untouched.
+apps/api/src/forms/form-definitions/recipes/
