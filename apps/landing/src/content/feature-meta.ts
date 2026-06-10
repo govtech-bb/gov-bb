@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { VIEW_LEVELS } from '../lib/frontmatter'
 
 // Metadata for a co-located feature module (src/routes/[url]/-meta.ts).
 // registry.ts globs every -meta.ts, validates it here, and folds it into the
@@ -20,7 +21,7 @@ export const FeatureMetaSchema = z.object({
   // Extra search terms, mirroring a markdown page's frontmatter keywords.
   keywords: z.array(z.string()).default([]),
   // Rollout gate: same semantics as markdown frontmatter visibility.
-  visibility: z.enum(['public', 'preview']).default('public'),
+  visibility: z.enum(VIEW_LEVELS).default('public'),
 })
 
 export type FeatureMeta = z.infer<typeof FeatureMetaSchema>

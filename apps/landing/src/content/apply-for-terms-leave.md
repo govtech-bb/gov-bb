@@ -26,7 +26,7 @@ The length of your leave is calculated from normal teaching days only. Public ho
 
 You can apply online. It takes about 10 minutes once you have your information ready.
 
-<a data-start-link href="/education/apply-for-terms-leave/start">Start now</a>
+<a data-start-link>Start now</a>
 
 ## What the form asks for
 

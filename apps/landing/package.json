@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "vite dev --port 3000",
-    "build": "vite build",
+    "build": "vite build && node scripts/check-no-secret-leak.mjs",
     "preview": "nitro preview",
     "start": "node .amplify-hosting/compute/default/server.js",
     "test": "vitest run",

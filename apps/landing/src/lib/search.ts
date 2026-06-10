@@ -1,6 +1,7 @@
 import MiniSearch from 'minisearch'
-import { isSubPage, isUrlPreview, PAGES } from '../content/registry'
+import { isSubPage, isUrlVisible, PAGES } from '../content/registry'
 import { CATEGORY_BY_SLUG } from '../content/categories'
+import type { ViewLevel } from './frontmatter'
 
 export type SearchKind = 'service'
 
@@ -233,7 +234,10 @@ function getIndex() {
   return indexPromise.current
 }
 
-export function search(query: string, inPreview = false): Array<SearchHit> {
+export function search(
+  query: string,
+  viewer: ViewLevel = 'public',
+): Array<SearchHit> {
   const trimmed = query.trim()
   if (!trimmed) return []
   const { ms, docs } = getIndex()
@@ -250,8 +254,5 @@ export function search(query: string, inPreview = false): Array<SearchHit> {
         kind: (r.kind as SearchKind) ?? stored?.kind ?? 'service',
       }
     })
-    .filter((hit) => {
-      if (inPreview) return true
-      return !isUrlPreview(hit.id.slice('service:'.length))
-    })
+    .filter((hit) => isUrlVisible(hit.id.slice('service:'.length), viewer))
 }

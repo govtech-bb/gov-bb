@@ -48,6 +48,25 @@ test("needsHandoff is true when any step has a file field", () => {
   assert.equal(needsHandoff(contract({ htmlTypes: ["text", "file"] })), true);
 });
 
+// Chat can't collect array inputs, so a REQUIRED repeatable field makes the
+// form unsubmittable inline — the gate must hand off. An optional repeatable
+// just gets skipped, so it must NOT trip the gate.
+test("needsHandoff fires for required repeatable fields only", () => {
+  const withRepeatable = (required: boolean) => {
+    const c = contract();
+    c.steps[0]!.elements.push({
+      fieldId: "dependants",
+      label: "Dependants",
+      htmlType: "text",
+      behaviours: [{ type: "repeatable" }],
+      ...(required ? { validations: { required: { value: true } } } : {}),
+    } as unknown as (typeof c.steps)[0]["elements"][0]);
+    return c;
+  };
+  assert.equal(needsHandoff(withRepeatable(true)), true);
+  assert.equal(needsHandoff(withRepeatable(false)), false);
+});
+
 test("needsHandoff is true when the contract requiresPayment", () => {
   assert.equal(needsHandoff(contract({ requiresPayment: true })), true);
 });
