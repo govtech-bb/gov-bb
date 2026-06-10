@@ -131,27 +131,37 @@ export function buildHandoffDisclosure(title: string, url: string): string {
   // commits to, (c) shows the exact output, and (d) names the forbidden
   // behaviours the model was previously drifting into ("Ready to start the
   // online form?", paper-form alternatives).
-  return `HARD OVERRIDE — THIS TURN IS A HANDOFF. The link below IS the answer.
+  //
+  // #1065: the reproduced copy was curt ("That's the form. You'll need to
+  // complete it there."). It now reads warm and supportive and surfaces any
+  // prerequisites from context as helpful guidance, WITHOUT loosening the
+  // link-first shape or the anti-drift guardrails. The reproduced copy is kept
+  // free of em/en dashes per the SYSTEM_PROMPT punctuation rule.
+  return `HARD OVERRIDE: THIS TURN IS A HANDOFF. The link below IS the answer.
 
 This overrides the DEFAULT MODE / INFORMATIONAL (RAG) rule for this turn. Even though no FORM SCHEMA was provided, do NOT treat this as a pure RAG answer.
 
-The form "${title}" requires steps the chat cannot safely do here (file upload, payment, or other inputs that must happen in the full form). Your one job this turn: hand the user the link.
+The form "${title}" requires steps the chat cannot safely do here (file upload, payment, or other inputs that must happen in the full form). Your one job this turn: warmly hand the user the link.
 
-REPLY EXACTLY IN THIS SHAPE — link first, prose second:
+REPLY EXACTLY IN THIS SHAPE (link first, then a warm line, then optional guidance):
 
 [${title}](${url})
 
-That's the form. You'll need to complete it there.
+Here's the form to get started. You can finish the rest there.
 
-(Optional, only if the user already asked a specific side question — cost, documents, eligibility — in this turn: append ONE short sentence answering it from the retrieved context. Otherwise stop after the line above.)
+GUIDANCE LINE: include this ONLY when THIS turn's retrieved context names documents or requirements the user needs before they begin (for example a Police Certificate of Character). Add ONE short, friendly sentence presenting them as something to have ready, cited with a [N] marker, for example: "It helps to have your Police Certificate of Character handy before you start [1]." If the context names no prerequisites, skip this line entirely. NEVER invent a prerequisite that is not in the context.
+
+TONE: warm and supportive, never curt. Acknowledge what the user is trying to do and frame the link as the helpful next step, not a dismissal. Stay concise: the warm line, plus at most the one guidance sentence.
+
+(Optional, only if the user already asked a specific side question this turn, for example cost, documents, or eligibility: append ONE short sentence answering it from the retrieved context. Otherwise stop after the lines above.)
 
 Do NOT:
-- Ask "Ready to start the online form?" — the link IS the online form.
-- Offer to "start it for you" or "fill it in for you" — there is no in-chat start.
+- Ask "Ready to start the online form?". The link IS the online form.
+- Offer to "start it for you" or "fill it in for you". There is no in-chat start.
 - Recite the paper-form path as an alternative unless the user specifically asked about paper.
-- Use set_field, ask_field, present_choices, review_form, or submit_form — they are not available this turn.
+- Use set_field, ask_field, present_choices, review_form, or submit_form. They are not available this turn.
 - Open with a long RAG paragraph that delays or replaces the link.
-- Cite the link with [1]/[2] markers — write it as the markdown link shown above.`;
+- Cite the link with [1]/[2] markers. Write it as the markdown link shown above.`;
 }
 
 export function buildHandoffOfferDisclosure(title: string): string {
@@ -204,7 +214,7 @@ export function buildHandoffContinuationDisclosure(
   // back to the link, never collecting, never denying the form exists.
   return `CONTINUATION OF A HANDOFF. The user has already been given the link to the online form "${title}" (it needs a file upload and/or payment, so it must be completed in the forms app, not here).
 
-Answer their latest message informationally from the retrieved context (documents, fees, eligibility, next steps). Then ALWAYS include the link so they can continue:
+Answer their latest message informationally from the retrieved context (documents, fees, eligibility, next steps). Keep the tone warm and supportive, guiding them rather than just pointing. Then ALWAYS include the link so they can continue:
 
 [${title}](${url})
 
