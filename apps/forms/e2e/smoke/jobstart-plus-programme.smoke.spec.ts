@@ -2,7 +2,10 @@
  * jobstart-plus-programme.smoke.spec.ts
  *
  * Live, on-demand smoke test for the "Apply to Job start Plus Programme" form
- * (formId `jobstart-plus-programme`, version 1.2.0).
+ * (formId `jobstart-plus-programme`). Authored against the 1.2.0 recipe; walked
+ * here against the live 1.7.0 deployment, which added a required
+ * `currently-employed` eligibility gate, dropped the `are-you-over-18` radio
+ * (age is now enforced by the `applicant-dob` 16<age<34 validation), and so on.
  *
  * Drives the REAL deployed form (default: sandbox), fills every visible/required
  * field with valid data, SUBMITS FOR REAL, and asserts the confirmation screen.
@@ -34,8 +37,9 @@
  *    occupation/dates/tasks conditional fields and the `another-previous-job`
  *    radio; answering that "no" keeps the conditional `another-previous-paid-job`
  *    repeatable step hidden entirely.
- *  - eligibility-age: `are-you-over-18` = "yes" reveals the required
- *    `willing-to-work-nights` radio.
+ *  - previous-paid-job also carries a required `currently-employed` radio that
+ *    must be "no" (recipe `equal: "no"`) — independent of has-previous-paid-job.
+ *  - eligibility-age carries only the required `willing-to-work-nights` radio.
  *  - The renderer auto-injects nothing extra: `check-your-answers` is an explicit
  *    recipe step. It is guarded all the same in case of deployment drift.
  *  - `declaration` carries a single-option confirmation checkbox; its input id is
@@ -77,7 +81,12 @@ test.describe("JobStart Plus Programme — Live Smoke", () => {
       faker.person.firstName(),
     );
     await fillField(page, step, "applicant-last-name", faker.person.lastName());
-    await fillDate(page, step, "applicant-dob", 15, 6, 1990);
+    // `applicant-dob` enforces 16 < age < 34 (recipe `gt:16` / `lt:34`,
+    // transform `yearsSince`). Derive the birth year at runtime so the applicant
+    // is always ~25 — a hardcoded year silently drifts out of that window as
+    // calendar years pass (a fixed 1990 made the applicant 36 and broke this).
+    const dobYear = new Date().getFullYear() - 25;
+    await fillDate(page, step, "applicant-dob", 15, 6, dobYear);
     await selectRadio(page, step, "applicant-sex", "male");
     await selectDropdown(page, step, "marital-status", "single");
     // Leave `passport-toggle` unchecked → `applicant-nid` stays required and the
@@ -191,6 +200,10 @@ test.describe("JobStart Plus Programme — Live Smoke", () => {
     );
     // "No" keeps the conditional `another-previous-paid-job` repeatable step hidden.
     await selectRadio(page, step, "another-previous-job", "no");
+    // `currently-employed` is a required eligibility gate that must be "no"
+    // (recipe `equal: "no"`) — applicants currently employed / in training are
+    // ineligible. Always visible (not conditional on has-previous-paid-job).
+    await selectRadio(page, step, "currently-employed", "no");
     await advance(page, step);
 
     // ─── Tell us about your areas of interest ────────────────────────────────
@@ -203,9 +216,11 @@ test.describe("JobStart Plus Programme — Live Smoke", () => {
     );
     await advance(page, step);
 
-    // ─── Are you 18 or over? ("Yes" reveals the night-shift radio) ───────────
+    // ─── Are you willing to work nights? ─────────────────────────────────────
+    // The earlier `are-you-over-18` gate was removed — age eligibility is now
+    // enforced by the `applicant-dob` validation (16 < age < 34) — so this step
+    // carries only the always-visible required `willing-to-work-nights` radio.
     step = expectStep(page, "eligibility-age", { exact: true });
-    await selectRadio(page, step, "are-you-over-18", "yes");
     await selectRadio(page, step, "willing-to-work-nights", "yes");
     await advance(page, step);
 
