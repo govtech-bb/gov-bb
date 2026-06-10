@@ -21,6 +21,7 @@ import {
   FORM_COLLECTION_PROTOCOL,
   NO_FORM_DISCLOSURE,
   SYSTEM_PROMPT,
+  buildFormLinkOfferDisclosure,
   buildHandoffContinuationDisclosure,
   buildHandoffDisclosure,
   buildHandoffOfferDisclosure,
@@ -180,6 +181,10 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
   // transient form-API blip can't redirect the user elsewhere). It also means
   // the matcher block above ran this turn, so the form index is warm-cached.
   let handoffContinuation: { title: string; url: string } | undefined;
+  // Set when RAG surfaces an approved COLLECT form the title matcher missed: we
+  // offer its form link (ADR 0045 — RAG may hand off a link but must never
+  // auto-start inline collection), instead of falling to the no-form/paper path.
+  let ragCollectLink: { title: string; url: string } | undefined;
   // Compute a candidate only when no form is pinned (the gates fold into here):
   // "none" so we never override a matched collectible form, and !session.slug so
   // a pinned form that merely failed to resolve can't be redirected elsewhere.
@@ -221,6 +226,21 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
       title: ragResolution.title,
       url: ragResolution.url,
     };
+  } else if (ragResolution.kind === "collect" && ragCandidate) {
+    // RAG surfaced an APPROVED collect form the title matcher missed (e.g. a
+    // follow-up like "is there a form i can fill out", or a paraphrase that
+    // doesn't overlap the form title). Per ADR 0045, RAG must NOT auto-start
+    // inline collection — that stays behind the higher-confidence title matcher.
+    // But we also must not fall through to the no-online-form / paper path (the
+    // bug behind business-mail & deceased-mail). So OFFER the form LINK — the
+    // low-commitment action the ADR explicitly lets the fuzzy RAG signal
+    // trigger. No pin, no collect: if the user then clearly states intent, the
+    // matcher/apply path starts collection. ragCandidate is gated to allowlisted
+    // published forms above.
+    ragCollectLink = {
+      title: ragResolution.form.contract.title,
+      url: `${getServerEnv().FORMS_URL}/forms/${encodeURIComponent(ragCandidate)}`,
+    };
   }
 
   // Info-intent on a handoff service: buildSystemPrompts offers the link in
@@ -237,6 +257,7 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     handoffContinuation,
     offerOnly,
     intent,
+    ragCollectLink,
   );
 
   // collect + apply-intent → full field tools. collect + info question
@@ -325,6 +346,7 @@ function buildSystemPrompts(
   handoffContinuation?: { title: string; url: string },
   offerOnly = false,
   intent: "info" | "apply" = "apply",
+  ragCollectLink?: { title: string; url: string },
 ): SystemEntry[] {
   const prompts: SystemEntry[] = [
     SYSTEM_PROMPT,
@@ -347,6 +369,11 @@ function buildSystemPrompts(
 
   if (resolution.kind === "collect") {
     const { slug, schema } = resolution.form;
+    // The canonical form link — the SAME URL the landing page's "Start now"
+    // button uses (FORMS_URL/forms/<id>). Offered as the self-serve online
+    // option alongside in-chat filling; we never send users to paper/in-person.
+    const formUrl = `${getServerEnv().FORMS_URL}/forms/${encodeURIComponent(slug)}`;
+    const formTitle = resolution.form.contract.title;
     // The form-collection / review / submit protocol is injected ONLY here —
     // when a form is actually active — rather than living in the always-on
     // SYSTEM_PROMPT. On info / out-of-corpus / refusal / handoff turns (no
@@ -366,15 +393,11 @@ function buildSystemPrompts(
         `Already collected (do NOT re-ask these unless the user wants to change them):\n${lines}`,
       );
     } else if (offerOnly) {
-      // Collect-form matched on an INFO question, nothing collected yet. Answer
-      // the question from context, THEN offer a clickable path to start the
-      // application via present_choices — NOT a prose "want to start?", which
-      // leaves the user no button to act on (and the field tools are withheld
-      // this turn, so a prose offer is a dead end). Clicking "Start the
-      // application" sends a non-question message next turn, which flips this
-      // turn's info-question gate off and lets the real field tools in.
+      // Collect-form matched on an INFO question, nothing collected yet. Answer,
+      // then offer the TWO online options (fill in chat / use the link) via
+      // present_choices — never a dead-end prose "want to start?".
       parts.push(
-        'The user asked an INFORMATION question about this service and has NOT said they want to apply yet. First, answer their question from the context above. Then offer to begin by calling present_choices with a short question like "Want to start the application now?" and choices ["Start the application", "I have another question"]. Do NOT ask for any form field and do NOT call set_field this turn — only answer, then offer the choice.',
+        'The user asked an INFORMATION question about this service and has NOT said they want to apply yet. First, answer their question from the context above. Then offer the online options by calling present_choices with a short question like "Want to apply? I can fill it out with you here, or send you the form link." and choices ["Fill it out with you here", "Just send me the link"]. Lead by mentioning you can fill it out together (many people do not realise the chat can do this). Do NOT ask for any form field and do NOT call set_field this turn — only answer, then offer the choice.',
       );
     } else {
       // Collect-form matched with apply-intent, first turn: begin collecting per
@@ -383,6 +406,15 @@ function buildSystemPrompts(
         "The user wants to apply and has not started yet. Open with a one-line acknowledgement and ask for the FIRST field in the schema (call present_choices if that field is closed-set; otherwise ask it in text). If they also asked a side question, answer it from the context first.",
       );
     }
+    // ONLINE OPTIONS — applies whenever this form is active. This service has a
+    // working online form. The user has two ONLINE choices: fill it out with you
+    // here in the chat, or do it themselves at the link. If they ask "is there a
+    // form", "can I do it myself", or want the link, give them this markdown
+    // link. NEVER suggest a paper form, downloading/printing, or visiting an
+    // office in person — we encourage the online options only.
+    parts.push(
+      `ONLINE FORM LINK for this service: [${formTitle}](${formUrl}). If the user wants the link or prefers to do it themselves, share exactly that markdown link. NEVER suggest a paper form, printing/downloading a form, or going to an office in person — the only options to offer are filling it out here with you, or this online link.`,
+    );
     if (session.status === "submitted" && session.referenceNumber) {
       parts.push(
         `Submission complete. Reference number: ${session.referenceNumber}. Do NOT submit again.`,
@@ -401,6 +433,13 @@ function buildSystemPrompts(
         handoffContinuation.title,
         handoffContinuation.url,
       ),
+    );
+  } else if (ragCollectLink) {
+    // RAG surfaced an approved collect form the matcher missed: offer its online
+    // form link (ADR 0045 — RAG hands off a link, never auto-collects). This
+    // replaces the no-online-form / paper fallback for these turns.
+    prompts.push(
+      buildFormLinkOfferDisclosure(ragCollectLink.title, ragCollectLink.url),
     );
   } else {
     prompts.push(NO_FORM_DISCLOSURE);
