@@ -151,6 +151,74 @@ describe("POST /builder/publish — validation backstop", () => {
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual({ prUrl: "https://pr/42", prNumber: 42 });
     expect(fetchMock).toHaveBeenCalled();
+
+    // The recipe-file PUT targets the per-segment-encoded contents path (#935).
+    const putCall = fetchMock.mock.calls.find(
+      ([, init]) => (init as RequestInit | undefined)?.method === "PUT",
+    );
+    expect(putCall?.[0]).toBe(
+      "https://api.github.com/repos/govtech-bb/gov-bb/contents/recipes/form-001/1.0.0.json",
+    );
+  });
+
+  it("cleans up via the encoded branch DELETE URL when the file PUT fails", async () => {
+    const fetchMock = jest.fn((url: string, init?: RequestInit) => {
+      if (url.includes("/git/ref/heads/")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ object: { sha: "base-sha" } }),
+        });
+      }
+      // Force the recipe-file PUT to fail so the catch-block cleanup runs.
+      if (init?.method === "PUT") {
+        return Promise.resolve({ ok: false, status: 422 });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+    (global as { fetch?: unknown }).fetch = fetchMock;
+
+    const res = mockRes();
+    await publishHandler(
+      mockReq({
+        recipe: validRecipe(),
+        githubToken: "ghtok",
+        userLogin: "tester",
+      }),
+      res,
+    );
+
+    expect(res.statusCode).toBe(500);
+    const deleteCall = fetchMock.mock.calls.find(
+      ([, init]) => (init as RequestInit | undefined)?.method === "DELETE",
+    );
+    // `branch` is encoded per path segment at the sink, so the structural `/`
+    // in `form-builder/<name>` survives (whole-string encoding would %2F it and
+    // 404 the cleanup). For valid input the encoding is a no-op, so the ref
+    // path is the plain `heads/form-builder/<branch-name>` GitHub can match.
+    const deleteUrl = deleteCall?.[0] as string;
+    expect(deleteUrl).toContain(
+      "https://api.github.com/repos/govtech-bb/gov-bb/git/refs/heads/form-builder/form-001-1-0-0-",
+    );
+    expect(deleteUrl).not.toContain("%2F");
+  });
+
+  it("returns 400 and makes no GitHub call for a non-semver version", async () => {
+    const fetchMock = jest.fn();
+    (global as { fetch?: unknown }).fetch = fetchMock;
+
+    const recipe = { ...validRecipe(), version: "latest" };
+    const res = mockRes();
+
+    await publishHandler(
+      mockReq({ recipe, githubToken: "ghtok", userLogin: "tester" }),
+      res,
+    );
+
+    expect(res.statusCode).toBe(400);
+    expect((res.body as { issues: unknown[] }).issues.length).toBeGreaterThan(
+      0,
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("still rejects a missing recipe/token before validating", async () => {

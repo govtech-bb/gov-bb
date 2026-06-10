@@ -98,8 +98,13 @@ export async function publishHandler(req: Request, res: Response) {
     }
 
     try {
-      // Write recipe file
-      const contentsPath = `/contents/recipes/${typedRecipe.formId}/${typedRecipe.version}.json`;
+      // Write recipe file. formId/version are user-provided, so encode each
+      // segment as it enters the request path (slashes between segments are
+      // structural and must survive) — sink-level sanitization that clears the
+      // CodeQL js/request-forgery alert and neutralises any injected path
+      // characters. Backstopped by the kebab `formId` / semver `version`
+      // validation in validateRecipeFully; for valid input this is a no-op (#935).
+      const contentsPath = `/contents/recipes/${encodeURIComponent(typedRecipe.formId)}/${encodeURIComponent(typedRecipe.version)}.json`;
       const fileContent = JSON.stringify(typedRecipe, null, 2) + "\n";
       const putRes = await fetch(repoUrl(contentsPath), {
         method: "PUT",
@@ -134,8 +139,18 @@ export async function publishHandler(req: Request, res: Response) {
       };
       res.json({ prUrl: prJson.html_url, prNumber: prJson.number });
     } catch (err: any) {
-      // Cleanup branch on failure
-      await fetch(repoUrl(`/git/refs/heads/${branch}`), {
+      // Cleanup branch on failure. `branch` derives from user-provided
+      // formId/version (via deployBranchName), so sanitize it at the
+      // request-path sink — same rationale as the contents PUT above (#935).
+      // Encode per path segment: GitHub matches the ref by literal segments, so
+      // the structural `/` in `form-builder/<name>` must survive (whole-string
+      // encoding would turn it into %2F and 404 the cleanup, orphaning the
+      // branch). For valid input this is a no-op.
+      const encodedBranchPath = branch
+        .split("/")
+        .map(encodeURIComponent)
+        .join("/");
+      await fetch(repoUrl(`/git/refs/heads/${encodedBranchPath}`), {
         method: "DELETE",
         headers: authHeaders(token),
       }).catch(() => {});
