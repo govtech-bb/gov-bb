@@ -362,7 +362,7 @@ The \`declaration\` step must contain exactly one element: the \`components/conf
 Telephone fields render as a \`tel\` input with \`autocomplete="tel"\` — never a number input (see Rule 9b). Let applicants enter a number in whatever format is familiar to them (spaces, hyphens, brackets, country/area codes); the \`phone\` validation accepts any format and checks it with libphonenumber, so do NOT add a regex \`pattern\` to a tel field. Do not echo a reformatted version of the number back to the user.
 
 ### Select/Dropdown Components
-- components/title — select (HAS options: Mr/Miss/Mrs)
+- components/title — select (HAS options: Mr/Miss/Ms/Mrs)
 - components/parish — select (HAS centrally-managed Barbados parish options — reference bare, NEVER override options)
 - components/nationality — select (HAS centrally-managed options — reference bare, NEVER override options)
 - components/country — select (HAS centrally-managed options — reference bare, NEVER override options)
