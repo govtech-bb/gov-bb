@@ -1,5 +1,3 @@
-import type { Request, Response } from "express";
-
 jest.mock("@govtech-bb/database", () => ({
   CustomComponent: class CustomComponent {},
 }));
@@ -16,37 +14,13 @@ jest.mock("../ai/recipe-extractor.js", () => ({ extractRecipe: jest.fn() }));
 import { chat, isAvailable } from "../ai/client.js";
 import { extractRecipe } from "../ai/recipe-extractor.js";
 import { getDataSource } from "../db.js";
+import { mockReq, mockRes } from "../test-helpers/express-mocks";
 import { startEditHandler, statusEditHandler } from "./ai";
 
 const chatMock = chat as jest.Mock;
 const isAvailableMock = isAvailable as jest.Mock;
 const extractRecipeMock = extractRecipe as jest.Mock;
 const getDataSourceMock = getDataSource as jest.Mock;
-
-function mockReq(
-  body: unknown = {},
-  params: Record<string, string> = {},
-): Request {
-  return { body, params } as unknown as Request;
-}
-
-interface CapturingResponse extends Response {
-  statusCode: number;
-  body: unknown;
-}
-
-function mockRes(): CapturingResponse {
-  const res = { statusCode: 200, body: undefined } as CapturingResponse;
-  res.status = jest.fn((code: number) => {
-    res.statusCode = code;
-    return res;
-  }) as unknown as Response["status"];
-  res.json = jest.fn((payload: unknown) => {
-    res.body = payload;
-    return res;
-  }) as unknown as Response["json"];
-  return res;
-}
 
 // getDataSource().getRepository(CustomComponent).find() → custom components.
 function mockDataSource(customs: unknown[]) {

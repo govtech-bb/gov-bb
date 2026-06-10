@@ -3,7 +3,8 @@ import { randomUUID } from "node:crypto";
 import { CustomComponent } from "@govtech-bb/database";
 import { getDataSource } from "../db.js";
 import { getSystemPrompt } from "../ai/system-prompt.js";
-import { isAvailable } from "../ai/client.js";
+import { getContentSystemPrompt } from "../ai/content-prompt.js";
+import { chat, isAvailable } from "../ai/client.js";
 import {
   generateRecipeResponse,
   type RecipeResponse,
@@ -179,6 +180,66 @@ export function statusEditHandler(req: Request, res: Response): void {
 
 aiRouter.post("/edit/start", startEditHandler);
 aiRouter.get("/edit/status/:jobId", statusEditHandler);
+
+// Extracts the page-fields object from a content reply: the first fenced JSON
+// block that parses to a plain object. Unlike recipes there are no required
+// keys — the model proposes only the fields it changed.
+export function extractContentPage(
+  text: string,
+): Record<string, unknown> | null {
+  const codeBlockMatch = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+  if (!codeBlockMatch) return null;
+  try {
+    const parsed = JSON.parse(codeBlockMatch[1]);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+  } catch {
+    // Not valid JSON in code block
+  }
+  return null;
+}
+
+// POST /builder/ai/content — synchronous AI generation for the content CMS
+// (landing-site service/start pages). Mirrors /edit but with the content
+// system prompt and a page-fields contract instead of a recipe.
+//
+// Body: { message, pageJson? }.
+//   - Generate/rewrite: { message, pageJson } → proposed page fields
+//   - From scratch:     { message }           → proposed page fields
+//
+// The editor applies the returned fields to its draft; nothing is deployed.
+export async function contentHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    if (!(await isAvailable())) {
+      res.status(503).json({ error: "AI service not configured" });
+      return;
+    }
+
+    const { message, pageJson } = req.body ?? {};
+    if (!message || typeof message !== "string" || !message.trim()) {
+      res.status(400).json({ error: "Provide a message" });
+      return;
+    }
+
+    const userText = pageJson
+      ? `Here is the current page as JSON:\n\n\`\`\`json\n${pageJson}\n\`\`\`\n\n${message.trim()}`
+      : message.trim();
+
+    const reply = await chat(getContentSystemPrompt(), [
+      { role: "user", content: userText },
+    ]);
+    const page = extractContentPage(reply);
+
+    res.json({ page, reply });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+}
+aiRouter.post("/content", contentHandler);
 
 aiRouter.post("/upload/presign", presignHandler);
 aiRouter.post("/upload/process", processHandler);
