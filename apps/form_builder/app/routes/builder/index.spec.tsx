@@ -34,6 +34,7 @@ jest.mock("../../server/registry", () => ({
 const getRecipe = jest.fn();
 const rekeyRecipe = jest.fn();
 const submitRecipe = jest.fn();
+const updateRecipe = jest.fn();
 // Always resolve to "no selection" by default so the picker's Promise.all
 // load path works; individual tests can override per case.
 const getFormConfig = jest.fn((..._args: unknown[]) =>
@@ -41,7 +42,7 @@ const getFormConfig = jest.fn((..._args: unknown[]) =>
 );
 jest.mock("../../server/forms", () => ({
   submitRecipe: (...args: unknown[]) => submitRecipe(...args),
-  updateRecipe: jest.fn(),
+  updateRecipe: (...args: unknown[]) => updateRecipe(...args),
   rekeyRecipe: (...args: unknown[]) => rekeyRecipe(...args),
   deleteForm: jest.fn(),
   disableForm: jest.fn(),
@@ -623,6 +624,8 @@ describe("BuilderPage — Open picker freshness after save", () => {
     getRecipe.mockReset();
     mockRefetch.mockClear();
     mockUpsertForm.mockClear();
+    submitRecipe.mockReset();
+    updateRecipe.mockReset();
   });
 
   it("full-refetches the picker (no upsert) after saving a brand-new form", async () => {
@@ -631,6 +634,10 @@ describe("BuilderPage — Open picker freshness after save", () => {
     renderBuilder();
 
     await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
+    // A brand-new form picks its initial version, so the field stays editable
+    // here — the read-only pin only applies to the Save Changes (update) path.
+    const newVersionField = await screen.findByDisplayValue("1.0.0");
+    expect(newVersionField).not.toHaveAttribute("readonly");
     await userEvent.click(
       await screen.findByRole("button", { name: "Submit Recipe" }),
     );
@@ -640,9 +647,12 @@ describe("BuilderPage — Open picker freshness after save", () => {
     expect(mockRefetch).toHaveBeenCalledTimes(1);
     // …and the cheap upsert path must not also fire.
     expect(mockUpsertForm).not.toHaveBeenCalled();
+    // A brand-new form is a create (POST), never an in-place update.
+    expect(submitRecipe).toHaveBeenCalledTimes(1);
+    expect(updateRecipe).not.toHaveBeenCalled();
   });
 
-  it("upserts the picker row (no refetch) after re-saving an existing form", async () => {
+  it("overwrites the loaded draft in place (PUT, same version) and upserts the picker row without a refetch", async () => {
     mockEmptyDraft = INVALID_DRAFT;
     mockForms = [
       { id: "old", formId: "old-form", title: "Old Form", version: "2.0.0", isPublished: true },
@@ -684,13 +694,19 @@ describe("BuilderPage — Open picker freshness after save", () => {
       target: { value: "Old Form (renamed)" },
     });
 
-    // Save a new version (the default save-draft patch bump off 2.0.0). A loaded
-    // form's modal reads "Save Changes" rather than "Submit Recipe".
+    // Save Changes now defaults to the loaded version (2.0.0), so the save
+    // overwrites the draft in place rather than minting a new patch row (#329).
+    // A loaded form's modal reads "Save Changes" rather than "Submit Recipe".
     await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
     await userEvent.click(
       await screen.findByRole("button", { name: "Save Changes" }),
     );
     await screen.findByText(/recipe submitted successfully/i);
+
+    // The same-version save routes through updateRecipe (PUT, overwrite), never
+    // submitRecipe (POST create) — so no duplicate draft is created.
+    expect(updateRecipe).toHaveBeenCalledTimes(1);
+    expect(submitRecipe).not.toHaveBeenCalled();
 
     // Re-save patches just this row client-side — no slow listForms() waterfall.
     expect(mockRefetch).not.toHaveBeenCalled();
@@ -700,14 +716,15 @@ describe("BuilderPage — Open picker freshness after save", () => {
       id: "old",
       formId: "old-form",
       title: "Old Form (renamed)",
-      version: "2.0.1",
-      // A version bump (2.0.0 → 2.0.1) makes this the highest draft, which the
-      // merge marks unpublished.
-      isPublished: false,
+      // The version is unchanged — Save Changes overwrites in place at 2.0.0.
+      version: "2.0.0",
+      // An in-place same-version save leaves the published row winning the
+      // version tie, so the badge stays.
+      isPublished: true,
     });
   });
 
-  it("preserves isPublished when re-saving an existing form in place at the same version", async () => {
+  it("renders the Version field read-only on Save Changes — the version can't be forked from the modal", async () => {
     mockEmptyDraft = INVALID_DRAFT;
     mockForms = [
       { id: "old", formId: "old-form", title: "Old Form", version: "2.0.0", isPublished: true },
@@ -742,29 +759,83 @@ describe("BuilderPage — Open picker freshness after save", () => {
     await userEvent.click(await screen.findByText("Old Form"));
     expect(await screen.findByDisplayValue("old-form")).toBeInTheDocument();
 
-    // Dirty the form so Save draft enables, then type the version back down to
-    // the current 2.0.0 so the save overwrites the published version in place.
+    // Dirty the form so Save draft enables, then open the Save Changes modal.
     fireEvent.change(screen.getByLabelText(/title/i), {
       target: { value: "Old Form (tweaked)" },
     });
     await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
-    const versionField = await screen.findByDisplayValue("2.0.1");
-    fireEvent.change(versionField, { target: { value: "2.0.0" } });
+
+    // The Version field is pinned to the loaded version and read-only: Save
+    // Changes always overwrites in place, so there's no fork-a-new-version path
+    // from this modal (Deploy is the way to cut a new version).
+    const versionField = await screen.findByDisplayValue("2.0.0");
+    expect(versionField).toHaveAttribute("readonly");
+  });
+
+  it("overwrites in place on every consecutive Save Changes — no duplicate drafts (#329)", async () => {
+    mockEmptyDraft = INVALID_DRAFT;
+    mockForms = [
+      { id: "old", formId: "old-form", title: "Old Form", version: "2.0.0", isPublished: false },
+    ];
+    getRecipe.mockResolvedValue({
+      formId: "old-form",
+      title: "Old Form",
+      version: "2.0.0",
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          elements: [{ ref: "components/first-name" }],
+          behaviours: [],
+        },
+        { stepId: "check-your-answers", title: "Check your answers", elements: [], behaviours: [] },
+        { stepId: "declaration", title: "Declaration", elements: [], behaviours: [] },
+        {
+          stepId: "submission-confirmation",
+          title: "Submission Confirmation",
+          elements: [],
+          behaviours: [],
+        },
+      ],
+      createdAt: "2020-01-01T00:00:00.000Z",
+      updatedAt: "2020-01-01T00:00:00.000Z",
+    });
+    validateRecipe.mockResolvedValue({ ok: true });
+    renderBuilder();
+
+    await userEvent.click(screen.getByRole("button", { name: /^open$/i }));
+    await userEvent.click(await screen.findByText("Old Form"));
+    expect(await screen.findByDisplayValue("old-form")).toBeInTheDocument();
+
+    const titleField = screen.getByLabelText(/title/i);
+
+    // First edit + Save: defaults to 2.0.0, overwrites in place (PUT).
+    fireEvent.change(titleField, { target: { value: "Old Form (edit 1)" } });
+    await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
     await userEvent.click(
       await screen.findByRole("button", { name: "Save Changes" }),
     );
     await screen.findByText(/recipe submitted successfully/i);
 
-    // An in-place same-version save leaves the published row winning the version
-    // tie, so the badge must stay — mirroring what a refetch would show.
-    expect(mockRefetch).not.toHaveBeenCalled();
-    expect(mockUpsertForm).toHaveBeenCalledWith({
-      id: "old",
-      formId: "old-form",
-      title: "Old Form (tweaked)",
-      version: "2.0.0",
-      isPublished: true,
-    });
+    // Second edit + Save: still defaults to 2.0.0 (the save didn't bump it), so
+    // it overwrites the same row again rather than minting 2.0.1.
+    fireEvent.change(titleField, { target: { value: "Old Form (edit 2)" } });
+    await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Save Changes" }),
+    );
+    await screen.findAllByText(/recipe submitted successfully/i);
+
+    // Both saves are PUTs at the unchanged version; no POST ever fires, so the
+    // backend keeps exactly one 2.0.0 draft instead of accumulating duplicates.
+    expect(updateRecipe).toHaveBeenCalledTimes(2);
+    expect(submitRecipe).not.toHaveBeenCalled();
+    // Both PUTs target the same loaded row (same formId), confirming the second
+    // save overwrote the first rather than branching to a new draft.
+    const targetedFormIds = updateRecipe.mock.calls.map(
+      ([arg]) => arg.data.formId,
+    );
+    expect(new Set(targetedFormIds).size).toBe(1);
   });
 });
 

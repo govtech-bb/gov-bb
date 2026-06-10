@@ -186,9 +186,14 @@ function BuilderPage() {
   // Versioning is deterministic and client-side — no async round-trip on the
   // load path (that fetch was the source of the version flicker). The loaded /
   // working version (`version`, set by handleLoad / handleNew / handleSubmit) is
-  // the single source of truth. Save draft cuts a patch; Deploy cuts a minor; a
-  // brand-new form (no current version) starts at 1.0.0.
-  const saveDraftVersion = currentVersion ? bumpPatch(currentVersion) : "1.0.0";
+  // the single source of truth. Save Changes overwrites the loaded draft in
+  // place at its current version (#329) — defaulting the modal to currentVersion
+  // makes the isInPlaceUpdate branch fire (updateRecipe/PUT) so repeated saves
+  // don't mint duplicate drafts. The SubmitModal pins this field read-only on
+  // the update path, so there's no fork-a-new-version escape hatch from Save
+  // Changes — Deploy still cuts a minor. A brand-new form (no current version)
+  // starts at 1.0.0 and keeps an editable version picker.
+  const saveDraftVersion = currentVersion ?? "1.0.0";
   const deployVersion = currentVersion ? bumpMinor(currentVersion) : "1.0.0";
 
   // Editing presence / read-only lock (#874). Claim the open form's single
