@@ -11,6 +11,10 @@ export interface FormSession {
   status: FormSessionStatus;
   referenceNumber?: string;
   lastError?: string;
+  // True once the model has offered in-chat feedback this session, so the
+  // offer is never made twice. Deliberately NOT cleared by
+  // resetSessionForNewForm — it must survive switching to the feedback form.
+  feedbackOffered?: boolean;
   createdAt: number;
   updatedAt: number;
 }
