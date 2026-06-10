@@ -9,6 +9,7 @@ import {
 } from "#/lib/chat-tools";
 import {
   cancelFeedbackForm,
+  FEEDBACK_FORM_ID,
   pinFeedbackForm,
   submitSuccessForModel,
 } from "#/lib/chat/feedback";
@@ -112,7 +113,10 @@ const reviewFormTool = reviewFormDef.server<FormTurnContext>(
     const active = getActiveFieldIds(form.contract, session.values).flat;
     const items = buildReviewItems(form.contract, session.values, active);
     if (!items.length) return { ok: false, error: "nothing collected yet" };
-    return { ok: true, items };
+    // isFeedback lets the client word the submit approval as "Submit your
+    // feedback now?" — review_form runs in the same turn just before the
+    // (argument-less) submit_form approval prompt, so it's the carrier.
+    return { ok: true, items, isFeedback: session.slug === FEEDBACK_FORM_ID };
   },
 );
 
@@ -141,7 +145,11 @@ const submitFormTool = submitFormDef.server<FormTurnContext>(
     // The upstream POST blocks for a few seconds and produces no text, so the
     // client has nothing to show after the user approves. Stream a status so
     // the UI can render a "Submitting…" indicator instead of dead air.
-    ctx.emitCustomEvent("submit_status", { state: "submitting" });
+    // isFeedback lets the indicator read "Submitting your feedback".
+    ctx.emitCustomEvent("submit_status", {
+      state: "submitting",
+      isFeedback: session.slug === FEEDBACK_FORM_ID,
+    });
     let result: SubmitOutcome;
     try {
       result = await submitFormUpstream(

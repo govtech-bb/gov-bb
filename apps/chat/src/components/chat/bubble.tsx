@@ -89,6 +89,10 @@ function BubbleImpl({
       ? (reviewPart.output as ReviewOutput | undefined)
       : undefined;
   const reviewItems = reviewOutput?.ok ? (reviewOutput.items ?? []) : [];
+  // The feedback form reads as "feedback", not "application". review_form runs
+  // in the same turn as the submit_form approval below, so its output is the
+  // signal for wording the approval prompt.
+  const isFeedbackForm = reviewOutput?.ok && reviewOutput.isFeedback === true;
 
   // Keep the lead-in text but drop the trailing question when buttons render it.
   const displayText = useMemo(
@@ -181,7 +185,7 @@ function BubbleImpl({
           {submitApproval && (
             <div className="flex flex-col gap-2.5">
               <p className="text-bubble font-medium text-black-00">
-                Submit your application now?
+                Submit your {isFeedbackForm ? "feedback" : "application"} now?
               </p>
               <div className="flex flex-wrap gap-2">
                 <button
