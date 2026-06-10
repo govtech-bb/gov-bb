@@ -21,6 +21,7 @@ import {
 } from "react";
 import { Bubble } from "#/components/chat/bubble";
 import { TridentAvatar } from "#/components/trident-avatar";
+import { FEEDBACK_TRIGGER_PHRASE } from "#/lib/chat/feedback";
 import { extractText, hasAnyToolCall } from "#/lib/chat/messages";
 import {
   chatPersistence,
@@ -251,10 +252,38 @@ function ChatPage() {
     setInput("");
   }
 
+  // The notice banner's "Give feedback" link starts the chat-feedback form the
+  // same way the model's offer does — a matcher phrase the server pins. Manual
+  // counterpart to offer_feedback; see #1066.
+  const handleGiveFeedback = useCallback(() => {
+    if (isStreaming) return;
+    sendMessage(FEEDBACK_TRIGGER_PHRASE);
+  }, [isStreaming, sendMessage]);
+
+  // Hide the feedback link while a form is mid-collection (the latest assistant
+  // turn ended on a visible form prompt) — otherwise the trigger phrase would be
+  // swallowed by that form instead of starting feedback. Mirrors shouldShowThinking.
+  const formActive = useMemo(
+    () =>
+      hasAnyToolCall(messages.slice(-1), [
+        askFieldDef.name,
+        presentChoicesDef.name,
+        reviewFormDef.name,
+        submitFormDef.name,
+      ]),
+    [messages],
+  );
+  const canGiveFeedback = !isStreaming && !formActive;
+
   function renderRow(row: ChatRow) {
     switch (row.kind) {
       case "notice":
-        return <NoticeBubble />;
+        return (
+          <NoticeBubble
+            onGiveFeedback={handleGiveFeedback}
+            canGiveFeedback={canGiveFeedback}
+          />
+        );
       case "welcome":
         return <WelcomeBubble />;
       case "optimistic":
@@ -434,8 +463,16 @@ function OptimisticUserBubble({ text }: { text: string }) {
 // Beta disclaimer rendered as the first chat row, above the welcome bubble.
 // Intentionally always shown (no dismiss / once-per-session suppression) and
 // styled as a full-width yellow WARNING banner — not a chat bubble — so it
-// reads as a standing notice rather than a message from the assistant.
-function NoticeBubble() {
+// reads as a standing notice rather than a message from the assistant. Carries
+// a "Give feedback" link (the manual counterpart to the model's offer); it is
+// hidden while a form is mid-collection so its trigger isn't swallowed.
+function NoticeBubble({
+  onGiveFeedback,
+  canGiveFeedback,
+}: {
+  onGiveFeedback: () => void;
+  canGiveFeedback: boolean;
+}) {
   return (
     <div
       role="note"
@@ -453,7 +490,16 @@ function NoticeBubble() {
       </svg>
       <Text as="p" size="caption" className="text-black-00">
         This assistant is still new and improving. Your feedback helps us make
-        it better!
+        it better!{" "}
+        {canGiveFeedback && (
+          <button
+            type="button"
+            onClick={onGiveFeedback}
+            className="font-medium text-black-00 underline underline-offset-2"
+          >
+            Give feedback
+          </button>
+        )}
       </Text>
     </div>
   );

@@ -286,6 +286,10 @@ async function pinSessionForm(
   if (matched) {
     if (matched.formId !== session.slug) resetSessionForNewForm(session);
     session.slug = matched.formId;
+    // Feedback can be started manually (the banner "Give feedback" link sends a
+    // matcher phrase) as well as by the model's offer_feedback tool. Either way,
+    // mark it spent so the model never also offers feedback later this session.
+    if (matched.formId === FEEDBACK_FORM_ID) session.feedbackOffered = true;
   }
 }
 
