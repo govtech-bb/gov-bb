@@ -68,11 +68,17 @@ jest.mock("../../server/publish", () => ({
   publishRecipe: jest.fn(),
   getPublishBaseBranch: jest.fn(),
 }));
-// The AI sidebar's convert server-fn is another createServerFn; stub it so
-// importing the editor doesn't pull a real RPC at module-eval.
+// The AI sidebar's convert server-fns are createServerFn; stub them so
+// importing the editor doesn't pull a real RPC at module-eval. `editRecipe` is
+// the one the Edit Form flow reaches, so route it through a swappable spy.
+const editRecipe = jest.fn();
 jest.mock("../../server/ai-builder/convert", () => ({
   convertRecipe: jest.fn(),
   getAiStatus: jest.fn(),
+  editRecipe: (...args: unknown[]) => editRecipe(...args),
+  presignPdfUpload: jest.fn(),
+  startPdfConvert: jest.fn(),
+  getPdfConvertStatus: jest.fn(),
 }));
 
 // The Open picker's forms list is a slow GitHub-API waterfall; stub it out.
@@ -110,14 +116,17 @@ jest.mock("./-recipe-reducer", () => {
 // free and pure (it strips editor-only field ids), and the unsaved-changes
 // tests rely on `draftsEqual` — which serializes both drafts — to discriminate
 // edited drafts from the saved baseline. No test inspects the serialized recipe.
+// findRecipeIdCollisions is swappable per test (default: no collisions) so the
+// AI apply path's collision pre-flight can be driven. formatCollisionIssues
+// stays real, so its message text is asserted directly.
+let mockCollisions: ReturnType<
+  typeof import("@govtech-bb/form-builder").findRecipeIdCollisions
+> = { fieldIdCollisions: [], stepIdCollisions: [] };
 jest.mock("@govtech-bb/form-builder", () => {
   const actual = jest.requireActual("@govtech-bb/form-builder");
   return {
     ...actual,
-    findRecipeIdCollisions: () => ({
-      fieldIdCollisions: [],
-      stepIdCollisions: [],
-    }),
+    findRecipeIdCollisions: () => mockCollisions,
     resolveFieldIds: () => [],
   };
 });
@@ -1031,5 +1040,228 @@ describe("BuilderPage — Preview modal recipe JSON (#744)", () => {
     expect(
       screen.getByRole("button", { name: /view recipe json/i }),
     ).toBeInTheDocument();
+  }, 30_000);
+});
+
+// #1051: an AI-generated recipe that fails contract validation or has an id
+// collision must LOAD into the builder with the defects surfaced in the
+// validation panel, rather than being hard-rejected so the draft never appears.
+// Only a structurally-unreadable recipe (buildLoadArgs throws) or a failed
+// validate *request* stay hard errors. These drive the real AiSidebar's Edit
+// Form flow, which routes through the route's internal `applyAiRecipe`.
+describe("BuilderPage — AI apply loads with a warning (#1051)", () => {
+  let confirmSpy: jest.SpyInstance;
+
+  // A recipe that deserializes to a draft different from VALID_DRAFT, so the
+  // no-op guard passes and the apply proceeds. Empty `elements` keeps
+  // deserialize off crypto.randomUUID.
+  const EDITED_RECIPE = {
+    formId: "edited-form",
+    title: "Edited Form",
+    version: "1.0.1",
+    steps: [{ stepId: "step-1", title: "Step 1", elements: [] }],
+  };
+
+  // The draft EDITED_RECIPE deserializes to — used to seed an unchanged-draft
+  // (no-op) case.
+  const EDITED_DRAFT: RecipeDraft = {
+    formId: "edited-form",
+    title: "Edited Form",
+    steps: [{ stepId: "step-1", title: "Step 1", fields: [], behaviours: [] }],
+  };
+
+  beforeEach(() => {
+    editRecipe.mockReset();
+    validateRecipe.mockReset();
+    mockForms = [];
+    mockCollisions = { fieldIdCollisions: [], stepIdCollisions: [] };
+    mockEmptyDraft = VALID_DRAFT;
+    // VALID_DRAFT seeds a dirty, never-saved draft, so applyAiRecipe prompts the
+    // dirty-overwrite confirm; accept it so the changed path proceeds.
+    confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(true);
+  });
+
+  afterEach(() => {
+    confirmSpy.mockRestore();
+  });
+
+  async function driveEditForm(message = "tweak the form") {
+    await userEvent.type(
+      screen.getByPlaceholderText(/make the email field required/i),
+      message,
+    );
+    await userEvent.click(screen.getByRole("button", { name: /edit form/i }));
+  }
+
+  it("loads a contract-invalid recipe and lights up the validation panel", async () => {
+    editRecipe.mockResolvedValue({ recipe: EDITED_RECIPE, reply: "Here you go." });
+    validateRecipe.mockResolvedValue({
+      ok: false,
+      issues: [
+        { path: "steps[0].fields", message: "Each step needs at least one field." },
+      ],
+    });
+    renderBuilder();
+
+    await driveEditForm();
+
+    // The draft loaded (form title input now reflects the AI recipe)...
+    expect(await screen.findByDisplayValue("Edited Form")).toBeInTheDocument();
+    // ...the contract issue shows in the validation panel...
+    expect(
+      await screen.findByText(/each step needs at least one field/i),
+    ).toBeInTheDocument();
+    // ...the sidebar confirms it was applied, not rejected...
+    expect(
+      await screen.findByText(/applied to the editor/i),
+    ).toBeInTheDocument();
+    // ...and there is no red error banner (warning, not rejection).
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  }, 30_000);
+
+  it("loads a recipe with an id collision and warns instead of rejecting", async () => {
+    editRecipe.mockResolvedValue({ recipe: EDITED_RECIPE, reply: "Here you go." });
+    validateRecipe.mockResolvedValue({ ok: true });
+    mockCollisions = {
+      fieldIdCollisions: [
+        {
+          id: "email",
+          locations: [
+            {
+              fieldId: "email",
+              editorFieldId: "a",
+              stepId: "step-1",
+              stepTitle: "Step 1",
+              display: "Email",
+              isBoolean: false,
+              isNumeric: false,
+            },
+            {
+              fieldId: "email",
+              editorFieldId: "b",
+              stepId: "step-1",
+              stepTitle: "Step 1",
+              display: "Email (2)",
+              isBoolean: false,
+              isNumeric: false,
+            },
+          ],
+        },
+      ],
+      stepIdCollisions: [],
+    };
+    renderBuilder();
+
+    await driveEditForm();
+
+    expect(await screen.findByDisplayValue("Edited Form")).toBeInTheDocument();
+    // The collision is surfaced by the always-on collision panel...
+    expect(
+      await screen.findByText(/Duplicate IDs must be fixed/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/is used by 2 fields/i)).toBeInTheDocument();
+    // ...and the sidebar confirms it was applied, not rejected.
+    expect(
+      await screen.findByText(/applied to the editor/i),
+    ).toBeInTheDocument();
+  }, 30_000);
+
+  it("still loads with a warning when convert flags unresolvable refs", async () => {
+    editRecipe.mockResolvedValue({
+      recipe: EDITED_RECIPE,
+      reply: "Built it.",
+      unresolvableRefs: [
+        { ref: "components/made-up", path: "steps[0].elements[0].ref" },
+      ],
+    });
+    renderBuilder();
+
+    await driveEditForm();
+
+    expect(await screen.findByDisplayValue("Edited Form")).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Unknown component\/block ref "components\/made-up"/),
+    ).toBeInTheDocument();
+    // The contract validate is skipped when refs are already flagged.
+    expect(validateRecipe).not.toHaveBeenCalled();
+  }, 30_000);
+
+  it("hard-errors and does not load a structurally unreadable recipe", async () => {
+    // No `steps` array → deserializeRecipe throws → buildLoadArgs throws.
+    editRecipe.mockResolvedValue({
+      recipe: { formId: "broken", title: "Broken", version: "1.0.1" },
+      reply: "Here you go.",
+    });
+    renderBuilder();
+
+    await driveEditForm();
+
+    // The red error banner shows...
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    // ...and nothing loaded (no apply status, draft untouched).
+    expect(screen.queryByText(/applied to the editor/i)).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue("Broken")).not.toBeInTheDocument();
+  }, 30_000);
+
+  it("hard-errors when the validate request itself fails", async () => {
+    editRecipe.mockResolvedValue({ recipe: EDITED_RECIPE, reply: "Here you go." });
+    validateRecipe.mockRejectedValue(new Error("Validation service unavailable"));
+    renderBuilder();
+
+    await driveEditForm();
+
+    expect(
+      await screen.findByText("Validation service unavailable"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/applied to the editor/i)).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue("Edited Form")).not.toBeInTheDocument();
+  }, 30_000);
+
+  it("reports 'unchanged' without validating when the recipe matches the draft", async () => {
+    mockEmptyDraft = EDITED_DRAFT;
+    editRecipe.mockResolvedValue({ recipe: EDITED_RECIPE, reply: "No change needed." });
+    renderBuilder();
+
+    await driveEditForm();
+
+    expect(
+      await screen.findByText(/returned the form unchanged/i),
+    ).toBeInTheDocument();
+    // No-op guard fires before the validate gate.
+    expect(validateRecipe).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  }, 30_000);
+
+  it("stays silent and does not load when the dirty-overwrite confirm is declined", async () => {
+    editRecipe.mockResolvedValue({ recipe: EDITED_RECIPE, reply: "Here you go." });
+    validateRecipe.mockResolvedValue({ ok: true });
+    confirmSpy.mockReturnValue(false);
+    renderBuilder();
+
+    await driveEditForm();
+
+    // The assistant prose lands, but no apply status, no error, no load.
+    expect(await screen.findByText("Here you go.")).toBeInTheDocument();
+    expect(screen.queryByText(/applied to the editor/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue("Edited Form")).not.toBeInTheDocument();
+  }, 30_000);
+
+  it("keeps Deploy blocked after a load-with-warning", async () => {
+    editRecipe.mockResolvedValue({ recipe: EDITED_RECIPE, reply: "Here you go." });
+    validateRecipe.mockResolvedValue({
+      ok: false,
+      issues: [
+        { path: "steps[0].fields", message: "Each step needs at least one field." },
+      ],
+    });
+    renderBuilder();
+
+    await driveEditForm();
+    await screen.findByText(/each step needs at least one field/i);
+
+    // The loaded-but-invalid draft is unsaved, so Deploy stays disabled
+    // (#331 unsaved gate / #504 hard deploy gate).
+    expect(screen.getByRole("button", { name: /deploy/i })).toBeDisabled();
   }, 30_000);
 });
