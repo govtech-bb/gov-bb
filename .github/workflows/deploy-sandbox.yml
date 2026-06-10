@@ -451,192 +451,83 @@ jobs:
   # skips these too). No AWS creds: the reusable workflow drives a headless
   # browser against the public deployed URL, and uploads use presigned URLs
   # issued server-side. Steps live in .github/workflows/forms-smoke.yml.
-  smoke-test-temp-teacher:
-    name: Smoke test forms (temp-teacher)
+  #
+  # Run as ONE matrix with a bounded `max-parallel` so the real
+  # POST /submissions calls stay under the API's submission throttle
+  # (short: 3/10s, medium: 10/60s — see forms/submissions/submissions.controller.ts).
+  # These are separate jobs only in name; the rate limit is GLOBAL across all of
+  # them. Before this was a matrix each spec was its own job, all `needs:
+  # amplify-forms`, so they fired simultaneously the instant the forms build
+  # finished — the burst tripped the throttle and the surplus got HTTP 429
+  # (deploy went red once #912 pushed the count to 18). `max-parallel: 3` keeps
+  # at most three submissions in flight, matching the strict short window, and
+  # the reusable workflow's `--retries=2` absorbs any edge collision with the
+  # rolling 60s window. `fail-fast: false` so one form failing doesn't cancel
+  # the others.
+  #
+  # NOT listed (their specs are test.fixme): the three certificate forms
+  # (get-birth-/get-death-/get-marriage-certificate) block on the EZ Pay
+  # confirmation-screen bug (#919); referral-student-support-services has an
+  # unsubmittable required-checkbox-with-empty-options recipe bug (ADR 0027).
+  # Add them to the matrix once those are fixed.
+  smoke-test-forms:
+    name: Smoke test forms
     needs: amplify-forms
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        include:
+          - spec: temp-teacher-application.smoke.spec.ts
+            artifact_name: temp-teacher-smoke-trace
+          - spec: vendor-registration.smoke.spec.ts
+            artifact_name: vendor-registration-smoke-trace
+          - spec: get-a-primary-school-textbook-grant.smoke.spec.ts
+            artifact_name: get-a-primary-school-textbook-grant-smoke-trace
+          - spec: duties-performed-exam-claim.smoke.spec.ts
+            artifact_name: duties-performed-smoke-trace
+          # term-leave-application is smoked here post-deploy (not only per-PR
+          # preview): the per-PR preview smoke can't validate a term-leave recipe
+          # change, because the preview frontend reads contracts from the sandbox
+          # API and so serves the PREVIOUS version until the new one ships (ADR
+          # 0029). This runs against deployed sandbox once the API is serving the
+          # new recipe, so a recipe bump is validated end-to-end after it goes live.
+          - spec: term-leave-application.smoke.spec.ts
+            artifact_name: term-leave-smoke-trace
+          - spec: homeschooling-application-2024.smoke.spec.ts
+            artifact_name: homeschooling-smoke-trace
+          - spec: statement-of-travelling-form.smoke.spec.ts
+            artifact_name: statement-of-travelling-smoke-trace
+          - spec: csec-private-candidate-registration.smoke.spec.ts
+            artifact_name: csec-smoke-trace
+          - spec: cape-exam-registration-2024.smoke.spec.ts
+            artifact_name: cape-smoke-trace
+          - spec: barbados-secondary-entrance-exam-choice.smoke.spec.ts
+            artifact_name: barbados-secondary-smoke-trace
+          # Forms added for issue #912 — the protege-mentor / community-sports /
+          # jobstart-plus programmes, the conductor licence, all three post-office
+          # redirections, and the beach/park vendor licence.
+          - spec: project-protege-mentor.smoke.spec.ts
+            artifact_name: project-protege-mentor-smoke-trace
+          - spec: sports-training-programme-form-schema.smoke.spec.ts
+            artifact_name: sports-training-programme-smoke-trace
+          - spec: jobstart-plus-programme.smoke.spec.ts
+            artifact_name: jobstart-plus-smoke-trace
+          - spec: apply-for-conductor-licence.smoke.spec.ts
+            artifact_name: conductor-licence-smoke-trace
+          - spec: post-office-redirection-individual.smoke.spec.ts
+            artifact_name: post-office-individual-smoke-trace
+          - spec: post-office-redirection-deceased.smoke.spec.ts
+            artifact_name: post-office-deceased-smoke-trace
+          - spec: post-office-redirection-business.smoke.spec.ts
+            artifact_name: post-office-business-smoke-trace
+          - spec: sell-goods-services-beach-park.smoke.spec.ts
+            artifact_name: beach-park-smoke-trace
     uses: ./.github/workflows/forms-smoke.yml
     with:
       base_url: https://forms.sandbox.alpha.gov.bb
-      spec: temp-teacher-application.smoke.spec.ts
-      artifact_name: temp-teacher-smoke-trace
-
-  smoke-test-vendor-registration:
-    name: Smoke test forms (vendor-registration)
-    needs: amplify-forms
-    uses: ./.github/workflows/forms-smoke.yml
-    with:
-      base_url: https://forms.sandbox.alpha.gov.bb
-      spec: vendor-registration.smoke.spec.ts
-      artifact_name: vendor-registration-smoke-trace
-
-  smoke-test-get-a-primary-school-textbook-grant:
-    name: Smoke test forms (get-a-primary-school-textbook-grant)
-    needs: amplify-forms
-    uses: ./.github/workflows/forms-smoke.yml
-    with:
-      base_url: https://forms.sandbox.alpha.gov.bb
-      spec: get-a-primary-school-textbook-grant.smoke.spec.ts
-      artifact_name: get-a-primary-school-textbook-grant-smoke-trace
-
-  smoke-test-duties-performed:
-    name: Smoke test forms (duties-performed)
-    needs: amplify-forms
-    uses: ./.github/workflows/forms-smoke.yml
-    with:
-      base_url: https://forms.sandbox.alpha.gov.bb
-      spec: duties-performed-exam-claim.smoke.spec.ts
-      artifact_name: duties-performed-smoke-trace
-
-  # term-leave-application is smoked here post-deploy (not only per-PR preview):
-  # the per-PR preview smoke can't validate a term-leave recipe change, because
-  # the preview frontend reads contracts from the sandbox API and so serves the
-  # PREVIOUS version until the new one ships (ADR 0029). This job runs against
-  # the deployed sandbox once the API is serving the new recipe, so a recipe
-  # bump is actually validated end-to-end after it goes live.
-  smoke-test-term-leave:
-    name: Smoke test forms (term-leave)
-    needs: amplify-forms
-    uses: ./.github/workflows/forms-smoke.yml
-    with:
-      base_url: https://forms.sandbox.alpha.gov.bb
-      spec: term-leave-application.smoke.spec.ts
-      artifact_name: term-leave-smoke-trace
-
-  smoke-test-homeschooling:
-    name: Smoke test forms (homeschooling)
-    needs: amplify-forms
-    uses: ./.github/workflows/forms-smoke.yml
-    with:
-      base_url: https://forms.sandbox.alpha.gov.bb
-      spec: homeschooling-application-2024.smoke.spec.ts
-      artifact_name: homeschooling-smoke-trace
-
-  smoke-test-statement-of-travelling:
-    name: Smoke test forms (statement-of-travelling)
-    needs: amplify-forms
-    uses: ./.github/workflows/forms-smoke.yml
-    with:
-      base_url: https://forms.sandbox.alpha.gov.bb
-      spec: statement-of-travelling-form.smoke.spec.ts
-      artifact_name: statement-of-travelling-smoke-trace
-
-  smoke-test-csec:
-    name: Smoke test forms (csec)
-    needs: amplify-forms
-    uses: ./.github/workflows/forms-smoke.yml
-    with:
-      base_url: https://forms.sandbox.alpha.gov.bb
-      spec: csec-private-candidate-registration.smoke.spec.ts
-      artifact_name: csec-smoke-trace
-
-  smoke-test-cape:
-    name: Smoke test forms (cape)
-    needs: amplify-forms
-    uses: ./.github/workflows/forms-smoke.yml
-    with:
-      base_url: https://forms.sandbox.alpha.gov.bb
-      spec: cape-exam-registration-2024.smoke.spec.ts
-      artifact_name: cape-smoke-trace
-
-  smoke-test-barbados-secondary:
-    name: Smoke test forms (barbados-secondary)
-    needs: amplify-forms
-    uses: ./.github/workflows/forms-smoke.yml
-    with:
-      base_url: https://forms.sandbox.alpha.gov.bb
-      spec: barbados-secondary-entrance-exam-choice.smoke.spec.ts
-      artifact_name: barbados-secondary-smoke-trace
-
-  # Forms added for issue #912 — birth/death/marriage certificates, the
-  # protege-mentor / community-sports / jobstart-plus programmes, the conductor
-  # licence, all three post-office redirections, and the beach/park vendor
-  # licence. Each spec was authored from its recipe contract; first live runs
-  # may surface recipe-vs-deployed drift to fix on the branch.
-  # NOTE: all three certificate forms (get-birth-certificate,
-  # get-death-certificate, get-marriage-certificate) have smoke specs that are
-  # test.fixme (skipped) and are intentionally NOT wired here. Each is a payment
-  # form whose submission succeeds (200, referenceCode, pending_payment, EZ Pay
-  # paymentUrl) but whose deployed submission-confirmation screen renders
-  # "Something went wrong" instead of the EZ Pay redirect / success — see #919.
-  # Re-add these jobs (and un-fixme the specs) once #919 is fixed.
-
-  smoke-test-project-protege-mentor:
-    name: Smoke test forms (project-protege-mentor)
-    needs: amplify-forms
-    uses: ./.github/workflows/forms-smoke.yml
-    with:
-      base_url: https://forms.sandbox.alpha.gov.bb
-      spec: project-protege-mentor.smoke.spec.ts
-      artifact_name: project-protege-mentor-smoke-trace
-
-  smoke-test-sports-training-programme:
-    name: Smoke test forms (sports-training-programme)
-    needs: amplify-forms
-    uses: ./.github/workflows/forms-smoke.yml
-    with:
-      base_url: https://forms.sandbox.alpha.gov.bb
-      spec: sports-training-programme-form-schema.smoke.spec.ts
-      artifact_name: sports-training-programme-smoke-trace
-
-  smoke-test-jobstart-plus:
-    name: Smoke test forms (jobstart-plus)
-    needs: amplify-forms
-    uses: ./.github/workflows/forms-smoke.yml
-    with:
-      base_url: https://forms.sandbox.alpha.gov.bb
-      spec: jobstart-plus-programme.smoke.spec.ts
-      artifact_name: jobstart-plus-smoke-trace
-
-  smoke-test-conductor-licence:
-    name: Smoke test forms (conductor-licence)
-    needs: amplify-forms
-    uses: ./.github/workflows/forms-smoke.yml
-    with:
-      base_url: https://forms.sandbox.alpha.gov.bb
-      spec: apply-for-conductor-licence.smoke.spec.ts
-      artifact_name: conductor-licence-smoke-trace
-
-  smoke-test-post-office-individual:
-    name: Smoke test forms (post-office-individual)
-    needs: amplify-forms
-    uses: ./.github/workflows/forms-smoke.yml
-    with:
-      base_url: https://forms.sandbox.alpha.gov.bb
-      spec: post-office-redirection-individual.smoke.spec.ts
-      artifact_name: post-office-individual-smoke-trace
-
-  smoke-test-post-office-deceased:
-    name: Smoke test forms (post-office-deceased)
-    needs: amplify-forms
-    uses: ./.github/workflows/forms-smoke.yml
-    with:
-      base_url: https://forms.sandbox.alpha.gov.bb
-      spec: post-office-redirection-deceased.smoke.spec.ts
-      artifact_name: post-office-deceased-smoke-trace
-
-  smoke-test-post-office-business:
-    name: Smoke test forms (post-office-business)
-    needs: amplify-forms
-    uses: ./.github/workflows/forms-smoke.yml
-    with:
-      base_url: https://forms.sandbox.alpha.gov.bb
-      spec: post-office-redirection-business.smoke.spec.ts
-      artifact_name: post-office-business-smoke-trace
-
-  smoke-test-beach-park:
-    name: Smoke test forms (beach-park)
-    needs: amplify-forms
-    uses: ./.github/workflows/forms-smoke.yml
-    with:
-      base_url: https://forms.sandbox.alpha.gov.bb
-      spec: sell-goods-services-beach-park.smoke.spec.ts
-      artifact_name: beach-park-smoke-trace
-
-  # NOTE: the referral-student-support-services smoke spec exists but is
-  # test.fixme (skipped) — its deployed form has a required-checkbox-with-empty-
-  # options recipe bug that makes it unsubmittable (see the spec header + ADR
-  # 0027). It is intentionally NOT wired here until the recipe is fixed; wiring a
-  # never-passing live smoke would just make every forms deploy red.
+      spec: ${{ matrix.spec }}
+      artifact_name: ${{ matrix.artifact_name }}
 
   amplify-landing:
     name: Amplify build (landing)
