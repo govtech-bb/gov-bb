@@ -24,7 +24,7 @@ You do not need receipts for mileage claims, but you must use the published Civi
 
 You can claim online. The form takes about 10 to 15 minutes, depending on how many trips you are claiming for.
 
-<a data-start-link href="/education/claim-examination-travel-expenses/start">Start now</a>
+<a data-start-link>Start now</a>
 
 ## What the form asks for
 
