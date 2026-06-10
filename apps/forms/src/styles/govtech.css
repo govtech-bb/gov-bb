@@ -11,6 +11,50 @@
   --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
 }
 
+/* ---- Skip link (WCAG 2.4.1 Bypass Blocks) --------------------------------
+ * Visually hidden until focused; the first Tab stop reveals it pinned to the
+ * top-left, letting keyboard users jump past the banner + header to the form.
+ * The styles package ships no skip-link class, so it's composed from tokens
+ * here to match the govbb focus look (yellow highlight + teal ring). */
+.skip-link {
+  /* Hidden but kept in the a11y tree + tab order (clip, not display:none). */
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* On focus the link becomes a clean full-width band at the very top of the
+ * page (position: static pushes the banner down rather than overlapping it),
+ * matching the GOV.UK skip-link pattern with brand tokens. */
+.skip-link:focus {
+  position: static;
+  display: block;
+  width: auto;
+  height: auto;
+  padding: var(--spacing-xs) var(--spacing-s);
+  overflow: visible;
+  clip: auto;
+  clip-path: none;
+  white-space: inherit;
+  background: var(--color-yellow-100);
+  color: var(--color-blue-100);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  /* Solid dark bar beneath, the GOV.UK keyboard-focus indicator. */
+  box-shadow: inset 0 -0.25rem 0 0 var(--color-teal-100);
+  outline: none;
+}
+
 /* Page wrapper used by every section (header, banner, page content, footer):
  * capped at the design's 1512px frame, centred. Side gutters step from 16px on
  * mobile up to the --xl (128px) token on large screens. */
@@ -102,68 +146,9 @@
   gap: var(--spacing-xs);
 }
 
-/* ---- Show/hide -----------------------------------------------------------
- * The govbb show-hide component is built on native <details>; this app drives
- * a React-controlled toggle that reveals sibling form fields, so the visual is
- * hand-rolled from tokens to match the govbb look. */
-.form-page__show-hide {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-.form-page__show-hide-toggle {
-  all: unset;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  cursor: pointer;
-  color: var(--color-teal-00);
-  font-size: var(--font-size-body);
-  line-height: var(--line-height-body);
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
-  width: fit-content;
-}
-
-.form-page__show-hide-toggle:hover {
-  color: var(--color-teal-100);
-  text-decoration-thickness: 0.1875rem;
-}
-
-.form-page__show-hide-toggle:focus-visible {
-  outline: 0.25rem solid var(--color-teal-100);
-  outline-offset: 0.125rem;
-  border-radius: 0.125rem;
-}
-
-.form-page__show-hide-arrow {
-  display: inline-block;
-  width: 0;
-  height: 0;
-  border-top: 0.3125rem solid transparent;
-  border-bottom: 0.3125rem solid transparent;
-  border-left: 0.4375rem solid currentColor;
-  flex-shrink: 0;
-  transition: transform 0.2s ease;
-}
-
-.form-page__show-hide-toggle[aria-expanded="true"] .form-page__show-hide-arrow {
-  transform: rotate(90deg);
-}
-
-.form-page__show-hide-content {
-  margin-top: var(--spacing-s);
-  padding: var(--spacing-s) 0 var(--spacing-s) var(--spacing-m);
-  border-left: 0.25rem solid var(--color-grey-00);
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-s);
-}
-
-.form-page__show-hide-content .govbb-hint {
-  margin: 0;
-}
+/* Show/hide now uses the package's native <details>-based govbb-show-hide
+ * component (rendered in form-renderer); the hand-rolled .form-page__show-hide*
+ * styles were removed in favour of govbb-show-hide__summary / __content. */
 
 /* ---- Select conditional reveal (#863) -------------------------------------
  * Inset fields revealed by a select option. @govtech-bb/styles only ships the

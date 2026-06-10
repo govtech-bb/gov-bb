@@ -1,6 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { axe } from "jest-axe";
 import FieldRenderer from "./field-renderer";
 import type { ClientPrimitive } from "@forms/types";
 
@@ -111,6 +112,12 @@ describe("FieldRenderer", () => {
     expect(container.querySelector("textarea")).toBeTruthy();
   });
 
+  it("textarea → passes axe accessibility audit (label wired to control)", async () => {
+    const { container } = renderField(primitive("textarea"));
+    const results = await axe(container);
+    expect(results).toHaveNoViolations();
+  });
+
   it("select → renders a select element", () => {
     const { container } = renderField(
       primitive("select", { options: [{ value: "a", label: "A" }] }),
@@ -173,39 +180,16 @@ describe("FieldRenderer", () => {
   // show-hide
   // -------------------------------------------------------------------------
   describe("show-hide htmlType", () => {
-    it("renders a toggle button with aria-expanded=false by default", () => {
+    // The show-hide disclosure is now a native <details> rendered by
+    // form-renderer (see form-renderer.spec.tsx). FieldRenderer no longer
+    // special-cases it — form-renderer intercepts the group before this
+    // component is ever called for a toggle. This guards against the old
+    // hand-rolled toggle button being reintroduced here.
+    it("does not render the legacy hand-rolled toggle button", () => {
       const { container } = renderField(primitive("show-hide"));
-      const button = container.querySelector(".form-page__show-hide-toggle");
-      expect(button).toBeTruthy();
-      expect(button).toHaveAttribute("aria-expanded", "false");
-    });
-
-    it("clicking the toggle calls handleChange(!isOpen)", async () => {
-      const user = userEvent.setup();
-      const { container } = renderField(primitive("show-hide"));
-      const button = container.querySelector(
-        ".form-page__show-hide-toggle",
-      ) as HTMLButtonElement;
-      await user.click(button);
-      expect(mockFieldApi.handleChange).toHaveBeenCalledWith(true);
-    });
-
-    it("when value is true, aria-expanded is true", () => {
-      mockState = { value: true, meta: { isValid: true, errors: [] } };
-      const { container } = renderField(primitive("show-hide"));
-      const button = container.querySelector(".form-page__show-hide-toggle");
-      expect(button).toHaveAttribute("aria-expanded", "true");
-    });
-
-    it("clicking toggle when already open calls handleChange(false)", async () => {
-      const user = userEvent.setup();
-      mockState = { value: true, meta: { isValid: true, errors: [] } };
-      const { container } = renderField(primitive("show-hide"));
-      const button = container.querySelector(
-        ".form-page__show-hide-toggle",
-      ) as HTMLButtonElement;
-      await user.click(button);
-      expect(mockFieldApi.handleChange).toHaveBeenCalledWith(false);
+      expect(
+        container.querySelector(".form-page__show-hide-toggle"),
+      ).toBeNull();
     });
   });
 
@@ -317,6 +301,87 @@ describe("FieldRenderer", () => {
       expect(
         screen.getByRole("button", { name: "Remove Address line" }),
       ).toBeInTheDocument();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // fieldArray behaviour (type=textarea) — regression: a repeating textarea
+  // used to fall through into `case "text"` and render single-line <input>s.
+  // -------------------------------------------------------------------------
+  describe("fieldArray behaviour (type=textarea)", () => {
+    const fieldArrayBehaviour = { type: "fieldArray" as const, min: 1, max: 3 };
+
+    it("renders <textarea> controls, not <input>, for a repeating textarea", () => {
+      mockState = { value: ["first"], meta: { isValid: true, errors: [] } };
+      const { container } = renderField(
+        primitive("textarea", { behaviours: [fieldArrayBehaviour] }),
+      );
+      // The bug: the textarea case only returned inside `if (!fieldArray)`, so
+      // a fieldArray textarea fell through to `case "text"` → <input>.
+      expect(container.querySelector("textarea")).toBeTruthy();
+      expect(container.querySelector("input")).toBeNull();
+    });
+
+    it("still offers the Add Another / Remove array controls", () => {
+      mockState = {
+        value: ["first", "second"],
+        meta: { isValid: true, errors: [] },
+      };
+      renderField(
+        primitive("textarea", {
+          label: "Comment",
+          behaviours: [fieldArrayBehaviour],
+        }),
+      );
+      expect(
+        screen.getByRole("button", { name: "Add Another Comment" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Remove Comment" }),
+      ).toBeInTheDocument();
+    });
+
+    it("clicking 'Add Another' appends an empty trailing entry", async () => {
+      const user = userEvent.setup();
+      mockState = { value: ["first"], meta: { isValid: true, errors: [] } };
+      renderField(primitive("textarea", { behaviours: [fieldArrayBehaviour] }));
+      await user.click(screen.getByText(/Add Another/i));
+      expect(mockFieldApi.handleChange).toHaveBeenCalledWith(["first", ""]);
+    });
+
+    it("clicking 'Remove' drops the trailing entry", async () => {
+      const user = userEvent.setup();
+      mockState = {
+        value: ["first", "second"],
+        meta: { isValid: true, errors: [] },
+      };
+      renderField(primitive("textarea", { behaviours: [fieldArrayBehaviour] }));
+      await user.click(screen.getByText(/Remove/i));
+      expect(mockFieldApi.handleChange).toHaveBeenCalledWith(["first"]);
+    });
+
+    it("typing in an array textarea calls handleChange", async () => {
+      const user = userEvent.setup();
+      mockState = { value: [""], meta: { isValid: true, errors: [] } };
+      const { container } = renderField(
+        primitive("textarea", { behaviours: [fieldArrayBehaviour] }),
+      );
+      const textarea = container.querySelector(
+        "textarea",
+      ) as HTMLTextAreaElement;
+      await user.type(textarea, "hi");
+      expect(mockFieldApi.handleChange).toHaveBeenCalled();
+    });
+
+    it("when value is undefined, renders exactly min textareas using defaultValue", () => {
+      mockState = { value: undefined, meta: { isValid: true, errors: [] } };
+      const { container } = renderField(
+        primitive("textarea", {
+          behaviours: [fieldArrayBehaviour],
+          defaultValue: "default",
+        }),
+      );
+      expect(container.querySelectorAll("textarea").length).toBe(1);
     });
   });
 

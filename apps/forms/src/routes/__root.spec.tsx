@@ -10,6 +10,7 @@
 
 import React from "react";
 import { render, screen } from "@testing-library/react";
+import { axe } from "jest-axe";
 
 jest.mock("@tanstack/react-router", () => ({
   createRootRouteWithContext: () => (routeConfig: any) => routeConfig,
@@ -68,6 +69,26 @@ describe("__root Route", () => {
       expect(screen.getByTestId("site-header")).toBeInTheDocument();
       expect(screen.getByTestId("outlet")).toBeInTheDocument();
       expect(screen.getByTestId("footer")).toBeInTheDocument();
+    });
+
+    it("renders a skip link that targets the main landmark (WCAG 2.4.1)", () => {
+      const { container } = render(<Route.component />);
+      const skipLink = screen.getByRole("link", {
+        name: "Skip to main content",
+      });
+      expect(skipLink).toHaveAttribute("href", "#main-content");
+
+      // The link must be the first focusable element so keyboard users reach
+      // it before the banner/header, and its target id must exist.
+      const focusables = container.querySelectorAll("a[href], main");
+      expect(focusables[0]).toBe(skipLink);
+      expect(container.querySelector("#main-content")?.tagName).toBe("MAIN");
+    });
+
+    it("passes axe accessibility audit", async () => {
+      const { container } = render(<Route.component />);
+      const results = await axe(container);
+      expect(results).toHaveNoViolations();
     });
 
     it("wires the Footer with the expected links, logoSrc, and current-year copyright", () => {

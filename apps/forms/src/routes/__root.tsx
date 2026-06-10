@@ -27,9 +27,18 @@ const FOOTER_LINKS = [
 const RootLayout = () => (
   <div className="flex min-h-dvh flex-col bg-white-00">
     <HeadContent />
+    {/* Skip link (WCAG 2.4.1 Bypass Blocks): first focusable element, hidden
+        until focused, jumps keyboard users past the banner + header straight to
+        the form. Targets the #main-content id on <main> below. */}
+    <a href="#main-content" className="skip-link">
+      Skip to main content
+    </a>
     <OfficialBanner />
     <SiteHeader />
-    <main className="flex-1">
+    {/* tabIndex=-1 makes <main> programmatically focusable so activating the
+        skip link moves keyboard focus here (not just the scroll position);
+        the next Tab then continues into the form, past the banner + header. */}
+    <main id="main-content" tabIndex={-1} className="flex-1 outline-none">
       <Outlet />
     </main>
     <Footer

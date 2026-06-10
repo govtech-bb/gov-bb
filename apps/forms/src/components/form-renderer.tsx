@@ -448,19 +448,26 @@ export default function FormRenderer({
           {fieldGroups.map((group) => {
             if (group.type === "show-hide") {
               const isOpen = showHideValues[group.toggle.id] ?? false;
+              // Native disclosure (govbb-show-hide is <details>-based): the
+              // summary is the toggle, and the controlled sibling fields nest
+              // inside __content so they're part of the disclosure region. The
+              // toggle's open state is the single source of truth in
+              // TanStack-Form; onToggle pushes <details>.open back into it
+              // (the toggle field carries no validators).
               return (
-                <React.Fragment key={group.toggle.id}>
-                  {/* Toggle button — hint and controlled fields live outside the
-                    FieldRenderer so we can wrap them all in the content border */}
-                  <FieldRenderer
-                    form={form}
-                    field={group.toggle}
-                    validationProperties={resolveValidators(group.toggle)}
-                    formId={formMeta.formId}
-                    formVersion={formMeta.version}
-                  />
+                <details
+                  key={group.toggle.id}
+                  className="govbb-show-hide"
+                  open={isOpen}
+                  onToggle={(e) =>
+                    form.setFieldValue(group.toggle.id, e.currentTarget.open)
+                  }
+                >
+                  <summary className="govbb-show-hide__summary">
+                    {group.toggle.label}
+                  </summary>
                   {isOpen && (
-                    <div className="form-page__show-hide-content">
+                    <div className="govbb-show-hide__content">
                       {group.toggle.hint && (
                         <p className="govbb-hint">{group.toggle.hint}</p>
                       )}
@@ -476,7 +483,7 @@ export default function FormRenderer({
                       ))}
                     </div>
                   )}
-                </React.Fragment>
+                </details>
               );
             }
 

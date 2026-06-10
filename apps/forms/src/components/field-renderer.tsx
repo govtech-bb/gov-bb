@@ -311,42 +311,121 @@ export default function FieldRenderer({
             );
           }
           case "textarea": {
-            let textareaElement: JSX.Element;
+            // `withRequired` mirrors the text case: the repeating array path
+            // omits requiredProps so a single box isn't forced filled.
+            const renderTextarea = (
+              value: string,
+              onChange: (next: string) => void,
+              withRequired: boolean,
+            ): JSX.Element => (
+              <div className="govbb-input-wrapper">
+                <textarea
+                  key={field.id}
+                  {...sharedProps}
+                  {...(withRequired ? requiredProps : {})}
+                  className="govbb-textarea"
+                  value={value}
+                  aria-invalid={invalid}
+                  onChange={(e) => onChange(e.target.value)}
+                />
+              </div>
+            );
 
+            let textareaControl: JSX.Element;
             if (!fieldArray) {
               const value = f.state.value as string | undefined;
-              textareaElement = (
-                <div
-                  className="govbb-form-group"
-                  data-field-width={field.ui?.width}
-                >
-                  <label
-                    className={labelClass("govbb-label")}
-                    htmlFor={field.id}
-                  >
-                    {field.label}
-                  </label>
-                  {field.hint && (
-                    <p className="govbb-hint" id={hintId}>
-                      {field.hint}
-                    </p>
-                  )}
-                  <ErrorMessage id={errorId} message={errorMessage} />
-                  <div className="govbb-input-wrapper">
-                    <textarea
-                      key={field.id}
-                      {...sharedProps}
-                      {...requiredProps}
-                      className="govbb-textarea"
-                      value={value ?? ""}
-                      aria-invalid={invalid}
-                      onChange={(e) => commitChange(e.target.value)}
-                    />
-                  </div>
-                </div>
+              textareaControl = renderTextarea(
+                value ?? "",
+                (next) => commitChange(next),
+                true,
               );
-              return textareaElement;
+            } else {
+              // Repeating textarea (fieldArray). Without this branch the case
+              // used to fall through into `case "text"` and render a
+              // single-line <input> instead of a <textarea>.
+              const addAnotherField = (values: string[]) => {
+                values.push("");
+                commitChange(values);
+              };
+              const removeField = (values: string[]) => {
+                values.pop();
+                commitChange(values);
+              };
+              const updateField = (
+                values: string[],
+                index: number,
+                value: string,
+              ) => {
+                values[index] = value;
+                commitChange(values);
+              };
+
+              const values = (f.state.value as string[] | undefined) ?? [
+                (field.defaultValue as string) ?? "",
+              ];
+              const min = fieldArray.min;
+              const max = fieldArray.max;
+              const fieldCount =
+                values && values.length > 0
+                  ? Math.min(values.length, max)
+                  : min;
+
+              textareaControl = (
+                <>
+                  {Array.from({ length: fieldCount }).map((_, i) => (
+                    <React.Fragment key={`${field.id}-${i}`}>
+                      {renderTextarea(
+                        values && values.length > 0 ? values[i] : "",
+                        (next) => updateField(values, i, next),
+                        false,
+                      )}
+                      {i === fieldCount - 1 && i != 0 ? (
+                        <button
+                          type="button"
+                          className="govbb-btn--destructive-link"
+                          onClick={() => removeField(values)}
+                        >
+                          Remove{" "}
+                          <span className="govbb-visually-hidden">
+                            {field.label}
+                          </span>
+                        </button>
+                      ) : null}
+                    </React.Fragment>
+                  ))}
+                  {fieldCount < max ? (
+                    <button
+                      type="button"
+                      className="govbb-btn--link"
+                      onClick={() => addAnotherField(values)}
+                    >
+                      Add Another{" "}
+                      <span className="govbb-visually-hidden">
+                        {field.label}
+                      </span>
+                    </button>
+                  ) : null}
+                </>
+              );
             }
+
+            return (
+              <div
+                className="govbb-form-group"
+                data-field-width={field.ui?.width}
+              >
+                <label className={labelClass("govbb-label")} htmlFor={field.id}>
+                  {field.label}
+                </label>
+                {field.hint && (
+                  <p className="govbb-hint" id={hintId}>
+                    {field.hint}
+                  </p>
+                )}
+                <ErrorMessage id={errorId} message={errorMessage} />
+                {textareaControl}
+              </div>
+            );
           }
           case "text":
           case "number":
@@ -721,31 +800,9 @@ export default function FieldRenderer({
                 formVersion={formVersion}
               />
             );
-          case "show-hide": {
-            // Value is a boolean: false = collapsed (default), true = expanded.
-            // The toggle itself carries no validation. Hint text and controlled
-            // sibling fields are rendered by form-renderer inside a shared
-            // form-page__show-hide-content wrapper so the left border spans
-            // them all. The govbb show-hide component is <details>-based, so the
-            // controlled-toggle visual is hand-rolled from brand tokens.
-            const isOpen = (f.state.value as boolean | undefined) ?? false;
-            return (
-              <div className="form-page__show-hide">
-                <button
-                  type="button"
-                  className="form-page__show-hide-toggle"
-                  aria-expanded={isOpen}
-                  onClick={() => commitChange(!isOpen)}
-                >
-                  <span
-                    className="form-page__show-hide-arrow"
-                    aria-hidden="true"
-                  />
-                  {field.label}
-                </button>
-              </div>
-            );
-          }
+          // Note: "show-hide" fields never reach FieldRenderer — form-renderer
+          // intercepts the show-hide group and renders the native <details>
+          // disclosure itself (so the controlled fields can nest inside it).
           default:
             return (
               <div style={{ color: "red" }}>

@@ -14,14 +14,15 @@
  * - Renders ApplicantNameDisplay on the declaration step
  * - Renders SubmissionConfirmation on the submission-confirmation step
  * - Renders a FieldRenderer for each plain field in the step
- * - show-hide group: renders controlled fields when toggle value is true
- * - show-hide group: does not render controlled fields when toggle value is false
+ * - show-hide group: native <details> reveals controlled fields when open
+ * - show-hide group: collapsed <details> does not render controlled fields
  * - radio-conditional: radio field with conditional child is grouped correctly
  */
 
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { axe } from "jest-axe";
 import { useStore } from "@tanstack/react-form";
 import { useStepGuard } from "../hooks/use-step-guard";
 
@@ -140,6 +141,7 @@ const mockForm = {
   store: {},
   state: { isValid: true, isSubmitting: false, values: {} },
   getFieldValue: jest.fn(),
+  setFieldValue: jest.fn(),
   validateField: jest.fn().mockResolvedValue([]),
   handleSubmit: jest.fn(),
   deleteField: jest.fn(),
@@ -530,10 +532,52 @@ describe("FormRenderer", () => {
       />,
     );
 
+    // The toggle renders as the native <details> summary (not a FieldRenderer),
+    // and the open disclosure reveals its controlled field.
+    const disclosure = screen.getByText("Toggle").closest("details");
+    expect(disclosure).toHaveAttribute("open");
     const renderers = screen.getAllByTestId("field-renderer");
     const fieldIds = renderers.map((el) => el.getAttribute("data-field-id"));
-    expect(fieldIds).toContain("step1_toggle");
+    expect(fieldIds).not.toContain("step1_toggle");
     expect(fieldIds).toContain("step1_detail");
+  });
+
+  it("show-hide group: open disclosure passes axe accessibility audit", async () => {
+    const toggleField = {
+      id: "step1_toggle",
+      fieldId: "toggle",
+      stepId: "step1",
+      name: "toggle",
+      label: "Toggle",
+      htmlType: "show-hide" as any,
+      disabled: false,
+      hidden: false,
+      conditionallyHidden: false,
+      behaviours: [],
+    };
+    const step = makeStep("step1", [toggleField]);
+
+    mockUseStore.mockImplementation((_store: any, selector: any) => {
+      try {
+        return selector({ values: { step1_toggle: true }, fieldMeta: {} });
+      } catch {
+        return {};
+      }
+    });
+
+    const { container } = render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="step1"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+
+    const results = await axe(container);
+    expect(results).toHaveNoViolations();
   });
 
   it("show-hide group: does not render controlled fields when toggle value is false", () => {
@@ -582,9 +626,13 @@ describe("FormRenderer", () => {
       />,
     );
 
-    const renderers = screen.getAllByTestId("field-renderer");
+    // Collapsed <details>: the summary still renders, but the controlled
+    // field inside __content does not.
+    const disclosure = screen.getByText("Toggle").closest("details");
+    expect(disclosure).not.toHaveAttribute("open");
+    const renderers = screen.queryAllByTestId("field-renderer");
     const fieldIds = renderers.map((el) => el.getAttribute("data-field-id"));
-    expect(fieldIds).toContain("step1_toggle");
+    expect(fieldIds).not.toContain("step1_toggle");
     expect(fieldIds).not.toContain("step1_detail");
   });
 
