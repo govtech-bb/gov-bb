@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { SCORE_THRESHOLD } from "./rag-config";
+import { SCORE_THRESHOLD } from "#/lib/rag/config";
 import { decideRagFallback, topHandoffCandidateSlug } from "./retrieval";
 import type { Source } from "./types";
 

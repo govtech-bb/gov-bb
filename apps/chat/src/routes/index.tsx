@@ -26,11 +26,23 @@ import {
   chatPersistence,
   citationsStore,
   getSessionThreadId,
+  resetSessionThreadId,
 } from "#/lib/chat/persistence";
 import type { Citation } from "#/lib/chat/types";
-import { presentChoicesDef, submitFormDef } from "#/lib/chat-tools";
+import {
+  askFieldDef,
+  presentChoicesDef,
+  reviewFormDef,
+  submitFormDef,
+} from "#/lib/chat-tools";
 
-export const Route = createFileRoute("/")({ component: ChatPage });
+export const Route = createFileRoute("/")({
+  component: ChatPage,
+  // ?q= auto-sends a query handed over from the landing page's chat box.
+  validateSearch: (search: Record<string, unknown>): { q?: string } => ({
+    q: typeof search.q === "string" && search.q ? search.q : undefined,
+  }),
+});
 
 const MAX_QUERY_LENGTH = 2000;
 
@@ -169,20 +181,19 @@ function ChatPage() {
     overscan: 6,
   });
 
+  const { q } = Route.useSearch();
+  const navigate = Route.useNavigate();
   const autoSentRef = useRef(false);
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot mount effect; sendMessage identity is irrelevant, autoSentRef guards re-entry.
   useEffect(() => {
     if (autoSentRef.current) return;
-    const params = new URLSearchParams(window.location.search);
-    const q = params.get("q")?.trim().slice(0, MAX_QUERY_LENGTH);
-    if (!q) return;
+    const query = q?.trim().slice(0, MAX_QUERY_LENGTH);
+    if (!query) return;
     autoSentRef.current = true;
-    const url = new URL(window.location.href);
-    url.searchParams.delete("q");
-    window.history.replaceState({}, "", url.toString());
-    setPendingQuery(q);
-    sendMessage(q);
-  }, []);
+    // Strip ?q= so a refresh doesn't re-send; replace keeps history clean.
+    void navigate({ search: {}, replace: true });
+    setPendingQuery(query);
+    sendMessage(query);
+  }, [q, navigate, sendMessage]);
 
   useEffect(() => {
     if (messages.length > 0) setPendingQuery(null);
@@ -218,6 +229,9 @@ function ChatPage() {
   const handleStartAgain = useCallback(() => {
     stop();
     clear();
+    // clear() only empties messages; rotating the threadId sheds the
+    // server-side form session too.
+    resetSessionThreadId();
     setCitationsByMessageId({});
     setPendingQuery(null);
     setSubmitting(false);
@@ -290,7 +304,11 @@ function ChatPage() {
             off-screen region below instead. */}
         <div
           ref={parentRef}
-          className="h-full overflow-y-auto px-s py-s"
+          // overscroll-contain: the root layout renders the site footer BELOW
+          // this h-dvh page (md+), so without it, hitting the bottom of the
+          // chat chains the scroll to the window and drags the footer into
+          // view — recoverable only by scrolling the page itself back up.
+          className="h-full overflow-y-auto overscroll-contain px-s py-s"
         >
           <div
             aria-label="Chat messages"
@@ -427,7 +445,14 @@ function shouldShowThinking(messages: UIMessage[]): boolean {
   // Hide once something renderable lands: text deltas, a present_choices
   // tool call, or a submit_form approval prompt. set_field is invisible.
   if (extractText(last).length > 0) return false;
-  if (hasAnyToolCall([last], [presentChoicesDef.name, submitFormDef.name])) {
+  if (
+    hasAnyToolCall([last], [
+      presentChoicesDef.name,
+      askFieldDef.name,
+      reviewFormDef.name,
+      submitFormDef.name,
+    ])
+  ) {
     return false;
   }
   return true;

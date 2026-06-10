@@ -14,6 +14,7 @@ import {
   withThreadLock,
   type FormResolution,
   type FormSession,
+  type FormTurnContext,
 } from "./form";
 import { citationsMiddleware, turnLogMiddleware } from "./middleware";
 import { capMessageHistory, lastUserText, recentUserText } from "./messages";
@@ -49,7 +50,7 @@ export interface RunTurnInput {
 }
 
 export type RunTurnResult =
-  | { kind: "blocked"; status: number; message: string }
+  | { kind: "blocked"; message: string }
   | {
       kind: "ok";
       stream: AsyncIterable<StreamChunk>;
@@ -75,29 +76,13 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     console.warn(`[chat] jailbreak blocked: ${latest.slice(0, 80)}`);
     return {
       kind: "blocked",
-      status: 400,
       message:
         "I can only help with Barbados government services on alpha.gov.bb. Please rephrase your question around that.",
     };
   }
 
   const session = getOrCreateSession(threadId);
-  if (!session.slug || session.status === "submitted") {
-    const windowMatch = await matchFormsFromText(recentUserText(messages));
-    // A handed-off form (file upload / payment) isn't pinned to the session,
-    // so it re-enters matching from the rolling window. If the window still
-    // points at the form we just handed off, defer to what the user's LATEST
-    // message matches (possibly nothing) so they aren't re-handed the same
-    // link turn after turn, and a genuine topic switch still activates.
-    const matched =
-      windowMatch && windowMatch.formId === session.handedOffSlug
-        ? await matchFormsFromText(lastUserText(messages))
-        : windowMatch;
-    if (matched) {
-      if (matched.formId !== session.slug) resetSessionForNewForm(session);
-      session.slug = matched.formId;
-    }
-  }
+  await pinSessionForm(session, messages);
 
   let resolution: FormResolution = session.slug
     ? await resolveActiveForm(session.slug, session.values)
@@ -168,80 +153,16 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     query,
   );
 
-  // RAG-driven handoff (and its follow-up continuation). The title-token matcher
-  // above only fires when the user's wording overlaps a form title (e.g.
-  // "conductor licence"). When it didn't pin a form, fall back to the top
-  // retrieved service — if it maps to a published form that must be completed in
-  // the forms app (file upload / payment), surface that link rather than a plain
-  // informational answer. This is what makes phrasings like "how do I become a
-  // conductor" reach the conductor application.
-  //
-  // Scoped to kind "none" && !session.slug: never upgrades a matched collectible
-  // form, and never fires when a pinned form merely failed to resolve (a
-  // transient form-API blip can't redirect the user elsewhere). It also means
-  // the matcher block above ran this turn, so the form index is warm-cached.
-  let handoffContinuation: { title: string; url: string } | undefined;
-  // Set when RAG surfaces an approved COLLECT form the title matcher missed: we
-  // offer its form link (ADR 0045 — RAG may hand off a link but must never
-  // auto-start inline collection), instead of falling to the no-form/paper path.
-  let ragCollectLink: { title: string; url: string } | undefined;
-  // Compute a candidate only when no form is pinned (the gates fold into here):
-  // "none" so we never override a matched collectible form, and !session.slug so
-  // a pinned form that merely failed to resolve can't be redirected elsewhere.
-  const ragCandidate =
-    resolution.kind === "none" && !session.slug && !rewrite.illegitimate
-      ? topHandoffCandidateSlug(rawSources)
-      : null;
-  // Resolve against the forms API only when there's a candidate, and gate on the
-  // form index (warm-cached from the matcher this turn) so a retrieved info-only
-  // service with no published form doesn't trigger a doomed form-definition
-  // fetch and a 404 warning every turn.
-  let ragResolution: FormResolution = { kind: "none" };
-  if (ragCandidate && (await getFormSlugs(signal)).includes(ragCandidate)) {
-    ragResolution = await resolveActiveForm(ragCandidate, {});
-  }
-  const ragDecision = decideRagFallback({
-    candidate: ragCandidate,
-    candidateHandoff: ragResolution.kind === "handoff",
-    handedOffSlug: session.handedOffSlug ?? null,
-  });
-  if (
-    ragDecision.action === "fresh-handoff" &&
-    ragResolution.kind === "handoff"
-  ) {
-    resolution = ragResolution;
-    // Park it like the matcher-driven handoff does, so the user isn't re-handed
-    // the strict link on every later turn.
-    session.handedOffSlug = ragCandidate;
-  } else if (
-    ragDecision.action === "continuation" &&
-    ragResolution.kind === "handoff"
-  ) {
-    // The user was already handed this form's link and is following up ("ok
-    // let's begin", "what's next?"). Re-issuing the strict link-only handoff is
-    // noisy, but the no-form path makes the model hallucinate inline collection
-    // or deny the form exists. Instead keep answering informationally while
-    // pointing back to the link. (Already parked — no re-park.)
-    handoffContinuation = {
-      title: ragResolution.title,
-      url: ragResolution.url,
-    };
-  } else if (ragResolution.kind === "collect" && ragCandidate) {
-    // RAG surfaced an APPROVED collect form the title matcher missed (e.g. a
-    // follow-up like "is there a form i can fill out", or a paraphrase that
-    // doesn't overlap the form title). Per ADR 0045, RAG must NOT auto-start
-    // inline collection — that stays behind the higher-confidence title matcher.
-    // But we also must not fall through to the no-online-form / paper path (the
-    // bug behind business-mail & deceased-mail). So OFFER the form LINK — the
-    // low-commitment action the ADR explicitly lets the fuzzy RAG signal
-    // trigger. No pin, no collect: if the user then clearly states intent, the
-    // matcher/apply path starts collection. ragCandidate is gated to allowlisted
-    // published forms above.
-    ragCollectLink = {
-      title: ragResolution.form.contract.title,
-      url: `${getServerEnv().FORMS_URL}/forms/${encodeURIComponent(ragCandidate)}`,
-    };
-  }
+  const ragFallback = await applyRagFallback(
+    resolution,
+    session,
+    rawSources,
+    rewrite.illegitimate,
+    signal,
+  );
+  resolution = ragFallback.resolution;
+  const handoffContinuation = ragFallback.handoffContinuation;
+  const ragCollectLink = ragFallback.ragCollectLink;
 
   // Info-intent on a handoff service: buildSystemPrompts offers the link in
   // prose instead of pushing it. We deliberately leave the form PARKED (as the
@@ -264,12 +185,18 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
   // (offerOnly) → present_choices ONLY, so the model offers a clickable "Start
   // the application" affordance rather than a dead-end prose "want to start?",
   // but still can't silently record fields on a question. Anything else → none.
+  // The field tools read session/form/signal from chat()'s runtime context.
   const tools =
     resolution.kind === "collect"
       ? offerOnly
         ? buildOfferTools()
-        : buildFormTools(session, resolution.form, signal)
+        : buildFormTools()
       : [];
+  const formContext: FormTurnContext = {
+    session,
+    form: resolution.kind === "collect" ? resolution.form : null,
+    signal,
+  };
 
   const abortController = childController(signal);
 
@@ -282,6 +209,7 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     messages,
     systemPrompts,
     tools,
+    context: formContext,
     modelOptions: { maxTokens: 600, temperature: 0 },
     abortController,
     middleware: [
@@ -313,6 +241,116 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     abortController,
     activeFormSlug: session.slug ?? undefined,
   };
+}
+
+// Pin the session to a form the user's recent messages name (token-overlap
+// matcher). A handed-off form (file upload / payment) isn't pinned to the
+// session, so it re-enters matching from the rolling window. If the window
+// still points at the form we just handed off, defer to what the user's
+// LATEST message matches (possibly nothing) so they aren't re-handed the same
+// link turn after turn, and a genuine topic switch still activates.
+async function pinSessionForm(
+  session: FormSession,
+  messages: UIMessage[],
+): Promise<void> {
+  if (session.slug && session.status !== "submitted") return;
+  const windowMatch = await matchFormsFromText(recentUserText(messages));
+  const matched =
+    windowMatch && windowMatch.formId === session.handedOffSlug
+      ? await matchFormsFromText(lastUserText(messages))
+      : windowMatch;
+  if (matched) {
+    if (matched.formId !== session.slug) resetSessionForNewForm(session);
+    session.slug = matched.formId;
+  }
+}
+
+// RAG-driven handoff (and its follow-up continuation). The title-token matcher
+// only fires when the user's wording overlaps a form title (e.g. "conductor
+// licence"). When it didn't pin a form, fall back to the top retrieved
+// service — if it maps to a published form that must be completed in the
+// forms app (file upload / payment), surface that link rather than a plain
+// informational answer. This is what makes phrasings like "how do I become a
+// conductor" reach the conductor application.
+//
+// A candidate is computed only when no form is pinned: kind "none" so we never
+// upgrade a matched collectible form, and !session.slug so a pinned form that
+// merely failed to resolve (a transient form-API blip) can't redirect the user
+// elsewhere. The matcher ran this turn, so the form index is warm-cached.
+async function applyRagFallback(
+  resolution: FormResolution,
+  session: FormSession,
+  rawSources: Source[],
+  illegitimate: boolean,
+  signal: AbortSignal,
+): Promise<{
+  resolution: FormResolution;
+  handoffContinuation?: { title: string; url: string };
+  // Approved collect form RAG surfaced that the matcher missed (ADR 0045).
+  ragCollectLink?: { title: string; url: string };
+}> {
+  const ragCandidate =
+    resolution.kind === "none" && !session.slug && !illegitimate
+      ? topHandoffCandidateSlug(rawSources)
+      : null;
+  // Resolve against the forms API only when there's a candidate, and gate on
+  // the form index so a retrieved info-only service with no published form
+  // doesn't trigger a doomed form-definition fetch and a 404 warning per turn.
+  let ragResolution: FormResolution = { kind: "none" };
+  if (ragCandidate && (await getFormSlugs(signal)).includes(ragCandidate)) {
+    ragResolution = await resolveActiveForm(ragCandidate, {});
+  }
+  const ragDecision = decideRagFallback({
+    candidate: ragCandidate,
+    candidateHandoff: ragResolution.kind === "handoff",
+    handedOffSlug: session.handedOffSlug ?? null,
+  });
+  if (
+    ragDecision.action === "fresh-handoff" &&
+    ragResolution.kind === "handoff"
+  ) {
+    // Park it like the matcher-driven handoff does, so the user isn't
+    // re-handed the strict link on every later turn.
+    session.handedOffSlug = ragCandidate;
+    return { resolution: ragResolution };
+  }
+  if (
+    ragDecision.action === "continuation" &&
+    ragResolution.kind === "handoff"
+  ) {
+    // The user was already handed this form's link and is following up ("ok
+    // let's begin", "what's next?"). Re-issuing the strict link-only handoff
+    // is noisy, but the no-form path makes the model hallucinate inline
+    // collection or deny the form exists. Instead keep answering
+    // informationally while pointing back to the link. (Already parked.)
+    return {
+      resolution,
+      handoffContinuation: {
+        title: ragResolution.title,
+        url: ragResolution.url,
+      },
+    };
+  }
+  if (ragResolution.kind === "collect" && ragCandidate) {
+    // RAG surfaced an APPROVED collect form the title matcher missed (e.g. a
+    // follow-up like "is there a form i can fill out", or a paraphrase that
+    // doesn't overlap the form title). Per ADR 0045, RAG must NOT auto-start
+    // inline collection — that stays behind the higher-confidence title
+    // matcher. But we also must not fall through to the no-online-form /
+    // paper path (the bug behind business-mail & deceased-mail). So OFFER the
+    // form LINK — the low-commitment action the ADR explicitly lets the fuzzy
+    // RAG signal trigger. No pin, no collect: if the user then clearly states
+    // intent, the matcher/apply path starts collection. ragCandidate is gated
+    // to allowlisted published forms above.
+    return {
+      resolution,
+      ragCollectLink: {
+        title: ragResolution.form.contract.title,
+        url: `${getServerEnv().FORMS_URL}/forms/${encodeURIComponent(ragCandidate)}`,
+      },
+    };
+  }
+  return { resolution };
 }
 
 async function fetchContext(
@@ -403,7 +441,7 @@ function buildSystemPrompts(
       // Collect-form matched with apply-intent, first turn: begin collecting per
       // the SYSTEM_PROMPT. Answer any side question they bundled in first.
       parts.push(
-        "The user wants to apply and has not started yet. Open with a one-line acknowledgement and ask for the FIRST field in the schema (call present_choices if that field is closed-set; otherwise ask it in text). If they also asked a side question, answer it from the context first.",
+        "The user wants to apply and has not started yet. Open with a one-line acknowledgement and call ask_field with the FIRST field listed in the schema. If they also asked a side question, answer it from the context first.",
       );
     }
     // ONLINE OPTIONS — applies whenever this form is active. This service has a

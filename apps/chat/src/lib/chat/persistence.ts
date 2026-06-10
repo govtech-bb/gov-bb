@@ -68,3 +68,10 @@ export function getSessionThreadId(): string | undefined {
   }
   return threadId;
 }
+
+// "Start again" rotates the threadId: the orphaned server-side form session
+// becomes unreachable and TTL-sweeps, instead of leaking into the new chat.
+export function resetSessionThreadId(): void {
+  if (typeof sessionStorage === "undefined") return;
+  sessionStorage.removeItem(`${STORAGE_PREFIX}thread-id`);
+}

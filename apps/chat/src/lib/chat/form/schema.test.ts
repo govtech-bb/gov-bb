@@ -48,6 +48,41 @@ test("needsHandoff is true when any step has a file field", () => {
   assert.equal(needsHandoff(contract({ htmlTypes: ["text", "file"] })), true);
 });
 
+// CHAT_FILE_UPLOADS flips file fields from handoff to in-chat collection
+// (in-bubble upload via /api/form-file). Default-off is load-bearing: without
+// the upload bucket's CORS allowing the chat origin, collection would be a
+// dead-end where the handoff at least works.
+test("needsHandoff lets file forms collect when CHAT_FILE_UPLOADS is on", () => {
+  process.env.CHAT_FILE_UPLOADS = "true";
+  try {
+    assert.equal(
+      needsHandoff(contract({ htmlTypes: ["text", "file"] })),
+      false,
+    );
+  } finally {
+    delete process.env.CHAT_FILE_UPLOADS;
+  }
+});
+
+// Chat can't collect array inputs, so a REQUIRED repeatable field makes the
+// form unsubmittable inline — the gate must hand off. An optional repeatable
+// just gets skipped, so it must NOT trip the gate.
+test("needsHandoff fires for required repeatable fields only", () => {
+  const withRepeatable = (required: boolean) => {
+    const c = contract();
+    c.steps[0]!.elements.push({
+      fieldId: "dependants",
+      label: "Dependants",
+      htmlType: "text",
+      behaviours: [{ type: "repeatable" }],
+      ...(required ? { validations: { required: { value: true } } } : {}),
+    } as unknown as (typeof c.steps)[0]["elements"][0]);
+    return c;
+  };
+  assert.equal(needsHandoff(withRepeatable(true)), true);
+  assert.equal(needsHandoff(withRepeatable(false)), false);
+});
+
 test("needsHandoff is true when the contract requiresPayment", () => {
   assert.equal(needsHandoff(contract({ requiresPayment: true })), true);
 });

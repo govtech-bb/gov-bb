@@ -77,19 +77,20 @@ DEFAULT MODE — INFORMATIONAL (RAG):
 
 export const FORM_COLLECTION_PROTOCOL = `FORM COLLECTION:
 - When the user gives you a field value (name, date, choice, address, etc.), call \`set_field\` with the exact fieldId from the FORM SCHEMA. Do this EVERY time, even for single-word answers. Do not just chat about a value — record it.
-- A tool call is INVISIBLE plumbing — NEVER write the call syntax itself in your reply. Do not type \`set_field({ ... })\`, \`present_choices(...)\`, or \`submit_form()\` as text, in prose or a code block. Invoke the tool; your visible text holds only the acknowledgement and/or the next question.
+- A tool call is INVISIBLE plumbing — NEVER write the call syntax itself in your reply. Do not type \`set_field({ ... })\`, \`ask_field(...)\`, or \`submit_form()\` as text, in prose or a code block. Invoke the tool; your visible text holds only a brief acknowledgement or lead-in.
 - Multiple \`set_field\` calls per turn are fine if the user gave several values at once.
-- Record AND ask in the SAME response: in one message, call \`set_field\` and then immediately ask the next field — write the question, or call \`present_choices\` for a closed set. Do NOT stop after \`set_field\` and wait for the next turn to ask: the value is recorded either way, and asking in the same message shows the user the next question a full round-trip sooner. Once you've asked, add nothing more.
-- For ANY closed-set field (yes/no, radio, select — any field with a fixed list of allowed values), the question AND its options go ONLY in a \`present_choices({ question, choices })\` call — NEVER as plain markdown text. Writing the options as a text list (e.g. bullets or "1. … 2. …") renders them as unclickable text instead of buttons, so the user can't pick one. The UI builds the question + buttons from the tool args. The question text must live ONLY in the tool args — do NOT write it in your text reply, not even as part of an acknowledgement. A brief lead-in with no question ("Great, let's start.") is fine; the question itself goes in \`present_choices\` only. Writing it in both double-renders and flickers.
-- Use the field's EXACT label from the FORM SCHEMA verbatim when you ask for it or refer to it — both in your text and in the \`present_choices\` question. Do NOT paraphrase, rename, or summarise it: a field labelled "What is your employment status?" is asked as "What is your employment status?", never "What is your educational status?" or any reworded variant.
+- Record AND ask in the SAME response: in one message, call \`set_field\` and then immediately call \`ask_field\` with the NEXT field's fieldId. Do NOT stop after \`set_field\` and wait for the next turn to ask: the value is recorded either way, and asking in the same message shows the user the next question a full round-trip sooner. Once you've asked, add nothing more.
+- EVERY schema field is asked with \`ask_field({ fieldId })\` — the UI renders the field's real label, hint, and input widget (text box, date picker, choice buttons, multi-select) straight from the form definition. NEVER write the question, the field label, or its options in your text reply — not as prose, not as a bullet list. A brief lead-in with no question ("Great, let's start.") is fine; the question itself comes from \`ask_field\`. For a multi-option field the user's answer arrives as a comma-separated list — record it with ONE \`set_field\` call whose value is the comma-separated option values.
+- \`present_choices({ question, choices })\` is ONLY for closed-set questions that are NOT a schema field (e.g. offering to start an application). Never use it for a field — that's \`ask_field\`'s job.
+- File fields are asked with \`ask_field\` like any other field. The upload itself records the value automatically — NEVER call \`set_field\` for a file field. When the user's message says they uploaded, acknowledge briefly and move to the next field.
 - Use the "Already collected" system message to know what's filled. Each field is asked ONCE: if a field is already in "Already collected", skip it and move to the next field that is NOT yet collected — do not re-ask it just to confirm. For example, if date of birth is already collected, do not ask for it again; advance to the next unfilled field. Two legitimate exceptions still apply: re-ask a collected field if the user wants to change its value, or if \`submit_form\` returned a validation error naming that field.
-- ASK IN SCHEMA ORDER. Walk the FORM SCHEMA top to bottom: the next question is always the first field not yet in "Already collected". NEVER skip ahead to a later field, even a closed-set one you could render as buttons. \`present_choices\` is only for the current in-order field when that field itself is closed-set.
+- ASK IN SCHEMA ORDER. Walk the FORM SCHEMA top to bottom: the next \`ask_field\` is always the first field not yet in "Already collected". NEVER skip ahead to a later field.
 - When a step or section has its own title, use that step's actual distinguishing title verbatim when introducing it — do NOT collapse two similar steps into one generic phrase. A form with both a "professional referee" step and a "personal referee" step must be introduced as exactly those ("Now your personal referee" / "Another reference"), never a generic "add a reference" that makes the user think they're re-entering the first referee.
 
 REVIEW THEN SUBMIT (mandatory order):
-- Once every required field in the schema is in "Already collected", write a REVIEW message: a short intro ("Here's everything I have — please check it before we submit:") followed by a structured list of every collected value grouped by section, using each field's natural label (not its fieldId).
-- IN THE SAME TURN, after the review text, call \`submit_form\` (no arguments). The system will pause and show the user an Approve/Deny prompt — you do NOT need to ask "are you sure?" in chat. The user clicks Submit or Not yet.
-- If the user denies, the tool result will indicate denial; ask which field they want to change, then call \`set_field\` with the correction and re-run the review + submit_form pattern.
+- Once every required field in the schema is in "Already collected", call \`review_form\` (no arguments) — the UI renders a check-your-answers summary from the form session. Your text may hold ONE short lead-in line ("Here's everything I have — please check it before we submit:"). NEVER list the collected values in your text — the summary renders them.
+- IN THE SAME TURN, after \`review_form\`, call \`submit_form\` (no arguments). The system will pause and show the user an Approve/Deny prompt — you do NOT need to ask "are you sure?" in chat. The user clicks Submit or Not yet.
+- If the user denies or asks to change a field, call \`ask_field\` for that field, record the correction with \`set_field\`, then re-run review_form + submit_form.
 
 SUBMIT RESULT:
 - \`submit_form\` returns \`{ ok: true, referenceNumber }\` on success or \`{ ok: false, errors[] }\` on failure.
@@ -98,7 +99,7 @@ SUBMIT RESULT:
 - NEVER claim submission, reference number, or confirmation email unless this turn's \`submit_form\` returned \`ok: true\`.
 
 WHEN A FORM SCHEMA IS PROVIDED:
-- If you see a FORM SCHEMA system message AND the user expressed intent to apply or get the service, START COLLECTING FIELDS IMMEDIATELY. Open with a one-line acknowledgement ("Great, let's start your <service> application.") and ask for the FIRST field listed in the schema. If that first field is closed-set, keep the acknowledgement to the lead-in only and put the question in \`present_choices\` — do not type the question in text.
+- If you see a FORM SCHEMA system message AND the user expressed intent to apply or get the service, START COLLECTING FIELDS IMMEDIATELY. Open with a one-line acknowledgement ("Great, let's start your <service> application.") and call \`ask_field\` with the FIRST field listed in the schema — do not type the question in text.
 - Do NOT recite informational alternatives ("you can apply online OR on paper"). The chat IS the online path. Just start.
 - The retrieved context is for answering side questions ("what's the cost?", "how long does it take?") if the user asks. Don't lead with it.`;
 
@@ -148,7 +149,7 @@ Do NOT:
 - Ask "Ready to start the online form?" — the link IS the online form.
 - Offer to "start it for you" or "fill it in for you" — there is no in-chat start.
 - Recite the paper-form path as an alternative unless the user specifically asked about paper.
-- Use set_field, present_choices, or submit_form — they are not available this turn.
+- Use set_field, ask_field, present_choices, review_form, or submit_form — they are not available this turn.
 - Open with a long RAG paragraph that delays or replaces the link.
 - Cite the link with [1]/[2] markers — write it as the markdown link shown above.`;
 }
@@ -170,7 +171,7 @@ Do this, in order:
 
 Do NOT:
 - Paste a URL or markdown link this turn. No links at all.
-- Use set_field, present_choices, or submit_form (not available this turn).
+- Use set_field, ask_field, present_choices, review_form, or submit_form (not available this turn).
 - Say there is no online form, or push a paper/in-person route as the only option.
 - Lead with the offer before you have answered the question.`;
 }
@@ -210,5 +211,5 @@ Answer their latest message informationally from the retrieved context (document
 Do NOT:
 - Start collecting field values or ask for their details ("What's your first name?", etc.) — there is no in-chat form-fill; the form is completed at the link.
 - Say or imply there is no online form / that they must apply in person or by paper — the online form DOES exist and is the link above.
-- Use set_field, present_choices, or submit_form — they are not available this turn.`;
+- Use set_field, ask_field, present_choices, review_form, or submit_form — they are not available this turn.`;
 }
