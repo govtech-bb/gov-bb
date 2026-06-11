@@ -2,12 +2,15 @@
  * get-a-primary-school-textbook-grant.smoke.spec.ts
  *
  * Live, on-demand smoke test for the "Get a Primary School Textbook Grant" form
- * (formId `get-a-primary-school-textbook-grant`, version 1.2.0).
+ * (formId `get-a-primary-school-textbook-grant`, version 1.7.0).
  *
  * Drives the REAL deployed form (default: sandbox), fills every required field
  * with valid data, SUBMITS FOR REAL, and asserts the confirmation screen. The
- * form has an email processor on `applicant-details.applicant-email`, so a green
- * run sends a confirmation email to `testing@govtech.bb`.
+ * form has two email processors: a confirmation to the applicant
+ * (`applicant-details.applicant-email`) and, since v1.7.0, a per-submission
+ * email routed to the selected school's address. A green run therefore emails
+ * `testing@govtech.bb` (the applicant) and the school mailbox for the chosen
+ * `child-school` (e.g. all-saints-primary → AllSaintsPrimary@mes.gov.bb).
  *
  * Like the other smoke specs this lives under e2e/smoke and runs only via
  * playwright.smoke.config.ts. Shared helpers live in ../helpers/smoke.
@@ -24,10 +27,17 @@
  *  - `relationship-description` is conditional on `is-parent-or-guardian == "no"`,
  *    so answering "yes" skips it (and the whole `guardian-details` step, which is
  *    `stepConditionalOn` the same answer).
- *  - v1.2.0 made `child-details` repeatable (min 1, max 5), so the renderer
- *    injects a required `addAnother` radio ("Do you have another child at the
- *    same school?") on the step — answered "no" to stay on the single-child
- *    path (#816).
+ *  - `child-details` is repeatable (min 1, max 5). Since v1.6.0 `child-school`
+ *    and `child-principal-name` are `sharedFields`, which changes how the
+ *    renderer materialises the step into TWO pages:
+ *      · the base `child-details` page holds the per-child fields AND the two
+ *        shared fields (school + principal), filled once — no `addAnother` here;
+ *      · the materialised `child-details~1` instance repeats the per-child
+ *        fields WITHOUT the shared ones, and carries the required `addAnother`
+ *        radio ("Do you have another child at the same school?") — answered
+ *        "no" to stay on the single-child path (#816).
+ *    So both pages must be walked, and the shared fields are only set on the
+ *    base page.
  *  - National ID format is `######-####`; telephone is a Barbados-style number.
  *  - The renderer auto-injects a `check-your-answers` review step before
  *    `submission-confirmation`.
@@ -63,15 +73,19 @@ test.describe("Get a Primary School Textbook Grant — Live Smoke", () => {
       timeout: STEP_TIMEOUT,
     });
 
-    // ─── Tell us about the child ─────────────────────────────────────────────
-    let step = expectStep(page, "child-details");
+    // ─── Tell us about the child (base / shared-values page) ─────────────────
+    // The base `child-details` page holds the per-child fields plus the two
+    // shared fields (`child-school`, `child-principal-name`). It has NO
+    // `addAnother` radio — that lives on the materialised `child-details~1`
+    // instance below.
+    let step = expectStep(page, "child-details", { exact: true });
     await expect(page.locator("h1")).toContainText("Tell us about the child");
     await fillField(page, step, "child-first-name", faker.person.firstName());
     await fillField(page, step, "child-last-name", lastName);
     await fillField(page, step, "child-id-number", nationalId());
     await selectRadio(page, step, "child-sex", "female");
-    // child-school became a native <select> ("Name of institution"); use the
-    // option value, not free text.
+    // child-school is a native <select> ("Name of institution"); use the option
+    // value, not free text. Shared field — set only here, on the base page.
     await selectDropdown(page, step, "child-school", "all-saints-primary");
     await fillField(
       page,
@@ -81,7 +95,19 @@ test.describe("Get a Primary School Textbook Grant — Live Smoke", () => {
     );
     await fillField(page, step, "child-class", "Class 4");
     await selectRadio(page, step, "is-parent-or-guardian", "yes");
-    // Injected by the v1.2.0 repeatable behaviour — "no" keeps a single child.
+    await advance(page, step);
+
+    // ─── Child instance 1 (`child-details~1`) ────────────────────────────────
+    // The repeated instance carries the per-child fields again WITHOUT the
+    // shared school/principal, plus the `addAnother` radio. Answer "no" to stay
+    // on the single-child path (#816).
+    step = expectStep(page, "child-details~1", { exact: true });
+    await fillField(page, step, "child-first-name", faker.person.firstName());
+    await fillField(page, step, "child-last-name", lastName);
+    await fillField(page, step, "child-id-number", nationalId());
+    await selectRadio(page, step, "child-sex", "female");
+    await fillField(page, step, "child-class", "Class 4");
+    await selectRadio(page, step, "is-parent-or-guardian", "yes");
     await selectRadio(page, step, "addAnother", "no");
     await advance(page, step);
 
