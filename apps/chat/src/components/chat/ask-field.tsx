@@ -9,6 +9,7 @@ import {
 } from "@govtech-bb/react";
 import { type ReactNode, useState } from "react";
 import { askFieldDef } from "#/lib/chat-tools";
+import { isRequiredField } from "#/lib/chat/form/required";
 import { ChoicePills } from "./choice-pills";
 
 export type AskFieldOutput = InferToolOutput<typeof askFieldDef>;
@@ -113,14 +114,14 @@ export function AskFieldWidget({
     widget = <BooleanAnswer onAnswer={onAnswer} spec={spec} />;
   } else if (spec.htmlType === "date") {
     widget = <DateAnswer onAnswer={onAnswer} spec={spec} />;
-  } else if (!spec.validations?.required) {
+  } else if (!isRequiredField(spec.validations)) {
     // Optional free-text field. The composer is the text input, so there's no
     // in-bubble box — but in chat there's also no "Continue" button to press
     // past an unanswered field, which would force the user to invent a comment.
     // Offer a Skip button instead: clicking it sends a plain "Skip" message
     // (same path the choice pills use), which the collection prompt treats as
-    // "leave blank, advance to review". (presence of the `required` rule means
-    // required — mirrors isRequired() in form/schema.ts.)
+    // "leave blank, advance to review". (required = rule present AND value !== false —
+    // the shared engine's semantics, via isRequiredField.)
     widget = (
       <div className="flex flex-col gap-2.5">
         <HintOrError hint={spec.hint} error={null} />

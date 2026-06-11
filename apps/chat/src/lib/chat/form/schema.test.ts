@@ -452,3 +452,28 @@ test("a real form's declaration is still asked — auto-confirm is feedback-only
     "declaration-confirmed",
   );
 });
+
+// The address-line-2 regression: a recipe marks a field optional with
+// `required: { value: false }` (rule present, value false) instead of
+// removing the rule. The disclosure must say (optional) — the old truthiness
+// check called it (required), so the model demanded it and the Skip button
+// never rendered, while validation accepted a blank.
+test("describeField reads required:{value:false} as optional", () => {
+  const field = {
+    fieldId: "old-address-line-2",
+    label: "Address line 2",
+    htmlType: "text",
+    validations: { required: { value: false } },
+  } as unknown as Primitive;
+  assert.match(describeField(field), /\(optional\)/);
+
+  const required = {
+    fieldId: "old-address-line-1",
+    label: "Address line 1",
+    htmlType: "text",
+    validations: {
+      required: { value: true, error: "Address line 1 is required" },
+    },
+  } as unknown as Primitive;
+  assert.match(describeField(required), /\(required\)/);
+});
