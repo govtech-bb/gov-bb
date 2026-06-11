@@ -13,8 +13,8 @@ import {
   MAX_YEAR,
   MIN_YEAR,
   startOfDay,
-} from '../lib/bank-holidays'
-import type { Holiday } from '../lib/bank-holidays'
+} from '../../lib/bank-holidays'
+import type { Holiday } from '../../lib/bank-holidays'
 
 const LAST_UPDATED = '5 May 2026'
 
@@ -22,7 +22,7 @@ const SearchParams = z.object({
   year: z.coerce.number().int().min(MIN_YEAR).max(MAX_YEAR).optional(),
 })
 
-export const Route = createFileRoute('/bank-holiday-calendar')({
+export const Route = createFileRoute('/bank-holiday-calendar/')({
   validateSearch: SearchParams,
   head: () => ({
     meta: [

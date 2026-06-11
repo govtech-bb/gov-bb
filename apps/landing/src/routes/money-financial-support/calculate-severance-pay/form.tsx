@@ -1,7 +1,7 @@
 import { createFileRoute, notFound } from '@tanstack/react-router'
-import { SeveranceCalculator } from '../blocks/severance/SeveranceCalculator'
-import { isUrlVisible, urlLevel } from '../content/registry'
-import { pageHead } from '../lib/page-head'
+import { SeveranceCalculator } from './-ui/SeveranceCalculator'
+import { isUrlVisible, urlLevel } from '../../../content/registry'
+import { pageHead } from '../../../lib/page-head'
 
 const CONTENT_URL = 'money-financial-support/calculate-severance-pay'
 

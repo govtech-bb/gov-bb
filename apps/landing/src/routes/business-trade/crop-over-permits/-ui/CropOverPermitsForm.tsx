@@ -11,15 +11,15 @@ import {
 } from '@govtech-bb/react'
 import { useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
-import { HelpfulBox } from '../../components/HelpfulBox'
-import { EVENT_TYPE_LABELS, SIZE_LABELS, VENUE_LABELS } from './permits'
-import type { FeatureFlag, Permit, VenueFlag } from './permits'
+import { HelpfulBox } from '../../../../components/HelpfulBox'
+import { EVENT_TYPE_LABELS, SIZE_LABELS, VENUE_LABELS } from '../-lib/permits'
+import type { FeatureFlag, Permit, VenueFlag } from '../-lib/permits'
 import {
   EMPTY_FEATURES,
   getActivePermits,
   renumberSteps,
-} from './compute'
-import type { Features } from './compute'
+} from '../-lib/compute'
+import type { Features } from '../-lib/compute'
 
 type Step = 'q-event' | 'q-venue' | 'q-size' | 'q-features' | 'result'
 

@@ -8,8 +8,8 @@ import {
 } from '@govtech-bb/react'
 import { useNavigate } from '@tanstack/react-router'
 import { useRef, useState } from 'react'
-import { calculatePension, SERVICE_WARNING_MONTHS } from './compute'
-import type { PensionEstimate } from './compute'
+import { calculatePension, SERVICE_WARNING_MONTHS } from '../-lib/compute'
+import type { PensionEstimate } from '../-lib/compute'
 
 const SERVICE_PATH_SPLAT = 'pensions-and-gratuities/calculate-your-pension'
 const SERVICE_TITLE = 'Calculate your pension'
