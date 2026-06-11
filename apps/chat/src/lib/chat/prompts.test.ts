@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   FEEDBACK_COLLECTION_GUIDANCE,
+  FEEDBACK_OFFER_GUIDANCE,
   FORM_COLLECTION_PROTOCOL,
   SYSTEM_PROMPT,
   buildCantHelpDisclosure,
@@ -99,6 +100,25 @@ test("feedback guidance: a successful submit thanks the user with no reference n
   assert.match(
     FEEDBACK_COLLECTION_GUIDANCE,
     /no reference number|never.*reference|without.*reference/i,
+  );
+});
+
+// The feedback OFFER reply must be the single invitation sentence and NOTHING
+// else. The bug (#feedback-duplication): on "feedback" the model both said "Let
+// me open the feedback form for you" AND asked "would you like to give
+// feedback?" — a contradictory two-message reply (calling offer_feedback only
+// READIES the form; it doesn't open it). The guidance must forbid that framing
+// so only the invitation shows.
+test("feedback offer guidance: invitation is the whole reply, no 'opening the form' framing", () => {
+  assert.match(FEEDBACK_OFFER_GUIDANCE, /offer_feedback/);
+  // Still carries the invitation example...
+  assert.match(FEEDBACK_OFFER_GUIDANCE, /would you like to give us quick/i);
+  // ...but constrains the reply to ONLY that one sentence.
+  assert.match(FEEDBACK_OFFER_GUIDANCE, /only|entire|nothing else/i);
+  // And explicitly forbids announcing it is opening/starting/pulling up the form.
+  assert.match(
+    FEEDBACK_OFFER_GUIDANCE,
+    /do not.*(open|opening|start|starting|pull up).*form/i,
   );
 });
 
