@@ -56,31 +56,45 @@ export function isInfoQuestion(input: string): boolean {
   return QUESTION_OPENERS.has(firstWord);
 }
 
-// A user who TYPES an intent to give feedback ("I want to give feedback",
-// "i wan to feedback", "let me leave some feedback") should go straight into
-// the chat-feedback form — exactly as the notice banner's link does — instead
-// of being asked a redundant "would you like to give feedback?" first. The
-// banner sends an EXACT phrase (FEEDBACK_TRIGGER_PHRASE) that pinSessionForm
-// matches; this catches the free-typed variants the exact match misses.
+// Does the message express wanting to GIVE feedback (on the assistant, a
+// service, or the site) — as opposed to an ordinary service question that
+// merely contains the word? Drives the deterministic "about the assistant /
+// about a service" disambiguation in run-turn. Deliberately conservative: keyed
+// on a giving cue (or a platform-directed / complaint phrasing), so a question
+// like "how do I get a birth certificate?" never trips it.
 //
-// Deliberately TIGHT (statement intent only): the caller gates on
-// !isInfoQuestion, so question-shaped asks ("can I give feedback?", "what
-// happens to my feedback?") fall through to the model's normal handling rather
-// than starting the form on someone who is only asking ABOUT feedback.
-const FEEDBACK_REQUEST_PATTERNS: ReadonlyArray<RegExp> = [
-  // A give-style verb landing on "feedback": "give/leave/provide/send/share/
-  // submit/offer (some) feedback". Allows a few words between for "give you
-  // some feedback", "leave a bit of feedback".
-  /\b(give|giving|leave|leaving|provide|providing|send|sending|share|sharing|submit|submitting|offer|offering)\b[\w\s']{0,20}\bfeedback\b/i,
-  // A desire phrasing where "feedback" is itself used as the verb, so there is
-  // no give-word — "i want to feedback", "i wan to feedback" (typo), "i'd like
-  // to feedback", "wanna feedback". "wan(?:t(?:ed)?|na)?" covers wan / want /
-  // wanted / wanna so the transcript typo "i wan to feedback" still lands.
-  /\b(wan(?:t(?:ed)?|na)?|wish|'d like|would like|like to|love to)\b[\w\s']{0,12}\bfeedback\b/i,
+// This is the single feedback-intent detector. It SUPERSEDES the earlier
+// isFeedbackRequest (#1247), which pinned chat-feedback directly on a typed
+// request: a typed request now shows the assistant/service disambiguation
+// instead (so service feedback can reach the general feedback form), and the
+// "About this assistant" tap reaches the same in-chat form one step later. The
+// banner trigger phrase also matches here (it IS feedback intent) — run-turn
+// excludes it by exact match so the notice banner keeps pinning chat-feedback
+// directly (#1206).
+const FEEDBACK_INTENT_PATTERNS: ReadonlyArray<RegExp> = [
+  // a verb of GIVING + (anything but sentence end) + "feedback":
+  // give/leave/submit/send/share/provide/offer/have … feedback. Deliberately
+  // excludes get/got/receive — "get feedback on my exam results" is RECEIVING
+  // feedback (an ordinary service question), not offering it.
+  /\b(give|giving|gave|leave|leaving|left|submit|submitting|send|sending|share|sharing|provide|providing|offer|offering|have|having|had)\b[^.?!]*\bfeedback\b/i,
+  // "feedback" used as the verb after a desire phrasing, so there is no
+  // give-word — "i want to feedback", "i wan to feedback" (the #1247 transcript
+  // typo), "i'd like to feedback", "wanna feedback". Requires the infinitive
+  // "to" (or bare "wanna") so the RECEIVE noun-object case "i want feedback on
+  // my results" — no "to" — is NOT caught.
+  /\b(want|wanna|wan|wish|'d like|would like|like|love)\s+to\s+feedback\b/i,
+  /\bwanna\s+feedback\b/i,
+  // feedback directed AT the platform: "feedback about/on/for (the|this|your)
+  // service/site/chat/assistant/…". The article test is the give-vs-receive
+  // tell — "the/this/your service" is platform feedback, whereas "my exam
+  // results / my application" (the receive case) never uses these articles.
+  /\bfeedback\s+(about|on|for|regarding|re)\s+(the\s+|this\s+|your\s+)?(service|services|site|website|chat|chatbot|assistant|alpha|portal|page|platform|experience)\b/i,
+  // a complaint specifically about the service / site / assistant.
+  /\b(complain|complaint)\b[^.?!]*\b(service|site|website|assistant|chat|alpha)\b/i,
 ];
 
-export function isFeedbackRequest(input: string): boolean {
-  const t = input.trim();
-  if (!t) return false;
-  return FEEDBACK_REQUEST_PATTERNS.some((re) => re.test(t));
+export function looksLikeFeedbackIntent(input: string): boolean {
+  const t = input?.trim();
+  if (!t || t.length < 4) return false;
+  return FEEDBACK_INTENT_PATTERNS.some((re) => re.test(t));
 }

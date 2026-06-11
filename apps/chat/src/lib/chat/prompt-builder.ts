@@ -19,6 +19,7 @@ import {
   buildHandoffOfferDisclosure,
   buildMissDisclosure,
   buildSchemaDisclosure,
+  buildServiceFeedbackDisclosure,
 } from "./prompts";
 
 type SystemEntry = SystemPrompt<never>;
@@ -39,6 +40,9 @@ export interface PromptTurnState {
   formOffer?: { slug: string; title: string };
   // The user took "just send me the link" on a prior offer.
   linkRequested?: { title: string; url: string };
+  // The user chose "About a service or the site" on the feedback disambiguation
+  // — hand over the general feedback form link, never a ministry contact.
+  serviceFeedback?: { url: string };
   // Retrieval covered several distinct services — narrow with choices
   // instead of guessing (ADR 0048 stage 3).
   disambiguation?: { titles: string[] };
@@ -65,6 +69,7 @@ export function buildSystemPrompts(state: PromptTurnState): SystemEntry[] {
     intent = "apply",
     formOffer,
     linkRequested,
+    serviceFeedback,
     disambiguation,
     unapprovedForm = false,
     noContext = false,
@@ -191,6 +196,12 @@ export function buildSystemPrompts(state: PromptTurnState): SystemEntry[] {
     // decline — give the model the accept/decline guidance and remind it the
     // rating comes from ask_field, not from any reply to the invitation.
     if (slug === FEEDBACK_FORM_ID) prompts.push(FEEDBACK_COLLECTION_GUIDANCE);
+  } else if (serviceFeedback) {
+    // The user disambiguated their feedback as being about a service / the site
+    // (not this assistant): hand over the general feedback form link, never a
+    // ministry contact. A deliberate choice tap, so it wins over the no-form
+    // fallbacks below (miss / closer / no-form disclosures).
+    prompts.push(buildServiceFeedbackDisclosure(serviceFeedback.url));
   } else if (handoffContinuation) {
     // Follow-up after a handoff: keep helping informationally but keep the link
     // in front of the user — never collect inline, never deny the form exists.

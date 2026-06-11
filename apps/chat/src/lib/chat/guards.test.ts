@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
-  isFeedbackRequest,
   isInfoQuestion,
+  looksLikeFeedbackIntent,
   looksLikeJailbreak,
 } from "./guards";
 
@@ -48,32 +48,60 @@ test("isInfoQuestion: apply-intent statements are not info", () => {
   assert.equal(isInfoQuestion(""), false);
 });
 
-test("isFeedbackRequest: typed intent to give feedback", () => {
+test("looksLikeFeedbackIntent: catches expressions of wanting to give feedback", () => {
   for (const input of [
     "I want to give feedback",
-    "i wan to feedback", // the transcript typo
+    "I'd like to leave some feedback",
+    "Can I give feedback?",
+    "I have feedback about the service",
+    "feedback about the service",
+    "feedback on the chat",
+    "I have some feedback for you",
+    "how do I submit feedback",
+    "I want to make a complaint about the service",
+    // The banner phrase IS feedback intent — run-turn excludes it by exact
+    // match so the banner still pins chat-feedback directly (it is not the
+    // detector's job to special-case it).
     "I would like to give feedback on the assistant",
+    // Folded in from #1247's isFeedbackRequest (now superseded by this one
+    // detector): free-typed give-intent variants, "feedback" used as a verb,
+    // and the transcript typo.
+    "i wan to feedback",
+    "I want to feedback",
+    "wanna feedback",
     "let me leave some feedback",
     "I'd like to provide feedback",
-    "can I give you feedback", // 'can' opener, but caller gates on isInfoQuestion
-    "wanna feedback",
-    "I want to feedback",
+    "can I give you feedback",
     "share feedback",
     "submit feedback please",
   ]) {
-    assert.equal(isFeedbackRequest(input), true, input);
+    assert.equal(looksLikeFeedbackIntent(input), true, input);
   }
 });
 
-test("isFeedbackRequest: not a request to give feedback", () => {
+test("looksLikeFeedbackIntent: ignores ordinary service questions and the choice labels", () => {
   for (const input of [
+    "how do I get a birth certificate?",
+    "what documents do I need?",
+    "I need to renew my licence",
+    // RECEIVING feedback (about the user's own thing) is a service question,
+    // not an offer to give feedback — must not trip the disambiguation.
+    "where can I get feedback on my exam results?",
+    "can I get feedback on my application status?",
+    "how do I get feedback from my doctor?",
+    "I got negative feedback at work, can the government help?",
+    // "want feedback" (no infinitive "to") is RECEIVE intent, not give.
+    "I want feedback on my results",
+    // Questions ABOUT feedback are not offers to give it (#1247 negatives).
     "what happens to my feedback?",
     "where does the feedback go",
-    "how do I get a birth certificate?",
-    "I need to renew my licence",
+    // The disambiguation pills themselves must NOT re-trigger detection.
+    "About this assistant",
+    "About a service or the site",
     "thanks, that's all",
+    "ok",
     "",
   ]) {
-    assert.equal(isFeedbackRequest(input), false, input);
+    assert.equal(looksLikeFeedbackIntent(input), false, input);
   }
 });

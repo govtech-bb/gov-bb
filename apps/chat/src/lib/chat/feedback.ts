@@ -10,6 +10,18 @@ export { FEEDBACK_TRIGGER_PHRASE } from "./feedback-trigger";
 // recipe folder / formId at apps/api/.../recipes/chat-feedback/.
 export const FEEDBACK_FORM_ID = "chat-feedback";
 
+// The two feedback-disambiguation pills. When the chat detects feedback intent
+// (guards.looksLikeFeedbackIntent) it asks ONE quick question via these exact
+// labels; the tap is a deterministic confirm (consumeFeedbackChoice matches the
+// label verbatim), never a model interpretation — the same contract as the
+// fill-here / link offer pills (funnel.OFFER_CHOICE_*). "About this assistant"
+// keeps feedback in-chat (pins chat-feedback); "About a service or the site"
+// hands over the general feedback form link.
+export const FEEDBACK_ABOUT_ASSISTANT = "About this assistant";
+export const FEEDBACK_ABOUT_SERVICE = "About a service or the site";
+export const FEEDBACK_DISAMBIGUATION_QUESTION =
+  "Happy to pass that on. Is your feedback about this assistant, or about a government service / alpha.gov.bb in general?";
+
 // The offer_feedback tool is exposed only when no form is active and feedback
 // hasn't already been offered this session — so the model can invite feedback
 // at a natural conclusion without pestering or interrupting an in-progress form.
@@ -77,4 +89,42 @@ export function submitSuccessForModel(
 // we don't pester someone who already said no.
 export function cancelFeedbackForm(session: FormSession): void {
   resetSessionForNewForm(session);
+}
+
+// The outcome of resolving a pending feedback-disambiguation choice:
+//   "assistant" — keep feedback in-chat; the feedback form is pinned for the
+//                 caller (the existing collect-feedback flow takes over).
+//   "service"   — hand the user the general feedback form link.
+//   "lapsed"    — choices WERE pending but the reply matched neither label
+//                 (the user moved on); cleared, fall through to normal routing.
+//   null        — no choices were pending this turn (no-op).
+export type FeedbackChoice =
+  | { kind: "assistant" }
+  | { kind: "service" }
+  | { kind: "lapsed" }
+  | null;
+
+// Resolve a pending feedback disambiguation against the user's latest message —
+// the mirror of funnel.consumeOfferReply for the feedback pills. The labels are
+// sent verbatim by the choice buttons, so the match is exact-string code, not
+// model judgment. "lapsed" is distinguished from null so run-turn doesn't
+// immediately re-show the choices after a non-matching reply (it only re-detects
+// feedback intent when nothing was pending). Pinning chat-feedback here mirrors
+// the banner/offer paths: the next turn's collect-feedback flow asks the rating.
+export function consumeFeedbackChoice(
+  session: FormSession,
+  latest: string,
+): FeedbackChoice {
+  if (session.feedbackChoice !== "pending") return null;
+  session.feedbackChoice = undefined;
+  session.updatedAt = Date.now();
+  const reply = latest.trim().toLowerCase();
+  if (reply === FEEDBACK_ABOUT_ASSISTANT.toLowerCase()) {
+    pinFeedbackForm(session);
+    return { kind: "assistant" };
+  }
+  if (reply === FEEDBACK_ABOUT_SERVICE.toLowerCase()) {
+    return { kind: "service" };
+  }
+  return { kind: "lapsed" };
 }

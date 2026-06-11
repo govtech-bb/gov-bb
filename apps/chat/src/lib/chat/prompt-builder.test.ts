@@ -191,6 +191,20 @@ test("linkRequested delivers exactly the requested link", () => {
   assert.match(text, /Do NOT start collecting/);
 });
 
+// "About a service or the site" feedback hands over the general feedback link,
+// never a ministry contact, and wins over the no-form disclosures.
+test("serviceFeedback hands over the general feedback link, not the no-form disclosure", () => {
+  const text = build({
+    serviceFeedback: { url: "https://landing.test/feedback" },
+  });
+  assert.match(
+    text,
+    /\[Tell us what you think\]\(https:\/\/landing\.test\/feedback\)/,
+  );
+  assert.match(text, /do NOT recite a ministry/i);
+  assert.doesNotMatch(text, /NO ONLINE FORM AVAILABLE/);
+});
+
 // Closers must NOT get the no-form disclosure (it would answer substance on a
 // goodbye); the feedback invitation rides along only when still available.
 test("closer routes to the sign-off guidance, with optional feedback offer", () => {
