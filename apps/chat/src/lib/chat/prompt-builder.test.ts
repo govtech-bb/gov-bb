@@ -70,6 +70,26 @@ test("collect first-turn (apply): protocol + schema + start-collecting + form li
   assert.match(text, /https:\/\/forms\.test\/forms\/mail-redirect/);
 });
 
+// Banner "Give feedback" clicked twice (or any form re-triggered): the first
+// question was already presented via ask_field, but the user hasn't answered
+// it, so values are still empty. The fresh-start "has not started yet" line
+// would contradict the history (the model already asked) and the model narrates
+// the question instead of re-calling ask_field — its options never re-render
+// (#1207 follow-up). The prompt must steer a re-present instead.
+test("collect re-trigger (asked, nothing collected): steers a re-present, not a fresh start", () => {
+  const text = build({
+    resolution: collectResolution("chat-feedback"),
+    session: session({
+      slug: "chat-feedback",
+      askedFieldIds: new Set(["experience-rating"]),
+    }),
+  });
+  assert.match(text, /already shown/i);
+  assert.match(text, /ask_field with no arguments/);
+  // It must NOT use the fresh-start line that conflicts with the history.
+  assert.doesNotMatch(text, /has not started/);
+});
+
 test("collect offerOnly: answers first, offers choices, never collects", () => {
   const text = build({ resolution: collectResolution(), offerOnly: true });
   assert.match(text, /INFORMATION question/);
