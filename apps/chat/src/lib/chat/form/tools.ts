@@ -20,6 +20,7 @@ import {
   buildFieldIndex,
   describeField,
   findEscapeToggle,
+  sectionForField,
   getActiveFieldIds,
   isChatCollectable,
   nextAskableField,
@@ -91,6 +92,16 @@ const askFieldTool = askFieldDef.server<FormTurnContext>(
       }
       f = next.field;
     }
+    // Section header: when this field opens a new (titled) step, announce it
+    // so the user knows whose details these are — the professional referee,
+    // the emergency contact — instead of re-entering their own. Computed
+    // against the asked set BEFORE marking f asked (sectionForField excludes
+    // f, so it's order-independent, but this reads clearer).
+    const section = sectionForField(
+      form.contract,
+      f.fieldId,
+      session.askedFieldIds,
+    );
     session.askedFieldIds.add(f.fieldId);
     // A show-hide toggle has no options in the contract (it's a disclosure
     // click in the forms UI). Synthesize Yes/No so the chat client renders
@@ -125,6 +136,7 @@ const askFieldTool = askFieldDef.server<FormTurnContext>(
         options,
         validations: f.validations ?? undefined,
         alternative,
+        section: section ?? undefined,
       },
     };
   },

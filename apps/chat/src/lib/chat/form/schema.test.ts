@@ -8,6 +8,7 @@ import {
   getActiveFieldIds,
   isChatCollectable,
   needsHandoff,
+  sectionForField,
   summarizeActive,
 } from "./schema";
 
@@ -476,4 +477,69 @@ test("describeField reads required:{value:false} as optional", () => {
     },
   } as unknown as Primitive;
   assert.match(describeField(required), /\(required\)/);
+});
+
+// ---------------------------------------------------------------------------
+// sectionForField — announce a step title when the cursor crosses into a new
+// step, so the user knows whose details these are (#1175 referee, #1181/#1136
+// emergency contact: fields rendered with no section context).
+// ---------------------------------------------------------------------------
+
+function twoStepContract(): ServiceContract {
+  return {
+    formId: "two-step",
+    title: "Two Step",
+    version: "1.0.0",
+    createdAt: "2026-01-01T00:00:00",
+    updatedAt: "2026-01-01T00:00:00",
+    steps: [
+      {
+        stepId: "applicant",
+        title: "Your details",
+        elements: [
+          { fieldId: "first-name", htmlType: "text", label: "First name" },
+          { fieldId: "last-name", htmlType: "text", label: "Last name" },
+        ],
+      },
+      {
+        stepId: "emergency-contact",
+        title: "Emergency contact details",
+        elements: [
+          { fieldId: "ec-first-name", htmlType: "text", label: "First name" },
+          { fieldId: "ec-last-name", htmlType: "text", label: "Last name" },
+        ],
+      },
+    ],
+  } as unknown as ServiceContract;
+}
+
+test("sectionForField announces a step's title on its FIRST field only", () => {
+  const c = twoStepContract();
+  // First field of step 1, nothing asked yet → announce.
+  assert.equal(sectionForField(c, "first-name", new Set()), "Your details");
+  // Second field of the same step → already in it, no re-announce.
+  assert.equal(sectionForField(c, "last-name", new Set(["first-name"])), null);
+  // First field of the emergency-contact step → announce (the whole point:
+  // the user must be told these aren't their own details).
+  assert.equal(
+    sectionForField(c, "ec-first-name", new Set(["first-name", "last-name"])),
+    "Emergency contact details",
+  );
+  assert.equal(
+    sectionForField(
+      c,
+      "ec-last-name",
+      new Set(["first-name", "last-name", "ec-first-name"]),
+    ),
+    null,
+  );
+});
+
+test("sectionForField returns null for a step with no title", () => {
+  const c = twoStepContract();
+  c.steps[1]!.title = undefined as unknown as string;
+  assert.equal(
+    sectionForField(c, "ec-first-name", new Set(["first-name"])),
+    null,
+  );
 });

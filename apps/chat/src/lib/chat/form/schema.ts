@@ -193,6 +193,38 @@ export function nextAskableField(
   return null;
 }
 
+// The step title to ANNOUNCE when this field opens a new section, or null if
+// it doesn't. A field opens a new section when none of the already-asked
+// fields live in its step (the cursor just crossed a step boundary) AND the
+// step has a meaningful title. This is how the user learns "these next
+// questions are your emergency contact / professional referee" rather than
+// re-entering their own details — the titles are in the contract; the chat
+// just wasn't surfacing them. No new session state: derived from askedFieldIds.
+export function sectionForField(
+  contract: ServiceContract,
+  fieldId: string,
+  asked: ReadonlySet<string>,
+): string | null {
+  const stepByFieldId = new Map<string, string>();
+  let stepId: string | undefined;
+  let title: string | undefined;
+  for (const step of contract.steps) {
+    for (const el of step.elements) {
+      stepByFieldId.set(el.fieldId, step.stepId);
+      if (el.fieldId === fieldId) {
+        stepId = step.stepId;
+        title = step.title;
+      }
+    }
+  }
+  if (!title) return null;
+  for (const askedId of asked) {
+    if (askedId === fieldId) continue;
+    if (stepByFieldId.get(askedId) === stepId) return null;
+  }
+  return title;
+}
+
 export interface ActiveFormSchema {
   slug: string;
   schema: string;
