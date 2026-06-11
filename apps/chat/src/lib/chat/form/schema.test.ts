@@ -382,3 +382,73 @@ test("nextAskableField applies escape folding and serves revealed fields", () =>
     "applicant-passport-number",
   );
 });
+
+// ---------------------------------------------------------------------------
+// auto-confirmed fields — the feedback form's declaration is filled silently
+// ---------------------------------------------------------------------------
+
+// The form-builder always regenerates a required "declaration" step on the
+// chat-feedback recipe. In chat we confirm it for the user, so it must never
+// be disclosed to the model or served by the ask cursor — otherwise the model
+// asks the user to "confirm the declaration", the exact ceremony #1114 removed.
+function feedbackDeclarationContract(formId: string): ServiceContract {
+  return {
+    formId,
+    title: "Give feedback on the assistant",
+    version: "1.5.0",
+    createdAt: "2026-01-01T00:00:00",
+    updatedAt: "2026-01-01T00:00:00",
+    steps: [
+      {
+        stepId: "your-feedback",
+        title: "Your feedback",
+        elements: [
+          { fieldId: "experience-rating", htmlType: "text", label: "Rating" },
+        ],
+      },
+      {
+        stepId: "declaration",
+        title: "Declaration",
+        elements: [
+          {
+            fieldId: "declaration-confirmed",
+            htmlType: "checkbox",
+            label: "Declaration",
+            options: [{ label: "I confirm", value: "confirmed" }],
+            validations: { required: { value: true } },
+          },
+        ],
+      },
+    ],
+  } as unknown as ServiceContract;
+}
+
+test("summarizeActive hides the feedback declaration but keeps real fields", () => {
+  const c = feedbackDeclarationContract("chat-feedback");
+  const schema = summarizeActive(c, getActiveFieldIds(c, {}).byStep, {});
+  assert.ok(schema);
+  assert.ok(schema.includes("experience-rating"));
+  assert.ok(!schema.includes("declaration-confirmed"));
+});
+
+test("nextAskableField never serves the auto-confirmed feedback declaration", () => {
+  const c = feedbackDeclarationContract("chat-feedback");
+  const none = new Set<string>();
+  // Rating answered → the cursor would normally land on the declaration next,
+  // but it is auto-confirmed, so collection is complete (null = review time).
+  assert.equal(
+    nextAskableField(c, { "experience-rating": "good" }, none),
+    null,
+  );
+});
+
+test("a real form's declaration is still asked — auto-confirm is feedback-only", () => {
+  const c = feedbackDeclarationContract("get-birth-certificate");
+  const schema = summarizeActive(c, getActiveFieldIds(c, {}).byStep, {});
+  assert.ok(schema?.includes("declaration-confirmed"));
+  assert.equal(
+    nextAskableField(c, { "experience-rating": "good" }, new Set())?.field
+      .fieldId,
+    "declaration-confirmed",
+  );
+});

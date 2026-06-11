@@ -14,6 +14,7 @@ import {
   pinFeedbackForm,
   submitSuccessForModel,
 } from "#/lib/chat/feedback";
+import { isAutoConfirmedField } from "./auto-confirm";
 import type { ActiveFormSchema } from "./schema";
 import {
   buildFieldIndex,
@@ -67,6 +68,11 @@ const askFieldTool = askFieldDef.server<FormTurnContext>(
       const active = getActiveFieldIds(form.contract, session.values).flat;
       const info = buildFieldIndex(form.contract).get(fieldId);
       if (!info || !active.has(fieldId)) {
+        return { ok: false, error: `unknown or inactive fieldId: ${fieldId}` };
+      }
+      // Auto-confirmed fields (the feedback declaration) are filled for the
+      // user at submit — never asked, even if the model names one directly.
+      if (isAutoConfirmedField(form.contract, fieldId)) {
         return { ok: false, error: `unknown or inactive fieldId: ${fieldId}` };
       }
       f = info.field;
@@ -185,6 +191,7 @@ const setFieldTool = setFieldDef.server<FormTurnContext>(
     const revealed: string[] = [];
     for (const id of after) {
       if (active.has(id)) continue;
+      if (isAutoConfirmedField(form.contract, id)) continue;
       const f = idx.get(id)?.field;
       if (f && isChatCollectable(f)) revealed.push(describeField(f));
     }
