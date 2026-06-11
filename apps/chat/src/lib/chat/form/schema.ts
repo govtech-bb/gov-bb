@@ -172,11 +172,16 @@ export function summarizeActive(
   );
 }
 
-// The ask cursor: the first question not yet collected and not yet asked.
-// "Asked but uncollected" = the user skipped an optional field — the cursor
-// moves past it instead of looping. Ordering lives HERE, in code, not in the
-// model: the prompt-level "ASK IN SCHEMA ORDER" rule was probabilistic and
-// the model regularly skipped ahead.
+// The ask cursor: the first question not yet collected and — for OPTIONAL
+// fields — not yet asked. "Asked but uncollected" only advances the cursor for
+// an optional field the user chose to leave blank; a REQUIRED field that was
+// presented but never answered is re-served, so re-triggering a form (e.g.
+// re-sending the feedback phrase before picking a rating) re-shows that field
+// and its options instead of skipping past it (#1207). A required field whose
+// requirement is relaxed by an open escape toggle is already folded out of
+// askableFields upstream, so it can't loop here. Ordering lives HERE, in code,
+// not in the model: the prompt-level "ASK IN SCHEMA ORDER" rule was
+// probabilistic and the model regularly skipped ahead.
 export function nextAskableField(
   contract: ServiceContract,
   values: Record<string, unknown>,
@@ -186,7 +191,7 @@ export function nextAskableField(
   for (const { stepId, field } of askableFields(contract, active, values)) {
     const value = values[field.fieldId];
     if (value !== undefined && value !== "") continue;
-    if (asked.has(field.fieldId)) continue;
+    if (asked.has(field.fieldId) && !isRequired(field)) continue;
     return { stepId, field };
   }
   return null;

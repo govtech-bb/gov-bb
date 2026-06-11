@@ -366,6 +366,72 @@ test("nextAskableField walks step order, skipping collected and asked", () => {
   );
 });
 
+// A required field that was presented but never answered must be re-served —
+// askedFieldIds only lets the cursor skip OPTIONAL fields the user left blank.
+// Repeating the feedback trigger without picking a rating must re-show the
+// rating field (so its options render again), not advance past it. (#1207)
+function requiredCursorContract(): ServiceContract {
+  return {
+    formId: "feedback-cursor-form",
+    title: "Feedback",
+    version: "1.0.0",
+    createdAt: "2026-01-01T00:00:00",
+    updatedAt: "2026-01-01T00:00:00",
+    steps: [
+      {
+        stepId: "your-feedback",
+        title: "Your feedback",
+        elements: [
+          {
+            fieldId: "experience-rating",
+            htmlType: "select",
+            label: "Experience rating",
+            validations: { required: { value: true } },
+            options: [
+              { label: "Good", value: "good" },
+              { label: "Poor", value: "poor" },
+            ],
+          },
+          {
+            fieldId: "improvement-comment",
+            htmlType: "textarea",
+            label: "What could be better?",
+          },
+        ],
+      },
+    ],
+  } as unknown as ServiceContract;
+}
+
+test("nextAskableField re-serves a required field asked but not answered", () => {
+  const c = requiredCursorContract();
+  // Required, presented (in the asked set), still unanswered → re-serve it,
+  // don't skip ahead to the optional comment.
+  assert.equal(
+    nextAskableField(c, {}, new Set(["experience-rating"]))?.field.fieldId,
+    "experience-rating",
+  );
+  // Once answered, the cursor advances normally.
+  assert.equal(
+    nextAskableField(
+      c,
+      { "experience-rating": "good" },
+      new Set(["experience-rating"]),
+    )?.field.fieldId,
+    "improvement-comment",
+  );
+  // The OPTIONAL follow-up, asked but left blank, is still skipped (review
+  // time) — the relaxation is required-only.
+  assert.equal(
+    nextAskableField(
+      c,
+      { "experience-rating": "good" },
+      new Set(["experience-rating", "improvement-comment"]),
+    ),
+    null,
+  );
+});
+
 // The cursor shares the disclosure's escape-toggle folding: the toggle is
 // never served standalone, and the relaxed field disappears once the escape
 // is open — the cursor serves the revealed field instead.
