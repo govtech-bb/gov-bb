@@ -16,10 +16,70 @@ import type {
 import FileUpload from "./file-upload";
 import { MaskedInput } from "./masked-input";
 
-/** An inset field entry passed from the parent radio group. */
+/** An inset field entry passed from the parent radio/select group. */
 export interface InsetFieldEntry {
   field: ClientPrimitive;
   validationProperties: FieldValidationProperties;
+}
+
+/**
+ * Design-system number input. A native `type="number"` field with the browser
+ * spinners suppressed (`.govbb-number-input`) plus custom up/down steppers that
+ * match the gov bb design system. The stepper arrows are drawn entirely in CSS,
+ * so the buttons carry no visible content. Increment/decrement step the
+ * controlled value by 1; a blank/non-numeric value is treated as 0.
+ */
+function NumberInput({
+  value,
+  onChange,
+  invalid,
+  inputProps,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  invalid?: boolean;
+  inputProps: React.InputHTMLAttributes<HTMLInputElement>;
+}) {
+  const step = (delta: number) => {
+    const current = Number(value);
+    const base = value !== "" && Number.isFinite(current) ? current : 0;
+    onChange(String(base + delta));
+  };
+
+  return (
+    <div className="govbb-number-input-wrapper">
+      <input
+        {...inputProps}
+        type="number"
+        inputMode="numeric"
+        className="govbb-number-input"
+        value={value}
+        aria-invalid={invalid}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      <div className="govbb-number-input__steppers">
+        <button
+          type="button"
+          tabIndex={-1}
+          className="govbb-number-input__step"
+          aria-label="Increment"
+          aria-controls={inputProps.id}
+          disabled={inputProps.disabled}
+          onClick={() => step(1)}
+        />
+        <div className="govbb-number-input__divider" />
+        <button
+          type="button"
+          tabIndex={-1}
+          className="govbb-number-input__step govbb-number-input__step--down"
+          aria-label="Decrement"
+          aria-controls={inputProps.id}
+          disabled={inputProps.disabled}
+          onClick={() => step(-1)}
+        />
+      </div>
+    </div>
+  );
 }
 
 export default function FieldRenderer({
@@ -29,6 +89,7 @@ export default function FieldRenderer({
   insetFieldsByOption,
   formId,
   formVersion,
+  previewToken,
 }: {
   form: any;
   field: ClientPrimitive;
@@ -39,6 +100,8 @@ export default function FieldRenderer({
   formId?: string;
   /** Form version, forwarded to FileUpload for presigned uploads. */
   formVersion?: string;
+  /** Preview token, forwarded to FileUpload so draft uploads resolve. */
+  previewToken?: string;
 }) {
   if (field.hidden) return null;
 
@@ -131,6 +194,10 @@ export default function FieldRenderer({
         const requiredProps = isRequired
           ? { required: true, "aria-required": true }
           : {};
+
+        // GOV.UK telephone pattern: phone inputs carry autocomplete="tel" so
+        // the browser can autofill a saved number (WCAG 2.2 SC 1.3.5).
+        const autoComplete = field.htmlType === "tel" ? "tel" : undefined;
 
         switch (field.htmlType) {
           case "date": {
@@ -289,22 +356,50 @@ export default function FieldRenderer({
           case "tel":
           case "email": {
             let inputElement: JSX.Element;
+            const isNumber = field.htmlType === "number";
 
-            if (!fieldArray) {
-              const value = f.state.value as string | undefined;
-              inputElement = (
+            // Number fields render the design-system number input (custom
+            // steppers, native spinners hidden); the other text-like types keep
+            // the masked `.govbb-input`. `withRequired` mirrors the original
+            // behaviour where the repeating array path omits requiredProps.
+            const renderControl = (
+              value: string,
+              onChange: (next: string) => void,
+              withRequired: boolean,
+            ): JSX.Element =>
+              isNumber ? (
+                <NumberInput
+                  value={value}
+                  onChange={onChange}
+                  invalid={invalid}
+                  inputProps={
+                    withRequired
+                      ? { ...sharedProps, ...requiredProps }
+                      : sharedProps
+                  }
+                />
+              ) : (
                 <div className="govbb-input-wrapper">
                   <MaskedInput
                     key={field.id}
                     mask={field.mask}
                     {...sharedProps}
-                    {...requiredProps}
+                    {...(withRequired ? requiredProps : {})}
+                    autoComplete={autoComplete}
                     className="govbb-input"
-                    value={value ?? ""}
+                    value={value}
                     aria-invalid={invalid}
-                    onChange={(e) => commitChange(e.target.value)}
+                    onChange={(e) => onChange(e.target.value)}
                   />
                 </div>
+              );
+
+            if (!fieldArray) {
+              const value = f.state.value as string | undefined;
+              inputElement = renderControl(
+                value ?? "",
+                (next) => commitChange(next),
+                true,
               );
             } else {
               const addAnotherField = (values: string[]) => {
@@ -342,18 +437,11 @@ export default function FieldRenderer({
                 <>
                   {Array.from({ length: fieldCount }).map((_, i) => (
                     <React.Fragment key={`${field.id}-${i}`}>
-                      <div className="govbb-input-wrapper">
-                        <MaskedInput
-                          mask={field.mask}
-                          {...sharedProps}
-                          className="govbb-input"
-                          value={values && values.length > 0 ? values[i] : ""}
-                          aria-invalid={invalid}
-                          onChange={(e) =>
-                            updateField(values, i, e.target.value)
-                          }
-                        />
-                      </div>
+                      {renderControl(
+                        values && values.length > 0 ? values[i] : "",
+                        (next) => updateField(values, i, next),
+                        false,
+                      )}
                       {i === fieldCount - 1 && i != 0 ? (
                         <button
                           type="button"
@@ -403,9 +491,17 @@ export default function FieldRenderer({
             );
             return element;
           }
-          case "select":
+          case "select": {
             const isMultiple = field.multiple ?? false;
             const selectValue = f.state.value as string | string[] | undefined;
+            // Conditional reveal (#863): inset fields keyed to the selected
+            // option. Unlike radio there is no per-option DOM position, so
+            // the reveal renders below the whole control. Multi-selects never
+            // receive insetFieldsByOption (see buildFieldGroups).
+            const selectInsetEntries =
+              !isMultiple && typeof selectValue === "string"
+                ? insetFieldsByOption?.get(selectValue)
+                : undefined;
             return (
               <div
                 className="govbb-form-group"
@@ -443,8 +539,29 @@ export default function FieldRenderer({
                     </svg>
                   </span>
                 </div>
+                {selectInsetEntries && (
+                  <div className="govbb-select__conditional">
+                    {selectInsetEntries.map(
+                      ({
+                        field: insetField,
+                        validationProperties: insetValidation,
+                      }) => (
+                        <FieldRenderer
+                          key={insetField.id}
+                          form={form}
+                          field={insetField}
+                          validationProperties={insetValidation}
+                          formId={formId}
+                          formVersion={formVersion}
+                          previewToken={previewToken}
+                        />
+                      ),
+                    )}
+                  </div>
+                )}
               </div>
             );
+          }
           case "checkbox":
             if (field.options && field.options.length === 1) {
               const option = field.options[0];
@@ -585,6 +702,8 @@ export default function FieldRenderer({
                                   field={insetField}
                                   validationProperties={insetValidation}
                                   formId={formId}
+                                  formVersion={formVersion}
+                                  previewToken={previewToken}
                                 />
                               ),
                             )}
@@ -607,6 +726,7 @@ export default function FieldRenderer({
                 errorId={errorId}
                 formId={formId}
                 formVersion={formVersion}
+                previewToken={previewToken}
               />
             );
           case "show-hide": {

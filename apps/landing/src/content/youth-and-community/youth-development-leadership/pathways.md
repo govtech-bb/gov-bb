@@ -5,8 +5,9 @@ stage: "alpha"
 publish_date: 2026-05-20
 category: youth-and-community
 subcategory: youth-development-leadership
+visibility: preview
 service_type: information
-form_id: pathways-employability-programme-application-2026
+form_id: youth-opportunity-pathways
 ---
 
 A job-attachment and mentorship programme for unemployed young people aged 16 to 24, with support from social workers and counsellors.

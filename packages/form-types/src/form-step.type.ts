@@ -1,11 +1,16 @@
 import { z } from "zod";
 import { fieldOverridesSchema, primitiveSchema } from "./primitive.type";
-import { behaviourSchema } from "./behavior.type";
+import { behaviourSchema, conditionalTitleSchema } from "./behavior.type";
 import { kebabIdSchema } from "./id-pattern";
 
 export const formStepSchema = z.object({
   stepId: kebabIdSchema,
   title: z.string(),
+  // Optional per-answer title overrides (#871). When a step's title should
+  // adapt to an earlier answer (e.g. "Provide your birth details" vs "Provide
+  // the person's birth details"), list the conditions here; `title` above is
+  // the fallback when none match. See `resolveStepTitle` in form-conditions.
+  conditionalTitle: z.array(conditionalTitleSchema).optional(),
   description: z.string().optional(),
   elements: z.array(primitiveSchema),
   behaviours: z.array(behaviourSchema).optional(),

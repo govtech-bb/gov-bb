@@ -28,6 +28,12 @@ export const listForms = createServerFn({ method: "GET" })
     // The loop `continue`s when a draft outranks the published copy, so it can't
     // be the source of truth for membership.
     const publishedIds = new Set(published.map((p) => p.formId));
+    // The exact version each formId is published at — kept separately from the
+    // merged `version` (which may be a higher unpublished draft) so the builder
+    // can tell whether the *loaded* version is the published one.
+    const publishedVersionByFormId = new Map(
+      published.map((p) => [p.formId, p.version] as const),
+    );
 
     const byFormId = new Map<string, FormDefinitionSummary>();
     for (const d of drafts) byFormId.set(d.formId, d);
@@ -54,6 +60,7 @@ export const listForms = createServerFn({ method: "GET" })
       .map((f) => ({
         ...f,
         isPublished: f.isPublished || publishedIds.has(f.formId),
+        publishedVersion: publishedVersionByFormId.get(f.formId),
         isDisabled: disabledIds.has(f.formId),
       }))
       .filter((f) => !f.isDisabled || f.isPublished);
@@ -121,10 +128,14 @@ export const submitRecipe = createServerFn({ method: "POST" })
       processors: processorsSiblingSchema,
     }),
   )
-  .handler(async ({ data }): Promise<void> => {
+  .handler(async ({ data, context }): Promise<void> => {
     await api.post("/builder/forms", {
       recipe: data.recipe,
       isNew: data.isNew ?? false,
+      // Read-only lock (#874): the API rejects the save unless this login holds
+      // the fresh editing claim. Stamped from the SSR session — the API has no
+      // user concept of its own.
+      userLogin: context.session.login,
       // Only send the key when the caller supplied one, so a save that never
       // touched the contact selection doesn't clobber a stored value with null.
       ...(data.mdaContactId !== undefined
@@ -144,9 +155,11 @@ export const updateRecipe = createServerFn({ method: "POST" })
       processors: processorsSiblingSchema,
     }),
   )
-  .handler(async ({ data }): Promise<void> => {
+  .handler(async ({ data, context }): Promise<void> => {
     await api.put(`/builder/forms/${encodeURIComponent(data.formId)}`, {
       recipe: data.recipe,
+      // Read-only lock (#874): only the fresh claim holder may save.
+      userLogin: context.session.login,
       ...(data.mdaContactId !== undefined
         ? { mdaContactId: data.mdaContactId }
         : {}),
@@ -189,10 +202,11 @@ export const rekeyRecipe = createServerFn({ method: "POST" })
       recipe: z.unknown(),
     }),
   )
-  .handler(async ({ data }): Promise<void> => {
+  .handler(async ({ data, context }): Promise<void> => {
     await api.post(
       `/builder/forms/${encodeURIComponent(data.oldFormId)}/rekey`,
-      { recipe: data.recipe },
+      // Read-only lock (#874): only the current claim holder may re-key.
+      { recipe: data.recipe, userLogin: context.session.login },
     );
   });
 

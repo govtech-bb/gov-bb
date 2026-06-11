@@ -1,7 +1,16 @@
 export { matchFormsFromText } from "./detect";
+export { getFormSlugs } from "./defs";
 export {
+  consumeOfferReply,
+  funnelPhase,
+  parkHandoff,
+  recordMissOutcome,
+  type FunnelPhase,
+} from "./funnel";
+export { applyRagFallback, pinSessionForm } from "./routing";
+export {
+  buildFieldIndex,
   resolveActiveForm,
-  type ActiveFormSchema,
   type FormResolution,
 } from "./schema";
 export {
@@ -10,5 +19,10 @@ export {
   withThreadLock,
   type FormSession,
 } from "./session";
-export { submitFormUpstream, type SubmitOutcome } from "./submit";
-export { buildFormTools } from "./tools";
+export {
+  buildEndOfChatTools,
+  buildFeedbackTools,
+  buildFormTools,
+  buildOfferTools,
+  type FormTurnContext,
+} from "./tools";

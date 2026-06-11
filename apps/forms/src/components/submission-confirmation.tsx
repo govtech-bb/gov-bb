@@ -34,6 +34,7 @@ export default function SubmissionConfirmation({
   contactDetails,
   onTryAgain,
   submissionState,
+  feedbackUrl,
 }: SubmissionConfirmationProps) {
   // submissionState is rehydrated from session storage, so it survives a
   // refresh on this step. When it is genuinely absent (the step was reached
@@ -148,17 +149,23 @@ export default function SubmissionConfirmation({
         </div>
       )}
 
-      <div className="form-page__feedback">
-        <h3 className="govbb-text-h3">Help us improve this service</h3>
-        <p>
-          We are always working to improve government services. If you have a
-          moment, you can tell us about your experience today.
-        </p>
-        <button className="govbb-btn--secondary">
-          Give feedback on this service
-        </button>
-        <p>This will take about 30 seconds. Your responses are anonymous.</p>
-      </div>
+      {/* Only invite feedback when a target is provided. The exit survey's own
+          confirmation passes no feedbackUrl, so it never links to itself. */}
+      {feedbackUrl && (
+        <div className="form-page__feedback">
+          <h3 className="govbb-text-h3">Help us improve this service</h3>
+          <p>
+            We are always working to improve government services. If you have a
+            moment, you can tell us about your experience today.
+          </p>
+          {/* Renders as a link (not a button) styled as a secondary action —
+              the same pattern as the "Continue to payment" anchor above. */}
+          <a className="govbb-btn--secondary" href={feedbackUrl}>
+            Give feedback on this service
+          </a>
+          <p>This will take about 30 seconds. Your responses are anonymous.</p>
+        </div>
+      )}
     </>
   );
 
@@ -205,7 +212,7 @@ export default function SubmissionConfirmation({
           <div className="form-width form-page__confirmation">
             {referenceNumber && (
               <dl className="form-page__reference">
-                <dt>Reference number</dt>
+                <dt>Submission ID</dt>
                 <dd>{referenceNumber}</dd>
               </dl>
             )}
@@ -242,7 +249,7 @@ export default function SubmissionConfirmation({
             <div className="govbb-payment__items">
               {paymentItem("Service:", serviceLabel)}
               {paymentItem("Amount:", formattedAmount)}
-              {paymentItem("Reference number:", referenceNumber)}
+              {paymentItem("Submission ID:", referenceNumber)}
               {paymentItem("Date:", formattedDate)}
             </div>
           </section>

@@ -1,5 +1,12 @@
 import { Router } from "express";
-import type { ServiceContractRecipe } from "@govtech-bb/form-types";
+import type { Request, Response } from "express";
+import {
+  deployBranchName,
+  type ServiceContractRecipe,
+} from "@govtech-bb/form-types";
+import { getDataSource } from "../db.js";
+import { holdsFreshClaim } from "./presence.js";
+import { validateRecipeFully } from "./validate-recipe.js";
 
 export const publishRouter = Router();
 
@@ -21,15 +28,47 @@ function authHeaders(token: string): Record<string, string> {
 }
 
 // POST /builder/publish — create a GitHub PR with the recipe
-publishRouter.post("/", async (req, res) => {
+export async function publishHandler(req: Request, res: Response) {
   try {
-    const { recipe, description, githubToken } = req.body;
+    const { recipe, description, githubToken, userLogin } = req.body;
     if (!recipe || !githubToken) {
       res.status(400).json({ error: "recipe and githubToken are required" });
       return;
     }
+
+    // Server-side backstop (#759): run the same validation the client Deploy
+    // gate runs, *before* any GitHub call, so a stale/non-UI client can't open
+    // a junk PR that only exists to fail CI. On failure nothing is created, so
+    // there's no branch/PR to clean up.
+    const validation = await validateRecipeFully(recipe);
+    if (!validation.ok) {
+      res.status(400).json({
+        error: "Recipe failed validation",
+        issues: validation.issues,
+      });
+      return;
+    }
+
     const typedRecipe = recipe as ServiceContractRecipe;
     const token = githubToken as string;
+
+    // Read-only lock (#874): deploying is a write, so only the current fresh
+    // claim holder may publish. Require the SSR-stamped login (400) and verify
+    // the claim (409) before touching GitHub.
+    const login = typeof userLogin === "string" ? userLogin.trim() : "";
+    if (!login) {
+      res.status(400).json({ error: "userLogin is required" });
+      return;
+    }
+    const ds = await getDataSource();
+    if (!(await holdsFreshClaim(ds, typedRecipe.formId, login))) {
+      res.status(409).json({
+        error:
+          "Another editor holds this form. Your session is read-only until their claim expires.",
+        code: "presence_conflict",
+      });
+      return;
+    }
 
     // Get dev tip SHA
     const refRes = await fetch(repoUrl(`/git/ref/heads/${BASE_BRANCH}`), {
@@ -45,7 +84,7 @@ publishRouter.post("/", async (req, res) => {
     const baseSha = refJson.object.sha;
 
     // Create branch
-    const branch = `form-builder/${typedRecipe.formId}-${typedRecipe.version}-${Date.now()}`;
+    const branch = deployBranchName(typedRecipe.formId, typedRecipe.version);
     const createRefRes = await fetch(repoUrl("/git/refs"), {
       method: "POST",
       headers: { ...authHeaders(token), "Content-Type": "application/json" },
@@ -59,8 +98,13 @@ publishRouter.post("/", async (req, res) => {
     }
 
     try {
-      // Write recipe file
-      const contentsPath = `/contents/recipes/${typedRecipe.formId}/${typedRecipe.version}.json`;
+      // Write recipe file. formId/version are user-provided, so encode each
+      // segment as it enters the request path (slashes between segments are
+      // structural and must survive) — sink-level sanitization that clears the
+      // CodeQL js/request-forgery alert and neutralises any injected path
+      // characters. Backstopped by the kebab `formId` / semver `version`
+      // validation in validateRecipeFully; for valid input this is a no-op (#935).
+      const contentsPath = `/contents/recipes/${encodeURIComponent(typedRecipe.formId)}/${encodeURIComponent(typedRecipe.version)}.json`;
       const fileContent = JSON.stringify(typedRecipe, null, 2) + "\n";
       const putRes = await fetch(repoUrl(contentsPath), {
         method: "PUT",
@@ -95,8 +139,18 @@ publishRouter.post("/", async (req, res) => {
       };
       res.json({ prUrl: prJson.html_url, prNumber: prJson.number });
     } catch (err: any) {
-      // Cleanup branch on failure
-      await fetch(repoUrl(`/git/refs/heads/${branch}`), {
+      // Cleanup branch on failure. `branch` derives from user-provided
+      // formId/version (via deployBranchName), so sanitize it at the
+      // request-path sink — same rationale as the contents PUT above (#935).
+      // Encode per path segment: GitHub matches the ref by literal segments, so
+      // the structural `/` in `form-builder/<name>` must survive (whole-string
+      // encoding would turn it into %2F and 404 the cleanup, orphaning the
+      // branch). For valid input this is a no-op.
+      const encodedBranchPath = branch
+        .split("/")
+        .map(encodeURIComponent)
+        .join("/");
+      await fetch(repoUrl(`/git/refs/heads/${encodedBranchPath}`), {
         method: "DELETE",
         headers: authHeaders(token),
       }).catch(() => {});
@@ -105,4 +159,6 @@ publishRouter.post("/", async (req, res) => {
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
-});
+}
+
+publishRouter.post("/", publishHandler);

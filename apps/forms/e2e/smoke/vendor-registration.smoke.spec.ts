@@ -161,7 +161,7 @@ test.describe("Smart Stream Vendor Registration — Live Smoke", () => {
     // ─── Submit + Submission Confirmation ────────────────────────────────────
     await submitAndConfirm(page, {
       heading: "Application Submitted",
-      referenceLabel: "Reference Number",
+      referenceLabel: "Submission ID",
     });
   });
 });

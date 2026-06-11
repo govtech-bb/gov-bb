@@ -18,6 +18,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "validate-recipes": "tsx scripts/validate-recipes.ts",
+    "recipe-version-guard": "tsx scripts/recipe-version-guard.ts",
     "dump-recipes": "tsx --env-file-if-exists=.env packages/database/scripts/dump-recipes-to-files.ts",
     "migration:create": "TS_NODE_PROJECT=apps/api/tsconfig.json typeorm-ts-node-commonjs migration:create",
     "migration:create:help": "node -e \"console.log('Usage: pnpm migration:create -- <path/to/migrations>/<migration-name>'); console.log('Example: pnpm migration:create -- apps/api/src/database/migrations/AddFormSubmissionIndexes'); console.log('This creates an empty migration file; use migration:generate for diff-based migrations.');\"",
@@ -83,6 +84,6 @@
     "luxon": "^3.7.2"
   },
   "lint-staged": {
-    "*.{json,ts}": "npx prettier --write"
+    "*.{json,ts}": "pnpm exec prettier --write"
   }
 }

@@ -1,0 +1,52 @@
+{
+  "Blocks": [
+    {
+      "BlockType": "PAGE",
+      "Id": "page-1",
+      "Page": 1,
+      "Relationships": [
+        { "Type": "CHILD", "Ids": ["line-1", "kv-key-1", "kv-key-2"] }
+      ]
+    },
+    {
+      "BlockType": "LINE",
+      "Id": "line-1",
+      "Page": 1,
+      "Text": "Personal Details"
+    },
+    {
+      "BlockType": "KEY_VALUE_SET",
+      "EntityTypes": ["KEY"],
+      "Id": "kv-key-1",
+      "Page": 1,
+      "Relationships": [
+        { "Type": "CHILD", "Ids": ["word-name"] },
+        { "Type": "VALUE", "Ids": ["kv-val-1"] }
+      ]
+    },
+    { "BlockType": "WORD", "Id": "word-name", "Text": "Name:" },
+    {
+      "BlockType": "KEY_VALUE_SET",
+      "EntityTypes": ["VALUE"],
+      "Id": "kv-val-1",
+      "Page": 1
+    },
+    {
+      "BlockType": "KEY_VALUE_SET",
+      "EntityTypes": ["KEY"],
+      "Id": "kv-key-2",
+      "Page": 1,
+      "Relationships": [
+        { "Type": "CHILD", "Ids": ["word-dob"] },
+        { "Type": "VALUE", "Ids": ["kv-val-2"] }
+      ]
+    },
+    { "BlockType": "WORD", "Id": "word-dob", "Text": "Date of Birth:" },
+    {
+      "BlockType": "KEY_VALUE_SET",
+      "EntityTypes": ["VALUE"],
+      "Id": "kv-val-2",
+      "Page": 1
+    }
+  ]
+}

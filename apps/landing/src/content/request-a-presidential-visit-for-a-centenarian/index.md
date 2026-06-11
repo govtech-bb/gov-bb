@@ -2,6 +2,7 @@
 title: "Request a Presidential Visit for a Centenarian"
 description: "Ask the President to visit a Barbadian who is turning 100 years old."
 stage: "alpha"
+visibility: preview
 publish_date: 2026-05-14
 category: family-birth-relationships
 ---

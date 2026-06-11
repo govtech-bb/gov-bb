@@ -34,7 +34,7 @@ function parseSemver(v: string): number[] {
   });
 }
 
-function compareSemver(a: string, b: string): number {
+export function compareSemver(a: string, b: string): number {
   const aa = parseSemver(a);
   const bb = parseSemver(b);
   const len = Math.max(aa.length, bb.length);

@@ -321,16 +321,71 @@ describe("FieldRenderer", () => {
   });
 
   // -------------------------------------------------------------------------
-  // number / tel / email htmlType (same code path as text)
+  // tel / email htmlType (same code path as text)
   // -------------------------------------------------------------------------
-  describe("number, tel, email htmlType", () => {
-    it.each(["number", "tel", "email"] as ClientPrimitive["htmlType"][])(
+  describe("tel, email htmlType", () => {
+    it.each(["tel", "email"] as ClientPrimitive["htmlType"][])(
       "%s → renders an input element",
       (htmlType) => {
         const { container } = renderField(primitive(htmlType));
         expect(container.querySelector("input")).toBeTruthy();
       },
     );
+  });
+
+  // -------------------------------------------------------------------------
+  // number htmlType — design-system number input with custom steppers
+  // -------------------------------------------------------------------------
+  describe("number htmlType", () => {
+    it("renders a design-system number input with two custom steppers", () => {
+      const { container } = renderField(primitive("number"));
+      const input = container.querySelector("input.govbb-number-input");
+      expect(input).toBeTruthy();
+      expect(input).toHaveAttribute("type", "number");
+      expect(
+        container.querySelectorAll(".govbb-number-input__step"),
+      ).toHaveLength(2);
+    });
+
+    it("Increment steps the value up by 1", async () => {
+      const user = userEvent.setup();
+      mockState = { value: "5", meta: { isValid: true, errors: [] } };
+      renderField(primitive("number"));
+      await user.click(screen.getByRole("button", { name: "Increment" }));
+      expect(mockFieldApi.handleChange).toHaveBeenCalledWith("6");
+    });
+
+    it("Decrement steps the value down by 1", async () => {
+      const user = userEvent.setup();
+      mockState = { value: "5", meta: { isValid: true, errors: [] } };
+      renderField(primitive("number"));
+      await user.click(screen.getByRole("button", { name: "Decrement" }));
+      expect(mockFieldApi.handleChange).toHaveBeenCalledWith("4");
+    });
+
+    // The mock handleChange never feeds the new value back into mockState, so
+    // both clicks step from the same blank base (0) — this asserts blank → ±1
+    // in each direction independently, NOT a sequential increment-then-decrement.
+    it("steps from a blank value to 1 (up) and -1 (down)", async () => {
+      const user = userEvent.setup();
+      renderField(primitive("number")); // value is undefined
+      await user.click(screen.getByRole("button", { name: "Increment" }));
+      expect(mockFieldApi.handleChange).toHaveBeenLastCalledWith("1");
+      await user.click(screen.getByRole("button", { name: "Decrement" }));
+      expect(mockFieldApi.handleChange).toHaveBeenLastCalledWith("-1");
+    });
+
+    it("renders the number input and steppers in the Add-another array path", () => {
+      const { container } = renderField(
+        primitive("number", {
+          behaviours: [{ type: "fieldArray", min: 1, max: 3 } as any],
+        }),
+      );
+      expect(container.querySelector("input.govbb-number-input")).toBeTruthy();
+      expect(
+        container.querySelectorAll(".govbb-number-input__step").length,
+      ).toBeGreaterThanOrEqual(2);
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -510,7 +565,7 @@ describe("FieldRenderer", () => {
     it("changing the day input calls handleChange with updated day", async () => {
       const user = userEvent.setup();
       mockState = {
-        value: { day: 1, month: 6, year: 2024 },
+        value: { day: "1", month: "6", year: "2024" },
         meta: { isValid: true, errors: [] },
       };
       const { container } = renderField(primitive("date"));
@@ -524,7 +579,7 @@ describe("FieldRenderer", () => {
     it("typing a non-numeric character never stores NaN", async () => {
       const user = userEvent.setup();
       mockState = {
-        value: { day: 1, month: 6, year: 2024 },
+        value: { day: "1", month: "6", year: "2024" },
         meta: { isValid: true, errors: [] },
       };
       const { container } = renderField(primitive("date"));
@@ -532,17 +587,18 @@ describe("FieldRenderer", () => {
       const dayInput = dateParts[0].querySelector("input") as HTMLInputElement;
       await user.clear(dayInput);
       await user.type(dayInput, "a");
-      // Regression: non-numeric input must never be coerced to NaN (which used
-      // to render as the literal "NaN" in the field).
+      // Regression: non-numeric input must never be stored (#815 keeps parts as
+      // digit-strings, so a stray "a" yields `undefined`, never "NaN").
       for (const [arg] of mockFieldApi.handleChange.mock.calls) {
-        expect(Number.isNaN((arg as { day: number }).day)).toBe(false);
+        const day = (arg as { day?: string }).day;
+        expect(day === undefined || /^\d+$/.test(day)).toBe(true);
       }
     });
 
     it("changing the month input calls handleChange with updated month", async () => {
       const user = userEvent.setup();
       mockState = {
-        value: { day: 1, month: 6, year: 2024 },
+        value: { day: "1", month: "6", year: "2024" },
         meta: { isValid: true, errors: [] },
       };
       const { container } = renderField(primitive("date"));
@@ -558,7 +614,7 @@ describe("FieldRenderer", () => {
     it("changing the year input calls handleChange with updated year", async () => {
       const user = userEvent.setup();
       mockState = {
-        value: { day: 1, month: 6, year: 2024 },
+        value: { day: "1", month: "6", year: "2024" },
         meta: { isValid: true, errors: [] },
       };
       const { container } = renderField(primitive("date"));
@@ -590,7 +646,7 @@ describe("FieldRenderer", () => {
 
     it("renders the structured error's message and highlights only its parts", () => {
       mockState = {
-        value: { day: 5, year: 1990 },
+        value: { day: "5", year: "1990" },
         meta: {
           isValid: false,
           errors: [
@@ -729,6 +785,67 @@ describe("FieldRenderer", () => {
       expect(
         container.querySelector(".govbb-radio-item__conditional"),
       ).toBeNull();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Select with inset fields (#863) — same conditional-reveal pattern as
+  // radio, but the inset renders below the whole control since a <select>
+  // has no per-option DOM position.
+  // -------------------------------------------------------------------------
+  describe("select with insetFieldsByOption", () => {
+    const selectOptions = [
+      { value: "yes", label: "Yes" },
+      { value: "no", label: "No" },
+    ];
+
+    function insetEntriesFor(value: string) {
+      const insetField = primitive("text", {
+        id: "step-1.inset-field",
+        fieldId: "inset-field",
+        name: "inset-field",
+        label: "Inset field label",
+        htmlType: "text",
+      });
+      return new Map([
+        [value, [{ field: insetField, validationProperties: noValidation }]],
+      ]);
+    }
+
+    it("shows inset fields when the selected value has inset entries", () => {
+      mockState = { value: "yes", meta: { isValid: true, errors: [] } };
+
+      const { container } = renderField(
+        primitive("select", { options: selectOptions }),
+        { insetFieldsByOption: insetEntriesFor("yes") },
+      );
+
+      const inset = container.querySelector(".govbb-select__conditional");
+      expect(inset).toBeTruthy();
+      // The inset field itself renders inside the conditional wrapper.
+      expect(inset?.querySelector("input")).toBeTruthy();
+    });
+
+    it("does not show inset fields when a different value is selected", () => {
+      mockState = { value: "no", meta: { isValid: true, errors: [] } };
+
+      const { container } = renderField(
+        primitive("select", { options: selectOptions }),
+        { insetFieldsByOption: insetEntriesFor("yes") },
+      );
+
+      expect(container.querySelector(".govbb-select__conditional")).toBeNull();
+    });
+
+    it("does not show inset fields when nothing is selected", () => {
+      mockState = { value: undefined, meta: { isValid: true, errors: [] } };
+
+      const { container } = renderField(
+        primitive("select", { options: selectOptions }),
+        { insetFieldsByOption: insetEntriesFor("yes") },
+      );
+
+      expect(container.querySelector(".govbb-select__conditional")).toBeNull();
     });
   });
 

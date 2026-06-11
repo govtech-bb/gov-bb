@@ -1,77 +1,143 @@
 import { describe, expect, it } from 'vitest'
-import { decidePreview } from './preview'
+import { decideViewLevel, levelFromCookie } from './preview'
+import type { ViewLevel } from './frontmatter'
 
-const SECRET = 's3cret'
+const PREVIEW = 'preview-s3cret'
+const DRAFT = 'draft-s3cret'
 
 function decide(opts: {
   path?: string
   query?: string
-  param?: string | null
-  hasValidCookie?: boolean
-  secret?: string | undefined
+  previewParam?: string | null
+  draftParam?: string | null
+  cookieLevel?: ViewLevel
+  previewSecret?: string | undefined
+  draftSecret?: string | undefined
 }) {
   const search = new URLSearchParams(opts.query ?? '')
-  return decidePreview({
+  return decideViewLevel({
     pathname: opts.path ?? '/a/b',
     search,
-    paramValue: opts.param ?? search.get('preview'),
-    hasValidCookie: opts.hasValidCookie ?? false,
-    secret: 'secret' in opts ? opts.secret : SECRET,
+    previewParam:
+      'previewParam' in opts
+        ? (opts.previewParam ?? null)
+        : search.get('preview'),
+    draftParam:
+      'draftParam' in opts ? (opts.draftParam ?? null) : search.get('draft'),
+    cookieLevel: opts.cookieLevel ?? 'public',
+    previewSecret: 'previewSecret' in opts ? opts.previewSecret : PREVIEW,
+    draftSecret: 'draftSecret' in opts ? opts.draftSecret : DRAFT,
   })
 }
 
-describe('decidePreview', () => {
-  it('grants preview and sets the cookie for the matching token', () => {
-    expect(decide({ query: 'preview=s3cret' })).toEqual({
-      preview: true,
+describe('levelFromCookie', () => {
+  it('maps the stored level name back to a ViewLevel', () => {
+    expect(levelFromCookie('preview')).toBe('preview')
+    expect(levelFromCookie('draft')).toBe('draft')
+  })
+
+  it('reads the legacy boolean grant "1" as preview', () => {
+    expect(levelFromCookie('1')).toBe('preview')
+  })
+
+  it('treats an absent or unknown cookie as public', () => {
+    expect(levelFromCookie(undefined)).toBe('public')
+    expect(levelFromCookie('nonsense')).toBe('public')
+  })
+})
+
+describe('decideViewLevel', () => {
+  it('grants preview and sets the preview cookie for a matching preview token', () => {
+    expect(decide({ query: `preview=${PREVIEW}` })).toEqual({
+      level: 'preview',
       redirectTo: '/a/b',
-      cookie: 'set',
+      cookie: 'preview',
     })
   })
 
-  it('strips only the preview param from the redirect, keeping other query', () => {
-    const d = decide({ path: '/x', query: 'q=hello&preview=s3cret' })
-    expect(d.cookie).toBe('set')
+  it('grants draft and sets the draft cookie for a matching draft token', () => {
+    expect(decide({ query: `draft=${DRAFT}` })).toEqual({
+      level: 'draft',
+      redirectTo: '/a/b',
+      cookie: 'draft',
+    })
+  })
+
+  it('does not grant draft for the preview token (the secrets are distinct)', () => {
+    // A preview reviewer trying the draft param with the secret they know.
+    expect(decide({ draftParam: PREVIEW })).toEqual({
+      level: 'public',
+      redirectTo: '/a/b',
+      cookie: 'none',
+    })
+  })
+
+  it('lets draft win when both tokens are presented', () => {
+    expect(decide({ query: `preview=${PREVIEW}&draft=${DRAFT}` })).toEqual({
+      level: 'draft',
+      redirectTo: '/a/b',
+      cookie: 'draft',
+    })
+  })
+
+  it('strips both preview and draft params from the redirect, keeping other query', () => {
+    const d = decide({ path: '/x', query: `q=hello&draft=${DRAFT}` })
+    expect(d.cookie).toBe('draft')
     expect(d.redirectTo).toBe('/x?q=hello')
   })
 
-  it('clears the cookie and sends home on exit', () => {
-    expect(decide({ query: 'preview=exit', hasValidCookie: true })).toEqual({
-      preview: false,
+  it('clears the cookie and sends home on preview=exit', () => {
+    expect(decide({ query: 'preview=exit', cookieLevel: 'draft' })).toEqual({
+      level: 'public',
+      redirectTo: '/',
+      cookie: 'clear',
+    })
+  })
+
+  it('clears the cookie and sends home on draft=exit', () => {
+    expect(decide({ query: 'draft=exit', cookieLevel: 'preview' })).toEqual({
+      level: 'public',
       redirectTo: '/',
       cookie: 'clear',
     })
   })
 
   it('ignores a wrong token but still strips it, preserving an existing grant', () => {
-    expect(decide({ query: 'preview=nope', hasValidCookie: true })).toEqual({
-      preview: true,
+    expect(decide({ query: 'preview=nope', cookieLevel: 'preview' })).toEqual({
+      level: 'preview',
       redirectTo: '/a/b',
       cookie: 'none',
     })
   })
 
   it('a wrong token without a prior grant stays public', () => {
-    expect(decide({ query: 'preview=nope', hasValidCookie: false })).toEqual({
-      preview: false,
+    expect(decide({ query: 'draft=nope', cookieLevel: 'public' })).toEqual({
+      level: 'public',
       redirectTo: '/a/b',
       cookie: 'none',
     })
   })
 
-  it('never grants preview when no secret is configured, even if the param is empty-string-like', () => {
-    const d = decide({ query: 'preview=anything', secret: undefined })
-    expect(d.preview).toBe(false)
-    expect(d.cookie).toBe('none')
+  it('never grants when the matching secret is unconfigured', () => {
+    expect(
+      decide({ query: `draft=${DRAFT}`, draftSecret: undefined }),
+    ).toMatchObject({ level: 'public', cookie: 'none' })
+    expect(
+      decide({ query: `preview=${PREVIEW}`, previewSecret: undefined }),
+    ).toMatchObject({ level: 'public', cookie: 'none' })
   })
 
-  it('reads the grant from the cookie when no param is present', () => {
-    expect(decide({ hasValidCookie: true })).toEqual({
-      preview: true,
+  it('reads the granted level from the cookie when no param is present', () => {
+    expect(decide({ cookieLevel: 'draft' })).toEqual({
+      level: 'draft',
       cookie: 'none',
     })
-    expect(decide({ hasValidCookie: false })).toEqual({
-      preview: false,
+    expect(decide({ cookieLevel: 'preview' })).toEqual({
+      level: 'preview',
+      cookie: 'none',
+    })
+    expect(decide({ cookieLevel: 'public' })).toEqual({
+      level: 'public',
       cookie: 'none',
     })
   })

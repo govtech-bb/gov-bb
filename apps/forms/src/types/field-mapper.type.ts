@@ -1,5 +1,6 @@
 import {
   Behaviour,
+  ConditionalTitle,
   ContactDetails,
   DateTimeFormat,
   fieldValueSchema,
@@ -34,6 +35,9 @@ export interface ClientPrimitive {
 export interface ClientFormStep {
   stepId: string;
   title: string;
+  /** Per-answer title overrides (#871); the renderer resolves the effective
+   * title from live form values via `resolveStepTitle`. */
+  conditionalTitle?: ConditionalTitle[];
   description?: string;
   fields: ClientPrimitive[];
   behaviours?: Behaviour[];

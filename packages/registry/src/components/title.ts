@@ -14,6 +14,10 @@ export const Title: SelectPrimitive = {
       value: "miss",
     },
     {
+      label: "Ms",
+      value: "ms",
+    },
+    {
       label: "Mrs",
       value: "mrs",
     },

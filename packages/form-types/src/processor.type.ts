@@ -35,9 +35,6 @@ export const paymentConfigAuthorSchema = z.object({
   description: dynamic(z.string().min(1)),
   customerEmailPath: z.string().min(1),
   customerNamePath: z.string().min(1),
-  allowCredit: z.boolean().optional(),
-  allowDebit: z.boolean().optional(),
-  allowPayce: z.boolean().optional(),
 });
 
 const webhookConfigAuthorSchema = z.object({
@@ -98,9 +95,6 @@ const paymentConfigResolvedSchema = z.object({
   description: z.string().min(1),
   customerEmailPath: z.string().min(1),
   customerNamePath: z.string().min(1),
-  allowCredit: z.boolean().optional(),
-  allowDebit: z.boolean().optional(),
-  allowPayce: z.boolean().optional(),
 });
 
 const webhookConfigResolvedSchema = z.object({

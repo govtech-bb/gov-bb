@@ -3,6 +3,8 @@ import {
   type ServiceContract,
 } from "@govtech-bb/form-types";
 import { getServerEnv } from "#/config/env";
+import { isSurfaceableForm } from "./policy";
+import { TITLE_STOP, tokenize } from "./tokenize";
 
 const DEF_TTL_MS = 5 * 60_000;
 const MISS_TTL_MS = 30_000;
@@ -39,38 +41,6 @@ type ListResponse = {
   data: Array<{ formId: string; title: string } & Record<string, unknown>>;
 };
 
-const TITLE_STOP = new Set([
-  "the",
-  "a",
-  "an",
-  "of",
-  "for",
-  "to",
-  "in",
-  "on",
-  "and",
-  "or",
-  "form",
-  "application",
-  "apply",
-  "register",
-  "registration",
-  "online",
-  "service",
-]);
-
-function titleTokens(s: string): Set<string> {
-  return new Set(
-    s
-      .toLowerCase()
-      .replace(/[^a-z0-9\s]+/g, " ")
-      .replace(/\s+/g, " ")
-      .trim()
-      .split(" ")
-      .filter((t) => t.length > 2 && !TITLE_STOP.has(t)),
-  );
-}
-
 export async function getFormDefinition(
   slug: string,
   signal?: AbortSignal,
@@ -104,9 +74,13 @@ export async function getFormDefinition(
   }
 }
 
-export async function getFormIndex(
-  signal?: AbortSignal,
-): Promise<FormIndexEntry[]> {
+// The cache holds the UNFILTERED published list; the policy filter is applied
+// on read. getFormIndex/getFormSlugs serve only policy-approved forms (the
+// approval gate for matching/collecting/handing off — see ./policy.ts), while
+// getAllFormSlugs sees everything published, so the unapproved-form
+// disclosure can distinguish "form exists but isn't chat-enabled" from "no
+// form exists" instead of falsely claiming the form hasn't been built.
+async function fetchIndex(signal?: AbortSignal): Promise<FormIndexEntry[]> {
   if (fresh(indexCache)) return indexCache.value;
   try {
     const body = await fetchJson<ListResponse>(`/form-definitions`, signal);
@@ -115,7 +89,7 @@ export async function getFormIndex(
       .map((d) => ({
         formId: d.formId,
         title: d.title,
-        titleToks: titleTokens(d.title),
+        titleToks: tokenize(d.title, TITLE_STOP),
       }));
     indexCache = { value: entries, expiresAt: Date.now() + INDEX_TTL_MS };
     return entries;
@@ -125,6 +99,17 @@ export async function getFormIndex(
   }
 }
 
+export async function getFormIndex(
+  signal?: AbortSignal,
+): Promise<FormIndexEntry[]> {
+  return (await fetchIndex(signal)).filter((e) => isSurfaceableForm(e.formId));
+}
+
 export async function getFormSlugs(signal?: AbortSignal): Promise<string[]> {
   return (await getFormIndex(signal)).map((e) => e.formId);
+}
+
+// EVERY published form id, approved or not — only for existence checks.
+export async function getAllFormSlugs(signal?: AbortSignal): Promise<string[]> {
+  return (await fetchIndex(signal)).map((e) => e.formId);
 }

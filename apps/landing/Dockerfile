@@ -42,4 +42,4 @@ EXPOSE 3000
 # loses the --host flag because apps/landing/project.json's run-commands
 # executor doesn't forward CLI args to the underlying script.
 WORKDIR /app/apps/landing
-CMD ["pnpm", "exec", "vite", "dev", "--host", "0.0.0.0", "--port", "3000"]
+CMD ["pnpm", "exec", "vite", "dev", "--host", "0.0.0.0", "--port", "3000", "--clearScreen", "false"]

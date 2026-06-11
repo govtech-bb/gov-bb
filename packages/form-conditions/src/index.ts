@@ -1,5 +1,7 @@
 import type {
+  ConditionalTitle,
   FieldConditionalOnBehaviour,
+  FormStep,
   OptionalIfBehaviour,
   StepConditionalOnBehaviour,
   RepeatableBehaviour,
@@ -11,6 +13,35 @@ import { evaluateCondition, flattenStepValues } from "./internals";
 // can evaluate a single condition against a value tree without going through
 // the full `evaluateFormConditions` contract walk.
 export { evaluateCondition, flattenStepValues } from "./internals";
+export type { ConditionCriteria } from "./internals";
+
+/**
+ * Resolve a step's effective title for a given set of submitted values.
+ *
+ * A step may carry `conditionalTitle` entries (#871) — per-answer title
+ * overrides that let the heading adapt to an earlier answer (e.g. "Provide your
+ * birth details" when applying for yourself vs "Provide the person's birth
+ * details" otherwise). The first entry whose condition matches wins; the
+ * static `title` is the fallback when there are no entries or none match.
+ *
+ * This is the single source of truth used by both the forms client (live
+ * heading + check-your-answers) and the API (confirmation-email section
+ * headers), so the title an applicant sees while filling in the form matches
+ * the title in their email.
+ */
+export function resolveStepTitle(
+  step: Pick<FormStep, "title" | "conditionalTitle">,
+  values: StepScopedValues,
+): string {
+  const conditionalTitles: ConditionalTitle[] = step.conditionalTitle ?? [];
+  if (conditionalTitles.length === 0) return step.title;
+
+  const flatValues = flattenStepValues(values);
+  for (const entry of conditionalTitles) {
+    if (evaluateCondition(entry, values, flatValues)) return entry.title;
+  }
+  return step.title;
+}
 
 export type StepScopedValues = Record<
   string,

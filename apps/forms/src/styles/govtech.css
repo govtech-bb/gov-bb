@@ -165,6 +165,22 @@
   margin: 0;
 }
 
+/* ---- Select conditional reveal (#863) -------------------------------------
+ * Inset fields revealed by a select option. @govtech-bb/styles only ships the
+ * radio variant (.govbb-radio-item__conditional), and its display toggling
+ * relies on a checked-radio sibling selector — so the select variant is
+ * supplied here with the same inset look. Visibility is handled by
+ * conditional rendering in field-renderer, not CSS. */
+.govbb-select__conditional {
+  margin-top: var(--spacing-xs);
+  padding-left: 2.5rem;
+  padding-bottom: var(--spacing-s);
+  border-left: 8px solid var(--color-grey-00);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s);
+}
+
 /* ---- Submission confirmation panels -------------------------------------- */
 /* Full-width wrapper for the confirmation step — no container/padding so the
  * banner can bleed to the viewport edges; inner sections supply their own

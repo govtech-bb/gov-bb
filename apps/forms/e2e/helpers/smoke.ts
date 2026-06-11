@@ -138,6 +138,33 @@ export async function uploadOne(
 }
 
 /**
+ * Upload several files to a multi-file upload field and wait until EVERY file
+ * is CONFIRMED. The widget is NOT an `<input multiple>` — it's a single
+ * (non-multiple) file input you reuse to add files one at a time, so each file
+ * must be set in its own `setInputFiles` call and confirmed (its "Remove
+ * {name}" button visible) before adding the next; passing an array at once
+ * fails with "Non-multiple file input can only accept single file". Advancing
+ * before all files commit trips the field's `minItems` validation (e.g. a "2
+ * photos" field rejecting a single file). Files must have distinct names so
+ * each "Remove {name}" button is uniquely addressable.
+ */
+export async function uploadMany(
+  page: Page,
+  stepId: string,
+  suffix: string,
+  files: { name: string; mimeType: string; buffer: Buffer }[],
+): Promise<void> {
+  for (const file of files) {
+    await page
+      .locator(`input[type=file][id="${stepId}_${suffix}"]`)
+      .setInputFiles(file);
+    await expect(
+      page.getByRole("button", { name: `Remove ${file.name}` }),
+    ).toBeVisible({ timeout: UPLOAD_TIMEOUT });
+  }
+}
+
+/**
  * Submit the form for real and assert the confirmation screen.
  *
  * Waits for the real `POST /submissions` call to return 2xx, then waits for the
@@ -189,14 +216,26 @@ export async function submitAndConfirm(
 
   if (opts.referenceLabel) {
     await expect(page.getByText(opts.referenceLabel)).toBeVisible();
-    // The API returns the reference as a UUID — assert it is rendered.
+    // The API returns a human-readable referenceCode (e.g.
+    // "JPP-20260604-130732-9JZRZC"). Fall back to `id` (UUID) for older API
+    // deploys that don't yet include referenceCode (see issue #791).
     const body = await response.json();
-    const referenceId = body?.data?.id ?? body?.id;
+    const referenceCode: string | undefined =
+      body?.data?.referenceCode ?? body?.referenceCode;
+    const referenceId: string | undefined = body?.data?.id ?? body?.id;
+    const renderedReference = referenceCode ?? referenceId;
     expect(
-      referenceId,
-      "submission response should include a reference id",
+      renderedReference,
+      "submission response should include a reference code or id",
     ).toBeTruthy();
-    await expect(page.getByText(String(referenceId))).toBeVisible();
+    if (referenceCode) {
+      // When the API returns a referenceCode, it should match the expected shape.
+      expect(
+        referenceCode,
+        "referenceCode should match the expected pattern",
+      ).toMatch(/^[A-Z]+-\d{8}-\d{6}-[A-Z2-9]{6}$/);
+    }
+    await expect(page.getByText(String(renderedReference))).toBeVisible();
   }
 
   return response;

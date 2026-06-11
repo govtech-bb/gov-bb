@@ -1,6 +1,22 @@
 import * as path from "node:path";
 import * as fs from "node:fs/promises";
 import * as os from "node:os";
+
+// node:fs exports are non-configurable (no jest.spyOn), and whether fs.watch
+// throws on a missing dir varies by platform and node version — so route
+// watch through a partial mock the unwatchable-dir test can override.
+let mockWatchOverride: (() => never) | undefined;
+jest.mock("node:fs", () => ({
+  ...jest.requireActual<typeof import("node:fs")>("node:fs"),
+  watch: (...args: unknown[]) =>
+    mockWatchOverride
+      ? mockWatchOverride()
+      : (
+          jest.requireActual<typeof import("node:fs")>("node:fs").watch as (
+            ...a: unknown[]
+          ) => unknown
+        )(...args),
+}));
 import { Logger } from "@nestjs/common";
 import {
   RecipeFileLoaderService,
@@ -396,15 +412,22 @@ describe("RecipeFileLoaderService", () => {
     it("warns and does not throw when the recipes dir cannot be watched", async () => {
       process.env.NODE_ENV = "development";
       const warnSpy = jest.spyOn(Logger.prototype, "warn").mockImplementation();
+      mockWatchOverride = () => {
+        throw new Error("ENOENT: no such file or directory");
+      };
       const loader = new RecipeFileLoaderService(
         path.join(os.tmpdir(), "recipes-does-not-exist-xyz"),
       );
       loaders.push(loader);
 
-      await expect(loader.onModuleInit()).resolves.not.toThrow();
-      expect(watcherOf(loader)).toBeUndefined();
-      expect(warnSpy).toHaveBeenCalled();
-      warnSpy.mockRestore();
+      try {
+        await expect(loader.onModuleInit()).resolves.not.toThrow();
+        expect(watcherOf(loader)).toBeUndefined();
+        expect(warnSpy).toHaveBeenCalled();
+      } finally {
+        mockWatchOverride = undefined;
+        warnSpy.mockRestore();
+      }
     });
 
     it("onModuleDestroy is safe when no watcher was started", () => {

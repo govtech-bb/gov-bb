@@ -2,6 +2,10 @@ import React from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { AnyFormApi } from "@tanstack/react-form";
 import { ClientFormStep, ClientPrimitive, FormMeta } from "@forms/types";
+import { getInstanceMarker, getVisibleFields } from "@forms/lib";
+import { DateValue } from "@govtech-bb/form-types";
+import { resolveStepTitle } from "@govtech-bb/form-conditions";
+import { buildStepScopedValues } from "../lib/form-builder/helpers/value-tree";
 
 export default function Review({
   formMeta,
@@ -20,13 +24,11 @@ export default function Review({
     "submission-confirmation",
   ];
 
-  const formatDate = (dateValue: {
-    day: number;
-    month: number;
-    year: number;
-  }) => {
+  // Date parts are stored as digit-strings (#815); coerce to numbers for the
+  // Date constructor so leading zeros ("09") format correctly.
+  const formatDate = (dateValue: DateValue) => {
     const { day, month, year } = dateValue;
-    const formattedDate = new Date(year, month - 1, day)
+    const formattedDate = new Date(Number(year), Number(month) - 1, Number(day))
       .toDateString()
       .trim()
       .replace(/^\w+\s/, ""); // Remove the day of the week from the date string
@@ -82,13 +84,7 @@ export default function Review({
       }
       case "date": {
         if (!value) return null;
-        return formatDate(
-          value as {
-            day: number;
-            month: number;
-            year: number;
-          },
-        );
+        return formatDate(value as DateValue);
       }
       case "checkbox": {
         if (!field.options) return emptyToNull(value);
@@ -125,31 +121,43 @@ export default function Review({
     }
   };
 
+  // Step titles may carry per-answer overrides (#871); resolve each against the
+  // current values so the review heading matches what the applicant saw.
+  const stepScopedValues = buildStepScopedValues(
+    form.state.values as Record<string, unknown>,
+  );
+
   return (
     <div className="form-page__review">
       {visibleSteps
         .filter((step) => !excludeStepIds.includes(step.stepId))
         .map((step) => {
+          const stepTitle = resolveStepTitle(step, stepScopedValues);
           // Compute each visible field's display value once, then drop the
           // rows that have no answer so blank fields are omitted entirely.
+          // Visibility is evaluated from current form values (#737) — the
+          // render-mutated conditionallyHidden flag goes stale for fields
+          // that never re-mounted after their controlling answer flipped.
           // Show-hide toggles are UI controls, not answers — never a row,
           // regardless of toggle state.
-          const rows = step.fields
-            .filter(
-              (field) =>
-                !field.hidden &&
-                !field.conditionallyHidden &&
-                field.htmlType !== "show-hide",
-            )
+          const rows = getVisibleFields(step, form)
+            .filter((field) => field.htmlType !== "show-hide")
             .map((field: ClientPrimitive) => ({
               field,
               value: getFieldDisplayValue(field),
             }))
             .filter(({ value }) => value !== null && value !== "");
 
+          // #801: repeat instances beyond the first carry a marker so the
+          // heading distinguishes e.g. "… — Dependent 2" from the first
+          // instance. Base steps / first instances return undefined.
+          const marker = getInstanceMarker(step);
+
           return (
             <section key={step.stepId} className="govbb-summary-section">
-              <h2 className="govbb-summary-section__title">{step.title}</h2>
+              <h2 className="govbb-summary-section__title">
+                {marker ? `${stepTitle} — ${marker.text}` : stepTitle}
+              </h2>
               <div className="govbb-summary-section__action">
                 <a
                   className="govbb-link"
@@ -157,7 +165,7 @@ export default function Review({
                   onClick={handleChangeClick(step.stepId)}
                 >
                   Change{" "}
-                  <span className="govbb-visually-hidden">{step.title}</span>
+                  <span className="govbb-visually-hidden">{stepTitle}</span>
                 </a>
               </div>
               {rows.length === 0 ? (

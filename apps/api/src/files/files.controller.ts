@@ -1,4 +1,4 @@
-import { Body, Controller, Post } from "@nestjs/common";
+import { Body, Controller, Headers, Post } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { Throttle } from "@nestjs/throttler";
 import { ApiResponse } from "../common/response";
@@ -24,8 +24,11 @@ export class FilesController {
   @Throttle({ medium: { ttl: 60_000, limit: 30 } })
   async presignUpload(
     @Body() dto: PresignUploadDto,
+    // Forwarded to honour an unpublished preview draft (validated server-side),
+    // mirroring the form-GET path. Absent/invalid → published recipes only.
+    @Headers("x-recipe-preview") previewToken?: string,
   ): Promise<ApiResponseShape<PresignUploadResponseDto>> {
-    const data = await this.filesService.presignUpload(dto);
+    const data = await this.filesService.presignUpload(dto, previewToken);
     return ApiResponse.success(data, { message: "Upload URL generated" });
   }
 
@@ -33,8 +36,9 @@ export class FilesController {
   @Throttle({ medium: { ttl: 60_000, limit: 60 } })
   async confirmUpload(
     @Body() dto: ConfirmUploadDto,
+    @Headers("x-recipe-preview") previewToken?: string,
   ): Promise<ApiResponseShape<FileAttachmentDto>> {
-    const data = await this.filesService.confirmUpload(dto);
+    const data = await this.filesService.confirmUpload(dto, previewToken);
     return ApiResponse.success(data, { message: "Upload confirmed" });
   }
 }

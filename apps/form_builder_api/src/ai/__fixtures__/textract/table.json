@@ -1,0 +1,54 @@
+{
+  "Blocks": [
+    {
+      "BlockType": "PAGE",
+      "Id": "page-1",
+      "Page": 1,
+      "Relationships": [{ "Type": "CHILD", "Ids": ["tbl-1"] }]
+    },
+    {
+      "BlockType": "TABLE",
+      "Id": "tbl-1",
+      "Page": 1,
+      "Relationships": [
+        { "Type": "CHILD", "Ids": ["c-1-1", "c-1-2", "c-2-1", "c-2-2"] }
+      ]
+    },
+    {
+      "BlockType": "CELL",
+      "Id": "c-1-1",
+      "Page": 1,
+      "RowIndex": 1,
+      "ColumnIndex": 1,
+      "Relationships": [{ "Type": "CHILD", "Ids": ["w-1-1"] }]
+    },
+    { "BlockType": "WORD", "Id": "w-1-1", "Page": 1, "Text": "Name" },
+    {
+      "BlockType": "CELL",
+      "Id": "c-1-2",
+      "Page": 1,
+      "RowIndex": 1,
+      "ColumnIndex": 2,
+      "Relationships": [{ "Type": "CHILD", "Ids": ["w-1-2"] }]
+    },
+    { "BlockType": "WORD", "Id": "w-1-2", "Page": 1, "Text": "Age" },
+    {
+      "BlockType": "CELL",
+      "Id": "c-2-1",
+      "Page": 1,
+      "RowIndex": 2,
+      "ColumnIndex": 1,
+      "Relationships": [{ "Type": "CHILD", "Ids": ["w-2-1"] }]
+    },
+    { "BlockType": "WORD", "Id": "w-2-1", "Page": 1, "Text": "Alice" },
+    {
+      "BlockType": "CELL",
+      "Id": "c-2-2",
+      "Page": 1,
+      "RowIndex": 2,
+      "ColumnIndex": 2,
+      "Relationships": [{ "Type": "CHILD", "Ids": ["w-2-2"] }]
+    },
+    { "BlockType": "WORD", "Id": "w-2-2", "Page": 1, "Text": "30" }
+  ]
+}

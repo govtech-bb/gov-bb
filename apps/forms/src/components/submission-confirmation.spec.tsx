@@ -415,6 +415,129 @@ describe("SubmissionConfirmation — contactDetails address branches", () => {
   });
 });
 
+describe("SubmissionConfirmation — Submission ID label", () => {
+  it("renders 'Submission ID' label in the no-payment success block", () => {
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Passport"
+        stepTitle="Submitted"
+        submissionState={{
+          hasPayment: false,
+          serviceName: "Passport Renewal",
+          submissionSuccess: true,
+          paymentSuccess: false,
+          referenceNumber: "JPP-20260604-130732-9JZRZC",
+          date: "19/05/2026",
+        }}
+      />,
+    );
+    expect(screen.getByText("Submission ID")).toBeInTheDocument();
+    expect(screen.getByText("JPP-20260604-130732-9JZRZC")).toBeInTheDocument();
+  });
+
+  it("does not render the old 'Reference number' label in the no-payment block", () => {
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Passport"
+        stepTitle="Submitted"
+        submissionState={{
+          hasPayment: false,
+          serviceName: "Passport Renewal",
+          submissionSuccess: true,
+          paymentSuccess: false,
+          referenceNumber: "JPP-20260604-130732-9JZRZC",
+          date: "19/05/2026",
+        }}
+      />,
+    );
+    expect(screen.queryByText("Reference number")).not.toBeInTheDocument();
+  });
+
+  it("renders 'Submission ID:' label in the payment success block", () => {
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Vehicles"
+        stepTitle="Payment Complete"
+        submissionState={{
+          hasPayment: true,
+          serviceName: "Vehicle Registration",
+          amount: "$50.00",
+          submissionSuccess: true,
+          paymentSuccess: true,
+          referenceNumber: "JPP-20260604-130732-9JZRZC",
+          date: "19/05/2026",
+        }}
+      />,
+    );
+    expect(screen.getByText("Submission ID:")).toBeInTheDocument();
+    expect(screen.getByText("JPP-20260604-130732-9JZRZC")).toBeInTheDocument();
+  });
+
+  it("does not render the old 'Reference number:' label in the payment block", () => {
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Vehicles"
+        stepTitle="Payment Complete"
+        submissionState={{
+          hasPayment: true,
+          serviceName: "Vehicle Registration",
+          amount: "$50.00",
+          submissionSuccess: true,
+          paymentSuccess: true,
+          referenceNumber: "JPP-20260604-130732-9JZRZC",
+          date: "19/05/2026",
+        }}
+      />,
+    );
+    expect(screen.queryByText("Reference number:")).not.toBeInTheDocument();
+  });
+});
+
+describe("SubmissionConfirmation — feedback link", () => {
+  const successState: SubmissionState = {
+    hasPayment: false,
+    serviceName: "Passport Renewal",
+    submissionSuccess: true,
+    paymentSuccess: false,
+    referenceNumber: "FB-REF-001",
+    date: "19/05/2026",
+  };
+
+  it("renders the feedback link with the provided href when feedbackUrl is set", () => {
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Passport"
+        stepTitle="Submitted"
+        submissionState={successState}
+        feedbackUrl="/forms/exit-survey?step=difficulty-rating&source=passport-renewal"
+      />,
+    );
+    const link = screen.getByRole("link", {
+      name: /give feedback on this service/i,
+    });
+    expect(link).toHaveAttribute(
+      "href",
+      "/forms/exit-survey?step=difficulty-rating&source=passport-renewal",
+    );
+  });
+
+  it("does not render the feedback section when feedbackUrl is absent", () => {
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Passport"
+        stepTitle="Submitted"
+        submissionState={successState}
+      />,
+    );
+    expect(
+      screen.queryByRole("link", { name: /give feedback on this service/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Help us improve this service"),
+    ).not.toBeInTheDocument();
+  });
+});
+
 describe("SubmissionConfirmation — undefined submissionState", () => {
   it("renders nothing payment-related when submissionState is not provided", () => {
     const { container } = render(

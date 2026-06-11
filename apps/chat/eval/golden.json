@@ -255,6 +255,54 @@
       "query": "what documents do I need to register a birth",
       "expected_doc_ids": ["service-register-a-birth"],
       "tag": "followup"
+    },
+    {
+      "id": "ooc-passport",
+      "query": "how do I get a passport in Barbados",
+      "expected_doc_ids": [],
+      "tag": "none"
+    },
+    {
+      "id": "ooc-drivers-licence",
+      "query": "how do I apply for a driver's licence",
+      "expected_doc_ids": [],
+      "tag": "none"
+    },
+    {
+      "id": "ooc-passport-bajan",
+      "query": "how I does get a passport book",
+      "expected_doc_ids": [],
+      "tag": "none"
+    },
+    {
+      "id": "ooc-income-tax-rate",
+      "query": "what is the income tax rate in Barbados",
+      "expected_doc_ids": [],
+      "tag": "none"
+    },
+    {
+      "id": "ooc-capital-gains-tax",
+      "query": "what is the capital gains tax rate",
+      "expected_doc_ids": [],
+      "tag": "none"
+    },
+    {
+      "id": "ooc-firearm-licence",
+      "query": "how do I get a firearm licence",
+      "expected_doc_ids": [],
+      "tag": "none"
+    },
+    {
+      "id": "ooc-company-registration",
+      "query": "how do I register a company in Barbados",
+      "expected_doc_ids": [],
+      "tag": "none"
+    },
+    {
+      "id": "ooc-visa-immigration",
+      "query": "how do I apply for a work visa to live in Barbados",
+      "expected_doc_ids": [],
+      "tag": "none"
     }
   ]
 }

@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { SIMILARITY_THRESHOLD, weightForKind } from "#/lib/chat/rag-config";
+import { SIMILARITY_THRESHOLD, weightForKind } from "./config";
 import type { RetrievedContext, Source } from "#/lib/chat/types";
 import { getDb } from "#/lib/db";
 import { embed } from "./embed";
@@ -63,7 +63,7 @@ export async function search(
     SELECT chunk_id, document_id, doc_kind, title, url, source_url,
            chunk_kind, chunk_text, payload, sim
     FROM ranked
-    WHERE rank = 1 AND sim > ${SIMILARITY_THRESHOLD}
+    WHERE rank <= 2 AND sim > ${SIMILARITY_THRESHOLD}
     ORDER BY sim DESC
     LIMIT ${fetchLimit}
   `);

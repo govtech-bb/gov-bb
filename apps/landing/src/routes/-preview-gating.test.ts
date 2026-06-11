@@ -1,17 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ContentPage } from '../content/registry'
 
-// Real content has no preview pages, so mock the registry to drive the gate's
-// throw paths. Only the exports the routes use are stubbed.
+// Mock the registry to drive the gate's throw paths deterministically. Only the
+// exports the routes use are stubbed.
 const mocks = vi.hoisted(() => ({
   findPage: vi.fn(),
   isVisible: vi.fn(),
   isCategoryVisible: vi.fn(() => true),
   categoryServices: vi.fn(() => [] as ContentPage[]),
-  isPreview: vi.fn(() => false),
+  pageLevel: vi.fn(() => 'public' as const),
   isSubPage: vi.fn(() => false),
-  startSubPageInPreview: vi.fn(() => false),
-  isUrlPreview: vi.fn(() => false),
+  isStartSubPageVisible: vi.fn(() => true),
+  isUrlVisible: vi.fn(() => true),
+  urlLevel: vi.fn(() => 'public' as const),
   PAGES: [] as ContentPage[],
 }))
 
@@ -27,8 +28,10 @@ vi.mock('../lib/available-forms', () => formMocks)
 const fakePage: ContentPage = {
   slug: 'secret-service',
   url: 'secret-service',
-  frontmatter: { title: 'Secret', categories: [], visibility: 'preview' },
+  frontmatter: { title: 'Secret', categories: [], visibility: 'draft' },
   body: '',
+  hast: { type: 'root', children: [] },
+  headings: [],
 }
 
 function caught(fn: () => unknown): unknown {
@@ -44,14 +47,15 @@ beforeEach(() => {
   vi.clearAllMocks()
   mocks.isCategoryVisible.mockReturnValue(true)
   mocks.categoryServices.mockReturnValue([])
-  mocks.isPreview.mockReturnValue(false)
+  mocks.pageLevel.mockReturnValue('public')
   mocks.isSubPage.mockReturnValue(false)
-  mocks.startSubPageInPreview.mockReturnValue(false)
-  mocks.isUrlPreview.mockReturnValue(false)
+  mocks.isStartSubPageVisible.mockReturnValue(true)
+  mocks.isUrlVisible.mockReturnValue(true)
+  mocks.urlLevel.mockReturnValue('public')
 })
 
 describe('$ route loader gating', () => {
-  it('throws notFound for a preview page when not in preview mode', async () => {
+  it('throws notFound for a gated page the viewer cannot see', async () => {
     const { Route } = await import('./$')
     mocks.findPage.mockReturnValue(fakePage)
     mocks.isVisible.mockReturnValue(false)
@@ -59,14 +63,14 @@ describe('$ route loader gating', () => {
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     const err = await loader({
       params: { _splat: 'secret-service' },
-      context: { preview: false },
+      context: { level: 'public' },
     }).catch((e: unknown) => e)
     expect(err).toBeDefined()
     expect((err as { isNotFound?: boolean }).isNotFound).toBe(true)
-    expect(mocks.isVisible).toHaveBeenCalledWith(fakePage, false)
+    expect(mocks.isVisible).toHaveBeenCalledWith(fakePage, 'public')
   })
 
-  it('returns the page (with the available-forms list) when it is visible', async () => {
+  it('returns the page (with the available-forms list) when the viewer can see it', async () => {
     const { Route } = await import('./$')
     mocks.findPage.mockReturnValue(fakePage)
     mocks.isVisible.mockReturnValue(true)
@@ -74,79 +78,113 @@ describe('$ route loader gating', () => {
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     const data = await loader({
       params: { _splat: 'secret-service' },
-      context: { preview: true },
+      context: { level: 'draft' },
     })
     expect(data).toEqual({
       kind: 'page',
       page: fakePage,
       availableForms: ['get-birth-certificate'],
     })
+    expect(mocks.isVisible).toHaveBeenCalledWith(fakePage, 'draft')
   })
 })
 
 describe('$ route category gating', () => {
-  it('throws notFound for a category with no visible service when not in preview', async () => {
+  it('throws notFound for a category with no service visible at the viewer level', async () => {
     const { Route } = await import('./$')
     mocks.isCategoryVisible.mockReturnValue(false)
 
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     const err = await loader({
       params: { _splat: 'pensions-and-gratuities' },
-      context: { preview: false },
+      context: { level: 'public' },
     }).catch((e: unknown) => e)
     expect((err as { isNotFound?: boolean }).isNotFound).toBe(true)
     expect(mocks.isCategoryVisible).toHaveBeenCalledWith(
       expect.objectContaining({ slug: 'pensions-and-gratuities' }),
-      false,
+      'public',
     )
   })
 
-  it('renders the category for a reviewer in preview mode', async () => {
+  it('renders the category for a reviewer whose level can see it', async () => {
     const { Route } = await import('./$')
     mocks.isCategoryVisible.mockReturnValue(true)
 
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     const data = (await loader({
       params: { _splat: 'pensions-and-gratuities' },
-      context: { preview: true },
+      context: { level: 'preview' },
     })) as { kind: string; category: { slug: string } }
     expect(data.kind).toBe('category')
     expect(data.category.slug).toBe('pensions-and-gratuities')
   })
 })
 
+describe('$ route subcategory gating', () => {
+  it('throws notFound for a subcategory whose category is hidden at the viewer level', async () => {
+    const { Route } = await import('./$')
+    mocks.findPage.mockReturnValue(undefined)
+    mocks.isCategoryVisible.mockReturnValue(false)
+
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    const err = await loader({
+      params: { _splat: 'youth-and-community/youth-development-leadership' },
+      context: { level: 'public' },
+    }).catch((e: unknown) => e)
+    expect((err as { isNotFound?: boolean }).isNotFound).toBe(true)
+    expect(mocks.isCategoryVisible).toHaveBeenCalledWith(
+      expect.objectContaining({ slug: 'youth-and-community' }),
+      'public',
+    )
+  })
+
+  it('renders the subcategory for a reviewer whose level can see it', async () => {
+    const { Route } = await import('./$')
+    mocks.findPage.mockReturnValue(undefined)
+    mocks.isCategoryVisible.mockReturnValue(true)
+
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    const data = (await loader({
+      params: { _splat: 'youth-and-community/youth-development-leadership' },
+      context: { level: 'preview' },
+    })) as { kind: string; subcategory: { slug: string } }
+    expect(data.kind).toBe('subcategory')
+    expect(data.subcategory.slug).toBe('youth-development-leadership')
+  })
+})
+
 describe('form route beforeLoad gating', () => {
-  it('throws notFound when the owning service is preview and not unlocked', async () => {
-    mocks.isUrlPreview.mockReturnValue(true)
+  it('throws notFound when the viewer cannot see the owning service', async () => {
+    mocks.isUrlVisible.mockReturnValue(false)
     const { Route } =
-      await import('./money-financial-support.calculate-severance-pay.form')
+      await import('./money-financial-support/calculate-severance-pay/form')
     const err = caught(() =>
       (Route.options.beforeLoad as (a: unknown) => unknown)({
-        context: { preview: false },
+        context: { level: 'public' },
       }),
     )
     expect((err as { isNotFound?: boolean }).isNotFound).toBe(true)
   })
 
-  it('allows access with the preview token', async () => {
-    mocks.isUrlPreview.mockReturnValue(true)
+  it('allows access when the viewer level can see the service', async () => {
+    mocks.isUrlVisible.mockReturnValue(true)
     const { Route } =
-      await import('./money-financial-support.calculate-severance-pay.form')
+      await import('./money-financial-support/calculate-severance-pay/form')
     const err = caught(() =>
       (Route.options.beforeLoad as (a: unknown) => unknown)({
-        context: { preview: true },
+        context: { level: 'preview' },
       }),
     )
     expect(err).toBeUndefined()
   })
 
   it('allows public access when the owning service is public', async () => {
-    mocks.isUrlPreview.mockReturnValue(false)
+    mocks.isUrlVisible.mockReturnValue(true)
     const { Route } =
-      await import('./money-financial-support.calculate-severance-pay.form')
+      await import('./money-financial-support/calculate-severance-pay/form')
     const err = caught(() =>
       (Route.options.beforeLoad as (a: unknown) => unknown)({
-        context: { preview: false },
+        context: { level: 'public' },
       }),
     )
     expect(err).toBeUndefined()

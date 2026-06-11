@@ -1,64 +1,42 @@
 import { createFileRoute } from "@tanstack/react-router";
-import type { CustomEvent, StreamChunk, UIMessage } from "@tanstack/ai";
+import type { UIMessage } from "@tanstack/ai";
 import {
-  EventType,
-  chatParamsFromRequest,
+  chatParamsFromRequestBody,
   toServerSentEventsResponse,
 } from "@tanstack/ai";
 import { getServerEnv } from "#/config/env";
+import { blockedMessageStream } from "#/lib/chat/blocked-stream";
 import { runTurn } from "#/lib/chat/run-turn";
-import type { Citation } from "#/lib/chat/types";
 import { jsonError } from "#/lib/http";
 
-// Emit the citations event right after the assistant message id is known
-// (TEXT_MESSAGE_START), so the client can store citations keyed by messageId
-// instead of by stream index.
-async function* withCitations(
-  inner: AsyncIterable<StreamChunk>,
-  citations: Citation[],
-): AsyncGenerator<StreamChunk> {
-  let emitted = false;
-  if (citations.length === 0) {
-    yield* inner;
-    return;
-  }
-  for await (const chunk of inner) {
-    yield chunk;
-    if (emitted) continue;
-    if (chunk.type === "TEXT_MESSAGE_START" && chunk.messageId) {
-      yield citationsEvent(chunk.messageId, citations);
-      emitted = true;
-    } else if (chunk.type === "RUN_FINISHED") {
-      // Tool-only turn: no TEXT_MESSAGE_START arrived. Emit unkeyed so the
-      // client can attach citations to the run rather than a message.
-      yield citationsEvent(undefined, citations);
-      emitted = true;
-    }
-  }
-}
-
-function citationsEvent(
-  messageId: string | undefined,
-  citations: Citation[],
-): CustomEvent {
-  return {
-    type: EventType.CUSTOM,
-    name: "citations",
-    value: { messageId, citations },
-    timestamp: Date.now(),
-  };
-}
+// Max accepted request body (#973). Generous for legitimate chat history but
+// blocks oversized payloads before they're parsed. Per-call token cost is
+// further bounded by capMessageHistory (run-turn); per-IP/session rate limiting
+// is an edge/WAF concern tracked separately on #973.
+const MAX_BODY_BYTES = 256 * 1024;
 
 async function handlePost({
   request,
 }: {
   request: Request;
 }): Promise<Response> {
+  // Early reject on the declared size, but don't trust it — a chunked or
+  // lying client can omit/understate Content-Length, so the real cap is
+  // enforced on the bytes actually read below.
+  const declaredBytes = Number(request.headers.get("content-length") ?? 0);
+  if (declaredBytes > MAX_BODY_BYTES) {
+    return jsonError("Request body too large", 413);
+  }
+
   let messages: UIMessage[];
   let threadId: string;
   let runId: string | undefined;
   try {
-    const params = await chatParamsFromRequest(request);
+    const raw = await request.text();
+    if (Buffer.byteLength(raw, "utf8") > MAX_BODY_BYTES) {
+      return jsonError("Request body too large", 413);
+    }
+    const params = await chatParamsFromRequestBody(JSON.parse(raw));
     messages = params.messages as unknown as UIMessage[];
     // The client can't set the wire-level threadId (useChat doesn't forward
     // one), so it sends its session-stable id via forwardedProps. Prefer it —
@@ -87,13 +65,22 @@ async function handlePost({
   });
 
   if (result.kind === "blocked") {
-    return jsonError(result.message, result.status);
+    // Deliver the refusal as a normal streamed assistant message (200), not an
+    // HTTP error — the user sees the polite message, not a generic error pill,
+    // and the LLM was never invoked. See blockedMessageStream.
+    return toServerSentEventsResponse(
+      blockedMessageStream(result.message, {
+        runId,
+        threadId,
+        model: env.LLM_MODEL,
+      }),
+      { abortController: new AbortController() },
+    );
   }
 
-  return toServerSentEventsResponse(
-    withCitations(result.stream, result.citations),
-    { abortController: result.abortController },
-  );
+  return toServerSentEventsResponse(result.stream, {
+    abortController: result.abortController,
+  });
 }
 
 async function handlePostSafely(request: Request): Promise<Response> {

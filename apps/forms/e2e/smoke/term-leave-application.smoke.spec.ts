@@ -56,6 +56,7 @@ import {
   expectStep,
   fillDate,
   fillField,
+  selectDropdown,
   selectRadio,
   submitAndConfirm,
 } from "../helpers/smoke";
@@ -77,11 +78,16 @@ test.describe("Term Leave Application — Live Smoke", () => {
     // ─── Applicant Information ───────────────────────────────────────────────
     let step = expectStep(page, "applicant-info");
     await expect(page.locator("h1")).toContainText("Applicant Information");
-    await fillField(page, step, "school", "Bridgetown Secondary School");
+    // The published 1.3.0 recipe swapped `school` from a free-text input to a
+    // school select (PrimarySchool registry component) — drive it by option
+    // value, not fill().
+    await selectDropdown(page, step, "school", "bay-primary-school");
     await fillField(page, step, "first-name", firstName);
     await fillField(page, step, "last-name", lastName);
-    // `components/telephone` — phone-format validation.
-    await fillField(page, step, "contact-no", "246-555-0123");
+    // `components/telephone` — libphonenumber/max validates against real
+    // assignable ranges, so a 555-01xx fictional number is rejected; use a
+    // valid Barbados number.
+    await fillField(page, step, "contact-no", "246-418-1234");
     // Send the confirmation email to the monitored test inbox, not a real person.
     await fillField(page, step, "email", "testing@govtech.bb");
     await fillField(page, step, "post", "Mathematics Teacher");
@@ -118,8 +124,9 @@ test.describe("Term Leave Application — Live Smoke", () => {
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────
     await submitAndConfirm(page, {
-      heading: "Submission Confirmation",
-      referenceLabel: "Reference number",
+      heading: "Your request has been submitted",
+      subheading: "Your request for term's leave has been submitted.",
+      referenceLabel: "Submission ID",
     });
   });
 });

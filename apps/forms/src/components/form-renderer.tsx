@@ -20,12 +20,23 @@ import {
   stepFieldIdConcactenator,
   repeatStepConcactenator,
   getRepeatStepCount,
+  getInstanceMarker,
   buildFieldValidationProperties,
 } from "@forms/lib";
 import { trackEvent } from "../lib/analytics";
+import { StatusBanner } from "@govtech-bb/react";
+import { resolveStepTitle } from "@govtech-bb/form-conditions";
+import { buildStepScopedValues } from "../lib/form-builder/helpers/value-tree";
+
+// The feedback form citizens are sent to from a confirmation page, and its
+// first step. A root-relative path (not the absolute sandbox URL) so the link
+// resolves to whichever environment is serving the form — sandbox, prod, or
+// local. The originating form id is appended as `?source=` at render time.
+const EXIT_SURVEY_FORM_ID = "exit-survey";
+const EXIT_SURVEY_FIRST_STEP = "difficulty-rating";
 
 // ---------------------------------------------------------------------------
-// Field grouping (show-hide + radio conditional reveal)
+// Field grouping (show-hide + radio/select conditional reveal)
 // ---------------------------------------------------------------------------
 
 type PlainFieldGroup = { type: "plain"; field: ClientPrimitive };
@@ -35,24 +46,37 @@ type ShowHideFieldGroup = {
   controlled: ClientPrimitive[];
 };
 /**
- * A radio field that has one or more sibling fields that should be revealed
- * inline (inset) when a specific option is selected.  Each entry in the map
- * keys on the option value and holds the ordered list of fields to reveal.
+ * A radio or single-value select field that has one or more sibling fields
+ * that should be revealed inline (inset) when a specific option is selected.
+ * Each entry in the map keys on the option value and holds the ordered list
+ * of fields to reveal.
  */
-type RadioConditionalFieldGroup = {
-  type: "radio-conditional";
-  radio: ClientPrimitive;
+type OptionConditionalFieldGroup = {
+  type: "option-conditional";
+  field: ClientPrimitive;
   conditionalsByOption: Map<string, ClientPrimitive[]>;
 };
 type FieldGroup =
   | PlainFieldGroup
   | ShowHideFieldGroup
-  | RadioConditionalFieldGroup;
+  | OptionConditionalFieldGroup;
+
+/**
+ * A field hosts inset conditional reveals when it offers a single-choice
+ * option list: radios, or selects without `multiple`. Multi-selects keep the
+ * page-level conditional fallback — "equal" against an array value is murky.
+ */
+function supportsOptionConditionals(field: ClientPrimitive): boolean {
+  return (
+    field.htmlType === "radio" ||
+    (field.htmlType === "select" && !field.multiple)
+  );
+}
 
 /**
  * Groups fields into rendering units:
  * - show-hide: toggle + its controlled siblings share a bordered container.
- * - radio-conditional: a radio whose options each have inset reveal fields.
+ * - option-conditional: a radio/select whose options have inset reveal fields.
  * - plain: everything else.
  */
 function buildFieldGroups(fields: ClientPrimitive[]): FieldGroup[] {
@@ -73,9 +97,9 @@ function buildFieldGroups(fields: ClientPrimitive[]): FieldGroup[] {
       );
       controlled.forEach((f) => controlledIds.add(f.id));
       groups.push({ type: "show-hide", toggle: field, controlled });
-    } else if (field.htmlType === "radio") {
+    } else if (supportsOptionConditionals(field)) {
       // Collect sibling fields that are revealed by a specific option value
-      // on this radio (fieldConditionalOn + operator "equal").
+      // on this radio/select (fieldConditionalOn + operator "equal").
       const conditionalsByOption = new Map<string, ClientPrimitive[]>();
 
       for (const other of fields) {
@@ -102,8 +126,8 @@ function buildFieldGroups(fields: ClientPrimitive[]): FieldGroup[] {
 
       if (conditionalsByOption.size > 0) {
         groups.push({
-          type: "radio-conditional",
-          radio: field,
+          type: "option-conditional",
+          field,
           conditionalsByOption,
         });
       } else {
@@ -124,6 +148,8 @@ export default function FormRenderer({
   visibleSteps,
   repeatableStepSettingsRef,
   submissionState,
+  isPreview = false,
+  previewToken,
 }: FormRendererProps) {
   const { navigateToStep, completeAndContinue, currentIndex } = useStepGuard({
     formId: formMeta.formId,
@@ -162,6 +188,10 @@ export default function FormRenderer({
   if (!currentStep) return null;
 
   const currentFields = [...currentStep.fields];
+
+  // #801: distinguish repeat instances beyond the first. undefined for base
+  // steps / first instances (renders exactly as before).
+  const instanceMarker = getInstanceMarker(currentStep);
 
   // Resolve the validators for a field. Pre-built validators live in
   // formMeta.validationProperties (keyed by field id), but repeat-instance
@@ -339,7 +369,16 @@ export default function FormRenderer({
 
   const isSubmissionConfirmation =
     currentStep.stepId === "submission-confirmation";
-  const isLastFormStep = currentStep.stepId === "declaration";
+  // The form is submitted from whichever step sits immediately before the
+  // submission-confirmation step. For standard recipes that is `declaration`;
+  // surveys with no declaration (e.g. the exit survey) submit from the
+  // build-form-injected check-your-answers step instead. Matching `declaration`
+  // explicitly as well keeps every existing recipe identical — across all
+  // recipes that carry one, declaration is always the step before confirmation,
+  // so the two clauses never disagree (and never yield two submit steps).
+  const isLastFormStep =
+    currentStep.stepId === "declaration" ||
+    visibleSteps[stepIndex + 1]?.stepId === "submission-confirmation";
   // Build show-hide groups so the left-border content wrapper spans the toggle
   // hint AND all conditionally-controlled sibling fields.
   const fieldGroups = buildFieldGroups(currentFields);
@@ -357,21 +396,42 @@ export default function FormRenderer({
     return result;
   });
 
+  // Resolve the step's effective title reactively: a step may carry
+  // `conditionalTitle` overrides (#871) that depend on an earlier answer, so the
+  // heading must recompute when the watched value changes. `resolveStepTitle`
+  // returns the static title unchanged for steps without overrides.
+  const resolvedStepTitle = useStore(form.store, (state) =>
+    resolveStepTitle(
+      currentStep,
+      buildStepScopedValues(state.values as Record<string, unknown>),
+    ),
+  );
+
   // The submission confirmation owns its own full-width layout (a full-bleed
   // banner plus inner containers), so it renders outside the page container.
   if (isSubmissionConfirmation) {
+    // Link to the exit survey, tagging the originating form id so the survey
+    // submission records which service the feedback is about. Suppressed on the
+    // exit survey itself so it never invites feedback on the feedback form.
+    const feedbackUrl =
+      formMeta.formId === EXIT_SURVEY_FORM_ID
+        ? undefined
+        : `/forms/${EXIT_SURVEY_FORM_ID}?step=${EXIT_SURVEY_FIRST_STEP}&source=${encodeURIComponent(
+            formMeta.formId,
+          )}`;
     return (
       <div className="form-page-confirmation">
         <SubmissionConfirmation
           key={"submission-confirmation"}
           serviceTitle={formMeta.formTitle}
-          stepTitle={currentStep.title}
+          stepTitle={resolvedStepTitle}
           processingMessage={currentStep.description}
           nextSteps={currentStep.nextSteps}
           markdownContent={currentStep.markdownContent}
           contactDetails={formMeta.contactDetails}
           onTryAgain={() => navigateToStep("check-your-answers")}
           submissionState={submissionState}
+          feedbackUrl={feedbackUrl}
         />
       </div>
     );
@@ -380,9 +440,29 @@ export default function FormRenderer({
   return (
     <div className="container pb-8 lg:pb-16">
       <div className="form-page form-width">
+        {isPreview && (
+          <StatusBanner variant="service-issue" data-testid="preview-banner">
+            Preview mode — this is an unpublished draft and cannot be submitted.
+          </StatusBanner>
+        )}
         <div className="form-page__header">
           <p className="form-page__service-title"> {formMeta.formTitle} </p>
-          <h1 className="govbb-text-h1">{currentStep.title}</h1>
+          <h1 className="govbb-text-h1">
+            {/* GOV.UK caption-in-heading pattern: the caption sits inside the
+                h1 so the accessible name distinguishes repeat instances for
+                screen-reader heading navigation. */}
+            {instanceMarker?.hasLabel && (
+              <span
+                data-testid="repeat-instance-marker"
+                className="block text-caption text-mid-grey-00"
+              >
+                {instanceMarker.text}
+              </span>
+            )}
+            {instanceMarker && !instanceMarker.hasLabel
+              ? `${resolvedStepTitle} — ${instanceMarker.text}`
+              : resolvedStepTitle}
+          </h1>
           {currentStep.description && (
             <p className="form-page__step-description">
               {currentStep.description}
@@ -418,6 +498,7 @@ export default function FormRenderer({
                     validationProperties={resolveValidators(group.toggle)}
                     formId={formMeta.formId}
                     formVersion={formMeta.version}
+                    previewToken={previewToken}
                   />
                   {isOpen && (
                     <div className="form-page__show-hide-content">
@@ -432,6 +513,7 @@ export default function FormRenderer({
                           validationProperties={resolveValidators(field)}
                           formId={formMeta.formId}
                           formVersion={formMeta.version}
+                          previewToken={previewToken}
                         />
                       ))}
                     </div>
@@ -440,9 +522,10 @@ export default function FormRenderer({
               );
             }
 
-            if (group.type === "radio-conditional") {
+            if (group.type === "option-conditional") {
               // Build a map of option value → [{field, validationProperties}]
-              // so the radio FieldRenderer can render inset fields per option.
+              // so the radio/select FieldRenderer can render inset fields per
+              // option.
               const insetFieldsByOption = new Map(
                 [...group.conditionalsByOption.entries()].map(
                   ([optVal, insetFields]) => [
@@ -457,13 +540,14 @@ export default function FormRenderer({
 
               return (
                 <FieldRenderer
-                  key={group.radio.id}
+                  key={group.field.id}
                   form={form}
-                  field={group.radio}
-                  validationProperties={resolveValidators(group.radio)}
+                  field={group.field}
+                  validationProperties={resolveValidators(group.field)}
                   insetFieldsByOption={insetFieldsByOption}
                   formId={formMeta.formId}
                   formVersion={formMeta.version}
+                  previewToken={previewToken}
                 />
               );
             }
@@ -476,6 +560,7 @@ export default function FormRenderer({
                 validationProperties={resolveValidators(group.field)}
                 formId={formMeta.formId}
                 formVersion={formMeta.version}
+                previewToken={previewToken}
               />
             );
           })}
@@ -494,17 +579,30 @@ export default function FormRenderer({
               <button
                 className="govbb-btn"
                 type="button"
-                disabled={isLastFormStep && isSubmitting}
+                disabled={
+                  (isLastFormStep && isSubmitting) ||
+                  (isLastFormStep && isPreview)
+                }
                 onClick={isLastFormStep ? handleSubmit : handleContinue}
               >
                 {isLastFormStep && isSubmitting
                   ? "Submitting…"
-                  : isLastFormStep
-                    ? "Submit"
-                    : "Continue"}
+                  : isLastFormStep && isPreview
+                    ? "Submit (preview)"
+                    : isLastFormStep
+                      ? "Submit"
+                      : "Continue"}
               </button>
             </div>
           )}
+          {currentStep.stepId !== "submission-confirmation" &&
+            isLastFormStep &&
+            isPreview && (
+              <p className="govbb-hint" data-testid="preview-submit-hint">
+                Submitting is disabled in preview. Publish the form to enable
+                submission.
+              </p>
+            )}
         </div>
       </div>
     </div>

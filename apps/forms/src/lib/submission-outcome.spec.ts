@@ -1,23 +1,39 @@
-import { resolveSubmissionOutcome } from "./submission-outcome";
-import { FormSubmissionResponse } from "@forms/types";
+import {
+  resolveSubmissionOutcome,
+  applyPaymentReturn,
+} from "./submission-outcome";
+import { FormSubmissionResponse, SubmissionState } from "@forms/types";
 
+// `status` is the SUBMISSION status and belongs on `data.status`. The API
+// envelope `status` is always "success" for a 2xx (ApiResponse.success) —
+// modelling that here is what catches regressions where the mapper reads the
+// wrong level (it previously switched on the envelope and dropped payments).
 const response = (
   status: string,
   meta?: FormSubmissionResponse["meta"],
+  referenceCode?: string,
 ): FormSubmissionResponse =>
   ({
-    status,
+    status: "success",
     message: "",
     data: {
       id: "ref-001",
+      status,
       submittedAt: "2026-05-22T00:00:00Z",
       formId: "test-form",
+      ...(referenceCode !== undefined ? { referenceCode } : {}),
     },
     meta,
   }) as FormSubmissionResponse;
 
 const base = {
   referenceNumber: "ref-001",
+  date: "2026-05-22T00:00:00Z",
+  serviceName: "test-form",
+};
+
+const baseWithCode = {
+  referenceNumber: "JPP-20260604-130732-9JZRZC",
   date: "2026-05-22T00:00:00Z",
   serviceName: "test-form",
 };
@@ -85,4 +101,81 @@ describe("resolveSubmissionOutcome", () => {
       });
     },
   );
+
+  it("uses referenceCode as referenceNumber when present", () => {
+    const outcome = resolveSubmissionOutcome(
+      response("submitted", undefined, "JPP-20260604-130732-9JZRZC"),
+    );
+    expect(outcome.subState?.referenceNumber).toBe(
+      "JPP-20260604-130732-9JZRZC",
+    );
+  });
+
+  it("falls back to id when referenceCode is absent", () => {
+    const outcome = resolveSubmissionOutcome(response("submitted"));
+    expect(outcome.subState?.referenceNumber).toBe("ref-001");
+  });
+
+  it("uses referenceCode in pending_payment state", () => {
+    const outcome = resolveSubmissionOutcome(
+      response(
+        "pending_payment",
+        {
+          deferred: {
+            amount: 100,
+            paymentUrl: "https://pay.example.com",
+            paymentId: "pay-001",
+            description: "Application fee",
+          },
+        },
+        "JPP-20260604-130732-9JZRZC",
+      ),
+    );
+    expect(outcome.subState?.referenceNumber).toBe(
+      "JPP-20260604-130732-9JZRZC",
+    );
+    expect(outcome).toEqual({
+      subState: {
+        ...baseWithCode,
+        submissionSuccess: true,
+        hasPayment: true,
+        amount: "100",
+        paymentUrl: "https://pay.example.com",
+        paymentId: "pay-001",
+        paymentDescription: "Application fee",
+      },
+      event: { name: "form-submit-success" },
+    });
+  });
+});
+
+describe("applyPaymentReturn", () => {
+  const pending: SubmissionState = {
+    hasPayment: true,
+    serviceName: "test-form",
+    submissionSuccess: true,
+    paymentSuccess: false,
+    referenceNumber: "REF-9",
+    amount: "5",
+    paymentUrl: "https://pay.example.com",
+  };
+
+  it("flips to paymentSuccess on 'success', preserving the rest of the state", () => {
+    expect(applyPaymentReturn(pending, "success")).toEqual({
+      ...pending,
+      paymentSuccess: true,
+    });
+  });
+
+  it("clears paymentUrl on 'failed' so the failure panel renders", () => {
+    expect(applyPaymentReturn(pending, "failed")).toEqual({
+      ...pending,
+      paymentSuccess: false,
+      paymentUrl: undefined,
+    });
+  });
+
+  it("returns the state unchanged when there is no payment param", () => {
+    expect(applyPaymentReturn(pending, undefined)).toBe(pending);
+  });
 });

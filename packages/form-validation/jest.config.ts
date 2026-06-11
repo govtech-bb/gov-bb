@@ -15,6 +15,11 @@ const config: Config = {
   rootDir: "src",
   testRegex: ".*\\.spec\\.ts$",
   moduleNameMapper: {
+    // The general mapper below carries a spurious extra `packages/` segment
+    // (→ packages/packages/$1); root-symlinked deps still resolve via jest's
+    // node fallback, but `expressions` (not root-symlinked) needs an explicit,
+    // correctly-pointed entry. Listed first so it wins for that one module.
+    "^@govtech-bb/expressions$": "<rootDir>/../../expressions/src/index.ts",
     "^@govtech-bb/(.*)$": "<rootDir>/../../packages/$1/src/index.ts",
   },
   collectCoverage: true,

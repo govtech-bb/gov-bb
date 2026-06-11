@@ -12,6 +12,9 @@
   "references": [
     {
       "path": "../form-types"
+    },
+    {
+      "path": "../expressions"
     }
   ],
   "include": [

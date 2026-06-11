@@ -14,11 +14,12 @@ jest.mock("@tanstack/react-start/server", () => ({
 // never touches globalThis.fetch — the GitHub steps below mock fetch directly.
 jest.mock("./api-client", () => ({
   api: { post: jest.fn(), get: jest.fn(), put: jest.fn(), del: jest.fn() },
+  ApiError: jest.requireActual("./api-client").ApiError,
 }));
 
 import { getSession } from "./session-cipher.server";
-import { api } from "./api-client";
-import { publishRecipe, eraseRecipe } from "./publish";
+import { api, ApiError } from "./api-client";
+import { publishRecipe, eraseRecipe, getNextDeployVersion } from "./publish";
 
 const SESSION = {
   login: "alice",
@@ -49,6 +50,10 @@ function emptyResponse(status: number): Response {
 
 beforeEach(() => {
   jest.resetAllMocks();
+  // Clear here too (not just afterEach): jest reuses a worker process across
+  // files, so the first test must not inherit a value leaked by an earlier
+  // file — the default-branch assertions depend on it being unset.
+  delete process.env.PUBLISH_BASE_BRANCH;
   process.env.SESSION_SECRET = Buffer.alloc(32).toString("base64");
   process.env.GITHUB_ORG = "govtech-bb";
   (getSession as jest.Mock).mockReturnValue(SESSION);
@@ -70,6 +75,8 @@ describe("publishRecipe", () => {
   it("returns { prUrl, prNumber } on the happy path", async () => {
     const fetchMock = jest
       .fn()
+      // listVersions on the base branch (folder absent → gate passes)
+      .mockResolvedValueOnce(emptyResponse(404))
       // Step 1: get dev ref
       .mockResolvedValueOnce(
         jsonResponse(200, { object: { sha: "devsha123" } }),
@@ -97,44 +104,53 @@ describe("publishRecipe", () => {
       prUrl: "https://github.com/govtech-bb/gov-bb/pull/42",
       prNumber: 42,
     });
-    expect(fetchMock).toHaveBeenCalledTimes(5);
+    expect(fetchMock).toHaveBeenCalledTimes(6);
+
+    // The reservation is claimed in the builder DB before any GitHub write.
+    // userLogin (#874) is stamped so the reservation save clears the read-only
+    // lock gate.
+    expect(api.post).toHaveBeenCalledWith("/builder/forms", {
+      recipe: RECIPE,
+      isNew: false,
+      userLogin: "alice",
+    });
 
     // Step 1
-    expect(fetchMock.mock.calls[0][0]).toBe(
+    expect(fetchMock.mock.calls[1][0]).toBe(
       "https://api.github.com/repos/govtech-bb/gov-bb/git/ref/heads/dev",
     );
     // Headers carry the bearer token.
-    expect((fetchMock.mock.calls[0][1] as RequestInit).headers).toMatchObject({
+    expect((fetchMock.mock.calls[1][1] as RequestInit).headers).toMatchObject({
       Authorization: "Bearer gho_test_token",
       Accept: "application/vnd.github+json",
     });
 
     // Step 2: branch ref shape and pointing at dev sha
-    const step2 = fetchMock.mock.calls[1];
+    const step2 = fetchMock.mock.calls[2];
     expect(step2[0]).toBe(
       "https://api.github.com/repos/govtech-bb/gov-bb/git/refs",
     );
     const step2Body = JSON.parse((step2[1] as RequestInit).body as string);
     expect(step2Body).toEqual({
-      ref: "refs/heads/form-builder/passport-renewal-1.2.0-1700000000000",
+      ref: "refs/heads/form-builder/passport-renewal-1-2-0-1700000000000",
       sha: "devsha123",
     });
 
     // Step 3: contents GET on the new branch — recipes live colocated with the
     // API form-definitions module so the API's file loader, the dump script,
     // the Dockerfile, and this publish flow all point at the same path.
-    expect(fetchMock.mock.calls[2][0]).toBe(
-      "https://api.github.com/repos/govtech-bb/gov-bb/contents/apps/api/src/forms/form-definitions/recipes/passport-renewal/1.2.0.json?ref=form-builder%2Fpassport-renewal-1.2.0-1700000000000",
+    expect(fetchMock.mock.calls[3][0]).toBe(
+      "https://api.github.com/repos/govtech-bb/gov-bb/contents/apps/api/src/forms/form-definitions/recipes/passport-renewal/1.2.0.json?ref=form-builder%2Fpassport-renewal-1-2-0-1700000000000",
     );
 
     // Step 4: PUT with base64 content and matching message
-    const step4 = fetchMock.mock.calls[3];
+    const step4 = fetchMock.mock.calls[4];
     expect(step4[0]).toBe(
       "https://api.github.com/repos/govtech-bb/gov-bb/contents/apps/api/src/forms/form-definitions/recipes/passport-renewal/1.2.0.json",
     );
     const step4Body = JSON.parse((step4[1] as RequestInit).body as string);
     expect(step4Body.branch).toBe(
-      "form-builder/passport-renewal-1.2.0-1700000000000",
+      "form-builder/passport-renewal-1-2-0-1700000000000",
     );
     expect(step4Body.message).toBe("Publish passport-renewal v1.2.0");
     const expectedFileContent = JSON.stringify(RECIPE, null, 2) + "\n";
@@ -143,14 +159,14 @@ describe("publishRecipe", () => {
     );
 
     // Step 5: PR body contains the templated fields
-    const step5 = fetchMock.mock.calls[4];
+    const step5 = fetchMock.mock.calls[5];
     expect(step5[0]).toBe(
       "https://api.github.com/repos/govtech-bb/gov-bb/pulls",
     );
     const step5Body = JSON.parse((step5[1] as RequestInit).body as string);
     expect(step5Body.base).toBe("dev");
     expect(step5Body.head).toBe(
-      "form-builder/passport-renewal-1.2.0-1700000000000",
+      "form-builder/passport-renewal-1-2-0-1700000000000",
     );
     expect(step5Body.title).toBe("Publish form: Passport Renewal v1.2.0");
     expect(step5Body.body).toContain("Form ID: `passport-renewal`");
@@ -159,9 +175,51 @@ describe("publishRecipe", () => {
     expect(step5Body.body).toContain("Adds passport-renewal v1.2.0");
   });
 
+  it("sanitizes dots out of the branch name but keeps the dotted version in the file path, message, and title (#805)", async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(emptyResponse(404))
+      .mockResolvedValueOnce(
+        jsonResponse(200, { object: { sha: "devsha123" } }),
+      )
+      .mockResolvedValueOnce(jsonResponse(201, { ref: "refs/heads/x" }))
+      .mockResolvedValueOnce(emptyResponse(404))
+      .mockResolvedValueOnce(jsonResponse(201, { commit: { sha: "c1" } }))
+      .mockResolvedValueOnce(
+        jsonResponse(201, {
+          number: 42,
+          html_url: "https://github.com/govtech-bb/gov-bb/pull/42",
+        }),
+      );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    await publishRecipe({ data: { recipe: RECIPE, description: "" } });
+
+    // Branch name: no "." anywhere — CI's pr-preview "Guard branch name" step
+    // hard-fails dotted branches (Amplify preview cert breakage).
+    const step2Body = JSON.parse(
+      (fetchMock.mock.calls[2][1] as RequestInit).body as string,
+    );
+    expect(step2Body.ref).toBe(
+      "refs/heads/form-builder/passport-renewal-1-2-0-1700000000000",
+    );
+    expect(step2Body.ref).not.toContain(".");
+
+    // The committed artifacts keep the real dotted version.
+    const step4 = fetchMock.mock.calls[4];
+    expect(step4[0]).toContain("/passport-renewal/1.2.0.json");
+    const step4Body = JSON.parse((step4[1] as RequestInit).body as string);
+    expect(step4Body.message).toBe("Publish passport-renewal v1.2.0");
+    const step5Body = JSON.parse(
+      (fetchMock.mock.calls[5][1] as RequestInit).body as string,
+    );
+    expect(step5Body.title).toBe("Publish form: Passport Renewal v1.2.0");
+  });
+
   it("throws version-already-exists and cleans up the branch when step 3 returns 200", async () => {
     const fetchMock = jest
       .fn()
+      .mockResolvedValueOnce(emptyResponse(404))
       .mockResolvedValueOnce(
         jsonResponse(200, { object: { sha: "devsha123" } }),
       )
@@ -175,20 +233,25 @@ describe("publishRecipe", () => {
     await expect(
       publishRecipe({ data: { recipe: RECIPE, description: "" } }),
     ).rejects.toThrow(
-      /Version 1\.2\.0 already exists on dev\. Bump the version and try again\./,
+      /Version 1\.2\.0 already exists on dev\. Reopen the form to pick up the latest version, then deploy again\./,
     );
 
-    expect(fetchMock).toHaveBeenCalledTimes(4);
-    const cleanup = fetchMock.mock.calls[3];
+    expect(fetchMock).toHaveBeenCalledTimes(5);
+    const cleanup = fetchMock.mock.calls[4];
     expect(cleanup[0]).toBe(
-      "https://api.github.com/repos/govtech-bb/gov-bb/git/refs/heads/form-builder/passport-renewal-1.2.0-1700000000000",
+      "https://api.github.com/repos/govtech-bb/gov-bb/git/refs/heads/form-builder/passport-renewal-1-2-0-1700000000000",
     );
     expect((cleanup[1] as RequestInit).method).toBe("DELETE");
+    // The reservation was made and must be released.
+    expect(api.del).toHaveBeenCalledWith(
+      "/builder/forms/passport-renewal/versions/1.2.0",
+    );
   });
 
   it("cleans up the branch when PUT contents (step 4) fails", async () => {
     const fetchMock = jest
       .fn()
+      .mockResolvedValueOnce(emptyResponse(404))
       .mockResolvedValueOnce(
         jsonResponse(200, { object: { sha: "devsha123" } }),
       )
@@ -202,13 +265,17 @@ describe("publishRecipe", () => {
       publishRecipe({ data: { recipe: RECIPE, description: "" } }),
     ).rejects.toThrow(/Failed to write recipe file/);
 
-    const cleanup = fetchMock.mock.calls[4];
+    const cleanup = fetchMock.mock.calls[5];
     expect((cleanup[1] as RequestInit).method).toBe("DELETE");
+    expect(api.del).toHaveBeenCalledWith(
+      "/builder/forms/passport-renewal/versions/1.2.0",
+    );
   });
 
   it("cleans up the branch when PR creation (step 5) fails", async () => {
     const fetchMock = jest
       .fn()
+      .mockResolvedValueOnce(emptyResponse(404))
       .mockResolvedValueOnce(
         jsonResponse(200, { object: { sha: "devsha123" } }),
       )
@@ -223,13 +290,17 @@ describe("publishRecipe", () => {
       publishRecipe({ data: { recipe: RECIPE, description: "" } }),
     ).rejects.toThrow(/Failed to open pull request/);
 
-    const cleanup = fetchMock.mock.calls[5];
+    const cleanup = fetchMock.mock.calls[6];
     expect((cleanup[1] as RequestInit).method).toBe("DELETE");
+    expect(api.del).toHaveBeenCalledWith(
+      "/builder/forms/passport-renewal/versions/1.2.0",
+    );
   });
 
   it("does not attempt cleanup when step 1 (get dev ref) fails", async () => {
     const fetchMock = jest
       .fn()
+      .mockResolvedValueOnce(emptyResponse(404)) // listVersions
       .mockResolvedValueOnce(jsonResponse(404, { message: "not found" }));
     globalThis.fetch = fetchMock as unknown as typeof fetch;
 
@@ -237,13 +308,18 @@ describe("publishRecipe", () => {
       publishRecipe({ data: { recipe: RECIPE, description: "" } }),
     ).rejects.toThrow(/Failed to read dev branch/);
 
-    // No DELETE call because no branch was created.
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    // No DELETE call because no branch was created — but the reservation,
+    // made before the base-ref read, must be released.
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(api.del).toHaveBeenCalledWith(
+      "/builder/forms/passport-renewal/versions/1.2.0",
+    );
   });
 
   it("does not attempt cleanup when step 2 (create branch) fails", async () => {
     const fetchMock = jest
       .fn()
+      .mockResolvedValueOnce(emptyResponse(404)) // listVersions
       .mockResolvedValueOnce(
         jsonResponse(200, { object: { sha: "devsha123" } }),
       )
@@ -254,13 +330,17 @@ describe("publishRecipe", () => {
       publishRecipe({ data: { recipe: RECIPE, description: "" } }),
     ).rejects.toThrow(/Failed to create branch/);
 
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(api.del).toHaveBeenCalledWith(
+      "/builder/forms/passport-renewal/versions/1.2.0",
+    );
   });
 
   it("uses PUBLISH_BASE_BRANCH for the base ref and PR base when set", async () => {
     process.env.PUBLISH_BASE_BRANCH = "sandbox";
     const fetchMock = jest
       .fn()
+      .mockResolvedValueOnce(emptyResponse(404)) // listVersions on sandbox
       .mockResolvedValueOnce(
         jsonResponse(200, { object: { sha: "sandboxsha" } }),
       )
@@ -277,13 +357,15 @@ describe("publishRecipe", () => {
 
     await publishRecipe({ data: { recipe: RECIPE, description: "" } });
 
+    // listVersions reads the configured branch.
+    expect(fetchMock.mock.calls[0][0]).toContain("ref=sandbox");
     // Step 1: base ref read from the configured branch, not dev.
-    expect(fetchMock.mock.calls[0][0]).toBe(
+    expect(fetchMock.mock.calls[1][0]).toBe(
       "https://api.github.com/repos/govtech-bb/gov-bb/git/ref/heads/sandbox",
     );
     // Step 5: PR opened against the configured branch.
     const step5Body = JSON.parse(
-      (fetchMock.mock.calls[4][1] as RequestInit).body as string,
+      (fetchMock.mock.calls[5][1] as RequestInit).body as string,
     );
     expect(step5Body.base).toBe("sandbox");
   });
@@ -292,6 +374,7 @@ describe("publishRecipe", () => {
     process.env.PUBLISH_BASE_BRANCH = "sandbox";
     const fetchMock = jest
       .fn()
+      .mockResolvedValueOnce(emptyResponse(404)) // listVersions on sandbox
       .mockResolvedValueOnce(
         jsonResponse(200, { object: { sha: "sandboxsha" } }),
       )
@@ -308,6 +391,7 @@ describe("publishRecipe", () => {
   it("validates against the API before opening a branch/PR", async () => {
     const fetchMock = jest
       .fn()
+      .mockResolvedValueOnce(emptyResponse(404)) // listVersions
       .mockResolvedValueOnce(jsonResponse(200, { object: { sha: "devsha" } }))
       .mockResolvedValueOnce(jsonResponse(201, { ref: "refs/heads/x" }))
       .mockResolvedValueOnce(emptyResponse(404))
@@ -351,6 +435,7 @@ describe("publishRecipe", () => {
   it("rethrows the original error even when cleanup itself fails", async () => {
     const fetchMock = jest
       .fn()
+      .mockResolvedValueOnce(emptyResponse(404)) // listVersions
       .mockResolvedValueOnce(
         jsonResponse(200, { object: { sha: "devsha123" } }),
       )
@@ -671,5 +756,148 @@ describe("eraseRecipe", () => {
 
     expect(api.get).not.toHaveBeenCalled();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("getNextDeployVersion", () => {
+  it("bumps past the highest of: current version, base-branch files, open deploy PRs", async () => {
+    const fetchMock = jest
+      .fn()
+      // listVersions on the base branch: 1.3.0 is published
+      .mockResolvedValueOnce(jsonResponse(200, dirListing(["1.2.0", "1.3.0"])))
+      // open PRs on the base: one deploy PR claims 1.4.0 for this form,
+      // one is for a different form, one is a human branch — both ignored
+      .mockResolvedValueOnce(
+        jsonResponse(200, [
+          {
+            number: 901,
+            head: { ref: "form-builder/passport-renewal-1-4-0-1699999999999" },
+          },
+          {
+            number: 902,
+            head: { ref: "form-builder/other-form-2-0-0-1699999999999" },
+          },
+          { number: 903, head: { ref: "fix/some-human-branch" } },
+        ]),
+      );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const result = await getNextDeployVersion({
+      data: { formId: "passport-renewal", currentVersion: "1.2.0" },
+    });
+
+    // max(1.2.0 client, 1.3.0 base, 1.4.0 claimed) = 1.4.0 → bumpMinor → 1.5.0
+    expect(result).toEqual({ version: "1.5.0" });
+  });
+
+  it("falls back to bumping the client version when nothing is published or claimed", async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(emptyResponse(404)) // listVersions: folder absent
+      .mockResolvedValueOnce(jsonResponse(200, [])); // no open PRs
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const result = await getNextDeployVersion({
+      data: { formId: "passport-renewal", currentVersion: "1.2.0" },
+    });
+    expect(result).toEqual({ version: "1.3.0" });
+  });
+
+  it("starts at 1.0.0 for a brand-new form", async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(emptyResponse(404))
+      .mockResolvedValueOnce(jsonResponse(200, []));
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const result = await getNextDeployVersion({
+      data: { formId: "brand-new", currentVersion: null },
+    });
+    expect(result).toEqual({ version: "1.0.0" });
+  });
+});
+
+describe("publishRecipe — #873 guards", () => {
+  it("refuses a version that is not ahead of the base branch", async () => {
+    (api.post as jest.Mock).mockResolvedValueOnce({ ok: true, issues: [] }); // validate
+    const fetchMock = jest
+      .fn()
+      // listVersions: 1.2.0 and 1.3.0 already published — RECIPE deploys 1.2.0
+      .mockResolvedValueOnce(jsonResponse(200, dirListing(["1.2.0", "1.3.0"])));
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    await expect(
+      publishRecipe({ data: { recipe: RECIPE, description: "" } }),
+    ).rejects.toThrow(/not ahead of/);
+
+    // No reservation, no branch, no PR.
+    expect(api.post).toHaveBeenCalledTimes(1); // validate only
+    expect(fetchMock).toHaveBeenCalledTimes(1); // listVersions only
+  });
+
+  it("surfaces a 409 reservation conflict as a clear claimed-version error", async () => {
+    (api.post as jest.Mock)
+      .mockResolvedValueOnce({ ok: true, issues: [] }) // validate
+      .mockRejectedValueOnce(
+        new ApiError(409, "Recipe passport-renewal v1.2.0 already exists"),
+      ); // reserve
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(200, dirListing(["1.1.0"]))); // listVersions
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    await expect(
+      publishRecipe({ data: { recipe: RECIPE, description: "" } }),
+    ).rejects.toThrow(/claimed by another deploy or save/);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1); // GitHub untouched past listVersions
+    expect(api.del).not.toHaveBeenCalled(); // nothing to release — we never held it
+  });
+
+  it("releases the reservation and deletes the branch when a later step fails", async () => {
+    (api.post as jest.Mock)
+      .mockResolvedValueOnce({ ok: true, issues: [] }) // validate
+      .mockResolvedValueOnce({ ok: true }); // reserve
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(200, dirListing(["1.1.0"]))) // listVersions
+      .mockResolvedValueOnce(
+        jsonResponse(200, { object: { sha: "devsha123" } }),
+      ) // base ref
+      .mockResolvedValueOnce(jsonResponse(201, { ref: "refs/heads/x" })) // create branch
+      .mockResolvedValueOnce(emptyResponse(404)) // step-3 contents check
+      .mockResolvedValueOnce(jsonResponse(422, { message: "boom" })) // write file FAILS
+      .mockResolvedValueOnce(emptyResponse(204)); // branch cleanup DELETE
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    await expect(
+      publishRecipe({ data: { recipe: RECIPE, description: "" } }),
+    ).rejects.toThrow(/Failed to write recipe file/);
+
+    expect(api.del).toHaveBeenCalledWith(
+      `/builder/forms/${RECIPE.formId}/versions/${RECIPE.version}`,
+    );
+  });
+
+  it("releases the reservation when the base-ref read rejects (network error)", async () => {
+    (api.post as jest.Mock)
+      .mockResolvedValueOnce({ ok: true, issues: [] }) // validate
+      .mockResolvedValueOnce({ ok: true }); // reserve
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(200, dirListing(["1.1.0"]))) // listVersions
+      .mockRejectedValueOnce(new Error("socket hang up")); // base-ref fetch rejects
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    await expect(
+      publishRecipe({ data: { recipe: RECIPE, description: "" } }),
+    ).rejects.toThrow(/socket hang up/);
+
+    // The claim is freed even though no !ok branch ever ran…
+    expect(api.del).toHaveBeenCalledWith(
+      `/builder/forms/${RECIPE.formId}/versions/${RECIPE.version}`,
+    );
+    // …and no branch was created, so nothing else was touched.
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

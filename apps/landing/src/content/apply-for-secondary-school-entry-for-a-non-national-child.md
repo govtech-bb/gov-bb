@@ -4,7 +4,7 @@ description: "Apply for a non-national child, or a child born outside Barbados, 
 stage: "alpha"
 publish_date: 2026-06-02
 category: education
-visibility: preview
+visibility: draft
 ---
 
 Use this service to apply for a non-national child — or a child born outside Barbados — to attend a government secondary school.

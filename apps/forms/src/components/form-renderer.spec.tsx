@@ -88,6 +88,7 @@ jest.mock("@forms/lib", () => ({
   stepFieldIdConcactenator: "_",
   repeatStepConcactenator: "~",
   getRepeatStepCount: jest.fn(() => undefined),
+  getInstanceMarker: jest.fn(() => undefined),
   buildFieldValidationProperties: jest.fn(() => ({
     onDynamic: jest.fn(),
     onBlur: jest.fn(),
@@ -227,6 +228,85 @@ describe("FormRenderer", () => {
     ).toBeInTheDocument();
   });
 
+  it("renders a conditionalTitle when its condition matches the form values", () => {
+    const step = {
+      stepId: "birth-details",
+      title: "Provide the person's birth details",
+      conditionalTitle: [
+        {
+          targetStepId: "applying-for-yourself",
+          targetFieldId: "applying-for-yourself",
+          operator: "equal" as const,
+          value: "yes",
+          title: "Provide your birth details",
+        },
+      ],
+      fields: [],
+      behaviours: [],
+    };
+    // The watched answer ("yes") lives under its composite `stepId_fieldId` key.
+    mockUseStore.mockImplementation(
+      (_store: unknown, selector: (state: any) => any) =>
+        selector({
+          values: { "applying-for-yourself_applying-for-yourself": "yes" },
+          fieldMeta: {},
+        }),
+    );
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="birth-details"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", { name: /Provide your birth details/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("falls back to the static title when no conditionalTitle matches", () => {
+    const step = {
+      stepId: "birth-details",
+      title: "Provide the person's birth details",
+      conditionalTitle: [
+        {
+          targetStepId: "applying-for-yourself",
+          targetFieldId: "applying-for-yourself",
+          operator: "equal" as const,
+          value: "yes",
+          title: "Provide your birth details",
+        },
+      ],
+      fields: [],
+      behaviours: [],
+    };
+    mockUseStore.mockImplementation(
+      (_store: unknown, selector: (state: any) => any) =>
+        selector({
+          values: { "applying-for-yourself_applying-for-yourself": "no" },
+          fieldMeta: {},
+        }),
+    );
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="birth-details"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", {
+        name: /Provide the person's birth details/,
+      }),
+    ).toBeInTheDocument();
+  });
+
   it("hides Previous button on first step (currentIndex = 0)", () => {
     mockUseStepGuard.mockReturnValue({
       navigateToStep: mockNavigateToStep,
@@ -297,6 +377,29 @@ describe("FormRenderer", () => {
         formMeta={makeMeta() as any}
         stepId="declaration"
         visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    expect(screen.getByRole("button", { name: /submit/i })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /continue/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows 'Submit' on the step before submission-confirmation even without a declaration step", () => {
+    // Surveys like the exit survey carry no `declaration` step; build-form
+    // injects check-your-answers immediately before submission-confirmation, so
+    // that becomes the submit step. Without this the survey could never be
+    // submitted (its Continue button would skip the submission entirely).
+    const cya = makeStep("check-your-answers");
+    const confirmation = makeStep("submission-confirmation");
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="check-your-answers"
+        visibleSteps={[cya, confirmation]}
         repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
         submissionState={mockSubmissionState as any}
       />,
@@ -655,6 +758,132 @@ describe("FormRenderer", () => {
     expect(insetOptions).toEqual([["yes", ["step1_extra"]]]);
   });
 
+  it("select-conditional: select field with conditional child is grouped with insetFieldsByOption (#863)", () => {
+    const selectField = {
+      id: "step1_choice",
+      fieldId: "choice",
+      stepId: "step1",
+      name: "choice",
+      label: "Choice",
+      htmlType: "select" as const,
+      disabled: false,
+      hidden: false,
+      conditionallyHidden: false,
+      options: [
+        { value: "yes", label: "Yes" },
+        { value: "no", label: "No" },
+      ],
+      behaviours: [],
+    };
+    const conditionalChild = {
+      id: "step1_extra",
+      fieldId: "extra",
+      stepId: "step1",
+      name: "extra",
+      label: "Extra",
+      htmlType: "text" as const,
+      disabled: false,
+      hidden: false,
+      conditionallyHidden: false,
+      behaviours: [
+        {
+          type: "fieldConditionalOn",
+          targetFieldId: "choice",
+          operator: "equal",
+          value: "yes",
+        },
+      ],
+    };
+    const step = makeStep("step1", [selectField, conditionalChild]);
+
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="step1"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+
+    const renderers = screen.getAllByTestId("field-renderer");
+    const fieldIds = renderers.map((el) => el.getAttribute("data-field-id"));
+    expect(fieldIds).toContain("step1_choice");
+    // The child is rendered inside the select's inset map, not page-level.
+    expect(fieldIds).not.toContain("step1_extra");
+
+    const selectEl = renderers.find(
+      (el) => el.getAttribute("data-field-id") === "step1_choice",
+    )!;
+    const insetOptions = JSON.parse(
+      selectEl.getAttribute("data-inset-options") || "[]",
+    ) as Array<[string, string[]]>;
+    expect(insetOptions).toEqual([["yes", ["step1_extra"]]]);
+  });
+
+  it("select-conditional: a multiple select keeps the page-level fallback (#863)", () => {
+    const multiSelectField = {
+      id: "step1_choice",
+      fieldId: "choice",
+      stepId: "step1",
+      name: "choice",
+      label: "Choice",
+      htmlType: "select" as const,
+      multiple: true,
+      disabled: false,
+      hidden: false,
+      conditionallyHidden: false,
+      options: [
+        { value: "yes", label: "Yes" },
+        { value: "no", label: "No" },
+      ],
+      behaviours: [],
+    };
+    const conditionalChild = {
+      id: "step1_extra",
+      fieldId: "extra",
+      stepId: "step1",
+      name: "extra",
+      label: "Extra",
+      htmlType: "text" as const,
+      disabled: false,
+      hidden: false,
+      conditionallyHidden: false,
+      behaviours: [
+        {
+          type: "fieldConditionalOn",
+          targetFieldId: "choice",
+          operator: "equal",
+          value: "yes",
+        },
+      ],
+    };
+    const step = makeStep("step1", [multiSelectField, conditionalChild]);
+
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="step1"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+
+    // Both fields render as plain page-level renderers — no inset grouping.
+    const renderers = screen.getAllByTestId("field-renderer");
+    const fieldIds = renderers.map((el) => el.getAttribute("data-field-id"));
+    expect(fieldIds).toContain("step1_choice");
+    expect(fieldIds).toContain("step1_extra");
+
+    const selectEl = renderers.find(
+      (el) => el.getAttribute("data-field-id") === "step1_choice",
+    )!;
+    expect(selectEl.getAttribute("data-inset-options")).toBe("");
+  });
+
   it("clicking Previous calls navigateToStep with the previous step's id", async () => {
     const user = userEvent.setup();
     mockUseStepGuard.mockReturnValue({
@@ -744,6 +973,28 @@ describe("FormRenderer", () => {
     // invalid form must keep the user on the step.
     expect(mockForm.handleSubmit).toHaveBeenCalledTimes(1);
     expect(mockCompleteAndContinue).not.toHaveBeenCalled();
+  });
+
+  it("clicking Submit on the pre-confirmation step (no declaration) submits and advances", async () => {
+    // The exit-survey path: the submit handler must fire from whichever step
+    // precedes submission-confirmation, not only from a `declaration` step.
+    const user = userEvent.setup();
+    mockForm.state = { isValid: true, isSubmitting: false, values: {} };
+    const cya = makeStep("check-your-answers");
+    const confirmation = makeStep("submission-confirmation");
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="check-your-answers"
+        visibleSteps={[cya, confirmation]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /submit/i }));
+    expect(mockForm.handleSubmit).toHaveBeenCalled();
+    expect(mockCompleteAndContinue).toHaveBeenCalledWith("check-your-answers");
   });
 
   it("clicking Continue with validation errors does NOT call completeAndContinue", async () => {
@@ -909,5 +1160,175 @@ describe("FormRenderer", () => {
     );
 
     expect(stepData["step-1"]).toEqual({ "step-1_field": "hello" });
+  });
+
+  // #801: distinguish repeatable-step instances beyond the first.
+  it("repeat instance marker: a non-repeat step renders the plain title with no caption", () => {
+    const { getInstanceMarker } = jest.requireMock("@forms/lib");
+    (getInstanceMarker as jest.Mock).mockReturnValue(undefined);
+    const step = makeStep("step-1");
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="step-1"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    const heading = screen.getByRole("heading", { name: /Step step-1/ });
+    expect(heading).toHaveTextContent("Step step-1");
+    expect(heading.textContent).not.toContain("—");
+    expect(
+      screen.queryByTestId("repeat-instance-marker"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("repeat instance marker: an auto-numbered instance suffixes the title with ' — N' and renders no caption", () => {
+    const { getInstanceMarker } = jest.requireMock("@forms/lib");
+    (getInstanceMarker as jest.Mock).mockReturnValue({
+      text: "2",
+      hasLabel: false,
+    });
+    const repeatableBehaviour = { type: "repeatable", min: 1 };
+    const step = makeStep("step-1~1", [], [repeatableBehaviour]);
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="step-1~1"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    const heading = screen.getByRole("heading", { name: /Step step-1~1/ });
+    expect(heading).toHaveTextContent("Step step-1~1 — 2");
+    expect(
+      screen.queryByTestId("repeat-instance-marker"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the preview banner on a normal step when isPreview is true", () => {
+    const step = makeStep("step-1");
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="step-1"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+        isPreview
+      />,
+    );
+    const banner = screen.getByTestId("preview-banner");
+    expect(banner).toBeInTheDocument();
+    expect(banner).toHaveTextContent(
+      /unpublished draft and cannot be submitted/i,
+    );
+  });
+
+  it("does NOT show the preview banner when isPreview is omitted", () => {
+    const step = makeStep("step-1");
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="step-1"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    expect(screen.queryByTestId("preview-banner")).not.toBeInTheDocument();
+  });
+
+  it("disables and relabels the submit button on the declaration step in preview, and shows the hint", () => {
+    const step = makeStep("declaration");
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="declaration"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+        isPreview
+      />,
+    );
+    const submit = screen.getByRole("button", { name: /submit \(preview\)/i });
+    expect(submit).toBeDisabled();
+    expect(screen.getByTestId("preview-submit-hint")).toBeInTheDocument();
+  });
+
+  it("keeps the submit button enabled and labelled 'Submit' on the declaration step without preview", () => {
+    const step = makeStep("declaration");
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="declaration"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    const submit = screen.getByRole("button", { name: /submit/i });
+    expect(submit).toBeEnabled();
+    expect(submit).toHaveTextContent("Submit");
+    expect(screen.queryByTestId("preview-submit-hint")).not.toBeInTheDocument();
+  });
+
+  it("does NOT show the preview banner on the submission-confirmation step even when isPreview is true", () => {
+    const step = makeStep("submission-confirmation");
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="submission-confirmation"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+        isPreview
+      />,
+    );
+    expect(screen.queryByTestId("preview-banner")).not.toBeInTheDocument();
+  });
+
+  it("repeat instance marker: a labelled instance renders the caption inside the h1 (GOV.UK pattern)", () => {
+    const { getInstanceMarker } = jest.requireMock("@forms/lib");
+    (getInstanceMarker as jest.Mock).mockReturnValue({
+      text: "Dependent 2",
+      hasLabel: true,
+    });
+    const repeatableBehaviour = {
+      type: "repeatable",
+      min: 1,
+      instanceLabel: "Dependent",
+    };
+    const step = makeStep("step-1~1", [], [repeatableBehaviour]);
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="step-1~1"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    const caption = screen.getByTestId("repeat-instance-marker");
+    expect(caption).toHaveTextContent("Dependent 2");
+    // The caption lives INSIDE the h1 so the accessible name distinguishes
+    // instances for screen-reader heading navigation ("Dependent 2 Step …"),
+    // matching the GOV.UK caption-in-heading pattern.
+    const heading = screen.getByRole("heading", {
+      name: "Dependent 2 Step step-1~1",
+    });
+    expect(heading).toContainElement(caption);
+    // No em-dash suffix in the labelled case — the caption carries the marker.
+    expect(heading.textContent).not.toContain("—");
   });
 });

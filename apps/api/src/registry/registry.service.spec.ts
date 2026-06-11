@@ -242,6 +242,42 @@ describe("hydrateStep", () => {
     );
     expect(result.markdownContent).toBeUndefined();
   });
+
+  it("carries conditionalTitle through to the served step (#871)", async () => {
+    const resolver = jest.fn().mockResolvedValue(primitiveEntry);
+    const conditionalTitle = [
+      {
+        targetStepId: "applying-for-yourself",
+        targetFieldId: "applying-for-yourself",
+        operator: "equal" as const,
+        value: "yes",
+        title: "Provide your birth details",
+      },
+    ];
+    const result = await hydrateStep(
+      {
+        stepId: "birth-details",
+        title: "Provide the person's birth details",
+        conditionalTitle,
+        elements: [{ ref: "components/first-name" }],
+      },
+      resolver,
+    );
+    expect(result.conditionalTitle).toEqual(conditionalTitle);
+  });
+
+  it("leaves conditionalTitle undefined when the step has none", async () => {
+    const resolver = jest.fn().mockResolvedValue(primitiveEntry);
+    const result = await hydrateStep(
+      {
+        stepId: "step-1",
+        title: "Step 1",
+        elements: [{ ref: "components/first-name" }],
+      },
+      resolver,
+    );
+    expect(result.conditionalTitle).toBeUndefined();
+  });
 });
 
 // ─── hydrateForm ───────────────────────────────────────────────────────────

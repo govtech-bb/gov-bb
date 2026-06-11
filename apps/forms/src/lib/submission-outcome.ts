@@ -21,12 +21,25 @@ export function resolveSubmissionOutcome(
   response: FormSubmissionResponse,
 ): SubmissionOutcome {
   const base = {
-    referenceNumber: response.data.id,
-    date: response.data.submittedAt,
+    // Prefer the human-readable referenceCode (e.g. "JPP-20260604-130732-9JZRZC")
+    // returned by the API; fall back to the UUID `id` for older API deploys that
+    // don't yet include it (see issue #791).
+    referenceNumber: response.data.referenceCode ?? response.data.id,
+    // `submittedAt` is null on pending_payment submissions (not finalised until
+    // paid, #919); normalise to undefined so the optional `date` field and
+    // formatDate() handle it cleanly.
+    date: response.data.submittedAt ?? undefined,
     serviceName: response.data.formId,
   };
 
-  switch (response.status) {
+  // Drive the UI off the SUBMISSION status (`data.status`: submitted /
+  // pending_payment / …). The API envelope `status` is always "success" for a
+  // 2xx (ApiResponse.success), so the previous `switch (response.status)` sent
+  // every payment form to the no-payment success branch — the confirmation
+  // rendered "submission saved" with no EZ Pay redirect, dropping
+  // `meta.deferred`. Fall back to the envelope status only if `data.status` is
+  // absent (defensive for older/edge response shapes).
+  switch (response.data.status ?? response.status) {
     case "submitted":
     case "success":
     case "complete":
@@ -80,4 +93,24 @@ export function resolveSubmissionOutcome(
         event: { name: "form-submit-error", reason: "server" },
       };
   }
+}
+
+/**
+ * Fold an EzPay return outcome (the `?payment=` search param set by the API's
+ * `/payments/ezpay/redirect` handler) into the submission state rehydrated from
+ * session storage, so the confirmation step reflects the payment result:
+ * - `success` → show the paid receipt (`paymentSuccess: true`).
+ * - `failed`  → clear `paymentUrl` so the payment-failure panel renders instead
+ *   of "Continue to payment".
+ * Returns the state unchanged when there is nothing to apply. Pure — the real
+ * payment outcome is authoritative server-side; this only drives display.
+ */
+export function applyPaymentReturn(
+  state: SubmissionState,
+  payment: "success" | "failed" | undefined,
+): SubmissionState {
+  if (payment === "success") return { ...state, paymentSuccess: true };
+  if (payment === "failed")
+    return { ...state, paymentSuccess: false, paymentUrl: undefined };
+  return state;
 }

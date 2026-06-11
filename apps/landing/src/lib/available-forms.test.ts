@@ -95,8 +95,10 @@ describe('resolveAvailableForms', () => {
     })
 
     expect(ids).toEqual(['good'])
-    // The stale entry is left intact so later requests keep the fallback.
-    expect(cache.current).toEqual({ ids: ['good'], fetchedAt: 1_000 })
+    // The fallback list is preserved, but the attempt is re-stamped so a down
+    // API gets a fresh `ttlMs` cooldown instead of being re-fetched (and blocked
+    // on the full timeout) by every subsequent request.
+    expect(cache.current).toEqual({ ids: ['good'], fetchedAt: 1_000 + TTL })
   })
 
   it('returns an empty list (and warns) on a cold start when the fetch fails', async () => {
