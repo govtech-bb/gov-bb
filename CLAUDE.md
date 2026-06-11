@@ -33,6 +33,14 @@ would sweep one in), and denies an explicit `git add docs/plans/...`. A bare
 commit other work, stage those files **by path** rather than relying on `git
 add -A` while a plan is dirty.
 
+### Prefix plan filenames with the issue number
+
+When a session plan relates to a GitHub issue, **prefix the plan filename with
+that issue number** — e.g. `docs/plans/1252-drop-processors-for-smoke-submissions.md`,
+not `docs/plans/drop-processors-for-smoke-submissions.md`. This keeps the plan
+trivially traceable back to its issue in the `@`-mention picker. If no issue
+applies, a plain descriptive slug is fine.
+
 ## What "clean up" means at the end of a session
 
 When the human says **"clean up"** (or "wrap up and clean up") after work is

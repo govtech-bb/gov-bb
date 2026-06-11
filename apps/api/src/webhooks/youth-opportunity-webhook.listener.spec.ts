@@ -85,4 +85,16 @@ describe("YouthOpportunityWebhookListener", () => {
     expect(warn).toHaveBeenCalledWith(expect.stringContaining("Unmapped"));
     warn.mockRestore();
   });
+
+  it("does NOT dispatch a smoke submission, even for a mapped youth-opportunity form", async () => {
+    // This listener fires off formId, not processors[], so the service's
+    // processor-drop can't suppress it — it must honour isSmokeSubmission (#1252).
+    const warn = jest.spyOn(Logger.prototype, "warn").mockImplementation();
+    await listener.handleSubmissionCreated(
+      makeEvent({ formId: "youth-opportunity-byac", isSmokeSubmission: true }),
+    );
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
 });

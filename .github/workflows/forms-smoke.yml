@@ -11,8 +11,12 @@ name: Forms Live Smoke
 #
 # No AWS credentials: it drives a headless browser against the public deployed
 # URL, and any uploads use presigned URLs the deployed API issues server-side.
-# The spec SUBMITS FOR REAL, so a green run files a real submission in the
-# target environment (recipient testing@govtech.bb).
+# The spec SUBMITS FOR REAL, so a green run files a real submission row in the
+# target environment. Processors (email/webhook/payment) are DROPPED for these
+# submissions when SMOKE_SUBMISSION_TOKEN is set on both this workflow and the
+# API — so a configured run sends no real emails/webhooks (#1252). If the token
+# is unset the submission still persists AND its processors fire for real
+# (recipient testing@govtech.bb).
 
 on:
   workflow_call:
@@ -29,6 +33,14 @@ on:
         description: "Name for the Playwright trace artifact uploaded on failure."
         required: true
         type: string
+    secrets:
+      smoke_submission_token:
+        description: >
+          Token sent as the X-Smoke-Submission header so the API drops all
+          processors for these submissions (no real emails/webhooks). Must
+          match the API's SMOKE_SUBMISSION_TOKEN. Optional — if absent the
+          header is empty and the API fires processors as normal (#1252).
+        required: false
 
 jobs:
   smoke:
@@ -52,6 +64,9 @@ jobs:
           # the preview caller, so it must never reach the script directly.
           SMOKE_BASE_URL: ${{ inputs.base_url }}
           SMOKE_SPEC: ${{ inputs.spec }}
+          # Drops all processors server-side for these submissions (no real
+          # emails/webhooks). Empty when the secret is unset → API ignores it.
+          SMOKE_SUBMISSION_TOKEN: ${{ secrets.smoke_submission_token }}
         # Run only the one spec (not the whole e2e/smoke dir). Override the
         # config's retries: 0 with 2 retries here to absorb post-deploy edge
         # cache / network flakiness without masking a genuine failure.

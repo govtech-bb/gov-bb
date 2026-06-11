@@ -5,6 +5,7 @@ import type { RecipeDraft, RegistryCatalog } from "@govtech-bb/form-builder";
 import type { ServiceContractRecipe, Processor } from "@govtech-bb/form-types";
 import type { FormDefinitionSummary } from "../../types/index";
 import styles from "../../styles/builder.module.css";
+import { useEscClose } from "./-use-esc-close";
 
 interface FormPickerProps {
   /** The forms to choose from, or `null` while the background fetch is in flight. */
@@ -80,10 +81,12 @@ export function FormPicker({ forms, loadError, isDirty, catalog, onLoad, onClose
     }
   }
 
+  useEscClose(onClose);
+
   return (
     <div className={styles.modal} onClick={onClose}>
-      <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
+      <div className={`${styles.modalContent} ${styles.modalContentWide}`} role="dialog" aria-modal="true" aria-label="Open Form" onClick={(e) => e.stopPropagation()}>
+        <div className={styles.modalHead}>
           <strong>Open Form</strong>
           <button type="button" onClick={onClose}>Close</button>
         </div>
@@ -117,7 +120,12 @@ export function FormPicker({ forms, loadError, isDirty, catalog, onLoad, onClose
         )}
 
         {forms === null && !loadError && (
-          <p style={{ color: "#888" }}>Loading forms…</p>
+          <div role="status">
+            <span className={styles.srOnly}>Loading forms…</span>
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className={styles.skelRow} />
+            ))}
+          </div>
         )}
 
         {forms !== null && forms.length === 0 && (

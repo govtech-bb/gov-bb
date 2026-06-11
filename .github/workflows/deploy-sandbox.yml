@@ -528,6 +528,8 @@ jobs:
       base_url: https://forms.sandbox.alpha.gov.bb
       spec: ${{ matrix.spec }}
       artifact_name: ${{ matrix.artifact_name }}
+    secrets:
+      smoke_submission_token: ${{ secrets.SMOKE_SUBMISSION_TOKEN }}
 
   amplify-landing:
     name: Amplify build (landing)

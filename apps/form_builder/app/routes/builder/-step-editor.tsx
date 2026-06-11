@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import {
   DndContext,
   closestCenter,
@@ -102,6 +102,29 @@ export function StepEditor({
     dispatch({ type: "ADD_FIELD", stepId: step.stepId, field });
   }
 
+  // The add-field picker sits below the Fields list, so a newly added field
+  // lands off-screen above the click — scroll it into view and flash it.
+  // Keyed on stepId too so switching to a longer step doesn't false-trigger.
+  const fieldsSectionRef = useRef<HTMLElement>(null);
+  const prevFieldsRef = useRef({ stepId: step.stepId, count: step.fields.length });
+  useEffect(() => {
+    const prev = prevFieldsRef.current;
+    prevFieldsRef.current = { stepId: step.stepId, count: step.fields.length };
+    if (prev.stepId !== step.stepId || step.fields.length <= prev.count) return;
+    const rows = fieldsSectionRef.current?.querySelectorAll(
+      `.${styles.fieldRow}`,
+    );
+    const added = rows?.[rows.length - 1];
+    if (!(added instanceof HTMLElement)) return;
+    added.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+    added.classList.add(styles.fieldRowNew);
+    const timer = setTimeout(
+      () => added.classList.remove(styles.fieldRowNew),
+      1300,
+    );
+    return () => clearTimeout(timer);
+  }, [step.stepId, step.fields.length]);
+
   function handleRemoveField(fieldId: string) {
     if (!window.confirm("Remove this field?")) return;
     dispatch({ type: "REMOVE_FIELD", stepId: step.stepId, fieldId });
@@ -155,6 +178,7 @@ export function StepEditor({
   return (
     <div className={styles.stepEditor}>
       {/* Step Metadata */}
+      <section className={styles.card}>
       <div className={styles.sectionTitle}>Step Metadata</div>
       <div className={styles.formGroup}>
         <label>Step ID</label>
@@ -231,12 +255,13 @@ export function StepEditor({
           rows={2}
         />
       </div>
+      </section>
 
       {/* Fields list — hidden for review/confirmation steps that accept no
           fields. The "Add field" picker is split into its own block below so
           Step Behaviours can render between the list and the picker (#566). */}
       {!noFields && (
-        <>
+        <section className={styles.card} ref={fieldsSectionRef}>
           <div className={styles.sectionTitle}>
             Fields ({step.fields.length})
           </div>
@@ -268,7 +293,7 @@ export function StepEditor({
               ))}
             </SortableContext>
           </DndContext>
-        </>
+        </section>
       )}
 
       {/* Inline field edit panel — stays attached to the Fields list above. */}
@@ -284,23 +309,25 @@ export function StepEditor({
       )}
 
       {/* Step behaviours */}
-      <div className={styles.sectionTitle}>Step Behaviours</div>
-      <BehavioursEditor
-        scope="step"
-        behaviours={step.behaviours}
-        fieldRefs={fieldRefs}
-        stepRefs={stepRefs}
-        onChange={handleSetBehaviours}
-        currentStepId={step.stepId}
-      />
+      <section className={styles.card}>
+        <div className={styles.sectionTitle}>Step Behaviours</div>
+        <BehavioursEditor
+          scope="step"
+          behaviours={step.behaviours}
+          fieldRefs={fieldRefs}
+          stepRefs={stepRefs}
+          onChange={handleSetBehaviours}
+          currentStepId={step.stepId}
+        />
+      </section>
 
       {/* Inline field picker palette — renders below Step Behaviours (#566),
           hidden for no-fields steps alongside the Fields list. */}
       {!noFields && (
-        <>
+        <section className={styles.card}>
           <div className={styles.sectionTitle}>Add field</div>
           <FieldPicker catalog={catalog} onAddField={handleAddField} />
-        </>
+        </section>
       )}
     </div>
   );

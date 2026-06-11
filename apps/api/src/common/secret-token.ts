@@ -3,11 +3,15 @@ import { createHash, timingSafeEqual } from "node:crypto";
 /**
  * Constant-time check that `providedToken` matches the `configuredToken`.
  *
+ * Generic guarded-header secret check, shared by every feature that gates an
+ * endpoint behind a token-validated request header (recipe preview, file
+ * preview, smoke-submission processor bypass, …).
+ *
  * Fail-closed semantics:
  *   - If `configuredToken` is empty/falsy the feature is disabled — return
  *     false unconditionally, even when `providedToken` is also empty. This
- *     prevents an accidental `"" === ""` match that would expose DB recipes
- *     whenever the env var is not set.
+ *     prevents an accidental `"" === ""` match that would enable the gated
+ *     behaviour whenever the env var is not set.
  *   - If `providedToken` is empty/undefined → return false.
  *
  * Both tokens are hashed to SHA-256 (32-byte fixed-length) before comparison.
@@ -17,7 +21,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
  *
  * Never log either token.
  */
-export function isValidPreviewToken(
+export function isValidSecretToken(
   configuredToken: string,
   providedToken: string | undefined,
 ): boolean {
