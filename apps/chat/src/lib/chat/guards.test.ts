@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { isInfoQuestion, looksLikeJailbreak } from "./guards";
+import {
+  isFeedbackRequest,
+  isInfoQuestion,
+  looksLikeJailbreak,
+} from "./guards";
 
 test("looksLikeJailbreak catches the lazy prompt-injection phrasings", () => {
   for (const input of [
@@ -42,4 +46,34 @@ test("isInfoQuestion: apply-intent statements are not info", () => {
   assert.equal(isInfoQuestion("yes, start it"), false);
   assert.equal(isInfoQuestion("sign me up please"), false);
   assert.equal(isInfoQuestion(""), false);
+});
+
+test("isFeedbackRequest: typed intent to give feedback", () => {
+  for (const input of [
+    "I want to give feedback",
+    "i wan to feedback", // the transcript typo
+    "I would like to give feedback on the assistant",
+    "let me leave some feedback",
+    "I'd like to provide feedback",
+    "can I give you feedback", // 'can' opener, but caller gates on isInfoQuestion
+    "wanna feedback",
+    "I want to feedback",
+    "share feedback",
+    "submit feedback please",
+  ]) {
+    assert.equal(isFeedbackRequest(input), true, input);
+  }
+});
+
+test("isFeedbackRequest: not a request to give feedback", () => {
+  for (const input of [
+    "what happens to my feedback?",
+    "where does the feedback go",
+    "how do I get a birth certificate?",
+    "I need to renew my licence",
+    "thanks, that's all",
+    "",
+  ]) {
+    assert.equal(isFeedbackRequest(input), false, input);
+  }
 });
