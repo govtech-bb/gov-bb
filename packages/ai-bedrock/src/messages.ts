@@ -65,21 +65,54 @@ function parseToolArguments(raw: string | object | undefined): object {
 // tool_use blocks. A single ModelMessage with `role: 'tool'` carries the
 // result for ONE toolCallId — multiple parallel tool calls produce multiple
 // consecutive tool messages, which we coalesce into a single user message.
+//
+// `includeToolBlocks` (default true) must be set to FALSE whenever the request
+// carries no toolConfig: Bedrock's Converse API rejects a conversation that
+// contains toolUse/toolResult blocks unless the request also defines tools, so
+// a turn that binds zero tools (e.g. a handoff after abandoning an in-progress
+// form) MUST NOT replay the prior form's tool exchange. With it off we drop the
+// tool_use blocks and the tool-result messages; the consecutive same-role
+// messages that leaves behind (e.g. a tool-call-only assistant turn vanishing
+// between two user turns) are merged, since the resulting sequence must still
+// alternate.
 export function modelMessagesToBedrock(
   messages: Array<ModelMessage>,
+  opts: { includeToolBlocks?: boolean } = {},
 ): Array<Message> {
+  const { includeToolBlocks = true } = opts;
   const out: Array<Message> = [];
+
+  // Append blocks to the trailing message when it shares the role, otherwise
+  // start a new message — keeps the output strictly alternating even after
+  // tool turns are dropped.
+  const pushMerged = (
+    role: "user" | "assistant",
+    blocks: Array<ContentBlock>,
+  ): void => {
+    if (!blocks.length) return;
+    const last = out[out.length - 1];
+    if (last && last.role === role) {
+      last.content = [...(last.content ?? []), ...blocks];
+    } else {
+      out.push({ role, content: blocks });
+    }
+  };
 
   for (let i = 0; i < messages.length; i++) {
     const msg = messages[i]!;
 
     if (msg.role === "user") {
       const text = getTextFromContent(msg.content);
-      out.push({ role: "user", content: [textBlock(text)] });
+      pushMerged("user", [textBlock(text)]);
       continue;
     }
 
     if (msg.role === "tool" && msg.toolCallId) {
+      // No toolConfig this turn: skip the whole run of tool-result messages.
+      if (!includeToolBlocks) {
+        while (i + 1 < messages.length && messages[i + 1]?.role === "tool") i++;
+        continue;
+      }
       // Find the last assistant message and collect the ids of its toolUse
       // blocks so we can emit tool_result blocks in the same order Bedrock
       // expects.
@@ -116,7 +149,7 @@ export function modelMessagesToBedrock(
           .map((tr) => ({ toolResult: tr }));
 
       if (toolResultBlocks.length > 0) {
-        out.push({ role: "user", content: toolResultBlocks });
+        pushMerged("user", toolResultBlocks);
       }
       continue;
     }
@@ -127,7 +160,7 @@ export function modelMessagesToBedrock(
       const hasToolCalls = msg.toolCalls && msg.toolCalls.length > 0;
 
       if (text) blocks.push(textBlock(text));
-      if (hasToolCalls) {
+      if (includeToolBlocks && hasToolCalls) {
         for (const tc of msg.toolCalls!) {
           blocks.push(
             toolUseBlock(
@@ -139,7 +172,7 @@ export function modelMessagesToBedrock(
         }
       }
 
-      if (blocks.length) out.push({ role: "assistant", content: blocks });
+      pushMerged("assistant", blocks);
     }
   }
 

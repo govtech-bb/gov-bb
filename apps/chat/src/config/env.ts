@@ -10,6 +10,14 @@ const envSchema = z.object({
   // Forms frontend (not the API). Used to hand users a link to forms that
   // are too complex to collect inline (file uploads, payment).
   FORMS_URL: z.url().transform((s) => s.replace(/\/+$/, "")),
+  // Landing frontend. Used to hand users the general feedback form
+  // (<LANDING_URL>/feedback) when their feedback is about a service or
+  // alpha.gov.bb in general. Defaults to the sandbox origin, mirroring the
+  // client-side fallback in components/chat/chrome.tsx; prod sets LANDING_URL.
+  LANDING_URL: z
+    .url()
+    .default("https://landing.sandbox.alpha.gov.bb")
+    .transform((s) => s.replace(/\/+$/, "")),
   BEDROCK_REGION: z.string().optional(),
   LLM_MODEL: z.string().default("claude-sonnet-4-6"),
   REWRITE_MODEL: z.string().default("claude-haiku-4-5"),
@@ -29,6 +37,7 @@ export const getServerEnv = () =>
     RAG_URL: process.env.RAG_URL,
     FORM_API_URL: process.env.FORM_API_URL,
     FORMS_URL: process.env.FORMS_URL,
+    LANDING_URL: process.env.LANDING_URL,
     BEDROCK_REGION: process.env.BEDROCK_REGION,
     LLM_MODEL: process.env.LLM_MODEL,
     REWRITE_MODEL: process.env.REWRITE_MODEL,

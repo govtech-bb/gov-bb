@@ -74,6 +74,10 @@ export const askFieldDef = toolDefinition({
             hint: z.string().optional(),
           })
           .optional(),
+        // Step title to show as a section header above this question, set
+        // only when this field opens a new step (e.g. "Emergency contact
+        // details") — so the user knows whose details to enter.
+        section: z.string().optional(),
       })
       .optional(),
   }),
@@ -134,7 +138,7 @@ export const cancelFormDef = toolDefinition({
 export const offerFeedbackDef = toolDefinition({
   name: "offer_feedback",
   description:
-    "Invite the user to give quick feedback on this assistant. Call with NO arguments, at most ONCE per conversation, and ONLY when the conversation has reached a natural conclusion — the user's need is met and they are wrapping up (e.g. 'thanks', 'that's all', 'no, that's everything'). Calling it opens a short, optional feedback form; after calling it, ask in one short sentence WHETHER they'd like to give feedback (an invitation they can decline) — do NOT ask how their experience was. The rating question itself is collected by the form once they accept. Never call it twice and never interrupt an unfinished task.",
+    "Invite the user to give quick feedback on this assistant. Call with NO arguments, at most ONCE per conversation, and ONLY when the conversation has reached a natural conclusion — the user's need is met and they are wrapping up (e.g. 'thanks', 'that's all', 'no, that's everything'). Calling it READIES a short, optional feedback form (it opens only if they accept); after calling it, your entire visible reply is one short sentence asking WHETHER they'd like to give feedback (an invitation they can decline) — do NOT ask how their experience was, and do NOT also say you are opening or starting the form. The rating question itself is collected by the form once they accept. Never call it twice and never interrupt an unfinished task.",
   inputSchema: z.object({}),
   outputSchema: z.object({ ok: z.boolean() }),
 });
