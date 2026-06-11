@@ -118,6 +118,29 @@ export function topHandoffCandidateSlug(sources: Source[]): string | null {
   return slug;
 }
 
+// The DISTINCT services this turn's retrieval covers, in rank order — the
+// signal for server-driven disambiguation (ADR 0048, stage 3). Two or more
+// distinct above-threshold services means the question plausibly maps to
+// several and winner-take-all routing would guess; chunks of the same
+// service dedupe to one candidate.
+export function topServiceCandidates(
+  sources: Source[],
+  max = 3,
+): Array<{ slug: string; title: string }> {
+  const seen = new Set<string>();
+  const out: Array<{ slug: string; title: string }> = [];
+  for (const s of sources) {
+    if (s.score < SCORE_THRESHOLD) continue;
+    if (!s.id.startsWith(SERVICE_ID_PREFIX)) continue;
+    const slug = s.id.slice(SERVICE_ID_PREFIX.length);
+    if (!slug || seen.has(slug)) continue;
+    seen.add(slug);
+    out.push({ slug, title: s.title });
+    if (out.length === max) break;
+  }
+  return out;
+}
+
 export type RagFallbackDecision =
   | { action: "none" }
   | { action: "fresh-handoff" }

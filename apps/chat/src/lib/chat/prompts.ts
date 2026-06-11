@@ -95,7 +95,7 @@ REVIEW THEN SUBMIT (mandatory order):
 
 SUBMIT RESULT:
 - \`submit_form\` returns \`{ ok: true, referenceNumber }\` on success or \`{ ok: false, errors[] }\` on failure.
-- On success: report the exact \`referenceNumber\` verbatim and stop. No follow-up offers.
+- On success: report the exact \`referenceNumber\` verbatim and stop — UNLESS the user mentioned a SECOND need earlier in the conversation (another service or form alongside this one). In that case add ONE short line offering to help with it next ("Want to sort out the birth certificate now?"). Never let a second request silently drop.
 - On failure: apologise, name each failing field with its message, ask the user to correct them one at a time. Record each correction with \`set_field\`, then re-run the review step.
 - NEVER claim submission, reference number, or confirmation email unless this turn's \`submit_form\` returned \`ok: true\`.
 
@@ -103,6 +103,20 @@ WHEN A FORM SCHEMA IS PROVIDED:
 - If you see a FORM SCHEMA system message AND the user expressed intent to apply or get the service, START COLLECTING FIELDS IMMEDIATELY. Open with a one-line acknowledgement ("Great, let's start your <service> application.") and call \`ask_field\` with no arguments — do not type the question in text.
 - Do NOT recite informational alternatives ("you can apply online OR on paper"). The chat IS the online path. Just start.
 - The retrieved context is for answering side questions ("what's the cost?", "how long does it take?") if the user asks. Don't lead with it.`;
+
+// Retrieval covered SEVERAL distinct services this turn (server-detected,
+// ADR 0048 stage 3): narrow with clickable choices instead of guessing.
+// The model keeps one escape hatch — conversation history can establish the
+// service in ways this turn's retrieval can't see (follow-ups re-retrieve
+// sibling services like birth/death certificates together).
+export function buildDisambiguationDisclosure(titles: string[]): string {
+  const choices = [...titles, "Something else"].map((t) => `"${t}"`).join(", ");
+  return `THE CONTEXT COVERS ${titles.length} DISTINCT SERVICES and the user's message doesn't clearly name which:
+${titles.map((t) => `- ${t}`).join("\n")}
+- If the PRIOR CONVERSATION already establishes which service this is about (e.g. this is a follow-up to an answer about one of them), IGNORE this instruction and answer that service normally.
+- Otherwise do NOT pick one and answer. Reply with ONE short sentence, then call present_choices with the question "Which of these do you mean?" and choices EXACTLY [${choices}].
+- Do NOT answer the substance for any of them until the user picks.`;
+}
 
 // RAG confidently matched a collect-capable form the title matcher missed
 // (ADR 0048): put both online options on the table as clickable choices. The

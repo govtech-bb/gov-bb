@@ -11,6 +11,7 @@ import {
   SYSTEM_PROMPT,
   UNAPPROVED_FORM_DISCLOSURE,
   buildDirectLinkDisclosure,
+  buildDisambiguationDisclosure,
   buildFormOfferDisclosure,
   buildHandoffContinuationDisclosure,
   buildHandoffDisclosure,
@@ -37,6 +38,9 @@ export interface PromptTurnState {
   formOffer?: { slug: string; title: string };
   // The user took "just send me the link" on a prior offer.
   linkRequested?: { title: string; url: string };
+  // Retrieval covered several distinct services — narrow with choices
+  // instead of guessing (ADR 0048 stage 3).
+  disambiguation?: { titles: string[] };
   // A published form exists for the retrieved service but isn't chat-approved
   // (no policy entry) — the disclosure must not deny the form exists.
   unapprovedForm?: boolean;
@@ -56,6 +60,7 @@ export function buildSystemPrompts(state: PromptTurnState): SystemEntry[] {
     intent = "apply",
     formOffer,
     linkRequested,
+    disambiguation,
     unapprovedForm = false,
     noContext = false,
     offerFeedback = false,
@@ -178,6 +183,12 @@ export function buildSystemPrompts(state: PromptTurnState): SystemEntry[] {
         OFFER_CHOICE_LINK,
       ),
     );
+  } else if (disambiguation) {
+    // Retrieval covered several distinct services: narrow with clickable
+    // choices instead of guessing one (the disclosure keeps the follow-up
+    // escape hatch — history can establish the topic this turn's retrieval
+    // can't see).
+    prompts.push(buildDisambiguationDisclosure(disambiguation.titles));
   } else if (closer) {
     // The user is winding the chat down (goodbye / thanks / "that's all", or a
     // terse "no"/"ok" after we asked "anything else?"). A brief warm sign-off,
