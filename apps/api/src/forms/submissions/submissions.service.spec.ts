@@ -387,6 +387,17 @@ describe("SubmissionsService", () => {
       );
     });
 
+    it("emits submission.created with isSmokeSubmission so formId-driven consumers can short-circuit", async () => {
+      const { service, eventEmitter } = makeSmokeMocks();
+
+      await service.submit({ ...BASE_DTO, isSmokeSubmission: true });
+
+      expect(eventEmitter.emit as jest.Mock).toHaveBeenCalledWith(
+        "submission.created",
+        expect.objectContaining({ isSmokeSubmission: true }),
+      );
+    });
+
     it("persists status SUBMITTED with submittedAt when flag is set", async () => {
       const { service, txRepo } = makeSmokeMocks();
 

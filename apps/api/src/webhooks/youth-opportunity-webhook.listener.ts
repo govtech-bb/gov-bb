@@ -23,6 +23,11 @@ export class YouthOpportunityWebhookListener {
 
   @OnEvent("submission.created", { async: true })
   async handleSubmissionCreated(event: SubmissionCreatedEvent): Promise<void> {
+    // Smoke submissions must fire no real side-effects. This listener triggers
+    // off `formId`, not `processors[]`, so the service's processor-drop does
+    // not suppress it — short-circuit explicitly (#1252).
+    if (event.isSmokeSubmission) return;
+
     const serviceCode = resolveServiceCodeFromFormId(event.formId);
     if (!serviceCode) {
       // Either not a youth-opportunity form, or an unmapped one. Non-youth

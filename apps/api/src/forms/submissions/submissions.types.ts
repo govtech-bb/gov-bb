@@ -79,6 +79,16 @@ export interface SubmissionCreatedEvent {
    * `${submissionId}:${index}` idempotency keys meaningful.
    */
   processorIndex?: number;
+  /**
+   * True when this submission came from the live smoke matrix (see
+   * SubmitDto.isSmokeSubmission). Every `submission.created` consumer that
+   * triggers a real side-effect must short-circuit on it — not just the
+   * `processors[]`-driven dispatch. Carried here because some consumers (e.g.
+   * YouthOpportunityWebhookListener) fire off `formId` and never read
+   * `processors`, so an empty `processors[]` alone does not suppress them
+   * (#1252).
+   */
+  isSmokeSubmission?: boolean;
 }
 
 export interface SubmitDto {

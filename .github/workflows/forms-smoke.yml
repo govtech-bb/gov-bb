@@ -11,8 +11,12 @@ name: Forms Live Smoke
 #
 # No AWS credentials: it drives a headless browser against the public deployed
 # URL, and any uploads use presigned URLs the deployed API issues server-side.
-# The spec SUBMITS FOR REAL, so a green run files a real submission in the
-# target environment (recipient testing@govtech.bb).
+# The spec SUBMITS FOR REAL, so a green run files a real submission row in the
+# target environment. Processors (email/webhook/payment) are DROPPED for these
+# submissions when SMOKE_SUBMISSION_TOKEN is set on both this workflow and the
+# API — so a configured run sends no real emails/webhooks (#1252). If the token
+# is unset the submission still persists AND its processors fire for real
+# (recipient testing@govtech.bb).
 
 on:
   workflow_call:
