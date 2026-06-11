@@ -1,7 +1,7 @@
 import type { UIMessage } from "@tanstack/ai";
 import { getServerEnv } from "#/config/env";
 import { FEEDBACK_FORM_ID, FEEDBACK_TRIGGER_PHRASE } from "#/lib/chat/feedback";
-import { isInfoQuestion } from "#/lib/chat/guards";
+import { isFeedbackRequest, isInfoQuestion } from "#/lib/chat/guards";
 import { lastUserText, recentUserText } from "#/lib/chat/messages";
 import {
   decideRagFallback,
@@ -95,7 +95,20 @@ export async function pinSessionForm(
   // phrase removes that dependency on title uniqueness. Mark the offer spent so
   // the model never also offers feedback later this session. The phrase is a
   // statement (not a question), so the turn still enters collect-feedback.
-  if (lastUserText(messages) === FEEDBACK_TRIGGER_PHRASE) {
+  // The banner sends the EXACT FEEDBACK_TRIGGER_PHRASE; a user can also just
+  // TYPE the intent ("I want to give feedback", "i wan to feedback"). Both take
+  // the same explicit-pin path so the next turn collects the rating directly,
+  // instead of the model asking a redundant "would you like to give feedback?"
+  // first (the model-initiated offer still owns the natural-wrap-up case). The
+  // free-typed detector is gated on !isInfoQuestion so a question ABOUT feedback
+  // ("can I give feedback?", "what happens to my feedback?") doesn't start the
+  // form — it falls through to normal handling. A pinned feedback statement is
+  // not a question, so the turn enters collect-feedback.
+  const latest = lastUserText(messages);
+  if (
+    latest === FEEDBACK_TRIGGER_PHRASE ||
+    (isFeedbackRequest(latest) && !isInfoQuestion(latest))
+  ) {
     pinForm(session, FEEDBACK_FORM_ID);
     session.feedbackOffered = true;
     return;
