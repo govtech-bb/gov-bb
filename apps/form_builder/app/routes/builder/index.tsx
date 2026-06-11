@@ -193,7 +193,29 @@ function BuilderPage() {
   // the update path, so there's no fork-a-new-version escape hatch from Save
   // Changes — Deploy still cuts a minor. A brand-new form (no current version)
   // starts at 1.0.0 and keeps an editable version picker.
-  const saveDraftVersion = currentVersion ?? "1.0.0";
+  //
+  // Exception (this fix): when the loaded version is the *published* one, an
+  // in-place overwrite is impossible — the API forbids mutating a published
+  // recipe ("Cannot update a published recipe"). So Save Changes auto-bumps a
+  // patch and cuts a fresh draft version instead of overwriting the immutable
+  // published row. A higher unpublished draft over a published version
+  // (publishedVersion < currentVersion) is still overwritten in place.
+  //
+  // This reads the live `forms` list (treating the still-loading null as
+  // empty). That's safe because the only path that sets currentVersion to a
+  // published version is loading a form through the Open picker, which only
+  // renders its rows once `forms` has resolved — so the list is always
+  // populated by the time a published form can be the working version.
+  const currentVersionIsPublished =
+    !!currentVersion &&
+    (forms ?? []).some(
+      (f) => f.formId === loadedFromId && f.publishedVersion === currentVersion,
+    );
+  const saveDraftVersion = currentVersion
+    ? currentVersionIsPublished
+      ? bumpPatch(currentVersion)
+      : currentVersion
+    : "1.0.0";
   const deployVersion = currentVersion ? bumpMinor(currentVersion) : "1.0.0";
 
   // Editing presence / read-only lock (#874). Claim the open form's single
@@ -432,11 +454,16 @@ function BuilderPage() {
       // A same-version save of the same form overwrites its row in place
       // (updateRecipe); any higher version creates a new draft row
       // (submitRecipe). This split also decides the picker row's isPublished.
+      // A published current version is never overwritten in place — saving it
+      // cuts a new draft version (saveDraftVersion already bumps the patch), so
+      // exclude it here too as a belt-and-suspenders against the API's
+      // "Cannot update a published recipe" rejection.
       const isInPlaceUpdate =
         !!oldFormId &&
         draft.formId === oldFormId &&
         !!currentVersion &&
-        submitVersion === currentVersion;
+        submitVersion === currentVersion &&
+        !currentVersionIsPublished;
       // The selected per-environment MDA contact (issue #607). DB-only: it
       // rides alongside the recipe as a sibling field on create/update so the
       // API upserts it into form_config. Only sent when the draft carries a
@@ -484,11 +511,13 @@ function BuilderPage() {
           formId: draft.formId,
           title: draft.title,
           version: submitVersion,
-          // A version bump makes this draft the highest version, which the merge
-          // marks isPublished: false (per-row action becomes Delete). A
-          // same-version in-place update leaves the published row winning the
-          // version tie, so the existing published state must be preserved.
-          isPublished: isInPlaceUpdate ? (existing?.isPublished ?? false) : false,
+          // Saving a draft never changes published-index membership (or the
+          // published version), so preserve both exactly as the server merge
+          // would: a never-published draft stays unpublished, and a published
+          // form keeps its badge whether the save overwrote a draft in place or
+          // cut a new draft version off the published one.
+          isPublished: existing?.isPublished ?? false,
+          publishedVersion: existing?.publishedVersion,
         });
       }
 
@@ -549,6 +578,10 @@ function BuilderPage() {
         title: draft.title,
         version: deployTarget,
         isPublished: false,
+        // Deploy opens a review PR, so the published index is unchanged until it
+        // merges — preserve the existing publishedVersion (a refetch would still
+        // report the old one) rather than dropping it.
+        publishedVersion: existing?.publishedVersion,
       });
     } catch (e) {
       setPublishError(e instanceof Error ? e.message : "Publish failed");
@@ -1052,6 +1085,7 @@ function BuilderPage() {
           draft={draft}
           version={saveDraftVersion}
           currentVersion={currentVersion}
+          currentVersionIsPublished={currentVersionIsPublished}
           loadedFromId={loadedFromId}
           isSubmitting={isSubmitting}
           submitSuccess={submitSuccess}

@@ -10,6 +10,10 @@ import {
   isCompleteDateValue,
   formatDateValue,
 } from "@govtech-bb/form-validation";
+import {
+  resolveStepTitle,
+  type StepScopedValues,
+} from "@govtech-bb/form-conditions";
 import { FormDefinitionsService } from "../forms/form-definitions/form-definitions.service";
 import type {
   SubmissionAuditTrail,
@@ -110,6 +114,12 @@ export class EmailBodyBuilder {
       .flatMap((step) => {
         const rawVal = values[step.stepId];
 
+        // Resolve any per-answer title override (#871) against the submitted
+        // values, so the email section header matches the heading the
+        // applicant saw while filling in the form. Falls back to the static
+        // title for steps without a `conditionalTitle`.
+        const stepTitle = resolveStepTitle(step, values as StepScopedValues);
+
         if (Array.isArray(rawVal)) {
           // Repeatable step (V2 submission values) — one section per instance.
           // Number titles only when there is more than one instance so that a
@@ -121,7 +131,7 @@ export class EmailBodyBuilder {
                 step,
                 instance as Record<string, unknown>,
                 meta,
-                needsIndex ? `${step.title} (${i + 1})` : step.title,
+                needsIndex ? `${stepTitle} (${i + 1})` : stepTitle,
               ),
             )
             .filter((s) => s.fields.length > 0);
@@ -131,6 +141,7 @@ export class EmailBodyBuilder {
           step,
           (rawVal as Record<string, unknown>) ?? {},
           meta,
+          stepTitle,
         );
         return section.fields.length > 0 ? [section] : [];
       });

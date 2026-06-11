@@ -1,8 +1,6 @@
 import type {
   DurationTransform,
-  FieldConditionalOnBehaviour,
-  OptionalIfBehaviour,
-  StepConditionalOnBehaviour,
+  EqualityOperations,
 } from "@govtech-bb/form-types";
 import { durationSince } from "@govtech-bb/expressions";
 import type { StepScopedValues } from "./index";
@@ -14,10 +12,25 @@ const TRANSFORM_UNIT: Record<DurationTransform, "years" | "months" | "days"> = {
   daysSince: "days",
 };
 
-type ConditionalBehaviour =
-  | FieldConditionalOnBehaviour
-  | OptionalIfBehaviour
-  | StepConditionalOnBehaviour;
+// The structural condition fields `evaluateCondition` actually reads. Every
+// `*ConditionalOn` behaviour satisfies it (they add a `type` discriminant), and
+// so does a `ConditionalTitle` entry (it adds a `title`) — so a step's
+// per-answer title override can be evaluated through the same engine without a
+// fake `type`. Widening the parameter to this supertype keeps all existing
+// callers valid (they pass richer subtypes).
+export interface ConditionCriteria {
+  targetFieldId: string;
+  targetStepId?: string;
+  operator: EqualityOperations;
+  transform?: DurationTransform;
+  value: string | number | boolean | string[] | number[];
+  /** Discriminant on the `*ConditionalOn` behaviours; ignored by the evaluator
+   * but permitted so a behaviour object literal is assignable here. */
+  type?: string;
+  /** The override carried by a `ConditionalTitle` entry; ignored by the
+   * evaluator but permitted so a conditional-title literal is assignable. */
+  title?: string;
+}
 
 /**
  * Merge non-repeatable step values into a flat lookup. Repeatable-step
@@ -37,7 +50,7 @@ export function flattenStepValues(
 }
 
 function resolveTargetValue(
-  behaviour: ConditionalBehaviour,
+  behaviour: ConditionCriteria,
   values: StepScopedValues,
   flatValues: Record<string, unknown>,
   instanceLocal?: Record<string, unknown>,
@@ -60,7 +73,7 @@ function resolveTargetValue(
 }
 
 export function evaluateCondition(
-  behaviour: ConditionalBehaviour,
+  behaviour: ConditionCriteria,
   values: StepScopedValues,
   flatValues: Record<string, unknown>,
   instanceLocal?: Record<string, unknown>,

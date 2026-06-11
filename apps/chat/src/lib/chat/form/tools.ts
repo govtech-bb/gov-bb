@@ -1,5 +1,6 @@
 import {
   askFieldDef,
+  cancelFormDef,
   declineFeedbackDef,
   offerFeedbackDef,
   presentChoicesDef,
@@ -14,10 +15,22 @@ import {
   submitSuccessForModel,
 } from "#/lib/chat/feedback";
 import type { ActiveFormSchema } from "./schema";
-import { buildFieldIndex, getActiveFieldIds } from "./schema";
+import {
+  buildFieldIndex,
+  describeField,
+  findEscapeToggle,
+  getActiveFieldIds,
+  isChatCollectable,
+  nextAskableField,
+} from "./schema";
+import { cancelForm as cancelFunnelForm } from "./funnel";
 import type { FormSession } from "./session";
 import { submitFormUpstream, type SubmitOutcome } from "./submit";
-import { buildReviewItems, validateCollectedField } from "./values";
+import {
+  buildReviewItems,
+  canonicalizeRaw,
+  validateCollectedField,
+} from "./values";
 
 // Request-scoped dependencies the form tools need, supplied per turn via
 // chat({ context }) and read back as ctx.context — the documented runtime-
@@ -39,19 +52,62 @@ const presentChoicesTool = presentChoicesDef.server(async () => ({
   shown: true,
 }));
 
-// The model passes ONLY a fieldId; the canonical spec is read from the
+// Without a fieldId the SERVER picks the next question via the ask cursor —
+// ordering is code-owned, the model can't skip ahead. A fieldId is passed
+// only for the two legitimate jumps: the user wants to change an answer, or
+// a validation error re-ask. Either way the canonical spec is read from the
 // CONTRACT and returned as the tool result, so the client renders from
 // part.output and the model never authors labels or options.
 const askFieldTool = askFieldDef.server<FormTurnContext>(
   async ({ fieldId }, ctx) => {
     const { session, form } = ctx.context;
     if (!form) return { ok: false, error: "no active form" };
-    const active = getActiveFieldIds(form.contract, session.values).flat;
-    const info = buildFieldIndex(form.contract).get(fieldId);
-    if (!info || !active.has(fieldId)) {
-      return { ok: false, error: `unknown or inactive fieldId: ${fieldId}` };
+    let f;
+    if (fieldId) {
+      const active = getActiveFieldIds(form.contract, session.values).flat;
+      const info = buildFieldIndex(form.contract).get(fieldId);
+      if (!info || !active.has(fieldId)) {
+        return { ok: false, error: `unknown or inactive fieldId: ${fieldId}` };
+      }
+      f = info.field;
+    } else {
+      const next = nextAskableField(
+        form.contract,
+        session.values,
+        session.askedFieldIds,
+      );
+      if (!next) {
+        return {
+          ok: false,
+          error:
+            "every field has been presented — call review_form, then submit_form",
+        };
+      }
+      f = next.field;
     }
-    const f = info.field;
+    session.askedFieldIds.add(f.fieldId);
+    // A show-hide toggle has no options in the contract (it's a disclosure
+    // click in the forms UI). Synthesize Yes/No so the chat client renders
+    // the standard choice pills — no bespoke widget needed.
+    const options =
+      f.htmlType === "show-hide"
+        ? [
+            { label: "Yes", value: "yes" },
+            { label: "No", value: "no" },
+          ]
+        : f.options?.map((o) => ({ label: o.label, value: o.value }));
+    // Forms-UI parity for escape toggles: the toggle renders under its
+    // target field's input as an either/or affordance ("National ID — or
+    // use a passport instead"), not as a separate question. Moot once open.
+    const escape = findEscapeToggle(form.contract, f);
+    const alternative =
+      escape && session.values[escape.fieldId] !== "true"
+        ? {
+            fieldId: escape.fieldId,
+            label: escape.label,
+            hint: escape.hint ?? undefined,
+          }
+        : undefined;
     return {
       ok: true,
       field: {
@@ -60,8 +116,9 @@ const askFieldTool = askFieldDef.server<FormTurnContext>(
         htmlType: f.htmlType,
         hint: f.hint ?? undefined,
         multiple: f.multiple ?? undefined,
-        options: f.options?.map((o) => ({ label: o.label, value: o.value })),
+        options,
         validations: f.validations ?? undefined,
+        alternative,
       },
     };
   },
@@ -88,6 +145,20 @@ const setFieldTool = setFieldDef.server<FormTurnContext>(
     if (!info) {
       return { ok: false, error: `unknown fieldId: ${fieldId}` };
     }
+    // The alternative button sends the toggle's LABEL as the user message; a
+    // model that records it as this field's value stores junk (National ID =
+    // "Use passport number instead"). Free-text fields would accept it, so
+    // bounce with the corrective move instead.
+    const escapeOfField = findEscapeToggle(form.contract, info.field);
+    if (
+      escapeOfField &&
+      value.trim().toLowerCase() === escapeOfField.label.trim().toLowerCase()
+    ) {
+      return {
+        ok: false,
+        error: `the user chose the alternative — call set_field with fieldId "${escapeOfField.fieldId}" and value "yes" instead, then ask the revealed fields`,
+      };
+    }
     const error = validateCollectedField(
       form.contract,
       info.field,
@@ -98,9 +169,26 @@ const setFieldTool = setFieldDef.server<FormTurnContext>(
     if (error) {
       return { ok: false, error };
     }
-    session.values[fieldId] = value;
+    // Canonical raw: a show-hide answer is stored as "true"/"false" so the
+    // condition engine's String() compare matches the recipe's `value: true`.
+    session.values[fieldId] = canonicalizeRaw(info.field, value);
+    // Any change invalidates the last review — submit_form refuses until the
+    // user has seen a review of what will actually be sent.
+    session.reviewedSinceChange = false;
     session.updatedAt = Date.now();
-    return { ok: true };
+    // The FORM SCHEMA system message was built from the values at the START
+    // of the turn, so a value that opens a conditional section (show-hide
+    // toggle, radio/select reveal) exposes fields the model has never seen.
+    // Return their schema lines so it can ask them this turn, in order.
+    const after = getActiveFieldIds(form.contract, session.values).flat;
+    const idx = buildFieldIndex(form.contract);
+    const revealed: string[] = [];
+    for (const id of after) {
+      if (active.has(id)) continue;
+      const f = idx.get(id)?.field;
+      if (f && isChatCollectable(f)) revealed.push(describeField(f));
+    }
+    return revealed.length ? { ok: true, revealed } : { ok: true };
   },
 );
 
@@ -110,9 +198,24 @@ const reviewFormTool = reviewFormDef.server<FormTurnContext>(
   async (_args, ctx) => {
     const { session, form } = ctx.context;
     if (!form) return { ok: false, error: "no active form" };
+    // Completeness gate, in code: review can't run while askable fields
+    // remain unpresented. The prompt-level "only review AFTER every field"
+    // rule was probabilistic — the model jumped to review early.
+    const next = nextAskableField(
+      form.contract,
+      session.values,
+      session.askedFieldIds,
+    );
+    if (next) {
+      return {
+        ok: false,
+        error: `not every field has been presented yet — call ask_field (no arguments); next is ${next.field.fieldId}`,
+      };
+    }
     const active = getActiveFieldIds(form.contract, session.values).flat;
     const items = buildReviewItems(form.contract, session.values, active);
     if (!items.length) return { ok: false, error: "nothing collected yet" };
+    session.reviewedSinceChange = true;
     // isFeedback lets the client word the submit approval as "Submit your
     // feedback now?" — review_form runs in the same turn just before the
     // (argument-less) submit_form approval prompt, so it's the carrier.
@@ -137,6 +240,21 @@ const submitFormTool = submitFormDef.server<FormTurnContext>(
         ok: false,
         errors: [
           { field: "service", message: "a submission is already in flight" },
+        ],
+      };
+    }
+    // Review-before-submit, in code: a value changed since the last
+    // review_form (or none ever ran), so the user hasn't seen what would be
+    // sent. The prompt-level "review then submit" ordering was probabilistic.
+    if (!session.reviewedSinceChange) {
+      return {
+        ok: false,
+        errors: [
+          {
+            field: "service",
+            message:
+              "answers changed since the last review — call review_form first",
+          },
         ],
       };
     }
@@ -182,6 +300,18 @@ const submitFormTool = submitFormDef.server<FormTurnContext>(
   },
 );
 
+// User abandons an in-progress application. Discards collected values and
+// unpins the form; the funnel parks the cancelled slug so the matcher's
+// rolling window (which still names the form from earlier turns) can't
+// instantly re-pin it — same suppression a handoff uses. The user can still
+// restart deliberately: a LATEST message naming the form re-matches.
+const cancelFormTool = cancelFormDef.server<FormTurnContext>(
+  async (_args, ctx) => {
+    cancelFunnelForm(ctx.context.session);
+    return { ok: true };
+  },
+);
+
 // Tools for an OFFER-ONLY turn: a collect-type form matched on an info question
 // (nothing collected yet). We deliberately withhold set_field/submit_form so the
 // model can't silently start recording fields on what is still a question — but
@@ -193,14 +323,19 @@ export function buildOfferTools() {
   return [presentChoicesTool];
 }
 
+// Shared collect tools. cancel_form is added only for real service forms —
+// the feedback form has its own exit (decline_feedback) and offering both
+// would give the model two near-identical ways out.
+const collectTools = [
+  presentChoicesTool,
+  askFieldTool,
+  setFieldTool,
+  reviewFormTool,
+  submitFormTool,
+];
+
 export function buildFormTools() {
-  return [
-    presentChoicesTool,
-    askFieldTool,
-    setFieldTool,
-    reviewFormTool,
-    submitFormTool,
-  ];
+  return [...collectTools, cancelFormTool];
 }
 
 // End-of-chat feedback offer. The handler pins the chat-feedback form so the
@@ -229,9 +364,9 @@ const declineFeedbackTool = declineFeedbackDef.server<FormTurnContext>(
   },
 );
 
-// Tools while the optional feedback form is active: the normal collect tools
+// Tools while the optional feedback form is active: the shared collect tools
 // PLUS decline_feedback, so a user who only agreed to *consider* feedback can
 // bow out instead of being railroaded into the form. See run-turn.ts.
 export function buildFeedbackTools() {
-  return [...buildFormTools(), declineFeedbackTool];
+  return [...collectTools, declineFeedbackTool];
 }

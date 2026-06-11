@@ -228,6 +228,85 @@ describe("FormRenderer", () => {
     ).toBeInTheDocument();
   });
 
+  it("renders a conditionalTitle when its condition matches the form values", () => {
+    const step = {
+      stepId: "birth-details",
+      title: "Provide the person's birth details",
+      conditionalTitle: [
+        {
+          targetStepId: "applying-for-yourself",
+          targetFieldId: "applying-for-yourself",
+          operator: "equal" as const,
+          value: "yes",
+          title: "Provide your birth details",
+        },
+      ],
+      fields: [],
+      behaviours: [],
+    };
+    // The watched answer ("yes") lives under its composite `stepId_fieldId` key.
+    mockUseStore.mockImplementation(
+      (_store: unknown, selector: (state: any) => any) =>
+        selector({
+          values: { "applying-for-yourself_applying-for-yourself": "yes" },
+          fieldMeta: {},
+        }),
+    );
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="birth-details"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", { name: /Provide your birth details/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("falls back to the static title when no conditionalTitle matches", () => {
+    const step = {
+      stepId: "birth-details",
+      title: "Provide the person's birth details",
+      conditionalTitle: [
+        {
+          targetStepId: "applying-for-yourself",
+          targetFieldId: "applying-for-yourself",
+          operator: "equal" as const,
+          value: "yes",
+          title: "Provide your birth details",
+        },
+      ],
+      fields: [],
+      behaviours: [],
+    };
+    mockUseStore.mockImplementation(
+      (_store: unknown, selector: (state: any) => any) =>
+        selector({
+          values: { "applying-for-yourself_applying-for-yourself": "no" },
+          fieldMeta: {},
+        }),
+    );
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="birth-details"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", {
+        name: /Provide the person's birth details/,
+      }),
+    ).toBeInTheDocument();
+  });
+
   it("hides Previous button on first step (currentIndex = 0)", () => {
     mockUseStepGuard.mockReturnValue({
       navigateToStep: mockNavigateToStep,
@@ -298,6 +377,29 @@ describe("FormRenderer", () => {
         formMeta={makeMeta() as any}
         stepId="declaration"
         visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    expect(screen.getByRole("button", { name: /submit/i })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /continue/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows 'Submit' on the step before submission-confirmation even without a declaration step", () => {
+    // Surveys like the exit survey carry no `declaration` step; build-form
+    // injects check-your-answers immediately before submission-confirmation, so
+    // that becomes the submit step. Without this the survey could never be
+    // submitted (its Continue button would skip the submission entirely).
+    const cya = makeStep("check-your-answers");
+    const confirmation = makeStep("submission-confirmation");
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="check-your-answers"
+        visibleSteps={[cya, confirmation]}
         repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
         submissionState={mockSubmissionState as any}
       />,
@@ -871,6 +973,28 @@ describe("FormRenderer", () => {
     // invalid form must keep the user on the step.
     expect(mockForm.handleSubmit).toHaveBeenCalledTimes(1);
     expect(mockCompleteAndContinue).not.toHaveBeenCalled();
+  });
+
+  it("clicking Submit on the pre-confirmation step (no declaration) submits and advances", async () => {
+    // The exit-survey path: the submit handler must fire from whichever step
+    // precedes submission-confirmation, not only from a `declaration` step.
+    const user = userEvent.setup();
+    mockForm.state = { isValid: true, isSubmitting: false, values: {} };
+    const cya = makeStep("check-your-answers");
+    const confirmation = makeStep("submission-confirmation");
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="check-your-answers"
+        visibleSteps={[cya, confirmation]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /submit/i }));
+    expect(mockForm.handleSubmit).toHaveBeenCalled();
+    expect(mockCompleteAndContinue).toHaveBeenCalledWith("check-your-answers");
   });
 
   it("clicking Continue with validation errors does NOT call completeAndContinue", async () => {

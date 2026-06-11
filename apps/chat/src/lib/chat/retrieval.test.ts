@@ -5,6 +5,7 @@ import {
   decideRagFallback,
   isConversationalCloser,
   topHandoffCandidateSlug,
+  topServiceCandidates,
 } from "./retrieval";
 import type { Source } from "./types";
 
@@ -187,4 +188,47 @@ test("a question is never a closer, even if it ends with thanks-y words", () => 
     false,
   );
   assert.equal(isConversationalCloser("", NO_PRIOR), false);
+});
+
+// ---------------------------------------------------------------------------
+// topServiceCandidates — the disambiguation signal (ADR 0048 stage 3)
+// ---------------------------------------------------------------------------
+
+const svc = (slug: string, score: number, title = slug) => ({
+  id: `service-${slug}`,
+  url: `https://alpha.gov.bb/${slug}`,
+  title,
+  score,
+});
+
+test("topServiceCandidates dedupes chunks and keeps rank order", () => {
+  const out = topServiceCandidates([
+    svc("get-birth-certificate", 0.8, "Get a birth certificate"),
+    svc("get-birth-certificate", 0.7, "Get a birth certificate"),
+    svc("get-death-certificate", 0.6, "Get a death certificate"),
+  ]);
+  assert.deepEqual(
+    out.map((c) => c.slug),
+    ["get-birth-certificate", "get-death-certificate"],
+  );
+});
+
+test("topServiceCandidates excludes sub-threshold and non-service docs", () => {
+  const out = topServiceCandidates([
+    svc("get-birth-certificate", 0.8),
+    { id: "news-some-article", url: "https://x", title: "News", score: 0.9 },
+    svc("get-death-certificate", 0.2),
+  ]);
+  assert.deepEqual(
+    out.map((c) => c.slug),
+    ["get-birth-certificate"],
+  );
+});
+
+test("topServiceCandidates caps the list", () => {
+  const out = topServiceCandidates(
+    ["a", "b", "c", "d"].map((s) => svc(s, 0.8)),
+    3,
+  );
+  assert.equal(out.length, 3);
 });

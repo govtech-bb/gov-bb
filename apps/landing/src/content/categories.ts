@@ -29,6 +29,12 @@ export const CATEGORIES: Array<Category> = [
     description: 'Get help with money, benefits, taxes or government payments',
   },
   {
+    slug: 'social-empowerment',
+    title: 'Social empowerment',
+    description:
+      'Apply for help at home, financial assistance, and programmes for older people and families, run by the Social Empowerment Agency and the National Assistance Board',
+  },
+  {
     slug: 'pensions-and-gratuities',
     title: 'Pensions and Gratuities',
     description:

@@ -1,5 +1,8 @@
-import { resolveSubmissionOutcome } from "./submission-outcome";
-import { FormSubmissionResponse } from "@forms/types";
+import {
+  resolveSubmissionOutcome,
+  applyPaymentReturn,
+} from "./submission-outcome";
+import { FormSubmissionResponse, SubmissionState } from "@forms/types";
 
 // `status` is the SUBMISSION status and belongs on `data.status`. The API
 // envelope `status` is always "success" for a 2xx (ApiResponse.success) —
@@ -143,5 +146,36 @@ describe("resolveSubmissionOutcome", () => {
       },
       event: { name: "form-submit-success" },
     });
+  });
+});
+
+describe("applyPaymentReturn", () => {
+  const pending: SubmissionState = {
+    hasPayment: true,
+    serviceName: "test-form",
+    submissionSuccess: true,
+    paymentSuccess: false,
+    referenceNumber: "REF-9",
+    amount: "5",
+    paymentUrl: "https://pay.example.com",
+  };
+
+  it("flips to paymentSuccess on 'success', preserving the rest of the state", () => {
+    expect(applyPaymentReturn(pending, "success")).toEqual({
+      ...pending,
+      paymentSuccess: true,
+    });
+  });
+
+  it("clears paymentUrl on 'failed' so the failure panel renders", () => {
+    expect(applyPaymentReturn(pending, "failed")).toEqual({
+      ...pending,
+      paymentSuccess: false,
+      paymentUrl: undefined,
+    });
+  });
+
+  it("returns the state unchanged when there is no payment param", () => {
+    expect(applyPaymentReturn(pending, undefined)).toBe(pending);
   });
 });
