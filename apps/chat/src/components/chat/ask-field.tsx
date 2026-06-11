@@ -143,6 +143,12 @@ export function AskFieldWidget({
 
   return (
     <div className="flex flex-col gap-2.5">
+      {/* Section header when this question opens a new step ("Emergency
+          contact details") — so the user knows whose details to enter, not
+          their own. Server sets `section` only on the first field of a step. */}
+      {spec.section && (
+        <p className="font-semibold text-blue-100 text-sm">{spec.section}</p>
+      )}
       <p id={questionId} className="text-bubble font-medium text-black-00">
         {spec.label}
       </p>
