@@ -1,6 +1,6 @@
 import type { UIMessage } from "@tanstack/ai";
 import { getServerEnv } from "#/config/env";
-import { FEEDBACK_FORM_ID } from "#/lib/chat/feedback";
+import { FEEDBACK_FORM_ID, FEEDBACK_TRIGGER_PHRASE } from "#/lib/chat/feedback";
 import { isInfoQuestion } from "#/lib/chat/guards";
 import { lastUserText, recentUserText } from "#/lib/chat/messages";
 import {
@@ -87,6 +87,19 @@ export async function pinSessionForm(
     }
   }
   if (session.slug && session.status !== "submitted") return;
+  // The notice banner's "Give feedback" link sends FEEDBACK_TRIGGER_PHRASE. Pin
+  // chat-feedback by EXPLICIT id, not via the title-token matcher: the matcher
+  // only picked it up because "feedback"/"assistant" happen to be unique among
+  // form titles today, and a future recipe carrying either token could
+  // out-score or tie-and-steal the banner match (#1206). Matching the exact
+  // phrase removes that dependency on title uniqueness. Mark the offer spent so
+  // the model never also offers feedback later this session. The phrase is a
+  // statement (not a question), so the turn still enters collect-feedback.
+  if (lastUserText(messages) === FEEDBACK_TRIGGER_PHRASE) {
+    pinForm(session, FEEDBACK_FORM_ID);
+    session.feedbackOffered = true;
+    return;
+  }
   const windowMatch = await deps.match(recentUserText(messages));
   const matched =
     windowMatch && windowMatch.formId === session.handedOffSlug
@@ -94,9 +107,9 @@ export async function pinSessionForm(
       : windowMatch;
   if (matched) {
     pinForm(session, matched.formId);
-    // Feedback can be started manually (the banner "Give feedback" link sends a
-    // matcher phrase) as well as by the model's offer_feedback tool. Either way,
-    // mark it spent so the model never also offers feedback later this session.
+    // A genuine free-text mention of the feedback form (rare, but possible) is
+    // also a manual start, so mark the offer spent — same as the banner path
+    // above — so the model never also offers feedback later this session.
     if (matched.formId === FEEDBACK_FORM_ID) session.feedbackOffered = true;
   }
 }

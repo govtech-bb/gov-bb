@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { UIMessage } from "@tanstack/ai";
+import { FEEDBACK_FORM_ID, FEEDBACK_TRIGGER_PHRASE } from "#/lib/chat/feedback";
 import type { FormIndexEntry } from "./defs";
 import { applyRagFallback, pinSessionForm } from "./routing";
 import type { FormResolution } from "./schema";
@@ -48,6 +49,25 @@ test("pinSessionForm leaves an active unsubmitted form pinned (matcher not consu
   });
   assert.equal(s.slug, "mail-redirect");
   assert.equal(called, 0);
+});
+
+// The notice banner's "Give feedback" link sends FEEDBACK_TRIGGER_PHRASE. It
+// must pin chat-feedback by EXPLICIT id, never via the title-token matcher —
+// otherwise a future recipe whose title contains "feedback"/"assistant" could
+// out-score or tie-and-steal the banner match (#1206). The stubbed matcher
+// returns a colliding form to prove it is never consulted for the banner phrase.
+test("pinSessionForm pins chat-feedback by id for the banner phrase, ignoring the matcher", async () => {
+  const s = session();
+  let called = 0;
+  await pinSessionForm(s, [userMessage(FEEDBACK_TRIGGER_PHRASE)], {
+    match: async () => {
+      called++;
+      return entry("some-future-assistant-feedback-form");
+    },
+  });
+  assert.equal(s.slug, FEEDBACK_FORM_ID);
+  assert.equal(s.feedbackOffered, true); // offer spent — never also model-offered
+  assert.equal(called, 0); // matcher never consulted for the banner phrase
 });
 
 test("pinSessionForm pins a window match and resets prior state on a switch", async () => {
