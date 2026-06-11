@@ -14,6 +14,10 @@ export interface RepeatableConfig {
   // Current Repeats: stepData.length
   stepData: Record<stepId, FormValues>;
   orderedStepIds: string[];
+  // Populated (one key per shared fieldId) when the step has a sharedFields
+  // behaviour, else empty/undefined. Doubles as the signal that the base step
+  // is a separate "shared values" page (not an instance) — see the submit-time
+  // fold in forms.ts (#1257).
   sharedData?: FormValues;
 }
 
