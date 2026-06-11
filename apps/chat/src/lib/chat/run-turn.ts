@@ -127,25 +127,14 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     resolution.kind === "collect" &&
     Object.keys(session.values).length === 0 &&
     isInfoQuestion(latest);
-  // The rewrite also classifies intent (info vs apply) and flags fraud/bribery-
-  // framed requests. Skipped turns (greeting / actively collecting) default to
-  // "apply" + legitimate — the link-preserving, no-false-refusal defaults.
+  // The rewrite also classifies intent (info vs apply). Skipped turns
+  // (greeting / actively collecting) default to "apply" — the link-preserving
+  // default.
   const rewrite = skipRetrieval
-    ? { query: latest, intent: "apply" as const, illegitimate: false }
+    ? { query: latest, intent: "apply" as const }
     : await rewriteRetrievalQuery(messages, signal);
   const query = rewrite.query;
   const intent = rewrite.intent;
-
-  // Fraud / bribery / falsification-framed request: NEVER offer a form. A
-  // bribery ask ("how much to pay to get my child into a better school") can
-  // match a legitimate form (school choice) and the offer path would then
-  // helpfully present it. Neutralise any matched form and skip the RAG-driven
-  // handoff below, so the model declines per the ILLEGITIMATE REQUESTS section
-  // of the system prompt (optionally naming the legitimate route) instead.
-  if (rewrite.illegitimate) {
-    resolution = { kind: "none" };
-    session.slug = null;
-  }
 
   const { contexts, rawSources, degraded } = await fetchContext(
     ragUrl,
@@ -165,7 +154,6 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     resolution,
     session,
     rawSources,
-    rewrite.illegitimate,
     signal,
   );
   resolution = ragFallback.resolution;
@@ -183,10 +171,8 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
   // A genuine retrieval miss: we actually queried RAG (not a greeting / active
   // collection) and it returned no grounded context (zero citations). Route the
   // miss disclosure (keep guiding, ask to clarify) instead of the misapplied
-  // NO_FORM_DISCLOSURE. Illegitimate requests are excluded so they stay on the
-  // existing decline path rather than being invited to "clarify" (#1099).
-  const noContext =
-    citations.length === 0 && !skipRetrieval && !rewrite.illegitimate;
+  // NO_FORM_DISCLOSURE (#1099).
+  const noContext = citations.length === 0 && !skipRetrieval;
 
   // No active form, feedback not yet offered, and not parked mid-handoff:
   // expose offer_feedback so the model can invite feedback at a natural stop.
@@ -200,7 +186,6 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     ) &&
     !handoffContinuation &&
     !ragCollectLink &&
-    !rewrite.illegitimate &&
     !noContext;
 
   const env = getServerEnv();

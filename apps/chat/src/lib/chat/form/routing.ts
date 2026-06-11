@@ -82,7 +82,6 @@ export async function applyRagFallback(
   resolution: FormResolution,
   session: FormSession,
   rawSources: Source[],
-  illegitimate: boolean,
   signal: AbortSignal,
   deps: RagFallbackDeps = {
     getSlugs: getFormSlugs,
@@ -91,7 +90,7 @@ export async function applyRagFallback(
   },
 ): Promise<RagFallbackResult> {
   const ragCandidate =
-    resolution.kind === "none" && !session.slug && !illegitimate
+    resolution.kind === "none" && !session.slug
       ? topHandoffCandidateSlug(rawSources)
       : null;
   // Resolve against the forms API only when there's a candidate, and gate on
