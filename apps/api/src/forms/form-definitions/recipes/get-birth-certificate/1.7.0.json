@@ -516,7 +516,16 @@
     },
     {
       "stepId": "birth-details",
-      "title": "Provide the birth details",
+      "title": "Provide the person's birth details",
+      "conditionalTitle": [
+        {
+          "targetStepId": "applying-for-yourself",
+          "targetFieldId": "applying-for-yourself",
+          "operator": "equal",
+          "value": "yes",
+          "title": "Provide your birth details"
+        }
+      ],
       "description": "Answer as accurately as possible",
       "elements": [
         {
@@ -563,74 +572,7 @@
           }
         }
       ],
-      "behaviours": [
-        {
-          "type": "stepConditionalOn",
-          "value": "yes",
-          "operator": "equal",
-          "targetStepId": "applying-for-yourself",
-          "targetFieldId": "applying-for-yourself"
-        }
-      ]
-    },
-    {
-      "stepId": "person-birth-details",
-      "title": "Provide the person's birth details",
-      "description": "Answer as accurately as possible",
-      "elements": [
-        {
-          "ref": "components/date-of-birth",
-          "overrides": {
-            "hint": "For example, 30 12 1986",
-            "label": "Date of birth",
-            "fieldId": "person-birth-date-of-birth",
-            "validations": {
-              "required": {
-                "error": "Date of birth is required",
-                "value": true
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "label": "Place of birth",
-            "fieldId": "person-place-of-birth",
-            "validations": {
-              "required": {
-                "error": "Place of birth is required",
-                "value": true
-              },
-              "minLength": {
-                "error": "Must be at least 2 characters",
-                "value": 2
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "label": "Place of baptism",
-            "fieldId": "person-place-of-baptism",
-            "validations": {
-              "required": {
-                "value": false
-              }
-            }
-          }
-        }
-      ],
-      "behaviours": [
-        {
-          "type": "stepConditionalOn",
-          "value": "no",
-          "operator": "equal",
-          "targetStepId": "applying-for-yourself",
-          "targetFieldId": "applying-for-yourself"
-        }
-      ]
+      "behaviours": []
     },
     {
       "stepId": "parents",

@@ -107,6 +107,64 @@ describe("Review", () => {
     ).toBeInTheDocument();
   });
 
+  it("resolves a step's conditionalTitle from the form values (#871)", () => {
+    const conditionalStep = makeStep({
+      stepId: "birth-details",
+      title: "Provide the person's birth details",
+      conditionalTitle: [
+        {
+          targetStepId: "applying-for-yourself",
+          targetFieldId: "applying-for-yourself",
+          operator: "equal",
+          value: "yes",
+          title: "Provide your birth details",
+        },
+      ],
+      fields: [
+        makeField({
+          id: "birth-details.place-of-birth",
+          fieldId: "place-of-birth",
+          label: "Place of birth",
+        }),
+      ],
+    });
+
+    const form = makeMockForm({
+      "applying-for-yourself_applying-for-yourself": "yes",
+      "birth-details.place-of-birth": "Bridgetown",
+    });
+
+    const { rerender } = render(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={form as never}
+        visibleSteps={[conditionalStep]}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", { name: "Provide your birth details" }),
+    ).toBeInTheDocument();
+
+    // Flip the watched answer → the static title is used instead.
+    rerender(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={
+          makeMockForm({
+            "applying-for-yourself_applying-for-yourself": "no",
+            "birth-details.place-of-birth": "Bridgetown",
+          }) as never
+        }
+        visibleSteps={[conditionalStep]}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", {
+        name: "Provide the person's birth details",
+      }),
+    ).toBeInTheDocument();
+  });
+
   it("renders a label and value row per visible field", () => {
     const steps: ClientFormStep[] = [
       makeStep({

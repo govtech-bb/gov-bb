@@ -25,6 +25,8 @@ import {
 } from "@forms/lib";
 import { trackEvent } from "../lib/analytics";
 import { StatusBanner } from "@govtech-bb/react";
+import { resolveStepTitle } from "@govtech-bb/form-conditions";
+import { buildStepScopedValues } from "../lib/form-builder/helpers/value-tree";
 
 // ---------------------------------------------------------------------------
 // Field grouping (show-hide + radio/select conditional reveal)
@@ -378,6 +380,17 @@ export default function FormRenderer({
     return result;
   });
 
+  // Resolve the step's effective title reactively: a step may carry
+  // `conditionalTitle` overrides (#871) that depend on an earlier answer, so the
+  // heading must recompute when the watched value changes. `resolveStepTitle`
+  // returns the static title unchanged for steps without overrides.
+  const resolvedStepTitle = useStore(form.store, (state) =>
+    resolveStepTitle(
+      currentStep,
+      buildStepScopedValues(state.values as Record<string, unknown>),
+    ),
+  );
+
   // The submission confirmation owns its own full-width layout (a full-bleed
   // banner plus inner containers), so it renders outside the page container.
   if (isSubmissionConfirmation) {
@@ -386,7 +399,7 @@ export default function FormRenderer({
         <SubmissionConfirmation
           key={"submission-confirmation"}
           serviceTitle={formMeta.formTitle}
-          stepTitle={currentStep.title}
+          stepTitle={resolvedStepTitle}
           processingMessage={currentStep.description}
           nextSteps={currentStep.nextSteps}
           markdownContent={currentStep.markdownContent}
@@ -421,8 +434,8 @@ export default function FormRenderer({
               </span>
             )}
             {instanceMarker && !instanceMarker.hasLabel
-              ? `${currentStep.title} — ${instanceMarker.text}`
-              : currentStep.title}
+              ? `${resolvedStepTitle} — ${instanceMarker.text}`
+              : resolvedStepTitle}
           </h1>
           {currentStep.description && (
             <p className="form-page__step-description">

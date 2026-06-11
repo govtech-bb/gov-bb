@@ -589,6 +589,20 @@ Shows or hides a WHOLE step based on an earlier field's value — the step-level
 \`\`\`
 Unlike the field-level conditionals (where it is optional), targetStepId is REQUIRED here — it names the step that holds the watched field, and \`targetFieldId\` is that field. Operators ("equal", "notEqual", "in", "exists", plus numeric "gt", "lt", "gte", "lte") and the \`value\` rule are identical to \`fieldConditionalOn\` — including the optional \`transform\` for age/duration gating on a date field. The compared \`value\` is ALWAYS lowercased and kebab-cased to match the watched field's option \`value\` (\`"yes"\`, not \`"Yes"\`; \`"christ-church"\`, not \`"Christ Church"\`), never its display label (numeric operators excepted — their \`value\` is a number). operator is REQUIRED.
 
+## Conditional Step Titles (conditionalTitle)
+When a step's HEADING should adapt to an earlier answer — but the step's FIELDS are the same either way — give the step a static \`title\` (the fallback) plus a \`conditionalTitle\` array, instead of duplicating the step. Each entry reuses the exact condition vocabulary of \`stepConditionalOn\` (\`targetFieldId\`, optional \`targetStepId\`, \`operator\`, optional \`transform\`, \`value\` — same lowercased-kebab-case \`value\` rule) and adds a \`title\`. The FIRST entry whose condition matches wins; when none match, the static \`title\` renders. \`conditionalTitle\` is a sibling of \`title\` on the step, NOT a behaviour:
+\`\`\`json
+{
+  "stepId": "birth-details",
+  "title": "Provide the person's birth details",
+  "conditionalTitle": [
+    {"targetStepId": "applying-for-yourself", "targetFieldId": "applying-for-yourself", "operator": "equal", "value": "yes", "title": "Provide your birth details"}
+  ],
+  "elements": [ /* ...the same fields, asked once... */ ]
+}
+\`\`\`
+Prefer this over splitting one step into two \`stepConditionalOn\` steps when only the wording of the heading differs — it keeps a single set of fieldIds and one place to edit the fields. (Split into separate steps only when the FIELDS themselves differ between branches.)
+
 ## Repeatable Steps (repeatable)
 Lets the applicant complete a step several times ("Add another?") — e.g. listing several endorsements, dependents or qualifications. The whole step's set of fields repeats as one instance.
 \`\`\`json
