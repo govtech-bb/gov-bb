@@ -1,0 +1,50 @@
+[
+  {
+    "scenario": {
+      "id": "birth-cert-handoff-link",
+      "persona": "You are Andre, 27, standard English, direct and impatient. You want a copy of your birth certificate.",
+      "goal": "Find out how to get a copy of your birth certificate and get the online form link. You will NOT fill anything in chat.",
+      "facts": {},
+      "behaviour": [
+        "Ask directly for a birth certificate copy.",
+        "If asked clarifying questions, answer minimally.",
+        "Once you have a link, say thanks and end (reply DONE)."
+      ],
+      "maxTurns": 8,
+      "stopWhen": "link-delivered",
+      "mechanical": {
+        "mustUseTools": [],
+        "neverTools": ["ask_field", "set_field"]
+      },
+      "rubric": "Did the assistant hand over the birth-certificate form link (it is a payment form the chat must not fill inline) without starting to collect fields in chat and without pointing to a paper/in-person-only route?"
+    },
+    "transcript": [
+      {
+        "role": "user",
+        "text": "How do I get a copy of my birth certificate?"
+      },
+      {
+        "role": "assistant",
+        "text": "Here's the form to get started:\n\n[Get a copy of a birth certificate](https://forms.sandbox.alpha.gov.bb/forms/get-birth-certificate)\n\nYou can complete your application there when you're ready.\n\nIf you'd rather, you can also pick up a paper form from the Registration Department and return it by hand [1].",
+        "affordances": {
+          "choices": [],
+          "reviewShown": false,
+          "approvalPending": false,
+          "linkDelivered": true
+        }
+      }
+    ],
+    "toolsObserved": [],
+    "reached": "link-delivered",
+    "turns": 1,
+    "durationMs": 15135,
+    "mechanical": {
+      "pass": true,
+      "reasons": []
+    },
+    "verdict": {
+      "pass": true,
+      "reason": "The assistant handed over the online form link as the primary path and did not collect any fields inline (plain text reply, no widgets), satisfying the payment-form constraint. The paper-form note was offered only as an optional 'if you'd rather' alternative, not as a paper/in-person-only deflection, since the online link was given first."
+    }
+  }
+]

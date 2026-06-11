@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>User-simulation evals</title>
+<style>
+body { font: 15px/1.5 system-ui, sans-serif; max-width: 64rem; margin: 2rem auto; padding: 0 1rem; }
+.badge { font-weight: 700; padding: .1rem .5rem; border-radius: .3rem; color: #fff; }
+.badge.pass { background: #1a7f37; } .badge.fail { background: #c1121f; }
+details { border: 1px solid #ddd; border-radius: .4rem; padding: .5rem .8rem; margin-block: .5rem; }
+summary { cursor: pointer; } pre { white-space: pre-wrap; background: #f6f6f6; padding: .5rem; }
+dt { font-weight: 600; margin-top: .5rem; }
+.user, .assistant { margin-block: .4rem; padding: .4rem .6rem; border-radius: .4rem; }
+.user { background: #e8f0fe; } .assistant { background: #f6f6f6; }
+.ui { color: #666; font-size: .85em; margin-top: .2rem; }
+</style></head><body>
+<h1>User-simulation evals</h1>
+<p>https://chat.sandbox.alpha.gov.bb — 2026-06-11T08:07:57.802Z — 1/1 passed</p>
+<h2>Failures (0)</h2>
+<p>None 🎉</p>
+<h2>Passes (1)</h2>
+<details>
+<summary><span class="badge pass">PASS</span> <code>birth-cert-handoff-link</code> — 1 turns, reached <em>link-delivered</em> (15s)</summary>
+<dl>
+<dt>Mechanical</dt><dd>pass</dd>
+<dt>Judge</dt><dd>The assistant handed over the online form link as the primary path and did not collect any fields inline (plain text reply, no widgets), satisfying the payment-form constraint. The paper-form note was offered only as an optional 'if you'd rather' alternative, not as a paper/in-person-only deflection, since the online link was given first.</dd>
+<dt>Tools observed</dt><dd>none</dd>
+
+<dt>Transcript</dt><dd><div class="user"><strong>user</strong>: How do I get a copy of my birth certificate?</div>
+<div class="assistant"><strong>assistant</strong>: Here's the form to get started:
+
+[Get a copy of a birth certificate](https://forms.sandbox.alpha.gov.bb/forms/get-birth-certificate)
+
+You can complete your application there when you're ready.
+
+If you'd rather, you can also pick up a paper form from the Registration Department and return it by hand [1].<div class="ui">(no buttons or form widgets — plain text reply)</div></div></dd>
+</dl>
+</details>
+</body></html>

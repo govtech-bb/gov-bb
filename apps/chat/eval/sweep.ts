@@ -29,6 +29,11 @@ interface Entry {
   query: string;
   expected_doc_ids: string[];
   tag: "direct" | "followup" | "ambig" | "none";
+  // Alternative REAL-USER phrasings of the same need (paraphrases, Bajan
+  // dialect) expecting the same docs. The hand-written `query` tends to be
+  // the lexically-friendly phrasing; retrieval must hold up on the others
+  // too. Expanded into synthetic entries (`<id>-v1`, ...) at load.
+  variants?: string[];
 }
 
 interface Golden {
@@ -63,7 +68,17 @@ interface ConfigResult {
 }
 
 function loadGolden(): Golden {
-  return JSON.parse(readFileSync(GOLDEN_PATH, "utf-8")) as Golden;
+  const raw = JSON.parse(readFileSync(GOLDEN_PATH, "utf-8")) as Golden;
+  const entries = raw.entries.flatMap((e) => [
+    e,
+    ...(e.variants ?? []).map((query, i) => ({
+      ...e,
+      id: `${e.id}-v${i + 1}`,
+      query,
+      variants: undefined,
+    })),
+  ]);
+  return { entries };
 }
 
 async function buildEmbedCache(

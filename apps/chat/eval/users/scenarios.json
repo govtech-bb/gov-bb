@@ -1,0 +1,194 @@
+{
+  "scenarios": [
+    {
+      "id": "mail-redirect-natural-collect",
+      "persona": "You are Devon, 31, moving from Bridgetown to Oistins next month. You write casual standard English, short messages, occasional typos. You have never used this chat before and do not know form names — you describe your situation, not services.",
+      "goal": "Get your personal mail redirected to your new address, filled out IN THE CHAT (when offered the choice between filling it here or a link, choose filling it here).",
+      "facts": {
+        "first name": "Devon",
+        "last name": "Brathwaite",
+        "old address": "12 Bay Street, Bridgetown, St. Michael",
+        "new address": "4 Welches Road, Oistins, Christ Church",
+        "email": "devon.brathwaite@example.com",
+        "phone": "246-555-0142",
+        "date of birth": "1994-08-23",
+        "national id": "940823-0061",
+        "redirect start date": "first of next month"
+      },
+      "behaviour": [
+        "Open by describing the situation naturally (moving house, want letters to follow) — do NOT name any form.",
+        "Answer questions tersely, one fact at a time.",
+        "If buttons are shown and one matches your intent, reply with EXACTLY that button text."
+      ],
+      "maxTurns": 16,
+      "stopWhen": "approval-prompt",
+      "mechanical": {
+        "mustUseTools": ["ask_field", "review_form"],
+        "neverTools": []
+      },
+      "rubric": "Did the assistant (a) recognise the mail-redirection need from natural phrasing without the user naming a form, (b) collect fields one at a time without re-asking anything already answered, (c) reach a review summary and a submit approval prompt? Minor wording issues are fine; FAIL if it claimed no online form exists, dumped multiple questions as prose, or got stuck in a loop."
+    },
+    {
+      "id": "mail-redirect-passport-escape-bajan",
+      "persona": "You are Marcia, 54, from St. Philip. You write in Bajan dialect ('I movin by muh daughter', 'wuh you need from me?'). IMPORTANT: you do NOT have a National ID card — you only have a passport (number BB204417). If asked for a National ID, say you don't have one.",
+      "goal": "Redirect your personal mail to your daughter's house, filled out in the chat (choose filling it here if offered).",
+      "facts": {
+        "first name": "Marcia",
+        "last name": "Greaves",
+        "old address": "Church View, St. Philip",
+        "new address": "8 Rendezvous Gardens, Christ Church",
+        "email": "marcia.g@example.com",
+        "phone": "246-555-0186",
+        "date of birth": "1971-11-02",
+        "passport number": "BB204417",
+        "redirect start date": "next week monday"
+      },
+      "behaviour": [
+        "Write in Bajan dialect throughout.",
+        "When asked for your National ID, say you ain' got one — only a passport. If a button offers using a passport instead, click it (reply with EXACTLY its text).",
+        "If buttons are shown and one matches your intent, reply with EXACTLY that button text."
+      ],
+      "maxTurns": 18,
+      "stopWhen": "approval-prompt",
+      "mechanical": {
+        "mustUseTools": ["ask_field"],
+        "neverTools": []
+      },
+      "rubric": "Did the assistant understand the Bajan phrasing, route Marcia to the passport alternative when she said she has no National ID (without recording 'no ID' junk as her ID number), collect the passport number, and reach review/approval? FAIL if it dead-ended on the missing National ID, recorded a wrong value for it, or never understood the request."
+    },
+    {
+      "id": "birth-cert-handoff-link",
+      "persona": "You are Andre, 27, standard English, direct and impatient. You want a copy of your birth certificate.",
+      "goal": "Find out how to get a copy of your birth certificate and get the online form link. You will NOT fill anything in chat.",
+      "facts": {},
+      "behaviour": [
+        "Ask directly for a birth certificate copy.",
+        "If asked clarifying questions, answer minimally.",
+        "Once you have a link, say thanks and end (reply DONE)."
+      ],
+      "maxTurns": 8,
+      "stopWhen": "link-delivered",
+      "mechanical": {
+        "mustUseTools": [],
+        "neverTools": ["ask_field", "set_field"]
+      },
+      "rubric": "Did the assistant hand over the birth-certificate form link (it is a payment form the chat must not fill inline) without starting to collect fields in chat and without pointing to a paper/in-person-only route?"
+    },
+    {
+      "id": "cancel-midway",
+      "persona": "You are Shanice, 22, casual texting style. You start applying for the JobStart Plus programme but get cold feet partway through.",
+      "goal": "Begin the JobStart Plus application in chat, answer the first 3 questions, then change your mind and stop ('actually never mind, I don't want to do this right now'). Confirm it is cancelled, then end (reply DONE).",
+      "facts": {
+        "first name": "Shanice",
+        "last name": "Holder",
+        "date of birth": "2003-04-17",
+        "email": "shanice.h@example.com",
+        "phone": "246-555-0199",
+        "address": "Lot 22, Grazettes, St. Michael"
+      },
+      "behaviour": [
+        "Open by saying you want to apply for JobStart Plus.",
+        "Answer the first three questions normally, then cancel with natural wording.",
+        "If the assistant confirms cancellation, end (reply DONE). If it pressures you to continue, refuse once more."
+      ],
+      "maxTurns": 14,
+      "stopWhen": "goal-judged",
+      "mechanical": {
+        "mustUseTools": ["ask_field", "cancel_form"],
+        "neverTools": ["submit_form"]
+      },
+      "rubric": "When Shanice said never mind, did the assistant cancel cleanly — confirming nothing was submitted, without pressuring her to continue and without continuing to ask fields afterwards?"
+    },
+    {
+      "id": "mid-form-cost-question",
+      "persona": "You are Ricardo, 45, polite standard English. Detail-oriented: you want to know costs before committing.",
+      "goal": "Start redirecting your personal mail in chat, but partway through ask 'wait, how much does this cost?' — expect a grounded answer, then continue to the approval prompt.",
+      "facts": {
+        "first name": "Ricardo",
+        "last name": "Phillips",
+        "old address": "15 Strathclyde Drive, St. Michael",
+        "new address": "Apt 3, Hastings Towers, Christ Church",
+        "email": "r.phillips@example.com",
+        "phone": "246-555-0123",
+        "date of birth": "1980-12-05",
+        "national id": "801205-0034",
+        "redirect start date": "the 15th of next month"
+      },
+      "behaviour": [
+        "Say you want to redirect your mail and start the application.",
+        "After answering 2-3 questions, ask how much it costs, mid-form.",
+        "After getting an answer, continue answering questions.",
+        "If buttons are shown and one matches your intent, reply with EXACTLY that button text."
+      ],
+      "maxTurns": 18,
+      "stopWhen": "approval-prompt",
+      "mechanical": {
+        "mustUseTools": ["ask_field"],
+        "neverTools": []
+      },
+      "rubric": "When Ricardo asked the cost mid-form, did the assistant give a substantive grounded answer (a figure or an honest 'the page doesn't say') rather than ignoring the question, hallucinating, or losing its place — and then resume collection where it left off?"
+    },
+    {
+      "id": "ambiguous-certificate",
+      "persona": "You are Pauline, 60, standard English with warmth. Your mother passed away recently and you need 'a certificate' for the estate paperwork — you mean a death certificate but you start vague.",
+      "goal": "Get pointed to the death certificate service. Start by asking vaguely for 'a certificate for my mother' without saying which kind. When asked which, say a death certificate. Once you have the link, end (reply DONE).",
+      "facts": {},
+      "behaviour": [
+        "First message is vague: a certificate for your mother, estate matters.",
+        "If the assistant presents choices, pick the death certificate one (reply with EXACTLY that button text). If it asks in prose, answer in prose.",
+        "Once you have a link or clear directions, end (reply DONE)."
+      ],
+      "maxTurns": 8,
+      "stopWhen": "link-delivered",
+      "mechanical": {
+        "mustUseTools": [],
+        "neverTools": ["ask_field", "set_field"]
+      },
+      "rubric": "Did the assistant notice the ambiguity (birth vs death certificate) and ask which one — rather than guessing — and then route Pauline to the death certificate link after she clarified? An immediate correct clarifying question is a PASS even without buttons."
+    },
+    {
+      "id": "skip-optional-field",
+      "persona": "You are Troy, 35, terse standard English. You give the minimum information required and skip anything optional.",
+      "goal": "Redirect your business mail in chat, skipping any optional questions, through to the approval prompt.",
+      "facts": {
+        "business name": "Troy's Auto Parts",
+        "contact name": "Troy Cumberbatch",
+        "old address": "Unit 7, Wildey Industrial Park, St. Michael",
+        "new address": "Lot 14, Six Roads, St. Philip",
+        "email": "troy@troysauto.example.com",
+        "phone": "246-555-0177",
+        "redirect start date": "start of next month"
+      },
+      "behaviour": [
+        "Say you need your business mail redirected.",
+        "If a question is optional or has a Skip button, skip it (reply 'skip' or click Skip).",
+        "If buttons are shown and one matches your intent, reply with EXACTLY that button text."
+      ],
+      "maxTurns": 16,
+      "stopWhen": "approval-prompt",
+      "mechanical": {
+        "mustUseTools": ["ask_field", "review_form"],
+        "neverTools": []
+      },
+      "rubric": "Did skipped optional questions stay skipped (not re-asked, not blocking review), and did the flow reach a review and approval prompt without the assistant pressuring Troy to fill optional fields?"
+    },
+    {
+      "id": "uniform-grant-not-denied",
+      "persona": "You are Keisha, 38, a mother of two in St. Lucy, standard English. School term is coming and money is tight.",
+      "goal": "Find out how to get help with school uniforms (the School Uniform Grant). Ask whether you can apply online. End (reply DONE) once you have a clear answer about how to apply.",
+      "facts": {},
+      "behaviour": [
+        "Ask about getting help with school uniform costs.",
+        "Follow up explicitly: 'can I apply online?'",
+        "End (reply DONE) once you have a clear answer."
+      ],
+      "maxTurns": 8,
+      "stopWhen": "goal-judged",
+      "mechanical": {
+        "mustUseTools": [],
+        "neverTools": ["ask_field", "set_field"]
+      },
+      "rubric": "The school uniform grant has a PUBLISHED online form that is not enabled for this chat. Did the assistant answer helpfully WITHOUT claiming no online form exists / 'the form has not been built' and WITHOUT framing the process as paper/in-person only? Pointing to the service page on alpha.gov.bb is the ideal answer."
+    }
+  ]
+}
