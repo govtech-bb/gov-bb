@@ -88,7 +88,7 @@ export const Route = createFileRoute("/forms/$formId/")({
 
 function RouteComponent() {
   const formMeta = Route.useLoaderData();
-  const { step, preview } = Route.useSearch();
+  const { step, preview, source } = Route.useSearch();
   const isPreview = Boolean(preview);
   // Rehydrate the committed submission outcome on a confirmation-step reload so
   // the renderer doesn't bounce the citizen off it (submissionState is React
@@ -136,6 +136,22 @@ function RouteComponent() {
   // form default values without issuing two reads.
   const savedFormData = getFormData(formMeta.formId);
 
+  // When a citizen arrives via another form's "Give feedback" link, the URL
+  // carries `?source=<originating-formId>`. Seed it into the conventional
+  // `referring-service` field (declared by feedback recipes such as the exit
+  // survey) so the submission records which form the feedback is about. By
+  // convention rather than hard-coding a step id: any recipe that declares a
+  // `referring-service` field captures it; forms that don't are unaffected.
+  const referringServiceFieldId = source
+    ? formMeta.steps
+        .flatMap((formStep) => formStep.fields)
+        .find((field) => field.fieldId === "referring-service")?.id
+    : undefined;
+  const sourceDefaults =
+    source && referringServiceFieldId
+      ? { [referringServiceFieldId]: source }
+      : {};
+
   // Re-create any extra repeatable-step instances the user had added before
   // the refresh.  Must happen before useForm so the saved field values land
   // on the correct (restored) steps.
@@ -162,6 +178,9 @@ function RouteComponent() {
     defaultValues: {
       ...(formMeta.defaultValues as FormValues),
       ...(savedFormData ?? {}),
+      // Spread last so the URL-provided source wins over any stale persisted
+      // value for the (read-only) referring-service field.
+      ...sourceDefaults,
     },
     onSubmit: async ({ value }) => {
       const values = value as FormValues;

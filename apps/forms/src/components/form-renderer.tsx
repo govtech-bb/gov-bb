@@ -28,6 +28,13 @@ import { StatusBanner } from "@govtech-bb/react";
 import { resolveStepTitle } from "@govtech-bb/form-conditions";
 import { buildStepScopedValues } from "../lib/form-builder/helpers/value-tree";
 
+// The feedback form citizens are sent to from a confirmation page, and its
+// first step. A root-relative path (not the absolute sandbox URL) so the link
+// resolves to whichever environment is serving the form — sandbox, prod, or
+// local. The originating form id is appended as `?source=` at render time.
+const EXIT_SURVEY_FORM_ID = "exit-survey";
+const EXIT_SURVEY_FIRST_STEP = "difficulty-rating";
+
 // ---------------------------------------------------------------------------
 // Field grouping (show-hide + radio/select conditional reveal)
 // ---------------------------------------------------------------------------
@@ -362,7 +369,16 @@ export default function FormRenderer({
 
   const isSubmissionConfirmation =
     currentStep.stepId === "submission-confirmation";
-  const isLastFormStep = currentStep.stepId === "declaration";
+  // The form is submitted from whichever step sits immediately before the
+  // submission-confirmation step. For standard recipes that is `declaration`;
+  // surveys with no declaration (e.g. the exit survey) submit from the
+  // build-form-injected check-your-answers step instead. Matching `declaration`
+  // explicitly as well keeps every existing recipe identical — across all
+  // recipes that carry one, declaration is always the step before confirmation,
+  // so the two clauses never disagree (and never yield two submit steps).
+  const isLastFormStep =
+    currentStep.stepId === "declaration" ||
+    visibleSteps[stepIndex + 1]?.stepId === "submission-confirmation";
   // Build show-hide groups so the left-border content wrapper spans the toggle
   // hint AND all conditionally-controlled sibling fields.
   const fieldGroups = buildFieldGroups(currentFields);
@@ -394,6 +410,15 @@ export default function FormRenderer({
   // The submission confirmation owns its own full-width layout (a full-bleed
   // banner plus inner containers), so it renders outside the page container.
   if (isSubmissionConfirmation) {
+    // Link to the exit survey, tagging the originating form id so the survey
+    // submission records which service the feedback is about. Suppressed on the
+    // exit survey itself so it never invites feedback on the feedback form.
+    const feedbackUrl =
+      formMeta.formId === EXIT_SURVEY_FORM_ID
+        ? undefined
+        : `/forms/${EXIT_SURVEY_FORM_ID}?step=${EXIT_SURVEY_FIRST_STEP}&source=${encodeURIComponent(
+            formMeta.formId,
+          )}`;
     return (
       <div className="form-page-confirmation">
         <SubmissionConfirmation
@@ -406,6 +431,7 @@ export default function FormRenderer({
           contactDetails={formMeta.contactDetails}
           onTryAgain={() => navigateToStep("check-your-answers")}
           submissionState={submissionState}
+          feedbackUrl={feedbackUrl}
         />
       </div>
     );
