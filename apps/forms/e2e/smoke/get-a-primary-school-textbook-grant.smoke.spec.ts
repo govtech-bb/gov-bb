@@ -27,17 +27,18 @@
  *  - `relationship-description` is conditional on `is-parent-or-guardian == "no"`,
  *    so answering "yes" skips it (and the whole `guardian-details` step, which is
  *    `stepConditionalOn` the same answer).
- *  - `child-details` is repeatable (min 1, max 5). Since v1.6.0 `child-school`
- *    and `child-principal-name` are `sharedFields`, which changes how the
- *    renderer materialises the step into TWO pages:
- *      · the base `child-details` page holds the per-child fields AND the two
- *        shared fields (school + principal), filled once — no `addAnother` here;
- *      · the materialised `child-details~1` instance repeats the per-child
- *        fields WITHOUT the shared ones, and carries the required `addAnother`
- *        radio ("Do you have another child at the same school?") — answered
- *        "no" to stay on the single-child path (#816).
- *    So both pages must be walked, and the shared fields are only set on the
- *    base page.
+ *  - `child-details` is repeatable (min 1, max 5) with `child-school` and
+ *    `child-principal-name` as `sharedFields`, so the renderer materialises the
+ *    step into TWO pages (#1257):
+ *      · the base `child-details` page is the shared-values page — it holds
+ *        ONLY the shared fields (school + principal), filled once, with no
+ *        per-child fields and no `addAnother` radio;
+ *      · the materialised `child-details~1` instance holds the per-child fields
+ *        (WITHOUT the shared ones) and carries the required `addAnother` radio
+ *        ("Do you have another child at the same school?") — answered "no" to
+ *        stay on the single-child path (#816).
+ *    So both pages must be walked: shared fields on the base page, per-child
+ *    fields + `addAnother` on `~1`.
  *  - National ID format is `######-####`; telephone is a Barbados-style number.
  *  - The renderer auto-injects a `check-your-answers` review step before
  *    `submission-confirmation`.
@@ -74,18 +75,14 @@ test.describe("Get a Primary School Textbook Grant — Live Smoke", () => {
     });
 
     // ─── Tell us about the child (base / shared-values page) ─────────────────
-    // The base `child-details` page holds the per-child fields plus the two
-    // shared fields (`child-school`, `child-principal-name`). It has NO
-    // `addAnother` radio — that lives on the materialised `child-details~1`
-    // instance below.
+    // The base `child-details` page holds ONLY the shared fields
+    // (`child-school`, `child-principal-name`), filled once. The per-child
+    // fields and the `addAnother` radio live on the materialised
+    // `child-details~1` instance below — they are NOT collected here (#1257).
     let step = expectStep(page, "child-details", { exact: true });
     await expect(page.locator("h1")).toContainText("Tell us about the child");
-    await fillField(page, step, "child-first-name", faker.person.firstName());
-    await fillField(page, step, "child-last-name", lastName);
-    await fillField(page, step, "child-id-number", nationalId());
-    await selectRadio(page, step, "child-sex", "female");
     // child-school is a native <select> ("Name of institution"); use the option
-    // value, not free text. Shared field — set only here, on the base page.
+    // value, not free text.
     await selectDropdown(page, step, "child-school", "all-saints-primary");
     await fillField(
       page,
@@ -93,8 +90,6 @@ test.describe("Get a Primary School Textbook Grant — Live Smoke", () => {
       "child-principal-name",
       `${faker.person.firstName()} ${faker.person.lastName()}`,
     );
-    await fillField(page, step, "child-class", "Class 4");
-    await selectRadio(page, step, "is-parent-or-guardian", "yes");
     await advance(page, step);
 
     // ─── Child instance 1 (`child-details~1`) ────────────────────────────────
