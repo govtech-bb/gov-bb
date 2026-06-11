@@ -228,6 +228,85 @@ describe("FormRenderer", () => {
     ).toBeInTheDocument();
   });
 
+  it("renders a conditionalTitle when its condition matches the form values", () => {
+    const step = {
+      stepId: "birth-details",
+      title: "Provide the person's birth details",
+      conditionalTitle: [
+        {
+          targetStepId: "applying-for-yourself",
+          targetFieldId: "applying-for-yourself",
+          operator: "equal" as const,
+          value: "yes",
+          title: "Provide your birth details",
+        },
+      ],
+      fields: [],
+      behaviours: [],
+    };
+    // The watched answer ("yes") lives under its composite `stepId_fieldId` key.
+    mockUseStore.mockImplementation(
+      (_store: unknown, selector: (state: any) => any) =>
+        selector({
+          values: { "applying-for-yourself_applying-for-yourself": "yes" },
+          fieldMeta: {},
+        }),
+    );
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="birth-details"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", { name: /Provide your birth details/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("falls back to the static title when no conditionalTitle matches", () => {
+    const step = {
+      stepId: "birth-details",
+      title: "Provide the person's birth details",
+      conditionalTitle: [
+        {
+          targetStepId: "applying-for-yourself",
+          targetFieldId: "applying-for-yourself",
+          operator: "equal" as const,
+          value: "yes",
+          title: "Provide your birth details",
+        },
+      ],
+      fields: [],
+      behaviours: [],
+    };
+    mockUseStore.mockImplementation(
+      (_store: unknown, selector: (state: any) => any) =>
+        selector({
+          values: { "applying-for-yourself_applying-for-yourself": "no" },
+          fieldMeta: {},
+        }),
+    );
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="birth-details"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", {
+        name: /Provide the person's birth details/,
+      }),
+    ).toBeInTheDocument();
+  });
+
   it("hides Previous button on first step (currentIndex = 0)", () => {
     mockUseStepGuard.mockReturnValue({
       navigateToStep: mockNavigateToStep,

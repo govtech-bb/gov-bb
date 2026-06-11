@@ -182,6 +182,68 @@ describe("EmailBodyBuilder", () => {
       expect(ctx.sections[1].title).toBe("Contact Details");
     });
 
+    describe("conditionalTitle (#871)", () => {
+      // A "personal" step whose heading flips to "Your details" when the
+      // contact step's `applyingFor` answer is "self", else "Their details".
+      const contractWithConditionalTitle = makeContract({
+        steps: [
+          {
+            stepId: "personal",
+            title: "Their details",
+            conditionalTitle: [
+              {
+                targetStepId: "contact",
+                targetFieldId: "applyingFor",
+                operator: "equal",
+                value: "self",
+                title: "Your details",
+              },
+            ],
+            elements: [
+              { fieldId: "firstName", label: "First Name", htmlType: "text" },
+            ],
+          },
+          {
+            stepId: "contact",
+            title: "Contact Details",
+            elements: [{ fieldId: "email", label: "Email", htmlType: "email" }],
+          },
+        ],
+      } as Partial<ServiceContract>);
+
+      const payloadFor = (applyingFor: string) =>
+        makePayload({
+          values: {
+            personal: { firstName: "Alice" },
+            contact: { email: "a@example.com", applyingFor },
+          },
+          meta: {
+            ...makePayload().meta,
+            activeStepIds: ["personal", "contact"],
+            activeFieldIds: {
+              personal: ["firstName"],
+              contact: ["email"],
+            },
+          },
+        });
+
+      it("uses the conditional title when its condition matches", async () => {
+        builder = new EmailBodyBuilder(
+          makeFormDefinitionsService(contractWithConditionalTitle),
+        );
+        const ctx = await builder.build(payloadFor("self"));
+        expect(ctx.sections[0].title).toBe("Your details");
+      });
+
+      it("falls back to the static title when no condition matches", async () => {
+        builder = new EmailBodyBuilder(
+          makeFormDefinitionsService(contractWithConditionalTitle),
+        );
+        const ctx = await builder.build(payloadFor("someone-else"));
+        expect(ctx.sections[0].title).toBe("Their details");
+      });
+    });
+
     it("renders plain text field values as strings", async () => {
       const ctx = await builder.build(makePayload());
 
