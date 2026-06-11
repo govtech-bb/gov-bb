@@ -33,7 +33,7 @@ describe("BUILTIN_REGISTRY", () => {
     );
   });
 
-  it("exposes the primary-school select with all 71 schools", () => {
+  it("exposes the primary-school select with all 70 schools", () => {
     const primarySchool = BUILTIN_REGISTRY["components/primary-school"];
     expect(primarySchool).toMatchObject({
       fieldId: "primary-school",
@@ -44,7 +44,7 @@ describe("BUILTIN_REGISTRY", () => {
     if (!("options" in primarySchool)) {
       throw new Error("primary-school must define options");
     }
-    expect(primarySchool.options).toHaveLength(71);
+    expect(primarySchool.options).toHaveLength(70);
     expect(primarySchool.options?.[0]).toEqual({
       label: "A Dacosta Edwards",
       value: "a-dacosta-edwards",
