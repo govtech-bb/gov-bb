@@ -7,11 +7,11 @@ form_id: school-uniform-grant-barbados
 ---
 ## How long does it take?
 
-It shouldn't take longer than 20 minutes.
+It shouldn't take longer than 40 minutes.
 
 ## What you will need
 
-- a debit or credit card
-- an EZPay+ account
+-   a debit or credit card
+-   an EZPay+ account
 
 <a data-start-link>Start now</a>
