@@ -577,3 +577,28 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: pnpm recipe-version-guard
+
+  # PR gate for #429: every `components/generic-*` field a PR adds or modifies
+  # in a recipe must declare `validations.required.value` explicitly. Existing
+  # (unchanged) fields are grandfathered. The `recipe-required-override` label
+  # skips the check.
+  recipe-required-guard:
+    name: Recipe Required Guard
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+
+      - name: Check generic-* fields declare required explicitly
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm recipe-required-guard
