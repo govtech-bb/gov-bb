@@ -122,6 +122,14 @@ export const submitFormDef = toolDefinition({
   needsApproval: true,
 });
 
+export const cancelFormDef = toolDefinition({
+  name: "cancel_form",
+  description:
+    "Call with NO arguments when the user clearly wants to ABANDON the in-progress application — e.g. 'cancel', 'never mind', 'stop', 'I don't want to do this anymore', 'forget it'. It discards everything collected and returns to normal chat; nothing is submitted. Do NOT call it on hesitation ('hmm', 'not sure') — ask whether they want to continue or stop. Do NOT call it when they just want to change an answer.",
+  inputSchema: z.object({}),
+  outputSchema: z.object({ ok: z.boolean() }),
+});
+
 export const offerFeedbackDef = toolDefinition({
   name: "offer_feedback",
   description:

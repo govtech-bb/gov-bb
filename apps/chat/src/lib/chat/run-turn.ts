@@ -130,8 +130,15 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
   const closer =
     resolution.kind !== "collect" &&
     isConversationalCloser(latest, lastAssistantText(messages));
+  // Mid-collection, most turns are field answers ("Aaron", "1990-05-04",
+  // "Yes") — retrieval is dead weight there. But a QUESTION mid-form ("how
+  // much does this cost?", "what documents do I need?") must stay grounded:
+  // skipping retrieval left the model answering service questions from
+  // nothing. retrievalBoostSlug keeps the active form's own pages on top.
   const skipRetrieval =
-    isGreetingOrTooShort(latest) || activelyCollecting || closer;
+    isGreetingOrTooShort(latest) ||
+    (activelyCollecting && !isInfoQuestion(latest)) ||
+    closer;
 
   // A form matched on an INFO question (nothing collected yet, the message is a
   // question rather than apply-intent): answer from RAG and offer the form, but
@@ -498,6 +505,12 @@ function buildSystemPrompts(
         .join("\n");
       parts.push(
         `Already collected (do NOT re-ask these unless the user wants to change them):\n${lines}`,
+      );
+      // Mid-collection questions now retrieve context (see skipRetrieval) —
+      // answer from it before resuming, instead of ignoring the question or
+      // guessing.
+      parts.push(
+        "If the user's latest message is a QUESTION (cost, documents, timing, eligibility) rather than a field answer, answer it briefly from the context above FIRST, then continue with the next uncollected field in the same response.",
       );
     } else if (offerOnly) {
       // Collect-form matched on an INFO question, nothing collected yet. Answer,

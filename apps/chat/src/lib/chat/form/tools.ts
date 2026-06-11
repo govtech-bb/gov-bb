@@ -1,5 +1,6 @@
 import {
   askFieldDef,
+  cancelFormDef,
   declineFeedbackDef,
   offerFeedbackDef,
   presentChoicesDef,
@@ -21,6 +22,7 @@ import {
   getActiveFieldIds,
   isChatCollectable,
 } from "./schema";
+import { resetSessionForNewForm } from "./session";
 import type { FormSession } from "./session";
 import { submitFormUpstream, type SubmitOutcome } from "./submit";
 import {
@@ -243,6 +245,21 @@ const submitFormTool = submitFormDef.server<FormTurnContext>(
   },
 );
 
+// User abandons an in-progress application. Discards collected values and
+// unpins the form. The cancelled slug is parked in handedOffSlug so the
+// matcher's rolling window (which still names the form from earlier turns)
+// can't instantly re-pin it — same suppression a handoff uses. The user can
+// still restart deliberately: a LATEST message naming the form re-matches.
+const cancelFormTool = cancelFormDef.server<FormTurnContext>(
+  async (_args, ctx) => {
+    const { session } = ctx.context;
+    const cancelled = session.slug;
+    resetSessionForNewForm(session);
+    session.handedOffSlug = cancelled;
+    return { ok: true };
+  },
+);
+
 // Tools for an OFFER-ONLY turn: a collect-type form matched on an info question
 // (nothing collected yet). We deliberately withhold set_field/submit_form so the
 // model can't silently start recording fields on what is still a question — but
@@ -254,14 +271,19 @@ export function buildOfferTools() {
   return [presentChoicesTool];
 }
 
+// Shared collect tools. cancel_form is added only for real service forms —
+// the feedback form has its own exit (decline_feedback) and offering both
+// would give the model two near-identical ways out.
+const collectTools = [
+  presentChoicesTool,
+  askFieldTool,
+  setFieldTool,
+  reviewFormTool,
+  submitFormTool,
+];
+
 export function buildFormTools() {
-  return [
-    presentChoicesTool,
-    askFieldTool,
-    setFieldTool,
-    reviewFormTool,
-    submitFormTool,
-  ];
+  return [...collectTools, cancelFormTool];
 }
 
 // End-of-chat feedback offer. The handler pins the chat-feedback form so the
@@ -290,9 +312,9 @@ const declineFeedbackTool = declineFeedbackDef.server<FormTurnContext>(
   },
 );
 
-// Tools while the optional feedback form is active: the normal collect tools
+// Tools while the optional feedback form is active: the shared collect tools
 // PLUS decline_feedback, so a user who only agreed to *consider* feedback can
 // bow out instead of being railroaded into the form. See run-turn.ts.
 export function buildFeedbackTools() {
-  return [...buildFormTools(), declineFeedbackTool];
+  return [...collectTools, declineFeedbackTool];
 }
