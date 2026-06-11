@@ -98,6 +98,74 @@ test("pinSessionForm resets a submitted feedback session instead of wedging", as
   assert.equal(s.feedbackOffered, true);
 });
 
+// A zero-value chat-feedback pin (offer_feedback pins on offer) is still an
+// open offer: a topic switch must release it instead of trapping the user on
+// the feedback form (#1202).
+
+test("pinSessionForm releases a zero-value feedback pin on an info-question topic switch", async () => {
+  const s = session({
+    slug: "chat-feedback",
+    status: "collecting",
+    feedbackOffered: true,
+    values: {},
+  });
+  await pinSessionForm(s, [userMessage("how do I renew my passport?")], {
+    match: async () => null,
+  });
+  // Released to normal no-form routing, so RAG can answer the new question.
+  assert.equal(s.slug, null);
+  // The offer stays spent — a topic switch reads as an implicit decline.
+  assert.equal(s.feedbackOffered, true);
+});
+
+test("pinSessionForm re-pins a zero-value feedback pin to a form the latest message matches", async () => {
+  const s = session({
+    slug: "chat-feedback",
+    status: "collecting",
+    feedbackOffered: true,
+    values: {},
+  });
+  await pinSessionForm(s, [userMessage("I want to apply for a passport")], {
+    match: async () => entry("get-passport"),
+  });
+  assert.equal(s.slug, "get-passport");
+  assert.equal(s.feedbackOffered, true);
+});
+
+test("pinSessionForm keeps a zero-value feedback pin for a yes/no-shaped reply", async () => {
+  const s = session({
+    slug: "chat-feedback",
+    status: "collecting",
+    feedbackOffered: true,
+    values: {},
+  });
+  await pinSessionForm(s, [userMessage("no thanks")], {
+    match: async () => null,
+  });
+  // Not a topic switch — collect-feedback handles the decline next.
+  assert.equal(s.slug, "chat-feedback");
+});
+
+test("pinSessionForm keeps an in-progress feedback form pinned despite a question", async () => {
+  const s = session({
+    slug: "chat-feedback",
+    status: "collecting",
+    feedbackOffered: true,
+    values: { rating: "5" },
+  });
+  let called = 0;
+  await pinSessionForm(s, [userMessage("what happens to my feedback?")], {
+    match: async () => {
+      called++;
+      return null;
+    },
+  });
+  // Mid-collection (a value captured): grounded via retrievalBoostSlug, not a
+  // topic switch — stays pinned and the matcher isn't consulted.
+  assert.equal(s.slug, "chat-feedback");
+  assert.equal(called, 0);
+});
+
 // ---------------------------------------------------------------------------
 // applyRagFallback
 // ---------------------------------------------------------------------------
