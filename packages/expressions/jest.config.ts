@@ -15,7 +15,7 @@ const config: Config = {
   rootDir: "src",
   testRegex: ".*\\.spec\\.ts$",
   moduleNameMapper: {
-    "^@govtech-bb/(.*)$": "<rootDir>/../../packages/$1/src/index.ts",
+    "^@govtech-bb/(.*)$": "<rootDir>/../../$1/src/index.ts",
   },
   collectCoverage: true,
   collectCoverageFrom: ["**/*.ts", "!**/*.spec.ts", "!**/*.d.ts"],
