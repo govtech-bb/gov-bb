@@ -4,6 +4,7 @@ import type { Primitive, ServiceContract } from "@govtech-bb/form-types";
 import {
   describeField,
   nextAskableField,
+  nextRequiredAskableField,
   findEscapeToggle,
   getActiveFieldIds,
   isChatCollectable,
@@ -429,6 +430,24 @@ test("nextAskableField re-serves a required field asked but not answered", () =>
       { "experience-rating": "good" },
       new Set(["experience-rating", "improvement-comment"]),
     ),
+    null,
+  );
+});
+
+// The deterministic re-present path (server re-renders the options when a form
+// is re-triggered) only fires for an unanswered REQUIRED question — an optional
+// one left blank must not trap the user on a question they can skip.
+test("nextRequiredAskableField returns a pending required field, null when only optional remains", () => {
+  const c = requiredCursorContract();
+  // Required + unanswered (even if already presented) → returned.
+  assert.equal(
+    nextRequiredAskableField(c, {}, new Set(["experience-rating"]))?.field
+      .fieldId,
+    "experience-rating",
+  );
+  // Required answered; only the optional comment is pending → null.
+  assert.equal(
+    nextRequiredAskableField(c, { "experience-rating": "good" }, new Set()),
     null,
   );
 });

@@ -1,6 +1,10 @@
 import type { UIMessage } from "@tanstack/ai";
 import { getServerEnv } from "#/config/env";
-import { FEEDBACK_FORM_ID, FEEDBACK_TRIGGER_PHRASE } from "#/lib/chat/feedback";
+import {
+  FEEDBACK_FORM_ID,
+  FEEDBACK_TRIGGER_PHRASE,
+  pinFeedbackForm,
+} from "#/lib/chat/feedback";
 import { isFeedbackRequest, isInfoQuestion } from "#/lib/chat/guards";
 import { lastUserText, recentUserText } from "#/lib/chat/messages";
 import {
@@ -40,18 +44,26 @@ export async function pinSessionForm(
   deps: PinDeps = { match: matchFormsFromText },
 ): Promise<void> {
   // A submitted form is terminal — the application is done, nothing more to
-  // collect — so unpin it. Otherwise the matcher re-pins it from the rolling
-  // window (which still names the just-completed form), resolution stays
-  // "collect", and the feedback offer (which needs "none") can never fire after
-  // an application (#1203). The feedback form clears outright: it's pinned
-  // programmatically and can never be re-matched from text, and feedbackOffered
-  // survives the reset so it isn't re-offered. A real service form is PARKED
-  // instead — handedOffSlug makes the rolling-window matcher defer to the user's
-  // LATEST message, so their earlier application messages don't re-wedge them
-  // into the finished form, while a fresh mention of any service re-engages.
+  // collect — so unpin it; otherwise the matcher re-pins it from the rolling
+  // window (which still names the just-completed form) and traps the user.
+  //   - Feedback form: clear outright. It's pinned programmatically and can
+  //     never be re-matched from text; feedbackOffered survives the reset.
+  //   - Real form, feedback not yet offered: a completed application is the
+  //     most natural moment to ask, so AUTO-PIN the chat-feedback form. The
+  //     submit turn's prompt already invited it once (the collect-branch
+  //     forward-looking guidance in prompt-builder), and this zero-value pin is
+  //     an OPEN OFFER — the open-offer release below still lets a topic switch
+  //     or info-question escape, so the user isn't trapped. pinFeedbackForm
+  //     marks feedbackOffered, so it's never asked twice. (Supersedes the #1203
+  //     park-for-model-offer behaviour merged in #1220.)
+  //   - Real form, feedback already offered/given: just PARK it (handedOffSlug
+  //     defers the rolling-window matcher to the latest message) — no second
+  //     ask; the confirmation fell back to the normal "anything else?" wrap-up.
   if (session.slug && session.status === "submitted") {
     if (session.slug === FEEDBACK_FORM_ID) {
       resetSessionForNewForm(session);
+    } else if (!session.feedbackOffered) {
+      pinFeedbackForm(session);
     } else {
       parkHandoff(session, session.slug);
     }
@@ -87,23 +99,23 @@ export async function pinSessionForm(
     }
   }
   if (session.slug && session.status !== "submitted") return;
-  // The notice banner's "Give feedback" link sends FEEDBACK_TRIGGER_PHRASE. Pin
-  // chat-feedback by EXPLICIT id, not via the title-token matcher: the matcher
-  // only picked it up because "feedback"/"assistant" happen to be unique among
-  // form titles today, and a future recipe carrying either token could
-  // out-score or tie-and-steal the banner match (#1206). Matching the exact
-  // phrase removes that dependency on title uniqueness. Mark the offer spent so
-  // the model never also offers feedback later this session. The phrase is a
-  // statement (not a question), so the turn still enters collect-feedback.
-  // The banner sends the EXACT FEEDBACK_TRIGGER_PHRASE; a user can also just
-  // TYPE the intent ("I want to give feedback", "i wan to feedback"). Both take
-  // the same explicit-pin path so the next turn collects the rating directly,
-  // instead of the model asking a redundant "would you like to give feedback?"
-  // first (the model-initiated offer still owns the natural-wrap-up case). The
-  // free-typed detector is gated on !isInfoQuestion so a question ABOUT feedback
-  // ("can I give feedback?", "what happens to my feedback?") doesn't start the
-  // form — it falls through to normal handling. A pinned feedback statement is
-  // not a question, so the turn enters collect-feedback.
+  // Two ways a user explicitly asks to give feedback, both pinning chat-feedback
+  // by EXPLICIT id (never the title-token matcher — the matcher only picked it
+  // up because "feedback"/"assistant" happen to be unique among form titles
+  // today, and a future recipe carrying either token could out-score or
+  // tie-and-steal the match, #1206):
+  //   1. The notice banner's "Give feedback" link sends the EXACT
+  //      FEEDBACK_TRIGGER_PHRASE.
+  //   2. The user TYPES the intent ("I want to give feedback", "i wan to
+  //      feedback") — isFeedbackRequest catches the free-typed variants.
+  // Both pin directly so the next turn collects the rating, instead of the model
+  // asking a redundant "would you like to give feedback?" first (the
+  // model-initiated offer still owns the natural-wrap-up case). The free-typed
+  // detector is gated on !isInfoQuestion so a question ABOUT feedback ("can I
+  // give feedback?", "what happens to my feedback?") doesn't start the form — it
+  // falls through to normal handling. Mark the offer spent so the model never
+  // also offers later this session. Either trigger is a statement, not a
+  // question, so the turn enters collect-feedback.
   const latest = lastUserText(messages);
   if (
     latest === FEEDBACK_TRIGGER_PHRASE ||

@@ -54,4 +54,18 @@ describe("registerOperations", () => {
       /^\d{4}-\d{2}-\d{2}$/,
     );
   });
+
+  it("evaluates schoolEmail via custom op (routes by submitted school)", () => {
+    // Mirrors the get-a-primary-school-textbook-grant recipe: the school is a
+    // shared field with fieldId `child-school`, spread into each child-details
+    // instance, so routing reads index 0 of the array.
+    const rule = {
+      schoolEmail: [{ var: "values.child-details.0.child-school" }],
+    } as unknown as RulesLogic;
+    expect(
+      jsonLogic.apply(rule, {
+        values: { "child-details": [{ "child-school": "st-george-primary" }] },
+      }),
+    ).toBe("StGeorgePrimary@mes.gov.bb");
+  });
 });

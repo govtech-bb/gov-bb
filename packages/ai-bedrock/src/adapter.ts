@@ -63,11 +63,17 @@ export class BedrockTextAdapter extends BaseTextAdapter<
     const { messages, tools, systemPrompts, modelOptions, request, logger } =
       options;
 
-    const bedrockMessages = modelMessagesToBedrock(messages);
+    const toolConfig = toolsToBedrockToolConfig(tools);
+    // Bedrock rejects a conversation containing toolUse/toolResult blocks unless
+    // the request also defines tools. When this turn binds none (e.g. a handoff
+    // after a form was abandoned), drop the prior tool exchange from the history
+    // so the request stays valid. See modelMessagesToBedrock.
+    const bedrockMessages = modelMessagesToBedrock(messages, {
+      includeToolBlocks: toolConfig !== undefined,
+    });
     const system = systemPromptsToBedrock(systemPrompts, {
       cacheFirstBlock: this.cacheSystemPrompt,
     });
-    const toolConfig = toolsToBedrockToolConfig(tools);
     const inferenceConfig = buildInferenceConfig(
       modelOptions?.temperature,
       modelOptions?.topP,

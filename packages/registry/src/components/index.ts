@@ -25,6 +25,7 @@ export { Parish } from "./parish";
 export { PassportNumber } from "./passport-number";
 export { Postcode } from "./post-code";
 export { PrimarySchool } from "./primary-school";
+export { SCHOOL_EMAILS, SCHOOL_EMAIL_FALLBACK } from "./primary-school-emails";
 export { SecondarySchool } from "./secondary-school";
 export { Relationship } from "./relationship";
 export { Sex } from "./sex";

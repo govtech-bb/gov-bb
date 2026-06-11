@@ -31,6 +31,7 @@ export const PrimarySchool: SelectPrimitive = {
     { label: "Hindsbury Primary", value: "hindsbury-primary" },
     { label: "Holy Innocents' Primary", value: "holy-innocents-primary" },
     { label: "Ignatius Byer Primary", value: "ignatius-byer-primary" },
+    { label: "Kelly's Fantastic School", value: "kellys-fantastic-school" },
     { label: "Lawrence T Gay", value: "lawrence-t-gay" },
     { label: "Luther Thorne Memorial", value: "luther-thorne-memorial" },
     { label: "Milton Lynch Primary", value: "milton-lynch-primary" },

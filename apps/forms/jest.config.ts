@@ -31,6 +31,10 @@ const config: Config = {
     // from expressions (#1020), so the resolver needs it too.
     "^@govtech-bb/expressions$":
       "<rootDir>/../../../packages/expressions/src/index.ts",
+    // The expressions barrel now pulls in @govtech-bb/registry (the schoolEmail
+    // op's school→email map, #1213), so the resolver needs registry too.
+    "^@govtech-bb/registry$":
+      "<rootDir>/../../../packages/registry/src/index.ts",
     // Forms app path aliases
     "^@forms/types$": "<rootDir>/types/index.ts",
     "^@forms/lib$": "<rootDir>/lib/form-builder/index.ts",

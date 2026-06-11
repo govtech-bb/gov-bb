@@ -156,6 +156,22 @@ export function buildSystemPrompts(state: PromptTurnState): SystemEntry[] {
     parts.push(
       `ONLINE FORM LINK for this service: [${formTitle}](${formUrl}). If the user wants the link or prefers to do it themselves, share exactly that markdown link. NEVER suggest a paper form, printing/downloading a form, or going to an office in person — the only options to offer are filling it out here with you, or this online link.`,
     );
+    // A completed application is the most natural moment to ask for feedback,
+    // so this is forward-looking guidance for the SUBMIT turn, not the turn
+    // after: the system prompt is built before submit_form runs (status is
+    // still "collecting" here) and pinSessionForm unpins the form next turn, so
+    // the post-submit reply the model composes THIS turn is the only place the
+    // invitation can land. Gated to a real form not yet offered feedback —
+    // FEEDBACK_COLLECTION_GUIDANCE owns the feedback form's own thank-you, and
+    // once feedback is offered/given we stay silent so the base "Anything else
+    // I can help with?" wrap-up applies (no second ask). On success the next
+    // turn auto-pins chat-feedback (pinSessionForm), collecting a "yes" or
+    // declining a "no".
+    if (slug !== FEEDBACK_FORM_ID && !session.feedbackOffered) {
+      parts.push(
+        `AFTER A SUCCESSFUL submit_form THIS TURN: confirm the reference number, then — instead of ending with "Anything else I can help with?" — close with ONE short sentence inviting quick feedback on the assistant (it is in beta), an invitation they can accept or decline, e.g. "Before you go, would you like to give us quick feedback on the assistant? It helps us improve." Do NOT phrase it as "how was this?" and do NOT ask the rating question yourself; the rating is collected next only if they accept.`,
+      );
+    }
     // Reciting the reference number here is intentionally NOT feedback-safe:
     // it's never reached for the feedback form because pinSessionForm resets a
     // submitted feedback session (clearing slug + referenceNumber) before

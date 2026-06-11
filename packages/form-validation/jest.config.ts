@@ -20,7 +20,7 @@ const config: Config = {
     // node fallback, but `expressions` (not root-symlinked) needs an explicit,
     // correctly-pointed entry. Listed first so it wins for that one module.
     "^@govtech-bb/expressions$": "<rootDir>/../../expressions/src/index.ts",
-    "^@govtech-bb/(.*)$": "<rootDir>/../../packages/$1/src/index.ts",
+    "^@govtech-bb/(.*)$": "<rootDir>/../../$1/src/index.ts",
   },
   collectCoverage: true,
   collectCoverageFrom: ["**/*.ts", "!**/*.spec.ts", "!**/*.d.ts"],
