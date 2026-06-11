@@ -10,6 +10,7 @@ import {
   NO_FORM_DISCLOSURE,
   SYSTEM_PROMPT,
   UNAPPROVED_FORM_DISCLOSURE,
+  buildCantHelpDisclosure,
   buildDirectLinkDisclosure,
   buildDisambiguationDisclosure,
   buildFormOfferDisclosure,
@@ -45,6 +46,10 @@ export interface PromptTurnState {
   // (no policy entry) — the disclosure must not deny the form exists.
   unapprovedForm?: boolean;
   noContext?: boolean;
+  // We already asked one clarifying question on the prior miss and retrieval is
+  // STILL empty (#1176) — switch from the clarify disclosure to the can't-help
+  // one instead of re-asking. Only meaningful when noContext is true.
+  missClarifyExhausted?: boolean;
   offerFeedback?: boolean;
   closer?: boolean;
 }
@@ -63,6 +68,7 @@ export function buildSystemPrompts(state: PromptTurnState): SystemEntry[] {
     disambiguation,
     unapprovedForm = false,
     noContext = false,
+    missClarifyExhausted = false,
     offerFeedback = false,
     closer = false,
   } = state;
@@ -209,7 +215,12 @@ export function buildSystemPrompts(state: PromptTurnState): SystemEntry[] {
     // the closest service (ask to clarify) instead of dead-ending. Replaces the
     // misapplied NO_FORM_DISCLOSURE, which assumes there IS context to answer
     // from and would frame a non-existent service as in-person-only (#1099).
-    prompts.push(buildMissDisclosure());
+    // But once we've already clarified once and retrieval is STILL empty, stop
+    // re-asking and admit we can't help (#1176) — a clarified query that still
+    // grounds nothing never will.
+    prompts.push(
+      missClarifyExhausted ? buildCantHelpDisclosure() : buildMissDisclosure(),
+    );
   } else {
     prompts.push(NO_FORM_DISCLOSURE);
     if (offerFeedback) prompts.push(FEEDBACK_OFFER_GUIDANCE);

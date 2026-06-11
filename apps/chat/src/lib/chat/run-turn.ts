@@ -14,6 +14,7 @@ import {
   getOrCreateSession,
   parkHandoff,
   pinSessionForm,
+  recordMissOutcome,
   resolveActiveForm,
   withThreadLock,
   type FormResolution,
@@ -206,6 +207,17 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
   // NO_FORM_DISCLOSURE (#1099).
   const noContext = citations.length === 0 && !skipRetrieval;
 
+  // Clarify ONCE on a miss, then disclose we can't help instead of re-asking
+  // turn over turn (#1176). recordMissOutcome tracks consecutive misses on the
+  // session: the first miss clarifies, the second+ consecutive miss exhausts
+  // the clarify and switches to the can't-help disclosure. A non-miss turn
+  // resets the streak. Skipped turns (greeting / closer / active collection)
+  // are not misses, so they reset it too.
+  const { clarifyExhausted: missClarifyExhausted } = recordMissOutcome(
+    session,
+    noContext,
+  );
+
   // No active form, feedback not yet offered, and not parked mid-handoff:
   // expose offer_feedback so the model can invite feedback at a natural stop.
   // A retrieval miss (noContext) is never a natural stop — the user asked
@@ -236,6 +248,7 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     disambiguation,
     unapprovedForm,
     noContext,
+    missClarifyExhausted,
     offerFeedback,
     closer,
   });

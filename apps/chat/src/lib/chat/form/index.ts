@@ -4,6 +4,7 @@ export {
   consumeOfferReply,
   funnelPhase,
   parkHandoff,
+  recordMissOutcome,
   type FunnelPhase,
 } from "./funnel";
 export { applyRagFallback, pinSessionForm } from "./routing";

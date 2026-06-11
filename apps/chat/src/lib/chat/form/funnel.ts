@@ -92,6 +92,23 @@ export function consumeOfferReply(
   return null;
 }
 
+// Track consecutive retrieval misses so the assistant clarifies ONCE, then
+// discloses it can't help instead of re-asking turn over turn (#1176). A miss
+// increments the streak; any non-miss turn resets it. The FIRST miss returns
+// clarifyExhausted=false (ask one clarifying question); the SECOND and any
+// later consecutive miss return true (route to the can't-help disclosure,
+// never back to clarify). Code-derived, like the rest of the funnel — the
+// model only executes the chosen disclosure.
+export function recordMissOutcome(
+  session: FormSession,
+  noContext: boolean,
+): { clarifyExhausted: boolean } {
+  const next = noContext ? (session.consecutiveMisses ?? 0) + 1 : 0;
+  session.consecutiveMisses = next;
+  session.updatedAt = Date.now();
+  return { clarifyExhausted: noContext && next >= 2 };
+}
+
 // User abandons an in-progress application (the cancel_form tool): collected
 // values are DISCARDED immediately — "cancelled" must not leave a draft
 // lingering in memory — and the slug is parked for the same re-surface

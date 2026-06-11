@@ -4,6 +4,7 @@ import {
   FEEDBACK_COLLECTION_GUIDANCE,
   FORM_COLLECTION_PROTOCOL,
   SYSTEM_PROMPT,
+  buildCantHelpDisclosure,
   buildHandoffContinuationDisclosure,
   buildHandoffDisclosure,
   buildHandoffOfferDisclosure,
@@ -62,6 +63,26 @@ test("miss disclosure: asks to clarify, invents nothing, doesn't fabricate a pap
   assert.match(out, /invent|guess a service/i);
   // Doesn't claim it knows there's no online form — it doesn't know the service.
   assert.match(out, /don't know yet|simply don't know/i);
+});
+
+// After ONE clarifying question on a miss, a still-empty retrieval means a
+// clarified query won't help — stop re-asking and disclose we can't help
+// (#1176). The disclosure must NOT pose another clarifying question, must
+// invent nothing, and must end by asking if there's anything else so a "no"
+// flows into the existing closer + feedback path.
+test("can't-help disclosure: stops clarifying, invents nothing, asks anything-else", () => {
+  const out = buildCantHelpDisclosure();
+  // It clearly says it can't help with this rather than guiding further.
+  assert.match(out, /can't help|cannot help/i);
+  // It must NOT ask another clarifying question — that's the loop we're ending.
+  assert.match(out, /do not ask (another|a) clarifying question/i);
+  // Never invents a service / fee / step it can't see.
+  assert.match(out, /invent|guess/i);
+  // No fabricated paper / in-person conclusion.
+  assert.match(out, /paper|in person|in-person/i);
+  // Ends by inviting a next request, with the exact wording the closer path
+  // (WRAP_UP_RE = /anything else/i) recognises so a "no" winds the chat down.
+  assert.match(out, /Anything else I can help with\?/);
 });
 
 // On a successful feedback submit the model must thank the user and NOT recite
