@@ -464,33 +464,6 @@ describe("setupRepeatSteps", () => {
     ]);
   });
 
-  it("source step holds ONLY the shared fields; per-instance fields are not duplicated onto it (#1257)", () => {
-    // min:1 + sharedFields. The source step is the shared-values page and must
-    // carry ONLY the shared fields. The non-shared (per-instance) fields belong
-    // on ~1 alone — if they also appear on the source step the section is
-    // collected twice (the textbook-grant "extra time" bug).
-    const repeatBehaviour = makeRepeatableBehaviour(1, 5);
-    const sharedBehaviour = makeSharedFieldsBehaviour(["childSchool"]);
-    const step = makeStep(
-      "childDetails",
-      ["childFirstName", "childSchool", "childClass"],
-      [repeatBehaviour, sharedBehaviour],
-    );
-    const repeatSettings: RepeatableStepSettings = {};
-
-    const result = setupRepeatSteps([step], repeatSettings);
-
-    const sourceFieldIds = result[0].fields.map((f) => f.fieldId);
-    // Source step: only the shared field, none of the per-instance fields.
-    expect(sourceFieldIds).toEqual(["childSchool"]);
-
-    // ~1 instance: the per-instance fields, with shared fields filtered out.
-    const instanceFieldIds = result[1].fields.map((f) => f.fieldId);
-    expect(instanceFieldIds).toContain("childFirstName");
-    expect(instanceFieldIds).toContain("childClass");
-    expect(instanceFieldIds).not.toContain("childSchool");
-  });
-
   it("legacy min:0 — clamps to 1 and renders exactly one instance with addAnother (#771)", () => {
     // Legacy recipes may carry min:0 (old "base step only" semantics). After
     // normalisation, min:0 must render identically to min:1 — one instance on

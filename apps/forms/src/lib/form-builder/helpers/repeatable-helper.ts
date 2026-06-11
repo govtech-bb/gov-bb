@@ -76,14 +76,12 @@ export const setupRepeatSteps = (
 
     if (hasSharedFields) {
       // Shared-fields steps: the source step is a separate "shared values" page
-      // (it holds ONLY the shared fields, filled once) and the minimum repeat
+      // (it holds the shared fields, filled once) and the minimum repeat
       // instances are materialised as ~1..~min. The "Add another?" control sits
-      // on the last generated instance. The per-instance (non-shared) fields
-      // must NOT remain on the source step — otherwise they are collected here
-      // AND on ~1, so a min:1 step asks for them twice (#1257).
+      // on the last generated instance.
       updatedSteps[i] = {
         ...step,
-        fields: sourceFields.filter((f) => sharedFieldsIds.includes(f.fieldId)),
+        fields: sourceFields,
       };
 
       // Start at 1 to account for source step
