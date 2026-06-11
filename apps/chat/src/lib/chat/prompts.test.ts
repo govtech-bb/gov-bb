@@ -10,22 +10,16 @@ import {
   buildMissDisclosure,
 } from "./prompts";
 
-// The ILLEGITIMATE REQUESTS section must name bribery/corruption, so a
-// fraud-framed "how much to pay to get my child into a better school" is
-// declined rather than answered. Pairs with run-turn suppressing the form
-// offer when the rewrite flags the request illegitimate.
-test("system prompt declines bribery / paying for unfair advantage", () => {
-  assert.match(SYSTEM_PROMPT, /ILLEGITIMATE REQUESTS/);
-  assert.match(SYSTEM_PROMPT, /brib|unfair advantage/i);
-});
-
 // The form-collection / submit machinery lives in FORM_COLLECTION_PROTOCOL,
 // injected only on active-form turns — NOT in the always-on SYSTEM_PROMPT.
 // Guards against it creeping back into every turn (the overloading concern).
+// The bespoke ILLEGITIMATE REQUESTS section was removed for the same reason —
+// fraud declines lean on the base model; the eval `refusal` cases are the
+// canary that tells us if that stops being enough.
 test("form-collection rules are out of the always-on system prompt", () => {
   assert.ok(!/set_field|submit_form|FORM COLLECTION:/.test(SYSTEM_PROMPT));
-  // but the conversational + safety rules stay always-on
-  assert.match(SYSTEM_PROMPT, /CONTEXT USE|ILLEGITIMATE REQUESTS/);
+  // but the conversational grounding rules stay always-on
+  assert.match(SYSTEM_PROMPT, /CONTEXT USE/);
 });
 
 // The CHANNEL PREFERENCE section nudges informational turns online-first, but
@@ -46,8 +40,7 @@ test("system prompt nudges online-first, conditioned on the context", () => {
 // STRICT RAG recovery (#1099): a retrieval miss must not dead-end. The
 // grounding rule still forbids inventing facts/services, but the recovery half
 // now actively guides — name what was found, or ask a clarifying question —
-// rather than stopping at a bare decline. It stays subordinate to ILLEGITIMATE
-// REQUESTS (a fraud miss is declined, not "guided").
+// rather than stopping at a bare decline.
 test("system prompt: a retrieval miss guides forward instead of hard-stopping", () => {
   assert.match(SYSTEM_PROMPT, /CONTEXT USE|STRICT RAG/);
   assert.match(SYSTEM_PROMPT, /never hard-stop/i);
@@ -69,8 +62,6 @@ test("miss disclosure: asks to clarify, invents nothing, doesn't fabricate a pap
   assert.match(out, /invent|guess a service/i);
   // Doesn't claim it knows there's no online form — it doesn't know the service.
   assert.match(out, /don't know yet|simply don't know/i);
-  // Still defers to the fraud decline.
-  assert.match(out, /illegitimate|fraud/i);
 });
 
 // On a successful feedback submit the model must thank the user and NOT recite
