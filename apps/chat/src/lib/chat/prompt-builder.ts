@@ -129,6 +129,17 @@ export function buildSystemPrompts(state: PromptTurnState): SystemEntry[] {
       parts.push(
         `The user asked an INFORMATION question about this service and has NOT said they want to apply yet. First, answer their question from the context above. Then offer the online options by calling present_choices with a short question like "Want to apply? I can fill it out with you here, or send you the form link." and choices EXACTLY ["${OFFER_CHOICE_FILL}", "${OFFER_CHOICE_LINK}"]. Lead by mentioning you can fill it out together (many people do not realise the chat can do this). Do NOT ask for any form field and do NOT call set_field this turn — only answer, then offer the choice.`,
       );
+    } else if (session.askedFieldIds.size > 0) {
+      // The first question was already presented (the banner "Give feedback"
+      // link clicked twice, or the user repeated the trigger) but nothing is
+      // collected yet. The fresh-start line below ("has not started yet") would
+      // contradict the history — the model already asked — and at temperature 0
+      // it tends to narrate the question in prose instead of re-calling
+      // ask_field, so the option pills never re-render (#1207 follow-up). Steer
+      // the re-present explicitly: only ask_field renders the options.
+      parts.push(
+        "You have ALREADY shown the user the first question, but they haven't answered it yet (they re-opened the form or repeated themselves). Do NOT say you're starting over and do NOT describe the question or its options in text. Just call ask_field with no arguments to show that same question again with its option buttons.",
+      );
     } else {
       // Collect-form matched with apply-intent, first turn: begin collecting per
       // the SYSTEM_PROMPT. Answer any side question they bundled in first.
@@ -145,6 +156,22 @@ export function buildSystemPrompts(state: PromptTurnState): SystemEntry[] {
     parts.push(
       `ONLINE FORM LINK for this service: [${formTitle}](${formUrl}). If the user wants the link or prefers to do it themselves, share exactly that markdown link. NEVER suggest a paper form, printing/downloading a form, or going to an office in person — the only options to offer are filling it out here with you, or this online link.`,
     );
+    // A completed application is the most natural moment to ask for feedback,
+    // so this is forward-looking guidance for the SUBMIT turn, not the turn
+    // after: the system prompt is built before submit_form runs (status is
+    // still "collecting" here) and pinSessionForm unpins the form next turn, so
+    // the post-submit reply the model composes THIS turn is the only place the
+    // invitation can land. Gated to a real form not yet offered feedback —
+    // FEEDBACK_COLLECTION_GUIDANCE owns the feedback form's own thank-you, and
+    // once feedback is offered/given we stay silent so the base "Anything else
+    // I can help with?" wrap-up applies (no second ask). On success the next
+    // turn auto-pins chat-feedback (pinSessionForm), collecting a "yes" or
+    // declining a "no".
+    if (slug !== FEEDBACK_FORM_ID && !session.feedbackOffered) {
+      parts.push(
+        `AFTER A SUCCESSFUL submit_form THIS TURN: confirm the reference number, then — instead of ending with "Anything else I can help with?" — close with ONE short sentence inviting quick feedback on the assistant (it is in beta), an invitation they can accept or decline, e.g. "Before you go, would you like to give us quick feedback on the assistant? It helps us improve." Do NOT phrase it as "how was this?" and do NOT ask the rating question yourself; the rating is collected next only if they accept.`,
+      );
+    }
     // Reciting the reference number here is intentionally NOT feedback-safe:
     // it's never reached for the feedback form because pinSessionForm resets a
     // submitted feedback session (clearing slug + referenceNumber) before

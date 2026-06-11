@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { UIMessage } from "@tanstack/ai";
+import { FEEDBACK_FORM_ID, FEEDBACK_TRIGGER_PHRASE } from "#/lib/chat/feedback";
 import type { FormIndexEntry } from "./defs";
 import { applyRagFallback, pinSessionForm } from "./routing";
 import type { FormResolution } from "./schema";
@@ -50,6 +51,53 @@ test("pinSessionForm leaves an active unsubmitted form pinned (matcher not consu
   assert.equal(called, 0);
 });
 
+// The notice banner's "Give feedback" link sends FEEDBACK_TRIGGER_PHRASE. It
+// must pin chat-feedback by EXPLICIT id, never via the title-token matcher —
+// otherwise a future recipe whose title contains "feedback"/"assistant" could
+// out-score or tie-and-steal the banner match (#1206). The stubbed matcher
+// returns a colliding form to prove it is never consulted for the banner phrase.
+test("pinSessionForm pins chat-feedback by id for the banner phrase, ignoring the matcher", async () => {
+  const s = session();
+  let called = 0;
+  await pinSessionForm(s, [userMessage(FEEDBACK_TRIGGER_PHRASE)], {
+    match: async () => {
+      called++;
+      return entry("some-future-assistant-feedback-form");
+    },
+  });
+  assert.equal(s.slug, FEEDBACK_FORM_ID);
+  assert.equal(s.feedbackOffered, true); // offer spent — never also model-offered
+  assert.equal(called, 0); // matcher never consulted for the banner phrase
+});
+
+// A user can also TYPE the intent to give feedback instead of clicking the
+// banner link. A statement of intent pins chat-feedback by id (same path as the
+// banner phrase) so the next turn collects the rating directly — no redundant
+// "would you like to give feedback?" confirmation.
+test("pinSessionForm pins chat-feedback for a free-typed feedback request", async () => {
+  const s = session();
+  let called = 0;
+  await pinSessionForm(s, [userMessage("i wan to feedback")], {
+    match: async () => {
+      called++;
+      return entry("some-other-form");
+    },
+  });
+  assert.equal(s.slug, FEEDBACK_FORM_ID);
+  assert.equal(s.feedbackOffered, true);
+  assert.equal(called, 0); // explicit pin — matcher not consulted
+});
+
+// But a question ABOUT feedback is not a request to give it: gated on
+// !isInfoQuestion, it falls through to normal routing (here, no match).
+test("pinSessionForm does not pin feedback for a question about feedback", async () => {
+  const s = session();
+  await pinSessionForm(s, [userMessage("what happens to my feedback?")], {
+    match: async () => null,
+  });
+  assert.equal(s.slug, null);
+});
+
 test("pinSessionForm pins a window match and resets prior state on a switch", async () => {
   const s = session({
     slug: "old-form",
@@ -82,6 +130,53 @@ test("pinSessionForm defers a window match of the parked slug to the latest mess
   assert.equal(calls.length, 2);
 });
 
+// A completed real application is the natural moment to ask for feedback: the
+// submission-confirmation invites it once (see prompt-builder), and the next
+// turn auto-pins the chat-feedback form so the user's reply is collected or
+// declined — no "anything else?". The zero-value pin is an OPEN OFFER, so the
+// #1202 release below still lets a topic switch or info-question escape; a
+// plain affirmative ("yes please") keeps the pin. feedbackOffered is marked so
+// it is never offered twice. (Supersedes the #1203 park-for-model-offer path.)
+test("pinSessionForm auto-pins feedback after a submitted real form", async () => {
+  const s = session({
+    slug: "mail-redirect",
+    status: "submitted",
+    values: { a: "1" },
+    referenceNumber: "R1",
+  });
+  await pinSessionForm(s, [userMessage("yes please")], {
+    match: async () => null,
+  });
+  assert.equal(s.slug, FEEDBACK_FORM_ID);
+  assert.equal(s.feedbackOffered, true);
+  assert.equal(s.status, "collecting");
+});
+
+// If feedback was already offered/given earlier this session, a submitted real
+// form is simply parked (no second ask — the confirmation falls back to the
+// normal "anything else?" wrap-up). Parking defers the rolling-window matcher
+// to the LATEST message, so earlier application messages don't re-wedge them.
+test("pinSessionForm parks (no re-offer) a submitted real form when feedback was already offered", async () => {
+  const s = session({
+    slug: "mail-redirect",
+    status: "submitted",
+    feedbackOffered: true,
+    values: { a: "1" },
+    referenceNumber: "R1",
+  });
+  const calls: string[] = [];
+  await pinSessionForm(s, [userMessage("thanks, that's all")], {
+    match: async (text) => {
+      calls.push(text);
+      // Window text still names the just-submitted form; the latest doesn't.
+      return calls.length === 1 ? entry("mail-redirect") : null;
+    },
+  });
+  assert.equal(s.slug, null);
+  assert.equal(s.handedOffSlug, "mail-redirect");
+  assert.equal(calls.length, 2);
+});
+
 test("pinSessionForm resets a submitted feedback session instead of wedging", async () => {
   const s = session({
     slug: "chat-feedback",
@@ -96,6 +191,74 @@ test("pinSessionForm resets a submitted feedback session instead of wedging", as
   assert.equal(s.status, "collecting");
   // The offer stays spent — never re-offered this session.
   assert.equal(s.feedbackOffered, true);
+});
+
+// A zero-value chat-feedback pin (offer_feedback pins on offer) is still an
+// open offer: a topic switch must release it instead of trapping the user on
+// the feedback form (#1202).
+
+test("pinSessionForm releases a zero-value feedback pin on an info-question topic switch", async () => {
+  const s = session({
+    slug: "chat-feedback",
+    status: "collecting",
+    feedbackOffered: true,
+    values: {},
+  });
+  await pinSessionForm(s, [userMessage("how do I renew my passport?")], {
+    match: async () => null,
+  });
+  // Released to normal no-form routing, so RAG can answer the new question.
+  assert.equal(s.slug, null);
+  // The offer stays spent — a topic switch reads as an implicit decline.
+  assert.equal(s.feedbackOffered, true);
+});
+
+test("pinSessionForm re-pins a zero-value feedback pin to a form the latest message matches", async () => {
+  const s = session({
+    slug: "chat-feedback",
+    status: "collecting",
+    feedbackOffered: true,
+    values: {},
+  });
+  await pinSessionForm(s, [userMessage("I want to apply for a passport")], {
+    match: async () => entry("get-passport"),
+  });
+  assert.equal(s.slug, "get-passport");
+  assert.equal(s.feedbackOffered, true);
+});
+
+test("pinSessionForm keeps a zero-value feedback pin for a yes/no-shaped reply", async () => {
+  const s = session({
+    slug: "chat-feedback",
+    status: "collecting",
+    feedbackOffered: true,
+    values: {},
+  });
+  await pinSessionForm(s, [userMessage("no thanks")], {
+    match: async () => null,
+  });
+  // Not a topic switch — collect-feedback handles the decline next.
+  assert.equal(s.slug, "chat-feedback");
+});
+
+test("pinSessionForm keeps an in-progress feedback form pinned despite a question", async () => {
+  const s = session({
+    slug: "chat-feedback",
+    status: "collecting",
+    feedbackOffered: true,
+    values: { rating: "5" },
+  });
+  let called = 0;
+  await pinSessionForm(s, [userMessage("what happens to my feedback?")], {
+    match: async () => {
+      called++;
+      return null;
+    },
+  });
+  // Mid-collection (a value captured): grounded via retrievalBoostSlug, not a
+  // topic switch — stays pinned and the matcher isn't consulted.
+  assert.equal(s.slug, "chat-feedback");
+  assert.equal(called, 0);
 });
 
 // ---------------------------------------------------------------------------

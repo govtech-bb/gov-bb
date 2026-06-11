@@ -244,6 +244,82 @@ describe("EmailBodyBuilder", () => {
       });
     });
 
+    describe("suppressed ceremony steps (feedback declaration)", () => {
+      // A rating step + the form-builder's required declaration step, whose
+      // confirmation checkbox the chat auto-confirms on the user's behalf.
+      const withDeclaration = (formId: string): ServiceContract =>
+        ({
+          formId,
+          title: "Give feedback on the assistant",
+          version: "1.5.0",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+          steps: [
+            {
+              stepId: "your-feedback",
+              title: "Your feedback",
+              elements: [
+                {
+                  fieldId: "experience-rating",
+                  label: "Rating",
+                  htmlType: "text",
+                },
+              ],
+            },
+            {
+              stepId: "declaration",
+              title: "Declaration",
+              elements: [
+                {
+                  fieldId: "declaration-confirmed",
+                  label: "Declaration",
+                  htmlType: "checkbox",
+                  options: [{ label: "I confirm", value: "confirmed" }],
+                },
+              ],
+            },
+          ],
+        }) as ServiceContract;
+
+      const declarationPayload = (formId: string) =>
+        makePayload({
+          formId,
+          values: {
+            "your-feedback": { "experience-rating": "Good" },
+            declaration: { "declaration-confirmed": ["confirmed"] },
+          },
+          meta: {
+            ...makePayload().meta,
+            activeStepIds: ["your-feedback", "declaration"],
+            activeFieldIds: {
+              "your-feedback": ["experience-rating"],
+              declaration: ["declaration-confirmed"],
+            },
+          },
+        });
+
+      it("omits the declaration section from the feedback email", async () => {
+        builder = new EmailBodyBuilder(
+          makeFormDefinitionsService(withDeclaration("chat-feedback")),
+        );
+        const ctx = await builder.build(declarationPayload("chat-feedback"));
+
+        expect(ctx.sections.map((s) => s.title)).toEqual(["Your feedback"]);
+        expect(ctx.sections.some((s) => s.title === "Declaration")).toBe(false);
+      });
+
+      it("keeps the declaration section for a real form (audit record)", async () => {
+        builder = new EmailBodyBuilder(
+          makeFormDefinitionsService(withDeclaration("get-birth-certificate")),
+        );
+        const ctx = await builder.build(
+          declarationPayload("get-birth-certificate"),
+        );
+
+        expect(ctx.sections.some((s) => s.title === "Declaration")).toBe(true);
+      });
+    });
+
     it("renders plain text field values as strings", async () => {
       const ctx = await builder.build(makePayload());
 

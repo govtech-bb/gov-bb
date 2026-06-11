@@ -4,10 +4,12 @@ import type { Primitive, ServiceContract } from "@govtech-bb/form-types";
 import {
   describeField,
   nextAskableField,
+  nextRequiredAskableField,
   findEscapeToggle,
   getActiveFieldIds,
   isChatCollectable,
   needsHandoff,
+  sectionForField,
   summarizeActive,
 } from "./schema";
 
@@ -366,6 +368,90 @@ test("nextAskableField walks step order, skipping collected and asked", () => {
   );
 });
 
+// A required field that was presented but never answered must be re-served —
+// askedFieldIds only lets the cursor skip OPTIONAL fields the user left blank.
+// Repeating the feedback trigger without picking a rating must re-show the
+// rating field (so its options render again), not advance past it. (#1207)
+function requiredCursorContract(): ServiceContract {
+  return {
+    formId: "feedback-cursor-form",
+    title: "Feedback",
+    version: "1.0.0",
+    createdAt: "2026-01-01T00:00:00",
+    updatedAt: "2026-01-01T00:00:00",
+    steps: [
+      {
+        stepId: "your-feedback",
+        title: "Your feedback",
+        elements: [
+          {
+            fieldId: "experience-rating",
+            htmlType: "select",
+            label: "Experience rating",
+            validations: { required: { value: true } },
+            options: [
+              { label: "Good", value: "good" },
+              { label: "Poor", value: "poor" },
+            ],
+          },
+          {
+            fieldId: "improvement-comment",
+            htmlType: "textarea",
+            label: "What could be better?",
+          },
+        ],
+      },
+    ],
+  } as unknown as ServiceContract;
+}
+
+test("nextAskableField re-serves a required field asked but not answered", () => {
+  const c = requiredCursorContract();
+  // Required, presented (in the asked set), still unanswered → re-serve it,
+  // don't skip ahead to the optional comment.
+  assert.equal(
+    nextAskableField(c, {}, new Set(["experience-rating"]))?.field.fieldId,
+    "experience-rating",
+  );
+  // Once answered, the cursor advances normally.
+  assert.equal(
+    nextAskableField(
+      c,
+      { "experience-rating": "good" },
+      new Set(["experience-rating"]),
+    )?.field.fieldId,
+    "improvement-comment",
+  );
+  // The OPTIONAL follow-up, asked but left blank, is still skipped (review
+  // time) — the relaxation is required-only.
+  assert.equal(
+    nextAskableField(
+      c,
+      { "experience-rating": "good" },
+      new Set(["experience-rating", "improvement-comment"]),
+    ),
+    null,
+  );
+});
+
+// The deterministic re-present path (server re-renders the options when a form
+// is re-triggered) only fires for an unanswered REQUIRED question — an optional
+// one left blank must not trap the user on a question they can skip.
+test("nextRequiredAskableField returns a pending required field, null when only optional remains", () => {
+  const c = requiredCursorContract();
+  // Required + unanswered (even if already presented) → returned.
+  assert.equal(
+    nextRequiredAskableField(c, {}, new Set(["experience-rating"]))?.field
+      .fieldId,
+    "experience-rating",
+  );
+  // Required answered; only the optional comment is pending → null.
+  assert.equal(
+    nextRequiredAskableField(c, { "experience-rating": "good" }, new Set()),
+    null,
+  );
+});
+
 // The cursor shares the disclosure's escape-toggle folding: the toggle is
 // never served standalone, and the relaxed field disappears once the escape
 // is open — the cursor serves the revealed field instead.
@@ -380,5 +466,165 @@ test("nextAskableField applies escape folding and serves revealed fields", () =>
   assert.equal(
     nextAskableField(c, open, none)?.field.fieldId,
     "applicant-passport-number",
+  );
+});
+
+// ---------------------------------------------------------------------------
+// auto-confirmed fields — the feedback form's declaration is filled silently
+// ---------------------------------------------------------------------------
+
+// The form-builder always regenerates a required "declaration" step on the
+// chat-feedback recipe. In chat we confirm it for the user, so it must never
+// be disclosed to the model or served by the ask cursor — otherwise the model
+// asks the user to "confirm the declaration", the exact ceremony #1114 removed.
+function feedbackDeclarationContract(formId: string): ServiceContract {
+  return {
+    formId,
+    title: "Give feedback on the assistant",
+    version: "1.5.0",
+    createdAt: "2026-01-01T00:00:00",
+    updatedAt: "2026-01-01T00:00:00",
+    steps: [
+      {
+        stepId: "your-feedback",
+        title: "Your feedback",
+        elements: [
+          { fieldId: "experience-rating", htmlType: "text", label: "Rating" },
+        ],
+      },
+      {
+        stepId: "declaration",
+        title: "Declaration",
+        elements: [
+          {
+            fieldId: "declaration-confirmed",
+            htmlType: "checkbox",
+            label: "Declaration",
+            options: [{ label: "I confirm", value: "confirmed" }],
+            validations: { required: { value: true } },
+          },
+        ],
+      },
+    ],
+  } as unknown as ServiceContract;
+}
+
+test("summarizeActive hides the feedback declaration but keeps real fields", () => {
+  const c = feedbackDeclarationContract("chat-feedback");
+  const schema = summarizeActive(c, getActiveFieldIds(c, {}).byStep, {});
+  assert.ok(schema);
+  assert.ok(schema.includes("experience-rating"));
+  assert.ok(!schema.includes("declaration-confirmed"));
+});
+
+test("nextAskableField never serves the auto-confirmed feedback declaration", () => {
+  const c = feedbackDeclarationContract("chat-feedback");
+  const none = new Set<string>();
+  // Rating answered → the cursor would normally land on the declaration next,
+  // but it is auto-confirmed, so collection is complete (null = review time).
+  assert.equal(
+    nextAskableField(c, { "experience-rating": "good" }, none),
+    null,
+  );
+});
+
+test("a real form's declaration is still asked — auto-confirm is feedback-only", () => {
+  const c = feedbackDeclarationContract("get-birth-certificate");
+  const schema = summarizeActive(c, getActiveFieldIds(c, {}).byStep, {});
+  assert.ok(schema?.includes("declaration-confirmed"));
+  assert.equal(
+    nextAskableField(c, { "experience-rating": "good" }, new Set())?.field
+      .fieldId,
+    "declaration-confirmed",
+  );
+});
+
+// The address-line-2 regression: a recipe marks a field optional with
+// `required: { value: false }` (rule present, value false) instead of
+// removing the rule. The disclosure must say (optional) — the old truthiness
+// check called it (required), so the model demanded it and the Skip button
+// never rendered, while validation accepted a blank.
+test("describeField reads required:{value:false} as optional", () => {
+  const field = {
+    fieldId: "old-address-line-2",
+    label: "Address line 2",
+    htmlType: "text",
+    validations: { required: { value: false } },
+  } as unknown as Primitive;
+  assert.match(describeField(field), /\(optional\)/);
+
+  const required = {
+    fieldId: "old-address-line-1",
+    label: "Address line 1",
+    htmlType: "text",
+    validations: {
+      required: { value: true, error: "Address line 1 is required" },
+    },
+  } as unknown as Primitive;
+  assert.match(describeField(required), /\(required\)/);
+});
+
+// ---------------------------------------------------------------------------
+// sectionForField — announce a step title when the cursor crosses into a new
+// step, so the user knows whose details these are (#1175 referee, #1181/#1136
+// emergency contact: fields rendered with no section context).
+// ---------------------------------------------------------------------------
+
+function twoStepContract(): ServiceContract {
+  return {
+    formId: "two-step",
+    title: "Two Step",
+    version: "1.0.0",
+    createdAt: "2026-01-01T00:00:00",
+    updatedAt: "2026-01-01T00:00:00",
+    steps: [
+      {
+        stepId: "applicant",
+        title: "Your details",
+        elements: [
+          { fieldId: "first-name", htmlType: "text", label: "First name" },
+          { fieldId: "last-name", htmlType: "text", label: "Last name" },
+        ],
+      },
+      {
+        stepId: "emergency-contact",
+        title: "Emergency contact details",
+        elements: [
+          { fieldId: "ec-first-name", htmlType: "text", label: "First name" },
+          { fieldId: "ec-last-name", htmlType: "text", label: "Last name" },
+        ],
+      },
+    ],
+  } as unknown as ServiceContract;
+}
+
+test("sectionForField announces a step's title on its FIRST field only", () => {
+  const c = twoStepContract();
+  // First field of step 1, nothing asked yet → announce.
+  assert.equal(sectionForField(c, "first-name", new Set()), "Your details");
+  // Second field of the same step → already in it, no re-announce.
+  assert.equal(sectionForField(c, "last-name", new Set(["first-name"])), null);
+  // First field of the emergency-contact step → announce (the whole point:
+  // the user must be told these aren't their own details).
+  assert.equal(
+    sectionForField(c, "ec-first-name", new Set(["first-name", "last-name"])),
+    "Emergency contact details",
+  );
+  assert.equal(
+    sectionForField(
+      c,
+      "ec-last-name",
+      new Set(["first-name", "last-name", "ec-first-name"]),
+    ),
+    null,
+  );
+});
+
+test("sectionForField returns null for a step with no title", () => {
+  const c = twoStepContract();
+  c.steps[1]!.title = undefined as unknown as string;
+  assert.equal(
+    sectionForField(c, "ec-first-name", new Set(["first-name"])),
+    null,
   );
 });

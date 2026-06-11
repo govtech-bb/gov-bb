@@ -70,6 +70,26 @@ test("collect first-turn (apply): protocol + schema + start-collecting + form li
   assert.match(text, /https:\/\/forms\.test\/forms\/mail-redirect/);
 });
 
+// Banner "Give feedback" clicked twice (or any form re-triggered): the first
+// question was already presented via ask_field, but the user hasn't answered
+// it, so values are still empty. The fresh-start "has not started yet" line
+// would contradict the history (the model already asked) and the model narrates
+// the question instead of re-calling ask_field — its options never re-render
+// (#1207 follow-up). The prompt must steer a re-present instead.
+test("collect re-trigger (asked, nothing collected): steers a re-present, not a fresh start", () => {
+  const text = build({
+    resolution: collectResolution("chat-feedback"),
+    session: session({
+      slug: "chat-feedback",
+      askedFieldIds: new Set(["experience-rating"]),
+    }),
+  });
+  assert.match(text, /already shown/i);
+  assert.match(text, /ask_field with no arguments/);
+  // It must NOT use the fresh-start line that conflicts with the history.
+  assert.doesNotMatch(text, /has not started/);
+});
+
 test("collect offerOnly: answers first, offers choices, never collects", () => {
   const text = build({ resolution: collectResolution(), offerOnly: true });
   assert.match(text, /INFORMATION question/);
@@ -98,6 +118,45 @@ test("collect: submitted and failed statuses surface their state lines", () => {
     session: session({ status: "failed", lastError: "bad value" }),
   });
   assert.match(failed, /Last submission attempt failed: bad value/);
+});
+
+// A completed real application is the natural moment to ask for feedback. The
+// invitation is FORWARD-LOOKING guidance on the collect turn (the system prompt
+// is built before submit_form runs and the form is unpinned next turn), telling
+// the model to invite feedback once after a successful submit instead of the
+// generic "Anything else I can help with?".
+test("collect: a real form in progress instructs inviting feedback after submit", () => {
+  const text = build({
+    resolution: collectResolution(),
+    session: session(),
+  });
+  assert.match(text, /AFTER A SUCCESSFUL submit_form/i);
+  assert.match(text, /feedback/i);
+  assert.match(
+    text,
+    /instead of ending with "Anything else I can help with\?"/i,
+  );
+});
+
+// Once feedback has already been offered/given this session, the invitation is
+// withheld (no second ask) — the base "Anything else I can help with?" wrap-up
+// applies as usual.
+test("collect: no feedback invitation when feedback was already offered", () => {
+  const text = build({
+    resolution: collectResolution(),
+    session: session({ feedbackOffered: true }),
+  });
+  assert.doesNotMatch(text, /AFTER A SUCCESSFUL submit_form/i);
+});
+
+// The feedback form itself never gets the post-submit feedback invitation —
+// FEEDBACK_COLLECTION_GUIDANCE owns its own warm thank-you.
+test("collect: the feedback form gets no post-submit feedback invitation", () => {
+  const text = build({
+    resolution: collectResolution("chat-feedback"),
+    session: session({ slug: "chat-feedback" }),
+  });
+  assert.doesNotMatch(text, /AFTER A SUCCESSFUL submit_form/i);
 });
 
 test("collect: feedback form gets the feedback guidance attached", () => {

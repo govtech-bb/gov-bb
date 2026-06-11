@@ -1,6 +1,11 @@
 import type { UIMessage } from "@tanstack/ai";
 import { getServerEnv } from "#/config/env";
-import { FEEDBACK_FORM_ID } from "#/lib/chat/feedback";
+import {
+  FEEDBACK_FORM_ID,
+  FEEDBACK_TRIGGER_PHRASE,
+  pinFeedbackForm,
+} from "#/lib/chat/feedback";
+import { isFeedbackRequest, isInfoQuestion } from "#/lib/chat/guards";
 import { lastUserText, recentUserText } from "#/lib/chat/messages";
 import {
   decideRagFallback,
@@ -38,14 +43,88 @@ export async function pinSessionForm(
   messages: UIMessage[],
   deps: PinDeps = { match: matchFormsFromText },
 ): Promise<void> {
-  // The feedback form is terminal: once submitted it can't be re-matched from
-  // conversation text (it was pinned programmatically, not by the matcher), so
-  // clear it instead of leaving the session stuck in feedback-collect forever.
-  // feedbackOffered is preserved, so it is never re-offered this session.
-  if (session.slug === FEEDBACK_FORM_ID && session.status === "submitted") {
-    resetSessionForNewForm(session);
+  // A submitted form is terminal — the application is done, nothing more to
+  // collect — so unpin it; otherwise the matcher re-pins it from the rolling
+  // window (which still names the just-completed form) and traps the user.
+  //   - Feedback form: clear outright. It's pinned programmatically and can
+  //     never be re-matched from text; feedbackOffered survives the reset.
+  //   - Real form, feedback not yet offered: a completed application is the
+  //     most natural moment to ask, so AUTO-PIN the chat-feedback form. The
+  //     submit turn's prompt already invited it once (the collect-branch
+  //     forward-looking guidance in prompt-builder), and this zero-value pin is
+  //     an OPEN OFFER — the open-offer release below still lets a topic switch
+  //     or info-question escape, so the user isn't trapped. pinFeedbackForm
+  //     marks feedbackOffered, so it's never asked twice. (Supersedes the #1203
+  //     park-for-model-offer behaviour merged in #1220.)
+  //   - Real form, feedback already offered/given: just PARK it (handedOffSlug
+  //     defers the rolling-window matcher to the latest message) — no second
+  //     ask; the confirmation fell back to the normal "anything else?" wrap-up.
+  if (session.slug && session.status === "submitted") {
+    if (session.slug === FEEDBACK_FORM_ID) {
+      resetSessionForNewForm(session);
+    } else if (!session.feedbackOffered) {
+      pinFeedbackForm(session);
+    } else {
+      parkHandoff(session, session.slug);
+    }
+  }
+  // A zero-value chat-feedback pin is really still an OPEN OFFER: offer_feedback
+  // pins on offer (the cheap accept path), but the user hasn't committed yet. A
+  // reply that isn't accept/decline-shaped is a topic switch, and the normal
+  // early-return below would trap them on the feedback form (#1202). Treat it
+  // like a lapsed offer, keyed off the LATEST message only (not the rolling
+  // window, which still names the pre-feedback conversation): a match for
+  // another form re-pins to it; an info-question with no match releases the pin
+  // to normal no-form routing so RAG can answer. A yes/no-shaped reply falls
+  // through and stays pinned for the collect-feedback turn. feedbackOffered is
+  // preserved either way — a topic switch reads as an implicit decline, so the
+  // offer is never repeated this session.
+  if (
+    session.slug === FEEDBACK_FORM_ID &&
+    session.status !== "submitted" &&
+    Object.keys(session.values).length === 0
+  ) {
+    const switchMatch = await deps.match(lastUserText(messages));
+    if (switchMatch && switchMatch.formId !== FEEDBACK_FORM_ID) {
+      pinForm(session, switchMatch.formId);
+      return;
+    }
+    if (isInfoQuestion(lastUserText(messages))) {
+      resetSessionForNewForm(session);
+      // resetSessionForNewForm preserves feedbackOffered, but re-assert it so
+      // the implicit-decline invariant holds no matter how we reached a
+      // zero-value feedback pin — the offer is never repeated this session.
+      session.feedbackOffered = true;
+      return;
+    }
   }
   if (session.slug && session.status !== "submitted") return;
+  // Two ways a user explicitly asks to give feedback, both pinning chat-feedback
+  // by EXPLICIT id (never the title-token matcher — the matcher only picked it
+  // up because "feedback"/"assistant" happen to be unique among form titles
+  // today, and a future recipe carrying either token could out-score or
+  // tie-and-steal the match, #1206):
+  //   1. The notice banner's "Give feedback" link sends the EXACT
+  //      FEEDBACK_TRIGGER_PHRASE.
+  //   2. The user TYPES the intent ("I want to give feedback", "i wan to
+  //      feedback") — isFeedbackRequest catches the free-typed variants.
+  // Both pin directly so the next turn collects the rating, instead of the model
+  // asking a redundant "would you like to give feedback?" first (the
+  // model-initiated offer still owns the natural-wrap-up case). The free-typed
+  // detector is gated on !isInfoQuestion so a question ABOUT feedback ("can I
+  // give feedback?", "what happens to my feedback?") doesn't start the form — it
+  // falls through to normal handling. Mark the offer spent so the model never
+  // also offers later this session. Either trigger is a statement, not a
+  // question, so the turn enters collect-feedback.
+  const latest = lastUserText(messages);
+  if (
+    latest === FEEDBACK_TRIGGER_PHRASE ||
+    (isFeedbackRequest(latest) && !isInfoQuestion(latest))
+  ) {
+    pinForm(session, FEEDBACK_FORM_ID);
+    session.feedbackOffered = true;
+    return;
+  }
   const windowMatch = await deps.match(recentUserText(messages));
   const matched =
     windowMatch && windowMatch.formId === session.handedOffSlug
@@ -53,9 +132,9 @@ export async function pinSessionForm(
       : windowMatch;
   if (matched) {
     pinForm(session, matched.formId);
-    // Feedback can be started manually (the banner "Give feedback" link sends a
-    // matcher phrase) as well as by the model's offer_feedback tool. Either way,
-    // mark it spent so the model never also offers feedback later this session.
+    // A genuine free-text mention of the feedback form (rare, but possible) is
+    // also a manual start, so mark the offer spent — same as the banner path
+    // above — so the model never also offers feedback later this session.
     if (matched.formId === FEEDBACK_FORM_ID) session.feedbackOffered = true;
   }
 }
