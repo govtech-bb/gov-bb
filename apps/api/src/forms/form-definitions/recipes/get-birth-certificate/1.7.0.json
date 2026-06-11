@@ -276,7 +276,8 @@
                 "error": "Select an option",
                 "value": true
               }
-            }
+            },
+            "ui": { "hideLabel": true }
           }
         }
       ],
