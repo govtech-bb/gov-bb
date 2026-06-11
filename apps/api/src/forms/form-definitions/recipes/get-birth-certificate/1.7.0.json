@@ -577,7 +577,16 @@
     },
     {
       "stepId": "parents",
-      "title": "Tell us the parents names",
+      "title": "Tell us their parents' names",
+      "conditionalTitle": [
+        {
+          "targetStepId": "applying-for-yourself",
+          "targetFieldId": "applying-for-yourself",
+          "operator": "equal",
+          "value": "yes",
+          "title": "Tell us your parents' names"
+        }
+      ],
       "elements": [
         {
           "ref": "components/first-name",
