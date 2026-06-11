@@ -1,6 +1,7 @@
 import type { UIMessage } from "@tanstack/ai";
 import { getServerEnv } from "#/config/env";
 import { FEEDBACK_FORM_ID } from "#/lib/chat/feedback";
+import { isInfoQuestion } from "#/lib/chat/guards";
 import { lastUserText, recentUserText } from "#/lib/chat/messages";
 import {
   decideRagFallback,
@@ -53,6 +54,36 @@ export async function pinSessionForm(
       resetSessionForNewForm(session);
     } else {
       parkHandoff(session, session.slug);
+    }
+  }
+  // A zero-value chat-feedback pin is really still an OPEN OFFER: offer_feedback
+  // pins on offer (the cheap accept path), but the user hasn't committed yet. A
+  // reply that isn't accept/decline-shaped is a topic switch, and the normal
+  // early-return below would trap them on the feedback form (#1202). Treat it
+  // like a lapsed offer, keyed off the LATEST message only (not the rolling
+  // window, which still names the pre-feedback conversation): a match for
+  // another form re-pins to it; an info-question with no match releases the pin
+  // to normal no-form routing so RAG can answer. A yes/no-shaped reply falls
+  // through and stays pinned for the collect-feedback turn. feedbackOffered is
+  // preserved either way — a topic switch reads as an implicit decline, so the
+  // offer is never repeated this session.
+  if (
+    session.slug === FEEDBACK_FORM_ID &&
+    session.status !== "submitted" &&
+    Object.keys(session.values).length === 0
+  ) {
+    const switchMatch = await deps.match(lastUserText(messages));
+    if (switchMatch && switchMatch.formId !== FEEDBACK_FORM_ID) {
+      pinForm(session, switchMatch.formId);
+      return;
+    }
+    if (isInfoQuestion(lastUserText(messages))) {
+      resetSessionForNewForm(session);
+      // resetSessionForNewForm preserves feedbackOffered, but re-assert it so
+      // the implicit-decline invariant holds no matter how we reached a
+      // zero-value feedback pin — the offer is never repeated this session.
+      session.feedbackOffered = true;
+      return;
     }
   }
   if (session.slug && session.status !== "submitted") return;
