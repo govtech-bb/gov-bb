@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { ServiceContract } from "@govtech-bb/form-types";
-import { needsHandoff } from "./schema";
+import type { Primitive, ServiceContract } from "@govtech-bb/form-types";
+import {
+  describeField,
+  findEscapeToggle,
+  getActiveFieldIds,
+  isChatCollectable,
+  needsHandoff,
+  summarizeActive,
+} from "./schema";
 
 // Minimal contract builder — needsHandoff only reads formId, requiresPayment,
 // and steps[].elements[].htmlType, so we don't construct a schema-valid recipe.
@@ -101,3 +108,203 @@ for (const formId of [
     assert.equal(needsHandoff(contract({ formId })), true);
   });
 }
+
+// ---------------------------------------------------------------------------
+// show-hide toggles — collected as yes/no so toggle-gated fields are reachable
+// ---------------------------------------------------------------------------
+
+// Mirrors the real post-office-redirection shape: a passport-number field
+// fieldConditionalOn the toggle being true.
+function toggleContract(): ServiceContract {
+  return {
+    formId: "toggle-form",
+    title: "Toggle Form",
+    version: "1.0.0",
+    createdAt: "2026-01-01T00:00:00",
+    updatedAt: "2026-01-01T00:00:00",
+    steps: [
+      {
+        stepId: "applicant-details",
+        title: "Applicant details",
+        elements: [
+          {
+            fieldId: "passport-toggle",
+            htmlType: "show-hide",
+            label: "Use passport number instead",
+          },
+          {
+            fieldId: "applicant-passport-number",
+            htmlType: "text",
+            label: "Passport number",
+            behaviours: [
+              {
+                type: "fieldConditionalOn",
+                targetFieldId: "passport-toggle",
+                targetStepId: "applicant-details",
+                operator: "equal",
+                value: true,
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  } as unknown as ServiceContract;
+}
+
+// Uncollectable toggles made every toggle-gated field unreachable in chat —
+// the toggle could never become true, so the conditional never activated.
+test("show-hide is chat-collectable", () => {
+  const toggle = toggleContract().steps[0]!.elements[0] as Primitive;
+  assert.equal(isChatCollectable(toggle), true);
+});
+
+test("a 'true' toggle answer activates its conditional field", () => {
+  const c = toggleContract();
+  assert.equal(
+    getActiveFieldIds(c, {}).flat.has("applicant-passport-number"),
+    false,
+  );
+  assert.equal(
+    getActiveFieldIds(c, { "passport-toggle": "false" }).flat.has(
+      "applicant-passport-number",
+    ),
+    false,
+  );
+  // The canonical raw string "true" must match the recipe's `value: true`
+  // through the condition engine's String() coercion.
+  assert.equal(
+    getActiveFieldIds(c, { "passport-toggle": "true" }).flat.has(
+      "applicant-passport-number",
+    ),
+    true,
+  );
+});
+
+// The toggle label is affordance text, not a question — the model needs the
+// yes/no framing spelled out in the schema disclosure.
+test("describeField frames show-hide as a yes/no section toggle", () => {
+  const toggle = toggleContract().steps[0]!.elements[0] as Primitive;
+  assert.equal(
+    describeField(toggle),
+    "- passport-toggle: show-hide section toggle (yes/no, optional)  // Use passport number instead",
+  );
+});
+
+// ---------------------------------------------------------------------------
+// escape-hatch toggles — an optionalIf target folds into its field's ask
+// ---------------------------------------------------------------------------
+
+// The real post-office shape: National ID required, passport-toggle relaxes
+// it (optionalIf) and reveals the passport field (fieldConditionalOn).
+function escapeContract(): ServiceContract {
+  return {
+    formId: "escape-form",
+    title: "Escape Form",
+    version: "1.0.0",
+    createdAt: "2026-01-01T00:00:00",
+    updatedAt: "2026-01-01T00:00:00",
+    steps: [
+      {
+        stepId: "applicant-details",
+        title: "Applicant details",
+        elements: [
+          {
+            fieldId: "applicant-id-number",
+            htmlType: "text",
+            label: "National ID number",
+            validations: { required: { value: true } },
+            behaviours: [
+              {
+                type: "optionalIf",
+                targetFieldId: "passport-toggle",
+                operator: "equal",
+                value: true,
+              },
+            ],
+          },
+          {
+            fieldId: "passport-toggle",
+            htmlType: "show-hide",
+            label: "Use passport number instead",
+          },
+          {
+            fieldId: "applicant-passport-number",
+            htmlType: "text",
+            label: "Passport number",
+            behaviours: [
+              {
+                type: "fieldConditionalOn",
+                targetFieldId: "passport-toggle",
+                targetStepId: "applicant-details",
+                operator: "equal",
+                value: true,
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  } as unknown as ServiceContract;
+}
+
+const escapeField = (c: ServiceContract, id: string) =>
+  c.steps[0]!.elements.find((f) => f.fieldId === id) as Primitive;
+
+test("findEscapeToggle resolves an optionalIf show-hide target", () => {
+  const c = escapeContract();
+  assert.equal(
+    findEscapeToggle(c, escapeField(c, "applicant-id-number"))?.fieldId,
+    "passport-toggle",
+  );
+  // The conditional field itself has no escape — its behaviour is a reveal.
+  assert.equal(
+    findEscapeToggle(c, escapeField(c, "applicant-passport-number")),
+    null,
+  );
+});
+
+// Standalone "Use passport number instead?" with no ID question in sight is a
+// non sequitur — the toggle rides on the ID field's line instead.
+test("summarizeActive folds an escape toggle into its target field's line", () => {
+  const c = escapeContract();
+  const schema = summarizeActive(c, getActiveFieldIds(c, {}).byStep, {});
+  assert.ok(schema);
+  assert.match(
+    schema,
+    /applicant-id-number: text \(required; alternative: passport-toggle — "Use passport number instead"\)/,
+  );
+  assert.ok(!schema.includes("show-hide section toggle"));
+});
+
+// Once the user chose the alternative, "National ID (optional)?" right after
+// "use my passport" is a dumb follow-up — drop the relaxed field unless they
+// already answered it.
+test("summarizeActive drops the relaxed field once the escape is open", () => {
+  const c = escapeContract();
+  const open = { "passport-toggle": "true" };
+  const schema = summarizeActive(c, getActiveFieldIds(c, open).byStep, open);
+  assert.ok(schema);
+  assert.ok(!schema.includes("applicant-id-number"));
+  assert.ok(schema.includes("applicant-passport-number"));
+
+  const answered = { "passport-toggle": "true", "applicant-id-number": "123" };
+  const both = summarizeActive(
+    c,
+    getActiveFieldIds(c, answered).byStep,
+    answered,
+  );
+  assert.ok(both?.includes("applicant-id-number"));
+});
+
+// A pure reveal toggle (no optionalIf anywhere) keeps its standalone yes/no
+// question — only escape toggles fold away.
+test("summarizeActive keeps a pure reveal toggle as its own line", () => {
+  const c = toggleContract();
+  const schema = summarizeActive(c, getActiveFieldIds(c, {}).byStep, {});
+  assert.ok(
+    schema?.includes(
+      "- passport-toggle: show-hide section toggle (yes/no, optional)",
+    ),
+  );
+});

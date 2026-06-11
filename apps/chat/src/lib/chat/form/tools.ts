@@ -14,10 +14,20 @@ import {
   submitSuccessForModel,
 } from "#/lib/chat/feedback";
 import type { ActiveFormSchema } from "./schema";
-import { buildFieldIndex, getActiveFieldIds } from "./schema";
+import {
+  buildFieldIndex,
+  describeField,
+  findEscapeToggle,
+  getActiveFieldIds,
+  isChatCollectable,
+} from "./schema";
 import type { FormSession } from "./session";
 import { submitFormUpstream, type SubmitOutcome } from "./submit";
-import { buildReviewItems, validateCollectedField } from "./values";
+import {
+  buildReviewItems,
+  canonicalizeRaw,
+  validateCollectedField,
+} from "./values";
 
 // Request-scoped dependencies the form tools need, supplied per turn via
 // chat({ context }) and read back as ctx.context — the documented runtime-
@@ -52,6 +62,28 @@ const askFieldTool = askFieldDef.server<FormTurnContext>(
       return { ok: false, error: `unknown or inactive fieldId: ${fieldId}` };
     }
     const f = info.field;
+    // A show-hide toggle has no options in the contract (it's a disclosure
+    // click in the forms UI). Synthesize Yes/No so the chat client renders
+    // the standard choice pills — no bespoke widget needed.
+    const options =
+      f.htmlType === "show-hide"
+        ? [
+            { label: "Yes", value: "yes" },
+            { label: "No", value: "no" },
+          ]
+        : f.options?.map((o) => ({ label: o.label, value: o.value }));
+    // Forms-UI parity for escape toggles: the toggle renders under its
+    // target field's input as an either/or affordance ("National ID — or
+    // use a passport instead"), not as a separate question. Moot once open.
+    const escape = findEscapeToggle(form.contract, f);
+    const alternative =
+      escape && session.values[escape.fieldId] !== "true"
+        ? {
+            fieldId: escape.fieldId,
+            label: escape.label,
+            hint: escape.hint ?? undefined,
+          }
+        : undefined;
     return {
       ok: true,
       field: {
@@ -60,8 +92,9 @@ const askFieldTool = askFieldDef.server<FormTurnContext>(
         htmlType: f.htmlType,
         hint: f.hint ?? undefined,
         multiple: f.multiple ?? undefined,
-        options: f.options?.map((o) => ({ label: o.label, value: o.value })),
+        options,
         validations: f.validations ?? undefined,
+        alternative,
       },
     };
   },
@@ -88,6 +121,20 @@ const setFieldTool = setFieldDef.server<FormTurnContext>(
     if (!info) {
       return { ok: false, error: `unknown fieldId: ${fieldId}` };
     }
+    // The alternative button sends the toggle's LABEL as the user message; a
+    // model that records it as this field's value stores junk (National ID =
+    // "Use passport number instead"). Free-text fields would accept it, so
+    // bounce with the corrective move instead.
+    const escapeOfField = findEscapeToggle(form.contract, info.field);
+    if (
+      escapeOfField &&
+      value.trim().toLowerCase() === escapeOfField.label.trim().toLowerCase()
+    ) {
+      return {
+        ok: false,
+        error: `the user chose the alternative — call set_field with fieldId "${escapeOfField.fieldId}" and value "yes" instead, then ask the revealed fields`,
+      };
+    }
     const error = validateCollectedField(
       form.contract,
       info.field,
@@ -98,9 +145,23 @@ const setFieldTool = setFieldDef.server<FormTurnContext>(
     if (error) {
       return { ok: false, error };
     }
-    session.values[fieldId] = value;
+    // Canonical raw: a show-hide answer is stored as "true"/"false" so the
+    // condition engine's String() compare matches the recipe's `value: true`.
+    session.values[fieldId] = canonicalizeRaw(info.field, value);
     session.updatedAt = Date.now();
-    return { ok: true };
+    // The FORM SCHEMA system message was built from the values at the START
+    // of the turn, so a value that opens a conditional section (show-hide
+    // toggle, radio/select reveal) exposes fields the model has never seen.
+    // Return their schema lines so it can ask them this turn, in order.
+    const after = getActiveFieldIds(form.contract, session.values).flat;
+    const idx = buildFieldIndex(form.contract);
+    const revealed: string[] = [];
+    for (const id of after) {
+      if (active.has(id)) continue;
+      const f = idx.get(id)?.field;
+      if (f && isChatCollectable(f)) revealed.push(describeField(f));
+    }
+    return revealed.length ? { ok: true, revealed } : { ok: true };
   },
 );
 

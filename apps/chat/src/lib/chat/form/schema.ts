@@ -7,10 +7,12 @@ import { evaluateFormConditions } from "@govtech-bb/form-conditions";
 import { getServerEnv } from "#/config/env";
 import { getFormDefinition } from "./defs";
 
-const UNCOLLECTABLE: ReadonlySet<HtmlTypes> = new Set<HtmlTypes>([
-  "file",
-  "show-hide",
-]);
+// show-hide is NOT here: the toggle is collected as a yes/no question.
+// Leaving it uncollectable made every field conditional on a toggle
+// unreachable in chat (e.g. the passport-number alternative on the post
+// office redirection form, whose ID field is only optionalIf the toggle
+// is open — a user without a National ID could never finish in chat).
+const UNCOLLECTABLE: ReadonlySet<HtmlTypes> = new Set<HtmlTypes>(["file"]);
 
 function hasRepeatableBehaviour(field: {
   behaviours?: Array<{ type: string }>;
@@ -31,13 +33,53 @@ function isRequired(field: Primitive): boolean {
   return !!field.validations?.required;
 }
 
-function describeField(field: Primitive): string {
+export function describeField(field: Primitive, escape?: Primitive): string {
+  // A show-hide toggle is an optional yes/no section opener, not an input —
+  // the label is the affordance text ("Use passport number instead"), so the
+  // model needs the yes/no framing spelled out.
+  if (field.htmlType === "show-hide") {
+    return `- ${field.fieldId}: show-hide section toggle (yes/no, optional)  // ${field.label}`;
+  }
   const req = isRequired(field) ? "required" : "optional";
   const opts =
     "options" in field && field.options?.length
       ? ` [${field.options.map((o) => o.value).join("|")}]`
       : "";
-  return `- ${field.fieldId}: ${field.htmlType} (${req})${opts}  // ${field.label}`;
+  // An escape toggle means this field is one half of an either/or — the forms
+  // UI shows the toggle directly under the input ("National ID — or use a
+  // passport instead"), so the schema line carries the alternative too.
+  const alt = escape
+    ? `; alternative: ${escape.fieldId} — "${escape.label}"`
+    : "";
+  return `- ${field.fieldId}: ${field.htmlType} (${req}${alt})${opts}  // ${field.label}`;
+}
+
+// A show-hide toggle is an "escape hatch" when another field's optionalIf
+// targets it: opening the toggle relaxes that field's requirement and reveals
+// the alternative (the post-office National-ID/passport pattern). Escape
+// toggles are folded into the target field's ask instead of being asked as
+// their own yes/no question.
+export function findEscapeToggle(
+  contract: ServiceContract,
+  field: Primitive,
+): Primitive | null {
+  const opt = field.behaviours?.find((b) => b.type === "optionalIf");
+  if (!opt || !("targetFieldId" in opt)) return null;
+  const target = buildFieldIndex(contract).get(opt.targetFieldId)?.field;
+  return target?.htmlType === "show-hide" ? target : null;
+}
+
+// Toggle ids that are some field's escape hatch — omitted from the schema
+// disclosure so the model never asks them standalone.
+function escapeToggleIds(contract: ServiceContract): Set<string> {
+  const ids = new Set<string>();
+  for (const step of contract.steps) {
+    for (const el of step.elements) {
+      const escape = findEscapeToggle(contract, el);
+      if (escape) ids.add(escape.fieldId);
+    }
+  }
+  return ids;
 }
 
 export function buildFieldIndex(
@@ -77,10 +119,12 @@ export function getActiveFieldIds(
   return { byStep: activeFieldIds, flat };
 }
 
-function summarizeActive(
+export function summarizeActive(
   contract: ServiceContract,
   active: Map<string, Set<string>>,
+  values: Record<string, unknown> = {},
 ): string | null {
+  const escapes = escapeToggleIds(contract);
   const lines: string[] = [];
   for (const step of contract.steps) {
     const ids = active.get(step.stepId);
@@ -88,7 +132,18 @@ function summarizeActive(
     for (const el of step.elements) {
       if (!ids.has(el.fieldId)) continue;
       if (!isChatCollectable(el)) continue;
-      lines.push(describeField(el));
+      // Escape toggles ride along on their target field's line/ask — a
+      // standalone "Use passport number instead?" with no ID question in
+      // sight reads as a non sequitur.
+      if (escapes.has(el.fieldId)) continue;
+      const escape = findEscapeToggle(contract, el) ?? undefined;
+      // Once the user chose the alternative, don't re-offer the relaxed
+      // field ("National ID (optional)?" right after "use my passport") —
+      // unless they already answered it.
+      if (escape && values[escape.fieldId] === "true" && !values[el.fieldId]) {
+        continue;
+      }
+      lines.push(describeField(el, escape));
     }
   }
   if (!lines.length) return null;
@@ -196,7 +251,7 @@ export async function resolveActiveForm(
   }
 
   const active = getActiveFieldIds(contract, currentValues);
-  const schema = summarizeActive(contract, active.byStep);
+  const schema = summarizeActive(contract, active.byStep, currentValues);
   if (!schema) return { kind: "none" };
   return {
     kind: "collect",
