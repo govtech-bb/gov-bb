@@ -15,12 +15,12 @@ import {
   submitSuccessForModel,
 } from "#/lib/chat/feedback";
 import { isAutoConfirmedField } from "./auto-confirm";
+import { buildFieldSpec } from "./field-spec";
 import type { ActiveFormSchema } from "./schema";
 import {
   buildFieldIndex,
   describeField,
   findEscapeToggle,
-  sectionForField,
   getActiveFieldIds,
   isChatCollectable,
   nextAskableField,
@@ -92,52 +92,18 @@ const askFieldTool = askFieldDef.server<FormTurnContext>(
       }
       f = next.field;
     }
-    // Section header: when this field opens a new (titled) step, announce it
-    // so the user knows whose details these are — the professional referee,
-    // the emergency contact — instead of re-entering their own. Computed
-    // against the asked set BEFORE marking f asked (sectionForField excludes
-    // f, so it's order-independent, but this reads clearer).
-    const section = sectionForField(
-      form.contract,
-      f.fieldId,
-      session.askedFieldIds,
-    );
     session.askedFieldIds.add(f.fieldId);
-    // A show-hide toggle has no options in the contract (it's a disclosure
-    // click in the forms UI). Synthesize Yes/No so the chat client renders
-    // the standard choice pills — no bespoke widget needed.
-    const options =
-      f.htmlType === "show-hide"
-        ? [
-            { label: "Yes", value: "yes" },
-            { label: "No", value: "no" },
-          ]
-        : f.options?.map((o) => ({ label: o.label, value: o.value }));
-    // Forms-UI parity for escape toggles: the toggle renders under its
-    // target field's input as an either/or affordance ("National ID — or
-    // use a passport instead"), not as a separate question. Moot once open.
-    const escape = findEscapeToggle(form.contract, f);
-    const alternative =
-      escape && session.values[escape.fieldId] !== "true"
-        ? {
-            fieldId: escape.fieldId,
-            label: escape.label,
-            hint: escape.hint ?? undefined,
-          }
-        : undefined;
+    // The canonical widget payload (label, options, escape alternative, section
+    // header) is built from the contract — shared with the deterministic
+    // re-present stream so a re-rendered question is the identical widget.
     return {
       ok: true,
-      field: {
-        fieldId: f.fieldId,
-        label: f.label,
-        htmlType: f.htmlType,
-        hint: f.hint ?? undefined,
-        multiple: f.multiple ?? undefined,
-        options,
-        validations: f.validations ?? undefined,
-        alternative,
-        section: section ?? undefined,
-      },
+      field: buildFieldSpec(
+        form.contract,
+        f,
+        session.values,
+        session.askedFieldIds,
+      ),
     };
   },
 );

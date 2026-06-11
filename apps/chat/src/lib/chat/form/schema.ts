@@ -198,6 +198,22 @@ export function nextAskableField(
   return null;
 }
 
+// The next askable field, but ONLY when it's required. Drives the deterministic
+// re-present path: when a form is re-invoked (e.g. the banner "Give feedback"
+// link clicked again) with a REQUIRED question still unanswered, the server
+// re-renders that question's widget itself rather than relying on the model to
+// call ask_field — its reliability degrades as the identical request repeats.
+// Optional pending fields return null: the user can skip those, so there's
+// nothing to trap them on.
+export function nextRequiredAskableField(
+  contract: ServiceContract,
+  values: Record<string, unknown>,
+  asked: ReadonlySet<string>,
+): { stepId: string; field: Primitive } | null {
+  const next = nextAskableField(contract, values, asked);
+  return next && isRequired(next.field) ? next : null;
+}
+
 // The step title to ANNOUNCE when this field opens a new section, or null if
 // it doesn't. A field opens a new section when none of the already-asked
 // fields live in its step (the cursor just crossed a step boundary) AND the

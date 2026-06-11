@@ -7,19 +7,26 @@ import {
   applyRagFallback,
   buildEndOfChatTools,
   buildFeedbackTools,
+  buildFieldSpec,
   buildFormTools,
   buildOfferTools,
   consumeOfferReply,
   funnelPhase,
   getOrCreateSession,
+  matchFormsFromText,
+  matchPendingOption,
+  nextAskableField,
+  nextRequiredAskableField,
   parkHandoff,
   pinSessionForm,
   recordMissOutcome,
+  recordOptionValue,
   resolveActiveForm,
   withThreadLock,
   type FormResolution,
   type FormTurnContext,
 } from "./form";
+import { representFieldStream } from "./represent-field-stream";
 import {
   cancelFeedbackForm,
   FEEDBACK_FORM_ID,
@@ -96,6 +103,10 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
         }
       : undefined;
 
+  // Was a form already active coming INTO this turn? Distinguishes a re-trigger
+  // of the current form (banner clicked again) from a first activation.
+  const pinnedBefore = session.slug;
+
   await pinSessionForm(session, messages);
 
   let resolution: FormResolution = session.slug
@@ -108,6 +119,75 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
   // it so the matcher above won't immediately re-hand-off the same form.
   if (resolution.kind === "handoff") {
     parkHandoff(session, session.slug);
+  }
+
+  // DETERMINISTIC FORM INTERACTIONS (no model in the loop). Option clicks and
+  // form re-triggers are unambiguous UI actions; routing their plain-text label
+  // through the model is what made "Okay" read as chit-chat and made a repeated
+  // banner click re-prompt in prose. Handle them in code instead, re-rendering
+  // the field via the same ask_field tool-result the model path emits.
+  if (resolution.kind === "collect") {
+    const form = resolution.form;
+    // (1) The user picked an option for the current choice question — record it
+    // ourselves, then deterministically present the next field. Only when there
+    // IS a next field; once all are presented, fall through so the model runs
+    // review_form/submit_form (the approval flow it owns).
+    const answer = matchPendingOption(form, session, latest);
+    if (answer && recordOptionValue(form, session, answer)) {
+      const next = nextAskableField(
+        form.contract,
+        session.values,
+        session.askedFieldIds,
+      );
+      if (next) {
+        session.askedFieldIds.add(next.field.fieldId);
+        return {
+          kind: "ok",
+          stream: representFieldStream(
+            buildFieldSpec(
+              form.contract,
+              next.field,
+              session.values,
+              session.askedFieldIds,
+            ),
+            { runId, threadId, model },
+          ),
+          abortController: childController(signal),
+          activeFormSlug: session.slug ?? undefined,
+        };
+      }
+    } else if (pinnedBefore === session.slug) {
+      // (2) The user re-invoked the form they're already in (e.g. the banner
+      // "Give feedback" link clicked again) with a REQUIRED question still
+      // unanswered — re-render that question and its options. Gated on a real
+      // re-match of the active form so a field answer or a side question can't
+      // trip it.
+      const pending = nextRequiredAskableField(
+        form.contract,
+        session.values,
+        session.askedFieldIds,
+      );
+      if (
+        pending &&
+        (await matchFormsFromText(latest))?.formId === session.slug
+      ) {
+        session.askedFieldIds.add(pending.field.fieldId);
+        return {
+          kind: "ok",
+          stream: representFieldStream(
+            buildFieldSpec(
+              form.contract,
+              pending.field,
+              session.values,
+              session.askedFieldIds,
+            ),
+            { runId, threadId, model },
+          ),
+          abortController: childController(signal),
+          activeFormSlug: session.slug ?? undefined,
+        };
+      }
+    }
   }
 
   // Skip the rewrite LLM call and RAG retrieval only once the user is ACTIVELY
