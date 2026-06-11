@@ -1,4 +1,4 @@
-import { evaluateFormConditions } from "./index";
+import { evaluateFormConditions, resolveStepTitle } from "./index";
 import { evaluateCondition, flattenStepValues } from "./internals";
 // Also import via the package entry to exercise the public re-exports (#668):
 // `apps/forms` consumes these low-level primitives directly from the package.
@@ -1188,5 +1188,82 @@ describe("evaluateCondition — transform (yearsSince/monthsSince/daysSince)", (
       [lower, upper].every((b) => evaluateCondition(b, EMPTY_VALUES, vals));
     expect(both(inRange)).toBe(true);
     expect(both(tooOld)).toBe(false);
+  });
+});
+
+// ─── resolveStepTitle ────────────────────────────────────────────────────────
+
+describe("resolveStepTitle", () => {
+  const step = {
+    title: "Provide the person's birth details",
+    conditionalTitle: [
+      {
+        targetFieldId: "applying-for-yourself",
+        operator: "equal" as const,
+        value: "yes",
+        title: "Provide your birth details",
+      },
+    ],
+  };
+
+  it("returns the static title when there is no conditionalTitle", () => {
+    expect(resolveStepTitle({ title: "Birth details" }, EMPTY_VALUES)).toBe(
+      "Birth details",
+    );
+  });
+
+  it("returns the static title when the conditionalTitle array is empty", () => {
+    expect(
+      resolveStepTitle(
+        { title: "Birth details", conditionalTitle: [] },
+        {
+          step: { "applying-for-yourself": "yes" },
+        },
+      ),
+    ).toBe("Birth details");
+  });
+
+  it("returns the conditional title when its condition matches", () => {
+    expect(
+      resolveStepTitle(step, {
+        "applying-for-yourself": { "applying-for-yourself": "yes" },
+      }),
+    ).toBe("Provide your birth details");
+  });
+
+  it("falls back to the static title when no condition matches", () => {
+    expect(
+      resolveStepTitle(step, {
+        "applying-for-yourself": { "applying-for-yourself": "no" },
+      }),
+    ).toBe("Provide the person's birth details");
+  });
+
+  it("falls back to the static title when the watched field is absent", () => {
+    expect(resolveStepTitle(step, EMPTY_VALUES)).toBe(
+      "Provide the person's birth details",
+    );
+  });
+
+  it("returns the first matching entry's title (first match wins)", () => {
+    const multi = {
+      title: "Default",
+      conditionalTitle: [
+        {
+          targetFieldId: "kind",
+          operator: "equal" as const,
+          value: "a",
+          title: "Title A",
+        },
+        {
+          targetFieldId: "kind",
+          operator: "equal" as const,
+          value: "b",
+          title: "Title B",
+        },
+      ],
+    };
+    expect(resolveStepTitle(multi, { s: { kind: "b" } })).toBe("Title B");
+    expect(resolveStepTitle(multi, { s: { kind: "a" } })).toBe("Title A");
   });
 });

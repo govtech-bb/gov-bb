@@ -67,6 +67,7 @@ export {
   behaviourSchema,
   equalityOperationsSchema,
   durationTransformSchema,
+  conditionalTitleSchema,
 } from "./behavior.type";
 
 export type {
@@ -79,6 +80,7 @@ export type {
   SharedFieldsBehaviour,
   EqualityOperations,
   DurationTransform,
+  ConditionalTitle,
 } from "./behavior.type";
 
 export type { Block } from "./block.type";

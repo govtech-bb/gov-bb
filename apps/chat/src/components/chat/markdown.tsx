@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useState } from "react";
 import type { Citation } from "#/lib/chat/types";
 
 const CITATION_HREF_PREFIX = "#citation-";
@@ -11,34 +12,91 @@ function sourceHost(url: string): string {
   }
 }
 
-const PILL_FAVICON_COLORS = ["bg-blue-100", "bg-teal-100", "bg-yellow-100"];
+function faviconUrl(url: string): string | null {
+  try {
+    return new URL("/favicon.ico", url).toString();
+  } catch {
+    return null;
+  }
+}
 
-function CitationMarker({ citation }: { citation: Citation }) {
-  const host = sourceHost(citation.url);
-  const label = citation.section
-    ? `${citation.title} — ${citation.section}`
-    : citation.title;
-  const idx = Number.parseInt(citation.number, 10) - 1;
-  const favColor =
-    PILL_FAVICON_COLORS[
-      ((idx % PILL_FAVICON_COLORS.length) + PILL_FAVICON_COLORS.length) %
-        PILL_FAVICON_COLORS.length
-    ] ?? PILL_FAVICON_COLORS[0];
+// Tiny favicon; falls back to a neutral dot when the icon 404s or the URL is
+// unparsable, so a missing favicon never renders a broken-image glyph.
+function Favicon({ url }: { url: string }) {
+  const [failed, setFailed] = useState(false);
+  const src = faviconUrl(url);
+  if (!src || failed) {
+    return (
+      <span aria-hidden="true" className="size-3.5 rounded-full bg-grey-00" />
+    );
+  }
   return (
-    <a
-      aria-label={`Source: ${label} (${host})`}
-      className="ml-0.5 inline-flex items-center gap-1.5 rounded-[12px] border border-grey-00 bg-white-00 px-2.5 py-1 align-baseline text-mid-grey-00 text-xs no-underline transition-colors hover:border-mid-grey-00"
-      href={citation.url}
-      rel="noopener noreferrer"
-      target="_blank"
-      title={label}
-    >
+    <img
+      alt=""
+      aria-hidden="true"
+      className="size-3.5 rounded-[3px]"
+      height={14}
+      onError={() => setFailed(true)}
+      src={src}
+      width={14}
+    />
+  );
+}
+
+// Claude.ai-style citation chip: a small favicon pill at the end of the
+// claim (consecutive markers are grouped into ONE chip by annotateCitations),
+// with a hover/focus card listing the cited pages as titled links. No
+// hostname text in the prose — the favicon carries the "this is sourced"
+// signal and the card carries the detail.
+function CitationChip({ citations }: { citations: Citation[] }) {
+  const first = citations[0];
+  if (!first) return null;
+  const label = citations
+    .map((c) => (c.section ? `${c.title} — ${c.section}` : c.title))
+    .join("; ");
+  return (
+    <span className="group/cite relative ml-1 inline-flex align-baseline">
+      <a
+        aria-label={`Sources: ${label}`}
+        className="inline-flex items-center gap-1 rounded-full border border-grey-00 bg-white-00 px-1.5 py-0.5 no-underline transition-colors hover:border-mid-grey-00 focus-visible:outline-2 focus-visible:outline-teal-00"
+        href={first.url}
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        <Favicon url={first.url} />
+        {citations.length > 1 && (
+          <span className="font-medium text-[10px] text-mid-grey-00 leading-none">
+            +{citations.length - 1}
+          </span>
+        )}
+      </a>
+      {/* Hover/focus source card — pure CSS, no portal. Hidden from the
+          accessibility tree: the chip's aria-label already names the sources
+          and the card's links duplicate the chip's hrefs. */}
       <span
         aria-hidden="true"
-        className={`size-3.5 rounded-[3px] ${favColor}`}
-      />
-      {host}
-    </a>
+        className="invisible absolute bottom-full left-0 z-20 mb-1.5 flex w-64 flex-col gap-1.5 rounded-[8px] border border-grey-00 bg-white-00 p-3 opacity-0 shadow-md transition-opacity group-focus-within/cite:visible group-focus-within/cite:opacity-100 group-hover/cite:visible group-hover/cite:opacity-100"
+      >
+        {citations.map((c) => (
+          <a
+            className="flex flex-col no-underline"
+            href={c.url}
+            key={c.number}
+            rel="noopener noreferrer"
+            tabIndex={-1}
+            target="_blank"
+          >
+            <span className="font-medium text-black-00 text-xs leading-snug hover:underline">
+              {c.title}
+            </span>
+            <span className="text-[10px] text-mid-grey-00">
+              {c.section ? `${c.section} · ` : ""}
+              {sourceHost(c.url)}
+            </span>
+          </a>
+        ))}
+      </span>
+    </span>
   );
 }
 
@@ -69,9 +127,11 @@ export function buildMarkdownComponents(citations: Citation[]) {
     h3: Heading,
     a: ({ children, href }: { children?: ReactNode; href?: string }) => {
       if (typeof href === "string" && href.startsWith(CITATION_HREF_PREFIX)) {
-        const num = href.slice(CITATION_HREF_PREFIX.length);
-        const citation = byNumber.get(num);
-        if (citation) return <CitationMarker citation={citation} />;
+        const nums = href.slice(CITATION_HREF_PREFIX.length).split(",");
+        const cited = nums
+          .map((n) => byNumber.get(n))
+          .filter((c): c is Citation => !!c);
+        if (cited.length) return <CitationChip citations={cited} />;
       }
       // Only allow safe URL schemes — block javascript:, data:, vbscript:,
       // etc. that a model could emit via prompt injection. Trim first: browsers
@@ -98,12 +158,19 @@ export function buildMarkdownComponents(citations: Citation[]) {
   };
 }
 
-// Replace `[N]` (and consecutive `[1][2]`) with markdown anchor links that
-// the `a` renderer turns into citation badges.
+// Replace `[N]` markers with anchor links the `a` renderer turns into
+// citation chips. A RUN of consecutive markers (`[1][2]`, `[1] [2]`)
+// collapses into ONE grouped chip — claude.ai style — instead of a chip per
+// marker interrupting the prose.
 export function annotateCitations(text: string, citations: Citation[]): string {
   if (!citations.length) return text;
   const valid = new Set(citations.map((c) => c.number));
-  return text.replace(/\[(\d+)\]/g, (match, num) =>
-    valid.has(num) ? `[${match}](${CITATION_HREF_PREFIX}${num})` : match,
-  );
+  return text.replace(/\[(\d+)\](?:\s*\[(?:\d+)\])*/g, (run) => {
+    const nums = [...run.matchAll(/\[(\d+)\]/g)]
+      .map((m) => m[1] as string)
+      .filter((n) => valid.has(n));
+    if (!nums.length) return run;
+    const unique = [...new Set(nums)];
+    return `[​](${CITATION_HREF_PREFIX}${unique.join(",")})`;
+  });
 }

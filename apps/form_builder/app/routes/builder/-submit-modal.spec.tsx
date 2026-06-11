@@ -50,3 +50,34 @@ describe("SubmitModal preview link", () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe("SubmitModal version hint", () => {
+  it("says it overwrites in place when the loaded version is an unpublished draft", () => {
+    renderModal({
+      loadedFromId: "passport",
+      currentVersion: "1.0.1",
+      version: "1.0.1",
+      currentVersionIsPublished: false,
+    });
+    expect(
+      screen.getByText(/overwrites this draft in place/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/saves a new draft/i)).not.toBeInTheDocument();
+  });
+
+  it("says it saves a new draft (not overwrite) when the loaded version is published", () => {
+    // currentVersion is the published version; `version` is the bumped patch
+    // the page passes in. The modal must NOT claim an in-place overwrite.
+    renderModal({
+      loadedFromId: "passport",
+      currentVersion: "1.0.0",
+      version: "1.0.1",
+      currentVersionIsPublished: true,
+    });
+    expect(screen.getByText(/saves a new draft/i)).toBeInTheDocument();
+    expect(screen.getByText(/v1\.0\.1/)).toBeInTheDocument();
+    expect(
+      screen.queryByText(/overwrites this draft in place/i),
+    ).not.toBeInTheDocument();
+  });
+});

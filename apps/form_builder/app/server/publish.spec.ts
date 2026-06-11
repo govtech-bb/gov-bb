@@ -50,6 +50,10 @@ function emptyResponse(status: number): Response {
 
 beforeEach(() => {
   jest.resetAllMocks();
+  // Clear here too (not just afterEach): jest reuses a worker process across
+  // files, so the first test must not inherit a value leaked by an earlier
+  // file — the default-branch assertions depend on it being unset.
+  delete process.env.PUBLISH_BASE_BRANCH;
   process.env.SESSION_SECRET = Buffer.alloc(32).toString("base64");
   process.env.GITHUB_ORG = "govtech-bb";
   (getSession as jest.Mock).mockReturnValue(SESSION);

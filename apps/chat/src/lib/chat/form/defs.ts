@@ -3,7 +3,7 @@ import {
   type ServiceContract,
 } from "@govtech-bb/form-types";
 import { getServerEnv } from "#/config/env";
-import { isSurfaceableForm } from "./allowlist";
+import { isSurfaceableForm } from "./policy";
 import { TITLE_STOP, tokenize } from "./tokenize";
 
 const DEF_TTL_MS = 5 * 60_000;
@@ -74,19 +74,18 @@ export async function getFormDefinition(
   }
 }
 
-export async function getFormIndex(
-  signal?: AbortSignal,
-): Promise<FormIndexEntry[]> {
+// The cache holds the UNFILTERED published list; the policy filter is applied
+// on read. getFormIndex/getFormSlugs serve only policy-approved forms (the
+// approval gate for matching/collecting/handing off — see ./policy.ts), while
+// getAllFormSlugs sees everything published, so the unapproved-form
+// disclosure can distinguish "form exists but isn't chat-enabled" from "no
+// form exists" instead of falsely claiming the form hasn't been built.
+async function fetchIndex(signal?: AbortSignal): Promise<FormIndexEntry[]> {
   if (fresh(indexCache)) return indexCache.value;
   try {
     const body = await fetchJson<ListResponse>(`/form-definitions`, signal);
     const entries: FormIndexEntry[] = body.data
-      // Approval gate: the chat only matches / collects / hands off forms on the
-      // allowlist. Non-allowlisted forms stay on the API and the chat can still
-      // answer about them from retrieved context — it just won't surface the
-      // form. See ./allowlist.ts. This is the single chokepoint (the matcher and
-      // getFormSlugs both flow through getFormIndex).
-      .filter((d) => d.formId && d.title && isSurfaceableForm(d.formId))
+      .filter((d) => d.formId && d.title)
       .map((d) => ({
         formId: d.formId,
         title: d.title,
@@ -100,6 +99,17 @@ export async function getFormIndex(
   }
 }
 
+export async function getFormIndex(
+  signal?: AbortSignal,
+): Promise<FormIndexEntry[]> {
+  return (await fetchIndex(signal)).filter((e) => isSurfaceableForm(e.formId));
+}
+
 export async function getFormSlugs(signal?: AbortSignal): Promise<string[]> {
   return (await getFormIndex(signal)).map((e) => e.formId);
+}
+
+// EVERY published form id, approved or not — only for existence checks.
+export async function getAllFormSlugs(signal?: AbortSignal): Promise<string[]> {
+  return (await fetchIndex(signal)).map((e) => e.formId);
 }

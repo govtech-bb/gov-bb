@@ -69,6 +69,12 @@ export const envValidationSchema = Joi.object({
       otherwise: Joi.optional().allow(""),
     }),
 
+  // Public forms site origin the EzPay return redirect bounces the citizen to
+  // after payment (e.g. https://forms.sandbox.alpha.gov.bb). Empty = fall back
+  // to the first CORS_ORIGIN entry, which is the forms site on every deployed
+  // env, so this only needs setting when the two ever diverge.
+  FORMS_BASE_URL: Joi.string().uri().allow("").default(""),
+
   // EzPay (required only when forms use the payment processor)
   EZPAY_BASE_URL: Joi.string().uri().required(),
   EZPAY_DEPARTMENT_API_KEYS: Joi.string().required(),

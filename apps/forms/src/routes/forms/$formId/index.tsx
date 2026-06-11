@@ -31,7 +31,10 @@ import {
 } from "../../../lib/session-storage";
 import { formatDataForSubmission, postFormSubmission } from "@forms/form-api";
 import { trackEvent } from "../../../lib/analytics";
-import { resolveSubmissionOutcome } from "../../../lib/submission-outcome";
+import {
+  resolveSubmissionOutcome,
+  applyPaymentReturn,
+} from "../../../lib/submission-outcome";
 
 export const Route = createFileRoute("/forms/$formId/")({
   component: RouteComponent,
@@ -88,7 +91,7 @@ export const Route = createFileRoute("/forms/$formId/")({
 
 function RouteComponent() {
   const formMeta = Route.useLoaderData();
-  const { step, preview } = Route.useSearch();
+  const { step, preview, source, payment } = Route.useSearch();
   const isPreview = Boolean(preview);
   // Rehydrate the committed submission outcome on a confirmation-step reload so
   // the renderer doesn't bounce the citizen off it (submissionState is React
@@ -96,13 +99,19 @@ function RouteComponent() {
   // — so the value is present on the first render, before the renderer's
   // "no submissionState → redirect" effect runs. On any other step this is a
   // fresh session: ignore (and later clear) any stale persisted outcome.
+  //
+  // When the citizen returns from EzPay (`?payment=success|failed` set by the
+  // API's redirect handler), fold that outcome into the rehydrated state so the
+  // confirmation flips to the paid receipt / failure panel. sessionStorage
+  // survives the same-tab round-trip to EzPay and back, so the stored state
+  // (reference, amount, …) is still present to merge into.
   const [submissionState, setSubmissionState] = React.useState<
     SubmissionState | undefined
-  >(() =>
-    step === "submission-confirmation"
-      ? (getSubmissionState(formMeta.formId) ?? undefined)
-      : undefined,
-  );
+  >(() => {
+    if (step !== "submission-confirmation") return undefined;
+    const stored = getSubmissionState(formMeta.formId) ?? undefined;
+    return stored ? applyPaymentReturn(stored, payment) : stored;
+  });
 
   React.useEffect(() => {
     trackEvent("form-open", { form_id: formMeta.formId });
@@ -136,6 +145,22 @@ function RouteComponent() {
   // form default values without issuing two reads.
   const savedFormData = getFormData(formMeta.formId);
 
+  // When a citizen arrives via another form's "Give feedback" link, the URL
+  // carries `?source=<originating-formId>`. Seed it into the conventional
+  // `referring-service` field (declared by feedback recipes such as the exit
+  // survey) so the submission records which form the feedback is about. By
+  // convention rather than hard-coding a step id: any recipe that declares a
+  // `referring-service` field captures it; forms that don't are unaffected.
+  const referringServiceFieldId = source
+    ? formMeta.steps
+        .flatMap((formStep) => formStep.fields)
+        .find((field) => field.fieldId === "referring-service")?.id
+    : undefined;
+  const sourceDefaults =
+    source && referringServiceFieldId
+      ? { [referringServiceFieldId]: source }
+      : {};
+
   // Re-create any extra repeatable-step instances the user had added before
   // the refresh.  Must happen before useForm so the saved field values land
   // on the correct (restored) steps.
@@ -162,6 +187,9 @@ function RouteComponent() {
     defaultValues: {
       ...(formMeta.defaultValues as FormValues),
       ...(savedFormData ?? {}),
+      // Spread last so the URL-provided source wins over any stale persisted
+      // value for the (read-only) referring-service field.
+      ...sourceDefaults,
     },
     onSubmit: async ({ value }) => {
       const values = value as FormValues;

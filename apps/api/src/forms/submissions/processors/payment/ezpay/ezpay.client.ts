@@ -40,9 +40,15 @@ export class EzpayClient {
     // All payment methods are always enabled (#936) — the per-option toggles
     // were removed from the form builder, so every EzPay session offers credit,
     // debit and Payce.
-    form.set("ez_allow_credit", "1");
-    form.set("ez_allow_debit", "1");
-    form.set("ez_allow_payce", "1");
+    //
+    // These MUST be the strings "true"/"false", not "1"/"0": EzPay's payment_page
+    // string-compares the flag to "true" when deciding whether to render each
+    // method. Sending "1" silently disables ALL methods, so the citizen lands on
+    // a blank "Payment Option" step and can never reach card entry. The old
+    // form-processor-api sent String(boolean) ("true") for exactly this reason.
+    form.set("ez_allow_credit", "true");
+    form.set("ez_allow_debit", "true");
+    form.set("ez_allow_payce", "true");
 
     const resp = await firstValueFrom(
       this.http.post<{ token?: string; error?: string; code?: string }>(

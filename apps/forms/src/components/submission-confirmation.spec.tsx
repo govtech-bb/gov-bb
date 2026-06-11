@@ -493,6 +493,51 @@ describe("SubmissionConfirmation — Submission ID label", () => {
   });
 });
 
+describe("SubmissionConfirmation — feedback link", () => {
+  const successState: SubmissionState = {
+    hasPayment: false,
+    serviceName: "Passport Renewal",
+    submissionSuccess: true,
+    paymentSuccess: false,
+    referenceNumber: "FB-REF-001",
+    date: "19/05/2026",
+  };
+
+  it("renders the feedback link with the provided href when feedbackUrl is set", () => {
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Passport"
+        stepTitle="Submitted"
+        submissionState={successState}
+        feedbackUrl="/forms/exit-survey?step=difficulty-rating&source=passport-renewal"
+      />,
+    );
+    const link = screen.getByRole("link", {
+      name: /give feedback on this service/i,
+    });
+    expect(link).toHaveAttribute(
+      "href",
+      "/forms/exit-survey?step=difficulty-rating&source=passport-renewal",
+    );
+  });
+
+  it("does not render the feedback section when feedbackUrl is absent", () => {
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Passport"
+        stepTitle="Submitted"
+        submissionState={successState}
+      />,
+    );
+    expect(
+      screen.queryByRole("link", { name: /give feedback on this service/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Help us improve this service"),
+    ).not.toBeInTheDocument();
+  });
+});
+
 describe("SubmissionConfirmation — undefined submissionState", () => {
   it("renders nothing payment-related when submissionState is not provided", () => {
     const { container } = render(
