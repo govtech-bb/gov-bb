@@ -1,5 +1,6 @@
 export { matchFormsFromText } from "./detect";
 export { getFormSlugs } from "./defs";
+export { applyRagFallback, pinSessionForm } from "./routing";
 export {
   buildFieldIndex,
   resolveActiveForm,

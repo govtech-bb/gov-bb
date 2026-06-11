@@ -168,34 +168,65 @@ type AnswerProps = {
   onAnswer: (text: string) => void;
 };
 
+// Shared value+error state for the typed answer widgets: every change clears
+// the error, Continue runs the shared validation engine and either shows the
+// error in place or sends the answer text. The widgets differ only in what
+// they validate (`validatable`) and what they send (`answerText`).
+function useAnswerState<T>(
+  spec: FieldSpec,
+  initial: T,
+  opts: {
+    validatable: (value: T) => unknown;
+    answerText: (value: T) => string;
+    onAnswer: (text: string) => void;
+  },
+) {
+  const [value, setValueRaw] = useState<T>(initial);
+  const [error, setError] = useState<string | null>(null);
+
+  const setValue = (next: T | ((prev: T) => T)) => {
+    setError(null);
+    setValueRaw(next);
+  };
+
+  const submit = () => {
+    const err = validateSpecValue(spec, opts.validatable(value));
+    if (err) {
+      setError(err);
+      return;
+    }
+    opts.onAnswer(opts.answerText(value));
+  };
+
+  return { value, setValue, error, submit };
+}
+
 // Real checkboxes with the EXACT contract wording (forms parity); picks go
 // back as ONE comma-separated message.
 function CheckboxAnswer({ spec, onAnswer }: AnswerProps) {
   const options = spec.options ?? [];
-  const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
-  const [error, setError] = useState<string | null>(null);
+  const chosen = (picked: ReadonlySet<string>) =>
+    options.filter((o) => picked.has(o.value));
+  const { value: picked, setValue, error, submit } = useAnswerState(
+    spec,
+    new Set<string>() as ReadonlySet<string>,
+    {
+      validatable: (p) => chosen(p).map((o) => o.value),
+      answerText: (p) =>
+        chosen(p)
+          .map((o) => o.label)
+          .join(", "),
+      onAnswer,
+    },
+  );
 
   const toggle = (value: string) => {
-    setError(null);
-    setPicked((prev) => {
+    setValue((prev) => {
       const next = new Set(prev);
       if (next.has(value)) next.delete(value);
       else next.add(value);
       return next;
     });
-  };
-
-  const submit = () => {
-    const chosen = options.filter((o) => picked.has(o.value));
-    const err = validateSpecValue(
-      spec,
-      chosen.map((o) => o.value),
-    );
-    if (err) {
-      setError(err);
-      return;
-    }
-    onAnswer(chosen.map((o) => o.label).join(", "));
   };
 
   return (
@@ -221,17 +252,15 @@ function CheckboxAnswer({ spec, onAnswer }: AnswerProps) {
 // Boolean checkbox (no options) — a consent/yes-no toggle. A required rule
 // means it must be ticked, which the client-side engine reports in place.
 function BooleanAnswer({ spec, onAnswer }: AnswerProps) {
-  const [checked, setChecked] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const submit = () => {
-    const err = validateSpecValue(spec, checked);
-    if (err) {
-      setError(err);
-      return;
-    }
-    onAnswer(checked ? "Yes" : "No");
-  };
+  const { value: checked, setValue, error, submit } = useAnswerState(
+    spec,
+    false,
+    {
+      validatable: (c) => c,
+      answerText: (c) => (c ? "Yes" : "No"),
+      onAnswer,
+    },
+  );
 
   return (
     <div className="flex flex-col gap-2.5">
@@ -239,10 +268,7 @@ function BooleanAnswer({ spec, onAnswer }: AnswerProps) {
       <Checkbox
         checked={checked}
         label="Yes"
-        onCheckedChange={() => {
-          setError(null);
-          setChecked((c) => !c);
-        }}
+        onCheckedChange={() => setValue((c) => !c)}
       />
       <Button onClick={submit} type="button">
         Continue
@@ -254,35 +280,23 @@ function BooleanAnswer({ spec, onAnswer }: AnswerProps) {
 // Answers as ISO YYYY-MM-DD (what the server's date coercion parses); date
 // rules run on Continue so "needs to be in the past" lands here, not as a turn.
 function DateAnswer({ spec, onAnswer }: AnswerProps) {
-  const [date, setDate] = useState<DateInputValue>({
-    day: "",
-    month: "",
-    year: "",
-  });
-  const [error, setError] = useState<string | null>(null);
+  const { value: date, setValue, error, submit } = useAnswerState(
+    spec,
+    { day: "", month: "", year: "" } as DateInputValue,
+    {
+      validatable: (d) => d,
+      answerText: ({ day, month, year }) =>
+        `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`,
+      onAnswer,
+    },
+  );
   const { day, month, year } = date;
   const complete = day !== "" && month !== "" && year.length === 4;
-
-  const submit = () => {
-    const err = validateSpecValue(spec, date);
-    if (err) {
-      setError(err);
-      return;
-    }
-    onAnswer(`${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`);
-  };
 
   return (
     <div className="flex flex-col gap-2.5">
       <HintOrError hint={spec.hint} error={error} />
-      <DateInput
-        name={spec.fieldId}
-        onChange={(next) => {
-          setError(null);
-          setDate(next);
-        }}
-        value={date}
-      />
+      <DateInput name={spec.fieldId} onChange={setValue} value={date} />
       <Button disabled={!complete} onClick={submit} type="button">
         Continue
       </Button>
