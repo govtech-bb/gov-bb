@@ -9,11 +9,7 @@ import { extractText, lastUserText } from "./messages";
 const PROMPT = `You do two jobs for a Barbados government-services chatbot: (1) rewrite the user's latest message into a search query, and (2) classify their intent.
 
 JOB 1 — REWRITE. Produce a single self-contained search query. It is embedded and matched against formal, standard-English service pages, so it MUST use standard-English service vocabulary.
-- The user often writes in Bajan / Barbadian Creole. Translate the MEANING into standard English using the words the government service catalogue would use, mapping the everyday need to the likely service. Spelling cues: "de"=the, "muh"=my, "fuh"=for, "wuh"=what, "dey"=they, "cyan"=can't, "ent"/"en"=isn't/don't, "gine"=going to, "pun"=on, "wuk"=work. Examples (TEACHING examples, generalise the pattern):
-  - "muh head hurtin and I ent got money fuh de doctor" -> "financial assistance medical help low income"
-  - "de pipe burst and flood out de whole house" -> "disaster relief assistance flood damage"
-  - "I lookin fuh wuk, nutten ent comin" -> "employment programme finding a job"
-  - "wuh I gotta do fuh get muh chile in big school" -> "secondary school placement BSSEE"
+- Users may sometimes write in pure Bajan dialect. Do your best to understand the intent — focus on keywords — and translate the meaning into the standard-English vocabulary the government service catalogue would use, mapping the everyday need to the likely service.
 - If the message is already a standalone topical question in standard English, return it essentially unchanged.
 - If it's a short follow-up ("how much?", "what documents?", "where do I go?", "is it online?", "yes please"), expand it using the prior turns so the topic is explicit.
 - Drop greetings, filler, and personal data. Keep proper nouns and service names. Under 20 words.
