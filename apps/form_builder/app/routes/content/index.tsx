@@ -3,7 +3,6 @@ import { useMemo, useState } from "react";
 import {
   Alert02Icon,
   ArrowDown01Icon,
-  ArrowLeft02Icon,
   ArrowRight01Icon,
   CheckmarkCircle02Icon,
   File01Icon,
@@ -29,6 +28,7 @@ import { ErrorBanner } from "./-modals";
 import { usePersistedState } from "./-use-persisted";
 import { useTheme } from "./-use-theme";
 import { Tip } from "./-sliding-tabs";
+import { SectionSwitch } from "../../components/section-switch";
 import s from "./-styles.module.css";
 
 export const Route = createFileRoute("/content/")({
@@ -320,22 +320,17 @@ function ContentHome() {
     <div className={s.shell}>
       <header className={s.docHeader}>
         <div className={s.headerLeft}>
-          <Tip label="Back to builder">
-            <Link
-              to="/builder"
-              className={s.secondaryBtn}
-              aria-label="Back to builder"
-            >
-              <ArrowLeft02Icon size={15} />
-            </Link>
-          </Tip>
+          <SectionSwitch current="content" />
           <div>
             <div className={s.eyebrow}>Content</div>
             <h1 className={s.docTitle}>Landing pages</h1>
           </div>
         </div>
         <div className={s.headerActions}>
-          <Tip label={theme === "light" ? "Dark mode" : "Light mode"}>
+          <Tip
+            label={theme === "light" ? "Dark mode" : "Light mode"}
+            placement="bottom"
+          >
             <button
               type="button"
               className={s.secondaryBtn}
