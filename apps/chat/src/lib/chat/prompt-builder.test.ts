@@ -112,11 +112,24 @@ test("handoff continuation keeps the link in front of the user", () => {
   assert.match(text, /https:\/\/f\.test\/x/);
 });
 
-test("rag collect link offers the form link disclosure", () => {
+// ADR 0048: a RAG-matched collect form is OFFERED as clickable choices with
+// the exact strings the server pins/parks on — never silently collected,
+// never reduced to a bare link.
+test("formOffer prescribes the two exact offer choices", () => {
   const text = build({
-    ragCollectLink: { title: "Mail", url: "https://f.test/m" },
+    formOffer: { slug: "mail-redirect", title: "Mail Redirect" },
   });
-  assert.match(text, /https:\/\/f\.test\/m/);
+  assert.match(text, /Mail Redirect/);
+  assert.match(text, /"Fill it out with you here", "Just send me the link"/);
+  assert.match(text, /Do NOT ask for any form field/);
+});
+
+test("linkRequested delivers exactly the requested link", () => {
+  const text = build({
+    linkRequested: { title: "Mail Redirect", url: "https://f.test/m" },
+  });
+  assert.match(text, /\[Mail Redirect\]\(https:\/\/f\.test\/m\)/);
+  assert.match(text, /Do NOT start collecting/);
 });
 
 // Closers must NOT get the no-form disclosure (it would answer substance on a

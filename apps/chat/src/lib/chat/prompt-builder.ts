@@ -1,6 +1,7 @@
 import type { SystemPrompt } from "@tanstack/ai";
 import { FEEDBACK_FORM_ID } from "./feedback";
 import type { FormResolution, FormSession } from "./form";
+import { OFFER_CHOICE_FILL, OFFER_CHOICE_LINK } from "./form/funnel";
 import {
   CLOSER_GUIDANCE,
   FEEDBACK_COLLECTION_GUIDANCE,
@@ -9,7 +10,8 @@ import {
   NO_FORM_DISCLOSURE,
   SYSTEM_PROMPT,
   UNAPPROVED_FORM_DISCLOSURE,
-  buildFormLinkOfferDisclosure,
+  buildDirectLinkDisclosure,
+  buildFormOfferDisclosure,
   buildHandoffContinuationDisclosure,
   buildHandoffDisclosure,
   buildHandoffOfferDisclosure,
@@ -30,7 +32,11 @@ export interface PromptTurnState {
   handoffContinuation?: { title: string; url: string };
   offerOnly?: boolean;
   intent?: "info" | "apply";
-  ragCollectLink?: { title: string; url: string };
+  // RAG matched a collect form the title matcher missed — offer both online
+  // options as clickable choices (ADR 0048).
+  formOffer?: { slug: string; title: string };
+  // The user took "just send me the link" on a prior offer.
+  linkRequested?: { title: string; url: string };
   // A published form exists for the retrieved service but isn't chat-approved
   // (no policy entry) — the disclosure must not deny the form exists.
   unapprovedForm?: boolean;
@@ -48,7 +54,8 @@ export function buildSystemPrompts(state: PromptTurnState): SystemEntry[] {
     handoffContinuation,
     offerOnly = false,
     intent = "apply",
-    ragCollectLink,
+    formOffer,
+    linkRequested,
     unapprovedForm = false,
     noContext = false,
     offerFeedback = false,
@@ -109,7 +116,7 @@ export function buildSystemPrompts(state: PromptTurnState): SystemEntry[] {
       // then offer the TWO online options (fill in chat / use the link) via
       // present_choices — never a dead-end prose "want to start?".
       parts.push(
-        'The user asked an INFORMATION question about this service and has NOT said they want to apply yet. First, answer their question from the context above. Then offer the online options by calling present_choices with a short question like "Want to apply? I can fill it out with you here, or send you the form link." and choices ["Fill it out with you here", "Just send me the link"]. Lead by mentioning you can fill it out together (many people do not realise the chat can do this). Do NOT ask for any form field and do NOT call set_field this turn — only answer, then offer the choice.',
+        `The user asked an INFORMATION question about this service and has NOT said they want to apply yet. First, answer their question from the context above. Then offer the online options by calling present_choices with a short question like "Want to apply? I can fill it out with you here, or send you the form link." and choices EXACTLY ["${OFFER_CHOICE_FILL}", "${OFFER_CHOICE_LINK}"]. Lead by mentioning you can fill it out together (many people do not realise the chat can do this). Do NOT ask for any form field and do NOT call set_field this turn — only answer, then offer the choice.`,
       );
     } else {
       // Collect-form matched with apply-intent, first turn: begin collecting per
@@ -155,12 +162,21 @@ export function buildSystemPrompts(state: PromptTurnState): SystemEntry[] {
         handoffContinuation.url,
       ),
     );
-  } else if (ragCollectLink) {
-    // RAG surfaced an approved collect form the matcher missed: offer its online
-    // form link (ADR 0045 — RAG hands off a link, never auto-collects). This
-    // replaces the no-online-form / paper fallback for these turns.
+  } else if (linkRequested) {
+    // The user clicked "just send me the link" on a prior offer — deliver it.
     prompts.push(
-      buildFormLinkOfferDisclosure(ragCollectLink.title, ragCollectLink.url),
+      buildDirectLinkDisclosure(linkRequested.title, linkRequested.url),
+    );
+  } else if (formOffer) {
+    // RAG surfaced an approved collect form the matcher missed: offer BOTH
+    // online options as clickable choices. The user's tap is the confirm
+    // (ADR 0048; supersedes ADR 0045's link-only fallback for collect forms).
+    prompts.push(
+      buildFormOfferDisclosure(
+        formOffer.title,
+        OFFER_CHOICE_FILL,
+        OFFER_CHOICE_LINK,
+      ),
     );
   } else if (closer) {
     // The user is winding the chat down (goodbye / thanks / "that's all", or a

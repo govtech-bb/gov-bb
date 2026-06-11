@@ -1,5 +1,11 @@
 export { matchFormsFromText } from "./detect";
 export { getFormSlugs } from "./defs";
+export {
+  consumeOfferReply,
+  funnelPhase,
+  parkHandoff,
+  type FunnelPhase,
+} from "./funnel";
 export { applyRagFallback, pinSessionForm } from "./routing";
 export {
   buildFieldIndex,

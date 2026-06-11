@@ -14,6 +14,9 @@ export interface FormSession {
   // False whenever a value changes after the last review_form — submit_form
   // refuses until the user has seen a review of what will actually be sent.
   reviewedSinceChange: boolean;
+  // A RAG-driven form offer awaiting the user's choice (fill here vs link).
+  // Set by funnel.offerForm, consumed (or lapsed) on the very next turn.
+  offeredForm?: { slug: string; title: string };
   submissionId: string;
   status: FormSessionStatus;
   referenceNumber?: string;
@@ -76,6 +79,7 @@ export function resetSessionForNewForm(session: FormSession): void {
   session.values = {};
   session.askedFieldIds = new Set();
   session.reviewedSinceChange = false;
+  session.offeredForm = undefined;
   session.submissionId = randomUUID();
   session.status = "collecting";
   session.referenceNumber = undefined;

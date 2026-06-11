@@ -158,7 +158,7 @@ test("applyRagFallback returns a continuation for the already-parked form", asyn
   assert.equal(out.handoffContinuation?.title, "Conductor licence");
 });
 
-test("applyRagFallback offers a link (never auto-collects) for a collect form", async () => {
+test("applyRagFallback offers (never auto-collects) a collect form", async () => {
   const s = session();
   const collect = {
     kind: "collect",
@@ -171,12 +171,14 @@ test("applyRagFallback offers a link (never auto-collects) for a collect form", 
     SIGNAL,
     ragDeps(collect, ["business-mail-redirect"]),
   );
-  // ADR 0045: the fuzzy RAG signal may offer the link, never start collection.
+  // ADR 0048: the fuzzy RAG signal puts an OFFER on the table; the user's
+  // tap is the confirm. No pin, no collection this turn.
   assert.equal(out.resolution.kind, "none");
-  assert.equal(
-    out.ragCollectLink?.url,
-    "https://forms.test/forms/business-mail-redirect",
-  );
+  assert.deepEqual(out.formOffer, {
+    slug: "business-mail-redirect",
+    title: "Business Mail Redirect",
+  });
+  assert.deepEqual(s.offeredForm, out.formOffer);
   assert.equal(s.slug, null);
 });
 

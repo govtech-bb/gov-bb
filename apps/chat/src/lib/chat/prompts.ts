@@ -104,6 +104,27 @@ WHEN A FORM SCHEMA IS PROVIDED:
 - Do NOT recite informational alternatives ("you can apply online OR on paper"). The chat IS the online path. Just start.
 - The retrieved context is for answering side questions ("what's the cost?", "how long does it take?") if the user asks. Don't lead with it.`;
 
+// RAG confidently matched a collect-capable form the title matcher missed
+// (ADR 0048): put both online options on the table as clickable choices. The
+// user's tap is the deterministic confirm — the server pins or parks on the
+// exact choice strings, so they MUST be passed verbatim.
+export function buildFormOfferDisclosure(
+  title: string,
+  fillChoice: string,
+  linkChoice: string,
+): string {
+  return `THIS SERVICE HAS AN ONLINE FORM THE CHAT CAN FILL: "${title}".
+- First, briefly answer the user's question from the context above (if they asked one).
+- Then call present_choices with a short question like "Want to apply? I can fill it out with you here, or send you the form link." and choices EXACTLY ["${fillChoice}", "${linkChoice}"] — verbatim, the system acts on these exact strings.
+- Do NOT ask for any form field and do NOT call set_field this turn. Do NOT type a form link — the link is delivered by the system if they choose it.`;
+}
+
+// The user chose "just send me the link" on a form offer — deliver exactly
+// this link and stop; no pressure to fill it in chat instead.
+export function buildDirectLinkDisclosure(title: string, url: string): string {
+  return `THE USER ASKED FOR THE FORM LINK. Share exactly this markdown link in one short sentence: [${title}](${url}). Add nothing else except a brief offer to help if they have questions. Do NOT start collecting fields and do NOT suggest filling it out in chat — they just chose the link.`;
+}
+
 // The service's form IS published on the forms app, but it has no entry in
 // the chat policy (form/policy.ts), so the chat must not offer, link, or
 // collect it. The old behaviour fell through to NO_FORM_DISCLOSURE, which
@@ -246,19 +267,6 @@ Do NOT:
 - Use set_field, ask_field, present_choices, review_form, or submit_form (not available this turn).
 - Say there is no online form, or push a paper/in-person route as the only option.
 - Lead with the offer before you have answered the question.`;
-}
-
-export function buildFormLinkOfferDisclosure(
-  title: string,
-  url: string,
-): string {
-  // Shown when RAG surfaced an APPROVED collect form that the title matcher
-  // missed (see run-turn `ragCollectLink`). Per ADR 0045, RAG hands off a link
-  // but must NOT auto-start inline collection — so we point the user to the
-  // online form rather than entering a fill flow. This also replaces the
-  // no-online-form / paper fallback for these turns (the business-mail /
-  // deceased-mail bug): the service DOES have a working online form.
-  return `This service has a working ONLINE form. First, answer the user's question from the retrieved context above. Then point them to the form with EXACTLY this markdown link: [${title}](${url}) — they can complete it there. NEVER suggest a paper form, printing/downloading a form, or visiting an office in person. Do NOT start asking form fields this turn.`;
 }
 
 export function buildHandoffContinuationDisclosure(
