@@ -8,6 +8,7 @@ import {
   FORM_COLLECTION_PROTOCOL,
   NO_FORM_DISCLOSURE,
   SYSTEM_PROMPT,
+  UNAPPROVED_FORM_DISCLOSURE,
   buildFormLinkOfferDisclosure,
   buildHandoffContinuationDisclosure,
   buildHandoffDisclosure,
@@ -30,6 +31,9 @@ export interface PromptTurnState {
   offerOnly?: boolean;
   intent?: "info" | "apply";
   ragCollectLink?: { title: string; url: string };
+  // A published form exists for the retrieved service but isn't chat-approved
+  // (no policy entry) — the disclosure must not deny the form exists.
+  unapprovedForm?: boolean;
   noContext?: boolean;
   offerFeedback?: boolean;
   closer?: boolean;
@@ -45,6 +49,7 @@ export function buildSystemPrompts(state: PromptTurnState): SystemEntry[] {
     offerOnly = false,
     intent = "apply",
     ragCollectLink,
+    unapprovedForm = false,
     noContext = false,
     offerFeedback = false,
     closer = false,
@@ -165,6 +170,12 @@ export function buildSystemPrompts(state: PromptTurnState): SystemEntry[] {
     // goodbye. If the feedback offer is still available this turn, invite it once
     // (#1125 — this is the natural-conclusion moment the offer was designed for).
     prompts.push(CLOSER_GUIDANCE);
+    if (offerFeedback) prompts.push(FEEDBACK_OFFER_GUIDANCE);
+  } else if (unapprovedForm) {
+    // The form exists on the forms app but isn't chat-approved: answer from
+    // context and point at the service page — never claim no form exists
+    // (NO_FORM_DISCLOSURE would, falsely, for these services).
+    prompts.push(UNAPPROVED_FORM_DISCLOSURE);
     if (offerFeedback) prompts.push(FEEDBACK_OFFER_GUIDANCE);
   } else if (noContext) {
     // Retrieval ran and returned nothing grounded: keep guiding the user toward

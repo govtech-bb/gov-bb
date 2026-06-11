@@ -114,6 +114,7 @@ const serviceSource = (slug: string) => ({
 function ragDeps(resolution: FormResolution, slugs: string[]) {
   return {
     getSlugs: async () => slugs,
+    getAllSlugs: async () => slugs,
     resolve: async () => resolution,
     formsUrl: () => "https://forms.test",
   };
@@ -184,6 +185,7 @@ test("applyRagFallback computes no candidate when a form is pinned or matched", 
   let resolved = 0;
   const deps = {
     getSlugs: async () => ["x"],
+    getAllSlugs: async () => ["x"],
     resolve: async () => {
       resolved++;
       return { kind: "none" } as FormResolution;
@@ -206,6 +208,7 @@ test("applyRagFallback skips unpublished candidates (no doomed contract fetch)",
   let resolved = 0;
   const deps = {
     getSlugs: async () => ["another-form"],
+    getAllSlugs: async () => ["another-form"],
     resolve: async () => {
       resolved++;
       return { kind: "none" } as FormResolution;
@@ -220,4 +223,33 @@ test("applyRagFallback skips unpublished candidates (no doomed contract fetch)",
     deps,
   );
   assert.equal(resolved, 0);
+});
+
+// Published but not chat-approved: never surfaced, but flagged so the
+// disclosure doesn't lie that no online form exists (school-uniform-grant
+// class — it was on the old exclusion list yet absent from the allowlist).
+test("applyRagFallback flags a published-but-unapproved form", async () => {
+  const s = session();
+  let resolved = 0;
+  const deps = {
+    getSlugs: async () => ["approved-form"],
+    getAllSlugs: async () => ["approved-form", "school-uniform-grant-barbados"],
+    resolve: async () => {
+      resolved++;
+      return { kind: "none" } as FormResolution;
+    },
+    formsUrl: () => "https://forms.test",
+  };
+  const out = await applyRagFallback(
+    { kind: "none" },
+    s,
+    [serviceSource("school-uniform-grant-barbados")],
+    SIGNAL,
+    deps,
+  );
+  assert.equal(out.unapprovedForm, true);
+  assert.equal(out.resolution.kind, "none");
+  // Never resolved against the forms API — not surfaced, only flagged.
+  assert.equal(resolved, 0);
+  assert.equal(s.slug, null);
 });

@@ -159,6 +159,7 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
   resolution = ragFallback.resolution;
   const handoffContinuation = ragFallback.handoffContinuation;
   const ragCollectLink = ragFallback.ragCollectLink;
+  const unapprovedForm = ragFallback.unapprovedForm ?? false;
 
   // Info-intent on a handoff service: buildSystemPrompts offers the link in
   // prose instead of pushing it. We deliberately leave the form PARKED (as the
@@ -198,6 +199,7 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     offerOnly,
     intent,
     ragCollectLink,
+    unapprovedForm,
     noContext,
     offerFeedback,
     closer,

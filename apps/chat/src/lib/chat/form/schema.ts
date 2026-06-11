@@ -6,6 +6,7 @@ import type {
 import { evaluateFormConditions } from "@govtech-bb/form-conditions";
 import { getServerEnv } from "#/config/env";
 import { getFormDefinition } from "./defs";
+import { isForcedHandoff } from "./policy";
 
 // show-hide is NOT here: the toggle is collected as a yes/no question.
 // Leaving it uncollectable made every field conditional on a toggle
@@ -194,63 +195,20 @@ export interface ActiveFormSchema {
   activeFieldIds: Set<string>;
 }
 
-// File uploads, payment, and a small set of explicitly listed forms can't
-// safely be collected in open chat. If a form is one of these, we hand the
-// user a link to the full form rather than collecting it inline.
-//
-// Why each input:
-//   - File: chat has no upload primitive.
+// A form is handed off (link only, never collected inline) when the POLICY
+// says so, or when the live contract carries a structural blocker:
+//   - File field: chat has no upload primitive.
+//   - Required repeatable: unsubmittable in chat (no array input).
 //   - Payment: read from the safe `requiresPayment` boolean on the public
 //     contract — `processors` is stripped server-side, so the previous
 //     `contract.processors?.some(...)` check was dead and payment forms
 //     (birth/death/marriage certs) got collected inline. See #965.
-//   - Form ID on the exclusion list below: forms that collect bank account
-//     details or otherwise can't be safely filled in chat. See #966 / #931.
-
-// Explicit handoff list. A form ID belongs here when it collects bank/account
-// details or has another structural reason the chat cannot collect it safely.
-// We list each form by ID instead of pattern-matching on step or field names
-// so the trigger stays auditable and stable as recipes evolve.
-//
-// Maintenance: when a new form is published that collects bank/financial
-// details (look for `bank-*`, `account-*`, `sort-code`, `routing-*` field IDs,
-// or a `bank-account` / `bank-details` step), add its formId here.
-const HANDOFF_FORM_IDS: ReadonlySet<string> = new Set([
-  "duties-performed-exam-claim",
-  "get-a-primary-school-textbook-grant",
-  "school-uniform-grant-barbados",
-  "smart-stream-vendor-registration",
-  "textbook-grant-application",
-]);
-
-// Belt-and-suspenders backstop for forms that SHOULD already be caught by the
-// `requiresPayment` / file-field heuristics above — but only when the published
-// recipe actually carries those signals. The chat reads the contract from the
-// live forms API, so a recipe shipped (or re-published) without
-// `requiresPayment: true`, or with its document upload modelled as anything
-// other than a `file` field, would silently re-open inline collection. That is
-// exactly how the payment certs leaked before (#965). Pinning these
-// known-sensitive forms by ID guarantees the handoff regardless of remote data,
-// so a recipe regression can no longer expose payments or document uploads in
-// chat. Slugs verified against apps/chat/eval/golden.json (doc id `service-<formId>`).
-//   - get-birth-certificate / get-death-certificate / get-marriage-certificate:
-//     payment (#916 / #917 / #918).
-//   - apply-for-conductor-licence / sell-goods-services-beach-park: document
-//     upload (#921 / #928).
-const ALWAYS_HANDOFF_FORM_IDS: ReadonlySet<string> = new Set([
-  "get-birth-certificate",
-  "get-death-certificate",
-  "get-marriage-certificate",
-  "apply-for-conductor-licence",
-  "sell-goods-services-beach-park",
-]);
-
+// The policy entry is the hard floor; the heuristics are the belt for a
+// "collect" form whose recipe gains one of these signals on a republish.
 export function needsHandoff(contract: ServiceContract): boolean {
   const hasFile = contract.steps.some((step) =>
     step.elements.some((el) => el.htmlType === "file"),
   );
-  // A REQUIRED repeatable field is unsubmittable in chat (no array input, the
-  // model is never told about it) — hand off. Optional repeatables just skip.
   const hasRequiredRepeatable = contract.steps.some((step) =>
     step.elements.some((el) => hasRepeatableBehaviour(el) && isRequired(el)),
   );
@@ -258,8 +216,7 @@ export function needsHandoff(contract: ServiceContract): boolean {
     hasFile ||
     hasRequiredRepeatable ||
     contract.requiresPayment === true ||
-    HANDOFF_FORM_IDS.has(contract.formId) ||
-    ALWAYS_HANDOFF_FORM_IDS.has(contract.formId)
+    isForcedHandoff(contract.formId)
   );
 }
 
