@@ -1,0 +1,1210 @@
+{
+  "formId": "nhc-land-property-application",
+  "title": "Application to Purchase Land or Property",
+  "description": "National Housing Corporation application form for land or property purchase",
+  "version": "1.4.0",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "applicant-contact.email",
+        "subject": "Your NHC housing application has been received"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "stepId": "applicant-details",
+      "title": "About you",
+      "elements": [
+        {
+          "ref": "components/title"
+        },
+        {
+          "ref": "components/first-name"
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "isHidden": false
+          }
+        },
+        {
+          "ref": "components/last-name"
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "applicant-address",
+      "title": "Your address",
+      "elements": [
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "applicant-address-line-1",
+            "label": "Address line 1"
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "applicant-address-line-2",
+            "label": "Address line 2"
+          }
+        },
+        {
+          "ref": "components/parish"
+        },
+        {
+          "ref": "components/postcode"
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "applicant-identification",
+      "title": "Your identification",
+      "elements": [
+        {
+          "ref": "components/national-id-number"
+        },
+        {
+          "ref": "components/tamis-number"
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "applicant-contact",
+      "title": "Your contact details",
+      "elements": [
+        {
+          "ref": "components/email"
+        },
+        {
+          "ref": "components/home-telephone"
+        },
+        {
+          "ref": "components/work-telephone"
+        },
+        {
+          "ref": "components/mobile-telephone"
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "applicant-personal",
+      "title": "Your personal details",
+      "elements": [
+        {
+          "ref": "components/date-of-birth"
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "marital-status",
+            "label": "Marital status",
+            "options": [
+              {
+                "label": "Single",
+                "value": "single"
+              },
+              {
+                "label": "Married",
+                "value": "married"
+              },
+              {
+                "label": "Widowed",
+                "value": "widowed"
+              },
+              {
+                "label": "Divorced",
+                "value": "divorced"
+              },
+              {
+                "label": "Separated",
+                "value": "separated"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select your marital status"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "citizenship",
+            "label": "Citizenship"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "country-of-residence",
+            "label": "Country of residence"
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "applicant-employment",
+      "title": "Your employment",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "employer",
+            "label": "Employer"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "occupation",
+            "label": "Occupation"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "period-of-employment",
+            "label": "Period of employment"
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "salary",
+            "label": "Salary",
+            "ui": {
+              "width": "short"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "pay-period",
+            "label": "Pay period",
+            "options": [
+              {
+                "label": "Weekly",
+                "value": "weekly"
+              },
+              {
+                "label": "Bi-monthly",
+                "value": "bi-monthly"
+              },
+              {
+                "label": "Monthly",
+                "value": "monthly"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select a pay period"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "employment-status",
+            "label": "Employment status",
+            "options": [
+              {
+                "label": "Government",
+                "value": "government"
+              },
+              {
+                "label": "Private",
+                "value": "private"
+              },
+              {
+                "label": "Self-employed",
+                "value": "self-employed"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select employment status"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "co-applicant-question",
+      "title": "Co-applicant",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "has-co-applicant",
+            "label": "Are you applying with a co-applicant?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an option"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "co-applicant-details",
+      "title": "Co-applicant details",
+      "elements": [
+        {
+          "ref": "components/title",
+          "overrides": {
+            "fieldId": "co-applicant-title",
+            "label": "Title"
+          }
+        },
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "fieldId": "co-applicant-first-name",
+            "label": "First name"
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "fieldId": "co-applicant-middle-name",
+            "label": "Middle name"
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "fieldId": "co-applicant-last-name",
+            "label": "Last name"
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "co-applicant-question",
+          "targetFieldId": "has-co-applicant",
+          "operator": "equal",
+          "value": "yes"
+        }
+      ]
+    },
+    {
+      "stepId": "co-applicant-address",
+      "title": "Co-applicant address",
+      "elements": [
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "co-applicant-address-line-1",
+            "label": "Address line 1"
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "co-applicant-address-line-2",
+            "label": "Address line 2"
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "co-applicant-parish",
+            "label": "Parish"
+          }
+        },
+        {
+          "ref": "components/postcode",
+          "overrides": {
+            "fieldId": "co-applicant-postcode",
+            "label": "Postcode"
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "co-applicant-question",
+          "targetFieldId": "has-co-applicant",
+          "operator": "equal",
+          "value": "yes"
+        }
+      ]
+    },
+    {
+      "stepId": "co-applicant-identification",
+      "title": "Co-applicant identification",
+      "elements": [
+        {
+          "ref": "components/national-id-number",
+          "overrides": {
+            "fieldId": "co-applicant-national-id-number",
+            "label": "National Registration Number"
+          }
+        },
+        {
+          "ref": "components/tamis-number",
+          "overrides": {
+            "fieldId": "co-applicant-tamis-number",
+            "label": "TAMIS number"
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "co-applicant-question",
+          "targetFieldId": "has-co-applicant",
+          "operator": "equal",
+          "value": "yes"
+        }
+      ]
+    },
+    {
+      "stepId": "co-applicant-contact",
+      "title": "Co-applicant contact details",
+      "elements": [
+        {
+          "ref": "components/email",
+          "overrides": {
+            "fieldId": "co-applicant-email",
+            "label": "Email"
+          }
+        },
+        {
+          "ref": "components/home-telephone",
+          "overrides": {
+            "fieldId": "co-applicant-home-telephone",
+            "label": "Home phone"
+          }
+        },
+        {
+          "ref": "components/work-telephone",
+          "overrides": {
+            "fieldId": "co-applicant-work-telephone",
+            "label": "Work phone"
+          }
+        },
+        {
+          "ref": "components/mobile-telephone",
+          "overrides": {
+            "fieldId": "co-applicant-mobile-telephone",
+            "label": "Cell phone"
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "co-applicant-question",
+          "targetFieldId": "has-co-applicant",
+          "operator": "equal",
+          "value": "yes"
+        }
+      ]
+    },
+    {
+      "stepId": "co-applicant-personal",
+      "title": "Co-applicant personal details",
+      "elements": [
+        {
+          "ref": "components/date-of-birth",
+          "overrides": {
+            "fieldId": "co-applicant-date-of-birth",
+            "label": "Date of birth"
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "co-applicant-marital-status",
+            "label": "Marital status",
+            "options": [
+              {
+                "label": "Single",
+                "value": "single"
+              },
+              {
+                "label": "Married",
+                "value": "married"
+              },
+              {
+                "label": "Widowed",
+                "value": "widowed"
+              },
+              {
+                "label": "Divorced",
+                "value": "divorced"
+              },
+              {
+                "label": "Separated",
+                "value": "separated"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select marital status"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "co-applicant-citizenship",
+            "label": "Citizenship"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "co-applicant-country-of-residence",
+            "label": "Country of residence"
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "co-applicant-question",
+          "targetFieldId": "has-co-applicant",
+          "operator": "equal",
+          "value": "yes"
+        }
+      ]
+    },
+    {
+      "stepId": "co-applicant-employment",
+      "title": "Co-applicant employment",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "co-applicant-employer",
+            "label": "Employer"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "co-applicant-occupation",
+            "label": "Occupation"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "co-applicant-period-of-employment",
+            "label": "Period of employment"
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "co-applicant-salary",
+            "label": "Salary",
+            "ui": {
+              "width": "short"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "co-applicant-pay-period",
+            "label": "Pay period",
+            "options": [
+              {
+                "label": "Weekly",
+                "value": "weekly"
+              },
+              {
+                "label": "Bi-monthly",
+                "value": "bi-monthly"
+              },
+              {
+                "label": "Monthly",
+                "value": "monthly"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select a pay period"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "co-applicant-employment-status",
+            "label": "Employment status",
+            "options": [
+              {
+                "label": "Government",
+                "value": "government"
+              },
+              {
+                "label": "Private",
+                "value": "private"
+              },
+              {
+                "label": "Self-employed",
+                "value": "self-employed"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select employment status"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "co-applicant-question",
+          "targetFieldId": "has-co-applicant",
+          "operator": "equal",
+          "value": "yes"
+        }
+      ]
+    },
+    {
+      "stepId": "application-type",
+      "title": "What type of house do you need?",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "house-type",
+            "label": "House type",
+            "options": [
+              {
+                "label": "Timber",
+                "value": "timber"
+              },
+              {
+                "label": "Wall",
+                "value": "wall"
+              },
+              {
+                "label": "Timber/Wall",
+                "value": "timber-wall"
+              },
+              {
+                "label": "Steel Frame",
+                "value": "steel-frame"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select a house type"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "preferred-house-type",
+            "label": "Preferred house type",
+            "options": [
+              {
+                "label": "2 Bedroom",
+                "value": "2-bedroom"
+              },
+              {
+                "label": "3 Bedroom",
+                "value": "3-bedroom"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select a house type"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "number-of-adults",
+            "label": "Number of adults",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the number of adults"
+              },
+              "min": {
+                "value": 1,
+                "error": "Number must be at least 1"
+              }
+            },
+            "ui": {
+              "width": "short"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "has-children",
+            "label": "Do you have children?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an option"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "children-details",
+      "title": "Children in your household",
+      "elements": [
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "number-of-children",
+            "label": "Number of children",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the number of children"
+              },
+              "min": {
+                "value": 1,
+                "error": "Number must be at least 1"
+              }
+            },
+            "ui": {
+              "width": "short"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "children-ages",
+            "label": "List the children's ages",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "List the ages of your children"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "application-type",
+          "targetFieldId": "has-children",
+          "operator": "equal",
+          "value": "yes"
+        }
+      ]
+    },
+    {
+      "stepId": "household-info",
+      "title": "Household information",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "persons-with-disabilities",
+            "label": "Are there any persons with disabilities in the household?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an option"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "household-income",
+      "title": "Your household income",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "other-income-sources",
+            "label": "Do you have other sources of income?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an option"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "other-income-details",
+      "title": "Other income sources",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "income-source-1",
+            "label": "Income source 1",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the income source"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "income-source-1-amount",
+            "label": "Amount",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the amount"
+              },
+              "min": {
+                "value": 0,
+                "error": "Amount must be 0 or more"
+              }
+            },
+            "ui": {
+              "width": "short"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "income-source-2",
+            "label": "Income source 2"
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "income-source-2-amount",
+            "label": "Amount",
+            "ui": {
+              "width": "short"
+            }
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "household-income",
+          "targetFieldId": "other-income-sources",
+          "operator": "equal",
+          "value": "yes"
+        }
+      ]
+    },
+    {
+      "stepId": "housing-situation",
+      "title": "Your housing situation",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "currently-renting",
+            "label": "Are you currently renting?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an option"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "rental-details",
+      "title": "Rental details",
+      "elements": [
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "monthly-rent",
+            "label": "Monthly rent",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the monthly rent"
+              },
+              "min": {
+                "value": 0,
+                "error": "Amount must be 0 or more"
+              }
+            },
+            "ui": {
+              "width": "short"
+            }
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "housing-situation",
+          "targetFieldId": "currently-renting",
+          "operator": "equal",
+          "value": "yes"
+        }
+      ]
+    },
+    {
+      "stepId": "land-ownership",
+      "title": "Land ownership",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "owns-land",
+            "label": "Do you own land and want NHC to provide a housing solution?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an option"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "is-tenant",
+            "label": "Are you a tenant of the land you wish to build on?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an option"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "landlord-permission",
+      "title": "Landlord permission",
+      "elements": [
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "fieldId": "landlord-permission-letter",
+            "label": "Upload landlord or agent permission letter",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Upload the landlord or agent permission letter"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "land-ownership",
+          "targetFieldId": "is-tenant",
+          "operator": "equal",
+          "value": "yes"
+        }
+      ]
+    },
+    {
+      "stepId": "financing",
+      "title": "How will you finance the purchase?",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "financing-method",
+            "label": "How will you finance the purchase?",
+            "options": [
+              {
+                "label": "Mortgage",
+                "value": "mortgage"
+              },
+              {
+                "label": "Loan",
+                "value": "loan"
+              },
+              {
+                "label": "Full cash payment",
+                "value": "full-cash"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select a financing method"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "financing-details",
+      "title": "Financing details",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "lending-institution",
+            "label": "Lending institution and branch",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the lending institution and branch"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "deposit-available",
+            "label": "Deposit available",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the deposit amount"
+              },
+              "min": {
+                "value": 0,
+                "error": "Amount must be 0 or more"
+              }
+            },
+            "ui": {
+              "width": "short"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "qualifying-amount",
+            "label": "Qualifying amount (mortgage certificate)",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the qualifying amount"
+              },
+              "min": {
+                "value": 0,
+                "error": "Amount must be 0 or more"
+              }
+            },
+            "ui": {
+              "width": "short"
+            }
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "financing",
+          "targetFieldId": "financing-method",
+          "operator": "in",
+          "value": [
+            "mortgage",
+            "loan"
+          ]
+        }
+      ]
+    },
+    {
+      "stepId": "documents",
+      "title": "Upload documents",
+      "elements": [
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "fieldId": "bank-statement",
+            "label": "Bank statement",
+            "validations": {
+              "required": {
+                "value": false,
+                "error": "Upload a bank statement"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "fieldId": "mortgage-certificate",
+            "label": "Mortgage certificate",
+            "validations": {
+              "required": {
+                "value": false,
+                "error": "Upload a mortgage certificate"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "check-your-answers",
+      "title": "Check your answers",
+      "description": "Review all the information you have provided before submitting your application.",
+      "elements": [],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "fieldId": "declaration-confirmed",
+            "label": "Declaration",
+            "options": [
+              {
+                "label": "I confirm that the information provided is true and correct.",
+                "value": "confirmed"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "You must confirm the declaration to continue"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Application submitted",
+      "elements": [],
+      "behaviours": []
+    }
+  ],
+  "createdAt": "2026-06-10T15:07:38.271Z",
+  "updatedAt": "2026-06-10T15:07:38.271Z"
+}

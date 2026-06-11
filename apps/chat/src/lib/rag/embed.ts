@@ -75,11 +75,3 @@ export async function embedWithRetry(
     }
   }
 }
-
-// Titan embed API is single-input. Sequential is fine for our chunk volume;
-// add concurrency cap if throughput matters.
-export async function embedBatch(texts: string[]): Promise<number[][]> {
-  const out: number[][] = [];
-  for (const t of texts) out.push(await embed(t));
-  return out;
-}

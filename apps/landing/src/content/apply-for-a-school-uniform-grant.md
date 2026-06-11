@@ -4,7 +4,7 @@ description: "Apply for a $100 grant towards your child’s school uniform for a
 stage: "alpha"
 publish_date: 2026-06-02
 category: education
-visibility: preview
+visibility: draft
 form_id: school-uniform-grant-barbados
 ---
 

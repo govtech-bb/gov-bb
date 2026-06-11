@@ -4,6 +4,7 @@ description: "School staff can refer a student to the Student Support Services U
 stage: "alpha"
 publish_date: 2026-06-02
 category: education
+visibility: preview
 form_id: referral-student-support-services
 ---
 
@@ -23,7 +24,7 @@ Before you submit a referral, you should have:
 
 You can complete the referral online. It takes about 15 minutes.
 
-<a data-start-link href="/education/refer-a-student-for-support/start">Start now</a>
+<a data-start-link>Start now</a>
 
 ## What the form asks for
 

@@ -1,0 +1,35 @@
+{
+  "Blocks": [
+    {
+      "BlockType": "PAGE",
+      "Id": "page-1",
+      "Page": 1,
+      "Relationships": [
+        {
+          "Type": "CHILD",
+          "Ids": ["line-label", "sel-1", "sel-2", "line-1", "line-2"]
+        }
+      ]
+    },
+    {
+      "BlockType": "LINE",
+      "Id": "line-label",
+      "Page": 1,
+      "Text": "Marital Status:"
+    },
+    {
+      "BlockType": "SELECTION_ELEMENT",
+      "Id": "sel-1",
+      "Page": 1,
+      "SelectionStatus": "SELECTED"
+    },
+    { "BlockType": "LINE", "Id": "line-1", "Page": 1, "Text": "Single" },
+    {
+      "BlockType": "SELECTION_ELEMENT",
+      "Id": "sel-2",
+      "Page": 1,
+      "SelectionStatus": "NOT_SELECTED"
+    },
+    { "BlockType": "LINE", "Id": "line-2", "Page": 1, "Text": "Married" }
+  ]
+}

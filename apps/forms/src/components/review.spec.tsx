@@ -47,6 +47,9 @@ const baseFormMeta: Pick<FormMeta, "formId"> = { formId: "test-form" };
 
 function makeMockForm(values: Record<string, unknown> = {}) {
   return {
+    // getVisibleFields evaluates fieldConditionalOn behaviours against the
+    // composite-keyed value map in `state.values` (#737).
+    state: { values },
     getFieldValue: jest.fn((fieldId: string) => values[fieldId]),
   };
 }
@@ -101,6 +104,64 @@ describe("Review", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "Address" }),
+    ).toBeInTheDocument();
+  });
+
+  it("resolves a step's conditionalTitle from the form values (#871)", () => {
+    const conditionalStep = makeStep({
+      stepId: "birth-details",
+      title: "Provide the person's birth details",
+      conditionalTitle: [
+        {
+          targetStepId: "applying-for-yourself",
+          targetFieldId: "applying-for-yourself",
+          operator: "equal",
+          value: "yes",
+          title: "Provide your birth details",
+        },
+      ],
+      fields: [
+        makeField({
+          id: "birth-details.place-of-birth",
+          fieldId: "place-of-birth",
+          label: "Place of birth",
+        }),
+      ],
+    });
+
+    const form = makeMockForm({
+      "applying-for-yourself_applying-for-yourself": "yes",
+      "birth-details.place-of-birth": "Bridgetown",
+    });
+
+    const { rerender } = render(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={form as never}
+        visibleSteps={[conditionalStep]}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", { name: "Provide your birth details" }),
+    ).toBeInTheDocument();
+
+    // Flip the watched answer → the static title is used instead.
+    rerender(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={
+          makeMockForm({
+            "applying-for-yourself_applying-for-yourself": "no",
+            "birth-details.place-of-birth": "Bridgetown",
+          }) as never
+        }
+        visibleSteps={[conditionalStep]}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", {
+        name: "Provide the person's birth details",
+      }),
     ).toBeInTheDocument();
   });
 
@@ -179,22 +240,35 @@ describe("Review", () => {
     expect(screen.queryByText("Hidden field")).not.toBeInTheDocument();
   });
 
-  it("does not render fields where conditionallyHidden=true", () => {
+  it("does not render a conditional field whose condition fails, even when it holds a stale answer (#737)", () => {
+    // The user answered Yes, filled the conditional field, then flipped back
+    // to No. The value stays in form state (keep-but-hide) and the render
+    // flag was never updated because the field never re-mounted — visibility
+    // must come from evaluating the behaviour, not the flag.
     const steps: ClientFormStep[] = [
       makeStep({
         stepId: "step-1",
         title: "Step One",
         fields: [
           makeField({
-            id: "step-1.shown",
-            fieldId: "shown",
-            label: "Shown field",
+            id: "step-1_hasJob",
+            fieldId: "hasJob",
+            label: "Have you had a paid job?",
           }),
           makeField({
-            id: "step-1.cond-hidden",
-            fieldId: "cond-hidden",
-            label: "Conditional field",
-            conditionallyHidden: true,
+            id: "step-1_employer",
+            fieldId: "employer",
+            label: "Name of employer",
+            conditionallyHidden: false, // stale: flag still says visible
+            behaviours: [
+              {
+                type: "fieldConditionalOn",
+                targetStepId: "step-1",
+                targetFieldId: "hasJob",
+                operator: "equal",
+                value: "yes",
+              },
+            ],
           }),
         ],
       }),
@@ -203,13 +277,61 @@ describe("Review", () => {
     render(
       <Review
         formMeta={baseFormMeta as FormMeta}
-        form={makeMockForm({ "step-1.shown": "Answered" }) as never}
+        form={
+          makeMockForm({
+            "step-1_hasJob": "no",
+            "step-1_employer": "Acme Ltd", // stale answer kept in state
+          }) as never
+        }
         visibleSteps={steps}
       />,
     );
 
-    expect(screen.getByText("Shown field")).toBeInTheDocument();
-    expect(screen.queryByText("Conditional field")).not.toBeInTheDocument();
+    expect(screen.getByText("Have you had a paid job?")).toBeInTheDocument();
+    expect(screen.queryByText("Name of employer")).not.toBeInTheDocument();
+    expect(screen.queryByText("Acme Ltd")).not.toBeInTheDocument();
+  });
+
+  it("renders a conditional field whose condition passes, even when the stale flag says hidden", () => {
+    const steps: ClientFormStep[] = [
+      makeStep({
+        stepId: "step-1",
+        title: "Step One",
+        fields: [
+          makeField({
+            id: "step-1_employer",
+            fieldId: "employer",
+            label: "Name of employer",
+            conditionallyHidden: true, // stale: flag still says hidden
+            behaviours: [
+              {
+                type: "fieldConditionalOn",
+                targetStepId: "step-1",
+                targetFieldId: "hasJob",
+                operator: "equal",
+                value: "yes",
+              },
+            ],
+          }),
+        ],
+      }),
+    ];
+
+    render(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={
+          makeMockForm({
+            "step-1_hasJob": "yes",
+            "step-1_employer": "Acme Ltd",
+          }) as never
+        }
+        visibleSteps={steps}
+      />,
+    );
+
+    expect(screen.getByText("Name of employer")).toBeInTheDocument();
+    expect(screen.getByText("Acme Ltd")).toBeInTheDocument();
   });
 
   it("does not render show-hide fields, even when opened, but keeps revealed answers", () => {
@@ -684,8 +806,10 @@ describe("Review", () => {
     const steps: ClientFormStep[] = [
       makeStep({ stepId: "step-1", title: "Step One", fields: [dateField] }),
     ];
+    // Date parts are stored as the digit-strings the user typed (#815),
+    // including any leading zeros.
     const form = makeMockForm({
-      "step-1.dob": { day: 1, month: 1, year: 2026 },
+      "step-1.dob": { day: "09", month: "01", year: "2026" },
     });
 
     render(
@@ -696,7 +820,7 @@ describe("Review", () => {
       />,
     );
 
-    const expectedDate = new Date(2026, 0, 1)
+    const expectedDate = new Date(2026, 0, 9)
       .toDateString()
       .trim()
       .replace(/^\w+\s/, "");
@@ -940,6 +1064,84 @@ describe("Review", () => {
     );
 
     expect(screen.getByText("document.pdf, photo.jpg")).toBeInTheDocument();
+  });
+
+  // -------------------------------------------------------------------------
+  // Repeatable instance markers in section headings (issue #801)
+  // -------------------------------------------------------------------------
+
+  it("renders the plain title for a non-repeat step (no marker)", () => {
+    const steps: ClientFormStep[] = [
+      makeStep({
+        stepId: "step-personal",
+        title: "Personal Details",
+        fields: [],
+      }),
+    ];
+
+    render(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={makeMockForm() as never}
+        visibleSteps={steps}
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "Personal Details" }),
+    ).toBeInTheDocument();
+  });
+
+  it("appends an auto-number marker for a ~1 repeat step with no instanceLabel", () => {
+    const steps: ClientFormStep[] = [
+      makeStep({
+        stepId: "dependents~1",
+        title: "Tell us about your dependent(s)",
+        fields: [],
+        behaviours: [{ type: "repeatable", min: 1, max: 5 }],
+      }),
+    ];
+
+    render(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={makeMockForm() as never}
+        visibleSteps={steps}
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", {
+        name: "Tell us about your dependent(s) — 2",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("appends a labelled marker for a ~1 repeat step with an instanceLabel", () => {
+    const steps: ClientFormStep[] = [
+      makeStep({
+        stepId: "dependents~1",
+        title: "Tell us about your dependent(s)",
+        fields: [],
+        behaviours: [
+          { type: "repeatable", min: 1, max: 5, instanceLabel: "Dependent" },
+        ],
+      }),
+    ];
+
+    render(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={makeMockForm() as never}
+        visibleSteps={steps}
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", {
+        name: "Tell us about your dependent(s) — Dependent 2",
+      }),
+    ).toBeInTheDocument();
   });
 
   // -------------------------------------------------------------------------

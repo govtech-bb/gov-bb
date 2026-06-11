@@ -9,13 +9,24 @@ jest.mock("@govtech-bb/database", () => ({
 
 jest.mock("../db.js", () => ({ getDataSource: jest.fn() }));
 
+// Presence (read-only lock, #874) is exercised in presence.spec.ts; here it's
+// out of scope, so treat every caller as the holder and let mockReq stamp a
+// userLogin so the save handlers' presence gate is satisfied transparently.
+jest.mock("./presence.js", () => ({
+  holdsFreshClaim: jest.fn().mockResolvedValue(true),
+}));
+
 import { getDataSource } from "../db.js";
 import { createFormHandler, updateFormHandler } from "./forms";
 
 const getDataSourceMock = getDataSource as jest.Mock;
 
 function mockReq(body: unknown, params: Record<string, string> = {}): Request {
-  return { body, params } as unknown as Request;
+  const withLogin =
+    body && typeof body === "object" && !Array.isArray(body)
+      ? { userLogin: "tester", ...(body as Record<string, unknown>) }
+      : body;
+  return { body: withLogin, params } as unknown as Request;
 }
 
 interface CapturingResponse extends Response {
@@ -194,6 +205,49 @@ describe("createFormHandler — uniqueness", () => {
     expect((res.body as { error: string }).error).toMatch(
       /v1\.0\.0 already exists/,
     );
+  });
+
+  it("maps a unique-violation on the transactional save to the same 409 as the findOne duplicate path (true deploy race)", async () => {
+    // The non-atomic findOne sees no duplicate (null), but a concurrent deploy
+    // claims the same formId+version first, so the transactional save trips the
+    // Postgres unique constraint (23505). TypeORM surfaces it as a
+    // QueryFailedError carrying the driver code. Must surface as the SAME 409 the
+    // findOne duplicate path returns — not a generic 500.
+    const { ds, save } = fakeDataSource();
+    const uniqueViolation = Object.assign(
+      new Error("duplicate key value violates unique constraint"),
+      { code: "23505", driverError: { code: "23505" } },
+    );
+    save.mockRejectedValueOnce(uniqueViolation);
+    getDataSourceMock.mockResolvedValue(ds);
+
+    const res = mockRes();
+    await createFormHandler(mockReq({ recipe: recipe(), isNew: true }), res);
+
+    expect(res.statusCode).toBe(409);
+    expect((res.body as { error: string }).error).toMatch(
+      /v1\.0\.0 already exists/,
+    );
+  });
+
+  it("does NOT map a non-unique-violation save error to 409 (stays 500)", async () => {
+    // findOne sees no duplicate (null), but the transactional save fails for an
+    // unrelated reason (a dropped connection — no Postgres 23505, no
+    // driverError). Only 23505 maps to the deploy-race 409; anything else must
+    // surface as a generic 500, not a misleading "version already exists".
+    const { ds, save } = fakeDataSource();
+    save.mockRejectedValueOnce(
+      Object.assign(new Error("Connection terminated unexpectedly"), {
+        code: "ECONNRESET",
+      }),
+    );
+    getDataSourceMock.mockResolvedValue(ds);
+
+    const res = mockRes();
+    await createFormHandler(mockReq({ recipe: recipe(), isNew: true }), res);
+
+    expect(res.statusCode).toBe(500);
+    expect((res.body as { error: string }).error).not.toMatch(/already exists/);
   });
 
   it("creates a unique form", async () => {

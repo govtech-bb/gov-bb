@@ -530,9 +530,6 @@ describe("processors round-trip through deserialize/serialize", () => {
         description: "Application processing fee",
         customerEmailPath: "applicant.email",
         customerNamePath: "applicant.fullName",
-        allowCredit: true,
-        allowDebit: true,
-        allowPayce: false,
       },
     },
     {

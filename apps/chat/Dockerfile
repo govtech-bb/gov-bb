@@ -46,4 +46,4 @@ WORKDIR /app/apps/chat
 # Apply pending migrations on boot (idempotent), then start vite dev. Mirrors
 # the api's "migrate on bootstrap" pattern so a fresh `docker compose up` lands
 # in a runnable state without manual steps.
-CMD ["sh", "-c", "pnpm exec tsx src/lib/db/migrate.ts && pnpm exec vite dev --host 0.0.0.0 --port 3000"]
+CMD ["sh", "-c", "pnpm exec tsx src/lib/db/migrate.ts && pnpm exec vite dev --host 0.0.0.0 --port 3000 --clearScreen false"]

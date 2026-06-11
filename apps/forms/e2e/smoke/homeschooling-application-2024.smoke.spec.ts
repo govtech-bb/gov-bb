@@ -18,7 +18,7 @@
  *  - Field IDs are `${stepId}_${fieldId}` (kebab-case fieldIds).
  *  - `title` and `applicant-parish` render as native `<select>` (required by the
  *    registry defaults the recipe doesn't override) — use `selectDropdown` with
- *    slug values ("mr", "saint-michael").
+ *    slug values ("mr", "st-michael").
  *  - `student-dob` is a `date-of-birth` (three-part day/month/year widget) and
  *    must be in the past.
  *  - `student-info` and `instructor-info` are repeatable (Add another? → No).
@@ -66,8 +66,8 @@ test.describe("Homeschooling Application — Live Smoke", () => {
       "applicant-address",
       faker.location.streetAddress(),
     );
-    await selectDropdown(page, step, "applicant-parish", "saint-michael");
-    await fillField(page, step, "contact-numbers", faker.string.numeric(10));
+    await selectDropdown(page, step, "applicant-parish", "st-michael");
+    await fillField(page, step, "contact-numbers", "246-418-1234");
     await fillField(page, step, "email-address", "testing@govtech.bb");
     await selectRadio(page, step, "resident-status", "resident");
     await advance(page, step);
@@ -116,6 +116,10 @@ test.describe("Homeschooling Application — Live Smoke", () => {
       .check();
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────
-    await submitAndConfirm(page, { heading: "Submission Confirmation" });
+    await submitAndConfirm(page, {
+      heading: "Your application has been submitted",
+      subheading:
+        "Your application to homeschool your child has been submitted.",
+    });
   });
 });

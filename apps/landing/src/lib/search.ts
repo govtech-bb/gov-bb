@@ -1,6 +1,7 @@
 import MiniSearch from 'minisearch'
-import { isUrlPreview, PAGES } from '../content/registry'
+import { isSubPage, isUrlVisible, PAGES } from '../content/registry'
 import { CATEGORY_BY_SLUG } from '../content/categories'
+import type { ViewLevel } from './frontmatter'
 
 export type SearchKind = 'service'
 
@@ -184,6 +185,8 @@ function buildIndex(): {
   const docs = new Map<string, IndexDoc>()
 
   for (const page of PAGES) {
+    // Step pages (e.g. `<service>/start`) are reached from their entry page, not searched for.
+    if (isSubPage(page)) continue
     const firstCat = page.frontmatter.categories[0]
     const category =
       (firstCat && CATEGORY_BY_SLUG[firstCat]?.title) || 'Service'
@@ -194,7 +197,7 @@ function buildIndex(): {
       title,
       description,
       body: stripMarkdown(page.body),
-      keywords: buildKeywords(title, description),
+      keywords: buildKeywords(title, description, page.frontmatter.keywords),
       href: `/${page.url}`,
       category,
       kind: 'service',
@@ -212,7 +215,7 @@ function buildIndex(): {
     },
     searchOptions: {
       boost: { keywords: 5, title: 4, description: 1.5, body: 0.3 },
-      fuzzy: (term) => (term.length > 3 ? 0.3 : 0),
+      fuzzy: (term) => (term.length > 3 ? 0.2 : 0),
       prefix: (term) => term.length >= 1,
       combineWith: 'AND',
       weights: { fuzzy: 0.3, prefix: 0.3 },
@@ -231,7 +234,10 @@ function getIndex() {
   return indexPromise.current
 }
 
-export function search(query: string, inPreview = false): Array<SearchHit> {
+export function search(
+  query: string,
+  viewer: ViewLevel = 'public',
+): Array<SearchHit> {
   const trimmed = query.trim()
   if (!trimmed) return []
   const { ms, docs } = getIndex()
@@ -248,8 +254,5 @@ export function search(query: string, inPreview = false): Array<SearchHit> {
         kind: (r.kind as SearchKind) ?? stored?.kind ?? 'service',
       }
     })
-    .filter((hit) => {
-      if (inPreview) return true
-      return !isUrlPreview(hit.id.slice('service:'.length))
-    })
+    .filter((hit) => isUrlVisible(hit.id.slice('service:'.length), viewer))
 }

@@ -66,6 +66,8 @@ export {
   sharedFieldsBehaviourSchema,
   behaviourSchema,
   equalityOperationsSchema,
+  durationTransformSchema,
+  conditionalTitleSchema,
 } from "./behavior.type";
 
 export type {
@@ -77,6 +79,8 @@ export type {
   FieldArrayBehaviour,
   SharedFieldsBehaviour,
   EqualityOperations,
+  DurationTransform,
+  ConditionalTitle,
 } from "./behavior.type";
 
 export type { Block } from "./block.type";
@@ -123,7 +127,11 @@ export type { RecipientKind } from "./recipient-field";
 
 export { KEBAB_ID_PATTERN, KEBAB_ID_ERROR } from "./id-pattern";
 
+export { SEMVER_PATTERN, SEMVER_ERROR, semverSchema } from "./version-pattern";
+
 export { dynamic } from "./dynamic";
+
+export { shallowMergeDefined } from "./merge";
 
 export { validateFormContract } from "./validate-form-contract";
 export type {
@@ -144,3 +152,9 @@ export type {
   DateTimeFormat,
   ContactDetails,
 } from "./service-contract.type";
+
+export {
+  deployBranchPrefix,
+  deployBranchName,
+  eraseBranchName,
+} from "./deploy-branch";

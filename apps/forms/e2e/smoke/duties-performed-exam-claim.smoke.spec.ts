@@ -63,7 +63,7 @@ test.describe("Duties Performed Exam Claim — Live Smoke", () => {
     await fillField(page, step, "address", faker.location.streetAddress());
     await fillField(page, step, "parish", "St. Michael");
     await fillField(page, step, "email", "testing@govtech.bb");
-    await fillField(page, step, "telephone", faker.string.numeric(10));
+    await fillField(page, step, "telephone", "246-418-1234");
     await fillField(page, step, "tamis-no", faker.string.numeric(9));
     await fillField(page, step, "supervisor", faker.person.fullName());
     await fillField(page, step, "nis-no", faker.string.numeric(9));
@@ -166,6 +166,10 @@ test.describe("Duties Performed Exam Claim — Live Smoke", () => {
     expectStep(page, "declaration", { exact: true });
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────
-    await submitAndConfirm(page, { heading: "Submission Confirmation" });
+    await submitAndConfirm(page, {
+      heading: "Your claim has been submitted",
+      subheading:
+        "Your claim for duties performed during exams has been submitted.",
+    });
   });
 });

@@ -1,36 +1,33 @@
 import { z } from 'zod'
 
+/**
+ * Content rollout levels, ordered from least to most restricted. A page's
+ * `visibility` is the *minimum* level a viewer must hold to see it; a request's
+ * resolved level is the highest grant it carries. Access is hierarchical:
+ * `draft` sees everything, `preview` sees public + preview, the public sees
+ * only public (see `rankOf` in `content/registry.ts`).
+ *
+ * Like `preview`, `draft` is a rollout gate, *not* a confidentiality boundary —
+ * the content still ships in the client bundle (see
+ * `docs/decisions/0013-…`). It just sits one rung above `preview`, hidden even
+ * from preview-token holders.
+ */
+export const VIEW_LEVELS = ['public', 'preview', 'draft'] as const
+export type ViewLevel = (typeof VIEW_LEVELS)[number]
+
 export const FrontmatterSchema = z.object({
   title: z.string().optional(),
   description: z.string().optional(),
-  /** Single-category shorthand. Folded into `categories` by the registry. */
   category: z.string().optional(),
-  /** Multi-category form. A page is listed under every slug it claims. */
   categories: z.array(z.string()).optional(),
-  /** Optional sub-category slug. Must belong to one of the page's categories. */
   subcategory: z.string().optional(),
   publish_date: z.coerce.date().optional(),
   source_url: z.url().optional(),
   stage: z.enum(['alpha']).optional(),
-  /**
-   * Rollout gate. `public` (the default) is live for everyone. `preview` hides
-   * the page from the public — it 404s, is dropped from listings and the search
-   * index, and is reachable only by a reviewer holding the preview token (see
-   * src/lib/preview.ts). On a sub-page (e.g. `<service>/start`) this also makes
-   * the still-public parent strip its online-application method and rewrite the
-   * "N ways" count for the public. See docs/plans/content-feature-flagging.md.
-   */
-  visibility: z.enum(['public', 'preview']).optional().default('public'),
+  visibility: z.enum(VIEW_LEVELS).optional().default('public'),
   featured: z.boolean().optional(),
   section: z.string().optional(),
   service_type: z.enum(['digital', 'information']).optional(),
-  /**
-   * Form ID in the forms API. When set, a `<a data-start-link>` element
-   * inside the page's body is rendered as a Start now button linking to
-   * the forms app — but only if the form ID is present in the list resolved
-   * at runtime from the forms API (see lib/available-forms.ts).
-   * See docs/decisions/0030 for the convention.
-   */
   form_id: z.string().optional(),
 })
 
@@ -48,6 +45,8 @@ export type Frontmatter = Omit<
   title: string
   categories: Array<string>
   subcategory?: string
+  /** Extra search terms. Set by co-located feature modules; markdown pages omit it. */
+  keywords?: Array<string>
 }
 
 export function titleFromSlug(slug: string): string {

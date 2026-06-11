@@ -21,6 +21,13 @@ export default defineConfig({
   /* A real deployed environment — no retries so a genuine failure is obvious. */
   retries: 0,
   workers: 1,
+  /* Per-test budget. The default 30s is too tight for a long, many-step form
+   * walked under SMOKE_SLOWMO (each action is delayed, so a full run can take
+   * ~40-50s at slowMo=500). A genuine hang still fails fast via the per-action
+   * `actionTimeout` (15s) / `navigationTimeout` (30s) below — this only widens
+   * the cumulative budget so a slow-motion observation run isn't killed
+   * mid-walk. */
+  timeout: 120_000,
   reporter: [["line"]],
   use: {
     baseURL: process.env.SMOKE_BASE_URL ?? "https://forms.sandbox.alpha.gov.bb",
@@ -28,6 +35,8 @@ export default defineConfig({
     screenshot: "only-on-failure",
     actionTimeout: 15_000,
     navigationTimeout: 30_000,
+    /* Optional slow-motion for watching a headed run, e.g. SMOKE_SLOWMO=500. */
+    launchOptions: { slowMo: Number(process.env.SMOKE_SLOWMO) || 0 },
   },
   /* No webServer: we test a deployed environment, not a local dev server. */
   projects: [

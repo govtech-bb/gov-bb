@@ -87,6 +87,23 @@ describe("FileUpload", () => {
     mockUploadFile.mockResolvedValue(makeUploaded("default.pdf"));
   });
 
+  it("sets the multiple attribute on the input when field.multiple is true", () => {
+    const { fileInput } = renderComponent({
+      field: { ...baseField, multiple: true },
+    });
+    expect(fileInput.multiple).toBe(true);
+  });
+
+  it("does not set multiple on the input when field.multiple is false or absent", () => {
+    const { fileInput } = renderComponent({
+      field: { ...baseField, multiple: false },
+    });
+    expect(fileInput.multiple).toBe(false);
+
+    const { fileInput: defaultInput } = renderComponent();
+    expect(defaultInput.multiple).toBe(false);
+  });
+
   it("renders a file input with the accept attribute from sharedProps", () => {
     const { fileInput } = renderComponent({
       sharedProps: { ...baseSharedProps, accept: "image/png,image/jpeg" },
@@ -120,6 +137,24 @@ describe("FileUpload", () => {
     // The expiring preview url is not stored in form state.
     expect(calledWith[0].url).toBeUndefined();
     expect(calledWith[0].key).toBeDefined();
+  });
+
+  it("forwards the previewToken prop to uploadFile", async () => {
+    const user = userEvent.setup();
+    const { fileInput } = renderComponent({
+      formId: "f1",
+      previewToken: "preview-tok",
+    });
+
+    await user.upload(
+      fileInput,
+      makeFile("report.pdf", "application/pdf", 512),
+    );
+
+    await waitFor(() => expect(mockUploadFile).toHaveBeenCalled());
+    expect(mockUploadFile).toHaveBeenCalledWith(
+      expect.objectContaining({ previewToken: "preview-tok" }),
+    );
   });
 
   it("appends a newly uploaded file to existing files in the list", async () => {

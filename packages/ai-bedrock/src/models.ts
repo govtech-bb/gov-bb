@@ -8,7 +8,7 @@
 export const BEDROCK_MODEL_ALIASES = {
   "claude-haiku-4-5": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
   "claude-sonnet-4-5": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
-  "claude-sonnet-4-6": "us.anthropic.claude-sonnet-4-6-20250929-v1:0",
+  "claude-sonnet-4-6": "us.anthropic.claude-sonnet-4-6",
   "claude-3-5-sonnet-v2": "us.anthropic.claude-3-5-sonnet-20241022-v2:0",
   "claude-3-5-haiku": "us.anthropic.claude-3-5-haiku-20241022-v1:0",
 } as const satisfies Record<string, string>;

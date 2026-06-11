@@ -4,7 +4,7 @@ import {
   StepConditionalOnBehaviour,
 } from "@govtech-bb/form-types";
 import { AnyFormApi } from "@tanstack/react-form";
-import { ClientFormStep } from "@forms/types";
+import { ClientFormStep, ClientPrimitive } from "@forms/types";
 import {
   evaluateCondition,
   flattenStepValues,
@@ -68,6 +68,54 @@ const isStepVisible = (step: ClientFormStep, formApi: AnyFormApi) => {
 
   if (requiredState === "notRequired") return false;
   return true;
+};
+
+const isFieldVisible = (
+  field: ClientPrimitive,
+  formApi: AnyFormApi,
+): boolean => {
+  if (field.hidden) return false;
+
+  const fieldConditionalOns = field.behaviours?.filter(
+    (b) => b.type === "fieldConditionalOn",
+  );
+  if (!fieldConditionalOns || fieldConditionalOns.length === 0) return true;
+
+  // Mirrors the mount-time check in field-renderer.tsx: a field whose
+  // conditions all fail is "notRequired" → hidden.
+  const requiredState = checkConditionalOn(
+    formApi.getFieldValue(field.id) as FieldValue,
+    fieldConditionalOns,
+    formApi,
+    field.stepId,
+  );
+  return requiredState !== "notRequired";
+};
+
+// #737: visibility as an evaluated fact, not a render artifact. The
+// `conditionallyHidden` flag is mutated as a render side-effect, so a
+// conditional field that never re-mounts after its controlling answer flips
+// keeps a stale flag — leaking de-selected answers into check-your-answers
+// and the submission payload. Evaluating the behaviours directly gives
+// review/submit the truth regardless of what last rendered. Form state is
+// never cleared, so flipping the answer back restores what the user typed
+// (keep-but-hide).
+export const getVisibleFields = (
+  step: ClientFormStep,
+  formApi: AnyFormApi,
+): ClientPrimitive[] => {
+  // Repeatable steps keep the render-flag behaviour: their fields have
+  // per-instance visibility semantics (see `activeFieldsByInstance` in
+  // @govtech-bb/form-conditions) that a step-scoped evaluation can't
+  // represent. Follow-up tracked in #737.
+  const isRepeatable = step.behaviours?.some((b) => b.type === "repeatable");
+  if (isRepeatable) {
+    return step.fields.filter(
+      (field) => !field.hidden && !field.conditionallyHidden,
+    );
+  }
+
+  return step.fields.filter((field) => isFieldVisible(field, formApi));
 };
 
 export const getVisibleSteps = (

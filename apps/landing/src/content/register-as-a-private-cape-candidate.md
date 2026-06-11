@@ -4,6 +4,7 @@ description: "Register online to sit the Caribbean Advanced Proficiency Examinat
 stage: "alpha"
 publish_date: 2026-06-02
 category: education
+visibility: preview
 form_id: cape-exam-registration-2024
 ---
 
@@ -21,7 +22,7 @@ CXC charges a fee for each subject. You will be told the total fees due after yo
 
 You can apply online. It takes about 10 to 20 minutes to complete, depending on the number of subjects you are entering.
 
-<a data-start-link href="/education/register-as-a-private-cape-candidate/start">Start now</a>
+<a data-start-link>Start now</a>
 
 ## What the form asks for
 

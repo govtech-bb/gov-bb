@@ -21,6 +21,9 @@ interface ToolbarProps {
   isPreviewing: boolean;
   isSubmitting: boolean;
   isPublishing: boolean;
+  /** Read-only lock (#874): another user holds the editing claim. Disables the
+   *  Form ID / Title inputs and the Save draft / Deploy actions. */
+  isReadOnly: boolean;
   lastSaveStatus: "idle" | "success" | "error" | "submitted";
   onFormIdChange: (id: string) => void;
   onTitleChange: (title: string) => void;
@@ -46,6 +49,7 @@ export function Toolbar({
   isPreviewing,
   isSubmitting,
   isPublishing,
+  isReadOnly,
   lastSaveStatus,
   onFormIdChange,
   onTitleChange,
@@ -93,6 +97,7 @@ export function Toolbar({
               }
             }}
             style={{ marginLeft: 4 }}
+            disabled={isReadOnly}
             aria-describedby={shownFormIdError ? "form-id-error" : undefined}
             aria-invalid={shownFormIdError ? true : undefined}
           />
@@ -114,6 +119,7 @@ export function Toolbar({
           value={title}
           onChange={(e) => onTitleChange(e.target.value)}
           style={{ marginLeft: 4 }}
+          disabled={isReadOnly}
         />
       </label>
       <span className={styles.badge}>v{version}</span>
@@ -144,7 +150,8 @@ export function Toolbar({
         type="button"
         className={styles.btnPrimary}
         onClick={onSubmit}
-        disabled={isValidating || isSubmitting || !hasUnsavedChanges}
+        disabled={isValidating || isSubmitting || !hasUnsavedChanges || isReadOnly}
+        title={isReadOnly ? "Another user is editing this form" : undefined}
       >
         {isSubmitting ? "Submitting…" : "Save draft"}
       </button>
@@ -154,8 +161,14 @@ export function Toolbar({
         onClick={onPublish}
         // Deploy requires a saved draft (#331): publishing an unsaved draft
         // opens a PR for a recipe the draft API has never seen.
-        disabled={isValidating || isPublishing || hasUnsavedChanges}
-        title={hasUnsavedChanges ? "Save draft before deploying" : undefined}
+        disabled={isValidating || isPublishing || hasUnsavedChanges || isReadOnly}
+        title={
+          isReadOnly
+            ? "Another user is editing this form"
+            : hasUnsavedChanges
+              ? "Save draft before deploying"
+              : undefined
+        }
       >
         {isPublishing ? "Opening PR…" : "Deploy"}
       </button>

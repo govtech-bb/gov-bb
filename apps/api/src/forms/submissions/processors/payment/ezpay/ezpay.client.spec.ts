@@ -54,6 +54,29 @@ describe("EzpayClient", () => {
     );
   });
 
+  it("createPayment always enables credit, debit and Payce (#936)", async () => {
+    http.post.mockReturnValue(of({ data: { token: "tok-1" } }));
+
+    await client.createPayment(
+      {
+        paymentCode: "EDU",
+        amount: 50,
+        description: "fees",
+        reference: "ref-1",
+        customerEmail: "a@b.c",
+        customerName: "A B",
+      },
+      "api-key-1",
+    );
+
+    const [, body] = http.post.mock.calls[0];
+    // "true"/"false" strings, not "1"/"0": EzPay's payment_page renders a method
+    // only when its flag === "true"; "1" blanks every option (#936 regression).
+    expect((body as URLSearchParams).get("ez_allow_credit")).toBe("true");
+    expect((body as URLSearchParams).get("ez_allow_debit")).toBe("true");
+    expect((body as URLSearchParams).get("ez_allow_payce")).toBe("true");
+  });
+
   it("createPayment throws on EzPay error response", async () => {
     http.post.mockReturnValue(
       of({ data: { error: "Invalid Payment Code", code: "E-059" } }),

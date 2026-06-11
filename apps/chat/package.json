@@ -9,6 +9,7 @@
     "node": ">=24"
   },
   "scripts": {
+    "test": "tsx --test \"src/**/*.test.ts\"",
     "dev": "vite dev --port 3000",
     "build": "vite build",
     "preview": "nitro preview",
@@ -29,6 +30,7 @@
     "@govtech-bb/design": "1.0.0-alpha.16",
     "@govtech-bb/form-conditions": "workspace:*",
     "@govtech-bb/form-types": "workspace:*",
+    "@govtech-bb/form-validation": "workspace:*",
     "@govtech-bb/react": "1.0.0-alpha.16",
     "@tailwindcss/vite": "^4.3.0",
     "@tanstack/ai": "catalog:",

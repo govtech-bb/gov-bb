@@ -5,6 +5,7 @@ stage: "alpha"
 publish_date: 2026-05-20
 category: youth-and-community
 subcategory: skills-trades-vocational-training
+visibility: preview
 service_type: information
 form_id: web-design-entrepreneurs
 ---
@@ -24,7 +25,7 @@ Workshop teaching young entrepreneurs to design and maintain their own websites.
 
 Complete the short application form to register your interest. Your progress is saved automatically.
 
-<a data-start-link>Start now</a>
+<a data-start-link>Apply now</a>
 
 ## More information
 

@@ -13,7 +13,10 @@ import type { TemplateDelegate } from "handlebars";
  * Template rendering context:
  *   - Every step's values are spread as top-level keys
  *     (e.g. `payload.values.personal` → `{{personal.firstName}}`)
- *   - `submissionId`  — unique submission reference
+ *   - `submissionId`  — citizen-visible reference: the human-readable
+ *                       `referenceCode` (e.g. "JPP-20260604-130732-9JZRZC")
+ *                       when available, falling back to the raw UUID for
+ *                       submissions that pre-date the referenceCode feature
  *   - `processedAt`   — ISO timestamp of when the email was sent
  *   - `submittedAt`   — ISO timestamp from the submission audit trail
  */

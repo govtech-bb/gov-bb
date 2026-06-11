@@ -15,6 +15,7 @@ export {
   repeatStepConcactenator,
   getRepeatStepId,
   getRepeatStepCount,
+  getInstanceMarker,
   removeRepeatableStep,
   addRepeatableStep,
   restoreRepeatableStepsFromStorage,
@@ -22,6 +23,7 @@ export {
 export {
   checkConditionalOn,
   getVisibleSteps,
+  getVisibleFields,
   getStepConditonalTargets,
 } from "./helpers/behavior-helper";
 export {

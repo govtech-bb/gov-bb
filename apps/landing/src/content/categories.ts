@@ -29,6 +29,12 @@ export const CATEGORIES: Array<Category> = [
     description: 'Get help with money, benefits, taxes or government payments',
   },
   {
+    slug: 'social-empowerment',
+    title: 'Social empowerment',
+    description:
+      'Apply for help at home, financial assistance, and programmes for older people and families, run by the Social Empowerment Agency and the National Assistance Board',
+  },
+  {
     slug: 'pensions-and-gratuities',
     title: 'Pensions and Gratuities',
     description:
@@ -73,6 +79,12 @@ export const CATEGORIES: Array<Category> = [
     ],
   },
   {
+    slug: 'ministry-of-youth',
+    title: 'Ministry of Youth',
+    description:
+      'Programmes, training and volunteering opportunities run by the Division of Youth Affairs',
+  },
+  {
     slug: 'travel-id-citizenship',
     title: 'Travel, ID and citizenship',
     description: 'Travel, drive or prove your identity and status',
@@ -93,6 +105,18 @@ export const CATEGORIES: Array<Category> = [
     title: 'Education',
     description:
       'Apply for school places and exams, claim education grants, and manage your child’s schooling',
+  },
+  {
+    slug: 'health-and-emergency-services',
+    title: 'Health and emergency services',
+    description:
+      'Prepare for hurricane season, find an emergency shelter, and reach key emergency contacts',
+  },
+  {
+    slug: 'housing',
+    title: 'Housing',
+    description:
+      'Apply for National Housing Corporation homes and land, use State land, and exercise tenant rights to buy a freehold',
   },
 ]
 

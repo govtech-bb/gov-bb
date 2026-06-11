@@ -39,6 +39,7 @@ export class SqsProducerService {
   ): Promise<void> {
     const message: SubmissionSqsMessage = {
       submissionId: event.submissionId,
+      referenceCode: event.referenceCode,
       processorType,
       processorIndex,
       formId: event.formId,

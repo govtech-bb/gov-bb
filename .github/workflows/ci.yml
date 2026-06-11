@@ -437,7 +437,9 @@ jobs:
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v5
         with:
-          node-version: "20"
+          # 24, not 20: apps/chat declares engines >=24 and its test script
+          # uses node's test-runner globs (node >=21). Matches local dev.
+          node-version: "24"
           cache: "pnpm"
       - run: pnpm install --frozen-lockfile
 
@@ -595,3 +597,28 @@ jobs:
           push: false
           cache-from: type=gha,scope=ci-${{ matrix.label }}
           cache-to: type=gha,mode=max,scope=ci-${{ matrix.label }}
+
+  # PR gate for #873: recipe versions are immutable, and a version added here
+  # must not already be claimed by an older open PR against the same base.
+  # Deletions are allowed (erase/revert); the `recipe-version-override` label
+  # skips the immutability rule only.
+  recipe-version-guard:
+    name: Recipe Version Guard
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+
+      - name: Check recipe version immutability and cross-PR claims
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm recipe-version-guard

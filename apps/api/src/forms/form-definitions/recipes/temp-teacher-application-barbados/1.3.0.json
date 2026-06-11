@@ -270,31 +270,7 @@
           }
         },
         {
-          "ref": "components/generic-radio",
-          "overrides": {
-            "label": "Marital status",
-            "fieldId": "marital-status",
-            "options": [
-              {
-                "label": "Single",
-                "value": "single"
-              },
-              {
-                "label": "Married",
-                "value": "married"
-              },
-              {
-                "label": "Divorced",
-                "value": "divorced"
-              }
-            ],
-            "validations": {
-              "required": {
-                "error": "Marital Status is required",
-                "value": true
-              }
-            }
-          }
+          "ref": "components/marital-status"
         },
         {
           "ref": "components/country",
@@ -551,7 +527,7 @@
         {
           "ref": "components/generic-number",
           "overrides": {
-            "fieldId": "from",
+            "fieldId": "work-start-year",
             "label": "Start Year",
             "hint": "For example, 2013",
             "ui": {
@@ -572,7 +548,7 @@
         {
           "ref": "components/generic-number",
           "overrides": {
-            "fieldId": "to",
+            "fieldId": "work-end-year",
             "label": "End Year",
             "hint": "For example, 2020",
             "ui": {
@@ -589,7 +565,7 @@
               },
               "gt": {
                 "error": "End Year must be later than Start Year",
-                "referenceFieldId": "from"
+                "referenceFieldId": "work-start-year"
               }
             }
           }

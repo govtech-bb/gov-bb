@@ -229,7 +229,7 @@ export const generateRepeatableAddAnotherField = (
     validations: {
       required: {
         value: true,
-        error: "Add another is required.",
+        error: "This question is required",
       },
     },
   };
@@ -250,6 +250,41 @@ export const getRepeatStepCount = (stepId: string): number | undefined => {
   if (parts.length <= 1) return 0;
   const count = Number(parts[parts.length - 1]);
   return isNaN(count) ? undefined : count;
+};
+
+// #801: marker that distinguishes repeat instances beyond the first, shown on
+// the live step and the review page. Instance 1 is never marked, so a lone
+// instance renders exactly as before.
+export type RepeatInstanceMarker = {
+  // "Dependent 2" when the behaviour configures an instanceLabel, else "2".
+  text: string;
+  // True when the marker carries a configured instanceLabel — rendered as a
+  // caption above the title rather than a title suffix.
+  hasLabel: boolean;
+};
+
+export const getInstanceMarker = (
+  step: ClientFormStep,
+): RepeatInstanceMarker | undefined => {
+  const count = getRepeatStepCount(step.stepId);
+  // Base step (0) is instance 1; undefined means a non-numeric suffix.
+  if (!count) return undefined;
+
+  const repeatBehaviour = step.behaviours?.find((b) => b.type === "repeatable");
+  const hasSharedFields = step.behaviours?.some(
+    (b) => b.type === "sharedFields",
+  );
+
+  // Without sharedFields the base step is instance 1 and ~N is instance N+1.
+  // With sharedFields the base step is a separate shared-values page and the
+  // instances are ~1..~min, so ~N IS instance N (and ~1 stays unmarked).
+  const displayNumber = hasSharedFields ? count : count + 1;
+  if (displayNumber <= 1) return undefined;
+
+  const label = repeatBehaviour?.instanceLabel;
+  return label
+    ? { text: `${label} ${displayNumber}`, hasLabel: true }
+    : { text: `${displayNumber}`, hasLabel: false };
 };
 
 export const addRepeatableStep = ({

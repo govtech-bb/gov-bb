@@ -2,7 +2,7 @@
  * get-a-primary-school-textbook-grant.smoke.spec.ts
  *
  * Live, on-demand smoke test for the "Get a Primary School Textbook Grant" form
- * (formId `get-a-primary-school-textbook-grant`, version 1.1.0).
+ * (formId `get-a-primary-school-textbook-grant`, version 1.2.0).
  *
  * Drives the REAL deployed form (default: sandbox), fills every required field
  * with valid data, SUBMITS FOR REAL, and asserts the confirmation screen. The
@@ -22,7 +22,12 @@
  *  - The two passport fields are conditional on a `show-hide` toggle — left off,
  *    so the National ID is used and the passport inputs never render.
  *  - `relationship-description` is conditional on `is-parent-or-guardian == "no"`,
- *    so answering "yes" skips it.
+ *    so answering "yes" skips it (and the whole `guardian-details` step, which is
+ *    `stepConditionalOn` the same answer).
+ *  - v1.2.0 made `child-details` repeatable (min 1, max 5), so the renderer
+ *    injects a required `addAnother` radio ("Do you have another child at the
+ *    same school?") on the step — answered "no" to stay on the single-child
+ *    path (#816).
  *  - National ID format is `######-####`; telephone is a Barbados-style number.
  *  - The renderer auto-injects a `check-your-answers` review step before
  *    `submission-confirmation`.
@@ -65,15 +70,19 @@ test.describe("Get a Primary School Textbook Grant — Live Smoke", () => {
     await fillField(page, step, "child-last-name", lastName);
     await fillField(page, step, "child-id-number", nationalId());
     await selectRadio(page, step, "child-sex", "female");
-    await fillField(page, step, "child-school", "Bridgetown Primary School");
+    // child-school became a native <select> ("Name of institution"); use the
+    // option value, not free text.
+    await selectDropdown(page, step, "child-school", "all-saints-primary");
     await fillField(
       page,
       step,
       "child-principal-name",
       `${faker.person.firstName()} ${faker.person.lastName()}`,
     );
-    await fillField(page, step, "child-class-number", "Class 4");
+    await fillField(page, step, "child-class", "Class 4");
     await selectRadio(page, step, "is-parent-or-guardian", "yes");
+    // Injected by the v1.2.0 repeatable behaviour — "no" keeps a single child.
+    await selectRadio(page, step, "addAnother", "no");
     await advance(page, step);
 
     // ─── Tell us about yourself ──────────────────────────────────────────────
@@ -96,13 +105,14 @@ test.describe("Get a Primary School Textbook Grant — Live Smoke", () => {
     );
     await selectDropdown(page, step, "applicant-parish", "st-michael");
     await fillField(page, step, "applicant-email", "testing@govtech.bb");
-    await fillField(page, step, "applicant-telephone", "246-555-0100");
+    await fillField(page, step, "applicant-telephone", "246-418-1234");
     await fillField(page, step, "applicant-id-number", nationalId());
+    // `components/tamis-number` requires 10-15 digits.
     await fillField(
       page,
       step,
       "applicant-tamis-number",
-      faker.string.numeric(9),
+      faker.string.numeric(10),
     );
     await advance(page, step);
 
@@ -140,6 +150,9 @@ test.describe("Get a Primary School Textbook Grant — Live Smoke", () => {
       .check();
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────
-    await submitAndConfirm(page, { heading: "Thank you for your request" });
+    await submitAndConfirm(page, {
+      heading: "Your application has been submitted",
+      subheading: "Thank you. We have received your application.",
+    });
   });
 });

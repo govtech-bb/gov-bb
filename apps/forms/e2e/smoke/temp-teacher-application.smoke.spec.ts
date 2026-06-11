@@ -79,11 +79,11 @@ test.describe("Temporary Teacher Application — Live Smoke", () => {
     await fillField(page, step, "address", faker.location.streetAddress());
     // parish and citizenship render as native <select> dropdowns
     // (components/parish, components/country) — option values are slugs.
-    await selectDropdown(page, step, "parish", "saint-michael");
+    await selectDropdown(page, step, "parish", "st-michael");
     await fillField(page, step, "email", "testing@govtech.bb");
-    await fillField(page, step, "tel-cell", faker.string.numeric(10));
-    // marital-status is a required radio.
-    await selectRadio(page, step, "marital-status", "single");
+    await fillField(page, step, "tel-cell", "246-418-1234");
+    // marital-status is a required <select> (components/marital-status).
+    await selectDropdown(page, step, "marital-status", "single");
     await selectDropdown(page, step, "citizenship", "barbados");
     await advance(page, step);
 
@@ -113,8 +113,10 @@ test.describe("Temporary Teacher Application — Live Smoke", () => {
     // ─── Work Experience (repeatable) ────────────────────────────────────────
     step = expectStep(page, "work-experience", { exact: true });
     await fillField(page, step, "employer", "Bridgetown Secondary School");
-    await fillField(page, step, "from", "2013");
-    await fillField(page, step, "to", "2020");
+    // #825 renamed the year fieldIds (`from`/`to` → `work-start-year`/
+    // `work-end-year`) in the published recipe.
+    await fillField(page, step, "work-start-year", "2013");
+    await fillField(page, step, "work-end-year", "2020");
     await fillField(page, step, "position", "Mathematics Teacher");
     await fillField(page, step, "duties", "Teaching mathematics to forms 1-5");
     await selectRadio(page, step, "addAnother", "no");
@@ -129,7 +131,7 @@ test.describe("Temporary Teacher Application — Live Smoke", () => {
     await fillField(page, step, "ref1-name", "John Principal");
     await fillField(page, step, "ref1-address", "2 School Road, Bridgetown");
     await fillField(page, step, "ref1-occupation", "School Principal");
-    await fillField(page, step, "ref1-contact", faker.string.numeric(10));
+    await fillField(page, step, "ref1-contact", "246-418-1234");
     await advance(page, step);
 
     // ─── Reference 2 ─────────────────────────────────────────────────────────
@@ -137,7 +139,7 @@ test.describe("Temporary Teacher Application — Live Smoke", () => {
     await fillField(page, step, "ref2-name", "Mary Supervisor");
     await fillField(page, step, "ref2-address", "3 Office Lane, Bridgetown");
     await fillField(page, step, "ref2-occupation", "Education Officer");
-    await fillField(page, step, "ref2-contact", faker.string.numeric(10));
+    await fillField(page, step, "ref2-contact", "246-418-1234");
     await advance(page, step);
 
     // ─── Upload your documents (real S3 upload) ──────────────────────────────

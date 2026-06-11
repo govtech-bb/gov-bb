@@ -14,6 +14,7 @@ export { FaxNumber } from "./fax-number";
 export { FirstName } from "./first-name";
 export { HomeTelephone } from "./home-telephone";
 export { LastName } from "./last-name";
+export { MaritalStatus } from "./marital-status";
 export { MiddleName } from "./middle-name";
 export { MobileTelephone } from "./mobile-telephone";
 export { Name } from "./name";
@@ -24,6 +25,7 @@ export { Parish } from "./parish";
 export { PassportNumber } from "./passport-number";
 export { Postcode } from "./post-code";
 export { PrimarySchool } from "./primary-school";
+export { SecondarySchool } from "./secondary-school";
 export { Relationship } from "./relationship";
 export { Sex } from "./sex";
 export { TamisNumber } from "./tamis-number";
@@ -60,6 +62,7 @@ import { FaxNumber } from "./fax-number";
 import { FirstName } from "./first-name";
 import { HomeTelephone } from "./home-telephone";
 import { LastName } from "./last-name";
+import { MaritalStatus } from "./marital-status";
 import { MiddleName } from "./middle-name";
 import { MobileTelephone } from "./mobile-telephone";
 import { Name } from "./name";
@@ -70,6 +73,7 @@ import { Parish } from "./parish";
 import { PassportNumber } from "./passport-number";
 import { Postcode } from "./post-code";
 import { PrimarySchool } from "./primary-school";
+import { SecondarySchool } from "./secondary-school";
 import { Relationship } from "./relationship";
 import { Sex } from "./sex";
 import { TamisNumber } from "./tamis-number";
@@ -121,6 +125,7 @@ const ALL = [
   FirstName,
   HomeTelephone,
   LastName,
+  MaritalStatus,
   MiddleName,
   MobileTelephone,
   Name,
@@ -131,6 +136,7 @@ const ALL = [
   PassportNumber,
   Postcode,
   PrimarySchool,
+  SecondarySchool,
   Relationship,
   Sex,
   TamisNumber,
@@ -145,7 +151,7 @@ const ALL = [
 
 // Completeness guard: bump the literal type whenever you add a component to
 // ALL, so a registered-but-unlisted component fails the build.
-const _componentCount: 45 = ALL.length;
+const _componentCount: 47 = ALL.length;
 
 export const REGISTRY_COMPONENTS: Record<`components/${string}`, Primitive> =
   Object.fromEntries(ALL.map((c) => [`components/${c.fieldId}`, c]));

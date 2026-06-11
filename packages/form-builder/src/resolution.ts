@@ -3,42 +3,12 @@ import type {
   ServiceContractRecipe,
   Primitive,
   FieldOverrides,
-  PrimitiveUI,
-  ValidationRule,
 } from "@govtech-bb/form-types";
+import { shallowMergeDefined } from "@govtech-bb/form-types";
 import type { RegistryCatalog } from "./catalog";
 import type { ComponentDefinition, BlockDefinition } from "./definition-types";
 import { getRegistryItem } from "./catalog";
 import { UnknownRefError, type UnknownRef } from "./errors";
-
-/**
- * Deep-merge validation rules: both can have keys; override keys win.
- */
-function mergeValidations(
-  base: ValidationRule | undefined,
-  override: ValidationRule | undefined,
-): ValidationRule | undefined {
-  if (!base && !override) return undefined;
-  if (!base) return override;
-  if (!override) return base;
-  return { ...base, ...override };
-}
-
-/**
- * Deep-merge ui hints: override keys win, absent keys keep the registry
- * default. Without this an override touching one `ui` key (e.g. `hideLabel`)
- * would clobber the registry's others (e.g. National ID's `width: "short"`)
- * (#789).
- */
-function mergeUi(
-  base: PrimitiveUI | undefined,
-  override: PrimitiveUI | undefined,
-): PrimitiveUI | undefined {
-  if (!base && !override) return undefined;
-  if (!base) return override;
-  if (!override) return base;
-  return { ...base, ...override };
-}
 
 /**
  * Merge FieldOverrides onto a Primitive (shallow merge, deep merge for
@@ -59,11 +29,15 @@ function applyOverrides(
     ...restOverrides
   } = overrides;
 
-  const mergedValidations = mergeValidations(
+  // `validations` and `ui` are deep-merged, not replaced: an override that
+  // restates one key must not drop the registry default's other keys (a
+  // wholesale spread regressed `validations` in #371 and `ui` in #789). The
+  // served form merges identically in apps/api/src/registry/resolution.ts.
+  const mergedValidations = shallowMergeDefined(
     baseValidations,
     overrideValidations,
   );
-  const mergedUi = mergeUi(baseUi, overrideUi);
+  const mergedUi = shallowMergeDefined(baseUi, overrideUi);
   return {
     ...restPrimitive,
     ...restOverrides,

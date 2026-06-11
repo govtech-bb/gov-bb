@@ -65,12 +65,44 @@ const REQUIRED_STEP_DEFAULTS: Record<
   "submission-confirmation": { title: "Submission Confirmation" },
 };
 
+// The single field the declaration step seeds with: the "I confirm" checkbox.
+// The declaration step must carry exactly this one field — the AI system
+// prompt (apps/form_builder_api/src/ai/system-prompt.ts) pins the same
+// fieldId/label/required contract for generated recipes. `options` is
+// intentionally not overridden: the statement text shown next to the checkbox
+// stays the registry default ("I confirm") until the author edits it per form.
+// Fresh editor id per call, mirroring makeDefaultProcessors().
+function makeDeclarationField(): RecipeFieldDraft {
+  return {
+    id: crypto.randomUUID(),
+    kind: "component",
+    ref: "components/confirmation",
+    overrides: {
+      fieldId: "declaration-confirmed",
+      label: "Declaration",
+      validations: {
+        required: {
+          value: true,
+          error: "You must confirm the declaration to continue",
+        },
+      },
+    },
+  };
+}
+
+// Fields seeded for a required step when one is missing (new form via
+// makeRequiredSteps, or an older recipe loaded via LOAD_DRAFT). Only the
+// declaration step seeds a field; the other required steps are field-free.
+function makeRequiredStepFields(stepId: RequiredStepId): RecipeFieldDraft[] {
+  return stepId === "declaration" ? [makeDeclarationField()] : [];
+}
+
 function makeRequiredSteps(): RecipeStepDraft[] {
   return REQUIRED_STEP_IDS.map((stepId) => ({
     stepId,
     title: REQUIRED_STEP_DEFAULTS[stepId].title,
     description: REQUIRED_STEP_DEFAULTS[stepId].description,
-    fields: [],
+    fields: makeRequiredStepFields(stepId),
     behaviours: [],
   }));
 }
@@ -378,7 +410,7 @@ export function recipeReducer(
             stepId: id,
             title: REQUIRED_STEP_DEFAULTS[id].title,
             description: REQUIRED_STEP_DEFAULTS[id].description,
-            fields: [],
+            fields: makeRequiredStepFields(id),
             behaviours: [],
           }
         );

@@ -24,6 +24,7 @@ export default function FileUpload({
   errorId,
   formId,
   formVersion,
+  previewToken,
 }: FileUploadProps) {
   const files = value ?? [];
 
@@ -106,6 +107,7 @@ export default function FileUpload({
             formVersion: formVersion ?? "",
             stepId: presignStepId,
             fieldId: field.fieldId,
+            previewToken,
           });
           appendConfirmed(confirmed);
           setPending((prev) => prev.filter((p) => p.id !== id));
@@ -166,6 +168,7 @@ export default function FileUpload({
           {...sharedProps}
           type="file"
           accept={sharedProps.accept ?? acceptAttr}
+          multiple={field.multiple ?? false}
           className="govbb-file-upload__input"
           aria-invalid={errorMessage ? true : undefined}
           onChange={handleInputChange}

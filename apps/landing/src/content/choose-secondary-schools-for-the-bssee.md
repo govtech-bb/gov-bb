@@ -4,6 +4,7 @@ description: "Rank the secondary schools you would like your child to attend aft
 stage: "alpha"
 publish_date: 2026-06-02
 category: education
+visibility: preview
 form_id: barbados-secondary-entrance-exam-choice
 ---
 
@@ -15,7 +16,7 @@ You can use this service if you are the parent or guardian of a child sitting th
 
 You can complete the form online. It takes about 15 minutes.
 
-<a data-start-link href="/education/choose-secondary-schools-for-the-bssee/start">Start now</a>
+<a data-start-link>Start now</a>
 
 ## What the form asks for
 

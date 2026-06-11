@@ -1,0 +1,498 @@
+{
+  "steps": [
+    {
+      "title": "Tell us about the centenarian",
+      "stepId": "centenarian-info",
+      "elements": [
+        {
+          "ref": "components/name",
+          "overrides": {
+            "label": "Full name",
+            "fieldId": "centenarian-full-name",
+            "validations": {
+              "required": {
+                "error": "Enter the centenarian's full name",
+                "value": true
+              },
+              "minLength": {
+                "error": "Full name must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/date-of-birth",
+          "overrides": {
+            "label": "Date of birth",
+            "fieldId": "centenarian-dob",
+            "validations": {
+              "required": {
+                "error": "Enter the centenarian's date of birth",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/sex",
+          "overrides": {
+            "hint": "This determines which documents you need to upload.",
+            "label": "What is the sex of the centenarian?",
+            "fieldId": "centenarian-sex",
+            "validations": {
+              "required": {
+                "error": "Choose male or female",
+                "value": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "Where does the centenarian live?",
+      "stepId": "addresses",
+      "elements": [
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address line 1",
+            "fieldId": "home-address-1",
+            "validations": {
+              "required": {
+                "error": "Enter the first line of the home address",
+                "value": true
+              },
+              "minLength": {
+                "error": "Address must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address line 2 (optional)",
+            "fieldId": "home-address-2"
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "home-parish",
+            "options": [
+              {
+                "label": "Christ Church",
+                "value": "christ-church"
+              },
+              {
+                "label": "St. Andrew",
+                "value": "st-andrew"
+              },
+              {
+                "label": "St. George",
+                "value": "st-george"
+              },
+              {
+                "label": "St. James",
+                "value": "st-james"
+              },
+              {
+                "label": "St. John",
+                "value": "st-john"
+              },
+              {
+                "label": "St. Joseph",
+                "value": "st-joseph"
+              },
+              {
+                "label": "St. Lucy",
+                "value": "st-lucy"
+              },
+              {
+                "label": "St. Michael",
+                "value": "st-michael"
+              },
+              {
+                "label": "St. Peter",
+                "value": "st-peter"
+              },
+              {
+                "label": "St. Philip",
+                "value": "st-philip"
+              },
+              {
+                "label": "St. Thomas",
+                "value": "st-thomas"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Choose a parish",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Will the visit take place at this address?",
+            "fieldId": "visit-same-address",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No - the visit will be at a different address",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Choose where the visit will take place",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Visit address line 1",
+            "fieldId": "visit-address-1",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "no",
+                "operator": "equal",
+                "targetFieldId": "visit-same-address"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter the first line of the visit address",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Visit address line 2 (optional)",
+            "fieldId": "visit-address-2",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "no",
+                "operator": "equal",
+                "targetFieldId": "visit-same-address"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "visit-parish",
+            "options": [
+              {
+                "label": "Christ Church",
+                "value": "christ-church"
+              },
+              {
+                "label": "St. Andrew",
+                "value": "st-andrew"
+              },
+              {
+                "label": "St. George",
+                "value": "st-george"
+              },
+              {
+                "label": "St. James",
+                "value": "st-james"
+              },
+              {
+                "label": "St. John",
+                "value": "st-john"
+              },
+              {
+                "label": "St. Joseph",
+                "value": "st-joseph"
+              },
+              {
+                "label": "St. Lucy",
+                "value": "st-lucy"
+              },
+              {
+                "label": "St. Michael",
+                "value": "st-michael"
+              },
+              {
+                "label": "St. Peter",
+                "value": "st-peter"
+              },
+              {
+                "label": "St. Philip",
+                "value": "st-philip"
+              },
+              {
+                "label": "St. Thomas",
+                "value": "st-thomas"
+              }
+            ],
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "no",
+                "operator": "equal",
+                "targetFieldId": "visit-same-address"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Choose a parish for the visit address",
+                "value": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "Who should we contact about the arrangements?",
+      "stepId": "contact-person",
+      "elements": [
+        {
+          "ref": "components/name",
+          "overrides": {
+            "label": "Full name",
+            "fieldId": "contact-full-name",
+            "validations": {
+              "required": {
+                "error": "Enter the contact person's full name",
+                "value": true
+              },
+              "minLength": {
+                "error": "Full name must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address line 1",
+            "fieldId": "contact-address-1",
+            "validations": {
+              "required": {
+                "error": "Enter the contact person's address",
+                "value": true
+              },
+              "minLength": {
+                "error": "Address must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address line 2 (optional)",
+            "fieldId": "contact-address-2"
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "contact-parish",
+            "options": [
+              {
+                "label": "Christ Church",
+                "value": "christ-church"
+              },
+              {
+                "label": "St. Andrew",
+                "value": "st-andrew"
+              },
+              {
+                "label": "St. George",
+                "value": "st-george"
+              },
+              {
+                "label": "St. James",
+                "value": "st-james"
+              },
+              {
+                "label": "St. John",
+                "value": "st-john"
+              },
+              {
+                "label": "St. Joseph",
+                "value": "st-joseph"
+              },
+              {
+                "label": "St. Lucy",
+                "value": "st-lucy"
+              },
+              {
+                "label": "St. Michael",
+                "value": "st-michael"
+              },
+              {
+                "label": "St. Peter",
+                "value": "st-peter"
+              },
+              {
+                "label": "St. Philip",
+                "value": "st-philip"
+              },
+              {
+                "label": "St. Thomas",
+                "value": "st-thomas"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Choose a parish",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "hint": "For example, 246-418-1234",
+            "label": "Phone number",
+            "fieldId": "contact-phone",
+            "validations": {
+              "required": {
+                "error": "Enter a phone number",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "hint": "We'll send you a confirmation of your request.",
+            "label": "Email address",
+            "fieldId": "contact-email",
+            "validations": {
+              "required": {
+                "error": "Enter your email address",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "description": "Give us the details of the person the Office of the President should contact."
+    },
+    {
+      "title": "Upload your documents",
+      "stepId": "upload-documents",
+      "elements": [
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "hint": "Original birth certificate with names included. Required for all centenarians.",
+            "label": "Birth certificate",
+            "fieldId": "birth-certificate",
+            "validations": {
+              "required": {
+                "error": "Upload the birth certificate",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "hint": "Upload if she is or has been married.",
+            "label": "Marriage certificate(s)",
+            "fieldId": "marriage-certificate",
+            "multiple": true,
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "female",
+                "operator": "equal",
+                "targetFieldId": "centenarian-sex"
+              }
+            ]
+          }
+        }
+      ],
+      "description": "Upload a scan or clear photo. Accepted formats: PDF, JPG, PNG. Max 5MB per file."
+    },
+    {
+      "title": "Declaration",
+      "stepId": "declaration",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": "Declaration",
+            "fieldId": "declaration-confirmed",
+            "options": [
+              {
+                "label": "I confirm that the information I have given is correct to the best of my knowledge, that the request will be received at least 3 months before the birthday, and that the documents I have uploaded are true copies of the originals.",
+                "value": "confirmed"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "You must confirm the declaration to continue",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/date-of-birth",
+          "overrides": {
+            "label": "Date of declaration",
+            "fieldId": "declaration-date",
+            "isHidden": true
+          }
+        }
+      ]
+    },
+    {
+      "title": "Request submitted",
+      "stepId": "submission-confirmation",
+      "elements": [],
+      "nextSteps": [
+        {
+          "title": "What happens next",
+          "content": "The Office of the President will review your request and contact the person you named to discuss the arrangements. If you don't hear back within 4 weeks, contact the Office of the President directly at State House, Government Hill, St Michael."
+        }
+      ]
+    }
+  ],
+  "title": "Request a Presidential Visit for a Centenarian",
+  "formId": "request-a-presidential-visit-for-a-centenarian",
+  "version": "1.1.0",
+  "createdAt": "2026-05-21T00:00:00Z",
+  "updatedAt": "2026-06-05T01:07:49.117Z",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "subject": "Your presidential visit request has been received",
+        "recipientField": "contact-person.contact-email"
+      }
+    }
+  ],
+  "description": "Request a visit from the President of Barbados for someone turning or who has turned 100."
+}

@@ -107,9 +107,6 @@ export class PaymentProcessor implements ISubmissionProcessor {
         reference: payment.referenceNumber,
         customerEmail,
         customerName,
-        allowCredit: cfg.allowCredit,
-        allowDebit: cfg.allowDebit,
-        allowPayce: cfg.allowPayce,
       },
       apiKey,
     );

@@ -4,6 +4,7 @@ import type {
 } from "@govtech-bb/form-builder";
 import { ValuePathPicker } from "./-value-path-picker";
 import { KeyValueEditor } from "./-key-value-editor";
+import { AmountEditor } from "./-amount-editor";
 import styles from "../../styles/builder.module.css";
 
 interface ProcessorConfigFormProps {
@@ -29,6 +30,19 @@ function asText(value: unknown): string {
   if (typeof value === "string") return value;
   if (typeof value === "number") return String(value);
   return "";
+}
+
+// Whether a field's label OR id contains `keyword` (case-insensitive). Used to
+// restrict the payment customer email/name pickers to plausibly-correct fields
+// (#957) — broader than the email processor's id-only recipient filter, so a
+// field labelled "Email address" with an opaque id (or vice versa) still
+// qualifies.
+function fieldMatches(field: ResolvedFieldId, keyword: string): boolean {
+  const needle = keyword.toLowerCase();
+  return (
+    field.fieldId.toLowerCase().includes(needle) ||
+    field.display.toLowerCase().includes(needle)
+  );
 }
 
 export function ProcessorConfigForm({
@@ -214,17 +228,17 @@ export function ProcessorConfigForm({
       // Provider is fixed to ezpay (the only supported gateway) — shown
       // read-only so the author can't author an unsupported value. amount is
       // numeric; the path fields point at form fields via the same picker email
-      // uses; the three allow* flags are checkboxes. The whole config is
-      // validated against paymentConfigAuthorSchema on save (DB sibling, #716).
-      const setBool = (key: string, checked: boolean) => {
-        // Prune the flag to absent when unchecked (it's optional), mirroring how
-        // optional string fields prune to absent, so a false flag doesn't
-        // persist verbosely.
-        const next = { ...config };
-        if (checked) (next as Record<string, unknown>)[key] = true;
-        else delete (next as Record<string, unknown>)[key];
-        onConfigChange(next);
-      };
+      // uses. All payment methods (credit/debit/Payce) are always enabled, so
+      // there are no per-option toggles (#936). The whole config is validated
+      // against paymentConfigAuthorSchema on save (DB sibling, #716).
+      //
+      // Restrict the customer email/name pickers to fields whose label or id
+      // implies the right kind of value (#957): picking, say, a date field for
+      // the email path yields a payment that sends garbage to ezpay. The picker
+      // stays generic; we filter its input, and its `(current)` fallback still
+      // preserves any previously-saved out-of-list path.
+      const emailFields = fields.filter((f) => fieldMatches(f, "email"));
+      const nameFields = fields.filter((f) => fieldMatches(f, "name"));
       return (
         <>
           <div className={styles.formGroup}>
@@ -259,24 +273,12 @@ export function ProcessorConfigForm({
               }
             />
           </div>
-          <div className={styles.formGroup}>
-            <label htmlFor={fid("amount")}>Amount</label>
-            <input
-              id={fid("amount")}
-              type="number"
-              min={0}
-              value={
-                typeof config.amount === "number" ? config.amount : ""
-              }
-              onChange={(e) =>
-                onConfigChange({
-                  ...config,
-                  amount:
-                    e.target.value === "" ? undefined : Number(e.target.value),
-                })
-              }
-            />
-          </div>
+          <AmountEditor
+            amount={config.amount}
+            fields={fields}
+            idPrefix={String(processor.id)}
+            onChange={(amount) => onConfigChange({ ...config, amount })}
+          />
           <div className={styles.formGroup}>
             <label htmlFor={fid("description")}>Description</label>
             <input
@@ -293,7 +295,7 @@ export function ProcessorConfigForm({
             <ValuePathPicker
               id={fid("customerEmailPath")}
               value={asText(config.customerEmailPath)}
-              fields={fields}
+              fields={emailFields}
               onChange={(customerEmailPath) =>
                 onConfigChange({ ...config, customerEmailPath })
               }
@@ -304,41 +306,11 @@ export function ProcessorConfigForm({
             <ValuePathPicker
               id={fid("customerNamePath")}
               value={asText(config.customerNamePath)}
-              fields={fields}
+              fields={nameFields}
               onChange={(customerNamePath) =>
                 onConfigChange({ ...config, customerNamePath })
               }
             />
-          </div>
-          <div className={styles.formGroup}>
-            <label>
-              <input
-                type="checkbox"
-                checked={config.allowCredit === true}
-                onChange={(e) => setBool("allowCredit", e.target.checked)}
-              />{" "}
-              Allow credit card
-            </label>
-          </div>
-          <div className={styles.formGroup}>
-            <label>
-              <input
-                type="checkbox"
-                checked={config.allowDebit === true}
-                onChange={(e) => setBool("allowDebit", e.target.checked)}
-              />{" "}
-              Allow debit card
-            </label>
-          </div>
-          <div className={styles.formGroup}>
-            <label>
-              <input
-                type="checkbox"
-                checked={config.allowPayce === true}
-                onChange={(e) => setBool("allowPayce", e.target.checked)}
-              />{" "}
-              Allow Payce
-            </label>
           </div>
         </>
       );

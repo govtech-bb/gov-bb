@@ -4,11 +4,14 @@ import styles from "../../styles/builder.module.css";
 
 interface PublishModalProps {
   draft: RecipeDraft;
-  version: string;
+  version: string | null;
   baseBranch: string;
   isPublishing: boolean;
   publishSuccess: { prUrl: string; prNumber: number } | null;
   publishError: string | null;
+  /** Read-only lock (#874): another user holds the editing claim. Warns and
+   *  disables Deploy even if the modal was already open when it flipped. */
+  isReadOnly?: boolean;
   onPublish: (description: string) => void;
   onClose: () => void;
 }
@@ -20,6 +23,7 @@ export function PublishModal({
   isPublishing,
   publishSuccess,
   publishError,
+  isReadOnly = false,
   onPublish,
   onClose,
 }: PublishModalProps) {
@@ -63,11 +67,17 @@ export function PublishModal({
           </div>
         ) : (
           <div>
+            {isReadOnly && (
+              <div className={styles.presenceBanner} role="alert" style={{ marginBottom: 8 }}>
+                Another user is currently editing this form. Deploying is
+                disabled until their editing session ends.
+              </div>
+            )}
             <p style={{ color: "#444", marginTop: 0 }}>
               This opens a pull request against <code>{baseBranch}</code> that
               adds{" "}
               <code>
-                recipes/{draft.formId}/{version}.json
+                recipes/{draft.formId}/{version ?? "resolving…"}.json
               </code>
               . The PR is authored by your GitHub account.
             </p>
@@ -82,7 +92,7 @@ export function PublishModal({
             </div>
             <div className={styles.formGroup}>
               <label>Version</label>
-              <input type="text" value={version} readOnly />
+              <input type="text" value={version ?? "resolving…"} readOnly />
             </div>
             <div className={styles.formGroup}>
               <label htmlFor="publish-description">
@@ -111,7 +121,7 @@ export function PublishModal({
                 type="button"
                 className={styles.btnPrimary}
                 onClick={() => onPublish(description)}
-                disabled={isPublishing}
+                disabled={isPublishing || version === null || isReadOnly}
               >
                 {isPublishing ? "Opening PR…" : "Deploy"}
               </button>

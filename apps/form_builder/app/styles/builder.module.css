@@ -113,6 +113,14 @@
   line-height: 1.3;
 }
 
+.fieldHint {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  line-height: 1.3;
+}
+
 /* ── Step list ───────────────────────────────────── */
 
 .stepList {
@@ -617,4 +625,14 @@
   display: flex;
   gap: 6px;
   margin-top: 6px;
+}
+
+/* ── Editing-presence read-only banner (#874) ─────── */
+.presenceBanner {
+  margin: 0 0 12px;
+  padding: 10px 16px;
+  border-left: 3px solid var(--color-warning-text);
+  background: var(--color-warning-light);
+  color: var(--color-warning-text);
+  font-size: 0.875rem;
 }

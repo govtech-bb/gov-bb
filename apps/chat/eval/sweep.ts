@@ -9,11 +9,12 @@
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { sql } from "drizzle-orm";
 import { getDb } from "../src/lib/db/index";
 import { embed } from "../src/lib/rag/embed";
 
-const HERE = new URL(".", import.meta.url).pathname;
+const HERE = fileURLToPath(new URL(".", import.meta.url));
 const CACHE_DIR = join(HERE, ".cache");
 const GOLDEN_PATH = join(HERE, "golden.json");
 const EMBED_CACHE = join(CACHE_DIR, "embeddings.json");

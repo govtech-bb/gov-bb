@@ -203,3 +203,70 @@ describe("notEqualRunner", () => {
     expect(notEqualRunner("Yes", cfg("yes"), {})).toBe("Must not equal yes");
   });
 });
+
+// ─── transform: derive a number from a date before comparing (issue #1020) ───
+
+// A DOB exactly `years` ago, as the { day, month, year } object a date field
+// stores — the derived age is then deterministic regardless of run date.
+const dobYearsAgo = (
+  years: number,
+): { day: number; month: number; year: number } => {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - years);
+  return { day: d.getDate(), month: d.getMonth() + 1, year: d.getFullYear() };
+};
+
+describe("numeric runners with transform: yearsSince", () => {
+  it("minRunner: derives age from a DOB and enforces the lower bound", () => {
+    expect(
+      minRunner(dobYearsAgo(20), { value: 16, transform: "yearsSince" }, {}),
+    ).toBeNull();
+    expect(
+      minRunner(dobYearsAgo(10), { value: 16, transform: "yearsSince" }, {}),
+    ).toBe("Must be at least 16");
+  });
+
+  it("maxRunner: an out-of-range DOB (e.g. 1903) fails the upper bound (#992)", () => {
+    expect(
+      maxRunner(
+        { day: 1, month: 1, year: 1903 },
+        { value: 24, transform: "yearsSince" },
+        {},
+      ),
+    ).toBe("Must be at most 24");
+    expect(
+      maxRunner(dobYearsAgo(20), { value: 24, transform: "yearsSince" }, {}),
+    ).toBeNull();
+  });
+
+  it("min + max compose to an age window (16–24)", () => {
+    const inRange = dobYearsAgo(20);
+    expect(
+      minRunner(inRange, { value: 16, transform: "yearsSince" }, {}),
+    ).toBeNull();
+    expect(
+      maxRunner(inRange, { value: 24, transform: "yearsSince" }, {}),
+    ).toBeNull();
+  });
+
+  it("an empty/invalid date under transform fails (NaN never satisfies a bound)", () => {
+    expect(maxRunner("", { value: 24, transform: "yearsSince" }, {})).toBe(
+      "Must be at most 24",
+    );
+  });
+
+  it("gtRunner / ltRunner honour the transform", () => {
+    expect(
+      gtRunner(dobYearsAgo(20), { value: 16, transform: "yearsSince" }, {}),
+    ).toBeNull();
+    expect(
+      gtRunner(dobYearsAgo(10), { value: 16, transform: "yearsSince" }, {}),
+    ).toBe("Must be greater than 16");
+    expect(
+      ltRunner(dobYearsAgo(20), { value: 24, transform: "yearsSince" }, {}),
+    ).toBeNull();
+    expect(
+      ltRunner(dobYearsAgo(30), { value: 24, transform: "yearsSince" }, {}),
+    ).toBe("Must be less than 24");
+  });
+});

@@ -1,5 +1,10 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { UnprocessableEntityException } from "@nestjs/common";
+import {
+  BadRequestException,
+  NotFoundException,
+  UnprocessableEntityException,
+} from "@nestjs/common";
+import { AppError } from "../../common/errors";
 import { SubmissionPipelineService } from "./submission-pipeline.service";
 import { FormDefinitionsService } from "../form-definitions/form-definitions.service";
 import { FormDraftsService } from "../form-drafts/form-drafts.service";
@@ -72,7 +77,7 @@ describe("SubmissionPipelineService", () => {
         },
         {
           provide: FormDefinitionsService,
-          useValue: { findByFormId: jest.fn() },
+          useValue: { findByFormId: jest.fn(), getRecipe: jest.fn() },
         },
         {
           provide: FilesService,
@@ -152,6 +157,63 @@ describe("SubmissionPipelineService", () => {
 
       expect(result.draft).toBe(draft);
       expect(result.contract).toBe(contract);
+    });
+  });
+
+  describe("preview-only version guard", () => {
+    const noDraftDto = () => ({ ...baseDto(), draftId: undefined });
+
+    it("DB-only/preview version → 400 BadRequest, not 404", async () => {
+      const dto = noDraftDto();
+      definitionsService.findByFormId.mockRejectedValue(
+        AppError.notFound("Form definition", {
+          formId: dto.formId,
+          version: dto.formVersion,
+        }),
+      );
+      definitionsService.getRecipe.mockResolvedValue(mockContract() as never);
+
+      await expect(service.run(dto)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      await expect(service.run(dto)).rejects.toThrow(/unpublished preview/);
+      expect(definitionsService.getRecipe).toHaveBeenCalledWith({
+        formId: dto.formId,
+        version: dto.formVersion,
+        preview: true,
+      });
+    });
+
+    it("genuinely unknown version → still 404 NotFound", async () => {
+      const dto = noDraftDto();
+      definitionsService.findByFormId.mockRejectedValue(
+        AppError.notFound("Form definition", {
+          formId: dto.formId,
+          version: dto.formVersion,
+        }),
+      );
+      definitionsService.getRecipe.mockResolvedValue(null);
+
+      await expect(service.run(dto)).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it("published file version → unaffected, getRecipe not called", async () => {
+      const contract = mockContract();
+      definitionsService.findByFormId.mockResolvedValue(contract);
+
+      const result = await service.run(noDraftDto());
+
+      expect(definitionsService.getRecipe).not.toHaveBeenCalled();
+      expect(result.contract).toBe(contract);
+    });
+
+    it("non-NotFound error from findByFormId is re-thrown unchanged", async () => {
+      const dto = noDraftDto();
+      const boom = new Error("database exploded");
+      definitionsService.findByFormId.mockRejectedValue(boom);
+
+      await expect(service.run(dto)).rejects.toBe(boom);
+      expect(definitionsService.getRecipe).not.toHaveBeenCalled();
     });
   });
 
