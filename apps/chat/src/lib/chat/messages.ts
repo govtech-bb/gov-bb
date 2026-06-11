@@ -97,3 +97,13 @@ export function hasAnyToolCall(
     m.parts.some((p) => p.type === "tool-call" && names.includes(p.name)),
   );
 }
+
+// True when the conversation is paused on a form question: the latest message
+// is the assistant's and carries an ask_field call. Drives mode-aware UI (the
+// composer placeholder reads "Type your answer…" instead of "Ask a
+// question..." — mid-form, the assistant is the one asking).
+export function awaitingFieldAnswer(messages: UIMessage[]): boolean {
+  const last = messages.at(-1);
+  if (!last || last.role !== "assistant") return false;
+  return !!findToolCall(last, "ask_field");
+}

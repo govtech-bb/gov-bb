@@ -22,7 +22,7 @@ import {
 } from "#/components/chat/static-bubbles";
 import { TridentAvatar } from "#/components/trident-avatar";
 import { FEEDBACK_TRIGGER_PHRASE } from "#/lib/chat/feedback-trigger";
-import { extractText } from "#/lib/chat/messages";
+import { awaitingFieldAnswer, extractText } from "#/lib/chat/messages";
 import {
   chatPersistence,
   citationsStore,
@@ -378,6 +378,11 @@ function ChatPage() {
         onStop={handleStop}
         onSubmit={() => submit(input)}
         streaming={isStreaming}
+        placeholder={
+          awaitingFieldAnswer(messages)
+            ? "Type your answer…"
+            : "Ask a question..."
+        }
       />
     </div>
   );
