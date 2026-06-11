@@ -119,13 +119,17 @@ export function getActiveFieldIds(
   return { byStep: activeFieldIds, flat };
 }
 
-export function summarizeActive(
+// The canonical ask-order walk: every active, chat-collectable field in step
+// order, with the escape-toggle folding applied (toggles ride on their target
+// field; a relaxed field disappears while its escape is open and unanswered).
+// Shared by the schema disclosure AND the ask cursor so they can't disagree
+// about what the form's questions are.
+function* askableFields(
   contract: ServiceContract,
   active: Map<string, Set<string>>,
-  values: Record<string, unknown> = {},
-): string | null {
+  values: Record<string, unknown>,
+): Generator<{ stepId: string; field: Primitive; escape?: Primitive }> {
   const escapes = escapeToggleIds(contract);
-  const lines: string[] = [];
   for (const step of contract.steps) {
     const ids = active.get(step.stepId);
     if (!ids) continue;
@@ -143,13 +147,44 @@ export function summarizeActive(
       if (escape && values[escape.fieldId] === "true" && !values[el.fieldId]) {
         continue;
       }
-      lines.push(describeField(el, escape));
+      yield { stepId: step.stepId, field: el, escape };
     }
+  }
+}
+
+export function summarizeActive(
+  contract: ServiceContract,
+  active: Map<string, Set<string>>,
+  values: Record<string, unknown> = {},
+): string | null {
+  const lines: string[] = [];
+  for (const { field, escape } of askableFields(contract, active, values)) {
+    lines.push(describeField(field, escape));
   }
   if (!lines.length) return null;
   return [`Form: ${contract.title} (${contract.formId})`, "", ...lines].join(
     "\n",
   );
+}
+
+// The ask cursor: the first question not yet collected and not yet asked.
+// "Asked but uncollected" = the user skipped an optional field — the cursor
+// moves past it instead of looping. Ordering lives HERE, in code, not in the
+// model: the prompt-level "ASK IN SCHEMA ORDER" rule was probabilistic and
+// the model regularly skipped ahead.
+export function nextAskableField(
+  contract: ServiceContract,
+  values: Record<string, unknown>,
+  asked: ReadonlySet<string>,
+): { stepId: string; field: Primitive } | null {
+  const active = getActiveFieldIds(contract, values).byStep;
+  for (const { stepId, field } of askableFields(contract, active, values)) {
+    const value = values[field.fieldId];
+    if (value !== undefined && value !== "") continue;
+    if (asked.has(field.fieldId)) continue;
+    return { stepId, field };
+  }
+  return null;
 }
 
 export interface ActiveFormSchema {

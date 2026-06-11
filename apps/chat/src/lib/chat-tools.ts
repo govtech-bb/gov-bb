@@ -4,7 +4,7 @@ import { z } from "zod";
 export const setFieldDef = toolDefinition({
   name: "set_field",
   description:
-    "Record one form field value. fieldId MUST be an exact id from the FORM SCHEMA. Dates as ISO YYYY-MM-DD; select/radio/checkbox values must match an option's `value` exactly. Call every time you learn a value (even single words); multiple calls per turn are fine.",
+    "Record one form field value. fieldId MUST be an exact id from the FORM SCHEMA. Dates as ISO YYYY-MM-DD; for select/radio/checkbox pass the option's `value` (the option's label is also accepted). Call every time you learn a value (even single words); multiple calls per turn are fine.",
   inputSchema: z.object({
     fieldId: z.string().meta({
       description: "Exact fieldId from the FORM SCHEMA system message.",
@@ -40,10 +40,11 @@ export const presentChoicesDef = toolDefinition({
 export const askFieldDef = toolDefinition({
   name: "ask_field",
   description:
-    "Ask the user for ONE form field from the FORM SCHEMA. Pass ONLY the fieldId — the UI renders the right input (text box, date picker, choice buttons, multi-select) from the real form definition, including the label and options. Your visible text may hold only a brief lead-in or acknowledgement of the previous answer — never the question itself. END YOUR TURN after calling.",
+    "Ask the user the NEXT form question. Call with NO arguments — the server picks the next field in order; you never choose. Pass a fieldId ONLY to re-ask a specific field (the user wants to change an answer, or submit returned a validation error naming it). The UI renders the right input (text box, date picker, choice buttons, multi-select) from the real form definition, including the label and options. Your visible text may hold only a brief lead-in or acknowledgement of the previous answer — never the question itself. END YOUR TURN after calling.",
   inputSchema: z.object({
-    fieldId: z.string().meta({
-      description: "Exact fieldId from the FORM SCHEMA system message.",
+    fieldId: z.string().optional().meta({
+      description:
+        "OMIT to get the next field in order. Pass an exact fieldId from the FORM SCHEMA only for a correction or validation-error re-ask.",
     }),
   }),
   outputSchema: z.object({

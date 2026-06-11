@@ -9,6 +9,8 @@ function session(overrides: Partial<FormSession> = {}): FormSession {
     slug: null,
     handedOffSlug: null,
     values: {},
+    askedFieldIds: new Set<string>(),
+    reviewedSinceChange: false,
     submissionId: "s1",
     status: "collecting",
     createdAt: 0,

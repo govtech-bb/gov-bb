@@ -326,3 +326,56 @@ test("validateCollectedField relaxes required when the escape is open", () => {
     null,
   );
 });
+
+// ---------------------------------------------------------------------------
+// option labels — the pills send labels; code maps them, not the model
+// ---------------------------------------------------------------------------
+
+const PARISH = {
+  fieldId: "parish",
+  label: "Parish",
+  htmlType: "radio",
+  options: [
+    { label: "Saint Michael", value: "st-michael" },
+    { label: "Christ Church", value: "christ-church" },
+  ],
+} as unknown as Primitive;
+
+const PARISH_CONTRACT = {
+  formId: "parish-form",
+  title: "Parish Form",
+  version: "1.0.0",
+  createdAt: "2026-01-01T00:00:00",
+  updatedAt: "2026-01-01T00:00:00",
+  steps: [{ stepId: "step-1", title: "Step 1", elements: [PARISH] }],
+} as unknown as ServiceContract;
+
+test("option fields accept the label, case-insensitively", () => {
+  assert.equal(
+    validateCollectedField(
+      PARISH_CONTRACT,
+      PARISH,
+      "step-1",
+      "saint michael",
+      {},
+    ),
+    null,
+  );
+  assert.equal(
+    validateCollectedField(PARISH_CONTRACT, PARISH, "step-1", "st-michael", {}),
+    null,
+  );
+  assert.equal(
+    validateCollectedField(PARISH_CONTRACT, PARISH, "step-1", "Atlantis", {}),
+    "must be one of: st-michael, christ-church",
+  );
+});
+
+// Conditions match the RAW session string, so a label answer must be stored
+// as the option VALUE — same rule as the show-hide "true"/"false" canon.
+test("canonicalizeRaw maps option labels to option values", () => {
+  assert.equal(canonicalizeRaw(PARISH, "Saint Michael"), "st-michael");
+  assert.equal(canonicalizeRaw(PARISH, "st-michael"), "st-michael");
+  // Unmatched input stays raw — validation already rejected it upstream.
+  assert.equal(canonicalizeRaw(PARISH, "Atlantis"), "Atlantis");
+});

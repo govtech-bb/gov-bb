@@ -3,6 +3,7 @@ import { test } from "node:test";
 import type { Primitive, ServiceContract } from "@govtech-bb/form-types";
 import {
   describeField,
+  nextAskableField,
   findEscapeToggle,
   getActiveFieldIds,
   isChatCollectable,
@@ -306,5 +307,78 @@ test("summarizeActive keeps a pure reveal toggle as its own line", () => {
     schema?.includes(
       "- passport-toggle: show-hide section toggle (yes/no, optional)",
     ),
+  );
+});
+
+// ---------------------------------------------------------------------------
+// ask cursor — ordering lives in code, not in the model
+// ---------------------------------------------------------------------------
+
+function cursorContract(): ServiceContract {
+  return {
+    formId: "cursor-form",
+    title: "Cursor Form",
+    version: "1.0.0",
+    createdAt: "2026-01-01T00:00:00",
+    updatedAt: "2026-01-01T00:00:00",
+    steps: [
+      {
+        stepId: "step-1",
+        title: "Step 1",
+        elements: [
+          { fieldId: "first-name", htmlType: "text", label: "First name" },
+          { fieldId: "comment", htmlType: "textarea", label: "Comment" },
+        ],
+      },
+      {
+        stepId: "step-2",
+        title: "Step 2",
+        elements: [{ fieldId: "parish", htmlType: "text", label: "Parish" }],
+      },
+    ],
+  } as unknown as ServiceContract;
+}
+
+test("nextAskableField walks step order, skipping collected and asked", () => {
+  const c = cursorContract();
+  const none = new Set<string>();
+  assert.equal(nextAskableField(c, {}, none)?.field.fieldId, "first-name");
+  // Collected moves the cursor on.
+  assert.equal(
+    nextAskableField(c, { "first-name": "Aaron" }, none)?.field.fieldId,
+    "comment",
+  );
+  // Asked-but-uncollected = the user skipped an optional field — advance,
+  // don't loop on it.
+  assert.equal(
+    nextAskableField(c, { "first-name": "Aaron" }, new Set(["comment"]))?.field
+      .fieldId,
+    "parish",
+  );
+  // Everything presented → null (review time).
+  assert.equal(
+    nextAskableField(
+      c,
+      { "first-name": "Aaron", parish: "St Michael" },
+      new Set(["comment"]),
+    ),
+    null,
+  );
+});
+
+// The cursor shares the disclosure's escape-toggle folding: the toggle is
+// never served standalone, and the relaxed field disappears once the escape
+// is open — the cursor serves the revealed field instead.
+test("nextAskableField applies escape folding and serves revealed fields", () => {
+  const c = escapeContract();
+  const none = new Set<string>();
+  assert.equal(
+    nextAskableField(c, {}, none)?.field.fieldId,
+    "applicant-id-number",
+  );
+  const open = { "passport-toggle": "true" };
+  assert.equal(
+    nextAskableField(c, open, none)?.field.fieldId,
+    "applicant-passport-number",
   );
 });
