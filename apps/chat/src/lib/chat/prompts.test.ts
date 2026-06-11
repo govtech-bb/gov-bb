@@ -108,6 +108,15 @@ test("FORM_COLLECTION_PROTOCOL carries the collection + submit rules", () => {
   assert.match(FORM_COLLECTION_PROTOCOL, /WHEN A FORM SCHEMA IS PROVIDED/);
 });
 
+// Guardrail against the model inventing a validation failure on an
+// already-recorded field (the "aaaaa first name is invalid" bug after a
+// middle-name skip): a {ok:true} value is valid, and only a real {ok:false}
+// error this turn is a validation problem.
+test("FORM_COLLECTION_PROTOCOL forbids inventing validation errors", () => {
+  assert.match(FORM_COLLECTION_PROTOCOL, /TRUST THE TOOL RESULTS/);
+  assert.match(FORM_COLLECTION_PROTOCOL, /\{ok: false, error\}/);
+});
+
 // The continuation disclosure is shown on follow-up turns after a handoff. It
 // must keep the form link in front of the user while preventing the two failure
 // modes we saw on the post-handoff turn: hallucinated inline collection, and
