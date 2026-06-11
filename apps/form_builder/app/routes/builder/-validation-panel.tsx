@@ -12,7 +12,7 @@ export function ValidationPanel({ result, onDismiss }: ValidationPanelProps) {
   if (result.valid) {
     return (
       <div
-        className={styles.validationSuccess}
+        className={styles.successBanner}
         style={{
           display: "flex",
           alignItems: "center",
@@ -27,14 +27,15 @@ export function ValidationPanel({ result, onDismiss }: ValidationPanelProps) {
     );
   }
 
+  // role="status" (polite), not "alert": issues here are advisory — the spec
+  // reserves the alert role for hard rejections like the duplicate-ID banner.
   return (
-    <div className={styles.validationErrors}>
+    <div className={styles.errorBanner} role="status">
       <div
         style={{
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          marginBottom: 8,
         }}
       >
         <strong>
@@ -45,7 +46,7 @@ export function ValidationPanel({ result, onDismiss }: ValidationPanelProps) {
           Dismiss
         </button>
       </div>
-      <ul>
+      <ul className={styles.bannerList}>
         {result.issues.map((issue, i) => (
           <li key={i}>
             {issue.path && <code>{issue.path}: </code>}

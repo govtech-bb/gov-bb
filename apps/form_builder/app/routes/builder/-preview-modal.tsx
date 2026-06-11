@@ -1,5 +1,6 @@
 import type { ServiceContract, ServiceContractRecipe } from "@govtech-bb/form-types";
 import styles from "../../styles/builder.module.css";
+import { useEscClose } from "./-use-esc-close";
 
 interface PreviewModalProps {
   contract: ServiceContract | null;
@@ -37,10 +38,12 @@ export function PreviewModal({ contract, isLoading, error, previewUrl, recipe, o
     setTimeout(() => URL.revokeObjectURL(url), 60_000);
   };
 
+  useEscClose(onClose);
+
   return (
     <div className={styles.modal} onClick={onClose}>
-      <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
+      <div className={`${styles.modalContent} ${styles.modalContentWide}`} role="dialog" aria-modal="true" aria-label="Preview" onClick={(e) => e.stopPropagation()}>
+        <div className={styles.modalHead}>
           <strong>Preview</strong>
           <button type="button" onClick={onClose}>Close</button>
         </div>
