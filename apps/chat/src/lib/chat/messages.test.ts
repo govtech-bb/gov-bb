@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { UIMessage } from "@tanstack/ai";
 import {
+  awaitingFieldAnswer,
   capMessageHistory,
   lastAssistantText,
   MAX_HISTORY_MESSAGES,
@@ -114,4 +115,23 @@ test("capMessageHistory keeps only the most recent MAX_HISTORY_MESSAGES", () => 
 test("capMessageHistory honours a custom max", () => {
   assert.equal(capMessageHistory(mkHistory(50), 5).length, 5);
   assert.equal(capMessageHistory(mkHistory(3), 5).length, 3);
+});
+
+// Mode-aware composer: a trailing assistant ask_field means the assistant is
+// the one asking — the placeholder must not say "Ask a question...".
+test("awaitingFieldAnswer is true only on a trailing assistant ask_field", () => {
+  const askMsg = {
+    id: "a1",
+    role: "assistant",
+    parts: [{ type: "tool-call", name: "ask_field", state: "complete" }],
+  } as unknown as UIMessage;
+  const userMsg = {
+    id: "u1",
+    role: "user",
+    parts: [{ type: "text", content: "Aaron" }],
+  } as unknown as UIMessage;
+  assert.equal(awaitingFieldAnswer([userMsg, askMsg]), true);
+  // The user already answered — back to normal mode.
+  assert.equal(awaitingFieldAnswer([askMsg, userMsg]), false);
+  assert.equal(awaitingFieldAnswer([]), false);
 });

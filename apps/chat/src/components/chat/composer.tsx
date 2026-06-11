@@ -7,12 +7,16 @@ export function Composer({
   onSubmit,
   onStop,
   streaming,
+  placeholder = "Ask a question...",
 }: {
   input: string;
   onChange: (v: string) => void;
   onSubmit: () => void;
   onStop: () => void;
   streaming: boolean;
+  // Mode-aware: mid-form the assistant is the one asking, so "Ask a
+  // question..." misleads — the page passes "Type your answer…" instead.
+  placeholder?: string;
 }) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
@@ -41,7 +45,7 @@ export function Composer({
                 if (!streaming) onSubmit();
               }
             }}
-            placeholder="Ask a question..."
+            placeholder={placeholder}
             ref={inputRef}
             rows={1}
             value={input}
