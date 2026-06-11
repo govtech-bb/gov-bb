@@ -11,10 +11,10 @@ const MAX_QUERY_LENGTH = 2000
 // only ground answers in that corpus, so an unbacked question (e.g. passports,
 // driver's licences) sends users straight to a dead end.
 const DEFAULT_QUESTIONS = [
-  'How do I register a birth?',
   'How do I get a birth certificate?',
   'What financial assistance is available?',
-  'How do I apply for a school uniform grant?',
+  'How do I get a primary school textbook grant?',
+  'How do I redirect my personal mail?',
 ]
 
 type OnlineState = 'checking' | 'online' | 'offline'
