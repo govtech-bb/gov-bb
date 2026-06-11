@@ -11,6 +11,13 @@ export const formSearchParamSchema = z.object({
    * is about. Harmless on forms that don't declare that field — it is dropped.
    */
   source: z.string().optional(),
+  /**
+   * Set by the EzPay return redirect (`/payments/ezpay/redirect`) when it bounces
+   * the citizen back to the confirmation step after payment: `success` flips the
+   * confirmation to the paid receipt; `failed` shows the payment-failure panel.
+   * Absent on the normal in-app flow.
+   */
+  payment: z.enum(["success", "failed"]).optional(),
 });
 
 export type FormSearchParams = z.infer<typeof formSearchParamSchema>;

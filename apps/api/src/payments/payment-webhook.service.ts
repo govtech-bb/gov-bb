@@ -31,6 +31,26 @@ export interface EzpayCallbackBody {
   _pcode?: string;
 }
 
+/**
+ * Result of verifying a payment, shared by the server-to-server webhook and the
+ * browser return redirect.
+ * - `success`   — verified Success with a matching amount; submission finalised.
+ * - `failed`    — verified Failed, or a Success whose amount didn't match.
+ * - `pending`   — not yet terminal (e.g. Initiated, or no transaction found).
+ * - `not_found` — no local payment matched the reference.
+ */
+export type PaymentConfirmationOutcome =
+  | "success"
+  | "failed"
+  | "pending"
+  | "not_found";
+
+export interface PaymentReturnResult {
+  outcome: PaymentConfirmationOutcome;
+  /** The form the payment belongs to, for building the confirmation redirect. */
+  formId?: string;
+}
+
 @Injectable()
 export class PaymentWebhookService {
   private readonly logger = new Logger(PaymentWebhookService.name);
@@ -44,21 +64,60 @@ export class PaymentWebhookService {
     private readonly formDefs: FormDefinitionsService,
   ) {}
 
+  /**
+   * Server-to-server EzPay webhook (push). Always returns `{ acknowledged }`
+   * regardless of outcome so EzPay doesn't enter a retry storm.
+   */
   async handleEzpayCallback(
     body: EzpayCallbackBody,
   ): Promise<{ acknowledged: boolean }> {
-    const payment = await this.paymentRepo.findByReference(body._reference);
+    await this.confirmPayment(body._reference, body._transaction_number);
+    return { acknowledged: true };
+  }
+
+  /**
+   * Confirm a payment from EzPay's post-payment **return redirect** (the
+   * citizen's browser, carrying `rid`/`tx`). Shares the same verify-and-finalise
+   * core as the webhook, so a return redirect alone is enough to confirm a
+   * payment, fire downstream processors and send emails — even when the webhook
+   * URL isn't configured on the merchant. Idempotent: if the webhook already
+   * finalised the submission, `fireDownstream` is a no-op. Returns the outcome
+   * and the `formId` so the caller can build the confirmation redirect.
+   */
+  async confirmReturn(args: {
+    reference: string;
+    transactionNumber?: string;
+  }): Promise<PaymentReturnResult> {
+    const { payment, outcome } = await this.confirmPayment(
+      args.reference,
+      args.transactionNumber,
+    );
+    return { outcome, formId: payment?.formId };
+  }
+
+  /**
+   * Verify a payment with EzPay and apply the resulting status transition +
+   * downstream emit. The single source of truth for "did this payment succeed",
+   * reused by both the webhook and the return redirect. Authoritative data comes
+   * from `verifyPayment` (EzPay `check_api`), not the caller-supplied status, so
+   * the two entry points can't disagree.
+   */
+  private async confirmPayment(
+    reference: string,
+    transactionNumber: string | undefined,
+  ): Promise<{
+    payment: PaymentEntity | null;
+    outcome: PaymentConfirmationOutcome;
+  }> {
+    const payment = await this.paymentRepo.findByReference(reference);
     if (!payment) {
-      this.logger.warn(`Payment not found for reference ${body._reference}`);
-      return { acknowledged: true };
+      this.logger.warn(`Payment not found for reference ${reference}`);
+      return { payment: null, outcome: "not_found" };
     }
 
     const apiKey = this.deptKeys.get(payment.department);
     const verified = await this.ezpay.verifyPayment(
-      {
-        transactionNumber: body._transaction_number,
-        reference: body._reference,
-      },
+      { transactionNumber, reference },
       apiKey,
     );
 
@@ -68,8 +127,9 @@ export class PaymentWebhookService {
       if (verified.status === "Failed") {
         payment.status = PaymentStatus.FAILED;
         await this.paymentRepo.save(payment);
+        return { payment, outcome: "failed" };
       }
-      return { acknowledged: true };
+      return { payment, outcome: "pending" };
     }
 
     if (!this.amountsMatch(verified.amount, payment.expectedAmount)) {
@@ -78,14 +138,14 @@ export class PaymentWebhookService {
       );
       payment.status = PaymentStatus.MISMATCHED;
       await this.paymentRepo.save(payment);
-      return { acknowledged: true };
+      return { payment, outcome: "failed" };
     }
 
     payment.status = PaymentStatus.SUCCESS;
     await this.paymentRepo.save(payment);
 
     await this.fireDownstream(payment);
-    return { acknowledged: true };
+    return { payment, outcome: "success" };
   }
 
   // expectedAmount is decimal(10,2) stored as string ("50.00"); verifiedAmount

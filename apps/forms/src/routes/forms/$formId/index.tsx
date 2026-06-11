@@ -31,7 +31,10 @@ import {
 } from "../../../lib/session-storage";
 import { formatDataForSubmission, postFormSubmission } from "@forms/form-api";
 import { trackEvent } from "../../../lib/analytics";
-import { resolveSubmissionOutcome } from "../../../lib/submission-outcome";
+import {
+  resolveSubmissionOutcome,
+  applyPaymentReturn,
+} from "../../../lib/submission-outcome";
 
 export const Route = createFileRoute("/forms/$formId/")({
   component: RouteComponent,
@@ -88,7 +91,7 @@ export const Route = createFileRoute("/forms/$formId/")({
 
 function RouteComponent() {
   const formMeta = Route.useLoaderData();
-  const { step, preview, source } = Route.useSearch();
+  const { step, preview, source, payment } = Route.useSearch();
   const isPreview = Boolean(preview);
   // Rehydrate the committed submission outcome on a confirmation-step reload so
   // the renderer doesn't bounce the citizen off it (submissionState is React
@@ -96,13 +99,19 @@ function RouteComponent() {
   // — so the value is present on the first render, before the renderer's
   // "no submissionState → redirect" effect runs. On any other step this is a
   // fresh session: ignore (and later clear) any stale persisted outcome.
+  //
+  // When the citizen returns from EzPay (`?payment=success|failed` set by the
+  // API's redirect handler), fold that outcome into the rehydrated state so the
+  // confirmation flips to the paid receipt / failure panel. sessionStorage
+  // survives the same-tab round-trip to EzPay and back, so the stored state
+  // (reference, amount, …) is still present to merge into.
   const [submissionState, setSubmissionState] = React.useState<
     SubmissionState | undefined
-  >(() =>
-    step === "submission-confirmation"
-      ? (getSubmissionState(formMeta.formId) ?? undefined)
-      : undefined,
-  );
+  >(() => {
+    if (step !== "submission-confirmation") return undefined;
+    const stored = getSubmissionState(formMeta.formId) ?? undefined;
+    return stored ? applyPaymentReturn(stored, payment) : stored;
+  });
 
   React.useEffect(() => {
     trackEvent("form-open", { form_id: formMeta.formId });

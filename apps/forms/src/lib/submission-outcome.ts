@@ -94,3 +94,23 @@ export function resolveSubmissionOutcome(
       };
   }
 }
+
+/**
+ * Fold an EzPay return outcome (the `?payment=` search param set by the API's
+ * `/payments/ezpay/redirect` handler) into the submission state rehydrated from
+ * session storage, so the confirmation step reflects the payment result:
+ * - `success` → show the paid receipt (`paymentSuccess: true`).
+ * - `failed`  → clear `paymentUrl` so the payment-failure panel renders instead
+ *   of "Continue to payment".
+ * Returns the state unchanged when there is nothing to apply. Pure — the real
+ * payment outcome is authoritative server-side; this only drives display.
+ */
+export function applyPaymentReturn(
+  state: SubmissionState,
+  payment: "success" | "failed" | undefined,
+): SubmissionState {
+  if (payment === "success") return { ...state, paymentSuccess: true };
+  if (payment === "failed")
+    return { ...state, paymentSuccess: false, paymentUrl: undefined };
+  return state;
+}
