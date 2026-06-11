@@ -31,17 +31,26 @@ export default defineConfig({
   reporter: [["line"]],
   use: {
     baseURL: process.env.SMOKE_BASE_URL ?? "https://forms.sandbox.alpha.gov.bb",
-    /* Tell the API every request from this run is a smoke submission so it
-     * drops all processors (no real emails / webhooks / payment gating) while
-     * still exercising the real persist/validate path. The header is honoured
-     * only when its value matches the API's SMOKE_SUBMISSION_TOKEN secret; an
-     * empty/absent token is ignored (fail-closed), so a local `test:smoke` run
-     * without the env var behaves exactly as before. Set globally — it rides
-     * along to S3 presign / CDN requests too, which ignore unknown headers
-     * (#1252). */
-    extraHTTPHeaders: {
-      "X-Smoke-Submission": process.env.SMOKE_SUBMISSION_TOKEN ?? "",
-    },
+    /* When SMOKE_SUBMISSION_TOKEN is set, tell the API every request from this
+     * run is a smoke submission so it drops all processors (no real emails /
+     * webhooks / payment gating) while still exercising the real persist/
+     * validate path. Set globally — it rides along to S3 presign / CDN requests
+     * too, which ignore unknown headers (#1252).
+     *
+     * Attach the header ONLY when the token is present. An empty token is
+     * fail-closed (the API ignores it), so sending an empty header buys nothing
+     * — and a custom request header makes the submission a CORS-preflighted
+     * request. The per-PR preview smoke runs against the *deployed* sandbox API,
+     * which only allows `X-Smoke-Submission` once this change ships (ADR 0029);
+     * sending it before then fails the preflight and blocks the submit. Omitting
+     * it when unset keeps the smoke behaving exactly as before. */
+    ...(process.env.SMOKE_SUBMISSION_TOKEN
+      ? {
+          extraHTTPHeaders: {
+            "X-Smoke-Submission": process.env.SMOKE_SUBMISSION_TOKEN,
+          },
+        }
+      : {}),
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     actionTimeout: 15_000,
