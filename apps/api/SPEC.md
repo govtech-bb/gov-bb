@@ -74,6 +74,7 @@ Submission semantics:
 | Method | Path | Description |
 |---|---|---|
 | `POST` | `/payments/ezpay/webhook` | EzPay server-to-server callback. Verified by HMAC signature (`X-EzPay-Signature` header) when `EZPAY_WEBHOOK_VERIFY_SIGNATURE=true`. Always returns `200 { acknowledged: true }` to avoid EzPay retry storms; failure modes are logged. The route is exempt from rate limiting because throttling EzPay's retries would drop legitimate callbacks. |
+| `GET` | `/payments/ezpay/redirect` | EzPay post-payment **return redirect** (browser GET, configured merchant-side as the return URL). EzPay appends `rid` (our payment reference), `tx` (transaction number) and `payment_status`. Confirms the payment via the same verify-and-finalise core as the webhook — so a return alone is enough to finalise and send emails even if the webhook isn't configured — then `302`-redirects the citizen to the form's confirmation page (`${FORMS_BASE_URL}/forms/<formId>/?step=submission-confirmation&payment=success\|failed`). Confirmation is idempotent with the webhook; errors never block the citizen (logged, redirect proceeds). Exempt from rate limiting. |
 
 ---
 
@@ -180,7 +181,7 @@ Three tiers configured globally (`short`/`medium`/`long`) and tuned per controll
 | `/form-definitions/*` | 20 / 10 s | 120 / 60 s | (default) |
 | `/form-drafts/*` | 5 / 10 s | 30 / 60 s | (default) |
 | `POST /submissions` | 3 / 10 s | 10 / 60 s | 50 / 1 h |
-| `/health`, `/payments/ezpay/webhook` | bypassed | bypassed | bypassed |
+| `/health`, `/payments/ezpay/webhook`, `/payments/ezpay/redirect` | bypassed | bypassed | bypassed |
 
 The counters are per-process and in-memory — multi-task deployments rely on AWS WAF as the authoritative rate limiter.
 
@@ -193,6 +194,7 @@ The counters are per-process and in-memory — multi-task deployments rely on AW
 ### 6.4 Configuration & env validation
 - `ConfigModule` is global, loads typed config namespaces (`app`, `database`, `email`, `spreadsheet`, `sqs`, plus `EZPAY_*` direct reads), and validates the environment with **Joi** at boot.
 - Joi rules enforce: production CORS safety, mandatory database creds, conditional SQS vars (only required when `SQS_ENABLED=true`), conditional EzPay webhook secret, and required EzPay base URL + department-keys JSON.
+- `FORMS_BASE_URL` — public forms site origin the EzPay return redirect bounces the citizen to. When empty it falls back to the first `CORS_ORIGIN` entry (the forms site on every deployed env), so it only needs setting if the two diverge.
 
 ### 6.5 Boot sequence (`main.ts`)
 1. Import `./tracing` first to initialise OTEL before any Nest code.

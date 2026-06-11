@@ -247,6 +247,32 @@ describe("RouteComponent", () => {
     expect(mockFormRendererProps.current.submissionState).toEqual(persisted);
   });
 
+  // Returning from EzPay: the API redirect lands the citizen on the confirmation
+  // step with ?payment=success, and the stored (pending) state is flipped to the
+  // paid receipt.
+  it("flips rehydrated state to paymentSuccess on ?payment=success return", () => {
+    jest.spyOn(Route, "useSearch").mockReturnValue({
+      step: "submission-confirmation",
+      payment: "success",
+    });
+    mockGetSubmissionState.mockReturnValue({
+      hasPayment: true,
+      serviceName: "test-form",
+      submissionSuccess: true,
+      paymentSuccess: false,
+      referenceNumber: "REF-9",
+      paymentUrl: "https://pay.example.com",
+    });
+
+    render(<Route.component />);
+
+    expect(mockFormRendererProps.current.submissionState).toMatchObject({
+      hasPayment: true,
+      paymentSuccess: true,
+      referenceNumber: "REF-9",
+    });
+  });
+
   it("passes isPreview=true to FormRenderer when a preview token is in search", () => {
     jest
       .spyOn(Route, "useSearch")
