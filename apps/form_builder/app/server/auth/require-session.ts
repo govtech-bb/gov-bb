@@ -23,14 +23,29 @@ import type { SessionPayload } from "../session";
  */
 export const requireSession = createMiddleware({ type: "function" }).server(
   async ({ next }) => {
-    const headers = getRequestHeaders();
-    const cookie =
-      (headers as { get?: (k: string) => string | null }).get?.("cookie") ??
-      (headers as { cookie?: string }).cookie ??
-      null;
-    const secret = await getSessionSecret();
-    const session: SessionPayload | null = getSession(cookie, secret);
-    if (!session) throw new Error("Not authenticated");
+    let session: SessionPayload | null = null;
+    try {
+      const headers = getRequestHeaders();
+      const cookie =
+        (headers as { get?: (k: string) => string | null }).get?.("cookie") ??
+        (headers as { cookie?: string }).cookie ??
+        null;
+      const secret = await getSessionSecret();
+      session = getSession(cookie, secret);
+    } catch (err) {
+      // Local dev tolerance, mirroring sessionTokenOrDev: no SESSION_SECRET
+      // configured falls through to the dev session below. In production the
+      // error still propagates (DEV is statically false there).
+      if (!import.meta.env.DEV) throw err;
+    }
+    if (!session) {
+      if (!import.meta.env.DEV) throw new Error("Not authenticated");
+      session = {
+        login: "dev",
+        accessToken: "",
+        expiresAt: Date.now() + 60 * 60 * 1000,
+      };
+    }
     return next({ context: { session } });
   },
 );

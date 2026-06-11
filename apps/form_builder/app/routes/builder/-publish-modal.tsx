@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { RecipeDraft } from "@govtech-bb/form-builder";
 import styles from "../../styles/builder.module.css";
+import { useEscClose } from "./-use-esc-close";
 
 interface PublishModalProps {
   draft: RecipeDraft;
@@ -29,16 +30,12 @@ export function PublishModal({
 }: PublishModalProps) {
   const [description, setDescription] = useState("");
 
+  useEscClose(onClose);
+
   return (
     <div className={styles.modal} onClick={onClose}>
-      <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            marginBottom: 12,
-          }}
-        >
+      <div className={styles.modalContent} role="dialog" aria-modal="true" aria-label="Deploy" onClick={(e) => e.stopPropagation()}>
+        <div className={styles.modalHead}>
           <strong>Deploy</strong>
           <button type="button" onClick={onClose}>
             Close

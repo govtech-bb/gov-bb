@@ -39,7 +39,6 @@ export const SCHOOL_EMAILS: Record<string, string> = {
   "hindsbury-primary": "HindsburyPrimary@mes.gov.bb",
   "holy-innocents-primary": "HolyInnocentsPrimary@mes.gov.bb",
   "ignatius-byer-primary": "IgnatiusByerPrimary@mes.gov.bb",
-  "kellys-fantastic-school": "kelly.roberts@govtech.bb",
   "lawrence-t-gay": "LawrenceTGayPrimary@mes.gov.bb",
   "luther-thorne-memorial": "LutherThorneMemorial@mes.gov.bb",
   "milton-lynch-primary": "MiltonLynchPrimary@mes.gov.bb",

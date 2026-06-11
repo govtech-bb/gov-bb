@@ -99,6 +99,12 @@ export const envValidationSchema = Joi.object({
   // Recipe preview (optional — empty disables the per-request preview escape hatch)
   RECIPE_PREVIEW_TOKEN: Joi.string().allow("").default(""),
 
+  // Smoke submission (optional — empty disables the processor-drop escape hatch).
+  // When set, a POST /submissions carrying a matching X-Smoke-Submission header
+  // persists/validates but fires no processors — lets the post-deploy live
+  // smoke matrix run without real emails/webhooks (#1252).
+  SMOKE_SUBMISSION_TOKEN: Joi.string().allow("").default(""),
+
   // S3 file uploads (optional — required only when a form uses file fields)
   S3_BUCKET: Joi.string().allow("").default(""),
   S3_REGION: Joi.string().optional(),
