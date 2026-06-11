@@ -15,9 +15,9 @@ import { Route as ServiceUnavailableRouteImport } from './routes/service-unavail
 import { Route as SearchResultsRouteImport } from './routes/search-results'
 import { Route as JavascriptRequiredRouteImport } from './routes/javascript-required'
 import { Route as FeedbackRouteImport } from './routes/feedback'
-import { Route as BankHolidayCalendarRouteImport } from './routes/bank-holiday-calendar'
 import { Route as SplatRouteImport } from './routes/$'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as BankHolidayCalendarIndexRouteImport } from './routes/bank-holiday-calendar/index'
 import { Route as HealthAndEmergencyServicesStormreadyRouteRouteImport } from './routes/health-and-emergency-services/stormready/route'
 import { Route as HealthAndEmergencyServicesFindAnEmergencyShelterRouteRouteImport } from './routes/health-and-emergency-services/find-an-emergency-shelter/route'
 import { Route as HealthAndEmergencyServicesStormreadyIndexRouteImport } from './routes/health-and-emergency-services/stormready/index'
@@ -59,11 +59,6 @@ const FeedbackRoute = FeedbackRouteImport.update({
   path: '/feedback',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BankHolidayCalendarRoute = BankHolidayCalendarRouteImport.update({
-  id: '/bank-holiday-calendar',
-  path: '/bank-holiday-calendar',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const SplatRoute = SplatRouteImport.update({
   id: '/$',
   path: '/$',
@@ -74,6 +69,12 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BankHolidayCalendarIndexRoute =
+  BankHolidayCalendarIndexRouteImport.update({
+    id: '/bank-holiday-calendar/',
+    path: '/bank-holiday-calendar/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const HealthAndEmergencyServicesStormreadyRouteRoute =
   HealthAndEmergencyServicesStormreadyRouteRouteImport.update({
     id: '/health-and-emergency-services/stormready',
@@ -141,7 +142,6 @@ const BusinessTradeCropOverPermitsFormRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
-  '/bank-holiday-calendar': typeof BankHolidayCalendarRoute
   '/feedback': typeof FeedbackRoute
   '/javascript-required': typeof JavascriptRequiredRoute
   '/search-results': typeof SearchResultsRoute
@@ -150,6 +150,7 @@ export interface FileRoutesByFullPath {
   '/tell-us': typeof TellUsRoute
   '/health-and-emergency-services/find-an-emergency-shelter': typeof HealthAndEmergencyServicesFindAnEmergencyShelterRouteRouteWithChildren
   '/health-and-emergency-services/stormready': typeof HealthAndEmergencyServicesStormreadyRouteRouteWithChildren
+  '/bank-holiday-calendar/': typeof BankHolidayCalendarIndexRoute
   '/business-trade/crop-over-permits/form': typeof BusinessTradeCropOverPermitsFormRoute
   '/health-and-emergency-services/find-an-emergency-shelter/find': typeof HealthAndEmergencyServicesFindAnEmergencyShelterFindRoute
   '/health-and-emergency-services/find-an-emergency-shelter/guidance': typeof HealthAndEmergencyServicesFindAnEmergencyShelterGuidanceRoute
@@ -162,13 +163,13 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
-  '/bank-holiday-calendar': typeof BankHolidayCalendarRoute
   '/feedback': typeof FeedbackRoute
   '/javascript-required': typeof JavascriptRequiredRoute
   '/search-results': typeof SearchResultsRoute
   '/service-unavailable': typeof ServiceUnavailableRoute
   '/services': typeof ServicesRoute
   '/tell-us': typeof TellUsRoute
+  '/bank-holiday-calendar': typeof BankHolidayCalendarIndexRoute
   '/business-trade/crop-over-permits/form': typeof BusinessTradeCropOverPermitsFormRoute
   '/health-and-emergency-services/find-an-emergency-shelter/find': typeof HealthAndEmergencyServicesFindAnEmergencyShelterFindRoute
   '/health-and-emergency-services/find-an-emergency-shelter/guidance': typeof HealthAndEmergencyServicesFindAnEmergencyShelterGuidanceRoute
@@ -182,7 +183,6 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
-  '/bank-holiday-calendar': typeof BankHolidayCalendarRoute
   '/feedback': typeof FeedbackRoute
   '/javascript-required': typeof JavascriptRequiredRoute
   '/search-results': typeof SearchResultsRoute
@@ -191,6 +191,7 @@ export interface FileRoutesById {
   '/tell-us': typeof TellUsRoute
   '/health-and-emergency-services/find-an-emergency-shelter': typeof HealthAndEmergencyServicesFindAnEmergencyShelterRouteRouteWithChildren
   '/health-and-emergency-services/stormready': typeof HealthAndEmergencyServicesStormreadyRouteRouteWithChildren
+  '/bank-holiday-calendar/': typeof BankHolidayCalendarIndexRoute
   '/business-trade/crop-over-permits/form': typeof BusinessTradeCropOverPermitsFormRoute
   '/health-and-emergency-services/find-an-emergency-shelter/find': typeof HealthAndEmergencyServicesFindAnEmergencyShelterFindRoute
   '/health-and-emergency-services/find-an-emergency-shelter/guidance': typeof HealthAndEmergencyServicesFindAnEmergencyShelterGuidanceRoute
@@ -205,7 +206,6 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/$'
-    | '/bank-holiday-calendar'
     | '/feedback'
     | '/javascript-required'
     | '/search-results'
@@ -214,6 +214,7 @@ export interface FileRouteTypes {
     | '/tell-us'
     | '/health-and-emergency-services/find-an-emergency-shelter'
     | '/health-and-emergency-services/stormready'
+    | '/bank-holiday-calendar/'
     | '/business-trade/crop-over-permits/form'
     | '/health-and-emergency-services/find-an-emergency-shelter/find'
     | '/health-and-emergency-services/find-an-emergency-shelter/guidance'
@@ -226,13 +227,13 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/$'
-    | '/bank-holiday-calendar'
     | '/feedback'
     | '/javascript-required'
     | '/search-results'
     | '/service-unavailable'
     | '/services'
     | '/tell-us'
+    | '/bank-holiday-calendar'
     | '/business-trade/crop-over-permits/form'
     | '/health-and-emergency-services/find-an-emergency-shelter/find'
     | '/health-and-emergency-services/find-an-emergency-shelter/guidance'
@@ -245,7 +246,6 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/$'
-    | '/bank-holiday-calendar'
     | '/feedback'
     | '/javascript-required'
     | '/search-results'
@@ -254,6 +254,7 @@ export interface FileRouteTypes {
     | '/tell-us'
     | '/health-and-emergency-services/find-an-emergency-shelter'
     | '/health-and-emergency-services/stormready'
+    | '/bank-holiday-calendar/'
     | '/business-trade/crop-over-permits/form'
     | '/health-and-emergency-services/find-an-emergency-shelter/find'
     | '/health-and-emergency-services/find-an-emergency-shelter/guidance'
@@ -267,7 +268,6 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SplatRoute: typeof SplatRoute
-  BankHolidayCalendarRoute: typeof BankHolidayCalendarRoute
   FeedbackRoute: typeof FeedbackRoute
   JavascriptRequiredRoute: typeof JavascriptRequiredRoute
   SearchResultsRoute: typeof SearchResultsRoute
@@ -276,6 +276,7 @@ export interface RootRouteChildren {
   TellUsRoute: typeof TellUsRoute
   HealthAndEmergencyServicesFindAnEmergencyShelterRouteRoute: typeof HealthAndEmergencyServicesFindAnEmergencyShelterRouteRouteWithChildren
   HealthAndEmergencyServicesStormreadyRouteRoute: typeof HealthAndEmergencyServicesStormreadyRouteRouteWithChildren
+  BankHolidayCalendarIndexRoute: typeof BankHolidayCalendarIndexRoute
   BusinessTradeCropOverPermitsFormRoute: typeof BusinessTradeCropOverPermitsFormRoute
   MoneyFinancialSupportCalculateSeverancePayFormRoute: typeof MoneyFinancialSupportCalculateSeverancePayFormRoute
   PensionsAndGratuitiesCalculateYourPensionFormRoute: typeof PensionsAndGratuitiesCalculateYourPensionFormRoute
@@ -325,13 +326,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FeedbackRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/bank-holiday-calendar': {
-      id: '/bank-holiday-calendar'
-      path: '/bank-holiday-calendar'
-      fullPath: '/bank-holiday-calendar'
-      preLoaderRoute: typeof BankHolidayCalendarRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/$': {
       id: '/$'
       path: '/$'
@@ -344,6 +338,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/bank-holiday-calendar/': {
+      id: '/bank-holiday-calendar/'
+      path: '/bank-holiday-calendar'
+      fullPath: '/bank-holiday-calendar/'
+      preLoaderRoute: typeof BankHolidayCalendarIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/health-and-emergency-services/stormready': {
@@ -461,7 +462,6 @@ const HealthAndEmergencyServicesStormreadyRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SplatRoute: SplatRoute,
-  BankHolidayCalendarRoute: BankHolidayCalendarRoute,
   FeedbackRoute: FeedbackRoute,
   JavascriptRequiredRoute: JavascriptRequiredRoute,
   SearchResultsRoute: SearchResultsRoute,
@@ -472,6 +472,7 @@ const rootRouteChildren: RootRouteChildren = {
     HealthAndEmergencyServicesFindAnEmergencyShelterRouteRouteWithChildren,
   HealthAndEmergencyServicesStormreadyRouteRoute:
     HealthAndEmergencyServicesStormreadyRouteRouteWithChildren,
+  BankHolidayCalendarIndexRoute: BankHolidayCalendarIndexRoute,
   BusinessTradeCropOverPermitsFormRoute: BusinessTradeCropOverPermitsFormRoute,
   MoneyFinancialSupportCalculateSeverancePayFormRoute:
     MoneyFinancialSupportCalculateSeverancePayFormRoute,
