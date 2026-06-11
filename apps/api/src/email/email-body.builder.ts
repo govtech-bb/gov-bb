@@ -29,6 +29,18 @@ import type {
  */
 const CONTRACT_CACHE_TTL_SECONDS = 600; // 10 minutes
 
+// Steps suppressed from the notification email, per form. The in-chat
+// `chat-feedback` form's declaration is auto-confirmed by the chat on the
+// user's behalf — the recipe requires it (and the form-builder regenerates it
+// on every republish), but the user never sees or confirms it (ADR 0049).
+// Surfacing a "Declaration: I confirm" row the user never actually agreed to
+// would be misleading, so it's dropped from the feedback email. Scoped per
+// formId: a real application keeps its declaration in the MDA email as an
+// audit record that the applicant did confirm it.
+const SUPPRESSED_STEPS: ReadonlyMap<string, ReadonlySet<string>> = new Map([
+  ["chat-feedback", new Set(["declaration"])],
+]);
+
 export interface EmailField {
   label: string;
   value: string;
@@ -108,9 +120,12 @@ export class EmailBodyBuilder {
 
     const { meta, values, submissionId, referenceCode } = payload;
 
+    const suppressedSteps = SUPPRESSED_STEPS.get(contract.formId);
+
     const sections = contract.steps
       .filter((step) => meta.activeStepIds.includes(step.stepId))
       .filter((step) => !meta.hiddenStepIds.includes(step.stepId))
+      .filter((step) => !suppressedSteps?.has(step.stepId))
       .flatMap((step) => {
         const rawVal = values[step.stepId];
 
