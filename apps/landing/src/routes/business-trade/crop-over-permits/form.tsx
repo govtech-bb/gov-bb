@@ -1,7 +1,7 @@
 import { createFileRoute, notFound } from '@tanstack/react-router'
-import { CropOverPermitsForm } from '../blocks/crop-over-permits/CropOverPermitsForm'
-import { isUrlVisible, urlLevel } from '../content/registry'
-import { pageHead } from '../lib/page-head'
+import { CropOverPermitsForm } from './-ui/CropOverPermitsForm'
+import { isUrlVisible, urlLevel } from '../../../content/registry'
+import { pageHead } from '../../../lib/page-head'
 
 const CONTENT_URL = 'business-trade/crop-over-permits'
 

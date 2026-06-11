@@ -22,7 +22,7 @@ import {
   Reason,
   ReasonLabel,
   tieredWeeks,
-} from './compute'
+} from '../-lib/compute'
 
 type Step = 'q-employment' | 'q-reason' | 'q-years' | 'q-pay' | 'result'
 

@@ -1,7 +1,7 @@
 import { createFileRoute, notFound } from '@tanstack/react-router'
-import { PensionCalculator } from '../blocks/pension/PensionCalculator'
-import { isUrlVisible, urlLevel } from '../content/registry'
-import { pageHead } from '../lib/page-head'
+import { PensionCalculator } from './-ui/PensionCalculator'
+import { isUrlVisible, urlLevel } from '../../../content/registry'
+import { pageHead } from '../../../lib/page-head'
 
 const CONTENT_URL = 'pensions-and-gratuities/calculate-your-pension'
 
