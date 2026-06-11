@@ -162,3 +162,20 @@ test("unapprovedForm routes to the honest disclosure, not the no-form one", () =
   assert.match(text, /do NOT claim there is no online form/);
   assert.doesNotMatch(text, /NO ONLINE FORM AVAILABLE/);
 });
+
+// Server-detected ambiguity narrows with clickable choices, keeping the
+// model's follow-up escape hatch (history can establish the topic).
+test("disambiguation lists the services and prescribes choices + escape", () => {
+  const text = build({
+    disambiguation: {
+      titles: ["Get a birth certificate", "Get a death certificate"],
+    },
+  });
+  assert.match(text, /2 DISTINCT SERVICES/);
+  assert.match(
+    text,
+    /"Get a birth certificate", "Get a death certificate", "Something else"/,
+  );
+  assert.match(text, /IGNORE this instruction and answer that service/);
+  assert.doesNotMatch(text, /NO ONLINE FORM AVAILABLE/);
+});

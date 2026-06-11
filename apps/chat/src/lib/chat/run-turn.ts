@@ -10,6 +10,7 @@ import {
   buildFormTools,
   buildOfferTools,
   consumeOfferReply,
+  funnelPhase,
   getOrCreateSession,
   parkHandoff,
   pinSessionForm,
@@ -28,6 +29,7 @@ import {
   isConversationalCloser,
   isGreetingOrTooShort,
   retrieve,
+  topServiceCandidates,
 } from "./retrieval";
 import { rewriteRetrievalQuery } from "./rewrite";
 import type { RetrievedContext, Source } from "./types";
@@ -167,12 +169,24 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     query,
   );
 
-  const ragFallback = await applyRagFallback(
-    resolution,
-    session,
-    rawSources,
-    signal,
-  );
+  // Server-driven disambiguation (ADR 0048, stage 3): when retrieval covers
+  // SEVERAL distinct services and no form is pinned, winner-take-all routing
+  // would guess — narrow with clickable choices instead. Suppresses the RAG
+  // fallback for the turn (its top-1 pick is exactly the guess we're
+  // avoiding). The disclosure keeps a model escape hatch for follow-ups
+  // whose topic the conversation already established.
+  const serviceCandidates =
+    resolution.kind === "none" && !session.slug
+      ? topServiceCandidates(rawSources)
+      : [];
+  const disambiguation =
+    serviceCandidates.length >= 2
+      ? { titles: serviceCandidates.map((c) => c.title) }
+      : undefined;
+
+  const ragFallback = disambiguation
+    ? { resolution }
+    : await applyRagFallback(resolution, session, rawSources, signal);
   resolution = ragFallback.resolution;
   const handoffContinuation = ragFallback.handoffContinuation;
   const formOffer = ragFallback.formOffer;
@@ -205,6 +219,7 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     !handoffContinuation &&
     !formOffer &&
     !linkRequested &&
+    !disambiguation &&
     !noContext;
 
   const env = getServerEnv();
@@ -218,6 +233,7 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     intent,
     formOffer,
     linkRequested,
+    disambiguation,
     unapprovedForm,
     noContext,
     offerFeedback,
@@ -240,7 +256,7 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
         : resolution.form.slug === FEEDBACK_FORM_ID
           ? "collect-feedback"
           : "collect"
-      : formOffer
+      : formOffer || disambiguation
         ? "offer-start"
         : offerFeedback
           ? "feedback-offer"
@@ -284,6 +300,8 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
           query: activelyCollecting ? undefined : latest.slice(0, 120),
           retrieved: rawSources.map((s) => ({ id: s.id, score: s.score })),
           formSlug: session.slug ?? undefined,
+          action,
+          phase: funnelPhase(session),
           retrieveDegraded: degraded,
         },
         startedAt,
