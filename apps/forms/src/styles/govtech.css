@@ -50,6 +50,21 @@
  * package ships (var(--color-*), var(--spacing-*), var(--font-size-*)).
  * ------------------------------------------------------------------------- */
 
+/* Firefox grows a second focus ring on text fields (#1229): this file's
+ * `@import "tailwindcss"` adds a second preflight whose
+ * `:-moz-focusring { outline: auto }` lands in the merged `base` layer AFTER
+ * the design system's inner-control `outline: 0` reset, and wins at equal
+ * specificity. Re-assert the reset unlayered so it beats the layer. */
+:where(
+    .govbb-input-wrapper,
+    .govbb-select-wrapper,
+    .govbb-date-input-wrapper,
+    .govbb-number-input-wrapper
+  )
+  > :where(input, select, textarea) {
+  outline: 0;
+}
+
 /* Page + step layout (replaces the former design-system module classes) */
 .form-page {
   font-family: var(--font-family-base), sans-serif;
