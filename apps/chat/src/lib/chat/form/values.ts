@@ -10,6 +10,7 @@ import {
 } from "@govtech-bb/form-conditions";
 import { validateField } from "@govtech-bb/form-validation";
 import type { StepScopedValues } from "@govtech-bb/form-validation";
+import { isRequiredField } from "./required";
 import { buildFieldIndex, isChatCollectable } from "./schema";
 
 export type FieldError = { field: string; message: string };
@@ -189,7 +190,7 @@ function relaxOptionalIf(
   stepId: string,
   valuesByStep: StepScopedValues,
 ): Primitive {
-  if (!field.validations?.required) return field;
+  if (!isRequiredField(field.validations)) return field;
   const conds = (field.behaviours ?? []).filter(
     (b): b is OptionalIfBehaviour => b.type === "optionalIf",
   );

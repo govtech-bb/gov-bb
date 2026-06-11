@@ -8,6 +8,7 @@ import { getServerEnv } from "#/config/env";
 import { isAutoConfirmedField } from "./auto-confirm";
 import { getFormDefinition } from "./defs";
 import { isForcedHandoff } from "./policy";
+import { isRequiredField } from "./required";
 
 // show-hide is NOT here: the toggle is collected as a yes/no question.
 // Leaving it uncollectable made every field conditional on a toggle
@@ -32,7 +33,7 @@ export function isChatCollectable(field: Primitive): boolean {
 }
 
 function isRequired(field: Primitive): boolean {
-  return !!field.validations?.required;
+  return isRequiredField(field.validations);
 }
 
 export function describeField(field: Primitive, escape?: Primitive): string {
