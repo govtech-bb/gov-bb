@@ -70,9 +70,11 @@ describe("EzpayClient", () => {
     );
 
     const [, body] = http.post.mock.calls[0];
-    expect((body as URLSearchParams).get("ez_allow_credit")).toBe("1");
-    expect((body as URLSearchParams).get("ez_allow_debit")).toBe("1");
-    expect((body as URLSearchParams).get("ez_allow_payce")).toBe("1");
+    // "true"/"false" strings, not "1"/"0": EzPay's payment_page renders a method
+    // only when its flag === "true"; "1" blanks every option (#936 regression).
+    expect((body as URLSearchParams).get("ez_allow_credit")).toBe("true");
+    expect((body as URLSearchParams).get("ez_allow_debit")).toBe("true");
+    expect((body as URLSearchParams).get("ez_allow_payce")).toBe("true");
   });
 
   it("createPayment throws on EzPay error response", async () => {
