@@ -59,11 +59,13 @@ env:
   ECS_CLUSTER: simple-service-builder-prod
   ECS_SERVICE: ssb-api-prod
 
-  # Smoke test URLs. Public prod DNS isn't cut over yet (Phase 1, HTTP-only
-  # ALB), so these hit the ALB DNS over HTTP and the Amplify default domains
-  # over TLS — same as staging's pre-DNS phase. Switch to the friendly
-  # *.alpha.gov.bb hostnames once DNS + the :443 listener land.
-  API_SMOKE_URL: http://ssb-api-prod-1165104707.ca-central-1.elb.amazonaws.com/health
+  # Smoke test URLs. The API's friendly DNS + :443 listener have landed, and the
+  # ALB now force-redirects HTTP→HTTPS (301) — so hitting the raw ALB over HTTP
+  # fails the smoke (301 ≠ 200, and the ALB DNS doesn't match the cert, so
+  # following the redirect breaks too). Smoke the friendly HTTPS host, which
+  # returns 200 through to the app. The Amplify apps still use their default
+  # *.amplifyapp.com domains over TLS until their friendly DNS is cut over.
+  API_SMOKE_URL: https://api.ssb.alpha.gov.bb/health
   AMPLIFY_FORMS_URL: https://prod.d2a6u3uw8mle6w.amplifyapp.com
   AMPLIFY_LANDING_URL: https://prod.d33h8dmrfcznn0.amplifyapp.com
   AMPLIFY_CHAT_URL: https://prod.d3dc75921xrndn.amplifyapp.com
