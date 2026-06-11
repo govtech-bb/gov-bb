@@ -1,6 +1,10 @@
 import type { UIMessage } from "@tanstack/ai";
 import { getServerEnv } from "#/config/env";
-import { FEEDBACK_FORM_ID, FEEDBACK_TRIGGER_PHRASE } from "#/lib/chat/feedback";
+import {
+  FEEDBACK_FORM_ID,
+  FEEDBACK_TRIGGER_PHRASE,
+  pinFeedbackForm,
+} from "#/lib/chat/feedback";
 import { isInfoQuestion } from "#/lib/chat/guards";
 import { lastUserText, recentUserText } from "#/lib/chat/messages";
 import {
@@ -40,18 +44,26 @@ export async function pinSessionForm(
   deps: PinDeps = { match: matchFormsFromText },
 ): Promise<void> {
   // A submitted form is terminal — the application is done, nothing more to
-  // collect — so unpin it. Otherwise the matcher re-pins it from the rolling
-  // window (which still names the just-completed form), resolution stays
-  // "collect", and the feedback offer (which needs "none") can never fire after
-  // an application (#1203). The feedback form clears outright: it's pinned
-  // programmatically and can never be re-matched from text, and feedbackOffered
-  // survives the reset so it isn't re-offered. A real service form is PARKED
-  // instead — handedOffSlug makes the rolling-window matcher defer to the user's
-  // LATEST message, so their earlier application messages don't re-wedge them
-  // into the finished form, while a fresh mention of any service re-engages.
+  // collect — so unpin it; otherwise the matcher re-pins it from the rolling
+  // window (which still names the just-completed form) and traps the user.
+  //   - Feedback form: clear outright. It's pinned programmatically and can
+  //     never be re-matched from text; feedbackOffered survives the reset.
+  //   - Real form, feedback not yet offered: a completed application is the
+  //     most natural moment to ask, so AUTO-PIN the chat-feedback form. The
+  //     submit turn's prompt already invited it once (the collect-branch
+  //     forward-looking guidance in prompt-builder), and this zero-value pin is
+  //     an OPEN OFFER — the open-offer release below still lets a topic switch
+  //     or info-question escape, so the user isn't trapped. pinFeedbackForm
+  //     marks feedbackOffered, so it's never asked twice. (Supersedes the #1203
+  //     park-for-model-offer behaviour merged in #1220.)
+  //   - Real form, feedback already offered/given: just PARK it (handedOffSlug
+  //     defers the rolling-window matcher to the latest message) — no second
+  //     ask; the confirmation fell back to the normal "anything else?" wrap-up.
   if (session.slug && session.status === "submitted") {
     if (session.slug === FEEDBACK_FORM_ID) {
       resetSessionForNewForm(session);
+    } else if (!session.feedbackOffered) {
+      pinFeedbackForm(session);
     } else {
       parkHandoff(session, session.slug);
     }
