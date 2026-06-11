@@ -20,6 +20,31 @@ export function shouldBindFeedbackOffer(
   return resolutionKind === "none" && !feedbackOffered;
 }
 
+// The mirror of shouldBindFeedbackOffer on the other side of the offer. A
+// zero-value chat-feedback pin (whether matcher- or offer_feedback-pinned) is
+// really an OPEN OFFER, not active collection. Because a pinned form suppresses
+// the RAG routing backstop (applyRagFallback / disambiguation gate on no form
+// pinned), a user who changes topic to a real service can get trapped on the
+// feedback form: the title matcher misses natural phrasings (e.g. "conductor
+// license" vs the "licence" title — only one overlapping token, below the
+// match threshold), and a non-question never trips the pinSessionForm release.
+// So when THIS turn's retrieval surfaces a real service, treat it as a topic
+// switch and release the pin, letting the normal no-form path route (#1202).
+// The caller releases via cancelFeedbackForm, which preserves feedbackOffered —
+// a topic switch reads as an implicit decline, never re-offered this session.
+export function shouldReleaseFeedbackOffer(
+  resolution: FormResolution,
+  valueCount: number,
+  hasServiceCandidate: boolean,
+): boolean {
+  return (
+    resolution.kind === "collect" &&
+    resolution.form.slug === FEEDBACK_FORM_ID &&
+    valueCount === 0 &&
+    hasServiceCandidate
+  );
+}
+
 // Pin the chat-feedback form so the normal collect flow takes over from the
 // next turn. Resets any prior form state first (a clean session for the new
 // form) and marks the offer spent so it is never made twice in one session.

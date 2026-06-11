@@ -20,7 +20,12 @@ import {
   type FormResolution,
   type FormTurnContext,
 } from "./form";
-import { FEEDBACK_FORM_ID, shouldBindFeedbackOffer } from "./feedback";
+import {
+  cancelFeedbackForm,
+  FEEDBACK_FORM_ID,
+  shouldBindFeedbackOffer,
+  shouldReleaseFeedbackOffer,
+} from "./feedback";
 import { isInfoQuestion, looksLikeJailbreak } from "./guards";
 import { citationsMiddleware, turnLogMiddleware } from "./middleware";
 import { capMessageHistory, lastAssistantText, lastUserText } from "./messages";
@@ -170,6 +175,27 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     query,
   );
 
+  // A zero-value chat-feedback pin is an open offer, not active collection — but
+  // a pinned form suppresses the RAG routing backstop below. If this turn's
+  // retrieval surfaced a real service, the user changed topic (the title matcher
+  // misses natural phrasings, e.g. "conductor license", and a non-question never
+  // tripped the pinSessionForm release), so release the pin and let the normal
+  // no-form path route to that service (#1202). cancelFeedbackForm preserves
+  // feedbackOffered, and re-asserting it keeps the never-re-offer invariant: a
+  // topic switch reads as an implicit decline.
+  const serviceCandidatesRaw = topServiceCandidates(rawSources);
+  if (
+    shouldReleaseFeedbackOffer(
+      resolution,
+      Object.keys(session.values).length,
+      serviceCandidatesRaw.length > 0,
+    )
+  ) {
+    cancelFeedbackForm(session);
+    session.feedbackOffered = true;
+    resolution = { kind: "none" };
+  }
+
   // Server-driven disambiguation (ADR 0048, stage 3): when retrieval covers
   // SEVERAL distinct services and no form is pinned, winner-take-all routing
   // would guess — narrow with clickable choices instead. Suppresses the RAG
@@ -177,9 +203,7 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
   // avoiding). The disclosure keeps a model escape hatch for follow-ups
   // whose topic the conversation already established.
   const serviceCandidates =
-    resolution.kind === "none" && !session.slug
-      ? topServiceCandidates(rawSources)
-      : [];
+    resolution.kind === "none" && !session.slug ? serviceCandidatesRaw : [];
   const disambiguation =
     serviceCandidates.length >= 2
       ? { titles: serviceCandidates.map((c) => c.title) }
