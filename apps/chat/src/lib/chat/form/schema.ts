@@ -5,6 +5,7 @@ import type {
 } from "@govtech-bb/form-types";
 import { evaluateFormConditions } from "@govtech-bb/form-conditions";
 import { getServerEnv } from "#/config/env";
+import { isAutoConfirmedField } from "./auto-confirm";
 import { getFormDefinition } from "./defs";
 import { isForcedHandoff } from "./policy";
 
@@ -137,6 +138,9 @@ function* askableFields(
     for (const el of step.elements) {
       if (!ids.has(el.fieldId)) continue;
       if (!isChatCollectable(el)) continue;
+      // Auto-confirmed fields (the feedback form's declaration) are filled for
+      // the user at submit — never disclosed, never asked, never reviewed.
+      if (isAutoConfirmedField(contract, el.fieldId)) continue;
       // Escape toggles ride along on their target field's line/ask — a
       // standalone "Use passport number instead?" with no ID question in
       // sight reads as a non sequitur.
