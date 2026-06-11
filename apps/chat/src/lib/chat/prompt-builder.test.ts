@@ -120,6 +120,45 @@ test("collect: submitted and failed statuses surface their state lines", () => {
   assert.match(failed, /Last submission attempt failed: bad value/);
 });
 
+// A completed real application is the natural moment to ask for feedback. The
+// invitation is FORWARD-LOOKING guidance on the collect turn (the system prompt
+// is built before submit_form runs and the form is unpinned next turn), telling
+// the model to invite feedback once after a successful submit instead of the
+// generic "Anything else I can help with?".
+test("collect: a real form in progress instructs inviting feedback after submit", () => {
+  const text = build({
+    resolution: collectResolution(),
+    session: session(),
+  });
+  assert.match(text, /AFTER A SUCCESSFUL submit_form/i);
+  assert.match(text, /feedback/i);
+  assert.match(
+    text,
+    /instead of ending with "Anything else I can help with\?"/i,
+  );
+});
+
+// Once feedback has already been offered/given this session, the invitation is
+// withheld (no second ask) — the base "Anything else I can help with?" wrap-up
+// applies as usual.
+test("collect: no feedback invitation when feedback was already offered", () => {
+  const text = build({
+    resolution: collectResolution(),
+    session: session({ feedbackOffered: true }),
+  });
+  assert.doesNotMatch(text, /AFTER A SUCCESSFUL submit_form/i);
+});
+
+// The feedback form itself never gets the post-submit feedback invitation —
+// FEEDBACK_COLLECTION_GUIDANCE owns its own warm thank-you.
+test("collect: the feedback form gets no post-submit feedback invitation", () => {
+  const text = build({
+    resolution: collectResolution("chat-feedback"),
+    session: session({ slug: "chat-feedback" }),
+  });
+  assert.doesNotMatch(text, /AFTER A SUCCESSFUL submit_form/i);
+});
+
 test("collect: feedback form gets the feedback guidance attached", () => {
   const text = build({ resolution: collectResolution("chat-feedback") });
   assert.match(text, /OPTIONAL FEEDBACK FORM/);

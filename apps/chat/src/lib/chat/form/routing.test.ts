@@ -102,15 +102,37 @@ test("pinSessionForm defers a window match of the parked slug to the latest mess
   assert.equal(calls.length, 2);
 });
 
-// A submitted REAL service form is terminal too: park it (don't leave it
-// pinned) so the next turn resolves to "none" and model-initiated feedback can
-// be offered (#1203). Parking defers the rolling-window matcher to the LATEST
-// message, so the user's own earlier application messages don't re-wedge them
-// into the finished form.
-test("pinSessionForm parks a submitted real form so feedback can be offered", async () => {
+// A completed real application is the natural moment to ask for feedback: the
+// submission-confirmation invites it once (see prompt-builder), and the next
+// turn auto-pins the chat-feedback form so the user's reply is collected or
+// declined — no "anything else?". The zero-value pin is an OPEN OFFER, so the
+// #1202 release below still lets a topic switch or info-question escape; a
+// plain affirmative ("yes please") keeps the pin. feedbackOffered is marked so
+// it is never offered twice. (Supersedes the #1203 park-for-model-offer path.)
+test("pinSessionForm auto-pins feedback after a submitted real form", async () => {
   const s = session({
     slug: "mail-redirect",
     status: "submitted",
+    values: { a: "1" },
+    referenceNumber: "R1",
+  });
+  await pinSessionForm(s, [userMessage("yes please")], {
+    match: async () => null,
+  });
+  assert.equal(s.slug, FEEDBACK_FORM_ID);
+  assert.equal(s.feedbackOffered, true);
+  assert.equal(s.status, "collecting");
+});
+
+// If feedback was already offered/given earlier this session, a submitted real
+// form is simply parked (no second ask — the confirmation falls back to the
+// normal "anything else?" wrap-up). Parking defers the rolling-window matcher
+// to the LATEST message, so earlier application messages don't re-wedge them.
+test("pinSessionForm parks (no re-offer) a submitted real form when feedback was already offered", async () => {
+  const s = session({
+    slug: "mail-redirect",
+    status: "submitted",
+    feedbackOffered: true,
     values: { a: "1" },
     referenceNumber: "R1",
   });
@@ -124,7 +146,6 @@ test("pinSessionForm parks a submitted real form so feedback can be offered", as
   });
   assert.equal(s.slug, null);
   assert.equal(s.handedOffSlug, "mail-redirect");
-  // Deferred to the latest message (matches nothing), so it stays unpinned.
   assert.equal(calls.length, 2);
 });
 
