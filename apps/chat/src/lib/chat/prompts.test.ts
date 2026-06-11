@@ -11,6 +11,7 @@ import {
   buildHandoffDisclosure,
   buildHandoffOfferDisclosure,
   buildMissDisclosure,
+  buildServiceFeedbackDisclosure,
 } from "./prompts";
 
 // The form-collection / submit machinery lives in FORM_COLLECTION_PROTOCOL,
@@ -23,6 +24,28 @@ test("form-collection rules are out of the always-on system prompt", () => {
   assert.ok(!/set_field|submit_form|FORM COLLECTION:/.test(SYSTEM_PROMPT));
   // but the conversational grounding rules stay always-on
   assert.match(SYSTEM_PROMPT, /CONTEXT USE/);
+});
+
+// The always-on backstop: even if the deterministic disambiguation misses a
+// phrasing, the model must never recite a ministry contact as a feedback channel
+// (the bug this branch fixes).
+test("system prompt forbids pointing feedback at a ministry", () => {
+  assert.match(SYSTEM_PROMPT, /FEEDBACK/);
+  assert.match(SYSTEM_PROMPT, /NEVER tell them to phone, email, or visit/i);
+});
+
+// Service/site feedback hands over the general feedback form link — never a
+// ministry phone/email/office (the reported bug).
+test("buildServiceFeedbackDisclosure hands over the link and forbids a ministry contact", () => {
+  const out = buildServiceFeedbackDisclosure("https://landing.test/feedback");
+  assert.match(
+    out,
+    /\[Tell us what you think\]\(https:\/\/landing\.test\/feedback\)/,
+  );
+  assert.match(out, /do NOT recite a ministry\/department phone number/i);
+  assert.match(out, /Anything else I can help with\?/);
+  // No field collection on a handoff-style turn.
+  assert.match(out, /not available this turn/i);
 });
 
 // The CHANNEL PREFERENCE section nudges informational turns online-first, but

@@ -17,6 +17,11 @@ export interface FormSession {
   // A RAG-driven form offer awaiting the user's choice (fill here vs link).
   // Set by funnel.offerForm, consumed (or lapsed) on the very next turn.
   offeredForm?: { slug: string; title: string };
+  // "pending" while the feedback disambiguation choices ("About this assistant"
+  // / "About a service or the site") are on the table, awaiting the user's tap.
+  // Set when run-turn emits the choices, consumed (or lapsed) on the next turn
+  // by feedback.consumeFeedbackChoice.
+  feedbackChoice?: "pending";
   submissionId: string;
   status: FormSessionStatus;
   referenceNumber?: string;
@@ -85,6 +90,7 @@ export function resetSessionForNewForm(session: FormSession): void {
   session.askedFieldIds = new Set();
   session.reviewedSinceChange = false;
   session.offeredForm = undefined;
+  session.feedbackChoice = undefined;
   session.submissionId = randomUUID();
   session.status = "collecting";
   session.referenceNumber = undefined;

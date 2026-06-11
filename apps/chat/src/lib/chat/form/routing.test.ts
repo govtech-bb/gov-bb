@@ -70,29 +70,14 @@ test("pinSessionForm pins chat-feedback by id for the banner phrase, ignoring th
   assert.equal(called, 0); // matcher never consulted for the banner phrase
 });
 
-// A user can also TYPE the intent to give feedback instead of clicking the
-// banner link. A statement of intent pins chat-feedback by id (same path as the
-// banner phrase) so the next turn collects the rating directly — no redundant
-// "would you like to give feedback?" confirmation.
-test("pinSessionForm pins chat-feedback for a free-typed feedback request", async () => {
+// A FREE-TYPED feedback request ("i wan to feedback") is intentionally NOT
+// pinned here — run-turn detects it first (looksLikeFeedbackIntent) and shows
+// the assistant/service disambiguation, so it never reaches pinSessionForm.
+// This supersedes #1247's direct-pin path. Here, with no banner phrase and no
+// matcher hit, the session stays unpinned.
+test("pinSessionForm does not pin a free-typed feedback request (run-turn disambiguates first)", async () => {
   const s = session();
-  let called = 0;
   await pinSessionForm(s, [userMessage("i wan to feedback")], {
-    match: async () => {
-      called++;
-      return entry("some-other-form");
-    },
-  });
-  assert.equal(s.slug, FEEDBACK_FORM_ID);
-  assert.equal(s.feedbackOffered, true);
-  assert.equal(called, 0); // explicit pin — matcher not consulted
-});
-
-// But a question ABOUT feedback is not a request to give it: gated on
-// !isInfoQuestion, it falls through to normal routing (here, no match).
-test("pinSessionForm does not pin feedback for a question about feedback", async () => {
-  const s = session();
-  await pinSessionForm(s, [userMessage("what happens to my feedback?")], {
     match: async () => null,
   });
   assert.equal(s.slug, null);

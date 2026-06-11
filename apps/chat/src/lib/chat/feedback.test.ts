@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   cancelFeedbackForm,
+  consumeFeedbackChoice,
+  FEEDBACK_ABOUT_ASSISTANT,
+  FEEDBACK_ABOUT_SERVICE,
   FEEDBACK_FORM_ID,
   FEEDBACK_TRIGGER_PHRASE,
   pinFeedbackForm,
@@ -105,6 +108,50 @@ test("submitSuccessForModel hides the reference for feedback, keeps it for real 
   assert.deepEqual(submitSuccessForModel("get-birth-certificate", "REF-123"), {
     ok: true,
     referenceNumber: "REF-123",
+  });
+});
+
+test("consumeFeedbackChoice: no-op when no choices are pending", () => {
+  const s = getOrCreateSession("t-fc-none");
+  assert.equal(consumeFeedbackChoice(s, FEEDBACK_ABOUT_ASSISTANT), null);
+  assert.equal(s.slug, null); // nothing pinned
+});
+
+test("consumeFeedbackChoice: 'About this assistant' pins the in-chat feedback form", () => {
+  const s = getOrCreateSession("t-fc-assistant");
+  s.feedbackChoice = "pending";
+  const result = consumeFeedbackChoice(s, FEEDBACK_ABOUT_ASSISTANT);
+  assert.deepEqual(result, { kind: "assistant" });
+  assert.equal(s.slug, FEEDBACK_FORM_ID); // in-chat flow takes over
+  assert.equal(s.feedbackChoice, undefined); // pending cleared
+});
+
+test("consumeFeedbackChoice: 'About a service or the site' routes to the link, pins nothing", () => {
+  const s = getOrCreateSession("t-fc-service");
+  s.feedbackChoice = "pending";
+  const result = consumeFeedbackChoice(s, FEEDBACK_ABOUT_SERVICE);
+  assert.deepEqual(result, { kind: "service" });
+  assert.equal(s.slug, null); // no form pinned — a link handoff, not collection
+  assert.equal(s.feedbackChoice, undefined);
+});
+
+test("consumeFeedbackChoice: a non-matching reply lapses the choice", () => {
+  // The pills disambiguate, but a free-text reply ("the website is slow") is a
+  // topic move, not a tap. It lapses (cleared, distinguished from null) so the
+  // turn falls through to normal routing and run-turn doesn't re-show choices.
+  const s = getOrCreateSession("t-fc-lapse");
+  s.feedbackChoice = "pending";
+  const result = consumeFeedbackChoice(s, "the website is slow");
+  assert.deepEqual(result, { kind: "lapsed" });
+  assert.equal(s.slug, null);
+  assert.equal(s.feedbackChoice, undefined);
+});
+
+test("consumeFeedbackChoice: label match is case-insensitive", () => {
+  const s = getOrCreateSession("t-fc-case");
+  s.feedbackChoice = "pending";
+  assert.deepEqual(consumeFeedbackChoice(s, "about this assistant"), {
+    kind: "assistant",
   });
 });
 

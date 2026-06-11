@@ -5,7 +5,7 @@ import {
   FEEDBACK_TRIGGER_PHRASE,
   pinFeedbackForm,
 } from "#/lib/chat/feedback";
-import { isFeedbackRequest, isInfoQuestion } from "#/lib/chat/guards";
+import { isInfoQuestion } from "#/lib/chat/guards";
 import { lastUserText, recentUserText } from "#/lib/chat/messages";
 import {
   decideRagFallback,
@@ -99,28 +99,22 @@ export async function pinSessionForm(
     }
   }
   if (session.slug && session.status !== "submitted") return;
-  // Two ways a user explicitly asks to give feedback, both pinning chat-feedback
-  // by EXPLICIT id (never the title-token matcher — the matcher only picked it
-  // up because "feedback"/"assistant" happen to be unique among form titles
-  // today, and a future recipe carrying either token could out-score or
-  // tie-and-steal the match, #1206):
-  //   1. The notice banner's "Give feedback" link sends the EXACT
-  //      FEEDBACK_TRIGGER_PHRASE.
-  //   2. The user TYPES the intent ("I want to give feedback", "i wan to
-  //      feedback") — isFeedbackRequest catches the free-typed variants.
-  // Both pin directly so the next turn collects the rating, instead of the model
-  // asking a redundant "would you like to give feedback?" first (the
-  // model-initiated offer still owns the natural-wrap-up case). The free-typed
-  // detector is gated on !isInfoQuestion so a question ABOUT feedback ("can I
-  // give feedback?", "what happens to my feedback?") doesn't start the form — it
-  // falls through to normal handling. Mark the offer spent so the model never
-  // also offers later this session. Either trigger is a statement, not a
-  // question, so the turn enters collect-feedback.
-  const latest = lastUserText(messages);
-  if (
-    latest === FEEDBACK_TRIGGER_PHRASE ||
-    (isFeedbackRequest(latest) && !isInfoQuestion(latest))
-  ) {
+  // The notice banner's "Give feedback" link sends the EXACT
+  // FEEDBACK_TRIGGER_PHRASE. Pin chat-feedback by EXPLICIT id, not via the
+  // title-token matcher: the matcher only picked it up because
+  // "feedback"/"assistant" happen to be unique among form titles today, and a
+  // future recipe carrying either token could out-score or tie-and-steal the
+  // banner match (#1206). Mark the offer spent so the model never also offers
+  // feedback later this session. The phrase is a statement (not a question), so
+  // the turn still enters collect-feedback.
+  //
+  // A FREE-TYPED feedback request ("I want to give feedback") is NOT pinned here
+  // — run-turn detects it first (looksLikeFeedbackIntent) and shows the
+  // assistant/service disambiguation, so it never reaches this matcher. This
+  // supersedes #1247, which pinned chat-feedback directly for typed requests;
+  // the "About this assistant" tap now reaches the same form one step later,
+  // while "About a service or the site" routes to the general feedback form.
+  if (lastUserText(messages) === FEEDBACK_TRIGGER_PHRASE) {
     pinForm(session, FEEDBACK_FORM_ID);
     session.feedbackOffered = true;
     return;

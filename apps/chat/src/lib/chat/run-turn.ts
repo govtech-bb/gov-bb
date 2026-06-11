@@ -26,14 +26,24 @@ import {
   type FormResolution,
   type FormTurnContext,
 } from "./form";
+import { representChoicesStream } from "./represent-choices-stream";
 import { representFieldStream } from "./represent-field-stream";
 import {
   cancelFeedbackForm,
+  consumeFeedbackChoice,
+  FEEDBACK_ABOUT_ASSISTANT,
+  FEEDBACK_ABOUT_SERVICE,
+  FEEDBACK_DISAMBIGUATION_QUESTION,
   FEEDBACK_FORM_ID,
+  FEEDBACK_TRIGGER_PHRASE,
   shouldBindFeedbackOffer,
   shouldReleaseFeedbackOffer,
 } from "./feedback";
-import { isInfoQuestion, looksLikeJailbreak } from "./guards";
+import {
+  isInfoQuestion,
+  looksLikeFeedbackIntent,
+  looksLikeJailbreak,
+} from "./guards";
 import { citationsMiddleware, turnLogMiddleware } from "./middleware";
 import { capMessageHistory, lastAssistantText, lastUserText } from "./messages";
 import { buildSystemPrompts } from "./prompt-builder";
@@ -103,15 +113,60 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
         }
       : undefined;
 
+  // A pending feedback disambiguation resolves deterministically too (same
+  // contract as the offer pills). "About this assistant" pins chat-feedback
+  // here, so the normal collect-feedback flow takes over below; "About a service
+  // or the site" sets serviceFeedback, which hands over the general feedback
+  // form link and bypasses retrieval/matching for the rest of the turn.
+  const feedbackChoice = consumeFeedbackChoice(session, latest);
+  const serviceFeedback =
+    feedbackChoice?.kind === "service"
+      ? { url: `${getServerEnv().LANDING_URL}/feedback` }
+      : undefined;
+
+  // Explicit feedback intent on a no-form turn: ask ONE quick question — about
+  // the assistant, or about a service / the site — as deterministic choice
+  // pills, BEFORE the matcher can route a lingering service topic from the
+  // rolling window. The tap is resolved next turn by consumeFeedbackChoice.
+  // Gated so we don't hijack: only when no form is pinned coming in, this turn
+  // isn't itself an offer/choice reply, and no choices are already pending
+  // (feedbackChoice === null means none were on the table). The banner phrase is
+  // already-scoped to the assistant, so it's excluded — it keeps pinning
+  // chat-feedback directly via pinSessionForm (#1206).
+  if (
+    !serviceFeedback &&
+    feedbackChoice === null &&
+    offerReply === null &&
+    !session.slug &&
+    latest !== FEEDBACK_TRIGGER_PHRASE &&
+    looksLikeFeedbackIntent(latest)
+  ) {
+    session.feedbackChoice = "pending";
+    session.updatedAt = Date.now();
+    return {
+      kind: "ok",
+      stream: representChoicesStream(
+        FEEDBACK_DISAMBIGUATION_QUESTION,
+        [FEEDBACK_ABOUT_ASSISTANT, FEEDBACK_ABOUT_SERVICE],
+        { runId, threadId, model },
+      ),
+      abortController: childController(signal),
+    };
+  }
+
   // Was a form already active coming INTO this turn? Distinguishes a re-trigger
   // of the current form (banner clicked again) from a first activation.
   const pinnedBefore = session.slug;
 
-  await pinSessionForm(session, messages);
+  // serviceFeedback short-circuits matching: the user deliberately asked for the
+  // general feedback link, so don't let the rolling-window matcher re-pin a
+  // service topic and override it.
+  if (!serviceFeedback) await pinSessionForm(session, messages);
 
-  let resolution: FormResolution = session.slug
-    ? await resolveActiveForm(session.slug, session.values)
-    : { kind: "none" };
+  let resolution: FormResolution =
+    !serviceFeedback && session.slug
+      ? await resolveActiveForm(session.slug, session.values)
+      : { kind: "none" };
   const retrievalBoostSlug = session.slug ?? undefined;
 
   // Handoff carries no in-progress state. Don't pin the session to it, or the
@@ -220,6 +275,7 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     isGreetingOrTooShort(latest) ||
     (activelyCollecting && !isInfoQuestion(latest)) ||
     offerReply !== null ||
+    serviceFeedback !== undefined ||
     closer;
 
   // A form matched on an INFO question (nothing collected yet, the message is a
@@ -335,6 +391,7 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     !handoffContinuation &&
     !formOffer &&
     !linkRequested &&
+    !serviceFeedback &&
     !disambiguation &&
     !noContext;
 
@@ -349,6 +406,7 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     intent,
     formOffer,
     linkRequested,
+    serviceFeedback,
     disambiguation,
     unapprovedForm,
     noContext,
