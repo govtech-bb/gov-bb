@@ -46,6 +46,41 @@ Deploy is the only path that cuts a new version.**
 4. **Deploy** (`bumpMinor`) is unchanged and remains the sole way to mint a new
    version.
 
+## Amendment (2026-06-11) — published versions are immutable, so editing one cuts a new draft
+
+Decision 1 above ("Save Changes defaults to the loaded version → in-place PUT")
+held an unstated assumption: that the loaded version is a *draft* row the API
+will let us overwrite. For a **published** version that's false — the API
+rejects a PUT to a published row with `Cannot update a published recipe`
+(`form_builder_api/.../forms.ts`), because a released recipe must never change
+under a version number already in the wild. So a published form could not be
+saved as a draft at all: the only save path tried an impossible in-place
+overwrite and surfaced the raw 400 (originally reported against the published
+`project-protege-mentor` `1.0.0`).
+
+**Refinement:** Save Changes still overwrites in place — **except** when the
+loaded version is the published one, in which case it auto-bumps a patch and
+cuts a *new* draft version (POST via `submitRecipe`):
+
+- `listForms` now carries `publishedVersion` (the exact version in the published
+  index) on each summary, distinct from the merged `version` (which may be a
+  higher unpublished draft). `currentVersionIsPublished` is
+  `publishedVersion === currentVersion`.
+- When `currentVersionIsPublished`, `saveDraftVersion = bumpPatch(currentVersion)`
+  and `isInPlaceUpdate` is excluded — so editing a published version lands a new
+  draft instead of erroring. The SubmitModal hint says "vX is published, so Save
+  Changes saves a new draft (vY)" rather than "overwrites in place".
+- A **higher unpublished draft over a published version**
+  (`publishedVersion < currentVersion`) is still overwritten in place — the
+  precise per-version signal (not a coarse `isPublished` flag) is what keeps that
+  case routing to PUT.
+
+This narrows, but does not revoke, consequence 1 below: the editable-version
+field stays gone, and the *author* still can't fork a version by hand. The bump
+is automatic and forced by published-immutability, not a re-opened escape hatch.
+Note that consequence 3 below ("`bumpPatch` is no longer used on the save path")
+no longer holds — it is used for exactly this published-version bump.
+
 ## Consequences
 
 - A future request to "let me Save as a new version from the builder" must not be
