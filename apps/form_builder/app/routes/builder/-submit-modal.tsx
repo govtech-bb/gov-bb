@@ -8,6 +8,12 @@ interface SubmitModalProps {
   draft: RecipeDraft;
   version: string;
   currentVersion: string | null;
+  /**
+   * The loaded version is the one in the published index. A published version
+   * can't be overwritten in place, so Save Changes cuts a new draft version
+   * (`version` is already the bumped patch) rather than overwriting it.
+   */
+  currentVersionIsPublished?: boolean;
   loadedFromId: string | null;
   isSubmitting: boolean;
   submitSuccess: boolean;
@@ -23,6 +29,7 @@ export function SubmitModal({
   draft,
   version: versionProp,
   currentVersion,
+  currentVersionIsPublished = false,
   loadedFromId,
   isSubmitting,
   submitSuccess,
@@ -104,7 +111,14 @@ export function SubmitModal({
                 // brand-new form still picks its initial version here.
                 readOnly={isUpdate}
               />
-              {isUpdate && (
+              {isUpdate && currentVersionIsPublished && (
+                <small className={styles.fieldHint}>
+                  v{currentVersion} is published, so Save Changes saves a new
+                  draft (v{versionInput}) instead of overwriting it. Use Deploy
+                  to publish the new version.
+                </small>
+              )}
+              {isUpdate && !currentVersionIsPublished && (
                 <small className={styles.fieldHint}>
                   Save Changes overwrites this draft in place at v{versionInput}.
                   Use Deploy to cut a new version.
