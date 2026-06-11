@@ -23,7 +23,7 @@ import {
   isChatCollectable,
   nextAskableField,
 } from "./schema";
-import { resetSessionForNewForm } from "./session";
+import { cancelForm as cancelFunnelForm } from "./funnel";
 import type { FormSession } from "./session";
 import { submitFormUpstream, type SubmitOutcome } from "./submit";
 import {
@@ -301,16 +301,13 @@ const submitFormTool = submitFormDef.server<FormTurnContext>(
 );
 
 // User abandons an in-progress application. Discards collected values and
-// unpins the form. The cancelled slug is parked in handedOffSlug so the
-// matcher's rolling window (which still names the form from earlier turns)
-// can't instantly re-pin it — same suppression a handoff uses. The user can
-// still restart deliberately: a LATEST message naming the form re-matches.
+// unpins the form; the funnel parks the cancelled slug so the matcher's
+// rolling window (which still names the form from earlier turns) can't
+// instantly re-pin it — same suppression a handoff uses. The user can still
+// restart deliberately: a LATEST message naming the form re-matches.
 const cancelFormTool = cancelFormDef.server<FormTurnContext>(
   async (_args, ctx) => {
-    const { session } = ctx.context;
-    const cancelled = session.slug;
-    resetSessionForNewForm(session);
-    session.handedOffSlug = cancelled;
+    cancelFunnelForm(ctx.context.session);
     return { ok: true };
   },
 );

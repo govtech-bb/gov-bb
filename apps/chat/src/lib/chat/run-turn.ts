@@ -9,7 +9,10 @@ import {
   buildFeedbackTools,
   buildFormTools,
   buildOfferTools,
+  consumeOfferReply,
+  funnelPhase,
   getOrCreateSession,
+  parkHandoff,
   pinSessionForm,
   resolveActiveForm,
   withThreadLock,
@@ -26,6 +29,7 @@ import {
   isConversationalCloser,
   isGreetingOrTooShort,
   retrieve,
+  topServiceCandidates,
 } from "./retrieval";
 import { rewriteRetrievalQuery } from "./rewrite";
 import type { RetrievedContext, Source } from "./types";
@@ -72,6 +76,20 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
   }
 
   const session = getOrCreateSession(threadId);
+
+  // A pending RAG offer resolves FIRST, deterministically: the choice pills
+  // send their label verbatim, so "fill it here" pins the form and "just the
+  // link" parks it — code, not model interpretation (ADR 0048). Any other
+  // reply lapses the offer and falls through to normal routing.
+  const offerReply = consumeOfferReply(session, latest);
+  const linkRequested =
+    offerReply?.kind === "link"
+      ? {
+          title: offerReply.title,
+          url: `${getServerEnv().FORMS_URL}/forms/${encodeURIComponent(offerReply.slug)}`,
+        }
+      : undefined;
+
   await pinSessionForm(session, messages);
 
   let resolution: FormResolution = session.slug
@@ -80,11 +98,10 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
   const retrievalBoostSlug = session.slug ?? undefined;
 
   // Handoff carries no in-progress state. Don't pin the session to it, or the
-  // user stays stuck getting the same handoff link on every later turn. Record
+  // user stays stuck getting the same handoff link on every later turn. Park
   // it so the matcher above won't immediately re-hand-off the same form.
   if (resolution.kind === "handoff") {
-    session.handedOffSlug = session.slug;
-    session.slug = null;
+    parkHandoff(session, session.slug);
   }
 
   // Skip the rewrite LLM call and RAG retrieval only once the user is ACTIVELY
@@ -112,9 +129,11 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
   // much does this cost?", "what documents do I need?") must stay grounded:
   // skipping retrieval left the model answering service questions from
   // nothing. retrievalBoostSlug keeps the active form's own pages on top.
+  // Offer replies are clicks on known affordances — nothing to ground.
   const skipRetrieval =
     isGreetingOrTooShort(latest) ||
     (activelyCollecting && !isInfoQuestion(latest)) ||
+    offerReply !== null ||
     closer;
 
   // A form matched on an INFO question (nothing collected yet, the message is a
@@ -150,15 +169,27 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     query,
   );
 
-  const ragFallback = await applyRagFallback(
-    resolution,
-    session,
-    rawSources,
-    signal,
-  );
+  // Server-driven disambiguation (ADR 0048, stage 3): when retrieval covers
+  // SEVERAL distinct services and no form is pinned, winner-take-all routing
+  // would guess — narrow with clickable choices instead. Suppresses the RAG
+  // fallback for the turn (its top-1 pick is exactly the guess we're
+  // avoiding). The disclosure keeps a model escape hatch for follow-ups
+  // whose topic the conversation already established.
+  const serviceCandidates =
+    resolution.kind === "none" && !session.slug
+      ? topServiceCandidates(rawSources)
+      : [];
+  const disambiguation =
+    serviceCandidates.length >= 2
+      ? { titles: serviceCandidates.map((c) => c.title) }
+      : undefined;
+
+  const ragFallback = disambiguation
+    ? { resolution }
+    : await applyRagFallback(resolution, session, rawSources, signal);
   resolution = ragFallback.resolution;
   const handoffContinuation = ragFallback.handoffContinuation;
-  const ragCollectLink = ragFallback.ragCollectLink;
+  const formOffer = ragFallback.formOffer;
   const unapprovedForm = ragFallback.unapprovedForm ?? false;
 
   // Info-intent on a handoff service: buildSystemPrompts offers the link in
@@ -186,7 +217,9 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
       session.feedbackOffered ?? false,
     ) &&
     !handoffContinuation &&
-    !ragCollectLink &&
+    !formOffer &&
+    !linkRequested &&
+    !disambiguation &&
     !noContext;
 
   const env = getServerEnv();
@@ -198,28 +231,44 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     handoffContinuation,
     offerOnly,
     intent,
-    ragCollectLink,
+    formOffer,
+    linkRequested,
+    disambiguation,
     unapprovedForm,
     noContext,
     offerFeedback,
     closer,
   });
 
-  // collect + apply-intent → full field tools. collect + info question
-  // (offerOnly) → present_choices ONLY, so the model offers a clickable "Start
-  // the application" affordance rather than a dead-end prose "want to start?",
-  // but still can't silently record fields on a question. Anything else → none.
-  // The field tools read session/form/signal from chat()'s runtime context.
-  const tools =
+  // The turn ACTION decides which tools the model gets — it cannot upgrade
+  // an offer into collection (no field tools bound) or collect outside an
+  // active form. The action is code-derived; the model only executes it
+  // conversationally (ADR 0048).
+  //   collect           → full field tools
+  //   collect-feedback  → field tools + decline_feedback
+  //   offer-start       → present_choices ONLY (matcher offerOnly + RAG offer)
+  //   feedback-offer    → offer_feedback only
+  //   none              → no tools
+  const action =
     resolution.kind === "collect"
       ? offerOnly
-        ? buildOfferTools()
+        ? "offer-start"
         : resolution.form.slug === FEEDBACK_FORM_ID
-          ? buildFeedbackTools()
-          : buildFormTools()
-      : offerFeedback
-        ? buildEndOfChatTools()
-        : [];
+          ? "collect-feedback"
+          : "collect"
+      : formOffer || disambiguation
+        ? "offer-start"
+        : offerFeedback
+          ? "feedback-offer"
+          : "none";
+  const TOOLSETS = {
+    collect: buildFormTools,
+    "collect-feedback": buildFeedbackTools,
+    "offer-start": buildOfferTools,
+    "feedback-offer": buildEndOfChatTools,
+    none: () => [],
+  } as const;
+  const tools = TOOLSETS[action]();
   const formContext: FormTurnContext = {
     session,
     form: resolution.kind === "collect" ? resolution.form : null,
@@ -251,6 +300,8 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
           query: activelyCollecting ? undefined : latest.slice(0, 120),
           retrieved: rawSources.map((s) => ({ id: s.id, score: s.score })),
           formSlug: session.slug ?? undefined,
+          action,
+          phase: funnelPhase(session),
           retrieveDegraded: degraded,
         },
         startedAt,

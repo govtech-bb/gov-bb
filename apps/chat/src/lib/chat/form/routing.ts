@@ -9,6 +9,7 @@ import {
 import type { Source } from "#/lib/chat/types";
 import { matchFormsFromText } from "./detect";
 import { getAllFormSlugs, getFormSlugs } from "./defs";
+import { offerForm, parkHandoff, pinForm } from "./funnel";
 import { resolveActiveForm, type FormResolution } from "./schema";
 import { resetSessionForNewForm, type FormSession } from "./session";
 
@@ -51,8 +52,7 @@ export async function pinSessionForm(
       ? await deps.match(lastUserText(messages))
       : windowMatch;
   if (matched) {
-    if (matched.formId !== session.slug) resetSessionForNewForm(session);
-    session.slug = matched.formId;
+    pinForm(session, matched.formId);
     // Feedback can be started manually (the banner "Give feedback" link sends a
     // matcher phrase) as well as by the model's offer_feedback tool. Either way,
     // mark it spent so the model never also offers feedback later this session.
@@ -63,8 +63,10 @@ export async function pinSessionForm(
 export interface RagFallbackResult {
   resolution: FormResolution;
   handoffContinuation?: { title: string; url: string };
-  // Approved collect form RAG surfaced that the matcher missed (ADR 0045).
-  ragCollectLink?: { title: string; url: string };
+  // Approved collect form RAG surfaced that the matcher missed. Per ADR 0048
+  // this is an OFFER (fill here / link), not a bare link: the user's tap is
+  // the confidence top-up ADR 0045 wanted before inline collection.
+  formOffer?: { slug: string; title: string };
   // The top retrieved service has a PUBLISHED form that is not chat-approved
   // (no policy entry). The disclosure must not claim no online form exists —
   // that was a lie for these services (school-uniform-grant et al).
@@ -123,7 +125,7 @@ export async function applyRagFallback(
   ) {
     // Park it like the matcher-driven handoff does, so the user isn't
     // re-handed the strict link on every later turn.
-    session.handedOffSlug = ragCandidate;
+    parkHandoff(session, ragCandidate);
     return { resolution: ragResolution };
   }
   if (
@@ -144,23 +146,20 @@ export async function applyRagFallback(
     };
   }
   if (ragResolution.kind === "collect" && ragCandidate) {
-    // RAG surfaced an APPROVED collect form the title matcher missed (e.g. a
-    // follow-up like "is there a form i can fill out", or a paraphrase that
-    // doesn't overlap the form title). Per ADR 0045, RAG must NOT auto-start
-    // inline collection — that stays behind the higher-confidence title
-    // matcher. But we also must not fall through to the no-online-form /
-    // paper path (the bug behind business-mail & deceased-mail). So OFFER the
-    // form LINK — the low-commitment action the ADR explicitly lets the fuzzy
-    // RAG signal trigger. No pin, no collect: if the user then clearly states
-    // intent, the matcher/apply path starts collection. ragCandidate is gated
-    // to allowlisted published forms above.
-    return {
-      resolution,
-      ragCollectLink: {
-        title: ragResolution.form.contract.title,
-        url: `${deps.formsUrl()}/forms/${encodeURIComponent(ragCandidate)}`,
-      },
+    // RAG surfaced an APPROVED collect form the title matcher missed (e.g.
+    // "I'm moving house, how do I get my letters sent to the new place?" —
+    // no title-token overlap, clear semantic match). RAG still never
+    // AUTO-starts collection (ADR 0045's concern): the offer puts both
+    // online options on the table and the user's tap on "fill it out with
+    // you here" is the deterministic confirm that pins the form (ADR 0048).
+    // Before this, the same need phrased lexically got full guided
+    // collection while natural phrasing got only a link.
+    const offer = {
+      slug: ragCandidate,
+      title: ragResolution.form.contract.title,
     };
+    offerForm(session, offer);
+    return { resolution, formOffer: offer };
   }
   return { resolution };
 }

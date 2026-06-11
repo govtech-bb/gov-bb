@@ -95,7 +95,7 @@ REVIEW THEN SUBMIT (mandatory order):
 
 SUBMIT RESULT:
 - \`submit_form\` returns \`{ ok: true, referenceNumber }\` on success or \`{ ok: false, errors[] }\` on failure.
-- On success: report the exact \`referenceNumber\` verbatim and stop. No follow-up offers.
+- On success: report the exact \`referenceNumber\` verbatim and stop — UNLESS the user mentioned a SECOND need earlier in the conversation (another service or form alongside this one). In that case add ONE short line offering to help with it next ("Want to sort out the birth certificate now?"). Never let a second request silently drop.
 - On failure: apologise, name each failing field with its message, ask the user to correct them one at a time. Record each correction with \`set_field\`, then re-run the review step.
 - NEVER claim submission, reference number, or confirmation email unless this turn's \`submit_form\` returned \`ok: true\`.
 
@@ -103,6 +103,41 @@ WHEN A FORM SCHEMA IS PROVIDED:
 - If you see a FORM SCHEMA system message AND the user expressed intent to apply or get the service, START COLLECTING FIELDS IMMEDIATELY. Open with a one-line acknowledgement ("Great, let's start your <service> application.") and call \`ask_field\` with no arguments — do not type the question in text.
 - Do NOT recite informational alternatives ("you can apply online OR on paper"). The chat IS the online path. Just start.
 - The retrieved context is for answering side questions ("what's the cost?", "how long does it take?") if the user asks. Don't lead with it.`;
+
+// Retrieval covered SEVERAL distinct services this turn (server-detected,
+// ADR 0048 stage 3): narrow with clickable choices instead of guessing.
+// The model keeps one escape hatch — conversation history can establish the
+// service in ways this turn's retrieval can't see (follow-ups re-retrieve
+// sibling services like birth/death certificates together).
+export function buildDisambiguationDisclosure(titles: string[]): string {
+  const choices = [...titles, "Something else"].map((t) => `"${t}"`).join(", ");
+  return `THE CONTEXT COVERS ${titles.length} DISTINCT SERVICES and the user's message doesn't clearly name which:
+${titles.map((t) => `- ${t}`).join("\n")}
+- If the PRIOR CONVERSATION already establishes which service this is about (e.g. this is a follow-up to an answer about one of them), IGNORE this instruction and answer that service normally.
+- Otherwise do NOT pick one and answer. Reply with ONE short sentence, then call present_choices with the question "Which of these do you mean?" and choices EXACTLY [${choices}].
+- Do NOT answer the substance for any of them until the user picks.`;
+}
+
+// RAG confidently matched a collect-capable form the title matcher missed
+// (ADR 0048): put both online options on the table as clickable choices. The
+// user's tap is the deterministic confirm — the server pins or parks on the
+// exact choice strings, so they MUST be passed verbatim.
+export function buildFormOfferDisclosure(
+  title: string,
+  fillChoice: string,
+  linkChoice: string,
+): string {
+  return `THIS SERVICE HAS AN ONLINE FORM THE CHAT CAN FILL: "${title}".
+- First, briefly answer the user's question from the context above (if they asked one).
+- Then call present_choices with a short question like "Want to apply? I can fill it out with you here, or send you the form link." and choices EXACTLY ["${fillChoice}", "${linkChoice}"] — verbatim, the system acts on these exact strings.
+- Do NOT ask for any form field and do NOT call set_field this turn. Do NOT type a form link — the link is delivered by the system if they choose it.`;
+}
+
+// The user chose "just send me the link" on a form offer — deliver exactly
+// this link and stop; no pressure to fill it in chat instead.
+export function buildDirectLinkDisclosure(title: string, url: string): string {
+  return `THE USER ASKED FOR THE FORM LINK. Share exactly this markdown link in one short sentence: [${title}](${url}). Add nothing else except a brief offer to help if they have questions. Do NOT start collecting fields and do NOT suggest filling it out in chat — they just chose the link.`;
+}
 
 // The service's form IS published on the forms app, but it has no entry in
 // the chat policy (form/policy.ts), so the chat must not offer, link, or
@@ -246,19 +281,6 @@ Do NOT:
 - Use set_field, ask_field, present_choices, review_form, or submit_form (not available this turn).
 - Say there is no online form, or push a paper/in-person route as the only option.
 - Lead with the offer before you have answered the question.`;
-}
-
-export function buildFormLinkOfferDisclosure(
-  title: string,
-  url: string,
-): string {
-  // Shown when RAG surfaced an APPROVED collect form that the title matcher
-  // missed (see run-turn `ragCollectLink`). Per ADR 0045, RAG hands off a link
-  // but must NOT auto-start inline collection — so we point the user to the
-  // online form rather than entering a fill flow. This also replaces the
-  // no-online-form / paper fallback for these turns (the business-mail /
-  // deceased-mail bug): the service DOES have a working online form.
-  return `This service has a working ONLINE form. First, answer the user's question from the retrieved context above. Then point them to the form with EXACTLY this markdown link: [${title}](${url}) — they can complete it there. NEVER suggest a paper form, printing/downloading a form, or visiting an office in person. Do NOT start asking form fields this turn.`;
 }
 
 export function buildHandoffContinuationDisclosure(
