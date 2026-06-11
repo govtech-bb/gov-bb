@@ -323,6 +323,104 @@ describe("SubmissionsService", () => {
     });
   });
 
+  describe("smoke submission (isSmokeSubmission drops processors)", () => {
+    const rawProcessors = [
+      { type: "email", config: { to: "school@mes.gov.bb" } },
+      { type: "webhook", config: { url: "https://hook" } },
+    ];
+
+    function makeSmokeMocks() {
+      const txRepo = {
+        findOne: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockImplementation((data) => ({ ...data })),
+        save: jest.fn().mockResolvedValue(makeEntity()),
+      };
+      const submissionRepo = {
+        findOne: jest.fn().mockResolvedValue(null),
+        tx: jest.fn().mockImplementation((cb) => cb(txRepo)),
+        count: jest.fn().mockResolvedValue(0),
+      } as unknown as FormSubmissionRepository;
+      const pipeline = {
+        run: jest.fn().mockResolvedValue({
+          draft: { formVersion: "1.0.0", lastActivePage: 0 },
+          contract: { processors: rawProcessors },
+          auditTrail: AUDIT_TRAIL,
+          normalizedValues: {},
+        }),
+      } as unknown as SubmissionPipelineService;
+      const eventEmitter = { emit: jest.fn() } as unknown as EventEmitter2;
+      // resolveSplit echoes its argument so we can prove the choke point fed []
+      const processorFactory = {
+        resolveSplit: jest.fn().mockImplementation((procs: unknown[]) => ({
+          gating: [],
+          nonGating: procs,
+        })),
+      } as unknown as ProcessorFactory;
+      const service = new SubmissionsService(
+        submissionRepo,
+        pipeline,
+        eventEmitter,
+        processorFactory,
+        expressions,
+      );
+      return { txRepo, service, eventEmitter, processorFactory };
+    }
+
+    it("feeds an empty processor list to resolveSplit when flag is set", async () => {
+      const { service, processorFactory } = makeSmokeMocks();
+
+      await service.submit({ ...BASE_DTO, isSmokeSubmission: true });
+
+      expect(processorFactory.resolveSplit as jest.Mock).toHaveBeenCalledWith(
+        [],
+      );
+    });
+
+    it("emits submission.created carrying no processors when flag is set", async () => {
+      const { service, eventEmitter } = makeSmokeMocks();
+
+      await service.submit({ ...BASE_DTO, isSmokeSubmission: true });
+
+      expect(eventEmitter.emit as jest.Mock).toHaveBeenCalledWith(
+        "submission.created",
+        expect.objectContaining({ processors: [] }),
+      );
+    });
+
+    it("persists status SUBMITTED with submittedAt when flag is set", async () => {
+      const { service, txRepo } = makeSmokeMocks();
+
+      await service.submit({ ...BASE_DTO, isSmokeSubmission: true });
+
+      expect(txRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: FormSubmissionStatus.SUBMITTED,
+          submittedAt: expect.any(Date),
+        }),
+      );
+    });
+
+    it("does NOT drop processors when the flag is absent (unchanged path)", async () => {
+      const { service, processorFactory } = makeSmokeMocks();
+
+      await service.submit(BASE_DTO);
+
+      expect(processorFactory.resolveSplit as jest.Mock).toHaveBeenCalledWith(
+        rawProcessors,
+      );
+    });
+
+    it("does NOT drop processors when the flag is explicitly false", async () => {
+      const { service, processorFactory } = makeSmokeMocks();
+
+      await service.submit({ ...BASE_DTO, isSmokeSubmission: false });
+
+      expect(processorFactory.resolveSplit as jest.Mock).toHaveBeenCalledWith(
+        rawProcessors,
+      );
+    });
+  });
+
   describe("with gating processor present", () => {
     function makeGatingProcessor(
       kind: "deferred" | "completed" = "deferred",

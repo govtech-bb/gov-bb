@@ -50,7 +50,14 @@ export class SubmissionsService {
       await this.pipeline.run(dto);
     const pinnedVersion = draft?.formVersion ?? dto.formVersion;
 
-    const rawProcessors = contract.processors ?? [];
+    // Smoke submissions exercise the full persist/validate/reference-code path
+    // but must fire zero processors (no real emails/webhooks/payment gating).
+    // Dropping them here, the single choke point, makes hasGating false (→
+    // SUBMITTED + submittedAt), emits an event carrying no processors, and the
+    // listener's dispatch loop iterates nothing (#1252).
+    const rawProcessors = dto.isSmokeSubmission
+      ? []
+      : (contract.processors ?? []);
     const split = this.processorFactory.resolveSplit(rawProcessors);
     const hasGating = split.gating.length > 0;
 
