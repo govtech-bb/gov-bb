@@ -9,6 +9,7 @@ import {
   offerForm,
   parkHandoff,
   pinForm,
+  recordMissOutcome,
 } from "./funnel";
 import type { FormSession } from "./session";
 
@@ -98,6 +99,38 @@ test("offerForm + cancelForm transitions", () => {
   assert.deepEqual(c.values, {});
   assert.equal(c.handedOffSlug, "mail-redirect");
   assert.equal(funnelPhase(c), "handed-off");
+});
+
+// On a retrieval miss we clarify ONCE, then disclose we can't help instead of
+// re-asking turn over turn (#1176). The first miss returns clarifyExhausted
+// false (clarify), the second+ consecutive miss returns true (can't-help). Any
+// non-miss turn resets the streak.
+test("recordMissOutcome: clarify once, then exhaust on the next consecutive miss", () => {
+  const s = session();
+
+  // First miss → clarify (not exhausted).
+  assert.deepEqual(recordMissOutcome(s, true), { clarifyExhausted: false });
+  assert.equal(s.consecutiveMisses, 1);
+
+  // Second consecutive miss → exhausted (can't-help).
+  assert.deepEqual(recordMissOutcome(s, true), { clarifyExhausted: true });
+  assert.equal(s.consecutiveMisses, 2);
+
+  // Third consecutive miss stays exhausted — it never loops back to clarify.
+  assert.deepEqual(recordMissOutcome(s, true), { clarifyExhausted: true });
+  assert.equal(s.consecutiveMisses, 3);
+});
+
+test("recordMissOutcome: a non-miss turn resets the streak to clarify-once", () => {
+  const s = session({ consecutiveMisses: 2 });
+
+  // A grounded (non-miss) turn breaks the streak.
+  assert.deepEqual(recordMissOutcome(s, false), { clarifyExhausted: false });
+  assert.equal(s.consecutiveMisses, 0);
+
+  // The next miss starts a fresh clarify, not a can't-help.
+  assert.deepEqual(recordMissOutcome(s, true), { clarifyExhausted: false });
+  assert.equal(s.consecutiveMisses, 1);
 });
 
 test("parkHandoff clears the pin and any pending offer", () => {

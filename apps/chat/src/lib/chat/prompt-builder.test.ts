@@ -149,6 +149,16 @@ test("noContext routes to the miss disclosure", () => {
   assert.doesNotMatch(text, /NO ONLINE FORM AVAILABLE/);
 });
 
+// #1176: after one clarify on a miss, a still-empty retrieval switches from the
+// clarify disclosure to the can't-help disclosure — no more re-asking.
+test("noContext + missClarifyExhausted routes to the can't-help disclosure", () => {
+  const text = build({ noContext: true, missClarifyExhausted: true });
+  assert.match(text, /can't help|cannot help/i);
+  assert.match(text, /Anything else I can help with\?/);
+  // It must NOT fall back to the keep-clarifying miss disclosure.
+  assert.doesNotMatch(text, /Retrieval found nothing solid/);
+});
+
 test("default informational turn gets the no-form disclosure", () => {
   const text = build();
   assert.match(text, /NO ONLINE FORM AVAILABLE/);

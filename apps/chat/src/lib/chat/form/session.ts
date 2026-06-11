@@ -25,6 +25,11 @@ export interface FormSession {
   // offer is never made twice. Deliberately NOT cleared by
   // resetSessionForNewForm — it must survive switching to the feedback form.
   feedbackOffered?: boolean;
+  // Consecutive retrieval-miss turns (zero grounded context). We clarify ONCE
+  // on the first miss, then disclose we can't help instead of re-asking turn
+  // over turn (#1176). Incremented on each miss, reset to 0 by any non-miss
+  // turn via funnel.recordMissOutcome.
+  consecutiveMisses?: number;
   createdAt: number;
   updatedAt: number;
 }
@@ -84,6 +89,7 @@ export function resetSessionForNewForm(session: FormSession): void {
   session.status = "collecting";
   session.referenceNumber = undefined;
   session.lastError = undefined;
+  session.consecutiveMisses = 0;
   session.updatedAt = Date.now();
 }
 

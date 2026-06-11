@@ -179,6 +179,27 @@ Instead, keep guiding:
 - Do NOT claim there is no online form, and do NOT push a paper / in-person route. You simply don't know yet what service this is — find that out first.`;
 }
 
+export function buildCantHelpDisclosure(): string {
+  // Shown when retrieval STILL returns nothing after we already asked one
+  // clarifying question on the previous miss (#1176). buildMissDisclosure
+  // clarifies once; persisting with "ask another clarifying question" reads as
+  // the assistant going in circles when no clarified query will ever ground.
+  // So here we stop re-asking and admit we can't help — warmly, inventing
+  // nothing — then invite a fresh request. The closing line uses the exact
+  // WRAP-UP wording so a "no" is recognised as a closer (retrieval's
+  // WRAP_UP_RE), which routes the next turn to the warm sign-off + the optional
+  // feedback invitation rather than yet another miss.
+  return `NO GROUNDED CONTEXT, AND YOU ALREADY ASKED THE USER TO CLARIFY — STOP RE-ASKING.
+
+You clarified once and retrieval still found nothing solid for this. Asking yet another clarifying question now just sends the user in circles. Be honest instead: you can't help with this.
+
+Do this:
+- In ONE or two short, warm sentences, say plainly that you can't help with this here (this assistant covers Barbados government services on alpha.gov.bb).
+- Do NOT ask another clarifying question, and do NOT keep guessing at what they meant — that loop is over.
+- Do NOT invent or guess a service, fee, step, or contact, and do NOT claim there is no online form or push a paper / in-person route. You have no grounded context, so name nothing specific.
+- End with EXACTLY this line so they can steer somewhere you can help: "Anything else I can help with?"`;
+}
+
 export const FEEDBACK_OFFER_GUIDANCE = `FEEDBACK (this assistant is in beta):
 - If the conversation has reached a natural conclusion — the user's question is fully answered or their task is done and they are wrapping up (e.g. "thanks", "that's all", "no, that's everything") — you MAY call offer_feedback ONCE to invite them to rate the assistant.
 - After calling offer_feedback, add one short sentence ASKING WHETHER they'd like to give feedback — an invitation they can accept or decline, NOT the rating question itself (e.g. "Before you go, would you like to give us quick feedback on the assistant? It helps us improve."). Do NOT phrase it as "how was this?" or "how was your experience?" — that mimics the form's first question, but a reply here is not recorded; the rating is asked by the feedback form once they accept.
