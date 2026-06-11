@@ -63,6 +63,17 @@ test("looksLikeFeedbackIntent: catches expressions of wanting to give feedback",
     // match so the banner still pins chat-feedback directly (it is not the
     // detector's job to special-case it).
     "I would like to give feedback on the assistant",
+    // Folded in from #1247's isFeedbackRequest (now superseded by this one
+    // detector): free-typed give-intent variants, "feedback" used as a verb,
+    // and the transcript typo.
+    "i wan to feedback",
+    "I want to feedback",
+    "wanna feedback",
+    "let me leave some feedback",
+    "I'd like to provide feedback",
+    "can I give you feedback",
+    "share feedback",
+    "submit feedback please",
   ]) {
     assert.equal(looksLikeFeedbackIntent(input), true, input);
   }
@@ -79,6 +90,11 @@ test("looksLikeFeedbackIntent: ignores ordinary service questions and the choice
     "can I get feedback on my application status?",
     "how do I get feedback from my doctor?",
     "I got negative feedback at work, can the government help?",
+    // "want feedback" (no infinitive "to") is RECEIVE intent, not give.
+    "I want feedback on my results",
+    // Questions ABOUT feedback are not offers to give it (#1247 negatives).
+    "what happens to my feedback?",
+    "where does the feedback go",
     // The disambiguation pills themselves must NOT re-trigger detection.
     "About this assistant",
     "About a service or the site",

@@ -70,6 +70,19 @@ test("pinSessionForm pins chat-feedback by id for the banner phrase, ignoring th
   assert.equal(called, 0); // matcher never consulted for the banner phrase
 });
 
+// A FREE-TYPED feedback request ("i wan to feedback") is intentionally NOT
+// pinned here — run-turn detects it first (looksLikeFeedbackIntent) and shows
+// the assistant/service disambiguation, so it never reaches pinSessionForm.
+// This supersedes #1247's direct-pin path. Here, with no banner phrase and no
+// matcher hit, the session stays unpinned.
+test("pinSessionForm does not pin a free-typed feedback request (run-turn disambiguates first)", async () => {
+  const s = session();
+  await pinSessionForm(s, [userMessage("i wan to feedback")], {
+    match: async () => null,
+  });
+  assert.equal(s.slug, null);
+});
+
 test("pinSessionForm pins a window match and resets prior state on a switch", async () => {
   const s = session({
     slug: "old-form",
