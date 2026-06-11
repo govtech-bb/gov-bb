@@ -17,6 +17,10 @@ export const setFieldDef = toolDefinition({
   outputSchema: z.object({
     ok: z.boolean(),
     error: z.string().optional(),
+    // Schema lines for fields this value just activated (a conditional
+    // section opened). They are part of the FORM SCHEMA now — ask them
+    // next, in the order given, before any later field.
+    revealed: z.array(z.string()).optional(),
   }),
 });
 
@@ -58,6 +62,17 @@ export const askFieldDef = toolDefinition({
         // Raw validation rules from the contract, so the widget can run the
         // shared validation engine client-side before sending the answer.
         validations: z.record(z.string(), z.unknown()).optional(),
+        // Escape-hatch toggle riding on this field (either/or, e.g. National
+        // ID or passport). The widget renders it as a secondary button; if
+        // the user picks it, set_field the TOGGLE fieldId to "yes" instead
+        // of recording a value for this field.
+        alternative: z
+          .object({
+            fieldId: z.string(),
+            label: z.string(),
+            hint: z.string().optional(),
+          })
+          .optional(),
       })
       .optional(),
   }),

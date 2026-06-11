@@ -94,6 +94,21 @@ export function AskFieldWidget({
         />
       </div>
     );
+  } else if (spec.htmlType === "show-hide") {
+    // A toggle is ALWAYS a Yes/No choice — never a text input. The server
+    // synthesizes Yes/No options (caught by the pills branch above); this
+    // is the floor for a spec that arrives without them.
+    widget = (
+      <div className="flex flex-col gap-2.5">
+        <HintOrError hint={spec.hint} error={null} />
+        <ChoicePills
+          questionId={questionId}
+          labelledBy={questionId}
+          choices={["Yes", "No"]}
+          onPick={onAnswer}
+        />
+      </div>
+    );
   } else if (spec.htmlType === "checkbox") {
     widget = <BooleanAnswer onAnswer={onAnswer} spec={spec} />;
   } else if (spec.htmlType === "date") {
@@ -120,12 +135,30 @@ export function AskFieldWidget({
     widget = <HintOrError hint={spec.hint} error={null} />;
   }
 
+  // Escape-hatch alternative (e.g. "Use passport number instead" under the
+  // National ID question) — forms-UI parity, where the show-hide toggle sits
+  // directly below its target field. Clicking sends the toggle's label as the
+  // answer; the collection prompt records the toggle, not this field.
+  const alt = spec.alternative;
+
   return (
     <div className="flex flex-col gap-2.5">
       <p id={questionId} className="text-bubble font-medium text-black-00">
         {spec.label}
       </p>
       {widget}
+      {alt && (
+        <div className="flex flex-col gap-1.5">
+          {alt.hint && <p className="text-mid-grey-00 text-sm">{alt.hint}</p>}
+          <button
+            className={SKIP_BTN}
+            onClick={() => onAnswer(alt.label)}
+            type="button"
+          >
+            {alt.label}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

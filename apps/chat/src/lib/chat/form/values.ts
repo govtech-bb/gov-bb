@@ -1,8 +1,13 @@
 import type {
   HtmlTypes,
+  OptionalIfBehaviour,
   Primitive,
   ServiceContract,
 } from "@govtech-bb/form-types";
+import {
+  evaluateCondition,
+  flattenStepValues,
+} from "@govtech-bb/form-conditions";
 import { validateField } from "@govtech-bb/form-validation";
 import type { StepScopedValues } from "@govtech-bb/form-validation";
 import { buildFieldIndex, isChatCollectable } from "./schema";
@@ -60,12 +65,16 @@ function coerceEnum(field: Primitive, raw: string): Coerced {
   return { value: raw };
 }
 
-function coerceCheckbox(field: Primitive, raw: string): Coerced {
-  if (fieldOptions(field).length) return coerceList(field, raw);
+function coerceBoolean(raw: string): Coerced {
   const lower = raw.toLowerCase();
   if (["true", "yes", "on", "1"].includes(lower)) return { value: true };
   if (["false", "no", "off", "0", ""].includes(lower)) return { value: false };
   return { error: "must be yes/no" };
+}
+
+function coerceCheckbox(field: Primitive, raw: string): Coerced {
+  if (fieldOptions(field).length) return coerceList(field, raw);
+  return coerceBoolean(raw);
 }
 
 const COERCERS: Record<HtmlTypes, Coercer> = {
@@ -89,8 +98,20 @@ const COERCERS: Record<HtmlTypes, Coercer> = {
   // Unreachable: forms with file fields hand off (needsHandoff) and the
   // fields are never chat-collectable. The key only satisfies the Record type.
   file: () => ({ error: "file fields are not collected in chat" }),
-  "show-hide": (_f, raw) => ({ value: raw }),
+  // The toggle holds a boolean in the forms app (open/closed) — submit the
+  // same shape, not the user's "yes" string.
+  "show-hide": (_f, raw) => coerceBoolean(raw),
 };
+
+// The condition engine matches the RAW session string against the behaviour
+// value via String() coercion (`String(true)` === "true"), so a show-hide
+// answer must be stored as exactly "true"/"false" — "yes" would never open
+// the section. Other fields keep the user's raw value untouched.
+export function canonicalizeRaw(field: Primitive, raw: string): string {
+  if (field.htmlType !== "show-hide") return raw;
+  const coerced = coerceBoolean(raw.trim());
+  return "error" in coerced ? raw : String(coerced.value);
+}
 
 // Coercion failures are collected per field; other fields still coerce so
 // cross-field rules see full context.
@@ -126,6 +147,35 @@ function coerceToSteps(
   return { valuesByStep, errors };
 }
 
+// Mirror of the forms app's optionalIf handling (validation-builder.ts):
+// when every optionalIf condition on a field matches, its `required` rule is
+// stripped before the shared engine runs — the shared validateField knows
+// nothing about optionalIf. Without this, the escape-toggle flow can never
+// submit from chat (National ID stays "required" even with the passport
+// section open). Format rules are kept so they still fire when filled.
+function relaxOptionalIf(
+  field: Primitive,
+  stepId: string,
+  valuesByStep: StepScopedValues,
+): Primitive {
+  if (!field.validations?.required) return field;
+  const conds = (field.behaviours ?? []).filter(
+    (b): b is OptionalIfBehaviour => b.type === "optionalIf",
+  );
+  if (!conds.length) return field;
+  const flat = flattenStepValues(valuesByStep);
+  const optional = conds.every((b) =>
+    evaluateCondition(
+      b.targetStepId ? b : { ...b, targetStepId: stepId },
+      valuesByStep,
+      flat,
+    ),
+  );
+  if (!optional) return field;
+  const { required: _required, ...validations } = field.validations;
+  return { ...field, validations };
+}
+
 // Coercion first, then the shared @govtech-bb/form-validation engine — the
 // same rules and error messages the forms app shows.
 export function validateAndReshape(
@@ -146,7 +196,11 @@ export function validateAndReshape(
     if (errors.some((e) => e.field === fieldId)) continue;
     const stepValues = valuesByStep[info.stepId] ?? {};
     const messages = validateField(
-      info.field,
+      relaxOptionalIf(
+        info.field,
+        info.stepId,
+        valuesByStep as StepScopedValues,
+      ),
       stepValues[fieldId],
       valuesByStep as StepScopedValues,
       stepValues,
@@ -196,6 +250,9 @@ export function buildReviewItems(
     for (const el of step.elements) {
       if (!activeFieldIds.has(el.fieldId)) continue;
       if (!isChatCollectable(el)) continue;
+      // Forms-review parity: show-hide toggles are UI controls, not answers —
+      // never a row (see apps/forms review.tsx).
+      if (el.htmlType === "show-hide") continue;
       const raw = fields[el.fieldId];
       if (raw === undefined || raw.trim() === "") continue;
       items.push({
@@ -228,7 +285,7 @@ export function validateCollectedField(
   valuesByStep[stepId] = stepValues;
 
   const messages = validateField(
-    field,
+    relaxOptionalIf(field, stepId, valuesByStep as StepScopedValues),
     coerced.value,
     valuesByStep as StepScopedValues,
     stepValues,
