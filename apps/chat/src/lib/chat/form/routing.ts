@@ -8,7 +8,7 @@ import {
 } from "#/lib/chat/retrieval";
 import type { Source } from "#/lib/chat/types";
 import { matchFormsFromText } from "./detect";
-import { getFormSlugs } from "./defs";
+import { getAllFormSlugs, getFormSlugs } from "./defs";
 import { resolveActiveForm, type FormResolution } from "./schema";
 import { resetSessionForNewForm, type FormSession } from "./session";
 
@@ -21,6 +21,7 @@ interface PinDeps {
 
 interface RagFallbackDeps {
   getSlugs: typeof getFormSlugs;
+  getAllSlugs: typeof getAllFormSlugs;
   resolve: typeof resolveActiveForm;
   formsUrl: () => string;
 }
@@ -64,6 +65,10 @@ export interface RagFallbackResult {
   handoffContinuation?: { title: string; url: string };
   // Approved collect form RAG surfaced that the matcher missed (ADR 0045).
   ragCollectLink?: { title: string; url: string };
+  // The top retrieved service has a PUBLISHED form that is not chat-approved
+  // (no policy entry). The disclosure must not claim no online form exists —
+  // that was a lie for these services (school-uniform-grant et al).
+  unapprovedForm?: boolean;
 }
 
 // RAG-driven handoff (and its follow-up continuation). The title-token matcher
@@ -85,6 +90,7 @@ export async function applyRagFallback(
   signal: AbortSignal,
   deps: RagFallbackDeps = {
     getSlugs: getFormSlugs,
+    getAllSlugs: getAllFormSlugs,
     resolve: resolveActiveForm,
     formsUrl: () => getServerEnv().FORMS_URL,
   },
@@ -94,11 +100,17 @@ export async function applyRagFallback(
       ? topHandoffCandidateSlug(rawSources)
       : null;
   // Resolve against the forms API only when there's a candidate, and gate on
-  // the form index so a retrieved info-only service with no published form
+  // the approved index so a retrieved info-only service with no published form
   // doesn't trigger a doomed form-definition fetch and a 404 warning per turn.
   let ragResolution: FormResolution = { kind: "none" };
-  if (ragCandidate && (await deps.getSlugs(signal)).includes(ragCandidate)) {
-    ragResolution = await deps.resolve(ragCandidate, {});
+  if (ragCandidate) {
+    if ((await deps.getSlugs(signal)).includes(ragCandidate)) {
+      ragResolution = await deps.resolve(ragCandidate, {});
+    } else if ((await deps.getAllSlugs(signal)).includes(ragCandidate)) {
+      // Published but not in the chat policy: don't surface the form, but
+      // don't let the no-form disclosure claim it doesn't exist either.
+      return { resolution, unapprovedForm: true };
+    }
   }
   const ragDecision = decideRagFallback({
     candidate: ragCandidate,

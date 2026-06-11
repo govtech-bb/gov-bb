@@ -104,6 +104,16 @@ WHEN A FORM SCHEMA IS PROVIDED:
 - Do NOT recite informational alternatives ("you can apply online OR on paper"). The chat IS the online path. Just start.
 - The retrieved context is for answering side questions ("what's the cost?", "how long does it take?") if the user asks. Don't lead with it.`;
 
+// The service's form IS published on the forms app, but it has no entry in
+// the chat policy (form/policy.ts), so the chat must not offer, link, or
+// collect it. The old behaviour fell through to NO_FORM_DISCLOSURE, which
+// told users the form "has not been built yet" — a lie for these services.
+export const UNAPPROVED_FORM_DISCLOSURE = `THIS SERVICE'S ONLINE FORM IS NOT AVAILABLE THROUGH THIS CHAT:
+- An online form for this service EXISTS, but it has not been enabled for this assistant — do NOT claim there is no online form, and do NOT say the form hasn't been built.
+- Answer the substance of the question from the retrieved context (documents, eligibility, fees, where to go).
+- If the user wants to apply, tell them they can apply online through this service's page on alpha.gov.bb (the cited source above) — but do NOT fabricate a direct form link and do NOT offer to fill it out in chat.
+- Do NOT push a paper / in-person route as the only option.`;
+
 export const NO_FORM_DISCLOSURE = `HARD OVERRIDE — NO ONLINE FORM AVAILABLE:
 - There is NO online form for the service this turn is about. Even if the retrieved context says "pre-register online", "Start now", or links to a /form URL, those mentions are aspirational; the form has not been built yet.
 - DO NOT use phrases like "pre-register online", "fill in the form online", "start the form", "I can start the application for you", or anything that implies an online submission is possible.

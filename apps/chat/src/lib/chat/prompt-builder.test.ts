@@ -140,3 +140,12 @@ test("default informational turn gets the no-form disclosure", () => {
   const text = build();
   assert.match(text, /NO ONLINE FORM AVAILABLE/);
 });
+
+// A published-but-unapproved form must get the honest disclosure: the form
+// exists, the chat just can't offer it — never the no-form lie.
+test("unapprovedForm routes to the honest disclosure, not the no-form one", () => {
+  const text = build({ unapprovedForm: true });
+  assert.match(text, /NOT AVAILABLE THROUGH THIS CHAT/);
+  assert.match(text, /do NOT claim there is no online form/);
+  assert.doesNotMatch(text, /NO ONLINE FORM AVAILABLE/);
+});
