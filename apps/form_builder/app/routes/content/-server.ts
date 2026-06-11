@@ -253,7 +253,21 @@ export const loadLandingContentPage = createServerFn({
       }
       const token = context.token;
       if (token === null) return readLocalContentFile(data.path);
-      const res = await getContents(token, data.path, resolveBaseBranch());
+      const baseBranch = resolveBaseBranch();
+      // A page with an open content PR is loaded from that PR's branch, not
+      // the base branch — otherwise an author reopening a page in review
+      // would edit the stale base copy and the next deploy (which pushes to
+      // the PR branch) would silently wipe the PR's changes.
+      const openPR = (await fetchOpenContentPRs(token, baseBranch)).find(
+        (pr) => pr.path === data.path,
+      );
+      let res = openPR
+        ? await getContents(token, data.path, openPR.branch)
+        : null;
+      // 404 on the PR branch (e.g. the open PR *removes* this file) → base.
+      if (!res || res.status === 404) {
+        res = await getContents(token, data.path, baseBranch);
+      }
       if (!res.ok) throw await ghError("Failed to load page", res);
       const json = (await res.json()) as { content: string; sha: string };
       const raw = Buffer.from(json.content, "base64").toString("utf8");

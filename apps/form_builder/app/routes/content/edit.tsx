@@ -372,6 +372,21 @@ function StartPagesEditor() {
                 </span>
               </p>
             )}
+            {!ed.loadingPage &&
+              ed.editPath &&
+              contentList.openPRs.get(ed.editPath) && (
+                <p className={s.modalNote}>
+                  Showing the version from open PR{" "}
+                  <a
+                    href={contentList.openPRs.get(ed.editPath)!.prUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    #{contentList.openPRs.get(ed.editPath)!.prNumber}
+                  </a>{" "}
+                  (not what's live) — deploying updates that PR.
+                </p>
+              )}
             <ErrorBanner error={ed.error} />
 
             <PageFields
