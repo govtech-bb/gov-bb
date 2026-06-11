@@ -134,9 +134,12 @@ export function buildFormOfferDisclosure(
 }
 
 // The user chose "just send me the link" on a form offer — deliver exactly
-// this link and stop; no pressure to fill it in chat instead.
+// this link and stop; no pressure to fill it in chat instead. The reply ends
+// with the exact WRAP-UP wording ("Anything else I can help with?", matching
+// buildHandoffDisclosure) so handing over the link doesn't dead-end the chat —
+// a following "no" is recognised by retrieval's WRAP_UP_RE as a closer.
 export function buildDirectLinkDisclosure(title: string, url: string): string {
-  return `THE USER ASKED FOR THE FORM LINK. Share exactly this markdown link in one short sentence: [${title}](${url}). Add nothing else except a brief offer to help if they have questions. Do NOT start collecting fields and do NOT suggest filling it out in chat — they just chose the link.`;
+  return `THE USER ASKED FOR THE FORM LINK. Share exactly this markdown link in one short sentence: [${title}](${url}). Then end with EXACTLY this line: "Anything else I can help with?" — add nothing else. Do NOT start collecting fields and do NOT suggest filling it out in chat — they just chose the link.`;
 }
 
 // The service's form IS published on the forms app, but it has no entry in
@@ -252,13 +255,19 @@ export function buildHandoffDisclosure(title: string, url: string): string {
   // has it, so the user sees both routes. Em/en dashes in the model's prose are
   // stripped deterministically in normalizeMarkdown, so no prompt rule has to
   // enforce that here.
+  //
+  // Closing question: the reply ends with the exact WRAP-UP wording ("Anything
+  // else I can help with?", same as buildCantHelpDisclosure) so handing over the
+  // link doesn't dead-end the chat — a following "no" is recognised by
+  // retrieval's WRAP_UP_RE as a closer and routes to the warm sign-off + the
+  // optional feedback invitation.
   return `HARD OVERRIDE: THIS TURN IS A HANDOFF. The link below IS the answer.
 
 This overrides the DEFAULT MODE / INFORMATIONAL (RAG) rule for this turn. Even though no FORM SCHEMA was provided, do NOT treat this as a pure RAG answer.
 
 The form "${title}" requires steps the chat cannot safely do here (file upload, payment, or other inputs that must happen in the full form). Your one job this turn: warmly hand the user the link.
 
-REPLY EXACTLY IN THIS SHAPE (a short lead-in, then the link, then a warm closing line, then optional guidance):
+REPLY EXACTLY IN THIS SHAPE (a short lead-in, then the link, then a warm closing line, then optional guidance, then a closing question last):
 
 Here's the form to get started:
 
@@ -266,13 +275,17 @@ Here's the form to get started:
 
 You can complete your application there when you're ready.
 
+Anything else I can help with?
+
 GUIDANCE LINE: include this ONLY when THIS turn's retrieved context names documents or requirements the user needs before they begin (for example a Police Certificate of Character). Add ONE short, friendly sentence presenting them as something to have ready, cited with a [N] marker, for example: "It helps to have your Police Certificate of Character handy before you start [1]." If the context names no prerequisites, skip this line entirely. NEVER invent a prerequisite that is not in the context.
 
 BOTH PATHS: the online form is the recommended route, so it leads. If the retrieved context also describes an in-person or paper way to apply, you MAY add ONE short sentence offering it as a fallback after the link (for example "If you'd rather, you can also apply in person at the District office [1]."), cited with a [N] marker. Keep it secondary to the online form, and never invent a path the context doesn't mention.
 
-TONE: warm and supportive, never curt. Acknowledge what the user is trying to do and frame the link as the helpful next step, not a dismissal. Stay concise: the lead-in and closing line, plus at most the one guidance sentence and the one fallback sentence.
+TONE: warm and supportive, never curt. Acknowledge what the user is trying to do and frame the link as the helpful next step, not a dismissal. Stay concise: the lead-in and closing line, the closing question, plus at most the one guidance sentence and the one fallback sentence.
 
-(Optional, only if the user already asked a specific side question this turn, for example cost, documents, or eligibility: append ONE short sentence answering it from the retrieved context. Otherwise stop after the lines above.)
+(Optional, only if the user already asked a specific side question this turn, for example cost, documents, or eligibility: append ONE short sentence answering it from the retrieved context, before the closing question.)
+
+CLOSING QUESTION: ALWAYS end the reply with EXACTLY this line, as the very last line after any guidance, fallback, or side-answer: "Anything else I can help with?" It keeps the door open instead of dead-ending, and lets a following "no" wind the conversation down.
 
 Do NOT:
 - Ask "Ready to start the online form?". The link IS the online form.
@@ -317,11 +330,17 @@ export function buildHandoffContinuationDisclosure(
   // wrong for a form that has a working online handoff. This disclosure keeps
   // the model on-script: still helpful and informational, but always pointing
   // back to the link, never collecting, never denying the form exists.
+  //
+  // Closing question: like buildHandoffDisclosure, the reply ends with the exact
+  // WRAP-UP wording ("Anything else I can help with?") so a follow-up "no" is
+  // recognised by retrieval's WRAP_UP_RE as a closer and winds the chat down.
   return `CONTINUATION OF A HANDOFF. The user has already been given the link to the online form "${title}" (it needs a file upload and/or payment, so it must be completed in the forms app, not here).
 
 Answer their latest message informationally from the retrieved context (documents, fees, eligibility, next steps). Keep the tone warm and supportive, guiding them rather than just pointing. Then ALWAYS include the link so they can continue:
 
 [${title}](${url})
+
+CLOSING QUESTION: end the reply with EXACTLY this line, as the very last line: "Anything else I can help with?" It keeps the door open and lets a following "no" wind the conversation down.
 
 Do NOT:
 - Start collecting field values or ask for their details ("What's your first name?", etc.) — there is no in-chat form-fill; the form is completed at the link.

@@ -5,6 +5,7 @@ import {
   FORM_COLLECTION_PROTOCOL,
   SYSTEM_PROMPT,
   buildCantHelpDisclosure,
+  buildDirectLinkDisclosure,
   buildHandoffContinuationDisclosure,
   buildHandoffDisclosure,
   buildHandoffOfferDisclosure,
@@ -140,6 +141,13 @@ test("allows informational answering from context", () => {
   assert.match(out, /informational|informationally/i);
 });
 
+// Like the first handoff, the continuation closes by asking if there's anything
+// else, using the exact WRAP-UP wording the closer path recognises.
+test("continuation: ends by asking if there's anything else", () => {
+  const out = buildHandoffContinuationDisclosure(TITLE, URL);
+  assert.match(out, /Anything else I can help with\?/);
+});
+
 // The OFFER disclosure is shown when the user asked an INFO question about a
 // handoff service (e.g. "what does it cost and where do I apply?"). It must
 // answer the question and offer the link in prose — but NOT paste a URL this
@@ -206,6 +214,23 @@ test("handoff: uses the reshaped lead-in + closing copy", () => {
   const out = buildHandoffDisclosure(TITLE, URL);
   assert.match(out, /Here's the form to get started:/);
   assert.match(out, /complete your application there when you're ready/i);
+});
+
+// The "just send me the link" path delivers the link and, like the handoff,
+// closes by asking if there's anything else so a "no" is recognised by the
+// closer path (retrieval's WRAP_UP_RE) and winds the chat down.
+test("direct link: delivers the link and ends by asking if there's anything else", () => {
+  const out = buildDirectLinkDisclosure(TITLE, URL);
+  assert.ok(out.includes(`[${TITLE}](${URL})`), "should contain the link");
+  assert.match(out, /Anything else I can help with\?/);
+});
+
+// Handing over the link must not dead-end the chat: the reply ends by asking if
+// there's anything else, using the exact WRAP-UP wording the closer path
+// (retrieval's WRAP_UP_RE = /anything else/i) recognises so a "no" winds down.
+test("handoff: ends by asking if there's anything else", () => {
+  const out = buildHandoffDisclosure(TITLE, URL);
+  assert.match(out, /Anything else I can help with\?/);
 });
 
 // #1079 follow-up: we now show BOTH paths. The disclosure must no longer forbid
