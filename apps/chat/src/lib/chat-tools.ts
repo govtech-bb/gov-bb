@@ -74,6 +74,10 @@ export const askFieldDef = toolDefinition({
             hint: z.string().optional(),
           })
           .optional(),
+        // Step title to show as a section header above this question, set
+        // only when this field opens a new step (e.g. "Emergency contact
+        // details") — so the user knows whose details to enter.
+        section: z.string().optional(),
       })
       .optional(),
   }),
