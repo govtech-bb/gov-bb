@@ -39,30 +39,49 @@ function fieldOptions(field: Primitive): string[] {
     : [];
 }
 
+// The choice pills send the option LABEL as the user's message; the model
+// then maps label → value before set_field — probabilistically. Accept the
+// label here (case-insensitive; exact value match wins) so "Saint Michael"
+// records st-michael without a model retry.
+function matchOption(field: Primitive, pick: string): string | null {
+  if (!("options" in field) || !field.options) return null;
+  for (const o of field.options) if (o.value === pick) return o.value;
+  const lower = pick.toLowerCase();
+  for (const o of field.options) {
+    if (o.value.toLowerCase() === lower || o.label.toLowerCase() === lower) {
+      return o.value;
+    }
+  }
+  return null;
+}
+
 function coerceList(field: Primitive, raw: string): Coerced {
-  const opts = fieldOptions(field);
   const picks = raw.includes(",")
     ? raw
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean)
     : [raw];
-  const valid = new Set(opts);
+  const matched: string[] = [];
   for (const p of picks) {
-    if (!valid.has(p)) return { error: `must be one of: ${opts.join(", ")}` };
+    const value = matchOption(field, p);
+    if (value === null) {
+      return { error: `must be one of: ${fieldOptions(field).join(", ")}` };
+    }
+    matched.push(value);
   }
-  return { value: picks };
+  return { value: matched };
 }
 
 function coerceEnum(field: Primitive, raw: string): Coerced {
   // Multi-selects collect like option-backed checkboxes: a comma list of
   // option values.
   if (field.multiple) return coerceList(field, raw);
-  const valid = fieldOptions(field);
-  if (!valid.includes(raw)) {
-    return { error: `must be one of: ${valid.join(", ")}` };
+  const value = matchOption(field, raw);
+  if (value === null) {
+    return { error: `must be one of: ${fieldOptions(field).join(", ")}` };
   }
-  return { value: raw };
+  return { value };
 }
 
 function coerceBoolean(raw: string): Coerced {
@@ -106,11 +125,23 @@ const COERCERS: Record<HtmlTypes, Coercer> = {
 // The condition engine matches the RAW session string against the behaviour
 // value via String() coercion (`String(true)` === "true"), so a show-hide
 // answer must be stored as exactly "true"/"false" — "yes" would never open
-// the section. Other fields keep the user's raw value untouched.
+// the section. The same applies to option-backed fields now that coercion
+// accepts LABELS: a conditional on `value: "yes-option"` must see the option
+// value in the session, not the label the pill sent. Free-text fields keep
+// the user's raw value untouched.
 export function canonicalizeRaw(field: Primitive, raw: string): string {
-  if (field.htmlType !== "show-hide") return raw;
-  const coerced = coerceBoolean(raw.trim());
-  return "error" in coerced ? raw : String(coerced.value);
+  if (field.htmlType === "show-hide") {
+    const coerced = coerceBoolean(raw.trim());
+    return "error" in coerced ? raw : String(coerced.value);
+  }
+  if (fieldOptions(field).length) {
+    const coerced = COERCERS[field.htmlType](field, raw.trim());
+    if ("error" in coerced) return raw;
+    return Array.isArray(coerced.value)
+      ? (coerced.value as string[]).join(",")
+      : String(coerced.value);
+  }
+  return raw;
 }
 
 // Coercion failures are collected per field; other fields still coerce so

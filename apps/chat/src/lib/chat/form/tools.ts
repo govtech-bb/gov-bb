@@ -21,6 +21,7 @@ import {
   findEscapeToggle,
   getActiveFieldIds,
   isChatCollectable,
+  nextAskableField,
 } from "./schema";
 import { resetSessionForNewForm } from "./session";
 import type { FormSession } from "./session";
@@ -51,19 +52,40 @@ const presentChoicesTool = presentChoicesDef.server(async () => ({
   shown: true,
 }));
 
-// The model passes ONLY a fieldId; the canonical spec is read from the
+// Without a fieldId the SERVER picks the next question via the ask cursor —
+// ordering is code-owned, the model can't skip ahead. A fieldId is passed
+// only for the two legitimate jumps: the user wants to change an answer, or
+// a validation error re-ask. Either way the canonical spec is read from the
 // CONTRACT and returned as the tool result, so the client renders from
 // part.output and the model never authors labels or options.
 const askFieldTool = askFieldDef.server<FormTurnContext>(
   async ({ fieldId }, ctx) => {
     const { session, form } = ctx.context;
     if (!form) return { ok: false, error: "no active form" };
-    const active = getActiveFieldIds(form.contract, session.values).flat;
-    const info = buildFieldIndex(form.contract).get(fieldId);
-    if (!info || !active.has(fieldId)) {
-      return { ok: false, error: `unknown or inactive fieldId: ${fieldId}` };
+    let f;
+    if (fieldId) {
+      const active = getActiveFieldIds(form.contract, session.values).flat;
+      const info = buildFieldIndex(form.contract).get(fieldId);
+      if (!info || !active.has(fieldId)) {
+        return { ok: false, error: `unknown or inactive fieldId: ${fieldId}` };
+      }
+      f = info.field;
+    } else {
+      const next = nextAskableField(
+        form.contract,
+        session.values,
+        session.askedFieldIds,
+      );
+      if (!next) {
+        return {
+          ok: false,
+          error:
+            "every field has been presented — call review_form, then submit_form",
+        };
+      }
+      f = next.field;
     }
-    const f = info.field;
+    session.askedFieldIds.add(f.fieldId);
     // A show-hide toggle has no options in the contract (it's a disclosure
     // click in the forms UI). Synthesize Yes/No so the chat client renders
     // the standard choice pills — no bespoke widget needed.
@@ -150,6 +172,9 @@ const setFieldTool = setFieldDef.server<FormTurnContext>(
     // Canonical raw: a show-hide answer is stored as "true"/"false" so the
     // condition engine's String() compare matches the recipe's `value: true`.
     session.values[fieldId] = canonicalizeRaw(info.field, value);
+    // Any change invalidates the last review — submit_form refuses until the
+    // user has seen a review of what will actually be sent.
+    session.reviewedSinceChange = false;
     session.updatedAt = Date.now();
     // The FORM SCHEMA system message was built from the values at the START
     // of the turn, so a value that opens a conditional section (show-hide
@@ -173,9 +198,24 @@ const reviewFormTool = reviewFormDef.server<FormTurnContext>(
   async (_args, ctx) => {
     const { session, form } = ctx.context;
     if (!form) return { ok: false, error: "no active form" };
+    // Completeness gate, in code: review can't run while askable fields
+    // remain unpresented. The prompt-level "only review AFTER every field"
+    // rule was probabilistic — the model jumped to review early.
+    const next = nextAskableField(
+      form.contract,
+      session.values,
+      session.askedFieldIds,
+    );
+    if (next) {
+      return {
+        ok: false,
+        error: `not every field has been presented yet — call ask_field (no arguments); next is ${next.field.fieldId}`,
+      };
+    }
     const active = getActiveFieldIds(form.contract, session.values).flat;
     const items = buildReviewItems(form.contract, session.values, active);
     if (!items.length) return { ok: false, error: "nothing collected yet" };
+    session.reviewedSinceChange = true;
     // isFeedback lets the client word the submit approval as "Submit your
     // feedback now?" — review_form runs in the same turn just before the
     // (argument-less) submit_form approval prompt, so it's the carrier.
@@ -200,6 +240,21 @@ const submitFormTool = submitFormDef.server<FormTurnContext>(
         ok: false,
         errors: [
           { field: "service", message: "a submission is already in flight" },
+        ],
+      };
+    }
+    // Review-before-submit, in code: a value changed since the last
+    // review_form (or none ever ran), so the user hasn't seen what would be
+    // sent. The prompt-level "review then submit" ordering was probabilistic.
+    if (!session.reviewedSinceChange) {
+      return {
+        ok: false,
+        errors: [
+          {
+            field: "service",
+            message:
+              "answers changed since the last review — call review_form first",
+          },
         ],
       };
     }

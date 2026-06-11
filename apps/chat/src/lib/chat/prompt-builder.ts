@@ -110,7 +110,7 @@ export function buildSystemPrompts(state: PromptTurnState): SystemEntry[] {
       // Collect-form matched with apply-intent, first turn: begin collecting per
       // the SYSTEM_PROMPT. Answer any side question they bundled in first.
       parts.push(
-        "The user wants to apply and has not started yet. Open with a one-line acknowledgement and call ask_field with the FIRST field listed in the schema. If they also asked a side question, answer it from the context first.",
+        "The user wants to apply and has not started yet. Open with a one-line acknowledgement and call ask_field with no arguments — the server serves the first question. If they also asked a side question, answer it from the context first.",
       );
     }
     // ONLINE OPTIONS — applies whenever this form is active. This service has a
