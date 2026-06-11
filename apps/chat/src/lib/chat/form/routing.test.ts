@@ -82,6 +82,32 @@ test("pinSessionForm defers a window match of the parked slug to the latest mess
   assert.equal(calls.length, 2);
 });
 
+// A submitted REAL service form is terminal too: park it (don't leave it
+// pinned) so the next turn resolves to "none" and model-initiated feedback can
+// be offered (#1203). Parking defers the rolling-window matcher to the LATEST
+// message, so the user's own earlier application messages don't re-wedge them
+// into the finished form.
+test("pinSessionForm parks a submitted real form so feedback can be offered", async () => {
+  const s = session({
+    slug: "mail-redirect",
+    status: "submitted",
+    values: { a: "1" },
+    referenceNumber: "R1",
+  });
+  const calls: string[] = [];
+  await pinSessionForm(s, [userMessage("thanks, that's all")], {
+    match: async (text) => {
+      calls.push(text);
+      // Window text still names the just-submitted form; the latest doesn't.
+      return calls.length === 1 ? entry("mail-redirect") : null;
+    },
+  });
+  assert.equal(s.slug, null);
+  assert.equal(s.handedOffSlug, "mail-redirect");
+  // Deferred to the latest message (matches nothing), so it stays unpinned.
+  assert.equal(calls.length, 2);
+});
+
 test("pinSessionForm resets a submitted feedback session instead of wedging", async () => {
   const s = session({
     slug: "chat-feedback",

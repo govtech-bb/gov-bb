@@ -38,12 +38,22 @@ export async function pinSessionForm(
   messages: UIMessage[],
   deps: PinDeps = { match: matchFormsFromText },
 ): Promise<void> {
-  // The feedback form is terminal: once submitted it can't be re-matched from
-  // conversation text (it was pinned programmatically, not by the matcher), so
-  // clear it instead of leaving the session stuck in feedback-collect forever.
-  // feedbackOffered is preserved, so it is never re-offered this session.
-  if (session.slug === FEEDBACK_FORM_ID && session.status === "submitted") {
-    resetSessionForNewForm(session);
+  // A submitted form is terminal — the application is done, nothing more to
+  // collect — so unpin it. Otherwise the matcher re-pins it from the rolling
+  // window (which still names the just-completed form), resolution stays
+  // "collect", and the feedback offer (which needs "none") can never fire after
+  // an application (#1203). The feedback form clears outright: it's pinned
+  // programmatically and can never be re-matched from text, and feedbackOffered
+  // survives the reset so it isn't re-offered. A real service form is PARKED
+  // instead — handedOffSlug makes the rolling-window matcher defer to the user's
+  // LATEST message, so their earlier application messages don't re-wedge them
+  // into the finished form, while a fresh mention of any service re-engages.
+  if (session.slug && session.status === "submitted") {
+    if (session.slug === FEEDBACK_FORM_ID) {
+      resetSessionForNewForm(session);
+    } else {
+      parkHandoff(session, session.slug);
+    }
   }
   if (session.slug && session.status !== "submitted") return;
   const windowMatch = await deps.match(recentUserText(messages));
