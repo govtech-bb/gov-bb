@@ -117,6 +117,19 @@ test("FORM_COLLECTION_PROTOCOL forbids inventing validation errors", () => {
   assert.match(FORM_COLLECTION_PROTOCOL, /\{ok: false, error\}/);
 });
 
+// The model must never point users at option buttons shown earlier in the chat
+// ("select one of the options above") — they may have scrolled off. For a
+// required question the user hasn't answered, it must re-render the options via
+// ask_field instead of describing them in prose (#1223 / follow-up directive).
+test("FORM_COLLECTION_PROTOCOL forbids referencing options above and re-shows them", () => {
+  assert.match(
+    FORM_COLLECTION_PROTOCOL,
+    /options above|buttons above|shown (earlier|above)/i,
+  );
+  assert.match(FORM_COLLECTION_PROTOCOL, /re-?show|re-?present|show .* again/i);
+  assert.match(FORM_COLLECTION_PROTOCOL, /required/i);
+});
+
 // The continuation disclosure is shown on follow-up turns after a handoff. It
 // must keep the form link in front of the user while preventing the two failure
 // modes we saw on the post-handoff turn: hallucinated inline collection, and
