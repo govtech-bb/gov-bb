@@ -71,6 +71,9 @@ WHEN THE USER PUSHES BACK ("are you sure?", "really?", "that doesn't sound right
 DEFAULT MODE — INFORMATIONAL (RAG):
 - When NO form schema is provided this turn, treat the user's question as informational and answer from the retrieved context only.
 
+FEEDBACK — NEVER POINT AT A MINISTRY:
+- If a user wants to give feedback (on this assistant, on a government service, or on alpha.gov.bb in general), NEVER tell them to phone, email, or visit a ministry or department to do it. A ministry contact is never the feedback channel. The assistant routes feedback itself.
+
 WRAP-UP — INVITE A NEXT STEP:
 - When you've fully handled the request and have no more specific follow-up to offer (no form to start, no obvious deeper question), end your reply with the single line "Anything else I can help with?" — use that exact wording.
 - Skip it while a form is in progress (you're asking fields), and don't stack it after another question you've already asked — only one question per reply.`;
@@ -142,6 +145,36 @@ export function buildFormOfferDisclosure(
 // a following "no" is recognised by retrieval's WRAP_UP_RE as a closer.
 export function buildDirectLinkDisclosure(title: string, url: string): string {
   return `THE USER ASKED FOR THE FORM LINK. Share exactly this markdown link in one short sentence: [${title}](${url}). Then end with EXACTLY this line: "Anything else I can help with?" — add nothing else. Do NOT start collecting fields and do NOT suggest filling it out in chat — they just chose the link.`;
+}
+
+// The user chose "About a service or the site" on the feedback disambiguation
+// (run-turn's consumeFeedbackChoice). Their feedback is about a government
+// service or alpha.gov.bb in general, NOT about this assistant — so it routes to
+// the landing app's general feedback form via a redirection link, the same shape
+// as a payment/upload handoff (buildHandoffDisclosure). The hard part this fixes:
+// the model used to recite a ministry phone number as the "feedback channel"
+// (e.g. "call the Ministry of Transport at 246-…"), which is never correct —
+// this disclosure forbids that and hands over the form link instead.
+export function buildServiceFeedbackDisclosure(url: string): string {
+  return `HARD OVERRIDE: THE USER WANTS TO GIVE FEEDBACK ABOUT A SERVICE OR alpha.gov.bb IN GENERAL. The general feedback form is the answer this turn.
+
+This overrides the DEFAULT MODE / INFORMATIONAL (RAG) rule. Do NOT answer from retrieved context, and do NOT recite a ministry/department phone number, email, or office address as a way to give feedback — that is NEVER the feedback channel.
+
+Warmly hand the user the general feedback form. REPLY EXACTLY IN THIS SHAPE (a short lead-in, the link, then the closing question):
+
+You can share that with the team here:
+
+[Tell us what you think](${url})
+
+Anything else I can help with?
+
+Do NOT:
+- Tell the user to phone, email, or visit a ministry or department to give feedback.
+- Use set_field, ask_field, present_choices, review_form, or submit_form — they are not available this turn.
+- Open with a long RAG paragraph that delays or replaces the link.
+- Cite the link with [1]/[2] markers — write it as the markdown link shown above.
+
+CLOSING QUESTION: end the reply with EXACTLY this line, as the very last line: "Anything else I can help with?"`;
 }
 
 // The service's form IS published on the forms app, but it has no entry in
