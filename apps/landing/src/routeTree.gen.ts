@@ -13,6 +13,7 @@ import { Route as TellUsRouteImport } from './routes/tell-us'
 import { Route as ServicesRouteImport } from './routes/services'
 import { Route as ServiceUnavailableRouteImport } from './routes/service-unavailable'
 import { Route as SearchResultsRouteImport } from './routes/search-results'
+import { Route as PreviewStartPageRouteImport } from './routes/preview-start-page'
 import { Route as JavascriptRequiredRouteImport } from './routes/javascript-required'
 import { Route as FeedbackRouteImport } from './routes/feedback'
 import { Route as SplatRouteImport } from './routes/$'
@@ -47,6 +48,11 @@ const ServiceUnavailableRoute = ServiceUnavailableRouteImport.update({
 const SearchResultsRoute = SearchResultsRouteImport.update({
   id: '/search-results',
   path: '/search-results',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PreviewStartPageRoute = PreviewStartPageRouteImport.update({
+  id: '/preview-start-page',
+  path: '/preview-start-page',
   getParentRoute: () => rootRouteImport,
 } as any)
 const JavascriptRequiredRoute = JavascriptRequiredRouteImport.update({
@@ -144,6 +150,7 @@ export interface FileRoutesByFullPath {
   '/$': typeof SplatRoute
   '/feedback': typeof FeedbackRoute
   '/javascript-required': typeof JavascriptRequiredRoute
+  '/preview-start-page': typeof PreviewStartPageRoute
   '/search-results': typeof SearchResultsRoute
   '/service-unavailable': typeof ServiceUnavailableRoute
   '/services': typeof ServicesRoute
@@ -165,6 +172,7 @@ export interface FileRoutesByTo {
   '/$': typeof SplatRoute
   '/feedback': typeof FeedbackRoute
   '/javascript-required': typeof JavascriptRequiredRoute
+  '/preview-start-page': typeof PreviewStartPageRoute
   '/search-results': typeof SearchResultsRoute
   '/service-unavailable': typeof ServiceUnavailableRoute
   '/services': typeof ServicesRoute
@@ -185,6 +193,7 @@ export interface FileRoutesById {
   '/$': typeof SplatRoute
   '/feedback': typeof FeedbackRoute
   '/javascript-required': typeof JavascriptRequiredRoute
+  '/preview-start-page': typeof PreviewStartPageRoute
   '/search-results': typeof SearchResultsRoute
   '/service-unavailable': typeof ServiceUnavailableRoute
   '/services': typeof ServicesRoute
@@ -208,6 +217,7 @@ export interface FileRouteTypes {
     | '/$'
     | '/feedback'
     | '/javascript-required'
+    | '/preview-start-page'
     | '/search-results'
     | '/service-unavailable'
     | '/services'
@@ -229,6 +239,7 @@ export interface FileRouteTypes {
     | '/$'
     | '/feedback'
     | '/javascript-required'
+    | '/preview-start-page'
     | '/search-results'
     | '/service-unavailable'
     | '/services'
@@ -248,6 +259,7 @@ export interface FileRouteTypes {
     | '/$'
     | '/feedback'
     | '/javascript-required'
+    | '/preview-start-page'
     | '/search-results'
     | '/service-unavailable'
     | '/services'
@@ -270,6 +282,7 @@ export interface RootRouteChildren {
   SplatRoute: typeof SplatRoute
   FeedbackRoute: typeof FeedbackRoute
   JavascriptRequiredRoute: typeof JavascriptRequiredRoute
+  PreviewStartPageRoute: typeof PreviewStartPageRoute
   SearchResultsRoute: typeof SearchResultsRoute
   ServiceUnavailableRoute: typeof ServiceUnavailableRoute
   ServicesRoute: typeof ServicesRoute
@@ -310,6 +323,13 @@ declare module '@tanstack/react-router' {
       path: '/search-results'
       fullPath: '/search-results'
       preLoaderRoute: typeof SearchResultsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/preview-start-page': {
+      id: '/preview-start-page'
+      path: '/preview-start-page'
+      fullPath: '/preview-start-page'
+      preLoaderRoute: typeof PreviewStartPageRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/javascript-required': {
@@ -464,6 +484,7 @@ const rootRouteChildren: RootRouteChildren = {
   SplatRoute: SplatRoute,
   FeedbackRoute: FeedbackRoute,
   JavascriptRequiredRoute: JavascriptRequiredRoute,
+  PreviewStartPageRoute: PreviewStartPageRoute,
   SearchResultsRoute: SearchResultsRoute,
   ServiceUnavailableRoute: ServiceUnavailableRoute,
   ServicesRoute: ServicesRoute,
