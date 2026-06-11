@@ -4,8 +4,9 @@
  * `primarySchoolToEmailMap` (the legacy, now-decommissioned sender) so the two
  * never diverge while routing moves here.
  *
- * All addresses are `@mes.gov.bb`. One deliberate oddity preserved verbatim:
- * `elliot-belgrave -> BoscobelPrimary@mes.gov.bb` (a school rename, not a typo).
+ * Addresses end in either `@mes.gov.bb` or `@govtech.bb`. One deliberate
+ * oddity preserved verbatim: `elliot-belgrave -> BoscobelPrimary@mes.gov.bb`
+ * (a school rename, not a typo).
  *
  * The guard spec (`primary-school-emails.spec.ts`) asserts this map stays 1:1
  * with `PrimarySchool.options` — every option has an entry, and there are no
@@ -38,6 +39,7 @@ export const SCHOOL_EMAILS: Record<string, string> = {
   "hindsbury-primary": "HindsburyPrimary@mes.gov.bb",
   "holy-innocents-primary": "HolyInnocentsPrimary@mes.gov.bb",
   "ignatius-byer-primary": "IgnatiusByerPrimary@mes.gov.bb",
+  "kellys-fantastic-school": "kelly.roberts@govtech.bb",
   "lawrence-t-gay": "LawrenceTGayPrimary@mes.gov.bb",
   "luther-thorne-memorial": "LutherThorneMemorial@mes.gov.bb",
   "milton-lynch-primary": "MiltonLynchPrimary@mes.gov.bb",
