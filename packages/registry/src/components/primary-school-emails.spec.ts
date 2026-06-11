@@ -15,9 +15,9 @@ describe("SCHOOL_EMAILS", () => {
     expect(orphans).toEqual([]);
   });
 
-  it("maps every entry to a non-empty @mes.gov.bb address", () => {
+  it("maps every entry to a non-empty @mes.gov.bb or @govtech.bb address", () => {
     const bad = Object.entries(SCHOOL_EMAILS).filter(
-      ([, email]) => !email || !/@mes\.gov\.bb$/.test(email),
+      ([, email]) => !email || !/@(mes\.gov\.bb|govtech\.bb)$/.test(email),
     );
     expect(bad).toEqual([]);
   });
