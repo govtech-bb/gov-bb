@@ -14,6 +14,7 @@ import {
   consumeOfferReply,
   funnelPhase,
   getOrCreateSession,
+  matchChangeField,
   matchFormsFromText,
   matchPendingOption,
   nextAskableField,
@@ -22,6 +23,7 @@ import {
   pinSessionForm,
   recordMissOutcome,
   recordOptionValue,
+  resetFieldForChange,
   resolveActiveForm,
   withThreadLock,
   type FormResolution,
@@ -222,7 +224,32 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
         };
       }
     } else if (pinnedBefore === session.slug) {
-      // (2) The user re-invoked the form they're already in (e.g. the banner
+      // (2) The user clicked "Change" on a check-your-answers row — re-present
+      // that one field deterministically. Routing it through the model made it
+      // emit present_choices AND ask_field for the same field, rendering the
+      // question twice (#1255). Reset the field (keeping it presented, so a
+      // re-picked choice is recorded by the option path above; a free-text
+      // re-answer falls to the model), then re-render it.
+      const change = matchChangeField(form, session, latest);
+      if (change) {
+        resetFieldForChange(session, change.field.fieldId);
+        session.askedFieldIds.add(change.field.fieldId);
+        return {
+          kind: "ok",
+          stream: representFieldStream(
+            buildFieldSpec(
+              form.contract,
+              change.field,
+              session.values,
+              session.askedFieldIds,
+            ),
+            { runId, threadId, model },
+          ),
+          abortController: childController(signal),
+          activeFormSlug: session.slug ?? undefined,
+        };
+      }
+      // (3) The user re-invoked the form they're already in (e.g. the banner
       // "Give feedback" link clicked again) with a REQUIRED question still
       // unanswered — re-render that question and its options. Gated on a real
       // re-match of the active form so a field answer or a side question can't

@@ -3,6 +3,11 @@ export {
   recordOptionValue,
   type PendingOptionAnswer,
 } from "./answer";
+export {
+  matchChangeField,
+  resetFieldForChange,
+  type ChangeFieldTarget,
+} from "./change";
 export { matchFormsFromText } from "./detect";
 export { getFormSlugs } from "./defs";
 export { buildFieldSpec, type AskFieldSpec } from "./field-spec";
