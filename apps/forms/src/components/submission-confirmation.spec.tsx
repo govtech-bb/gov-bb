@@ -512,7 +512,7 @@ describe("SubmissionConfirmation — Submission ID label", () => {
     expect(screen.queryByText("Reference number")).not.toBeInTheDocument();
   });
 
-  it("renders 'Submission ID:' label in the payment success block", () => {
+  it("renders the 'Submission ID' box in the payment success block", () => {
     render(
       <SubmissionConfirmation
         serviceTitle="Vehicles"
@@ -528,8 +528,63 @@ describe("SubmissionConfirmation — Submission ID label", () => {
         }}
       />,
     );
-    expect(screen.getByText("Submission ID:")).toBeInTheDocument();
+    expect(screen.getByText("Submission ID")).toBeInTheDocument();
     expect(screen.getByText("JPP-20260604-130732-9JZRZC")).toBeInTheDocument();
+  });
+
+  // Reference parity (F-39): payment forms (e.g. the birth/death/marriage
+  // certificates) must show the Submission ID on the pre-payment "Complete your
+  // payment" card — not only after payment succeeds — so the citizen can quote
+  // it before being sent to EZ Pay.
+  it("renders the 'Submission ID' box on the pre-payment card", () => {
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Birth certificate"
+        stepTitle="Application submitted"
+        submissionState={{
+          hasPayment: true,
+          serviceName: "get-birth-certificate",
+          amount: "$5.00",
+          quantity: 1,
+          submissionSuccess: true,
+          paymentSuccess: false,
+          referenceNumber: "GBC-20260611-104328-SX5YJY",
+          date: "11/06/2026",
+          paymentUrl: "https://ezpay.gov.bb/pay?token=abc",
+        }}
+      />,
+    );
+    // The "Complete your payment" card and the Submission ID box coexist.
+    expect(screen.getByText("Complete your payment")).toBeInTheDocument();
+    expect(screen.getByText("Submission ID")).toBeInTheDocument();
+    expect(screen.getByText("GBC-20260611-104328-SX5YJY")).toBeInTheDocument();
+  });
+
+  it("does not render the 'Submission ID' box in the payment-failed block", () => {
+    // The box is gated on (paymentSuccess || isSafePaymentUrl), mirroring the
+    // trailingSections gate: when payment init failed and there is no safe URL,
+    // we show only the focused error panel, not the reference.
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Birth certificate"
+        stepTitle="Application submitted"
+        submissionState={{
+          hasPayment: true,
+          serviceName: "get-birth-certificate",
+          amount: "$5.00",
+          submissionSuccess: true,
+          paymentSuccess: false,
+          referenceNumber: "GBC-20260611-104328-SX5YJY",
+          date: "11/06/2026",
+          paymentUrl: undefined,
+        }}
+      />,
+    );
+    expect(screen.getByText(/payment was unsuccessful/i)).toBeInTheDocument();
+    expect(screen.queryByText("Submission ID")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("GBC-20260611-104328-SX5YJY"),
+    ).not.toBeInTheDocument();
   });
 
   it("does not render the old 'Reference number:' label in the payment block", () => {
