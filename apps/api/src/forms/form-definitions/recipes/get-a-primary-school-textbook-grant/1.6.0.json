@@ -277,9 +277,6 @@
                 "error": "ID number is required",
                 "value": true
               }
-            },
-            "ui": {
-              "width": "medium"
             }
           }
         },
@@ -513,9 +510,6 @@
                 "error": "ID Number is required",
                 "value": true
               }
-            },
-            "ui": {
-              "width": "medium"
             }
           }
         },
