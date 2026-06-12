@@ -3,7 +3,7 @@
 # parity, matching apps/landing and apps/forms). Production hosting is separate
 # — there's no production-build validation here (that lives in CI).
 
-FROM node:20-alpine
+FROM node:24-alpine
 
 # Corepack must run as root — it writes to /usr/local/bin.
 RUN corepack enable && corepack prepare pnpm@10.33.4 --activate

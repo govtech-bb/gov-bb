@@ -8,7 +8,7 @@
 #   environments/sandbox/modular-forms-sandbox/lambda-rag-indexer.tf
 #   SANDBOX-CHATBOT-INGEST.md
 
-FROM node:20-alpine
+FROM node:24-alpine
 
 RUN corepack enable && corepack prepare pnpm@10.33.4 --activate
 RUN addgroup -S -g 1001 app && adduser -S -u 1001 -G app app
