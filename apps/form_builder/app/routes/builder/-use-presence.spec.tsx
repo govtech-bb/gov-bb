@@ -1,17 +1,17 @@
 /**
- * @jest-environment jsdom
+ * @vitest-environment jsdom
  */
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { usePresence, PRESENCE_SYNC_MS } from "./-use-presence";
 import { claimPresence, releasePresence } from "../../server/presence";
 
-jest.mock("../../server/presence", () => ({
-  claimPresence: jest.fn(),
-  releasePresence: jest.fn(),
+vi.mock("../../server/presence", () => ({
+  claimPresence: vi.fn(),
+  releasePresence: vi.fn(),
 }));
 
-const claimMock = jest.mocked(claimPresence);
-const releaseMock = jest.mocked(releasePresence);
+const claimMock = vi.mocked(claimPresence);
+const releaseMock = vi.mocked(releasePresence);
 
 const HOLDER_ME = {
   userLogin: "alice",
@@ -58,7 +58,7 @@ describe("usePresence", () => {
   });
 
   it("re-syncs on the interval (heartbeat / poll)", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     try {
       claimMock.mockResolvedValue({ held: true, holder: HOLDER_ME });
       renderHook(() => usePresence("marriage-license"));
@@ -66,16 +66,16 @@ describe("usePresence", () => {
       expect(claimMock).toHaveBeenCalledTimes(1);
 
       await act(async () => {
-        jest.advanceTimersByTime(PRESENCE_SYNC_MS);
+        vi.advanceTimersByTime(PRESENCE_SYNC_MS);
       });
       expect(claimMock).toHaveBeenCalledTimes(2);
     } finally {
-      jest.useRealTimers();
+      vi.useRealTimers();
     }
   });
 
   it("auto-takes-over: read-only flips to editable once the claim comes free", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     try {
       claimMock
         .mockResolvedValueOnce({ held: false, holder: HOLDER_OTHER })
@@ -85,12 +85,12 @@ describe("usePresence", () => {
       expect(result.current.isReadOnly).toBe(true);
 
       await act(async () => {
-        jest.advanceTimersByTime(PRESENCE_SYNC_MS);
+        vi.advanceTimersByTime(PRESENCE_SYNC_MS);
       });
       expect(result.current.isReadOnly).toBe(false);
       expect(result.current.holder).toEqual(HOLDER_ME);
     } finally {
-      jest.useRealTimers();
+      vi.useRealTimers();
     }
   });
 

@@ -29,7 +29,7 @@ import { FormDraftsService } from "../form-drafts/form-drafts.service";
 import { FilesService } from "../../files/files.service";
 
 const filesStub = {
-  verifySubmissionFiles: jest.fn().mockResolvedValue({}),
+  verifySubmissionFiles: vi.fn().mockResolvedValue({}),
 };
 import type { ServiceContract } from "@govtech-bb/form-types";
 import type { FormDraftEntity } from "../../database/entities/form-draft.entity";
@@ -206,11 +206,11 @@ describe("SubmissionPipelineService — integration (real conditions + validatio
         SubmissionPipelineService,
         {
           provide: FormDraftsService,
-          useValue: { findById: jest.fn().mockResolvedValue(DRAFT) },
+          useValue: { findById: vi.fn().mockResolvedValue(DRAFT) },
         },
         {
           provide: FormDefinitionsService,
-          useValue: { findByFormId: jest.fn().mockResolvedValue(CONTRACT) },
+          useValue: { findByFormId: vi.fn().mockResolvedValue(CONTRACT) },
         },
         { provide: FilesService, useValue: filesStub },
       ],
@@ -651,11 +651,11 @@ function buildModuleWith(contract: ServiceContract): Promise<{
       SubmissionPipelineService,
       {
         provide: FormDraftsService,
-        useValue: { findById: jest.fn().mockResolvedValue(null) },
+        useValue: { findById: vi.fn().mockResolvedValue(null) },
       },
       {
         provide: FormDefinitionsService,
-        useValue: { findByFormId: jest.fn().mockResolvedValue(contract) },
+        useValue: { findByFormId: vi.fn().mockResolvedValue(contract) },
       },
       { provide: FilesService, useValue: filesStub },
     ],

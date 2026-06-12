@@ -1,5 +1,5 @@
 /**
- * @jest-environment jsdom
+ * @vitest-environment jsdom
  */
 import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
@@ -38,7 +38,7 @@ it("renders an option per resolved field with a `stepId.fieldId` value", () => {
 });
 
 it("calls onChange with the selected `stepId.fieldId` path", async () => {
-  const onChange = jest.fn();
+  const onChange = vi.fn();
   render(<ValuePathPicker value="" fields={FIELDS} onChange={onChange} />);
   await userEvent.selectOptions(screen.getByRole("combobox"), "contact.email");
   expect(onChange).toHaveBeenCalledWith("contact.email");
@@ -53,7 +53,7 @@ it("keeps an existing value selectable even when it matches no current field", (
 });
 
 it("renders extraOptions as `label (value)` and makes them selectable", async () => {
-  const onChange = jest.fn();
+  const onChange = vi.fn();
   render(
     <ValuePathPicker
       value=""

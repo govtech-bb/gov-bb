@@ -6,7 +6,8 @@ applications:
       phases:
         preBuild:
           commands:
-            - npm install -g pnpm@10.30.0
+            - nvm use $(cat .nvmrc) || nvm install $(cat .nvmrc)
+            - npm install -g pnpm@11.6.0
             - pnpm install --frozen-lockfile
         build:
           commands:
@@ -43,7 +44,8 @@ applications:
       phases:
         preBuild:
           commands:
-            - npm install -g pnpm@10.30.0
+            - nvm use $(cat .nvmrc) || nvm install $(cat .nvmrc)
+            - npm install -g pnpm@11.6.0
             - pnpm install --frozen-lockfile
         build:
           commands:
@@ -77,7 +79,8 @@ applications:
       phases:
         preBuild:
           commands:
-            - npm install -g pnpm@10.30.0
+            - nvm use $(cat .nvmrc) || nvm install $(cat .nvmrc)
+            - npm install -g pnpm@11.6.0
             - pnpm install --frozen-lockfile
         build:
           commands:
@@ -113,7 +116,8 @@ applications:
       phases:
         preBuild:
           commands:
-            - npm install -g pnpm@10.30.0
+            - nvm use $(cat .nvmrc) || nvm install $(cat .nvmrc)
+            - npm install -g pnpm@11.6.0
             - pnpm install --frozen-lockfile
         build:
           commands:

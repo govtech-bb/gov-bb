@@ -68,7 +68,7 @@ function makeFieldApi(
       state: { values: fieldValues },
       getFieldValue: (id: string) => fieldValues[id],
     },
-    handleChange: jest.fn(),
+    handleChange: vi.fn(),
   } as unknown as AnyFieldApi;
 }
 

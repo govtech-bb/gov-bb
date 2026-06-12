@@ -1,3 +1,4 @@
+import type { Mocked } from "vitest";
 import { EmailBodyBuilder, type EmailField } from "./email-body.builder";
 import type { FormDefinitionsService } from "../forms/form-definitions/form-definitions.service";
 import type { ServiceContract } from "@govtech-bb/form-types";
@@ -130,16 +131,16 @@ function makePayload(
 
 function makeFormDefinitionsService(
   contract: ServiceContract = makeContract(),
-): jest.Mocked<FormDefinitionsService> {
+): Mocked<FormDefinitionsService> {
   return {
-    findByFormId: jest.fn().mockResolvedValue(contract),
-  } as unknown as jest.Mocked<FormDefinitionsService>;
+    findByFormId: vi.fn().mockResolvedValue(contract),
+  } as unknown as Mocked<FormDefinitionsService>;
 }
 
 /* ── tests ───────────────────────────────────────────────────────────────── */
 
 describe("EmailBodyBuilder", () => {
-  let formSvc: jest.Mocked<FormDefinitionsService>;
+  let formSvc: Mocked<FormDefinitionsService>;
   let builder: EmailBodyBuilder;
 
   beforeEach(() => {

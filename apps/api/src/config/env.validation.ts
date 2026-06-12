@@ -51,6 +51,10 @@ export const envValidationSchema = Joi.object({
   // never emails a real MDA.
   SES_DEFAULT_RECIPIENT: Joi.string().default("testing@govtech.bb"),
 
+  // Recipient for the public site feedback form (apps/landing /feedback).
+  // Explicit per-environment address, not routed through form_config (#1139).
+  FEEDBACK_RECIPIENT: Joi.string().default("feedback@govtech.bb"),
+
   // Spreadsheet export (optional — defaults to <cwd>/exports)
   SPREADSHEET_EXPORT_DIR: Joi.string().optional(),
 

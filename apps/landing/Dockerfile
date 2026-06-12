@@ -3,10 +3,10 @@
 # for local-stack parity. Production hosting is Amplify, not this image — so
 # there's no production-build validation here (that lives in CI).
 
-FROM node:20-alpine
+FROM node:24-alpine
 
 # Corepack must run as root — it writes to /usr/local/bin.
-RUN corepack enable && corepack prepare pnpm@10.33.4 --activate
+RUN corepack enable && corepack prepare pnpm@11.6.0 --activate
 
 # Create the app user up front so every COPY can use --chown=app:app.
 # Explicit UID/GID so we can match them in the cache-mount uid=/gid= options

@@ -1,19 +1,20 @@
+import type { Mock } from "vitest";
 import type { Request, Response } from "express";
 
-jest.mock("../db.js", () => ({ getDataSource: jest.fn() }));
-jest.mock("./presence.js", () => ({ holdsFreshClaim: jest.fn() }));
+vi.mock("../db.js", () => ({ getDataSource: vi.fn() }));
+vi.mock("./presence.js", () => ({ holdsFreshClaim: vi.fn() }));
 // The #759 recipe-validation backstop runs before the presence check; stub it
 // as passing so these tests exercise the presence gate, not validation.
-jest.mock("./validate-recipe.js", () => ({
-  validateRecipeFully: jest.fn().mockResolvedValue({ ok: true }),
+vi.mock("./validate-recipe.js", () => ({
+  validateRecipeFully: vi.fn().mockResolvedValue({ ok: true }),
 }));
 
 import { getDataSource } from "../db.js";
 import { holdsFreshClaim } from "./presence.js";
 import { publishHandler } from "./publish";
 
-const getDataSourceMock = getDataSource as jest.Mock;
-const holdsFreshClaimMock = holdsFreshClaim as jest.Mock;
+const getDataSourceMock = getDataSource as Mock;
+const holdsFreshClaimMock = holdsFreshClaim as Mock;
 
 function mockReq(body: unknown): Request {
   return { body, params: {} } as unknown as Request;
@@ -35,10 +36,10 @@ const recipe = { formId: "marriage-license", version: "1.0.0", title: "M" };
 
 const originalFetch = global.fetch;
 beforeEach(() => {
-  getDataSourceMock.mockResolvedValue({ query: jest.fn() });
+  getDataSourceMock.mockResolvedValue({ query: vi.fn() });
   holdsFreshClaimMock.mockReset();
   // Fail loudly if the gate ever lets a non-holder reach GitHub.
-  global.fetch = jest.fn(() => {
+  global.fetch = vi.fn(() => {
     throw new Error("fetch must not be called when the presence gate rejects");
   }) as unknown as typeof fetch;
 });

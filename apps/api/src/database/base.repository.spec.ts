@@ -1,3 +1,4 @@
+import type { Mock } from "vitest";
 import { EntityManager } from "typeorm";
 import { BaseRepository } from "./base.repository";
 
@@ -11,9 +12,9 @@ function makeRepo(
   txError?: Error,
 ): {
   repo: TestRepository;
-  mockTransaction: jest.Mock;
+  mockTransaction: Mock;
 } {
-  const mockTransaction = jest.fn();
+  const mockTransaction = vi.fn();
 
   if (txError) {
     mockTransaction.mockRejectedValue(txError);

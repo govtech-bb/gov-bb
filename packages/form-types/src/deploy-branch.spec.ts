@@ -7,10 +7,10 @@ import {
 describe("deploy branch names", () => {
   beforeEach(() => {
     // Freeze "now" so branch names are deterministic.
-    jest.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
+    vi.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
   });
 
-  afterEach(() => jest.restoreAllMocks());
+  afterEach(() => vi.restoreAllMocks());
 
   describe("deployBranchName", () => {
     it("replaces the version's dots with dashes (#805)", () => {

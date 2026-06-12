@@ -1,18 +1,19 @@
+import type { Mock } from "vitest";
 /**
- * @jest-environment node
+ * @vitest-environment node
  */
 import type { FormDefinitionSummary } from "../types/index";
 
 // Mock the auth surface before importing the SUT — the requireSession
 // middleware reads SESSION_SECRET + a session cookie and would otherwise
 // throw under jsdom-free jest. Matches the pattern in publish.spec.ts.
-jest.mock("./session-cipher.server", () => ({
-  getSession: jest.fn(),
+vi.mock("./session-cipher.server", () => ({
+  getSession: vi.fn(),
 }));
-jest.mock("@tanstack/react-start/server", () => ({
+vi.mock("@tanstack/react-start/server", () => ({
   getRequestHeaders: () => new Headers({ cookie: "fb_session=opaque" }),
 }));
-jest.mock("./api-client", () => {
+vi.mock("./api-client", () => {
   const ApiError = class extends Error {
     constructor(
       public readonly status: number,
@@ -22,15 +23,15 @@ jest.mock("./api-client", () => {
     }
   };
   return {
-    api: { get: jest.fn(), post: jest.fn(), put: jest.fn(), del: jest.fn() },
+    api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), del: vi.fn() },
     ApiError,
   };
 });
 
 // getRecipe resolves the published copy through getPublishedRecipe; mock it so
 // the precedence tests don't hit GitHub.
-jest.mock("./github-recipes", () => ({
-  getPublishedRecipe: jest.fn(),
+vi.mock("./github-recipes", () => ({
+  getPublishedRecipe: vi.fn(),
 }));
 
 import { getSession } from "./session-cipher.server";
@@ -44,7 +45,7 @@ import {
   updateRecipe,
 } from "./forms";
 
-const getPublishedRecipeMock = getPublishedRecipe as jest.Mock;
+const getPublishedRecipeMock = getPublishedRecipe as Mock;
 
 const SESSION = {
   login: "alice",
@@ -52,12 +53,12 @@ const SESSION = {
   expiresAt: Date.now() + 3600_000,
 };
 
-const apiGet = api.get as jest.Mock;
+const apiGet = api.get as Mock;
 
 beforeEach(() => {
-  jest.resetAllMocks();
+  vi.resetAllMocks();
   process.env.SESSION_SECRET = Buffer.alloc(32).toString("base64");
-  (getSession as jest.Mock).mockReturnValue(SESSION);
+  (getSession as Mock).mockReturnValue(SESSION);
 });
 
 afterEach(() => {
@@ -396,7 +397,7 @@ describe("listForms", () => {
 
 describe("rekeyRecipe", () => {
   it("posts the recipe to the old form's rekey endpoint", async () => {
-    const apiPost = api.post as jest.Mock;
+    const apiPost = api.post as Mock;
     apiPost.mockResolvedValue(undefined);
     const recipe = { formId: "birth-registration", version: "1.0.0" };
 
@@ -412,7 +413,7 @@ describe("rekeyRecipe", () => {
   });
 
   it("URL-encodes the old form ID in the endpoint path", async () => {
-    const apiPost = api.post as jest.Mock;
+    const apiPost = api.post as Mock;
     apiPost.mockResolvedValue(undefined);
 
     await rekeyRecipe({
@@ -431,7 +432,7 @@ describe("rekeyRecipe", () => {
 
 describe("submitRecipe — userLogin threading (#874)", () => {
   it("stamps the session login onto the save so the read-only-lock gate passes", async () => {
-    const apiPost = api.post as jest.Mock;
+    const apiPost = api.post as Mock;
     apiPost.mockResolvedValue(undefined);
     const recipe = { formId: "marriage-license", version: "1.0.0" };
 
@@ -450,7 +451,7 @@ describe("submitRecipe — userLogin threading (#874)", () => {
 
 describe("updateRecipe — userLogin threading (#874)", () => {
   it("stamps the session login onto the PUT save", async () => {
-    const apiPut = api.put as jest.Mock;
+    const apiPut = api.put as Mock;
     apiPut.mockResolvedValue(undefined);
     const recipe = { formId: "marriage-license", version: "1.0.0" };
 

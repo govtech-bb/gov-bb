@@ -5,7 +5,7 @@ stage: "alpha"
 visibility: preview
 publish_date: 2026-06-10
 category: social-empowerment
-form_id: ""
+form_id: "seniors-recreational-activities-programme"
 ---
 
 Use this service to register for the Seniors' Recreational Activities Programme. The programme runs weekly recreational sessions for older people at community locations around Barbados.

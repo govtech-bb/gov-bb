@@ -1,5 +1,5 @@
 import type { StreamChunk } from "@tanstack/ai";
-import { EventType } from "@tanstack/ai";
+import { EventType, normalizeToolResult } from "@tanstack/ai";
 import type { RepresentStreamContext } from "./represent-field-stream";
 
 // Deterministically render a present_choices question WITHOUT invoking the
@@ -47,7 +47,7 @@ export async function* representChoicesStream(
     type: EventType.TOOL_CALL_END,
     toolCallId,
     input: { question, choices },
-    result: JSON.stringify({ shown: true }),
+    result: normalizeToolResult({ shown: true }),
     model,
     timestamp,
   } as StreamChunk;

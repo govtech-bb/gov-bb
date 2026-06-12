@@ -6,7 +6,9 @@
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",
-      "outputs": ["{options.outputPath}"],
+      "outputs": [
+        "{options.outputPath}"
+      ],
       "options": {
         "outputPath": "dist/packages/ai-bedrock",
         "tsConfig": "packages/ai-bedrock/tsconfig.json",
@@ -16,14 +18,16 @@
     "test": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "pnpm test",
+        "command": "vitest run",
         "cwd": "packages/ai-bedrock"
       }
     },
     "lint": {
       "executor": "@nx/eslint:lint",
       "options": {
-        "lintFilePatterns": ["packages/ai-bedrock/**/*.ts"]
+        "lintFilePatterns": [
+          "packages/ai-bedrock/**/*.ts"
+        ]
       }
     }
   },

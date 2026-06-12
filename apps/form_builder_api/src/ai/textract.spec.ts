@@ -8,18 +8,20 @@ import tableFixture from "./__fixtures__/textract/table.json";
 
 const blocksOf = (f: { Blocks: unknown[] }) => f.Blocks as Block[];
 
-const sendMock = jest.fn();
-jest.mock("@aws-sdk/client-textract", () => {
+const sendMock = vi.fn();
+vi.mock("@aws-sdk/client-textract", () => {
   return {
-    TextractClient: jest.fn().mockImplementation(() => ({
-      send: (...args: unknown[]) => sendMock(...args),
-    })),
-    StartDocumentAnalysisCommand: jest
-      .fn()
-      .mockImplementation((args) => ({ name: "Start", args })),
-    GetDocumentAnalysisCommand: jest
-      .fn()
-      .mockImplementation((args) => ({ name: "Get", args })),
+    TextractClient: vi.fn(function () {
+      return {
+        send: (...args: unknown[]) => sendMock(...args),
+      };
+    }),
+    StartDocumentAnalysisCommand: vi.fn(function (args) {
+      return { name: "Start", args };
+    }),
+    GetDocumentAnalysisCommand: vi.fn(function (args) {
+      return { name: "Get", args };
+    }),
   };
 });
 

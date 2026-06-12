@@ -15,12 +15,15 @@
  *   pnpm --filter @govtech-bb/forms test:smoke
  *   SMOKE_BASE_URL=https://forms.sandbox.alpha.gov.bb pnpm --filter @govtech-bb/forms test:smoke
  *
- * Notes (from the 1.0.0 recipe contract):
+ * Notes (from the recipe contract):
  *  - Field IDs are `${stepId}_${fieldId}` (kebab-case fieldIds).
  *  - `applicant.applicant-dob` is a `date-of-birth` (three-part day/month/year
  *    widget) and must be in the past.
  *  - `contact-parish` renders as a native `<select>` — use `selectDropdown`
  *    with a slug value ("st-michael").
+ *  - `prof-ref-relationship` / `pers-ref-relationship` use the `relationship`
+ *    component, which renders as a native `<select>` — use `selectDropdown`
+ *    with a slug value (e.g. "colleague", "friend"), not free text.
  *  - There are NO repeatable steps and NO file uploads in this form.
  *  - Conditionals are kept hidden by choosing non-triggering answers:
  *      · `employment-status` = "unemployed" hides the `institution-name`,
@@ -142,7 +145,8 @@ test.describe("Project Protege Mentor — Live Smoke", () => {
       faker.person.firstName(),
     );
     await fillField(page, step, "prof-ref-last-name", faker.person.lastName());
-    await fillField(page, step, "prof-ref-relationship", "Former supervisor");
+    // `relationship` renders as a native <select> (slug values) — not a text input.
+    await selectDropdown(page, step, "prof-ref-relationship", "colleague");
     await fillField(page, step, "prof-ref-email", "testing@govtech.bb");
     await fillField(page, step, "prof-ref-phone", "246-418-1234");
     await advance(page, step);
@@ -156,7 +160,8 @@ test.describe("Project Protege Mentor — Live Smoke", () => {
       faker.person.firstName(),
     );
     await fillField(page, step, "pers-ref-last-name", faker.person.lastName());
-    await fillField(page, step, "pers-ref-relationship", "Community leader");
+    // `relationship` renders as a native <select> (slug values) — not a text input.
+    await selectDropdown(page, step, "pers-ref-relationship", "friend");
     await fillField(page, step, "pers-ref-email", "testing@govtech.bb");
     await fillField(page, step, "pers-ref-phone", "246-418-1234");
     await advance(page, step);

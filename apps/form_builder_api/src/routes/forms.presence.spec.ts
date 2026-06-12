@@ -1,11 +1,12 @@
+import type { Mock } from "vitest";
 import type { Request, Response } from "express";
 
-jest.mock("@govtech-bb/database", () => ({
+vi.mock("@govtech-bb/database", () => ({
   FormDefinitionEntity: class FormDefinitionEntity {},
   FormConfigEntity: class FormConfigEntity {},
 }));
-jest.mock("../db.js", () => ({ getDataSource: jest.fn() }));
-jest.mock("./presence.js", () => ({ holdsFreshClaim: jest.fn() }));
+vi.mock("../db.js", () => ({ getDataSource: vi.fn() }));
+vi.mock("./presence.js", () => ({ holdsFreshClaim: vi.fn() }));
 
 import { getDataSource } from "../db.js";
 import { holdsFreshClaim } from "./presence.js";
@@ -15,8 +16,8 @@ import {
   rekeyFormHandler,
 } from "./forms";
 
-const getDataSourceMock = getDataSource as jest.Mock;
-const holdsFreshClaimMock = holdsFreshClaim as jest.Mock;
+const getDataSourceMock = getDataSource as Mock;
+const holdsFreshClaimMock = holdsFreshClaim as Mock;
 
 function mockReq(body: unknown, params: Record<string, string> = {}): Request {
   return { body, params } as unknown as Request;
@@ -42,9 +43,9 @@ beforeEach(() => {
   // A DataSource that would let the save proceed if the gate didn't stop it,
   // so a leaked write would surface as a wrong status rather than a crash.
   getDataSourceMock.mockResolvedValue({
-    getRepository: () => ({ findOne: jest.fn().mockResolvedValue(null) }),
-    query: jest.fn().mockResolvedValue([]),
-    transaction: jest.fn(),
+    getRepository: () => ({ findOne: vi.fn().mockResolvedValue(null) }),
+    query: vi.fn().mockResolvedValue([]),
+    transaction: vi.fn(),
   });
   holdsFreshClaimMock.mockReset();
 });

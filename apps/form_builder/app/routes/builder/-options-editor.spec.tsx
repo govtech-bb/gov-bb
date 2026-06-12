@@ -1,5 +1,5 @@
 /**
- * @jest-environment jsdom
+ * @vitest-environment jsdom
  */
 import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
@@ -56,7 +56,7 @@ it("shows Reset button when overridden", () => {
 });
 
 it("emits the defaults plus a blank row when Add option is clicked while not overridden", async () => {
-  const onChange = jest.fn();
+  const onChange = vi.fn();
   render(
     <OptionsEditor
       value={[]}
@@ -73,7 +73,7 @@ it("emits the defaults plus a blank row when Add option is clicked while not ove
 });
 
 it("emits the array with an updated label when a label input changes", async () => {
-  const onChange = jest.fn();
+  const onChange = vi.fn();
   render(
     <OptionsEditor
       value={defaults}
@@ -91,7 +91,7 @@ it("emits the array with an updated label when a label input changes", async () 
 });
 
 it("emits the array with an updated value when a value input changes", async () => {
-  const onChange = jest.fn();
+  const onChange = vi.fn();
   render(
     <OptionsEditor
       value={defaults}
@@ -109,7 +109,7 @@ it("emits the array with an updated value when a value input changes", async () 
 });
 
 it("emits the array without the removed row when a delete button is clicked", async () => {
-  const onChange = jest.fn();
+  const onChange = vi.fn();
   render(
     <OptionsEditor
       value={defaults}
@@ -124,7 +124,7 @@ it("emits the array without the removed row when a delete button is clicked", as
 });
 
 it("moves a row down when the down button is clicked", async () => {
-  const onChange = jest.fn();
+  const onChange = vi.fn();
   render(
     <OptionsEditor
       value={defaults}
@@ -142,7 +142,7 @@ it("moves a row down when the down button is clicked", async () => {
 });
 
 it("moves a row up when the up button is clicked", async () => {
-  const onChange = jest.fn();
+  const onChange = vi.fn();
   render(
     <OptionsEditor
       value={defaults}
@@ -176,7 +176,7 @@ it("disables the up button on the first row and the down button on the last row"
 });
 
 it("emits the array with a row's disabled flag toggled on", async () => {
-  const onChange = jest.fn();
+  const onChange = vi.fn();
   render(
     <OptionsEditor
       value={defaults}
@@ -194,7 +194,7 @@ it("emits the array with a row's disabled flag toggled on", async () => {
 });
 
 it("clears the disabled flag when an already-disabled row's checkbox is unchecked", async () => {
-  const onChange = jest.fn();
+  const onChange = vi.fn();
   render(
     <OptionsEditor
       value={[
@@ -215,7 +215,7 @@ it("clears the disabled flag when an already-disabled row's checkbox is unchecke
 });
 
 it("emits undefined when Reset to defaults is clicked", async () => {
-  const onChange = jest.fn();
+  const onChange = vi.fn();
   render(
     <OptionsEditor
       value={[{ label: "Custom", value: "custom" }]}

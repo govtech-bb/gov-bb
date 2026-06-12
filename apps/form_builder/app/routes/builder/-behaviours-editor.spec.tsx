@@ -1,5 +1,5 @@
 /**
- * @jest-environment jsdom
+ * @vitest-environment jsdom
  *
  * #519: the conditional Target Field picker is gated on and scoped to the
  * selected Target Step, keyed by resolved field id.
@@ -60,7 +60,7 @@ function targetStepSelect() {
     ) as HTMLSelectElement;
 }
 
-function renderStepBehaviour(behaviours: Behaviour[], onChange = jest.fn()) {
+function renderStepBehaviour(behaviours: Behaviour[], onChange = vi.fn()) {
   render(
     <BehavioursEditor
       scope="step"
@@ -168,7 +168,7 @@ it("keeps the Target Field when the new step still contains it", async () => {
       isBoolean: false,
     },
   ];
-  const onChange = jest.fn();
+  const onChange = vi.fn();
   render(
     <BehavioursEditor
       scope="step"
@@ -227,7 +227,7 @@ it("renders distinct options for two fields in a step that resolve to the same i
       ]}
       fieldRefs={refs}
       stepRefs={STEP_REFS}
-      onChange={jest.fn()}
+      onChange={vi.fn()}
     />,
   );
   // Placeholder + two duplicate-id options, all rendered (no key collision).
@@ -235,7 +235,7 @@ it("renders distinct options for two fields in a step that resolve to the same i
 });
 
 it("defaults a new fieldConditionalOn's Target Step to currentStepId", async () => {
-  const onChange = jest.fn();
+  const onChange = vi.fn();
   render(
     <BehavioursEditor
       scope="field"
@@ -374,7 +374,7 @@ it("offers Optional If in the Add Behaviour dropdown for field scope", () => {
       behaviours={[]}
       fieldRefs={FIELD_REFS}
       stepRefs={STEP_REFS}
-      onChange={jest.fn()}
+      onChange={vi.fn()}
       currentStepId="step-1"
     />,
   );
@@ -391,7 +391,7 @@ it("does not offer Optional If for step scope", () => {
 });
 
 it("defaults a new optionalIf's Target Step to currentStepId", async () => {
-  const onChange = jest.fn();
+  const onChange = vi.fn();
   render(
     <BehavioursEditor
       scope="field"
@@ -425,7 +425,7 @@ it("adding a repeatable behaviour initialises { min: 1, max: 5 }", async () => {
 });
 
 it("the Min input for repeatable has min='1' and changing to 0 stores 1", () => {
-  const onChange = jest.fn();
+  const onChange = vi.fn();
   render(
     <BehavioursEditor
       scope="step"
@@ -452,7 +452,7 @@ it("the Min input for repeatable has min='1' and changing to 0 stores 1", () => 
 });
 
 it("with min: 3, changing Max to 2 stores 3 (clamped to atLeastParam)", () => {
-  const onChange = jest.fn();
+  const onChange = vi.fn();
   render(
     <BehavioursEditor
       scope="step"
@@ -477,7 +477,7 @@ it("with min: 3, changing Max to 2 stores 3 (clamped to atLeastParam)", () => {
 });
 
 it("raising Min above current Max also raises Max (min: 7 with max: 5 stores { min: 7, max: 7 })", () => {
-  const onChange = jest.fn();
+  const onChange = vi.fn();
   render(
     <BehavioursEditor
       scope="step"
@@ -517,7 +517,7 @@ it("renders the gated step/field/operator/value controls for an optionalIf behav
       ]}
       fieldRefs={FIELD_REFS}
       stepRefs={STEP_REFS}
-      onChange={jest.fn()}
+      onChange={vi.fn()}
       currentStepId="step-1"
     />,
   );
@@ -556,7 +556,7 @@ it("shows the stored addAnotherLabel value", () => {
 });
 
 it("does not initialize addAnotherLabel when adding a repeatable behaviour", async () => {
-  const onChange = jest.fn();
+  const onChange = vi.fn();
   render(
     <BehavioursEditor
       scope="step"
@@ -611,7 +611,7 @@ it("treats whitespace-only input as blank", async () => {
 
 function renderSharedFields(
   fieldIds: string[],
-  onChange = jest.fn(),
+  onChange = vi.fn(),
   { refs = FIELD_REFS, currentStepId = "step-1" as string | undefined } = {},
 ) {
   render(
@@ -684,7 +684,7 @@ it("renders one checkbox for two same-step fields that resolve to the same id", 
       isBoolean: false,
     },
   ];
-  renderSharedFields([], jest.fn(), { refs });
+  renderSharedFields([], vi.fn(), { refs });
   expect(screen.getAllByRole("checkbox")).toHaveLength(1);
 });
 
@@ -700,13 +700,13 @@ it("renders no checkbox for a stale id and drops it on the next toggle", async (
 });
 
 it("shows a hint instead of checkboxes when the step has no fields", () => {
-  renderSharedFields([], jest.fn(), { currentStepId: "step-9" });
+  renderSharedFields([], vi.fn(), { currentStepId: "step-9" });
   expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
   expect(screen.getByText(/no fields/i)).toBeInTheDocument();
 });
 
 it("adding a Shared Fields behaviour seeds an empty fieldIds array", async () => {
-  const onChange = jest.fn();
+  const onChange = vi.fn();
   render(
     <BehavioursEditor
       scope="step"
@@ -727,7 +727,7 @@ it("step-scope stepConditionalOn still seeds an empty Target Step when currentSt
   // The step editor now passes currentStepId for the checkbox list; the
   // stepRef seeding must stay field-scope-only so the Target Step doesn't
   // default to the step itself (#519 gating unchanged).
-  const onChange = jest.fn();
+  const onChange = vi.fn();
   render(
     <BehavioursEditor
       scope="step"
