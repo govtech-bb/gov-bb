@@ -5,7 +5,8 @@
     "default": ["{projectRoot}/**/*", "sharedGlobals"],
     "sharedGlobals": [
       "{workspaceRoot}/tsconfig.base.json",
-      "{workspaceRoot}/pnpm-lock.yaml"
+      "{workspaceRoot}/pnpm-lock.yaml",
+      "{workspaceRoot}/.nvmrc"
     ],
     "production": [
       "default",
