@@ -14,7 +14,7 @@
     "lint-staged": "^16.4.0"
   },
   "dependencies": {
-    "libphonenumber-js": "^1.13.5",
-    "@govtech-bb/expressions": "workspace:*"
+    "@govtech-bb/expressions": "workspace:*",
+    "libphonenumber-js": "^1.13.5"
   }
 }

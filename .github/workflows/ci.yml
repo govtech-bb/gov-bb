@@ -27,6 +27,12 @@ jobs:
           cache: "pnpm"
       - run: pnpm install --frozen-lockfile
 
+      # Fails on dependency-version drift across workspace packages.
+      # Deliberate splits (express 4/5, forms' eslint 9, react-markdown 9/10)
+      # are ignored via flags in the script — see root package.json.
+      - name: Dependency consistency (sherif)
+        run: pnpm lint:deps
+
       - name: Run type check (tsc --build)
         id: typecheck
         run: |
