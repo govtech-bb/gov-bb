@@ -1,12 +1,10 @@
+import type { Mock } from "vitest";
 import { getPublishedRecipe } from "./github-recipes";
 import { REPO_NAME } from "./github-repo";
 
 const REPO_OWNER = "govtech-bb";
 
-type FetchMock = jest.Mock<
-  Promise<Response>,
-  [RequestInfo | URL, RequestInit?]
->;
+type FetchMock = Mock<Promise<Response>, [RequestInfo | URL, RequestInit?]>;
 
 function makeJsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -27,12 +25,12 @@ describe("github-recipes", () => {
 
   beforeEach(() => {
     process.env.GITHUB_ORG = REPO_OWNER;
-    fetchMock = jest.fn() as unknown as FetchMock;
+    fetchMock = vi.fn() as unknown as FetchMock;
     globalThis.fetch = fetchMock as unknown as typeof fetch;
   });
 
   afterEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
   });
 
   describe("getPublishedRecipe", () => {

@@ -1,3 +1,4 @@
+import type { Mock, Mocked } from "vitest";
 import { InternalServerErrorException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import {
@@ -8,10 +9,15 @@ import {
 import { FeedbackService, type FeedbackInput } from "./feedback.service";
 import type { MetricsService } from "../telemetry/metrics.service";
 
-jest.mock("@aws-sdk/client-sesv2");
-
-const mockSend = jest.fn();
-(SESv2Client as jest.Mock).mockImplementation(() => ({ send: mockSend }));
+const { mockSend } = vi.hoisted(() => ({ mockSend: vi.fn() }));
+vi.mock("@aws-sdk/client-sesv2", () => ({
+  SESv2Client: vi.fn(function (this: { send: typeof mockSend }) {
+    this.send = mockSend;
+  }),
+  SendEmailCommand: vi.fn(function (this: { input: unknown }, input: unknown) {
+    this.input = input;
+  }),
+}));
 
 function makeConfig(overrides: Record<string, unknown> = {}): ConfigService {
   const defaults: Record<string, unknown> = {
@@ -24,15 +30,15 @@ function makeConfig(overrides: Record<string, unknown> = {}): ConfigService {
   return { get: (key: string) => defaults[key] } as unknown as ConfigService;
 }
 
-function makeMetrics(): jest.Mocked<MetricsService> {
+function makeMetrics(): Mocked<MetricsService> {
   return {
-    recordFeedbackEmailFailure: jest.fn(),
-  } as unknown as jest.Mocked<MetricsService>;
+    recordFeedbackEmailFailure: vi.fn(),
+  } as unknown as Mocked<MetricsService>;
 }
 
 /** Read the SendEmailCommand input recorded by the auto-mocked constructor. */
 function getSentInput(): SendEmailCommandInput {
-  const MockedCmd = SendEmailCommand as unknown as jest.Mock;
+  const MockedCmd = SendEmailCommand as unknown as Mock;
   return MockedCmd.mock.calls[0][0] as SendEmailCommandInput;
 }
 
@@ -57,7 +63,7 @@ const DTO: FeedbackInput = {
 };
 
 beforeEach(() => {
-  jest.clearAllMocks();
+  vi.clearAllMocks();
   mockSend.mockResolvedValue({ MessageId: "ses-msg-001" });
 });
 

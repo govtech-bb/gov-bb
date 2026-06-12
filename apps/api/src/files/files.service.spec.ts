@@ -1,3 +1,4 @@
+import type { Mock } from "vitest";
 import { Test, TestingModule } from "@nestjs/testing";
 import { ConfigService } from "@nestjs/config";
 import { mockClient } from "aws-sdk-client-mock";
@@ -48,7 +49,7 @@ function makeContract(): ServiceContract {
 
 describe("FilesService", () => {
   let service: FilesService;
-  let formDefs: { findByFormId: jest.Mock };
+  let formDefs: { findByFormId: Mock };
 
   beforeAll(() => {
     process.env.AWS_ACCESS_KEY_ID = "test-access-key";
@@ -58,7 +59,7 @@ describe("FilesService", () => {
   beforeEach(async () => {
     s3Mock.reset();
     formDefs = {
-      findByFormId: jest.fn().mockResolvedValue(makeContract()),
+      findByFormId: vi.fn().mockResolvedValue(makeContract()),
     };
 
     const cfg: Record<string, unknown> = {

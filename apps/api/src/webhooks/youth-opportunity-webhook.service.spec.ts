@@ -1,3 +1,4 @@
+import type { Mock } from "vitest";
 import { Logger } from "@nestjs/common";
 import { of, throwError } from "rxjs";
 import {
@@ -19,7 +20,7 @@ function makePayload(): FormSubmittedWebhookPayload {
   };
 }
 
-function makeService(config: Partial<WebhooksConfig>, post: jest.Mock) {
+function makeService(config: Partial<WebhooksConfig>, post: Mock) {
   const http = { post } as unknown as ConstructorParameters<
     typeof YouthOpportunityWebhookService
   >[0];
@@ -34,7 +35,7 @@ function makeService(config: Partial<WebhooksConfig>, post: jest.Mock) {
 
 describe("YouthOpportunityWebhookService", () => {
   it("posts the frontend-alpha payload shape to /api/webhooks/form-submitted", async () => {
-    const post = jest.fn().mockReturnValue(of({ status: 200 }));
+    const post = vi.fn().mockReturnValue(of({ status: 200 }));
     await makeService({}, post).dispatch(makePayload());
 
     const [url, body, options] = post.mock.calls[0];
@@ -57,7 +58,7 @@ describe("YouthOpportunityWebhookService", () => {
   });
 
   it("resolves the endpoint when the base URL has a trailing slash", async () => {
-    const post = jest.fn().mockReturnValue(of({ status: 200 }));
+    const post = vi.fn().mockReturnValue(of({ status: 200 }));
     await makeService({ url: "https://cases.example.gov.bb/" }, post).dispatch(
       makePayload(),
     );
@@ -67,8 +68,10 @@ describe("YouthOpportunityWebhookService", () => {
   });
 
   it("skips dispatch (and warns) when url or secret is missing", async () => {
-    const warn = jest.spyOn(Logger.prototype, "warn").mockImplementation();
-    const post = jest.fn();
+    const warn = vi
+      .spyOn(Logger.prototype, "warn")
+      .mockImplementation(() => {});
+    const post = vi.fn();
     await makeService({ url: "" }, post).dispatch(makePayload());
     await makeService({ secret: "" }, post).dispatch(makePayload());
 
@@ -78,8 +81,10 @@ describe("YouthOpportunityWebhookService", () => {
   });
 
   it("swallows downstream errors so the submission is never affected", async () => {
-    const error = jest.spyOn(Logger.prototype, "error").mockImplementation();
-    const post = jest
+    const error = vi
+      .spyOn(Logger.prototype, "error")
+      .mockImplementation(() => {});
+    const post = vi
       .fn()
       .mockReturnValue(throwError(() => new Error("connection refused")));
 

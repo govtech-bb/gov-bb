@@ -1,30 +1,31 @@
+import type { Mock } from "vitest";
 import { HttpException, HttpStatus } from "@nestjs/common";
 import { FormDefinitionsController } from "./form-definitions.controller";
 
 const mockFormDefinitionsService = {
-  findAll: jest.fn(),
-  findByFormId: jest.fn(),
+  findAll: vi.fn(),
+  findByFormId: vi.fn(),
 };
 
 const mockDisabledOverridesService = {
-  find: jest.fn(),
-  findAllFormIds: jest.fn().mockResolvedValue([]),
-  disable: jest.fn(),
-  enable: jest.fn(),
+  find: vi.fn(),
+  findAllFormIds: vi.fn().mockResolvedValue([]),
+  disable: vi.fn(),
+  enable: vi.fn(),
 };
 
 const mockConfigService = {
-  get: jest.fn().mockReturnValue(""),
+  get: vi.fn().mockReturnValue(""),
 };
 
 describe("FormDefinitionsController — kill switch short-circuit", () => {
   let controller: FormDefinitionsController;
-  let res: { setHeader: jest.Mock };
+  let res: { setHeader: Mock };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockConfigService.get.mockReturnValue("");
-    res = { setHeader: jest.fn() };
+    res = { setHeader: vi.fn() };
     controller = new FormDefinitionsController(
       mockFormDefinitionsService as never,
       mockDisabledOverridesService as never,

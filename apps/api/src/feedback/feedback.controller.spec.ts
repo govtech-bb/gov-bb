@@ -1,11 +1,12 @@
+import type { Mocked } from "vitest";
 import { FeedbackController } from "./feedback.controller";
 import type { FeedbackService } from "./feedback.service";
 import type { CreateFeedbackDto } from "./dto/create-feedback.dto";
 
-function makeService(): jest.Mocked<FeedbackService> {
+function makeService(): Mocked<FeedbackService> {
   return {
-    send: jest.fn().mockResolvedValue(undefined),
-  } as unknown as jest.Mocked<FeedbackService>;
+    send: vi.fn().mockResolvedValue(undefined),
+  } as unknown as Mocked<FeedbackService>;
 }
 
 const BODY = {
