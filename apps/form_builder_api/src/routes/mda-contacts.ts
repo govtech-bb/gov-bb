@@ -3,7 +3,7 @@ import { z } from "zod";
 import { MdaContactEntity } from "@govtech-bb/database";
 import { getDataSource } from "../db.js";
 
-export const mdaContactsRouter = Router();
+export const mdaContactsRouter: Router = Router();
 
 // Public department address. Mirrors the MdaContactAddress shape in
 // @govtech-bb/database and the form-types `contactDetails` address subset.

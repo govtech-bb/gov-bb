@@ -2,9 +2,6 @@ packages:
   - "apps/*"
   - "packages/*"
 
-# was .npmrc node-linker=hoisted; lives here so npm stops warning
-# about unknown config — see docs/decisions/0002
-nodeLinker: hoisted
 
 # pnpm 11 supply-chain hardening: no git/URL deps in the transitive graph.
 # NOTE: trustPolicy no-downgrade was tried and reverted — it blocks

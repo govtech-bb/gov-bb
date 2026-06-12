@@ -50,6 +50,14 @@ COPY --chown=app:app packages/ packages/
 
 RUN pnpm exec nx build api
 
+# Assemble a self-contained production tree with pnpm's purpose-built
+# command: app source + compiled dist + node_modules with workspace
+# packages materialized (no cross-tree symlinks to hand-maintain).
+# devDependencies are included on purpose — the ECS sandbox migrate-task
+# runs `pnpm migration:run`, which needs ts-node/tsconfig-paths at runtime.
+# --legacy: this workspace doesn't use injected workspace packages.
+RUN pnpm --filter=@govtech-bb/api deploy --legacy /home/app/deployed
+
 # ---- dev ----------------------------------------------------------------
 # Hot-reload image used by docker-compose for local iteration. Reuses the
 # builder stage (deps already installed, source already copied, prod build
@@ -65,14 +73,24 @@ EXPOSE 3001
 CMD ["pnpm", "exec", "nx", "dev", "api"]
 
 # ---- runner -------------------------------------------------------------
-# Slim runtime image. Includes pnpm so the ECS sandbox migrate-task
-# (deploy-sandbox.yml) can shell into the container and run `pnpm migration:run`.
+# Slim runtime image built from `pnpm deploy`'s self-contained output: the
+# api package (source + compiled dist/) with a materialized node_modules —
+# workspace packages included as real directories, no cross-tree symlinks.
+# Includes pnpm so the ECS sandbox migrate-task (deploy-sandbox.yml) can
+# shell in and run `pnpm migration:run`.
 FROM node:24-alpine AS runner
 
 RUN corepack enable && corepack prepare pnpm@11.6.0 --activate
 
 # Closes #15 (CIS Docker Benchmark — no container should run as root).
 RUN addgroup -S -g 1001 app && adduser -S -u 1001 -G app app
+
+# apps/api/tsconfig.json extends ../../tsconfig.base.json. The migrate-task
+# preloads tsconfig-paths/register, which follows that extends chain from
+# /app — park the base config where the relative path lands. Its `paths`
+# targets don't exist in this image, so tsconfig-paths falls back to normal
+# node_modules resolution (the deployed packages' compiled dist).
+COPY --from=builder --chown=app:app /app/tsconfig.base.json /tsconfig.base.json
 
 WORKDIR /app
 
@@ -83,57 +101,12 @@ RUN wget -O /app/rds-ca-bundle.pem https://truststore.pki.rds.amazonaws.com/glob
 RUN chown app:app /app
 USER app
 
-COPY --from=builder --chown=app:app /app/dist/apps/api/ ./dist/
-COPY --from=builder --chown=app:app /app/dist/packages/ ./packages/
-# Workspace-package SOURCE overlays for ts-node. The migrate-task runs
-# `pnpm migration:run`, which ts-node-compiles apps/api/typeorm.config.ts →
-# data-source.ts and typechecks every `@govtech-bb/*` import against the
-# tsconfig.base.json `paths` mapping — `packages/<pkg>/src/index.ts`. The
-# compiled packages copied above contain only .js/.d.ts, and a missing paths
-# target makes TypeScript crash with a bare "Debug Failure" (it asserts while
-# building the module-not-found diagnostic). Any package imported from the
-# ts-node-compiled graph needs its src/ overlaid here; runtime require()
-# still resolves to the compiled .js via the package.json `main`.
-#   - form-types: imported (type-only) by the entity declarations
-#   - database: imported by data-source.ts since #721
-COPY --from=builder --chown=app:app /app/packages/form-types/src/ ./packages/form-types/src/
-COPY --from=builder --chown=app:app /app/packages/database/src/ ./packages/database/src/
-COPY --from=builder --chown=app:app /app/node_modules/ ./node_modules/
-
-# pnpm (hoisted mode) keeps workspace-package symlinks in the consumer's
-# own node_modules (apps/api/node_modules/@govtech-bb/*). The runtime
-# entry is /app/dist/src/main.js, and Node's module-lookup walks up from
-# there — it never enters apps/api/. Expose the workspace packages at the
-# root so `require("@govtech-bb/form-types")` resolves.
-#
-# Symlinks are generated from whatever's actually in packages/ rather than
-# from a hand-maintained list. The previous hard-coded list silently broke
-# (#412) when `registry` was added without updating the Dockerfile — the
-# API crash-looped on MODULE_NOT_FOUND and ECS's circuit breaker rolled
-# back to the prior image, masking the failure as a "successful" deploy.
-RUN mkdir -p node_modules/@govtech-bb && \
-    for pkg_dir in packages/*/; do \
-      pkg_name=$(basename "$pkg_dir"); \
-      [ -f "$pkg_dir/package.json" ] || continue; \
-      ln -sfn "../../packages/$pkg_name" "node_modules/@govtech-bb/$pkg_name"; \
-      echo "  symlinked @govtech-bb/$pkg_name"; \
-    done
-COPY --from=builder --chown=app:app /app/package.json ./
-COPY --from=builder --chown=app:app /app/pnpm-lock.yaml ./
-COPY --from=builder --chown=app:app /app/pnpm-workspace.yaml ./
-COPY --from=builder --chown=app:app /app/tsconfig.base.json ./
-COPY --from=builder --chown=app:app /app/apps/api/package.json ./apps/api/
-COPY --from=builder --chown=app:app /app/apps/api/tsconfig.json ./apps/api/
-COPY --from=builder --chown=app:app /app/apps/api/typeorm.config.ts ./apps/api/
-COPY --from=builder --chown=app:app /app/apps/api/src/database/ ./apps/api/src/database/
-# Recipe files (.json) — read by RecipeFileLoaderService. tsc/nx don't bundle
-# non-`.ts` assets into dist/, so we copy them alongside the compiled output
-# (mirrors the email-templates COPY below).
-COPY --from=builder --chown=app:app /app/apps/api/src/forms/form-definitions/recipes/ ./dist/src/forms/form-definitions/recipes/
-# Email templates (.hbs files not copied by tsc build)
-COPY --from=builder --chown=app:app /app/apps/api/src/email/templates/ ./dist/src/email/templates/
+COPY --from=builder --chown=app:app /home/app/deployed/ ./
 
 ENV NODE_ENV=production
+# pnpm 11 verifies workspace dep status before running scripts — meaningless
+# (and fatal) in a deployed, lockfile-less tree like this image.
+ENV pnpm_config_verify_deps_before_run=false
 ENV NODE_EXTRA_CA_CERTS=/app/rds-ca-bundle.pem
 EXPOSE 3001
 

@@ -13,7 +13,7 @@ import type {
 import { getFullCatalog } from "../catalog.js";
 import { validateRecipeFully } from "./validate-recipe.js";
 
-export const registryRouter = Router();
+export const registryRouter: Router = Router();
 
 // GET /builder/registry/catalog
 registryRouter.get("/catalog", async (_req, res) => {

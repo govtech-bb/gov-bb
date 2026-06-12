@@ -49,7 +49,7 @@ async function enforcePresence(
   return true;
 }
 
-export const formsRouter = Router();
+export const formsRouter: Router = Router();
 
 // The save/update body may carry a sibling `mdaContactId` alongside `recipe`.
 // It's DB-only (form_config) — never written into the recipe. Absent means

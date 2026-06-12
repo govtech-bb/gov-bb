@@ -2,7 +2,7 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "composite": true,
-    "outDir": "../../dist/packages/form-builder",
+    "outDir": "./dist",
     "rootDir": "src",
     "strictPropertyInitialization": false,
     "module": "commonjs",

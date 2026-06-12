@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { getDataSource } from "../db.js";
 
-export const presenceRouter = Router();
+export const presenceRouter: Router = Router();
 
 /**
  * A claim is "fresh" for this many minutes after its last activity. Past that

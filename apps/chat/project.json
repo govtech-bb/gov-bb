@@ -24,7 +24,8 @@
       "options": {
         "command": "npm test",
         "cwd": "apps/chat"
-      }
+      },
+      "dependsOn": ["^build"]
     },
     "preview": {
       "executor": "nx:run-commands",

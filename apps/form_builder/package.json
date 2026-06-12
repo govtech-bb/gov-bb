@@ -32,7 +32,6 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@tanstack/router-plugin": "catalog:",
     "@types/node": "^24.0.0",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",

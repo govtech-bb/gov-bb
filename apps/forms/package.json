@@ -55,12 +55,8 @@
     "eslint-plugin-react": "^7.37.5",
     "globals": "^17.5.0",
     "jiti": "^2.6.1",
-    "lint-staged": "^16.4.0",
     "prettier": "^3.8.1",
     "typescript-eslint": "^8.58.2",
     "vite": "catalog:"
-  },
-  "lint-staged": {
-    "*.{json,ts,tsx}": "npx prettier --write"
   }
 }

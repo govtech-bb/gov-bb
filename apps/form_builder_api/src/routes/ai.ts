@@ -12,7 +12,7 @@ import {
 import { createJobStore, toStatusResponse } from "../ai/job-store.js";
 import { presignHandler, processHandler, statusHandler } from "./ai-upload.js";
 
-export const aiRouter = Router();
+export const aiRouter: Router = Router();
 
 // The builder is stateless: every AI action is a single, self-contained turn.
 // There is no server-side conversation — the editor owns the live draft and
