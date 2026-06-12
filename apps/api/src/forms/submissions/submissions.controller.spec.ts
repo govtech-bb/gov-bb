@@ -1,3 +1,4 @@
+import type { Mock, Mocked } from "vitest";
 import { Test, TestingModule } from "@nestjs/testing";
 import { HttpStatus } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -34,15 +35,15 @@ const baseDto: CreateSubmissionDto = {
 
 describe("SubmissionsController", () => {
   let controller: SubmissionsController;
-  let service: jest.Mocked<Pick<SubmissionsService, "submit">>;
-  let config: { get: jest.Mock };
+  let service: Mocked<Pick<SubmissionsService, "submit">>;
+  let config: { get: Mock };
   let module: TestingModule;
 
   beforeEach(async () => {
-    service = { submit: jest.fn() };
+    service = { submit: vi.fn() };
     // Default: feature disabled (empty token) so existing tests exercise the
     // non-smoke path.
-    config = { get: jest.fn().mockReturnValue("") };
+    config = { get: vi.fn().mockReturnValue("") };
 
     module = await Test.createTestingModule({
       controllers: [SubmissionsController],
@@ -63,7 +64,7 @@ describe("SubmissionsController", () => {
   describe("create (POST /submissions)", () => {
     it("returns a success response with the submission entity", async () => {
       const entity = makeEntity();
-      (service.submit as jest.Mock).mockResolvedValue({
+      (service.submit as Mock).mockResolvedValue({
         data: entity,
         message: "Submission created",
         statusCode: HttpStatus.CREATED,
@@ -96,7 +97,7 @@ describe("SubmissionsController", () => {
         description: "Form fee",
       };
 
-      (service.submit as jest.Mock).mockResolvedValue({
+      (service.submit as Mock).mockResolvedValue({
         data: entity,
         message: "Payment required",
         statusCode: HttpStatus.OK,
@@ -116,7 +117,7 @@ describe("SubmissionsController", () => {
 
     it("does NOT include meta when deferred is undefined/falsy", async () => {
       const entity = makeEntity();
-      (service.submit as jest.Mock).mockResolvedValue({
+      (service.submit as Mock).mockResolvedValue({
         data: entity,
         message: "Submission created",
         statusCode: HttpStatus.CREATED,
@@ -130,7 +131,7 @@ describe("SubmissionsController", () => {
 
     it("returns 200 with no meta for a duplicate submission", async () => {
       const entity = makeEntity({ status: FormSubmissionStatus.SUBMITTED });
-      (service.submit as jest.Mock).mockResolvedValue({
+      (service.submit as Mock).mockResolvedValue({
         data: entity,
         message: "Submission already exists",
         statusCode: HttpStatus.OK,
@@ -149,7 +150,7 @@ describe("SubmissionsController", () => {
 
     it("returns 202 for an in-progress submission", async () => {
       const entity = makeEntity({ status: FormSubmissionStatus.PROCESSING });
-      (service.submit as jest.Mock).mockResolvedValue({
+      (service.submit as Mock).mockResolvedValue({
         data: entity,
         message: "Submission is currently being processed",
         statusCode: HttpStatus.ACCEPTED,
@@ -167,7 +168,7 @@ describe("SubmissionsController", () => {
     });
 
     it("propagates errors thrown by the service", async () => {
-      (service.submit as jest.Mock).mockRejectedValue(
+      (service.submit as Mock).mockRejectedValue(
         new Error("Validation failed"),
       );
 
@@ -178,7 +179,7 @@ describe("SubmissionsController", () => {
 
     it("passes idempotencyKey from headers to the service", async () => {
       const entity = makeEntity();
-      (service.submit as jest.Mock).mockResolvedValue({
+      (service.submit as Mock).mockResolvedValue({
         data: entity,
         message: "Submission created",
         statusCode: HttpStatus.CREATED,
@@ -194,7 +195,7 @@ describe("SubmissionsController", () => {
 
     it("passes all body fields to the service", async () => {
       const entity = makeEntity();
-      (service.submit as jest.Mock).mockResolvedValue({
+      (service.submit as Mock).mockResolvedValue({
         data: entity,
         message: "Submission created",
         statusCode: HttpStatus.CREATED,
@@ -222,7 +223,7 @@ describe("SubmissionsController", () => {
 
   describe("smoke submission header (X-Smoke-Submission)", () => {
     beforeEach(() => {
-      (service.submit as jest.Mock).mockResolvedValue({
+      (service.submit as Mock).mockResolvedValue({
         data: makeEntity(),
         message: "Submission created",
         statusCode: HttpStatus.CREATED,
@@ -246,7 +247,7 @@ describe("SubmissionsController", () => {
 
       await controller.create("key-abc", "wrong", baseDto);
 
-      const arg = (service.submit as jest.Mock).mock.calls[0][0];
+      const arg = (service.submit as Mock).mock.calls[0][0];
       expect(arg.isSmokeSubmission).toBeFalsy();
     });
 
@@ -255,7 +256,7 @@ describe("SubmissionsController", () => {
 
       await controller.create("key-abc", undefined, baseDto);
 
-      const arg = (service.submit as jest.Mock).mock.calls[0][0];
+      const arg = (service.submit as Mock).mock.calls[0][0];
       expect(arg.isSmokeSubmission).toBeFalsy();
     });
 
@@ -265,7 +266,7 @@ describe("SubmissionsController", () => {
 
       await controller.create("key-abc", "", baseDto);
 
-      const arg = (service.submit as jest.Mock).mock.calls[0][0];
+      const arg = (service.submit as Mock).mock.calls[0][0];
       expect(arg.isSmokeSubmission).toBeFalsy();
     });
 
@@ -274,7 +275,7 @@ describe("SubmissionsController", () => {
 
       await controller.create("key-abc", "anything", baseDto);
 
-      const arg = (service.submit as jest.Mock).mock.calls[0][0];
+      const arg = (service.submit as Mock).mock.calls[0][0];
       expect(arg.isSmokeSubmission).toBeFalsy();
     });
   });

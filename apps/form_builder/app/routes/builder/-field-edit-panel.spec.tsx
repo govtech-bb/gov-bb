@@ -1,5 +1,6 @@
+import type { Mock } from "vitest";
 /**
- * @jest-environment jsdom
+ * @vitest-environment jsdom
  *
  * Regression (#487): the "Required" checkbox must reflect and control the
  * *effective* required state (registry base merged with the override), and
@@ -43,15 +44,15 @@ it("checks Required for a field that is required in the registry", () => {
       catalog={catalog}
       draft={makeDraft(field)}
       stepId="step-1"
-      dispatch={jest.fn()}
-      onClose={jest.fn()}
+      dispatch={vi.fn()}
+      onClose={vi.fn()}
     />,
   );
   expect(requiredCheckbox()).toBeChecked();
 });
 
 it("writes required:{value:false} when un-requiring a base-required field", async () => {
-  const dispatch = jest.fn();
+  const dispatch = vi.fn();
   const field = makeField("components/last-name");
   render(
     <FieldEditPanel
@@ -60,7 +61,7 @@ it("writes required:{value:false} when un-requiring a base-required field", asyn
       draft={makeDraft(field)}
       stepId="step-1"
       dispatch={dispatch}
-      onClose={jest.fn()}
+      onClose={vi.fn()}
     />,
   );
 
@@ -85,15 +86,15 @@ it("leaves an optional field unchecked and adds no override when untouched", () 
       catalog={catalog}
       draft={makeDraft(field)}
       stepId="step-1"
-      dispatch={jest.fn()}
-      onClose={jest.fn()}
+      dispatch={vi.fn()}
+      onClose={vi.fn()}
     />,
   );
   expect(requiredCheckbox()).not.toBeChecked();
 });
 
 it("writes required:{value:true} when requiring an optional field", async () => {
-  const dispatch = jest.fn();
+  const dispatch = vi.fn();
   const field = makeField("components/middle-name");
   render(
     <FieldEditPanel
@@ -102,7 +103,7 @@ it("writes required:{value:true} when requiring an optional field", async () => 
       draft={makeDraft(field)}
       stepId="step-1"
       dispatch={dispatch}
-      onClose={jest.fn()}
+      onClose={vi.fn()}
     />,
   );
 
@@ -130,7 +131,7 @@ const widthSelect = () =>
 const hideLabelCheckbox = () =>
   screen.getByRole("checkbox", { name: /hide label/i });
 
-function renderPanel(field: RecipeFieldDraft, dispatch = jest.fn()) {
+function renderPanel(field: RecipeFieldDraft, dispatch = vi.fn()) {
   render(
     <FieldEditPanel
       field={field}
@@ -138,13 +139,13 @@ function renderPanel(field: RecipeFieldDraft, dispatch = jest.fn()) {
       draft={makeDraft(field)}
       stepId="step-1"
       dispatch={dispatch}
-      onClose={jest.fn()}
+      onClose={vi.fn()}
     />,
   );
   return dispatch;
 }
 
-const lastOverrides = (dispatch: jest.Mock) =>
+const lastOverrides = (dispatch: Mock) =>
   dispatch.mock.calls.at(-1)![0].overrides;
 
 it.each(["short", "medium"] as const)(
@@ -281,8 +282,8 @@ it("renders no Field type picker for a block field", () => {
         ],
       }}
       stepId="step-1"
-      dispatch={jest.fn()}
-      onClose={jest.fn()}
+      dispatch={vi.fn()}
+      onClose={vi.fn()}
     />,
   );
   expect(

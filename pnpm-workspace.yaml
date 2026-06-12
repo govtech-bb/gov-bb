@@ -36,6 +36,7 @@ overrides:
 # (nx, unrs-resolver). A new dep with a build script stays blocked until
 # reviewed and sorted here.
 allowBuilds:
+  "@swc/core": true
   esbuild: true
   sharp: true
   "@nestjs/core": false

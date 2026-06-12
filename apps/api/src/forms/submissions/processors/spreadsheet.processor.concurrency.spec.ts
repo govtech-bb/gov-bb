@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { SpreadsheetProcessor } from "./spreadsheet.processor";
 import type { SubmissionCreatedEvent } from "../submissions.types";
 
-// NOTE: this file deliberately does NOT `jest.mock("exceljs")`. It exercises the
+// NOTE: this file deliberately does NOT `vi.mock("exceljs")`. It exercises the
 // real read-modify-write against a real workbook on disk, so it proves the
 // per-path serializer against actual file I/O — the lost-update race a mock
 // can't faithfully reproduce. (The main spec keeps the global ExcelJS mock; jest

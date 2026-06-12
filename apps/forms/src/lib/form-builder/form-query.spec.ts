@@ -265,7 +265,7 @@ describe("QueryClient form caching", () => {
 
     // Reading with ensureQueryData should return the cached value without
     // calling the queryFn.
-    const buildFormSpy = jest.fn().mockResolvedValue(fakeFormMeta);
+    const buildFormSpy = vi.fn().mockResolvedValue(fakeFormMeta);
     const retrieved = await qc.ensureQueryData({
       ...formMetaQueryOptions("passport-renewal", contract),
       queryFn: buildFormSpy,
@@ -278,7 +278,7 @@ describe("QueryClient form caching", () => {
   it("calls queryFn when cache is empty (cold start)", async () => {
     const contract = makeClientContract("passport-renewal", "2.0.0");
     const builtMeta = { formId: "passport-renewal", version: "2.0.0" };
-    const buildFormSpy = jest.fn().mockResolvedValue(builtMeta);
+    const buildFormSpy = vi.fn().mockResolvedValue(builtMeta);
 
     const result = await qc.ensureQueryData({
       ...formMetaQueryOptions("passport-renewal", contract),
@@ -297,7 +297,7 @@ describe("QueryClient form caching", () => {
 
     const v2Contract = makeClientContract("birth-cert", "2.0.0");
     const v2Meta = { formId: "birth-cert", version: "2.0.0" } as FormMeta;
-    const buildSpy = jest.fn().mockResolvedValue(v2Meta);
+    const buildSpy = vi.fn().mockResolvedValue(v2Meta);
 
     const result = await qc.ensureQueryData({
       ...formMetaQueryOptions("birth-cert", v2Contract),
@@ -318,7 +318,7 @@ describe("QueryClient form caching", () => {
   it("second ensureQueryData call with same key skips queryFn (cache hit)", async () => {
     const contract = makeClientContract("driver-licence", "1.5.0");
     const meta = { formId: "driver-licence", version: "1.5.0" } as FormMeta;
-    const buildSpy = jest.fn().mockResolvedValue(meta);
+    const buildSpy = vi.fn().mockResolvedValue(meta);
 
     const opts = {
       ...formMetaQueryOptions("driver-licence", contract),

@@ -1,3 +1,4 @@
+import type { Mocked } from "vitest";
 import { FormConfigService } from "./form-config.service";
 import type { FormConfigRepository } from "./form-config.repository";
 import type { MdaContactRepository } from "./mda-contact.repository";
@@ -9,11 +10,11 @@ function makeService(
   mdaContactRow: Partial<MdaContactEntity> | null = null,
 ) {
   const formConfigRepo = {
-    findOne: jest.fn().mockResolvedValue(formConfigRow),
-  } as unknown as jest.Mocked<FormConfigRepository>;
+    findOne: vi.fn().mockResolvedValue(formConfigRow),
+  } as unknown as Mocked<FormConfigRepository>;
   const mdaContactRepo = {
-    findOne: jest.fn().mockResolvedValue(mdaContactRow),
-  } as unknown as jest.Mocked<MdaContactRepository>;
+    findOne: vi.fn().mockResolvedValue(mdaContactRow),
+  } as unknown as Mocked<MdaContactRepository>;
   const service = new FormConfigService(formConfigRepo, mdaContactRepo);
   return { service, formConfigRepo, mdaContactRepo };
 }
@@ -133,11 +134,11 @@ describe("FormConfigService.resolveProcessors", () => {
 
   it("lets a DB error propagate (infra failure, not a resolved miss)", async () => {
     const formConfigRepo = {
-      findOne: jest.fn().mockRejectedValue(new Error("db down")),
-    } as unknown as jest.Mocked<FormConfigRepository>;
+      findOne: vi.fn().mockRejectedValue(new Error("db down")),
+    } as unknown as Mocked<FormConfigRepository>;
     const mdaContactRepo = {
-      findOne: jest.fn(),
-    } as unknown as jest.Mocked<MdaContactRepository>;
+      findOne: vi.fn(),
+    } as unknown as Mocked<MdaContactRepository>;
     const service = new FormConfigService(formConfigRepo, mdaContactRepo);
 
     await expect(service.resolveProcessors("form-a")).rejects.toThrow(

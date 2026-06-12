@@ -1,5 +1,5 @@
 /**
- * @jest-environment jsdom
+ * @vitest-environment jsdom
  */
 import "@testing-library/jest-dom";
 import { act, render, screen, waitFor } from "@testing-library/react";
@@ -7,26 +7,26 @@ import userEvent from "@testing-library/user-event";
 import type { RecipeDraft } from "@govtech-bb/form-builder";
 
 // The convert server-fn family is createServerFn (ESM + RPC at module-eval); stub each.
-const startEditRecipe = jest.fn();
-const getEditStatus = jest.fn();
-const presignPdfUpload = jest.fn();
-const startPdfConvert = jest.fn();
-const getPdfConvertStatus = jest.fn();
+const startEditRecipe = vi.fn();
+const getEditStatus = vi.fn();
+const presignPdfUpload = vi.fn();
+const startPdfConvert = vi.fn();
+const getPdfConvertStatus = vi.fn();
 
-jest.mock("../../server/ai-builder/convert", () => ({
+vi.mock("../../server/ai-builder/convert", () => ({
   startEditRecipe: (...args: unknown[]) => startEditRecipe(...args),
   getEditStatus: (...args: unknown[]) => getEditStatus(...args),
   presignPdfUpload: (...args: unknown[]) => presignPdfUpload(...args),
   startPdfConvert: (...args: unknown[]) => startPdfConvert(...args),
   getPdfConvertStatus: (...args: unknown[]) => getPdfConvertStatus(...args),
-  getAiStatus: jest.fn(),
+  getAiStatus: vi.fn(),
 }));
 
 // Stub global fetch for the direct browser → S3 PUT. jsdom (the test env) ships
 // neither fetch nor Response, so install a plain mock and a duck-typed fake
 // response — the sidebar only reads `.ok` off the result.
 const okResponse = { ok: true, status: 200 } as unknown as Response;
-const fetchSpy = jest.fn(async () => okResponse);
+const fetchSpy = vi.fn(async () => okResponse);
 (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchSpy as unknown as typeof fetch;
 
 beforeEach(() => {
@@ -47,7 +47,7 @@ const DRAFT: RecipeDraft = {
   steps: [{ stepId: "step-1", title: "Step 1", fields: [], behaviours: [] }],
 };
 
-function setup(onApplyRecipe = jest.fn().mockResolvedValue({ applied: true })) {
+function setup(onApplyRecipe = vi.fn().mockResolvedValue({ applied: true })) {
   render(
     <AiSidebar draft={DRAFT} version="1.0.0" onApplyRecipe={onApplyRecipe} />,
   );
@@ -400,7 +400,13 @@ describe("AiSidebar — Upload", () => {
   // hangs under fake timers. Wire the two together so userEvent.* can flush its
   // queue while we drive the polling clock.
   function setupUser() {
-    return userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    return userEvent.setup({
+      // vitest throws (jest no-ops) if timers are advanced while real —
+      // some suites in this file run with real timers.
+      advanceTimers: (ms) => {
+        if (vi.isFakeTimers()) vi.advanceTimersByTime(ms);
+      },
+    });
   }
 
   async function pickPdf(
@@ -416,7 +422,7 @@ describe("AiSidebar — Upload", () => {
   }
 
   it("runs presign → S3 PUT → process → poll → applies the returned recipe", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     const user = setupUser();
     presignPdfUpload.mockResolvedValue({ url: "https://s3/url", s3Key: "uploads/abc.pdf" });
     startPdfConvert.mockResolvedValue({ jobId: "job-1" });
@@ -447,21 +453,21 @@ describe("AiSidebar — Upload", () => {
     // act() lets React flush the state updates triggered by the resolved status
     // payload.
     await act(async () => {
-      await jest.advanceTimersByTimeAsync(2000); // → processing
+      await vi.advanceTimersByTimeAsync(2000); // → processing
     });
     await act(async () => {
-      await jest.advanceTimersByTimeAsync(2000); // → generating
+      await vi.advanceTimersByTimeAsync(2000); // → generating
     });
     await act(async () => {
-      await jest.advanceTimersByTimeAsync(2000); // → done
+      await vi.advanceTimersByTimeAsync(2000); // → done
     });
 
     await waitFor(() => expect(onApplyRecipe).toHaveBeenCalled());
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it("surfaces the mapped reason when the server reports a password-protected PDF", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     const user = setupUser();
     presignPdfUpload.mockResolvedValue({ url: "https://s3/url", s3Key: "uploads/abc.pdf" });
     startPdfConvert.mockResolvedValue({ jobId: "job-1" });
@@ -476,40 +482,40 @@ describe("AiSidebar — Upload", () => {
     await user.click(screen.getByRole("button", { name: /upload/i }));
 
     await act(async () => {
-      await jest.advanceTimersByTimeAsync(2000);
+      await vi.advanceTimersByTimeAsync(2000);
     });
 
     await waitFor(() =>
       expect(screen.getByRole("alert")).toHaveTextContent(/password-protected/i),
     );
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it("stops polling when the component unmounts", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     const user = setupUser();
     presignPdfUpload.mockResolvedValue({ url: "https://s3/url", s3Key: "uploads/abc.pdf" });
     startPdfConvert.mockResolvedValue({ jobId: "job-1" });
     getPdfConvertStatus.mockResolvedValue({ status: "processing" });
     const { unmount } = render(
-      <AiSidebar draft={DRAFT} version="1.0.0" onApplyRecipe={jest.fn()} />,
+      <AiSidebar draft={DRAFT} version="1.0.0" onApplyRecipe={vi.fn()} />,
     );
 
     await pickPdf(user);
     await user.click(screen.getByRole("button", { name: /upload/i }));
     await act(async () => {
-      await jest.advanceTimersByTimeAsync(2000);
+      await vi.advanceTimersByTimeAsync(2000);
     });
 
     const callsBeforeUnmount = getPdfConvertStatus.mock.calls.length;
     unmount();
-    await jest.advanceTimersByTimeAsync(10_000);
+    await vi.advanceTimersByTimeAsync(10_000);
     expect(getPdfConvertStatus.mock.calls.length).toBe(callsBeforeUnmount);
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it("times out after 3 minutes with a friendly error", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     const user = setupUser();
     presignPdfUpload.mockResolvedValue({ url: "https://s3/url", s3Key: "uploads/abc.pdf" });
     startPdfConvert.mockResolvedValue({ jobId: "job-1" });
@@ -519,13 +525,13 @@ describe("AiSidebar — Upload", () => {
     await pickPdf(user);
     await user.click(screen.getByRole("button", { name: /upload/i }));
     await act(async () => {
-      await jest.advanceTimersByTimeAsync(3 * 60_000 + 2000);
+      await vi.advanceTimersByTimeAsync(3 * 60_000 + 2000);
     });
 
     await waitFor(() =>
       expect(screen.getByRole("alert")).toHaveTextContent(/taking longer than expected/i),
     );
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it("passes the typed prompt as context, clears the box, and shows it in the transcript", async () => {

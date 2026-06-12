@@ -1,3 +1,4 @@
+import type { Mock } from "vitest";
 /**
  * form-fetcher.spec.ts
  *
@@ -11,15 +12,15 @@
  */
 
 // Mock the @forms/form-api module before any imports that depend on it.
-jest.mock("@forms/form-api", () => ({
-  fetchFormDefinition: jest.fn(),
+vi.mock("@forms/form-api", () => ({
+  fetchFormDefinition: vi.fn(),
 }));
 
 import { fetchContract } from "./form-fetcher";
 import { fetchFormDefinition } from "@forms/form-api";
 import type { ClientServiceContract } from "@forms/types";
 
-const mockFetchFormDefinition = fetchFormDefinition as jest.Mock;
+const mockFetchFormDefinition = fetchFormDefinition as Mock;
 
 // ---------------------------------------------------------------------------
 // Minimal ServiceContract fixture that satisfies serviceContractSchema

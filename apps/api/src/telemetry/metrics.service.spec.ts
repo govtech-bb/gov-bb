@@ -1,26 +1,27 @@
+import type { Mock } from "vitest";
 import { MetricsService } from "./metrics.service";
 
 // ---------------------------------------------------------------------------
 // Mock @opentelemetry/api at the module boundary
 // ---------------------------------------------------------------------------
-const counterAddByName = new Map<string, jest.Mock>();
+const counterAddByName = new Map<string, Mock>();
 const getCounterAdd = (name: string) => {
   const existing = counterAddByName.get(name);
   if (existing) {
     return existing;
   }
-  const add = jest.fn();
+  const add = vi.fn();
   counterAddByName.set(name, add);
   return add;
 };
-const mockCreateCounter = jest.fn((name: string) => ({
+const mockCreateCounter = vi.fn((name: string) => ({
   add: getCounterAdd(name),
 }));
-const mockGetMeter = jest.fn().mockReturnValue({
+const mockGetMeter = vi.fn().mockReturnValue({
   createCounter: mockCreateCounter,
 });
 
-jest.mock("@opentelemetry/api", () => ({
+vi.mock("@opentelemetry/api", () => ({
   metrics: {
     getMeter: (...args: unknown[]) => mockGetMeter(...args),
   },
@@ -30,7 +31,7 @@ describe("MetricsService", () => {
   let service: MetricsService;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     counterAddByName.clear();
     mockGetMeter.mockReturnValue({ createCounter: mockCreateCounter });
 
@@ -75,10 +76,10 @@ describe("MetricsService", () => {
 
     it("does not throw when OpenTelemetry returns a no-op meter (graceful degradation)", () => {
       // Simulate OTel not configured — getMeter returns a no-op object
-      const noopAdd = jest.fn();
+      const noopAdd = vi.fn();
       const noopCounter = { add: noopAdd };
       const noopMeter = {
-        createCounter: jest.fn().mockReturnValue(noopCounter),
+        createCounter: vi.fn().mockReturnValue(noopCounter),
       };
       mockGetMeter.mockReturnValueOnce(noopMeter);
 

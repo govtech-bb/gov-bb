@@ -1,3 +1,4 @@
+import type { Mock } from "vitest";
 import { Test, TestingModule } from "@nestjs/testing";
 import { Logger } from "@nestjs/common";
 import { HttpService } from "@nestjs/axios";
@@ -7,11 +8,11 @@ import { EZPAY_CONFIG } from "./ezpay.config";
 
 describe("EzpayClient", () => {
   let client: EzpayClient;
-  let http: { post: jest.Mock };
+  let http: { post: Mock };
   let module: TestingModule;
 
   beforeEach(async () => {
-    http = { post: jest.fn() };
+    http = { post: vi.fn() };
     module = await Test.createTestingModule({
       providers: [
         EzpayClient,
@@ -249,7 +250,9 @@ describe("EzpayClient", () => {
 
   it("queryTransactions returns [] (no throw) when EzPay returns a non-array error/access object", async () => {
     // e.g. the body returned when the caller IP is not whitelisted
-    const warn = jest.spyOn(Logger.prototype, "warn").mockImplementation();
+    const warn = vi
+      .spyOn(Logger.prototype, "warn")
+      .mockImplementation(() => {});
     http.post.mockReturnValue(
       of({ data: { error: "Access denied", code: "E-IP" } }),
     );

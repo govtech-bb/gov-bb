@@ -1,16 +1,16 @@
 import { FormDisabledOverridesAdminController } from "./form-disabled-overrides.admin.controller";
 
 const mockService = {
-  find: jest.fn(),
-  disable: jest.fn(),
-  enable: jest.fn(),
+  find: vi.fn(),
+  disable: vi.fn(),
+  enable: vi.fn(),
 };
 
 describe("FormDisabledOverridesAdminController", () => {
   let controller: FormDisabledOverridesAdminController;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     controller = new FormDisabledOverridesAdminController(mockService as never);
   });
 

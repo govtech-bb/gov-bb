@@ -1,5 +1,5 @@
 /**
- * @jest-environment jsdom
+ * @vitest-environment jsdom
  *
  * #566: in the step editor, the Step Behaviours section renders directly above
  * the "Add field" picker — i.e. between the Fields list and the picker.
@@ -31,9 +31,9 @@ function renderEditor(step: RecipeStepDraft) {
     <StepEditor
       step={step}
       draft={draft}
-      dispatch={jest.fn()}
+      dispatch={vi.fn()}
       catalog={CATALOG}
-      onStepIdChange={jest.fn()}
+      onStepIdChange={vi.fn()}
     />,
   );
 }
@@ -105,14 +105,14 @@ it("dispatches markdownContent edits via UPDATE_STEP_META (#1292)", () => {
     title: "Application submitted",
   });
   const draft: RecipeDraft = { formId: "f", title: "F", steps: [step] };
-  const dispatch = jest.fn();
+  const dispatch = vi.fn();
   render(
     <StepEditor
       step={step}
       draft={draft}
       dispatch={dispatch}
       catalog={CATALOG}
-      onStepIdChange={jest.fn()}
+      onStepIdChange={vi.fn()}
     />,
   );
   const textarea = openMarkdownTab();
@@ -133,14 +133,14 @@ it("clears markdownContent to undefined when emptied (#1292)", () => {
     markdownContent: "## old",
   });
   const draft: RecipeDraft = { formId: "f", title: "F", steps: [step] };
-  const dispatch = jest.fn();
+  const dispatch = vi.fn();
   render(
     <StepEditor
       step={step}
       draft={draft}
       dispatch={dispatch}
       catalog={CATALOG}
-      onStepIdChange={jest.fn()}
+      onStepIdChange={vi.fn()}
     />,
   );
   const textarea = openMarkdownTab();
@@ -176,8 +176,8 @@ it("pins a stable dnd-kit id so draggable aria-describedby is deterministic", ()
 it("kebabizes the Step ID on blur and commits the normalized id", () => {
   const step = makeStep();
   const draft: RecipeDraft = { formId: "f", title: "F", steps: [step] };
-  const dispatch = jest.fn();
-  const onStepIdChange = jest.fn();
+  const dispatch = vi.fn();
+  const onStepIdChange = vi.fn();
   render(
     <StepEditor
       step={step}
@@ -229,9 +229,9 @@ it("renders this step's fields as Shared Fields checkboxes", () => {
     <StepEditor
       step={step}
       draft={draft}
-      dispatch={jest.fn()}
+      dispatch={vi.fn()}
       catalog={catalog}
-      onStepIdChange={jest.fn()}
+      onStepIdChange={vi.fn()}
     />,
   );
   expect(screen.getByRole("checkbox", { name: "First Name" })).toBeInTheDocument();
