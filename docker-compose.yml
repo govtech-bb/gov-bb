@@ -99,11 +99,10 @@ services:
       # Point the SES client at the local mock instead of real AWS. The
       # submission email processor reads SES_ENDPOINT (apps/api email.config);
       # unset in deployed envs so production resolves the real SES endpoint.
+      # When this is set the processor also pins dummy SES credentials itself,
+      # so the local send works regardless of the AWS_PROFILE that apps/api/.env
+      # carries for real-AWS work — no AWS creds need to be set here.
       SES_ENDPOINT: http://aws-ses-v2-local:8005
-      # aws-ses-v2-local accepts any credentials and treats every identity as
-      # verified, but the SDK signer still needs *some* creds to sign requests.
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-local}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-local}
       SES_REGION: ${SES_REGION:-us-east-1}
       SES_FROM_ADDRESS: ${SES_FROM_ADDRESS:-noreply@gov.bb}
     ports:
