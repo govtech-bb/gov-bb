@@ -57,8 +57,23 @@ export class EmailProcessor implements ISubmissionProcessor {
     this.configurationSet = config.get<string>("email.configurationSet");
     this.defaultRecipient =
       config.get<string>("email.defaultRecipient") ?? "testing@govtech.bb";
+    // endpoint is set only in local dev (SES_ENDPOINT → aws-ses-v2-local); in
+    // every deployed environment it is undefined, so the SDK resolves the real
+    // AWS SES endpoint exactly as before.
+    const endpoint = config.get<string>("email.endpoint");
     this.client = new SESv2Client({
       region: config.get<string>("email.region") ?? "us-east-1",
+      // When pointing at the local mock, pin static dummy credentials. The
+      // mock ignores them, but the SDK signer needs *some* — and pinning them
+      // here keeps the local path deterministic regardless of any ambient
+      // AWS_PROFILE/SSO a developer has set for real-AWS work (apps/api/.env
+      // ships AWS_PROFILE=sandbox, which the SDK would otherwise prefer over
+      // env creds and then fail to resolve inside the container). Deployed
+      // envs leave endpoint unset → default credential chain (IAM task role).
+      ...(endpoint && {
+        endpoint,
+        credentials: { accessKeyId: "local", secretAccessKey: "local" },
+      }),
     });
   }
 
