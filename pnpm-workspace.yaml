@@ -6,6 +6,23 @@ packages:
 # about unknown config — see docs/decisions/0002
 nodeLinker: hoisted
 
+# pnpm 10 blocks dependency build scripts by default. onlyBuiltDependencies
+# is the allowlist — these fetch/verify real native binaries and must run.
+# A new dep with a build script stays blocked until reviewed and sorted here.
+onlyBuiltDependencies:
+  - esbuild
+  - sharp
+
+# Consciously NOT built — telemetry/analytics postinstalls (@scarf, nestjs,
+# protobufjs) or native modules with a working JS/WASM fallback (nx,
+# unrs-resolver). Listed so the decision is reviewed, not silently ignored.
+ignoredBuiltDependencies:
+  - "@nestjs/core"
+  - "@scarf/scarf"
+  - nx
+  - protobufjs
+  - unrs-resolver
+
 catalog:
   "@tanstack/ai": "^0.28.0"
   "@tanstack/ai-react": "^0.15.4"
