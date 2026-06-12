@@ -74,7 +74,7 @@ describe("EmailTemplateService", () => {
       const existsSpy = vi.spyOn(fs, "existsSync").mockReturnValueOnce(true);
       const readdirSpy = vi
         .spyOn(fs, "readdirSync")
-        .mockReturnValueOnce(["bad-template.hbs"]);
+        .mockReturnValueOnce(["bad-template.hbs"] as never);
       const readFileSpy = vi
         .spyOn(fs, "readFileSync")
         .mockImplementationOnce(() => {
