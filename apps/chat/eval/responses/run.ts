@@ -67,7 +67,7 @@ const JUDGE_TIMEOUT_MS = 120_000;
 
 interface Case {
   id: string;
-  category: "direct" | "ambiguous" | "refusal" | "miss";
+  category: "direct" | "ambiguous" | "refusal" | "miss" | "feedback";
   dialect: "standard" | "bajan";
   // A single user message, OR an ordered multi-turn script (each string is the
   // next user message, replayed on one stateful conversation). The verdict
@@ -299,6 +299,28 @@ async function judgeOne(r: CaseResult): Promise<Verdict> {
               r.case.expect?.replyIncludes ?? [],
             )} (citations: ${r.citations.map((c) => c.url).join(", ") || "none"})`,
     };
+  }
+
+  if (r.case.category === "feedback") {
+    // Feedback is the ONE thing collected in-chat. The right move is to route
+    // it: present the assistant-vs-service disambiguation pills, or acknowledge
+    // and gather it. The disambiguation is deterministic pills with an empty
+    // text body, so the generic ambiguous judge wrongly fails it — accept the
+    // pills deterministically, else judge whether the reply routes feedback
+    // (never to a ministry / dead-end).
+    const offeredScope = r.choices.some((c) =>
+      /about this assistant|about a service/i.test(c),
+    );
+    if (offeredScope) {
+      return {
+        pass: true,
+        kind: "deterministic",
+        reason: "presented the assistant/service feedback disambiguation",
+      };
+    }
+    return claudeJudge(
+      `You are evaluating a Government of Barbados chatbot. A user wants to GIVE feedback:\n"""\n${r.case.message}\n"""\n\n${describeReply(r)}\n\nThe assistant routes feedback ITSELF — the right behaviour is to take it forward: acknowledge it and either ask whether it is about this assistant or about a service/the site, or start gathering the feedback. A FAIL: it tells the user to phone/email/visit a ministry or department, redirects them elsewhere to "the team", or dead-ends without a path. Did the chatbot respond appropriately?${JUDGE_SUFFIX}`,
+    );
   }
 
   if (r.case.category === "ambiguous") {
