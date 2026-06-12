@@ -23,4 +23,10 @@ export default registerAs("email", () => ({
   // row resolves (e.g. sandbox, which has no rows). Keeps test/sandbox
   // submissions away from real MDA inboxes. Defaults to a shared test inbox.
   defaultRecipient: process.env.SES_DEFAULT_RECIPIENT ?? "testing@govtech.bb",
+
+  // Recipient for the public site feedback form (apps/landing /feedback).
+  // Set explicitly per environment rather than routed through the form_config
+  // directory, so it can never silently fall back to a test inbox the way a
+  // missing form_config row does (issue #1139).
+  feedbackRecipient: process.env.FEEDBACK_RECIPIENT ?? "feedback@govtech.bb",
 }));
