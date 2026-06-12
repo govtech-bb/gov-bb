@@ -11,7 +11,7 @@ applications:
             - pnpm install --frozen-lockfile
         build:
           commands:
-            - pnpm exec nx run landing:build
+            - pnpm exec nx run landing:build --parallel=2
       artifacts:
         baseDirectory: apps/landing/.amplify-hosting
         files:
@@ -49,7 +49,7 @@ applications:
             - pnpm install --frozen-lockfile
         build:
           commands:
-            - pnpm exec nx run chat:build
+            - pnpm exec nx run chat:build --parallel=2
       artifacts:
         baseDirectory: apps/chat/.amplify-hosting
         files:
@@ -121,7 +121,7 @@ applications:
             - pnpm install --frozen-lockfile
         build:
           commands:
-            - pnpm exec nx run form-builder-app:build
+            - pnpm exec nx run form-builder-app:build --parallel=2
       artifacts:
         baseDirectory: apps/form_builder/.amplify-hosting
         files:

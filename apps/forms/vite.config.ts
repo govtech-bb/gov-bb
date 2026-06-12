@@ -23,6 +23,9 @@ export default ({ mode }) => {
       tanstackRouter({
         target: "react",
         autoCodeSplitting: true,
+        // Spec files are co-located in routes/; newer router-plugin versions
+        // reject unrecognized files in the routes dir instead of skipping.
+        routeFileIgnorePattern: ".*\\.spec\\.(ts|tsx)$",
       }),
       react(),
     ],
