@@ -235,6 +235,14 @@ export default function SubmissionConfirmation({
           )}
         </div>
 
+        {referenceNumber &&
+          (paymentSuccess || isSafePaymentUrl(paymentUrl)) && (
+            <dl className="form-page__reference">
+              <dt>Submission ID</dt>
+              <dd>{referenceNumber}</dd>
+            </dl>
+          )}
+
         {paymentSuccess ? (
           <section className="govbb-payment govbb-payment--success">
             <div className="govbb-payment__header">
@@ -249,7 +257,6 @@ export default function SubmissionConfirmation({
             <div className="govbb-payment__items">
               {paymentItem("Service:", serviceLabel)}
               {paymentItem("Amount:", formattedAmount)}
-              {paymentItem("Submission ID:", referenceNumber)}
               {paymentItem("Date:", formattedDate)}
             </div>
           </section>
