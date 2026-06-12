@@ -18,6 +18,17 @@ export interface TurnRecord {
   // table from production traffic.
   action?: string;
   phase?: string;
+  // The named run-turn branch this turn took (#1271) — the chartable status
+  // taxonomy (see turn-status.ts). Computed in run-turn, deterministic.
+  status?: string;
+  // How many citations this turn's context block carried.
+  citationCount?: number;
+  // A grounded answer turn (status "answered", citations supplied) whose
+  // final text contains no [N] marker (#1271): the known wrong-service leak
+  // shape — the model answered confidently without grounding in what was
+  // retrieved. Observability first; regenerate-or-abstain can follow once
+  // the production rate is known.
+  ungroundedAnswer?: boolean;
   promptTokens?: number;
   completionTokens?: number;
   totalTokens?: number;
@@ -32,6 +43,22 @@ export interface TurnRecord {
 
 function logTurn(rec: TurnRecord): void {
   console.log(`[turn] ${JSON.stringify(rec)}`);
+}
+
+const CITATION_MARKER_RE = /\[\d+\]/;
+
+// Pure so the flag logic is unit-testable: only a grounded ANSWER turn can be
+// ungrounded — statuses that legitimately answer without [N] markers
+// (handoff templates, closers, offers) never flag.
+export function isUngroundedAnswer(
+  status: string | undefined,
+  citationCount: number | undefined,
+  text: string,
+): boolean {
+  if (status !== "answered") return false;
+  if (!citationCount) return false;
+  if (!text.trim()) return false;
+  return !CITATION_MARKER_RE.test(text);
 }
 
 // One [turn] record per chat() run. Tokens accumulate in onUsage —
@@ -51,6 +78,7 @@ export function turnLogMiddleware(
   let sawUsage = false;
   let runError: string | undefined;
   let aborted = false;
+  let answerText = "";
   const toolCalls: { tool: string; ok: boolean; ms: number }[] = [];
 
   const finish = (rest: Partial<TurnRecord>) => {
@@ -63,6 +91,9 @@ export function turnLogMiddleware(
       toolCalls: toolCalls.length ? toolCalls : undefined,
       cancelled: aborted || undefined,
       error: runError,
+      ungroundedAnswer:
+        isUngroundedAnswer(partial.status, partial.citationCount, answerText) ||
+        undefined,
       ...rest,
     };
     logTurn(rec);
@@ -75,6 +106,11 @@ export function turnLogMiddleware(
       if (chunk.type === "RUN_ERROR") {
         if (chunk.code === "aborted") aborted = true;
         else runError = chunk.message;
+      }
+      // Accumulate the assistant's text for the grounding check. Marker-only
+      // scan at finish — the text itself is never logged (PII discipline).
+      if (chunk.type === "TEXT_MESSAGE_CONTENT" && "delta" in chunk) {
+        answerText += String(chunk.delta ?? "");
       }
     },
     onUsage: (_ctx, usage) => {

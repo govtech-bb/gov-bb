@@ -56,6 +56,7 @@ import {
   topServiceCandidates,
 } from "./retrieval";
 import { rewriteRetrievalQuery } from "./rewrite";
+import { deriveTurnStatus } from "./turn-status";
 import type { RetrievedContext, Source } from "./types";
 
 export interface RunTurnInput {
@@ -492,6 +493,25 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
           formSlug: session.slug ?? undefined,
           action,
           phase: funnelPhase(session),
+          status: deriveTurnStatus({
+            resolutionKind: resolution.kind,
+            offerOnly,
+            feedbackForm:
+              resolution.kind === "collect" &&
+              resolution.form.slug === FEEDBACK_FORM_ID,
+            linkRequested: linkRequested !== undefined,
+            serviceFeedback: serviceFeedback !== undefined,
+            handoffContinuation: handoffContinuation !== undefined,
+            formOffer: formOffer !== undefined,
+            disambiguation: disambiguation !== undefined,
+            unapprovedForm,
+            closer,
+            noContext,
+            missClarifyExhausted,
+            offerFeedback,
+            citationCount: citations.length,
+          }),
+          citationCount: citations.length || undefined,
           retrieveDegraded: degraded,
         },
         startedAt,

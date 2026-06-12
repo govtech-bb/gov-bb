@@ -23,6 +23,7 @@ export interface TurnMetricsDoc {
   TurnsCancelled: number;
   RetrieveDegraded: number;
   ToolFailures: number;
+  UngroundedAnswers: number;
 }
 
 export function buildTurnMetrics(rec: TurnRecord, now: number): TurnMetricsDoc {
@@ -41,6 +42,7 @@ export function buildTurnMetrics(rec: TurnRecord, now: number): TurnMetricsDoc {
             { Name: "TurnsCancelled", Unit: "Count" },
             { Name: "RetrieveDegraded", Unit: "Count" },
             { Name: "ToolFailures", Unit: "Count" },
+            { Name: "UngroundedAnswers", Unit: "Count" },
           ],
         },
       ],
@@ -53,6 +55,7 @@ export function buildTurnMetrics(rec: TurnRecord, now: number): TurnMetricsDoc {
     TurnsCancelled: rec.cancelled ? 1 : 0,
     RetrieveDegraded: rec.retrieveDegraded ? 1 : 0,
     ToolFailures: rec.toolCalls?.filter((t) => !t.ok).length ?? 0,
+    UngroundedAnswers: rec.ungroundedAnswer ? 1 : 0,
   };
 }
 
