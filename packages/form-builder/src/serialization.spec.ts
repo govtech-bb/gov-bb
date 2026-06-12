@@ -317,6 +317,74 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
     expect(result.steps[0].description).toBeUndefined();
   });
 
+  it("markdownContent on a confirmation step survives round-trip (#1292)", () => {
+    const md = "## What happens next\n\n- We will review your application.";
+    const draft = makeBaseDraft({
+      steps: [
+        {
+          stepId: "submission-confirmation",
+          title: "Application submitted",
+          fields: [],
+          behaviours: [],
+          markdownContent: md,
+        },
+      ],
+    });
+
+    const recipe = serializeRecipeDraft(draft, { version: "1.0.0" });
+    expect(recipe.steps[0].markdownContent).toBe(md);
+
+    const result = deserializeRecipe(recipe);
+    expect(result.steps[0].markdownContent).toBe(md);
+  });
+
+  it("absent markdownContent on a step is not forwarded (#1292)", () => {
+    const draft = makeBaseDraft({
+      steps: [
+        {
+          stepId: "submission-confirmation",
+          title: "Application submitted",
+          fields: [],
+          behaviours: [],
+        },
+      ],
+    });
+
+    const recipe = serializeRecipeDraft(draft, { version: "1.0.0" });
+    expect(recipe.steps[0].markdownContent).toBeUndefined();
+    expect(Object.keys(recipe.steps[0])).not.toContain("markdownContent");
+
+    const result = deserializeRecipe(recipe);
+    expect(result.steps[0].markdownContent).toBeUndefined();
+  });
+
+  it("nextSteps on a confirmation step are carried through untouched (#1292)", () => {
+    const nextSteps = [
+      {
+        title: "What happens next",
+        content: "We will be in touch.",
+        items: ["Check your email", "Keep your reference number"],
+      },
+    ];
+    const draft = makeBaseDraft({
+      steps: [
+        {
+          stepId: "submission-confirmation",
+          title: "Application submitted",
+          fields: [],
+          behaviours: [],
+          nextSteps,
+        },
+      ],
+    });
+
+    const recipe = serializeRecipeDraft(draft, { version: "1.0.0" });
+    expect(recipe.steps[0].nextSteps).toEqual(nextSteps);
+
+    const result = deserializeRecipe(recipe);
+    expect(result.steps[0].nextSteps).toEqual(nextSteps);
+  });
+
   it("behaviours on steps survive round-trip", () => {
     const draft = makeBaseDraft({
       steps: [
