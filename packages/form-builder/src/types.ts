@@ -3,6 +3,7 @@ import type {
   Behaviour,
   Processor,
   ContactDetails,
+  FormStep,
 } from "@govtech-bb/form-types";
 
 // Per-child field overrides for a block (keyed by child fieldId)
@@ -23,6 +24,13 @@ export interface RecipeStepDraft {
   description?: string;
   fields: RecipeFieldDraft[];
   behaviours: Behaviour[];
+  // Confirmation-step content. The submission-confirmation step renders
+  // `markdownContent` (editable in StepEditor) and `nextSteps` (structured
+  // title/content/items blocks). Both are dropped from the served contract on
+  // republish unless round-tripped here (#1292): markdownContent is authored in
+  // the builder, while nextSteps is carried through untouched (no editor yet).
+  markdownContent?: string;
+  nextSteps?: FormStep["nextSteps"];
 }
 
 // Editor-only id mirrors RecipeFieldDraft.id: minted on deserialize, stripped on
