@@ -3,6 +3,7 @@ import { chat } from "@tanstack/ai";
 import { bedrockText } from "@govtech-bb/ai-bedrock";
 import { childController } from "#/lib/abort";
 import { getServerEnv } from "#/config/env";
+import { landingStartPath } from "#/lib/rag/start-page";
 import {
   applyRagFallback,
   buildEndOfChatTools,
@@ -105,11 +106,20 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
   // link" parks it — code, not model interpretation (ADR 0048). Any other
   // reply lapses the offer and falls through to normal routing.
   const offerReply = consumeOfferReply(session, latest);
+  // Same link policy as resolveActiveForm's handoff: prefer the landing start
+  // page over the bare forms-app URL, so an offer's "just send me the link"
+  // matches what a handoff would have given.
+  const offerStartPath =
+    offerReply?.kind === "link"
+      ? await landingStartPath(offerReply.slug)
+      : null;
   const linkRequested =
     offerReply?.kind === "link"
       ? {
           title: offerReply.title,
-          url: `${getServerEnv().FORMS_URL}/forms/${encodeURIComponent(offerReply.slug)}`,
+          url: offerStartPath
+            ? `${getServerEnv().LANDING_URL}${offerStartPath}`
+            : `${getServerEnv().FORMS_URL}/forms/${encodeURIComponent(offerReply.slug)}`,
         }
       : undefined;
 

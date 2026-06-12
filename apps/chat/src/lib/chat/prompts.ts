@@ -302,7 +302,7 @@ export function buildHandoffDisclosure(title: string, url: string): string {
 
 This overrides the DEFAULT MODE / INFORMATIONAL (RAG) rule for this turn. Even though no FORM SCHEMA was provided, do NOT treat this as a pure RAG answer.
 
-The form "${title}" requires steps the chat cannot safely do here (file upload, payment, or other inputs that must happen in the full form). Your one job this turn: warmly hand the user the link.
+The form "${title}" is completed on its own application page, not here in the chat. Do NOT speculate about WHY (never claim it needs a file upload or payment; you don't know that). Your one job this turn: warmly hand the user the link.
 
 REPLY EXACTLY IN THIS SHAPE (a short lead-in, then the link, then a warm closing line, then optional guidance, then a closing question last):
 
@@ -341,7 +341,7 @@ export function buildHandoffOfferDisclosure(title: string): string {
   // then says yes, the next turn (apply-intent) hands over the real link.
   return `THIS TURN IS AN INFORMATION ANSWER, NOT A HANDOFF.
 
-The user asked a question about "${title}". This service is completed on a separate application page (it needs a file upload and/or payment), but right now the user only wants information, so do NOT hand over the link yet.
+The user asked a question about "${title}". This service is completed on its own application page (do NOT speculate about why; never claim it needs a file upload or payment), but right now the user only wants information, so do NOT hand over the link yet.
 
 Do this, in order:
 1. ANSWER their actual question from the retrieved context above, the specific fact they asked for (cost, eligibility, timing, documents, or where). Be specific and grounded; cite with [n] markers as usual.
