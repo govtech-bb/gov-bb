@@ -1,8 +1,10 @@
 import { sql } from "drizzle-orm";
+import { getServerEnv } from "#/config/env";
 import { SIMILARITY_THRESHOLD, weightForKind } from "./config";
 import type { RetrievedContext, Source } from "#/lib/chat/types";
 import { getDb } from "#/lib/db";
 import { embed } from "./embed";
+import { rewriteLandingHost } from "./landing-host";
 
 export interface RetrieveResult {
   contexts: RetrievedContext[];
@@ -123,9 +125,11 @@ export async function search(
     text: r.chunk_text,
   }));
 
+  // Citations must point at the viewer's landing site, not hardcoded prod.
+  const landingUrl = getServerEnv().LANDING_URL;
   const sources: Source[] = rows.map((r) => ({
     id: r.document_id,
-    url: r.url,
+    url: rewriteLandingHost(r.url, landingUrl),
     title: r.title,
     section: friendlySection(r),
     score: Number(r.sim),
