@@ -13,7 +13,6 @@
     "@aws-sdk/client-bedrock-runtime": "^3.1057.0",
     "@tanstack/ai": "catalog:"
   },
-  "devDependencies": {},
   "lint-staged": {
     "*.ts": "npx prettier --write"
   }

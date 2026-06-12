@@ -61,6 +61,6 @@
     "typescript": "catalog:",
     "unified": "^11.0.5",
     "vite": "catalog:",
-    "vitest": "^4.1.5"
+    "vitest": "^4.1.8"
   }
 }
