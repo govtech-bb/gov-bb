@@ -4,8 +4,19 @@
   "private": true,
   "main": "./dist/src/index.js",
   "types": "./dist/src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "require": "./dist/src/index.js",
+      "default": "./dist/src/index.js"
+    }
+  },
+  "sideEffects": false,
   "scripts": {
     "test": "vitest run"
+  },
+  "lint-staged": {
+    "*.ts": "npx prettier --write"
   },
   "dependencies": {
     "@govtech-bb/registry": "workspace:*",
@@ -17,8 +28,5 @@
     "@types/json-logic-js": "^2.0.7",
     "@types/luxon": "^3.7.1",
     "lint-staged": "^16.4.0"
-  },
-  "lint-staged": {
-    "*.ts": "npx prettier --write"
   }
 }
