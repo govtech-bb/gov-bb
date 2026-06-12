@@ -1,52 +1,141 @@
-:root {
-  --color-bg:            #f6f7f9;
-  --color-surface:       #ffffff;
-  --color-border:        #e2e5ea;
-  --color-border-strong: #c9cdd4;
-  --color-text:          #1a1d23;
-  --color-text-muted:    #6b7280;
-  --color-accent:        #2563eb;
-  --color-accent-hover:  #1d4ed8;
-  --color-accent-light:  #eff6ff;
-  --color-danger:        #dc2626;
-  --color-danger-light:  #fef2f2;
-  --color-success:       #16a34a;
-  --color-success-light: #f0fdf4;
-  --color-warning-light: #fffbeb;
-  --color-warning-text:  #92400e;
+/*
+ * Builder global styles, sharing the content CMS's visual language: same
+ * elevation palette, Inter, -0.15px letter-spacing, 6/8/12 radii.
+ *
+ * The `--el-*` token values are duplicated from
+ * routes/content/-styles.module.css (the canonical source) because either
+ * section can load first — keep the two in sync when changing the palette.
+ * The legacy `--color-*` names are aliased onto the shared palette so the
+ * existing builder rules keep resolving, and react to dark mode for free.
+ */
 
-  font-family: system-ui, -apple-system, sans-serif;
+:root {
+  --el-0: #ffffff;
+  --el-50: #fbfbfa;
+  --el-100: #f7f7f5;
+  --el-150: #f0f0ee;
+  --el-200: #e5e5e5;
+  --el-250: #dcdcdc;
+  --el-400: #a1a1a1;
+  --el-500: #8a8a8a;
+  --el-800: #3a3a3a;
+  --el-1000: #1c1c1c;
+  --txt: #1c1c1c;
+  --txt-dim: #a1a1a1;
+  --rad-s: 6px;
+  --rad-m: 8px;
+  --rad-l: 12px;
+  --err-bg: #fdeded;
+  --err-bd: #f3c0bd;
+  --err-tx: #8c1d18;
+  --on-inverse: #ffffff;
+
+  --color-bg: var(--el-100);
+  --color-surface: var(--el-0);
+  --color-border: var(--el-200);
+  --color-border-strong: var(--el-250);
+  --color-text: var(--txt);
+  --color-text-muted: var(--el-500);
+  --color-accent: var(--el-1000);
+  --color-accent-hover: var(--el-800);
+  --color-accent-light: var(--el-150);
+  /* Danger stays a fixed red in both themes: it's used as a button/badge
+     background, where the dark theme's pale error-text tone would invert. */
+  --color-danger: #b3261e;
+  --color-danger-hover: #8c1d18;
+  --color-danger-light: var(--err-bg);
+  --color-success: #1c5b2c;
+  --color-success-light: #d6f0db;
+  --color-warning-light: #fde8c4;
+  --color-warning-text: #7a4d00;
+
+  font-family:
+    "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   font-size: 14px;
   line-height: 1.5;
+  letter-spacing: -0.15px;
+}
+
+[data-theme="dark"] {
+  --el-0: #232323;
+  --el-50: #202020;
+  --el-100: #1c1c1c;
+  --el-150: #2a2a2a;
+  --el-200: #333333;
+  --el-250: #3f3f3f;
+  --el-400: #6e6e6e;
+  --el-500: #9b9b9b;
+  --el-800: #d4d4d4;
+  --el-1000: #e5e5e5;
+  --txt: #e5e5e5;
+  --txt-dim: #a1a1a1;
+  --err-bg: #3a1816;
+  --err-bd: #6e2a25;
+  --err-tx: #f2b8b5;
+  --on-inverse: #1c1c1c;
+
+  --color-success: #8fdda4;
+  --color-success-light: #14391e;
+  --color-warning-light: #4a3208;
+  --color-warning-text: #f0c674;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--el-100);
+  color: var(--txt);
 }
 
 button {
-  padding: 5px 12px;
-  border: 1px solid var(--color-border-strong);
-  border-radius: 6px;
-  background: var(--color-surface);
+  padding: 6px 12px;
+  border: 1px solid var(--el-200);
+  border-radius: var(--rad-m);
+  background: var(--el-0);
+  color: var(--txt);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  letter-spacing: -0.15px;
   cursor: pointer;
-  font-size: 0.875rem;
-  transition: background 0.15s, border-color 0.15s;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    opacity 0.15s;
+}
+
+button:hover:not(:disabled) {
+  background: var(--el-50);
+  border-color: var(--el-250);
 }
 
 button:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
 input,
-textarea {
-  padding: 6px 10px;
-  border: 1px solid var(--color-border-strong);
-  border-radius: 6px;
-  font-size: 0.875rem;
+textarea,
+select {
+  padding: 8px 12px;
+  border: 1px solid var(--el-200);
+  border-radius: var(--rad-s);
+  background: var(--el-0);
+  color: var(--txt);
+  font-size: 14px;
   font-family: inherit;
+  letter-spacing: -0.15px;
 }
 
 input:focus,
-textarea:focus {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 1px;
-  border-color: var(--color-accent);
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--el-500);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.06);
 }

@@ -2,10 +2,12 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   cancelForm,
+  consumeDisambiguationChoice,
   consumeOfferReply,
   funnelPhase,
   OFFER_CHOICE_FILL,
   OFFER_CHOICE_LINK,
+  offerDisambiguation,
   offerForm,
   parkHandoff,
   pinForm,
@@ -86,6 +88,48 @@ test("consumeOfferReply: fill pins, link parks, anything else lapses", () => {
 
   // No pending offer → inert.
   assert.equal(consumeOfferReply(session(), OFFER_CHOICE_FILL), null);
+});
+
+// #1296: a disambiguation tap is a deterministic pin (exact title match), NOT
+// a re-run of the still-tied matcher. "Something else" / anything else lapses.
+test("consumeDisambiguationChoice: exact title pins, anything else lapses", () => {
+  const candidates = [
+    { slug: "redirect-personal-mail", title: "Redirect personal mail" },
+    {
+      slug: "redirect-mail-deceased",
+      title: "Redirect mail for a deceased person",
+    },
+  ];
+
+  // Tapping a presented title pins that exact form (case / padding tolerant).
+  const picked = session();
+  offerDisambiguation(picked, candidates);
+  assert.equal(funnelPhase(picked), "exploring"); // not pinned while pending
+  assert.deepEqual(
+    consumeDisambiguationChoice(
+      picked,
+      "  Redirect mail for a deceased person ",
+    ),
+    { kind: "pinned", slug: "redirect-mail-deceased" },
+  );
+  assert.equal(picked.slug, "redirect-mail-deceased");
+  assert.equal(picked.disambiguationForms, undefined);
+
+  // "Something else" LAPSES (distinct from inert) — the caller uses this to
+  // match the latest message only and avoid re-offering the same set.
+  const escaped = session();
+  offerDisambiguation(escaped, candidates);
+  assert.deepEqual(consumeDisambiguationChoice(escaped, "Something else"), {
+    kind: "lapsed",
+  });
+  assert.equal(escaped.slug, null);
+  assert.equal(escaped.disambiguationForms, undefined);
+
+  // No pending disambiguation → inert.
+  assert.equal(
+    consumeDisambiguationChoice(session(), "Redirect personal mail"),
+    null,
+  );
 });
 
 test("offerForm + cancelForm transitions", () => {

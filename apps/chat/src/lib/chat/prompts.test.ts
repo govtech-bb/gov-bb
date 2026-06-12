@@ -2,13 +2,16 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   FEEDBACK_COLLECTION_GUIDANCE,
+  FEEDBACK_OFFER_GUIDANCE,
   FORM_COLLECTION_PROTOCOL,
   SYSTEM_PROMPT,
   buildCantHelpDisclosure,
+  buildDirectLinkDisclosure,
   buildHandoffContinuationDisclosure,
   buildHandoffDisclosure,
   buildHandoffOfferDisclosure,
   buildMissDisclosure,
+  buildServiceFeedbackDisclosure,
 } from "./prompts";
 
 // The form-collection / submit machinery lives in FORM_COLLECTION_PROTOCOL,
@@ -21,6 +24,28 @@ test("form-collection rules are out of the always-on system prompt", () => {
   assert.ok(!/set_field|submit_form|FORM COLLECTION:/.test(SYSTEM_PROMPT));
   // but the conversational grounding rules stay always-on
   assert.match(SYSTEM_PROMPT, /CONTEXT USE/);
+});
+
+// The always-on backstop: even if the deterministic disambiguation misses a
+// phrasing, the model must never recite a ministry contact as a feedback channel
+// (the bug this branch fixes).
+test("system prompt forbids pointing feedback at a ministry", () => {
+  assert.match(SYSTEM_PROMPT, /FEEDBACK/);
+  assert.match(SYSTEM_PROMPT, /NEVER tell them to phone, email, or visit/i);
+});
+
+// Service/site feedback hands over the general feedback form link — never a
+// ministry phone/email/office (the reported bug).
+test("buildServiceFeedbackDisclosure hands over the link and forbids a ministry contact", () => {
+  const out = buildServiceFeedbackDisclosure("https://landing.test/feedback");
+  assert.match(
+    out,
+    /\[Tell us what you think\]\(https:\/\/landing\.test\/feedback\)/,
+  );
+  assert.match(out, /do NOT recite a ministry\/department phone number/i);
+  assert.match(out, /Anything else I can help with\?/);
+  // No field collection on a handoff-style turn.
+  assert.match(out, /not available this turn/i);
 });
 
 // The CHANNEL PREFERENCE section nudges informational turns online-first, but
@@ -101,10 +126,51 @@ test("feedback guidance: a successful submit thanks the user with no reference n
   );
 });
 
+// The feedback OFFER reply must be the single invitation sentence and NOTHING
+// else. The bug (#feedback-duplication): on "feedback" the model both said "Let
+// me open the feedback form for you" AND asked "would you like to give
+// feedback?" — a contradictory two-message reply (calling offer_feedback only
+// READIES the form; it doesn't open it). The guidance must forbid that framing
+// so only the invitation shows.
+test("feedback offer guidance: invitation is the whole reply, no 'opening the form' framing", () => {
+  assert.match(FEEDBACK_OFFER_GUIDANCE, /offer_feedback/);
+  // Still carries the invitation example...
+  assert.match(FEEDBACK_OFFER_GUIDANCE, /would you like to give us quick/i);
+  // ...but constrains the reply to ONLY that one sentence.
+  assert.match(FEEDBACK_OFFER_GUIDANCE, /only|entire|nothing else/i);
+  // And explicitly forbids announcing it is opening/starting/pulling up the form.
+  assert.match(
+    FEEDBACK_OFFER_GUIDANCE,
+    /do not.*(open|opening|start|starting|pull up).*form/i,
+  );
+});
+
 test("FORM_COLLECTION_PROTOCOL carries the collection + submit rules", () => {
   assert.match(FORM_COLLECTION_PROTOCOL, /set_field/);
   assert.match(FORM_COLLECTION_PROTOCOL, /submit_form/);
   assert.match(FORM_COLLECTION_PROTOCOL, /WHEN A FORM SCHEMA IS PROVIDED/);
+});
+
+// Guardrail against the model inventing a validation failure on an
+// already-recorded field (the "aaaaa first name is invalid" bug after a
+// middle-name skip): a {ok:true} value is valid, and only a real {ok:false}
+// error this turn is a validation problem.
+test("FORM_COLLECTION_PROTOCOL forbids inventing validation errors", () => {
+  assert.match(FORM_COLLECTION_PROTOCOL, /TRUST THE TOOL RESULTS/);
+  assert.match(FORM_COLLECTION_PROTOCOL, /\{ok: false, error\}/);
+});
+
+// The model must never point users at option buttons shown earlier in the chat
+// ("select one of the options above") — they may have scrolled off. For a
+// required question the user hasn't answered, it must re-render the options via
+// ask_field instead of describing them in prose (#1223 / follow-up directive).
+test("FORM_COLLECTION_PROTOCOL forbids referencing options above and re-shows them", () => {
+  assert.match(
+    FORM_COLLECTION_PROTOCOL,
+    /options above|buttons above|shown (earlier|above)/i,
+  );
+  assert.match(FORM_COLLECTION_PROTOCOL, /re-?show|re-?present|show .* again/i);
+  assert.match(FORM_COLLECTION_PROTOCOL, /required/i);
 });
 
 // The continuation disclosure is shown on follow-up turns after a handoff. It
@@ -138,6 +204,13 @@ test("forbids denying the online form exists", () => {
 test("allows informational answering from context", () => {
   const out = buildHandoffContinuationDisclosure(TITLE, URL);
   assert.match(out, /informational|informationally/i);
+});
+
+// Like the first handoff, the continuation closes by asking if there's anything
+// else, using the exact WRAP-UP wording the closer path recognises.
+test("continuation: ends by asking if there's anything else", () => {
+  const out = buildHandoffContinuationDisclosure(TITLE, URL);
+  assert.match(out, /Anything else I can help with\?/);
 });
 
 // The OFFER disclosure is shown when the user asked an INFO question about a
@@ -206,6 +279,23 @@ test("handoff: uses the reshaped lead-in + closing copy", () => {
   const out = buildHandoffDisclosure(TITLE, URL);
   assert.match(out, /Here's the form to get started:/);
   assert.match(out, /complete your application there when you're ready/i);
+});
+
+// The "just send me the link" path delivers the link and, like the handoff,
+// closes by asking if there's anything else so a "no" is recognised by the
+// closer path (retrieval's WRAP_UP_RE) and winds the chat down.
+test("direct link: delivers the link and ends by asking if there's anything else", () => {
+  const out = buildDirectLinkDisclosure(TITLE, URL);
+  assert.ok(out.includes(`[${TITLE}](${URL})`), "should contain the link");
+  assert.match(out, /Anything else I can help with\?/);
+});
+
+// Handing over the link must not dead-end the chat: the reply ends by asking if
+// there's anything else, using the exact WRAP-UP wording the closer path
+// (retrieval's WRAP_UP_RE = /anything else/i) recognises so a "no" winds down.
+test("handoff: ends by asking if there's anything else", () => {
+  const out = buildHandoffDisclosure(TITLE, URL);
+  assert.match(out, /Anything else I can help with\?/);
 });
 
 // #1079 follow-up: we now show BOTH paths. The disclosure must no longer forbid

@@ -92,6 +92,43 @@ export function consumeOfferReply(
   return null;
 }
 
+// The title matcher tied across several forms: put them on the table as
+// disambiguation choices (#1296). The next turn's tap resolves them.
+export function offerDisambiguation(
+  session: FormSession,
+  candidates: Array<{ slug: string; title: string }>,
+): void {
+  session.disambiguationForms = candidates;
+  session.updatedAt = Date.now();
+}
+
+export type DisambiguationChoice =
+  | { kind: "pinned"; slug: string }
+  | { kind: "lapsed" } // had candidates, but the reply matched no title
+  | null; // nothing was pending
+
+// Resolve a pending disambiguation against the user's latest message. Like the
+// offer pills, the choice sends its title verbatim, so an exact title match is
+// a deterministic pin — NOT a re-run of the margin matcher, which would re-tie
+// on the shared-token variants ("redirect mail" → personal/individual/deceased)
+// and loop forever. Anything else ("Something else", a topic switch) LAPSES:
+// the caller must then match the LATEST message only, because the rolling
+// window still names the ambiguous phrase and would just re-offer the same set.
+export function consumeDisambiguationChoice(
+  session: FormSession,
+  latest: string,
+): DisambiguationChoice {
+  const candidates = session.disambiguationForms;
+  if (!candidates?.length) return null;
+  session.disambiguationForms = undefined;
+  session.updatedAt = Date.now();
+  const reply = latest.trim().toLowerCase();
+  const hit = candidates.find((c) => c.title.trim().toLowerCase() === reply);
+  if (!hit) return { kind: "lapsed" };
+  pinForm(session, hit.slug);
+  return { kind: "pinned", slug: hit.slug };
+}
+
 // Track consecutive retrieval misses so the assistant clarifies ONCE, then
 // discloses it can't help instead of re-asking turn over turn (#1176). A miss
 // increments the streak; any non-miss turn resets it. The FIRST miss returns

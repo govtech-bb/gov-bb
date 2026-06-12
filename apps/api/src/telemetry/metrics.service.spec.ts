@@ -43,8 +43,8 @@ describe("MetricsService", () => {
       expect(mockGetMeter).toHaveBeenCalledWith("modular-forms-api");
     });
 
-    it("creates four counters on init", () => {
-      expect(mockCreateCounter).toHaveBeenCalledTimes(4);
+    it("creates five counters on init", () => {
+      expect(mockCreateCounter).toHaveBeenCalledTimes(5);
       expect(mockCreateCounter).toHaveBeenCalledWith("form.submissions.total", {
         description: "Total number of form submissions",
       });
@@ -64,6 +64,13 @@ describe("MetricsService", () => {
       expect(mockCreateCounter).toHaveBeenCalledWith("http.errors.total", {
         description: "Total number of HTTP errors by status code",
       });
+      expect(mockCreateCounter).toHaveBeenCalledWith(
+        "feedback.email.failures",
+        {
+          description:
+            "Site feedback emails that failed to send after all retries",
+        },
+      );
     });
 
     it("does not throw when OpenTelemetry returns a no-op meter (graceful degradation)", () => {
@@ -162,6 +169,14 @@ describe("MetricsService", () => {
           "http.route": "/api/forms/unknown",
         }),
       );
+    });
+  });
+
+  describe("recordFeedbackEmailFailure", () => {
+    it("increments the feedback email failure counter", () => {
+      service.recordFeedbackEmailFailure();
+
+      expect(getCounterAdd("feedback.email.failures")).toHaveBeenCalledWith(1);
     });
   });
 });

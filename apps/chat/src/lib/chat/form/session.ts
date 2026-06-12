@@ -17,6 +17,17 @@ export interface FormSession {
   // A RAG-driven form offer awaiting the user's choice (fill here vs link).
   // Set by funnel.offerForm, consumed (or lapsed) on the very next turn.
   offeredForm?: { slug: string; title: string };
+  // "pending" while the feedback disambiguation choices ("About this assistant"
+  // / "About a service or the site") are on the table, awaiting the user's tap.
+  // Set when run-turn emits the choices, consumed (or lapsed) on the next turn
+  // by feedback.consumeFeedbackChoice.
+  feedbackChoice?: "pending";
+  // The forms a broad/ambiguous request matched about equally well, on the
+  // table as disambiguation choices awaiting the user's tap (#1296). Set when
+  // the title matcher ties (routing.offerDisambiguation), resolved on the next
+  // turn by funnel.consumeDisambiguationChoice — the tapped title pins that
+  // exact form, so the tap never re-enters the (still-tied) margin matcher.
+  disambiguationForms?: Array<{ slug: string; title: string }>;
   submissionId: string;
   status: FormSessionStatus;
   referenceNumber?: string;
@@ -85,6 +96,8 @@ export function resetSessionForNewForm(session: FormSession): void {
   session.askedFieldIds = new Set();
   session.reviewedSinceChange = false;
   session.offeredForm = undefined;
+  session.feedbackChoice = undefined;
+  session.disambiguationForms = undefined;
   session.submissionId = randomUUID();
   session.status = "collecting";
   session.referenceNumber = undefined;

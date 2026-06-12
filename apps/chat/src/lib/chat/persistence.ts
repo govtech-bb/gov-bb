@@ -55,6 +55,33 @@ export const citationsStore = {
   },
 };
 
+// Link-token maps travel on the same citations event (#1270) and must survive
+// a refresh too — a restored answer still carries link_N tokens in its text,
+// which render as dead text without the map.
+const LINK_TOKENS_KEY = `${STORAGE_PREFIX}link-tokens`;
+
+export const linkTokensStore = {
+  load(): Record<string, Record<string, string>> {
+    if (typeof sessionStorage === "undefined") return {};
+    try {
+      const raw = sessionStorage.getItem(LINK_TOKENS_KEY);
+      return raw
+        ? (JSON.parse(raw) as Record<string, Record<string, string>>)
+        : {};
+    } catch {
+      return {};
+    }
+  },
+  save(maps: Record<string, Record<string, string>>): void {
+    if (typeof sessionStorage === "undefined") return;
+    try {
+      sessionStorage.setItem(LINK_TOKENS_KEY, JSON.stringify(maps));
+    } catch {
+      // best-effort, like the message persistence
+    }
+  },
+};
+
 // Keep the threadId stable across refreshes too — the server's in-memory form
 // session is keyed by it, so a mid-form conversation restored from storage
 // would otherwise lose its form state.

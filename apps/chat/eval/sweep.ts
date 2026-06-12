@@ -128,6 +128,7 @@ async function buildRowsCache(
         FROM chunks c
         JOIN documents d ON c.document_id = d.id
         WHERE d.metadata->>'status' IS DISTINCT FROM 'draft'
+          AND d.metadata->>'status' IS DISTINCT FROM 'preview'
       )
       SELECT document_id, doc_kind, sim
       FROM ranked

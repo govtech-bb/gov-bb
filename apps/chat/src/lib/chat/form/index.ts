@@ -1,5 +1,16 @@
+export {
+  matchPendingOption,
+  recordOptionValue,
+  type PendingOptionAnswer,
+} from "./answer";
+export {
+  matchChangeField,
+  resetFieldForChange,
+  type ChangeFieldTarget,
+} from "./change";
 export { matchFormsFromText } from "./detect";
 export { getFormSlugs } from "./defs";
+export { buildFieldSpec, type AskFieldSpec } from "./field-spec";
 export {
   consumeOfferReply,
   funnelPhase,
@@ -7,9 +18,11 @@ export {
   recordMissOutcome,
   type FunnelPhase,
 } from "./funnel";
-export { applyRagFallback, pinSessionForm } from "./routing";
+export { applyRagFallback, pinSessionForm, type PinResult } from "./routing";
 export {
   buildFieldIndex,
+  nextAskableField,
+  nextRequiredAskableField,
   resolveActiveForm,
   type FormResolution,
 } from "./schema";

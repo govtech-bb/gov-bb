@@ -3,26 +3,56 @@ import { chat } from "@tanstack/ai";
 import { bedrockText } from "@govtech-bb/ai-bedrock";
 import { childController } from "#/lib/abort";
 import { getServerEnv } from "#/config/env";
+import { landingStartPath } from "#/lib/rag/start-page";
 import {
   applyRagFallback,
   buildEndOfChatTools,
   buildFeedbackTools,
+  buildFieldSpec,
   buildFormTools,
   buildOfferTools,
   consumeOfferReply,
   funnelPhase,
   getOrCreateSession,
+  matchChangeField,
+  matchFormsFromText,
+  matchPendingOption,
+  nextAskableField,
+  nextRequiredAskableField,
   parkHandoff,
   pinSessionForm,
   recordMissOutcome,
+  recordOptionValue,
+  resetFieldForChange,
   resolveActiveForm,
   withThreadLock,
   type FormResolution,
   type FormTurnContext,
+  type PinResult,
 } from "./form";
-import { FEEDBACK_FORM_ID, shouldBindFeedbackOffer } from "./feedback";
-import { isInfoQuestion, looksLikeJailbreak } from "./guards";
-import { citationsMiddleware, turnLogMiddleware } from "./middleware";
+import { representChoicesStream } from "./represent-choices-stream";
+import { representFieldStream } from "./represent-field-stream";
+import {
+  cancelFeedbackForm,
+  consumeFeedbackChoice,
+  FEEDBACK_ABOUT_ASSISTANT,
+  FEEDBACK_ABOUT_SERVICE,
+  FEEDBACK_DISAMBIGUATION_QUESTION,
+  FEEDBACK_FORM_ID,
+  FEEDBACK_TRIGGER_PHRASE,
+  shouldBindFeedbackOffer,
+  shouldReleaseFeedbackOffer,
+} from "./feedback";
+import {
+  isInfoQuestion,
+  looksLikeFeedbackIntent,
+  looksLikeJailbreak,
+} from "./guards";
+import {
+  citationsMiddleware,
+  toolCallGuardMiddleware,
+  turnLogMiddleware,
+} from "./middleware";
 import { capMessageHistory, lastAssistantText, lastUserText } from "./messages";
 import { buildSystemPrompts } from "./prompt-builder";
 import {
@@ -83,19 +113,82 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
   // link" parks it — code, not model interpretation (ADR 0048). Any other
   // reply lapses the offer and falls through to normal routing.
   const offerReply = consumeOfferReply(session, latest);
+  // Same link policy as resolveActiveForm's handoff: prefer the landing start
+  // page over the bare forms-app URL, so an offer's "just send me the link"
+  // matches what a handoff would have given.
+  const offerStartPath =
+    offerReply?.kind === "link"
+      ? await landingStartPath(offerReply.slug)
+      : null;
   const linkRequested =
     offerReply?.kind === "link"
       ? {
           title: offerReply.title,
-          url: `${getServerEnv().FORMS_URL}/forms/${encodeURIComponent(offerReply.slug)}`,
+          url: offerStartPath
+            ? `${getServerEnv().LANDING_URL}${offerStartPath}`
+            : `${getServerEnv().FORMS_URL}/forms/${encodeURIComponent(offerReply.slug)}`,
         }
       : undefined;
 
-  await pinSessionForm(session, messages);
+  // A pending feedback disambiguation resolves deterministically too (same
+  // contract as the offer pills). "About this assistant" pins chat-feedback
+  // here, so the normal collect-feedback flow takes over below; "About a service
+  // or the site" sets serviceFeedback, which hands over the general feedback
+  // form link and bypasses retrieval/matching for the rest of the turn.
+  const feedbackChoice = consumeFeedbackChoice(session, latest);
+  const serviceFeedback =
+    feedbackChoice?.kind === "service"
+      ? { url: `${getServerEnv().LANDING_URL}/feedback` }
+      : undefined;
 
-  let resolution: FormResolution = session.slug
-    ? await resolveActiveForm(session.slug, session.values)
-    : { kind: "none" };
+  // Explicit feedback intent on a no-form turn: ask ONE quick question — about
+  // the assistant, or about a service / the site — as deterministic choice
+  // pills, BEFORE the matcher can route a lingering service topic from the
+  // rolling window. The tap is resolved next turn by consumeFeedbackChoice.
+  // Gated so we don't hijack: only when no form is pinned coming in, this turn
+  // isn't itself an offer/choice reply, and no choices are already pending
+  // (feedbackChoice === null means none were on the table). The banner phrase is
+  // already-scoped to the assistant, so it's excluded — it keeps pinning
+  // chat-feedback directly via pinSessionForm (#1206).
+  if (
+    !serviceFeedback &&
+    feedbackChoice === null &&
+    offerReply === null &&
+    !session.slug &&
+    latest !== FEEDBACK_TRIGGER_PHRASE &&
+    looksLikeFeedbackIntent(latest)
+  ) {
+    session.feedbackChoice = "pending";
+    session.updatedAt = Date.now();
+    return {
+      kind: "ok",
+      stream: representChoicesStream(
+        FEEDBACK_DISAMBIGUATION_QUESTION,
+        [FEEDBACK_ABOUT_ASSISTANT, FEEDBACK_ABOUT_SERVICE],
+        { runId, threadId, model },
+      ),
+      abortController: childController(signal),
+    };
+  }
+
+  // Was a form already active coming INTO this turn? Distinguishes a re-trigger
+  // of the current form (banner clicked again) from a first activation.
+  const pinnedBefore = session.slug;
+
+  // serviceFeedback short-circuits matching: the user deliberately asked for the
+  // general feedback link, so don't let the rolling-window matcher re-pin a
+  // service topic and override it. When the matcher finds the request names
+  // several forms about equally well it pins NONE and hands the titles back, so
+  // the disambiguation below can ask which one instead of guessing (#1296).
+  const pinResult: PinResult = serviceFeedback
+    ? {}
+    : await pinSessionForm(session, messages);
+  const matcherAmbiguousTitles = pinResult.ambiguousTitles;
+
+  let resolution: FormResolution =
+    !serviceFeedback && session.slug
+      ? await resolveActiveForm(session.slug, session.values)
+      : { kind: "none" };
   const retrievalBoostSlug = session.slug ?? undefined;
 
   // Handoff carries no in-progress state. Don't pin the session to it, or the
@@ -103,6 +196,100 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
   // it so the matcher above won't immediately re-hand-off the same form.
   if (resolution.kind === "handoff") {
     parkHandoff(session, session.slug);
+  }
+
+  // DETERMINISTIC FORM INTERACTIONS (no model in the loop). Option clicks and
+  // form re-triggers are unambiguous UI actions; routing their plain-text label
+  // through the model is what made "Okay" read as chit-chat and made a repeated
+  // banner click re-prompt in prose. Handle them in code instead, re-rendering
+  // the field via the same ask_field tool-result the model path emits.
+  if (resolution.kind === "collect") {
+    const form = resolution.form;
+    // (1) The user picked an option for the current choice question — record it
+    // ourselves, then deterministically present the next field. Only when there
+    // IS a next field; once all are presented, fall through so the model runs
+    // review_form/submit_form (the approval flow it owns).
+    const answer = matchPendingOption(form, session, latest);
+    if (answer && recordOptionValue(form, session, answer)) {
+      const next = nextAskableField(
+        form.contract,
+        session.values,
+        session.askedFieldIds,
+      );
+      if (next) {
+        session.askedFieldIds.add(next.field.fieldId);
+        return {
+          kind: "ok",
+          stream: representFieldStream(
+            buildFieldSpec(
+              form.contract,
+              next.field,
+              session.values,
+              session.askedFieldIds,
+            ),
+            { runId, threadId, model },
+          ),
+          abortController: childController(signal),
+          activeFormSlug: session.slug ?? undefined,
+        };
+      }
+    } else if (pinnedBefore === session.slug) {
+      // (2) The user clicked "Change" on a check-your-answers row — re-present
+      // that one field deterministically. Routing it through the model made it
+      // emit present_choices AND ask_field for the same field, rendering the
+      // question twice (#1255). Reset the field (keeping it presented, so a
+      // re-picked choice is recorded by the option path above; a free-text
+      // re-answer falls to the model), then re-render it.
+      const change = matchChangeField(form, session, latest);
+      if (change) {
+        resetFieldForChange(session, change.field.fieldId);
+        session.askedFieldIds.add(change.field.fieldId);
+        return {
+          kind: "ok",
+          stream: representFieldStream(
+            buildFieldSpec(
+              form.contract,
+              change.field,
+              session.values,
+              session.askedFieldIds,
+            ),
+            { runId, threadId, model },
+          ),
+          abortController: childController(signal),
+          activeFormSlug: session.slug ?? undefined,
+        };
+      }
+      // (3) The user re-invoked the form they're already in (e.g. the banner
+      // "Give feedback" link clicked again) with a REQUIRED question still
+      // unanswered — re-render that question and its options. Gated on a real
+      // re-match of the active form so a field answer or a side question can't
+      // trip it.
+      const pending = nextRequiredAskableField(
+        form.contract,
+        session.values,
+        session.askedFieldIds,
+      );
+      if (
+        pending &&
+        (await matchFormsFromText(latest))?.formId === session.slug
+      ) {
+        session.askedFieldIds.add(pending.field.fieldId);
+        return {
+          kind: "ok",
+          stream: representFieldStream(
+            buildFieldSpec(
+              form.contract,
+              pending.field,
+              session.values,
+              session.askedFieldIds,
+            ),
+            { runId, threadId, model },
+          ),
+          abortController: childController(signal),
+          activeFormSlug: session.slug ?? undefined,
+        };
+      }
+    }
   }
 
   // Skip the rewrite LLM call and RAG retrieval only once the user is ACTIVELY
@@ -135,6 +322,7 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     isGreetingOrTooShort(latest) ||
     (activelyCollecting && !isInfoQuestion(latest)) ||
     offerReply !== null ||
+    serviceFeedback !== undefined ||
     closer;
 
   // A form matched on an INFO question (nothing collected yet, the message is a
@@ -164,11 +352,37 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     retrievalBoostSlug,
   );
 
-  const { block: contextBlock, citations } = buildCitedContext(
+  const {
+    block: contextBlock,
+    citations,
+    linkTokens,
+  } = buildCitedContext(
     contexts,
     rawSources,
     query,
+    getServerEnv().LANDING_URL,
   );
+
+  // A zero-value chat-feedback pin is an open offer, not active collection — but
+  // a pinned form suppresses the RAG routing backstop below. If this turn's
+  // retrieval surfaced a real service, the user changed topic (the title matcher
+  // misses natural phrasings, e.g. "conductor license", and a non-question never
+  // tripped the pinSessionForm release), so release the pin and let the normal
+  // no-form path route to that service (#1202). cancelFeedbackForm preserves
+  // feedbackOffered, and re-asserting it keeps the never-re-offer invariant: a
+  // topic switch reads as an implicit decline.
+  const serviceCandidatesRaw = topServiceCandidates(rawSources);
+  if (
+    shouldReleaseFeedbackOffer(
+      resolution,
+      Object.keys(session.values).length,
+      serviceCandidatesRaw.length > 0,
+    )
+  ) {
+    cancelFeedbackForm(session);
+    session.feedbackOffered = true;
+    resolution = { kind: "none" };
+  }
 
   // Server-driven disambiguation (ADR 0048, stage 3): when retrieval covers
   // SEVERAL distinct services and no form is pinned, winner-take-all routing
@@ -177,13 +391,18 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
   // avoiding). The disclosure keeps a model escape hatch for follow-ups
   // whose topic the conversation already established.
   const serviceCandidates =
-    resolution.kind === "none" && !session.slug
-      ? topServiceCandidates(rawSources)
-      : [];
+    resolution.kind === "none" && !session.slug ? serviceCandidatesRaw : [];
+  // Prefer the title matcher's tied set when it has one: the user's wording
+  // lexically named several forms (a high-signal ambiguity), so disambiguate on
+  // those exact forms rather than the fuzzier RAG service candidates (#1296).
+  // A matcher tie pins nothing, so resolution is "none" and the session stays
+  // unpinned — the same gating the RAG path relies on.
   const disambiguation =
-    serviceCandidates.length >= 2
-      ? { titles: serviceCandidates.map((c) => c.title) }
-      : undefined;
+    matcherAmbiguousTitles && matcherAmbiguousTitles.length >= 2
+      ? { titles: matcherAmbiguousTitles }
+      : serviceCandidates.length >= 2
+        ? { titles: serviceCandidates.map((c) => c.title) }
+        : undefined;
 
   const ragFallback = disambiguation
     ? { resolution }
@@ -231,6 +450,7 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     !handoffContinuation &&
     !formOffer &&
     !linkRequested &&
+    !serviceFeedback &&
     !disambiguation &&
     !noContext;
 
@@ -245,6 +465,7 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     intent,
     formOffer,
     linkRequested,
+    serviceFeedback,
     disambiguation,
     unapprovedForm,
     noContext,
@@ -302,7 +523,10 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     modelOptions: { maxTokens: 600, temperature: 0 },
     abortController,
     middleware: [
-      citationsMiddleware(citations),
+      // First, so everything downstream (citations, turn log, the wire) sees
+      // the cleaned text.
+      toolCallGuardMiddleware(),
+      citationsMiddleware(citations, linkTokens),
       turnLogMiddleware(
         {
           ts: new Date().toISOString(),

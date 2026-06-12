@@ -5,9 +5,11 @@ import type {
 } from "@govtech-bb/form-types";
 import { evaluateFormConditions } from "@govtech-bb/form-conditions";
 import { getServerEnv } from "#/config/env";
+import { landingStartPath } from "#/lib/rag/start-page";
 import { isAutoConfirmedField } from "./auto-confirm";
 import { getFormDefinition } from "./defs";
 import { isForcedHandoff } from "./policy";
+import { isRequiredField } from "./required";
 
 // show-hide is NOT here: the toggle is collected as a yes/no question.
 // Leaving it uncollectable made every field conditional on a toggle
@@ -32,7 +34,7 @@ export function isChatCollectable(field: Primitive): boolean {
 }
 
 function isRequired(field: Primitive): boolean {
-  return !!field.validations?.required;
+  return isRequiredField(field.validations);
 }
 
 export function describeField(field: Primitive, escape?: Primitive): string {
@@ -172,11 +174,16 @@ export function summarizeActive(
   );
 }
 
-// The ask cursor: the first question not yet collected and not yet asked.
-// "Asked but uncollected" = the user skipped an optional field — the cursor
-// moves past it instead of looping. Ordering lives HERE, in code, not in the
-// model: the prompt-level "ASK IN SCHEMA ORDER" rule was probabilistic and
-// the model regularly skipped ahead.
+// The ask cursor: the first question not yet collected and — for OPTIONAL
+// fields — not yet asked. "Asked but uncollected" only advances the cursor for
+// an optional field the user chose to leave blank; a REQUIRED field that was
+// presented but never answered is re-served, so re-triggering a form (e.g.
+// re-sending the feedback phrase before picking a rating) re-shows that field
+// and its options instead of skipping past it (#1207). A required field whose
+// requirement is relaxed by an open escape toggle is already folded out of
+// askableFields upstream, so it can't loop here. Ordering lives HERE, in code,
+// not in the model: the prompt-level "ASK IN SCHEMA ORDER" rule was
+// probabilistic and the model regularly skipped ahead.
 export function nextAskableField(
   contract: ServiceContract,
   values: Record<string, unknown>,
@@ -186,10 +193,58 @@ export function nextAskableField(
   for (const { stepId, field } of askableFields(contract, active, values)) {
     const value = values[field.fieldId];
     if (value !== undefined && value !== "") continue;
-    if (asked.has(field.fieldId)) continue;
+    if (asked.has(field.fieldId) && !isRequired(field)) continue;
     return { stepId, field };
   }
   return null;
+}
+
+// The next askable field, but ONLY when it's required. Drives the deterministic
+// re-present path: when a form is re-invoked (e.g. the banner "Give feedback"
+// link clicked again) with a REQUIRED question still unanswered, the server
+// re-renders that question's widget itself rather than relying on the model to
+// call ask_field — its reliability degrades as the identical request repeats.
+// Optional pending fields return null: the user can skip those, so there's
+// nothing to trap them on.
+export function nextRequiredAskableField(
+  contract: ServiceContract,
+  values: Record<string, unknown>,
+  asked: ReadonlySet<string>,
+): { stepId: string; field: Primitive } | null {
+  const next = nextAskableField(contract, values, asked);
+  return next && isRequired(next.field) ? next : null;
+}
+
+// The step title to ANNOUNCE when this field opens a new section, or null if
+// it doesn't. A field opens a new section when none of the already-asked
+// fields live in its step (the cursor just crossed a step boundary) AND the
+// step has a meaningful title. This is how the user learns "these next
+// questions are your emergency contact / professional referee" rather than
+// re-entering their own details — the titles are in the contract; the chat
+// just wasn't surfacing them. No new session state: derived from askedFieldIds.
+export function sectionForField(
+  contract: ServiceContract,
+  fieldId: string,
+  asked: ReadonlySet<string>,
+): string | null {
+  const stepByFieldId = new Map<string, string>();
+  let stepId: string | undefined;
+  let title: string | undefined;
+  for (const step of contract.steps) {
+    for (const el of step.elements) {
+      stepByFieldId.set(el.fieldId, step.stepId);
+      if (el.fieldId === fieldId) {
+        stepId = step.stepId;
+        title = step.title;
+      }
+    }
+  }
+  if (!title) return null;
+  for (const askedId of asked) {
+    if (askedId === fieldId) continue;
+    if (stepByFieldId.get(askedId) === stepId) return null;
+  }
+  return title;
 }
 
 export interface ActiveFormSchema {
@@ -237,12 +292,19 @@ export async function resolveActiveForm(
   if (!contract) return { kind: "none" };
 
   if (needsHandoff(contract)) {
-    const base = getServerEnv().FORMS_URL;
+    // Hand off to the landing START PAGE (service context + the Start now
+    // button) when the RAG document for this form knows one — derived from
+    // content frontmatter at ingest, no hand-maintained URL map. Forms with
+    // no public landing page fall back to the direct forms-app link.
+    const env = getServerEnv();
+    const startPath = await landingStartPath(contract.formId);
     return {
       kind: "handoff",
       slug,
       title: contract.title,
-      url: `${base}/forms/${encodeURIComponent(slug)}`,
+      url: startPath
+        ? `${env.LANDING_URL}${startPath}`
+        : `${env.FORMS_URL}/forms/${encodeURIComponent(slug)}`,
     };
   }
 

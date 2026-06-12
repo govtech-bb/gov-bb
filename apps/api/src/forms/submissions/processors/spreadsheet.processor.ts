@@ -22,6 +22,14 @@ export class SpreadsheetProcessor implements ISubmissionProcessor {
   private readonly logger = new Logger(SpreadsheetProcessor.name);
   private readonly exportDir: string;
 
+  /** Per-resolved-path serial queue. Each entry is the tail of the promise
+   *  chain for one `filePath`; a new turn for that path chains onto it so the
+   *  read-modify-write critical sections never interleave. Keyed on the
+   *  resolved path so different files stay fully parallel. The provider is a
+   *  NestJS singleton, so this map is shared across the consumer's concurrent
+   *  `Promise.all` dispatch. See `withFileLock`. */
+  private readonly fileLocks = new Map<string, Promise<unknown>>();
+
   constructor(config: ConfigService) {
     this.exportDir =
       config.get<string>("spreadsheet.exportDir") ??
@@ -58,6 +66,22 @@ export class SpreadsheetProcessor implements ISubmissionProcessor {
     const filename = basename(rawFilename);
     const filePath = join(this.exportDir, `${filename}.xlsx`);
 
+    // Serialize the whole read-modify-write on this resolved path. The consumer
+    // dispatches a batch with `Promise.all`, so two entries (or submissions)
+    // targeting the same file would otherwise both `readFile` before either
+    // `writeFile`s and the second write would clobber the first — a lost row.
+    // The lock makes every read observe prior writes. (Single-writer topology:
+    // see the NOTE below — an in-process lock fully closes the race.)
+    await this.withFileLock(filePath, () =>
+      this.appendEntry(payload, filePath, index),
+    );
+  }
+
+  private async appendEntry(
+    payload: SubmissionCreatedEvent,
+    filePath: string,
+    index: number,
+  ): Promise<void> {
     const workbook = new ExcelJS.Workbook();
     const sheetName = "Submissions";
 
@@ -79,10 +103,17 @@ export class SpreadsheetProcessor implements ISubmissionProcessor {
     // the bare submissionId. Two spreadsheet entries writing the same file
     // therefore dedup against their own prior write — entry #2 no longer sees
     // entry #1's row and wrongly skips, and a *retry* of one entry won't
-    // double-write. NOTE: this addresses dedup correctness only, not concurrent
-    // writes — two entries (or two submissions) appending to the same file race
-    // on read-modify-writeFile and can lose a row. That shared-file write race
-    // pre-dates per-entry dispatch; tracked in #702.
+    // double-write.
+    //
+    // NOTE: the concurrent-write race this dedup token did NOT fix (two entries
+    // or submissions racing on read-modify-writeFile, losing a row — #702) is
+    // now closed by the per-path `withFileLock` wrapping this whole section, so
+    // every read here observes prior writes. That lock is sufficient *because of
+    // the single-writer-per-file topology*: a given `.xlsx` is only ever written
+    // by one process (one task, or a per-task local export dir). If deployment
+    // ever shares one export dir across tasks (e.g. EFS), this in-process lock
+    // becomes necessary-but-not-sufficient and would need a cross-process
+    // strategy (file lock / atomic append store) — see #702.
     const dedupToken = `${payload.submissionId}:${index}`;
 
     // Scan column 1 for this entry's token. If already present, this is a
@@ -126,6 +157,43 @@ export class SpreadsheetProcessor implements ISubmissionProcessor {
     this.logger.log(
       `[spreadsheet] Recorded submission ${dedupToken} → ${filePath}`,
     );
+  }
+
+  /**
+   * Run `fn` exclusively with respect to `filePath`: calls keyed on the same
+   * path execute one at a time, in arrival order, while different paths run
+   * concurrently.
+   *
+   * Each call chains onto the prior call's tail and replaces it. The chain
+   * advances on the prior turn's *settlement* (success or failure), so a turn
+   * that throws — which the caller relies on to NACK and let SQS retry —
+   * propagates to its own caller but never breaks the chain for the next
+   * waiter. The map entry is deleted once its chain drains, so it stays bounded
+   * (and is bounded by distinct form filenames regardless).
+   */
+  private withFileLock<T>(filePath: string, fn: () => Promise<T>): Promise<T> {
+    const prior = this.fileLocks.get(filePath) ?? Promise.resolve();
+
+    // Start `fn` once the prior turn settles, whether it resolved or rejected.
+    const result = prior.then(fn, fn);
+
+    // The stored tail must never reject, or the next waiter's continuation
+    // (and Node's unhandled-rejection tracking) would see a rejected chain.
+    const tail = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    this.fileLocks.set(filePath, tail);
+
+    // Drop the entry once this turn's tail drains, unless a later turn has
+    // already chained on and replaced it.
+    void tail.then(() => {
+      if (this.fileLocks.get(filePath) === tail) {
+        this.fileLocks.delete(filePath);
+      }
+    });
+
+    return result;
   }
 }
 
