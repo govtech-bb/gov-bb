@@ -27,6 +27,7 @@ import {
 import { KEBAB_ID_PATTERN, kebabize } from "./-id-validation";
 import { getFieldRefs, getStepRefs } from "./-recipe-refs";
 import { BehavioursEditor } from "./-behaviours-editor";
+import { BodyEditor } from "../content/-body-editor";
 import { FieldPicker } from "./-field-picker";
 import { FieldEditPanel } from "./-field-edit-panel";
 import { SortableFieldRow } from "./-sortable-field-row";
@@ -270,32 +271,26 @@ export function StepEditor({
       {/* Confirmation-page copy. The submission-confirmation step renders this
           markdown ("What happens next") below the submission receipt (#1292).
           Authored here so it round-trips through publish instead of being
-          dropped. Plain markdown, matching how apps/forms parses it. */}
+          dropped. Reuses the content CMS's visual editor; linkType "none"
+          hides its Start-button tool, which has no meaning here. */}
       {showMarkdownEditor && (
         <section className={styles.card}>
           <div className={styles.sectionTitle}>Confirmation page content</div>
           <div className={styles.formGroup}>
-            <label htmlFor="markdown-content">
-              "What happens next" (markdown)
-            </label>
-            <textarea
-              id="markdown-content"
+            <BodyEditor
               value={step.markdownContent ?? ""}
-              onChange={(e) =>
+              onChange={(next) =>
                 dispatch({
                   type: "UPDATE_STEP_META",
                   stepId: step.stepId,
-                  meta: { markdownContent: e.target.value || undefined },
+                  meta: { markdownContent: next || undefined },
                 })
               }
-              rows={10}
-              placeholder={
-                "## What happens next\n\n- We will review your application.\n- You will receive a confirmation email."
-              }
+              linkType="none"
             />
             <span className={styles.fieldHint}>
-              Shown on the confirmation page after the applicant submits.
-              Supports markdown — headings (##), bullet lists, bold and links.
+              Shown on the confirmation page after the applicant submits, below
+              the submission receipt.
             </span>
           </div>
         </section>

@@ -88,6 +88,17 @@ it("does not show the Confirmation page content editor on a normal step", () => 
   expect(sectionOrder(container)).not.toContain("Confirmation page content");
 });
 
+// The confirmation copy is edited through the content CMS's BodyEditor
+// (visual + markdown tabs). The tests drive its markdown-source tab — the
+// deterministic path in jsdom, where the visual tab's contenteditable +
+// execCommand toolbar isn't faithfully implemented.
+function openMarkdownTab(): HTMLTextAreaElement {
+  fireEvent.click(screen.getByRole("tab", { name: "Markdown" }));
+  return screen.getByPlaceholderText(
+    "Write the page in markdown…",
+  ) as HTMLTextAreaElement;
+}
+
 it("dispatches markdownContent edits via UPDATE_STEP_META (#1292)", () => {
   const step = makeStep({
     stepId: "submission-confirmation",
@@ -104,7 +115,7 @@ it("dispatches markdownContent edits via UPDATE_STEP_META (#1292)", () => {
       onStepIdChange={jest.fn()}
     />,
   );
-  const textarea = screen.getByLabelText('"What happens next" (markdown)');
+  const textarea = openMarkdownTab();
   fireEvent.change(textarea, { target: { value: "## Next\n\n- step" } });
   expect(dispatch).toHaveBeenCalledWith({
     type: "UPDATE_STEP_META",
@@ -132,7 +143,7 @@ it("clears markdownContent to undefined when emptied (#1292)", () => {
       onStepIdChange={jest.fn()}
     />,
   );
-  const textarea = screen.getByLabelText('"What happens next" (markdown)');
+  const textarea = openMarkdownTab();
   fireEvent.change(textarea, { target: { value: "" } });
   expect(dispatch).toHaveBeenCalledWith({
     type: "UPDATE_STEP_META",
