@@ -1,15 +1,11 @@
-import type { InferToolInput, UIMessage } from "@tanstack/ai";
-import { Allow, parse as parsePartialJson } from "partial-json";
+import { parsePartialJSON, type InferToolInput, type UIMessage } from "@tanstack/ai";
 import { memo, useCallback, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { presentChoicesDef } from "#/lib/chat-tools";
 import { TridentAvatar } from "#/components/trident-avatar";
-import {
-  extractText,
-  findToolCall,
-  stripLeakedToolCalls,
-} from "#/lib/chat/messages";
+import { extractText, findToolCall } from "#/lib/chat/messages";
+import { stripLeakedToolCalls } from "#/lib/chat/leaked-tool-calls";
 import { formatChangeRequest } from "#/lib/chat/change-field";
 import { restoreLinks } from "#/lib/chat/link-tokens";
 import { normalizeMarkdown } from "#/lib/chat/normalize-markdown";
@@ -26,11 +22,7 @@ type ChoicesArgs = Partial<InferToolInput<typeof presentChoicesDef>>;
 
 function parseChoiceArgs(raw: string | undefined): ChoicesArgs | undefined {
   if (!raw) return undefined;
-  try {
-    return parsePartialJson(raw, Allow.ALL) as ChoicesArgs;
-  } catch {
-    return undefined;
-  }
+  return parsePartialJSON(raw) as ChoicesArgs | undefined;
 }
 
 // The model tends to narrate the question as text AND call present_choices.
