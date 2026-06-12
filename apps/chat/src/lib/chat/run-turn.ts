@@ -47,7 +47,11 @@ import {
   looksLikeFeedbackIntent,
   looksLikeJailbreak,
 } from "./guards";
-import { citationsMiddleware, turnLogMiddleware } from "./middleware";
+import {
+  citationsMiddleware,
+  toolCallGuardMiddleware,
+  turnLogMiddleware,
+} from "./middleware";
 import { capMessageHistory, lastAssistantText, lastUserText } from "./messages";
 import { buildSystemPrompts } from "./prompt-builder";
 import {
@@ -506,6 +510,9 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     modelOptions: { maxTokens: 600, temperature: 0 },
     abortController,
     middleware: [
+      // First, so everything downstream (citations, turn log, the wire) sees
+      // the cleaned text.
+      toolCallGuardMiddleware(),
       citationsMiddleware(citations, linkTokens),
       turnLogMiddleware(
         {
