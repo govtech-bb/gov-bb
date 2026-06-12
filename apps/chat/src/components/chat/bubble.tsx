@@ -10,6 +10,7 @@ import {
   findToolCall,
   stripLeakedToolCalls,
 } from "#/lib/chat/messages";
+import { formatChangeRequest } from "#/lib/chat/change-field";
 import { restoreLinks } from "#/lib/chat/link-tokens";
 import { normalizeMarkdown } from "#/lib/chat/normalize-markdown";
 import type { Citation } from "#/lib/chat/types";
@@ -85,6 +86,12 @@ function BubbleImpl({
       ? (askFieldPart.output as AskFieldOutput | undefined)
       : undefined;
   const fieldSpec = askFieldOutput?.ok ? askFieldOutput.field : undefined;
+  // ask_field IS the field widget (label + pills); a present_choices in the
+  // same turn is the redundant one. The model sometimes emits both for one
+  // field, which renders the question twice (#1255) — suppress the pills when
+  // the widget is present. (Sibling guard to stripTrailingQuestion above, which
+  // dedupes a text question against the pills.)
+  const showChoices = hasChoices && !fieldSpec;
 
   const reviewPart = findToolCall(message, "review_form");
   const reviewOutput =
@@ -193,7 +200,7 @@ function BubbleImpl({
             </div>
           )}
 
-          {hasChoices && (
+          {showChoices && (
             <ChoicePills
               questionId={`choices-q-${message.id}`}
               question={choicesArgs?.question}
@@ -216,7 +223,7 @@ function BubbleImpl({
             <ReviewSummary
               items={reviewItems}
               disabled={controlsDisabled}
-              onChange={(label) => handleChoice(`I'd like to change ${label}`)}
+              onChange={(label) => handleChoice(formatChangeRequest(label))}
             />
           )}
 
