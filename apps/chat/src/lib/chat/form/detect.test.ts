@@ -98,3 +98,82 @@ test("single best (candidates[0]) keeps the shortest-formId tie-break", () => {
   const out = matchFormCandidatesFromIndex("redirect mail", index);
   assert.equal(out[0].formId, "redirect-mail");
 });
+
+// ---------------------------------------------------------------------------
+// Family expansion (#1296)
+//
+// The LIVE post-office-redirection titles do NOT share tokens — this is the
+// data #1297 missed (its fixtures all carried "redirect"+"mail"). "redirect
+// mail" lexically scores only the individual form (2); business ("Post Office
+// Redirection - Business") and deceased ("Tell the Post Office someone has
+// died") score 0. Token overlap alone therefore pins the individual form. The
+// family declaration must pull all three together regardless.
+// ---------------------------------------------------------------------------
+
+const LIVE_REDIRECTION_INDEX = [
+  entry("post-office-redirection-individual", "Redirect my personal mail"),
+  entry(
+    "post-office-redirection-business",
+    "Post Office Redirection - Business",
+  ),
+  entry(
+    "post-office-redirection-deceased",
+    "Tell the Post Office someone has died",
+  ),
+];
+
+// Inject the real family so the test doesn't couple to policy.ts contents.
+const REDIRECTION_FAMILY = new Set([
+  "post-office-redirection-individual",
+  "post-office-redirection-business",
+  "post-office-redirection-deceased",
+]);
+const redirectionFamilyOf = (id: string) =>
+  REDIRECTION_FAMILY.has(id) ? REDIRECTION_FAMILY : null;
+
+test("a lexical winner in a declared family expands to the whole family (real titles)", () => {
+  const out = matchFormCandidatesFromIndex(
+    "redirect mail",
+    LIVE_REDIRECTION_INDEX,
+    { familyOf: redirectionFamilyOf },
+  );
+  // Winner (the only lexical match) leads; siblings that score 0 still surface.
+  assert.deepEqual(
+    out.map((e) => e.formId),
+    [
+      "post-office-redirection-individual",
+      "post-office-redirection-business",
+      "post-office-redirection-deceased",
+    ],
+  );
+});
+
+test("family expansion needs 2+ members in the index, else pins the single winner", () => {
+  const soloIndex = [
+    entry("post-office-redirection-individual", "Redirect my personal mail"),
+  ];
+  const out = matchFormCandidatesFromIndex("redirect mail", soloIndex, {
+    familyOf: redirectionFamilyOf,
+  });
+  assert.deepEqual(
+    out.map((e) => e.formId),
+    ["post-office-redirection-individual"],
+  );
+});
+
+test("a winner with no declared family is unaffected (no spurious expansion)", () => {
+  const index = [
+    entry("apply-for-conductor-licence", "Apply for a conductor licence"),
+    entry(
+      "post-office-redirection-business",
+      "Post Office Redirection - Business",
+    ),
+  ];
+  const out = matchFormCandidatesFromIndex("conductor licence", index, {
+    familyOf: redirectionFamilyOf,
+  });
+  assert.deepEqual(
+    out.map((e) => e.formId),
+    ["apply-for-conductor-licence"],
+  );
+});

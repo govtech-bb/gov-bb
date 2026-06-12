@@ -75,6 +75,36 @@ export function isSurfaceableForm(formId: string): boolean {
   return CHAT_FORM_POLICY.has(formId);
 }
 
+// Service FAMILIES — sets of forms that are variants of one service for
+// different audiences. A broad request ("redirect mail") names the whole
+// family, not one member, so the matcher offers the family as a disambiguation
+// instead of guessing (#1296). This MUST be a curated list, not a formId-prefix
+// heuristic: a prefix is unreliable as a family signal (the ~12 `youth-*` forms
+// are unrelated programmes — summer camp, jobstart, … — not variants), and the
+// published TITLES don't share tokens either ("Post Office Redirection -
+// Business" has neither "redirect" nor "mail"), so token overlap can't group
+// them. Declaring the set is the only robust signal.
+//
+// Every member should also be a surfaceable form above (a non-surfaceable
+// member simply never appears, since expansion intersects with the live index)
+// — policy.test.ts guards that they stay in sync.
+export const FORM_FAMILIES: ReadonlyArray<ReadonlySet<string>> = [
+  new Set([
+    "post-office-redirection-individual",
+    "post-office-redirection-business",
+    "post-office-redirection-deceased",
+  ]),
+];
+
+// The family a form belongs to, or null if it isn't a declared variant. Used by
+// the matcher to expand a lexical winner to its siblings (detect.ts).
+export function familyMembers(formId: string): ReadonlySet<string> | null {
+  for (const family of FORM_FAMILIES) {
+    if (family.has(formId)) return family;
+  }
+  return null;
+}
+
 // The policy says link-only, regardless of what the live contract looks like.
 // During the release gate (HANDOFF_ALL_FORMS) every surfaceable form is forced
 // off too, except chat-feedback — a non-surfaceable form (no map entry) is

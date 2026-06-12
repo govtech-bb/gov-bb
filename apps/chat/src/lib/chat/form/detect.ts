@@ -1,4 +1,5 @@
 import { getFormIndex, type FormIndexEntry } from "./defs";
+import { familyMembers } from "./policy";
 import { QUERY_STOP, tokenize } from "./tokenize";
 
 // 2 overlapping meaningful tokens (e.g. "post" + "office") is enough signal
@@ -6,8 +7,7 @@ import { QUERY_STOP, tokenize } from "./tokenize";
 const MIN_SCORE = 2;
 // How far below the top score a form can sit and still count as a plausible
 // alternative. A near-tie (within 1 point) means the user's wording names
-// several forms about equally well — "redirect mail" overlaps the personal /
-// individual / deceased variants — so we DISAMBIGUATE rather than guess. A
+// several forms about equally well, so we DISAMBIGUATE rather than guess. A
 // clear winner (every rival more than this below the top) still pins outright.
 const AMBIGUITY_MARGIN = 1;
 // Cap on how many candidates we surface as disambiguation choices, mirroring
@@ -20,12 +20,28 @@ const MAX_CANDIDATES = 3;
 // desc, then shorter formId, then formId lexical). The first element is the
 // single best match (same winner-take-all the matcher always produced); two or
 // more elements means the request is ambiguous.
+//
+// FAMILY EXPANSION (#1296): when the lexical winner belongs to a declared
+// service family, the candidate set becomes the whole family (winner first, then
+// declaration order) — provided 2+ members are in the index. This is what makes
+// a broad "redirect mail" offer all three post-office-redirection variants even
+// though their published titles DON'T share tokens ("Post Office Redirection -
+// Business" scores 0 on "redirect mail", so token overlap alone surfaces only
+// the individual form). The family is the robust signal the titles can't give.
 export function matchFormCandidatesFromIndex(
   userText: string,
   index: FormIndexEntry[],
-  opts: { margin?: number; max?: number } = {},
+  opts: {
+    margin?: number;
+    max?: number;
+    familyOf?: (formId: string) => ReadonlySet<string> | null;
+  } = {},
 ): FormIndexEntry[] {
-  const { margin = AMBIGUITY_MARGIN, max = MAX_CANDIDATES } = opts;
+  const {
+    margin = AMBIGUITY_MARGIN,
+    max = MAX_CANDIDATES,
+    familyOf = familyMembers,
+  } = opts;
   if (!userText) return [];
   const textToks = tokenize(userText, QUERY_STOP);
   if (!textToks.size) return [];
@@ -46,10 +62,35 @@ export function matchFormCandidatesFromIndex(
   );
 
   const topScore = scored[0].score;
-  return scored
+  const ranked = scored
     .filter((s) => s.score >= topScore - margin)
-    .slice(0, max)
     .map((s) => s.entry);
+
+  // Family expansion: the winner names a service with audience variants. Offer
+  // the whole family (winner first, then declaration order), so the user picks
+  // the variant instead of being silently pinned to the one that happened to
+  // share tokens. Gated on 2+ family members actually present in the (already
+  // surfaceable-filtered) index — a family with a single live member pins as
+  // normal. Replaces the lexical set: the family IS the answer to a family hit.
+  const winner = ranked[0];
+  const family = familyOf(winner.formId);
+  if (family) {
+    const present = [...family].filter((id) =>
+      index.some((e) => e.formId === id),
+    );
+    if (present.length >= 2) {
+      const ordered = [
+        winner.formId,
+        ...present.filter((id) => id !== winner.formId),
+      ];
+      return ordered
+        .map((id) => index.find((e) => e.formId === id))
+        .filter((e): e is FormIndexEntry => e !== undefined)
+        .slice(0, max);
+    }
+  }
+
+  return ranked.slice(0, max);
 }
 
 // The forms the user's recent text plausibly names, best first. One element →
