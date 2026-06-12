@@ -84,6 +84,65 @@ describe("SubmissionConfirmation", () => {
     ).toBeInTheDocument();
   });
 
+  describe("processing state (#463)", () => {
+    const processingState: SubmissionState = {
+      ...baseState,
+      processing: true,
+      referenceNumber: "JPP-20260604-130732-9JZRZC",
+    };
+
+    it("renders the processing panel with heading, body and reference number", () => {
+      render(
+        <SubmissionConfirmation
+          serviceTitle="Passport"
+          stepTitle="Submitted"
+          submissionState={processingState}
+        />,
+      );
+      expect(
+        screen.getByText(/we're processing your submission/i),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/we'll email you when it's complete/i),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("JPP-20260604-130732-9JZRZC"),
+      ).toBeInTheDocument();
+    });
+
+    it("does not render a Try again button (nothing failed)", () => {
+      render(
+        <SubmissionConfirmation
+          serviceTitle="Passport"
+          stepTitle="Submitted"
+          submissionState={processingState}
+          onTryAgain={jest.fn()}
+        />,
+      );
+      expect(
+        screen.queryByRole("button", { name: /try again/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("does not render trailing next-steps, contact or feedback sections", () => {
+      render(
+        <SubmissionConfirmation
+          serviceTitle="Passport"
+          stepTitle="Submitted"
+          submissionState={processingState}
+          nextSteps={[{ title: "What happens next", items: ["Step 1"] }]}
+          contactDetails={{ email: "help@example.com" }}
+          feedbackUrl="https://forms.gov.bb/feedback"
+        />,
+      );
+      expect(screen.queryByText("What happens next")).not.toBeInTheDocument();
+      expect(screen.queryByText("help@example.com")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: /give feedback/i }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   describe("paymentUrl safety", () => {
     const pendingState: SubmissionState = {
       hasPayment: true,

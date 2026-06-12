@@ -591,7 +591,7 @@ describe("RouteComponent onSubmit handler", () => {
     expect(formatDataForSubmission).toHaveBeenCalled();
   });
 
-  it("does NOT trackEvent on 'processing' status (no-op branch)", async () => {
+  it("commits a processing state (no bounce) and fires no analytics on 'processing' status", async () => {
     const onSubmit = renderAndExtractOnSubmit();
     (postFormSubmission as jest.Mock).mockResolvedValue({
       status: "processing",
@@ -601,10 +601,22 @@ describe("RouteComponent onSubmit handler", () => {
         formId: "test-form",
       },
     });
-    await onSubmit({ value: {} });
-    // The 'processing' branch in index.tsx is a `break;` — no analytics
-    // should fire. Asserting absence pins the no-op so a future change
-    // that adds side-effects has to update this test.
+    await act(async () => {
+      await onSubmit({ value: {} });
+    });
+    // A 'processing' response (idempotency replay, #463) must commit a state
+    // carrying the processing flag — otherwise submissionState stays undefined
+    // and form-renderer bounces the citizen to check-your-answers.
+    expect(mockFormRendererProps.current.submissionState).toEqual(
+      expect.objectContaining({
+        processing: true,
+        submissionSuccess: true,
+        hasPayment: false,
+        referenceNumber: "ref-001",
+      }),
+    );
+    // Stays silent on analytics: a 'processing' replay is a duplicate of an
+    // already-tracked submit, so neither a success nor an error event fires.
     expect(mockTrackEvent).not.toHaveBeenCalledWith(
       "form-submit-success",
       expect.anything(),
