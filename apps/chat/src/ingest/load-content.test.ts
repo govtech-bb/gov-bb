@@ -158,6 +158,13 @@ test("chunker carries status + formId into document metadata", async () => {
       po.document.metadata.formId,
       "post-office-redirection-individual",
     );
+    // Canonical category-prefixed url (the leaf alias doesn't cover /start
+    // sub-pages) + the start-page flag the handoff lookup reads (#1273).
+    assert.equal(
+      po.document.url,
+      "https://alpha.gov.bb/travel-id-citizenship/post-office-redirection-individual",
+    );
+    assert.equal(po.document.metadata.hasStartPage, true);
     // The folded start content becomes retrievable section chunks.
     assert.ok(
       po.chunks.some((c) => c.kind === "section" && /old address/.test(c.text)),
@@ -169,9 +176,19 @@ test("chunker carries status + formId into document metadata", async () => {
     );
     assert.equal(preview.document.metadata.status, "preview");
 
-    // No form → no formId key at all (retrieval treats absence as "no form").
+    // No form → no formId key at all (retrieval treats absence as "no form");
+    // no start.md → no hasStartPage key, handoff links the service page itself.
     const info = chunkService(bySlug.get("no-form-service")!);
     assert.equal("formId" in info.document.metadata, false);
+    assert.equal("hasStartPage" in info.document.metadata, false);
+    // A nested service keeps its path-shaped slug as the whole url path.
+    const nestedDoc = chunkService(
+      bySlug.get("youth-and-community/arts-culture/community-canvas")!,
+    );
+    assert.equal(
+      nestedDoc.document.url,
+      "https://alpha.gov.bb/youth-and-community/arts-culture/community-canvas",
+    );
   } finally {
     await rm(root, { recursive: true, force: true });
   }
