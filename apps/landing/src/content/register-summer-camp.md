@@ -1,53 +1,76 @@
 ---
-title: "Register for a summer camp"
-description: "Register your child for a free government summer camp in Barbados, available for children aged 4 to 15. Camps cover sports, arts, culture, entrepreneurship, and special needs."
-stage: "alpha"
+title: Apply for National Summer Camp Programme
+description: >-
+  Apply for your child to attend the National Summer Camp Programme. Choose from
+  General Summer Camp, Cultural Arts Camp, or Digital Media Camp for children
+  aged 4 to 15.
+stage: alpha
 featured: true
-publish_date: 2025-11-12
+publish_date: '2026-06-12'
 category: work-employment
-form_id: national-summer-camp-2025-registration
+form_id: national-summer-camp
+visibility: preview
 ---
+Use this service to apply for a child to attend the National Summer Camp Programme.
 
-Children between the ages of 4 and 15 years old are eligible to go to a summer camp. Around 45 summer camps are held across Barbados each year which are free to attend. Some cater for special interests such as cultural arts, sports and entrepreneurship. There is also a summer camp for children who have special needs.
+Complete a separate application for each child.
 
-The deadline to register for a place is approximately 2 weeks before the start of the camp.
+You can apply for:
 
-**Registration opens in May 2026.**
+* General Summer Camp
+* Cultural Arts Camp
+* Digital Media Camp
 
----
+Choose the child's first choice camp. You can add a second and third choice if you want.
 
-## How to register
+<a data-start-link>Start</a>
 
-Parents and guardians can register for a summer camp on behalf of a child/ward online.
+## When you can apply
 
-If you do not have access to the internet or a smart device, colleagues at any community centre can help you register.
+You can only apply for the National Summer Camp Programme when applications are open.
 
-<a data-start-link>Start now</a>
+## Who can apply
 
-You will be asked to choose a first, second and third choice camp in case your first choice is full, or, in case of unforeseen circumstances at a location.
+A parent or guardian can apply for a child.
 
----
+The child must be:
 
-## After you register
+* 4 to 15 years old for General Summer Camp
+* 4 to 15 years old for Cultural Arts Camp
+* 11 to 15 years old for Digital Media Camp
 
-You'll receive an email confirming which camp you have been given a place at 3 to 5 days before the camp begins. If your first choice is unavailable, you will be given a place at your second or third choice camp.
+## What you need before you start
 
----
+You will need:
 
-## Special needs and accessibility
+* the child's Barbados National Identification (ID) number
+* details of any health condition, allergy or medicine the child takes
+* details of any food the child cannot eat
+* the name of the child's doctor or polyclinic, if they have one
+* details for another adult we can contact in an emergency
 
-When you register for a summer camp, you will be asked about a child's health and whether they have any special needs or accessibility needs. This information is used to help place the child in a camp that can meet their specific needs.
+## Cost
 
----
+There is no fee to apply or attend camp.
 
-## Volunteer at a summer camp
+## How long it takes
 
-If you’re 16 years old or over and would like to volunteer as a camp assistant or camp director.
+The form should take about 15 minutes to complete.
 
-You can apply all year round but recruitment usually begins around April, and applicants can expect to hear if they were successful by mid-June. Volunteers need to be free to complete training in June.
+## What happens after you apply
 
----
+Applying does not mean the child has a place at camp.
 
-## How to give feedback or make a complaint
+The Ministry will:
 
-Shortly after the camp, you'll receive a survey online or on paper from your camp. The Research Department uses your anonymous responses to gather information that will help improve future camps.
+* review the application
+* contact you about the next steps
+
+If the child needs medicine during camp, you must complete a Medication Authorisation Form before camp staff can give the child any medicine.
+
+## Get help
+
+For help with National Summer Camp Programme applications, contact:
+
+Telephone: (246) 535-3835
+Email: [add confirmed email address]
