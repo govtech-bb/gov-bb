@@ -69,8 +69,26 @@ interface Case {
   id: string;
   category: "direct" | "ambiguous" | "refusal" | "miss";
   dialect: "standard" | "bajan";
-  message: string;
-  expect?: { citationSlug?: string; replyIncludes?: string[] };
+  // A single user message, OR an ordered multi-turn script (each string is the
+  // next user message, replayed on one stateful conversation). The verdict
+  // judges the LAST assistant reply. Multi-turn exists because the live link
+  // failures only showed up after a clarify exchange (greeting -> "personally
+  // or business?" -> "no I want to get started"), never on the first message.
+  message?: string;
+  messages?: string[];
+  expect?: {
+    citationSlug?: string;
+    replyIncludes?: string[];
+    // Phrases the reply must NOT contain, case-insensitive. A hard fail in any
+    // category — for the gate this forbids the bot improvising a paper-form /
+    // "search alpha.gov.bb" fallback instead of handing over the form link.
+    replyExcludes?: string[];
+  };
+}
+
+function caseTurns(c: Case): string[] {
+  if (c.messages?.length) return c.messages;
+  return c.message ? [c.message] : [];
 }
 
 interface Verdict {
@@ -123,7 +141,12 @@ async function collectOne(c: Case): Promise<CaseResult> {
   }, CASE_TIMEOUT_MS);
 
   try {
-    await client.sendMessage(c.message);
+    // Replay every user turn on the one stateful client so the server's form
+    // session (keyed by threadId) carries across the conversation. The final
+    // assistant reply is what the verdict judges.
+    for (const turn of caseTurns(c)) {
+      await client.sendMessage(turn);
+    }
   } catch (err) {
     streamError ??= err instanceof Error ? err.message : String(err);
   } finally {
@@ -131,7 +154,14 @@ async function collectOne(c: Case): Promise<CaseResult> {
   }
 
   const assistant = client.getMessages().filter((m) => m.role === "assistant");
-  const reply = assistant.map(extractText).join("\n").trim();
+  // Multi-turn: judge the LAST assistant reply, not the whole transcript, so a
+  // clean handoff isn't masked by an earlier clarifying turn.
+  const lastReply = assistant.length
+    ? extractText(assistant[assistant.length - 1]).trim()
+    : "";
+  const reply = c.messages?.length
+    ? lastReply
+    : assistant.map(extractText).join("\n").trim();
   const choices = assistant
     .map((m) => findToolCall(m, "present_choices"))
     .filter((p) => p !== undefined)
@@ -214,6 +244,20 @@ async function judgeOne(r: CaseResult): Promise<Verdict> {
     return { pass: false, kind: "deterministic", reason: `error: ${r.error}` };
   }
 
+  // Forbidden phrases fail any case before category logic — the gate must
+  // never improvise a paper-form / "search the site" fallback for a service
+  // it can hand a real link to.
+  const banned = (r.case.expect?.replyExcludes ?? []).find((p) =>
+    r.reply.toLowerCase().includes(p.toLowerCase()),
+  );
+  if (banned !== undefined) {
+    return {
+      pass: false,
+      kind: "deterministic",
+      reason: `reply contains forbidden phrase "${banned}"`,
+    };
+  }
+
   if (r.case.category === "direct") {
     // The bot answers a direct ask either by citing the service page or by
     // starting the matching form flow — the latter names the service in the
@@ -289,7 +333,7 @@ function caseHtml(r: CaseResult, open: boolean): string {
     ? `<span class="badge pass">PASS</span>`
     : `<span class="badge fail">FAIL</span>`;
   return `<details${open ? " open" : ""}>
-<summary>${badge} <code>${esc(r.case.id)}</code> <em>${esc(r.case.category)}${r.case.dialect === "bajan" ? " · bajan" : ""}</em> — ${esc(r.case.message)}</summary>
+<summary>${badge} <code>${esc(r.case.id)}</code> <em>${esc(r.case.category)}${r.case.dialect === "bajan" ? " · bajan" : ""}</em> — ${esc(caseTurns(r.case).join(" → "))}</summary>
 <dl>
 <dt>Verdict (${v?.kind ?? "?"})</dt><dd>${esc(v?.reason ?? "not judged")}</dd>
 <dt>Reply (${r.durationMs}ms)</dt><dd><pre>${esc(r.reply || "(empty)")}</pre></dd>

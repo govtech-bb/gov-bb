@@ -505,6 +505,97 @@
       "category": "miss",
       "dialect": "bajan",
       "message": "wuh I gotta do to get muh passport sort out?"
+    },
+    {
+      "id": "handoff-birth-cert-link-1",
+      "category": "direct",
+      "dialect": "standard",
+      "message": "How do I get a copy of my birth certificate?",
+      "expect": {
+        "citationSlug": "get-birth-certificate",
+        "replyIncludes": ["birth"],
+        "replyExcludes": [
+          "search alpha.gov.bb",
+          "I don't have the direct link",
+          "I don't have a direct link",
+          "fill it out with you here",
+          "fill it out here"
+        ]
+      }
+    },
+    {
+      "id": "handoff-conductor-link-1",
+      "category": "direct",
+      "dialect": "standard",
+      "message": "I want to apply for a conductor's licence",
+      "expect": {
+        "citationSlug": "apply-for-conductor-licence",
+        "replyIncludes": ["conductor"],
+        "replyExcludes": [
+          "search alpha.gov.bb",
+          "I don't have the direct link",
+          "I don't have a direct link",
+          "fill it out with you here"
+        ]
+      }
+    },
+    {
+      "id": "handoff-mail-redirect-direct-1",
+      "category": "direct",
+      "dialect": "standard",
+      "message": "I want to redirect my personal mail",
+      "expect": {
+        "citationSlug": "post-office-redirection-individual",
+        "replyIncludes": ["redirect"],
+        "replyExcludes": [
+          "search alpha.gov.bb",
+          "I don't have the direct link",
+          "I don't have a direct link",
+          "fill it out with you here"
+        ]
+      }
+    },
+    {
+      "id": "handoff-mail-redirect-multiturn-1",
+      "category": "direct",
+      "dialect": "standard",
+      "messages": [
+        "Hello I have mail i want to redirect",
+        "Personally",
+        "no I want to get started"
+      ],
+      "expect": {
+        "citationSlug": "post-office-redirection-individual",
+        "replyIncludes": ["redirect"],
+        "replyExcludes": [
+          "search alpha.gov.bb",
+          "I don't have the direct link",
+          "I don't have a direct link",
+          "fill it out with you here",
+          "What's your full name",
+          "what is your full name"
+        ]
+      }
+    },
+    {
+      "id": "handoff-mail-redirect-do-it-here-1",
+      "category": "direct",
+      "dialect": "standard",
+      "messages": [
+        "I want to redirect my personal mail",
+        "can I just do it here in the chat with you?"
+      ],
+      "expect": {
+        "citationSlug": "post-office-redirection-individual",
+        "replyIncludes": ["redirect"],
+        "replyExcludes": [
+          "What's your full name",
+          "what is your full name",
+          "fill it out with you here",
+          "let's start",
+          "let me walk you through"
+        ]
+      }
     }
   ]
 }
