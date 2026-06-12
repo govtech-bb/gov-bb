@@ -15,14 +15,8 @@
   "scripts": {
     "test": "vitest run"
   },
-  "lint-staged": {
-    "*.ts": "npx prettier --write"
-  },
   "dependencies": {
     "@govtech-bb/expressions": "workspace:*",
     "tslib": "^2.8.1"
-  },
-  "devDependencies": {
-    "lint-staged": "^16.4.0"
   }
 }

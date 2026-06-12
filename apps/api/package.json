@@ -39,7 +39,6 @@
     "@opentelemetry/exporter-trace-otlp-http": "^0.218.0",
     "@opentelemetry/sdk-metrics": "^2.7.0",
     "@opentelemetry/sdk-node": "^0.218.0",
-    "@smithy/core": "^3.24.3",
     "axios": "^1.15.0",
     "dotenv": "17.4.2",
     "exceljs": "^4.4.0",
@@ -58,10 +57,10 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.1.17",
     "@types/express": "^4.17.21",
     "@types/json-logic-js": "^2.0.7",
-    "@types/multer": "^1.4.12",
     "@types/nodemailer": "^8.0.0",
     "@types/supertest": "^7.2.0",
     "@types/uuid": "^10.0.0",
