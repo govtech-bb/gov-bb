@@ -2,14 +2,14 @@ import { NotFoundException } from "@nestjs/common";
 import { DraftArchiveController } from "./draft-archive.controller";
 
 const mockService = {
-  archive: jest.fn(),
+  archive: vi.fn(),
 };
 
 describe("DraftArchiveController", () => {
   let controller: DraftArchiveController;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     controller = new DraftArchiveController(mockService as never);
   });
 

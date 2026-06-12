@@ -1,18 +1,18 @@
 /**
- * @jest-environment node
+ * @vitest-environment node
  */
 
 // getAdminApiToken reaches Secrets Manager / process.env; stub it so the SUT's
 // only remaining external dependency is the global fetch we control here.
-jest.mock("./secrets", () => ({
-  getAdminApiToken: jest.fn().mockResolvedValue("test-token"),
+vi.mock("./secrets", () => ({
+  getAdminApiToken: vi.fn().mockResolvedValue("test-token"),
 }));
 
 describe("api-client call() timeout", () => {
   const originalFetch = globalThis.fetch;
 
   beforeEach(() => {
-    jest.resetModules();
+    vi.resetModules();
     process.env.BUILDER_API_URL = "https://api.test";
     delete process.env.BUILDER_API_TIMEOUT_MS;
   });
@@ -28,7 +28,7 @@ describe("api-client call() timeout", () => {
       "The operation was aborted.",
       "TimeoutError",
     );
-    (globalThis as { fetch: typeof fetch }).fetch = jest
+    (globalThis as { fetch: typeof fetch }).fetch = vi
       .fn()
       .mockRejectedValue(abortErr) as unknown as typeof fetch;
 
@@ -44,7 +44,7 @@ describe("api-client call() timeout", () => {
   });
 
   it("passes an AbortSignal to fetch so the request is bounded", async () => {
-    const fetchSpy = jest.fn().mockResolvedValue({
+    const fetchSpy = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
       json: async () => ({}),

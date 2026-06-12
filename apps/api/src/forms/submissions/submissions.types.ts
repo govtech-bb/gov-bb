@@ -79,6 +79,16 @@ export interface SubmissionCreatedEvent {
    * `${submissionId}:${index}` idempotency keys meaningful.
    */
   processorIndex?: number;
+  /**
+   * True when this submission came from the live smoke matrix (see
+   * SubmitDto.isSmokeSubmission). Every `submission.created` consumer that
+   * triggers a real side-effect must short-circuit on it — not just the
+   * `processors[]`-driven dispatch. Carried here because some consumers (e.g.
+   * YouthOpportunityWebhookListener) fire off `formId` and never read
+   * `processors`, so an empty `processors[]` alone does not suppress them
+   * (#1252).
+   */
+  isSmokeSubmission?: boolean;
 }
 
 export interface SubmitDto {
@@ -87,6 +97,15 @@ export interface SubmitDto {
   formVersion: string;
   draftId?: string;
   values: SubmissionValues;
+  /**
+   * Set by the controller only when a request carries a valid
+   * `X-Smoke-Submission` token (see SMOKE_SUBMISSION_TOKEN). When true the
+   * service drops every processor at the choke point — the submission still
+   * persists, validates, and gets a reference code, but no email / webhook /
+   * payment-gating processor runs. Lets the post-deploy live smoke matrix
+   * exercise the real submit path without firing real side-effects (#1252).
+   */
+  isSmokeSubmission?: boolean;
 }
 
 export type SubmitOutcome = "created" | "duplicate" | "in_progress";

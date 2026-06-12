@@ -4,8 +4,7 @@ description: "Apply for a temporary teaching position in the Government of Barba
 featured: false
 stage: "alpha"
 publish_date: 2026-01-15
-category: education
-visibility: preview
+category: work-employment
 form_id: temp-teacher-application-barbados
 ---
 

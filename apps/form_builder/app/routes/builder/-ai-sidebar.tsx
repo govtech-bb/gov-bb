@@ -1,5 +1,12 @@
 import { useState, useRef, useEffect } from "react";
+import {
+  AiMagicIcon,
+  ArrowRight01Icon,
+  Attachment02Icon,
+  Cancel01Icon,
+} from "hugeicons-react";
 import { serializeRecipeDraft } from "@govtech-bb/form-builder";
+import s from "../../styles/builder.module.css";
 import type { RecipeDraft, UnknownRef } from "@govtech-bb/form-builder";
 import type { ServiceContractRecipe } from "@govtech-bb/form-types";
 import {
@@ -108,6 +115,9 @@ export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  // Needed to reset the hidden file input when the staged file is removed —
+  // without it, re-picking the same file fires no change event.
+  const fileInputRef = useRef<HTMLInputElement>(null);
   // Abort handle for the in-flight upload + poll loop. Held in a ref so the
   // unmount cleanup and a follow-up upload can both cancel it without
   // re-triggering effects.
@@ -283,6 +293,15 @@ export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
     }
   };
 
+  // User-requested cancel of the in-flight job: the poll loop throws on the
+  // abort and both handlers swallow it (same path as unmount cleanup).
+  const handleStop = () => {
+    pollAbortRef.current?.abort();
+    pollAbortRef.current = null;
+    setLoading(false);
+    pushStatus("Stopped.");
+  };
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -302,106 +321,116 @@ export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
 
   if (collapsed) {
     return (
-      <div style={styles.collapsedBar}>
+      <div className={s.aiCollapsedBar}>
         <button
           type="button"
+          className={s.iconBtn}
           onClick={() => setCollapsed(false)}
-          style={styles.expandButton}
           title="Open AI assistant"
           aria-label="Open AI assistant"
         >
-          🤖
+          <AiMagicIcon size={16} />
         </button>
       </div>
     );
   }
 
   return (
-    <aside style={styles.sidebar} aria-label="AI assistant">
-      <div style={styles.header}>
-        <h3 style={styles.heading}>AI Assistant</h3>
+    <aside className={s.aiSidebar} aria-label="AI assistant">
+      <div className={s.aiHeader}>
+        <h3 className={s.aiTitle}>
+          <AiMagicIcon size={15} />
+          AI Assistant
+        </h3>
         <button
           type="button"
+          className={s.railIconBtn}
           onClick={() => setCollapsed(true)}
-          style={styles.collapseButton}
           title="Collapse AI assistant"
           aria-label="Collapse AI assistant"
         >
-          ⟩
+          <ArrowRight01Icon size={16} />
         </button>
       </div>
 
-      <div style={styles.transcript}>
+      <div className={s.aiTranscript}>
         {messages.length === 0 && (
-          <p style={styles.placeholder}>
-            Upload a PDF or image to turn it into a form, or describe a change to
-            the current form.
-          </p>
+          <div className={s.aiEmpty}>
+            <AiMagicIcon size={26} />
+            <p>
+              Upload a PDF or image to turn it into a form, or describe a
+              change to the current form.
+            </p>
+          </div>
         )}
         {messages.map((msg, i) =>
           msg.role === "status" ? (
-            <div key={i} style={styles.status}>
+            <div key={i} className={s.aiStatus}>
               {msg.content}
             </div>
           ) : (
             <div
               key={i}
-              style={{
-                ...styles.bubble,
-                ...(msg.role === "user" ? styles.userBubble : styles.aiBubble),
-              }}
+              className={`${s.aiBubble} ${
+                msg.role === "user" ? s.aiBubbleUser : s.aiBubbleAi
+              }`}
             >
-              <strong style={styles.bubbleRole}>
-                {msg.role === "user" ? "You" : "AI Assistant"}
-              </strong>
-              <div style={styles.bubbleText}>{msg.content}</div>
+              {msg.content}
             </div>
           ),
         )}
-        {loading && <div style={styles.thinking}>Thinking…</div>}
+        {loading && (
+          <div className={s.aiThinking}>
+            <span className="t-shimmer" data-text="Thinking…">
+              Thinking…
+            </span>
+            <button
+              type="button"
+              className={s.aiStopBtn}
+              onClick={handleStop}
+            >
+              Stop
+            </button>
+          </div>
+        )}
         {error && (
-          <div style={styles.error} role="alert">
+          <div className={s.aiError} role="alert">
             {error}
           </div>
         )}
         <div ref={chatEndRef} />
       </div>
 
-      <div style={styles.actions}>
-        {/* Upload: PDF/image → recipe, standalone (no message needed). */}
-        <div style={styles.uploadRow}>
-          <label style={styles.fileLabel}>
-            {pdfFile ? `✓ ${pdfName}` : "📎 Attach PDF / image"}
-            <input
-              type="file"
-              accept=".pdf,.png,.jpg,.jpeg"
-              onChange={handleFileSelect}
-              style={{ display: "none" }}
+      <div className={s.aiComposer}>
+        {pdfFile && (
+          <span className={s.aiAttachChip} title={pdfName ?? undefined}>
+            <Attachment02Icon size={13} />
+            <span className={s.aiAttachName}>{pdfName}</span>
+            <button
+              type="button"
+              className={s.aiAttachClear}
+              aria-label="Remove attachment"
+              title="Remove attachment"
               disabled={loading}
-            />
-          </label>
-          <button
-            type="button"
-            onClick={handleUpload}
-            disabled={!pdfFile || loading}
-            style={{
-              ...styles.button,
-              ...(!pdfFile || loading ? styles.buttonDisabled : {}),
-            }}
-          >
-            Upload
-          </button>
-        </div>
-
-        {/* Edit Form: a text tweak applied to the current draft. */}
+              onClick={() => {
+                setPdfFile(null);
+                setPdfName(null);
+                if (fileInputRef.current) fileInputRef.current.value = "";
+              }}
+            >
+              <Cancel01Icon size={11} />
+            </button>
+          </span>
+        )}
         <form
-          style={styles.editRow}
+          className={s.aiComposerCard}
           onSubmit={(e) => {
             e.preventDefault();
             handleEditForm();
           }}
         >
           <textarea
+            className={s.aiTextarea}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
@@ -413,145 +442,42 @@ export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
               }
             }}
             placeholder="e.g. make the email field required"
-            rows={3}
-            style={styles.textInput}
+            rows={2}
             disabled={loading}
           />
-          <button
-            type="submit"
-            disabled={!input.trim() || loading}
-            style={{
-              ...styles.button,
-              ...(!input.trim() || loading ? styles.buttonDisabled : {}),
-            }}
-          >
-            Edit Form
-          </button>
+          <div className={s.aiComposerRow}>
+            {/* Upload: PDF/image → recipe, standalone (no message needed). */}
+            <label className={s.aiAttachBtn}>
+              <Attachment02Icon size={14} />
+              Attach PDF / image
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.png,.jpg,.jpeg"
+                onChange={handleFileSelect}
+                style={{ display: "none" }}
+                disabled={loading}
+              />
+            </label>
+            <button
+              type="button"
+              onClick={handleUpload}
+              disabled={!pdfFile || loading}
+            >
+              Upload
+            </button>
+            {/* Edit Form: a text tweak applied to the current draft. */}
+            <button
+              type="submit"
+              className={s.btnPrimary}
+              disabled={!input.trim() || loading}
+            >
+              Edit Form
+            </button>
+          </div>
         </form>
       </div>
     </aside>
   );
 }
 
-const styles: Record<string, React.CSSProperties> = {
-  sidebar: {
-    width: 380,
-    flexShrink: 0,
-    display: "flex",
-    flexDirection: "column",
-    height: "100%",
-    borderLeft: "1px solid #e0e0e0",
-    background: "#fafafa",
-    fontFamily: "system-ui",
-  },
-  collapsedBar: {
-    width: 44,
-    flexShrink: 0,
-    display: "flex",
-    justifyContent: "center",
-    paddingTop: 12,
-    borderLeft: "1px solid #e0e0e0",
-    background: "#fafafa",
-  },
-  expandButton: {
-    width: 32,
-    height: 32,
-    border: "1px solid #ddd",
-    borderRadius: 6,
-    background: "#fff",
-    cursor: "pointer",
-    fontSize: 16,
-  },
-  header: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: "12px 16px",
-    borderBottom: "1px solid #e0e0e0",
-  },
-  heading: { margin: 0, fontSize: 16 },
-  collapseButton: {
-    border: "none",
-    background: "transparent",
-    cursor: "pointer",
-    fontSize: 18,
-    color: "#666",
-  },
-  transcript: { flex: 1, overflow: "auto", padding: 16 },
-  placeholder: { color: "#999", fontSize: 14, textAlign: "center", marginTop: 24 },
-  bubble: {
-    marginBottom: 12,
-    padding: 10,
-    borderRadius: 8,
-    maxWidth: "90%",
-    whiteSpace: "pre-wrap",
-    fontSize: 14,
-  },
-  userBubble: { background: "#e3f2fd", marginLeft: "auto" },
-  aiBubble: { background: "#f0f0f0" },
-  bubbleRole: { fontSize: 11, color: "#666" },
-  bubbleText: { marginTop: 4 },
-  thinking: { color: "#666", fontStyle: "italic", fontSize: 14 },
-  status: {
-    margin: "4px 0 12px",
-    padding: "6px 10px",
-    borderLeft: "3px solid #90caf9",
-    background: "#f5faff",
-    color: "#37474f",
-    fontSize: 13,
-  },
-  error: {
-    color: "#b71c1c",
-    background: "#ffebee",
-    padding: 8,
-    borderRadius: 6,
-    fontSize: 13,
-    marginTop: 8,
-  },
-  actions: {
-    borderTop: "1px solid #e0e0e0",
-    padding: 12,
-    display: "flex",
-    flexDirection: "column",
-    gap: 8,
-  },
-  uploadRow: { display: "flex", gap: 8, alignItems: "center" },
-  fileLabel: {
-    flex: 1,
-    cursor: "pointer",
-    padding: "8px 10px",
-    background: "#eef2f7",
-    borderRadius: 6,
-    fontSize: 13,
-    textAlign: "center",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
-  },
-  editRow: { display: "flex", gap: 8, alignItems: "flex-start" },
-  textInput: {
-    flex: 1,
-    padding: "8px 10px",
-    border: "1px solid #ddd",
-    borderRadius: 6,
-    fontSize: 14,
-    fontFamily: "inherit",
-    lineHeight: 1.4,
-    resize: "vertical",
-    minHeight: 38,
-    // Wrap long prompts instead of scrolling them off to the right.
-    whiteSpace: "pre-wrap",
-    overflowWrap: "break-word",
-  },
-  button: {
-    padding: "8px 14px",
-    background: "#1976d2",
-    color: "#fff",
-    border: "none",
-    borderRadius: 6,
-    cursor: "pointer",
-    fontSize: 14,
-    whiteSpace: "nowrap",
-  },
-  buttonDisabled: { background: "#cfd8dc", color: "#90a4ae", cursor: "default" },
-};

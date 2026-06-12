@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { getCatalog } from "@govtech-bb/form-builder";
 import type {
   RegistryCatalog,
   CustomComponentEntry,
@@ -27,7 +28,16 @@ export const getCatalogFn = createServerFn({
     if (_catalogCache && _catalogCache.expiresAt > now) {
       return _catalogCache.data;
     }
-    const catalog = await api.get<RegistryCatalog>("/builder/registry/catalog");
+    let catalog: RegistryCatalog;
+    try {
+      catalog = await api.get<RegistryCatalog>("/builder/registry/catalog");
+    } catch (err) {
+      // Local dev fallback: no BUILDER_API_URL/ADMIN_API_TOKEN configured —
+      // serve the package's built-in registry catalog (no `custom` entries)
+      // so /builder renders without a running API. Prod still throws.
+      if (!import.meta.env.DEV) throw err;
+      catalog = getCatalog();
+    }
     _catalogCache = { data: catalog, expiresAt: now + 60_000 };
     return catalog;
   });

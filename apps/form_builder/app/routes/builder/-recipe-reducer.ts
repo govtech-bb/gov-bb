@@ -49,6 +49,15 @@ export function isNoFieldsStep(stepId: string): boolean {
   return (NO_FIELDS_STEP_IDS as readonly string[]).includes(stepId);
 }
 
+// The final, platform-managed step. It alone renders recipe-authored
+// `markdownContent` (the editable "What happens next" copy — #1292), so the
+// markdown editor in StepEditor is shown for this step only.
+export const SUBMISSION_CONFIRMATION_STEP_ID = "submission-confirmation";
+
+export function isConfirmationStep(stepId: string): boolean {
+  return stepId === SUBMISSION_CONFIRMATION_STEP_ID;
+}
+
 // Default title/description seeded for each required step when one is missing
 // (new form via makeRequiredSteps, or an older recipe loaded via LOAD_DRAFT).
 // check-your-answers reuses the runtime review copy from apps/forms.
@@ -145,7 +154,12 @@ export type RecipeAction =
   | {
       type: "UPDATE_STEP_META";
       stepId: string;
-      meta: Partial<Pick<RecipeStepDraft, "stepId" | "title" | "description">>;
+      meta: Partial<
+        Pick<
+          RecipeStepDraft,
+          "stepId" | "title" | "description" | "markdownContent"
+        >
+      >;
     }
   | { type: "SET_STEP_BEHAVIOURS"; stepId: string; behaviours: Behaviour[] }
   | {

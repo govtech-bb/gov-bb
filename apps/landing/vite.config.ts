@@ -38,6 +38,11 @@ export default defineConfig({
         runtimeConfig: {
           previewSecret: process.env.PREVIEW_SECRET ?? '',
           draftSecret: process.env.DRAFT_SECRET ?? '',
+          // Forms API base URL for the server-side feedback POST
+          // (src/lib/send-feedback.ts). Same build-time-only constraint as the
+          // secrets above: the SSR Lambda never sees Console env vars, so we
+          // snapshot VITE_FORMS_API_URL here and read it via useRuntimeConfig().
+          formsApiUrl: process.env.VITE_FORMS_API_URL ?? '',
         },
       },
     }),

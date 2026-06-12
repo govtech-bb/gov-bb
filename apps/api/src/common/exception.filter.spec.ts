@@ -1,16 +1,17 @@
+import type { Mock } from "vitest";
 import { HttpException, HttpStatus } from "@nestjs/common";
 import { SpanStatusCode } from "@opentelemetry/api";
 import { GlobalExceptionFilter } from "./exception.filter";
 
 const mockSpan = {
-  setStatus: jest.fn(),
-  recordException: jest.fn(),
-  setAttributes: jest.fn(),
+  setStatus: vi.fn(),
+  recordException: vi.fn(),
+  setAttributes: vi.fn(),
 };
 
-jest.mock("@opentelemetry/api", () => ({
+vi.mock("@opentelemetry/api", () => ({
   trace: {
-    getActiveSpan: jest.fn(),
+    getActiveSpan: vi.fn(),
   },
   SpanStatusCode: { ERROR: 2 },
 }));
@@ -18,8 +19,8 @@ jest.mock("@opentelemetry/api", () => ({
 import { trace } from "@opentelemetry/api";
 
 const mockMetricsService = {
-  recordValidationFailure: jest.fn(),
-  recordHttpError: jest.fn(),
+  recordValidationFailure: vi.fn(),
+  recordHttpError: vi.fn(),
 };
 
 function makeHost(res: object, req: object) {
@@ -52,8 +53,8 @@ describe("GlobalExceptionFilter", () => {
   let filter: GlobalExceptionFilter;
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    (trace.getActiveSpan as jest.Mock).mockReturnValue(undefined);
+    vi.clearAllMocks();
+    (trace.getActiveSpan as Mock).mockReturnValue(undefined);
     filter = new GlobalExceptionFilter(mockMetricsService as never);
   });
 
@@ -143,7 +144,7 @@ describe("GlobalExceptionFilter", () => {
 
   describe("OpenTelemetry span", () => {
     it("active span → setStatus and recordException called", () => {
-      (trace.getActiveSpan as jest.Mock).mockReturnValue(mockSpan);
+      (trace.getActiveSpan as Mock).mockReturnValue(mockSpan);
 
       filter.catch(
         new HttpException("oops", 500),
@@ -157,7 +158,7 @@ describe("GlobalExceptionFilter", () => {
     });
 
     it("no active span → no crash", () => {
-      (trace.getActiveSpan as jest.Mock).mockReturnValue(undefined);
+      (trace.getActiveSpan as Mock).mockReturnValue(undefined);
 
       expect(() =>
         filter.catch(new Error("boom"), makeHost(makeRes(), mockReq)),
@@ -165,7 +166,7 @@ describe("GlobalExceptionFilter", () => {
     });
 
     it("active span → recordException wraps non-Error exception in a new Error", () => {
-      (trace.getActiveSpan as jest.Mock).mockReturnValue(mockSpan);
+      (trace.getActiveSpan as Mock).mockReturnValue(mockSpan);
 
       // A plain string is not an Error instance — should be wrapped
       filter.catch("plain string exception", makeHost(makeRes(), mockReq));

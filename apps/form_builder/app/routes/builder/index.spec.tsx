@@ -1,5 +1,6 @@
+import type { MockInstance } from "vitest";
 /**
- * @jest-environment jsdom
+ * @vitest-environment jsdom
  */
 import "@testing-library/jest-dom";
 import { createElement, type ReactElement } from "react";
@@ -11,81 +12,81 @@ import type { RecipeDraft, RegistryCatalog } from "@govtech-bb/form-builder";
 // at module-eval. The component only reads `Route.useLoaderData()` /
 // `Route.useSearch()` and `useNavigate`, so a minimal shim is enough to render
 // BuilderPage in jsdom.
-jest.mock("@tanstack/react-router", () => ({
+vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (config: Record<string, unknown>) => ({
     ...config,
     useLoaderData: () => ({ catalog: CATALOG, baseBranch: "dev" }),
     useSearch: () => ({}),
   }),
-  useNavigate: () => jest.fn(),
+  useNavigate: () => vi.fn(),
 }));
 
 // validateRecipe is the only server fn a Save-draft click reaches (and only on
 // the valid path); the rest are mocked so importing the route doesn't attempt a
 // real RPC. previewRecipe is threaded out the same way so the Preview-modal
 // tests can drive its success/failure paths.
-const validateRecipe = jest.fn();
-const previewRecipe = jest.fn();
-jest.mock("../../server/registry", () => ({
-  getCatalogFn: jest.fn(),
+const validateRecipe = vi.fn();
+const previewRecipe = vi.fn();
+vi.mock("../../server/registry", () => ({
+  getCatalogFn: vi.fn(),
   validateRecipe: (...args: unknown[]) => validateRecipe(...args),
   previewRecipe: (...args: unknown[]) => previewRecipe(...args),
 }));
-const getRecipe = jest.fn();
-const rekeyRecipe = jest.fn();
-const submitRecipe = jest.fn();
-const updateRecipe = jest.fn();
+const getRecipe = vi.fn();
+const rekeyRecipe = vi.fn();
+const submitRecipe = vi.fn();
+const updateRecipe = vi.fn();
 // Always resolve to "no selection" by default so the picker's Promise.all
 // load path works; individual tests can override per case.
-const getFormConfig = jest.fn((..._args: unknown[]) =>
+const getFormConfig = vi.fn((..._args: unknown[]) =>
   Promise.resolve({ mdaContactId: null, processors: null }),
 );
-jest.mock("../../server/forms", () => ({
+vi.mock("../../server/forms", () => ({
   submitRecipe: (...args: unknown[]) => submitRecipe(...args),
   updateRecipe: (...args: unknown[]) => updateRecipe(...args),
   rekeyRecipe: (...args: unknown[]) => rekeyRecipe(...args),
-  deleteForm: jest.fn(),
-  disableForm: jest.fn(),
-  enableForm: jest.fn(),
+  deleteForm: vi.fn(),
+  disableForm: vi.fn(),
+  enableForm: vi.fn(),
   getRecipe: (...args: unknown[]) => getRecipe(...args),
   getFormConfig: (...args: unknown[]) => getFormConfig(...args),
 }));
 // MDA contact directory (issue #607) — stub the server fn and the hook so the
 // contact-details dropdown doesn't pull a real RPC at module-eval.
-jest.mock("../../server/mda-contacts", () => ({
-  listMdaContacts: jest.fn(() => Promise.resolve([])),
-  createMdaContact: jest.fn(),
+vi.mock("../../server/mda-contacts", () => ({
+  listMdaContacts: vi.fn(() => Promise.resolve([])),
+  createMdaContact: vi.fn(),
 }));
-jest.mock("./-use-mda-contacts", () => ({
+vi.mock("./-use-mda-contacts", () => ({
   useMdaContacts: () => ({
     contacts: [],
     loadError: null,
-    refetch: jest.fn(),
-    upsertContact: jest.fn(),
+    refetch: vi.fn(),
+    upsertContact: vi.fn(),
   }),
 }));
-const publishRecipe = jest.fn();
-const getNextDeployVersion = jest.fn();
-jest.mock("../../server/publish", () => ({
+const publishRecipe = vi.fn();
+const getNextDeployVersion = vi.fn();
+vi.mock("../../server/publish", () => ({
   publishRecipe: (...args: unknown[]) => publishRecipe(...args),
-  getPublishBaseBranch: jest.fn(),
+  getPublishBaseBranch: vi.fn(),
   getNextDeployVersion: (...args: unknown[]) => getNextDeployVersion(...args),
-  eraseRecipe: jest.fn(),
+  eraseRecipe: vi.fn(),
 }));
 // The AI sidebar's convert server-fns are createServerFn; stub them so
 // importing the editor doesn't pull a real RPC at module-eval. The Edit Form
 // flow is now an async job — startEditRecipe → poll getEditStatus — so route
 // both through swappable spies.
-const startEditRecipe = jest.fn();
-const getEditStatus = jest.fn();
-jest.mock("../../server/ai-builder/convert", () => ({
-  convertRecipe: jest.fn(),
-  getAiStatus: jest.fn(),
+const startEditRecipe = vi.fn();
+const getEditStatus = vi.fn();
+vi.mock("../../server/ai-builder/convert", () => ({
+  convertRecipe: vi.fn(),
+  getAiStatus: vi.fn(),
   startEditRecipe: (...args: unknown[]) => startEditRecipe(...args),
   getEditStatus: (...args: unknown[]) => getEditStatus(...args),
-  presignPdfUpload: jest.fn(),
-  startPdfConvert: jest.fn(),
-  getPdfConvertStatus: jest.fn(),
+  presignPdfUpload: vi.fn(),
+  startPdfConvert: vi.fn(),
+  getPdfConvertStatus: vi.fn(),
 }));
 
 // The Open picker's forms list is a slow GitHub-API waterfall; stub it out.
@@ -93,9 +94,9 @@ jest.mock("../../server/ai-builder/convert", () => ({
 // `refetch`/`upsertForm` are stable spies so the save-flow tests can assert
 // which branch fired (full refetch for a new form, cheap upsert for a re-save).
 let mockForms: { id: string; formId: string; title: string; version: string; isPublished: boolean; publishedVersion?: string }[] = [];
-const mockRefetch = jest.fn();
-const mockUpsertForm = jest.fn();
-jest.mock("./-use-forms-list", () => ({
+const mockRefetch = vi.fn();
+const mockUpsertForm = vi.fn();
+vi.mock("./-use-forms-list", () => ({
   useFormsList: () => ({
     forms: mockForms,
     loadError: null,
@@ -107,8 +108,8 @@ jest.mock("./-use-forms-list", () => ({
 // Keep the real reducer logic, but make EMPTY_DRAFT (the useReducer seed)
 // swappable per test so we can render an invalid vs a valid starting draft.
 let mockEmptyDraft: RecipeDraft;
-jest.mock("./-recipe-reducer", () => {
-  const actual = jest.requireActual("./-recipe-reducer");
+vi.mock("./-recipe-reducer", async () => {
+  const actual = await vi.importActual("./-recipe-reducer");
   return {
     __esModule: true,
     ...actual,
@@ -129,8 +130,8 @@ jest.mock("./-recipe-reducer", () => {
 let mockCollisions: ReturnType<
   typeof import("@govtech-bb/form-builder").findRecipeIdCollisions
 > = { fieldIdCollisions: [], stepIdCollisions: [] };
-jest.mock("@govtech-bb/form-builder", () => {
-  const actual = jest.requireActual("@govtech-bb/form-builder");
+vi.mock("@govtech-bb/form-builder", async () => {
+  const actual = await vi.importActual("@govtech-bb/form-builder");
   return {
     ...actual,
     findRecipeIdCollisions: () => mockCollisions,
@@ -241,21 +242,21 @@ const DRAFT_WITH_COMPLETE_PAYMENT: RecipeDraft = {
   processors: [{ id: "pay-1", type: "payment", config: COMPLETE_PAYMENT_CONFIG }],
 } as RecipeDraft;
 
+const { Route } = (await import("./index")) as unknown as {
+  Route: { component: () => ReactElement };
+};
+
 function renderBuilder() {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { Route } = require("./index") as {
-    Route: { component: () => ReactElement };
-  };
   return render(createElement(Route.component));
 }
 
 describe("BuilderPage — validate on Save draft click", () => {
-  let confirmSpy: jest.SpyInstance;
+  let confirmSpy: MockInstance;
 
   beforeEach(() => {
     validateRecipe.mockReset();
     mockForms = [];
-    confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(false);
+    confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
   });
 
   afterEach(() => {
@@ -366,13 +367,13 @@ describe("BuilderPage — validate on Save draft click", () => {
 });
 
 describe("BuilderPage — incomplete payment config blocks save", () => {
-  let confirmSpy: jest.SpyInstance;
+  let confirmSpy: MockInstance;
 
   beforeEach(() => {
     validateRecipe.mockReset();
     submitRecipe.mockReset();
     mockForms = [];
-    confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(true);
+    confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
   });
 
   afterEach(() => {
@@ -493,13 +494,13 @@ describe("BuilderPage — formId/title pre-flight on Validate", () => {
 });
 
 describe("BuilderPage — unsaved changes + Discard", () => {
-  let confirmSpy: jest.SpyInstance;
+  let confirmSpy: MockInstance;
 
   beforeEach(() => {
     mockForms = [];
     validateRecipe.mockReset();
     getRecipe.mockReset();
-    confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(true);
+    confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
   });
 
   afterEach(() => {
@@ -1100,7 +1101,7 @@ describe("BuilderPage — re-key (changing a loaded form's ID)", () => {
     };
   }
 
-  let confirmSpy: jest.SpyInstance;
+  let confirmSpy: MockInstance;
 
   beforeEach(() => {
     mockForms = [];
@@ -1110,7 +1111,7 @@ describe("BuilderPage — re-key (changing a loaded form's ID)", () => {
     submitRecipe.mockReset();
     mockRefetch.mockClear();
     mockUpsertForm.mockClear();
-    confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(true);
+    confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
   });
 
   afterEach(() => {
@@ -1273,7 +1274,7 @@ describe("BuilderPage — Preview modal recipe JSON (#744)", () => {
 // validate *request* stay hard errors. These drive the real AiSidebar's Edit
 // Form flow, which routes through the route's internal `applyAiRecipe`.
 describe("BuilderPage — AI apply loads with a warning (#1051)", () => {
-  let confirmSpy: jest.SpyInstance;
+  let confirmSpy: MockInstance;
 
   // A recipe that deserializes to a draft different from VALID_DRAFT, so the
   // no-op guard passes and the apply proceeds. Empty `elements` keeps
@@ -1302,7 +1303,7 @@ describe("BuilderPage — AI apply loads with a warning (#1051)", () => {
     mockEmptyDraft = VALID_DRAFT;
     // VALID_DRAFT seeds a dirty, never-saved draft, so applyAiRecipe prompts the
     // dirty-overwrite confirm; accept it so the changed path proceeds.
-    confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(true);
+    confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
   });
 
   afterEach(() => {

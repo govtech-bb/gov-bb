@@ -9,13 +9,13 @@ import {
 describe("AbandonedPaymentCleanupService.runOnce", () => {
   let service: AbandonedPaymentCleanupService;
   let module: TestingModule;
-  const paymentsRepo = { find: jest.fn(), save: jest.fn() };
+  const paymentsRepo = { find: vi.fn(), save: vi.fn() };
   const dataSource = {
-    getRepository: jest.fn().mockReturnValue(paymentsRepo),
+    getRepository: vi.fn().mockReturnValue(paymentsRepo),
   } as unknown as DataSource;
 
   beforeEach(async () => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     module = await Test.createTestingModule({
       providers: [
         AbandonedPaymentCleanupService,

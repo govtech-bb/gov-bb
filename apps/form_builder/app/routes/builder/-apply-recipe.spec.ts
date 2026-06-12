@@ -30,7 +30,7 @@ describe("buildLoadArgs", () => {
 
   it("deserializes the recipe with the given catalog", () => {
     const draft = { steps: [] } as unknown as RecipeDraft;
-    const deserialize = jest.fn(() => draft);
+    const deserialize = vi.fn(() => draft);
     const result = buildLoadArgs(recipe, catalog, deserialize);
     expect(deserialize).toHaveBeenCalledWith(recipe, catalog);
     expect(result.draft).toBe(draft);

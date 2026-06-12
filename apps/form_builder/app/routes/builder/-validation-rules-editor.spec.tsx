@@ -1,5 +1,5 @@
 /**
- * @jest-environment jsdom
+ * @vitest-environment jsdom
  *
  * (#618) The validation editor must surface the rules a component declares at
  * the *base* level — not just recipe overrides — so an author can see and
@@ -20,7 +20,7 @@ function renderEditor(props: {
   fieldRefs?: FieldRef[];
   stepRefs?: StepRef[];
 }) {
-  const onChange = jest.fn();
+  const onChange = vi.fn();
   render(
     <ValidationRulesEditor
       htmlType="text"
@@ -403,7 +403,7 @@ describe("inherited and author-added rules coexist", () => {
 
 describe("transform on a date field's numeric rules (#1020)", () => {
   function renderDate(rules?: ValidationRule) {
-    const onChange = jest.fn();
+    const onChange = vi.fn();
     render(
       <ValidationRulesEditor
         htmlType="date"
@@ -450,7 +450,7 @@ describe("transform on a date field's numeric rules (#1020)", () => {
 
 describe("a date duration rule's transform is mandatory (#1020)", () => {
   function renderDate(rules?: ValidationRule) {
-    const onChange = jest.fn();
+    const onChange = vi.fn();
     render(
       <ValidationRulesEditor
         htmlType="date"

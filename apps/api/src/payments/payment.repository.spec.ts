@@ -13,9 +13,9 @@ import {
 describe("PaymentRepository.findOrCreate", () => {
   let repo: PaymentRepository;
   let module: TestingModule;
-  const findOne = jest.fn();
-  const find = jest.fn();
-  const save = jest.fn();
+  const findOne = vi.fn();
+  const find = vi.fn();
+  const save = vi.fn();
   const dataSource = {
     getRepository: () => ({ findOne, find, save }),
   } as unknown as DataSource;
@@ -61,7 +61,7 @@ describe("PaymentRepository.findOrCreate", () => {
   });
 
   it("create() returns a new entity instance", () => {
-    const create = jest.fn().mockImplementation((d) => ({ ...d }));
+    const create = vi.fn().mockImplementation((d) => ({ ...d }));
     const ds = { getRepository: () => ({ create }) } as unknown as DataSource;
     const r = new PaymentRepository(ds);
     expect(r.create({ submissionId: "s-1" })).toEqual({ submissionId: "s-1" });

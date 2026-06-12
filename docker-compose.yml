@@ -50,6 +50,17 @@ services:
       timeout: 5s
       retries: 10
 
+  # Local-only fake AWS SES. The api's submission email processor sends here
+  # (via SES_ENDPOINT) instead of real AWS, so confirmation/notification mail
+  # is captured rather than delivered. Browse captured mail — a live inbox
+  # showing HTML, plain-text, and attachments — at http://localhost:8005.
+  # Not part of any deployed stack; deployed envs leave SES_ENDPOINT unset.
+  aws-ses-v2-local:
+    image: ghcr.io/domdomegg/aws-ses-v2-local:latest
+    restart: unless-stopped
+    ports:
+      - "${SES_LOCAL_PORT:-8005}:8005"
+
   api:
     build:
       context: .
@@ -59,6 +70,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      aws-ses-v2-local:
+        condition: service_started
     environment:
       NODE_ENV: development
       # The nx dev watcher chain (tsc --watch → @nx/js:node) doesn't see file
@@ -83,6 +96,15 @@ services:
       EZPAY_DEPARTMENT_API_KEYS: ${EZPAY_DEPARTMENT_API_KEYS:-{}}
       EZPAY_WEBHOOK_VERIFY_SIGNATURE: ${EZPAY_WEBHOOK_VERIFY_SIGNATURE:-false}
       EZPAY_WEBHOOK_SECRET: ${EZPAY_WEBHOOK_SECRET:-}
+      # Point the SES client at the local mock instead of real AWS. The
+      # submission email processor reads SES_ENDPOINT (apps/api email.config);
+      # unset in deployed envs so production resolves the real SES endpoint.
+      # When this is set the processor also pins dummy SES credentials itself,
+      # so the local send works regardless of the AWS_PROFILE that apps/api/.env
+      # carries for real-AWS work — no AWS creds need to be set here.
+      SES_ENDPOINT: http://aws-ses-v2-local:8005
+      SES_REGION: ${SES_REGION:-us-east-1}
+      SES_FROM_ADDRESS: ${SES_FROM_ADDRESS:-noreply@gov.bb}
     ports:
       - "${API_PORT:-3001}:3001"
     volumes:

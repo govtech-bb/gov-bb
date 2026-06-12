@@ -1,3 +1,4 @@
+import type { Mock } from "vitest";
 /**
  * applicant-name-display.spec.tsx
  *
@@ -16,11 +17,11 @@ import { render, screen } from "@testing-library/react";
 import { useStore } from "@tanstack/react-form";
 import ApplicantNameDisplay from "./applicant-name-display";
 
-jest.mock("@tanstack/react-form", () => ({
-  useStore: jest.fn(),
+vi.mock("@tanstack/react-form", () => ({
+  useStore: vi.fn(),
 }));
 
-const mockUseStore = useStore as jest.Mock;
+const mockUseStore = useStore as Mock;
 
 const mockForm = { store: {} };
 
@@ -29,7 +30,7 @@ const escapeRegExp = (value: string) =>
 
 describe("ApplicantNameDisplay", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("returns null when both firstName and lastName are undefined", () => {
@@ -105,8 +106,8 @@ describe("ApplicantNameDisplay", () => {
   it("displays the current date formatted DD/MM/YYYY", () => {
     // Pin the clock so the date computed inside the component matches the
     // one computed in the test — otherwise the test is flaky at midnight.
-    jest.useFakeTimers();
-    jest.setSystemTime(new Date("2026-05-22T12:00:00Z"));
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-22T12:00:00Z"));
     try {
       mockUseStore.mockReturnValue({
         "applicant-details_applicant-first-name": "Alice",
@@ -128,7 +129,7 @@ describe("ApplicantNameDisplay", () => {
         new RegExp(`Date:\\s+${escapeRegExp(expected)}\\s*$`),
       );
     } finally {
-      jest.useRealTimers();
+      vi.useRealTimers();
     }
   });
 });

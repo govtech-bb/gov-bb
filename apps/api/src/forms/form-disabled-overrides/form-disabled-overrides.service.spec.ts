@@ -1,3 +1,4 @@
+import type { Mock, Mocked } from "vitest";
 import type { FormDisabledOverrideEntity } from "../../database/entities/form-disabled-override.entity";
 import { FormDisabledOverrideRepository } from "./form-disabled-override.repository";
 import { FormDisabledOverridesService } from "./form-disabled-overrides.service";
@@ -16,11 +17,11 @@ function makeOverride(
 
 function makeMocks() {
   const repo = {
-    find: jest.fn(),
-    findOne: jest.fn(),
-    upsert: jest.fn(),
-    delete: jest.fn(),
-  } as unknown as jest.Mocked<FormDisabledOverrideRepository>;
+    find: vi.fn(),
+    findOne: vi.fn(),
+    upsert: vi.fn(),
+    delete: vi.fn(),
+  } as unknown as Mocked<FormDisabledOverrideRepository>;
 
   const service = new FormDisabledOverridesService(repo);
   return { repo, service };
@@ -30,7 +31,7 @@ describe("FormDisabledOverridesService", () => {
   describe("find", () => {
     it("returns the row when one exists", async () => {
       const { repo, service } = makeMocks();
-      (repo.findOne as jest.Mock).mockResolvedValue(makeOverride());
+      (repo.findOne as Mock).mockResolvedValue(makeOverride());
 
       const result = await service.find("passport-renewal");
 
@@ -42,7 +43,7 @@ describe("FormDisabledOverridesService", () => {
 
     it("returns null when no row exists", async () => {
       const { repo, service } = makeMocks();
-      (repo.findOne as jest.Mock).mockResolvedValue(null);
+      (repo.findOne as Mock).mockResolvedValue(null);
 
       const result = await service.find("ghost");
 
@@ -53,7 +54,7 @@ describe("FormDisabledOverridesService", () => {
   describe("findAllFormIds", () => {
     it("returns the formId of every disabled row", async () => {
       const { repo, service } = makeMocks();
-      (repo.find as jest.Mock).mockResolvedValue([
+      (repo.find as Mock).mockResolvedValue([
         makeOverride({ formId: "old-form" }),
         makeOverride({ formId: "retired-form" }),
       ]);
@@ -66,7 +67,7 @@ describe("FormDisabledOverridesService", () => {
 
     it("returns an empty array when no form is disabled", async () => {
       const { repo, service } = makeMocks();
-      (repo.find as jest.Mock).mockResolvedValue([]);
+      (repo.find as Mock).mockResolvedValue([]);
 
       const result = await service.findAllFormIds();
 
@@ -77,7 +78,7 @@ describe("FormDisabledOverridesService", () => {
   describe("disable", () => {
     it("upserts a new override row", async () => {
       const { repo, service } = makeMocks();
-      (repo.upsert as jest.Mock).mockResolvedValue({ identifiers: [{}] });
+      (repo.upsert as Mock).mockResolvedValue({ identifiers: [{}] });
 
       await service.disable(
         "passport-renewal",
@@ -97,7 +98,7 @@ describe("FormDisabledOverridesService", () => {
 
     it("re-disabling overwrites reason and disabledBy", async () => {
       const { repo, service } = makeMocks();
-      (repo.upsert as jest.Mock).mockResolvedValue({ identifiers: [{}] });
+      (repo.upsert as Mock).mockResolvedValue({ identifiers: [{}] });
 
       await service.disable("passport-renewal", "new reason", "bob@govtech.bb");
 
@@ -114,7 +115,7 @@ describe("FormDisabledOverridesService", () => {
   describe("enable", () => {
     it("deletes the override row", async () => {
       const { repo, service } = makeMocks();
-      (repo.delete as jest.Mock).mockResolvedValue({ affected: 1 });
+      (repo.delete as Mock).mockResolvedValue({ affected: 1 });
 
       await service.enable("passport-renewal");
 
@@ -123,7 +124,7 @@ describe("FormDisabledOverridesService", () => {
 
     it("is idempotent when no row exists", async () => {
       const { repo, service } = makeMocks();
-      (repo.delete as jest.Mock).mockResolvedValue({ affected: 0 });
+      (repo.delete as Mock).mockResolvedValue({ affected: 0 });
 
       await expect(service.enable("ghost")).resolves.toBeUndefined();
       expect(repo.delete).toHaveBeenCalledWith({ formId: "ghost" });

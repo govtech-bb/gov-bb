@@ -81,16 +81,20 @@ export function SlidingTabs<K extends string>({
   );
 }
 
-/** Pure-CSS tooltip; wrap any trigger. */
+/** Pure-CSS tooltip; wrap any trigger. `placement="bottom"` flips it under
+ *  the trigger — use it for triggers flush with the top of the viewport,
+ *  where the default above-position would clip. */
 export function Tip({
   label,
   children,
+  placement,
 }: {
   label: string;
   children: React.ReactNode;
+  placement?: "top" | "bottom";
 }) {
   return (
-    <span className="t-tt-wrap">
+    <span className="t-tt-wrap" data-tt-place={placement}>
       {children}
       <span className="t-tt" role="tooltip">
         {label}

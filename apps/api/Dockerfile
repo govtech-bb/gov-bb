@@ -2,10 +2,10 @@
 # ---- builder ------------------------------------------------------------
 # Compiles the NestJS app + the workspace packages it depends on into
 # /app/dist, using the full monorepo as context.
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 
 # Corepack must run as root — it writes to /usr/local/bin.
-RUN corepack enable && corepack prepare pnpm@10.33.4 --activate
+RUN corepack enable && corepack prepare pnpm@11.6.0 --activate
 
 # Create the app user up front so every COPY can use --chown=app:app.
 # Explicit UID/GID so we can match them in the cache-mount uid=/gid= options
@@ -67,9 +67,9 @@ CMD ["pnpm", "exec", "nx", "dev", "api"]
 # ---- runner -------------------------------------------------------------
 # Slim runtime image. Includes pnpm so the ECS sandbox migrate-task
 # (deploy-sandbox.yml) can shell into the container and run `pnpm migration:run`.
-FROM node:20-alpine AS runner
+FROM node:24-alpine AS runner
 
-RUN corepack enable && corepack prepare pnpm@10.33.4 --activate
+RUN corepack enable && corepack prepare pnpm@11.6.0 --activate
 
 # Closes #15 (CIS Docker Benchmark — no container should run as root).
 RUN addgroup -S -g 1001 app && adduser -S -u 1001 -G app app

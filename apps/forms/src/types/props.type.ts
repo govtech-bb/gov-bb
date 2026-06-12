@@ -84,6 +84,13 @@ export interface SubmissionState {
   quantity?: number;
   submissionSuccess: boolean;
   paymentSuccess?: boolean;
+  /**
+   * Set when the submission came back `processing` — an idempotency-key replay
+   * of an in-flight submission (HTTP 202). The confirmation step renders a
+   * neutral "we're processing your submission" panel rather than a finished
+   * receipt (#463). Absent on every other state.
+   */
+  processing?: boolean;
   referenceNumber: string;
   // Optional: payment ("gated") submissions are not finalised yet, so the
   // server returns `submittedAt: null` — there is no submission date to show

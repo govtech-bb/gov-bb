@@ -8,7 +8,7 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "strictPropertyInitialization": false,
-    "types": ["node", "jest"],
+    "types": ["node", "vitest/globals"],
     "preserveWatchOutput": true
   },
   "references": [

@@ -11,19 +11,19 @@ import { PaymentStatus } from "../database/entities/payment.entity";
 describe("PaymentReconciliationService.runOnce", () => {
   let service: PaymentReconciliationService;
   let module: TestingModule;
-  const query = jest.fn();
-  const release = jest.fn().mockResolvedValue(undefined);
-  const connect = jest.fn().mockResolvedValue(undefined);
+  const query = vi.fn();
+  const release = vi.fn().mockResolvedValue(undefined);
+  const connect = vi.fn().mockResolvedValue(undefined);
   const dataSource = {
-    createQueryRunner: jest.fn().mockReturnValue({ query, release, connect }),
+    createQueryRunner: vi.fn().mockReturnValue({ query, release, connect }),
   } as unknown as DataSource;
-  const paymentRepo = { findReconcilable: jest.fn() };
+  const paymentRepo = { findReconcilable: vi.fn() };
   const webhook = {
-    handleEzpayCallback: jest.fn().mockResolvedValue({ acknowledged: true }),
+    handleEzpayCallback: vi.fn().mockResolvedValue({ acknowledged: true }),
   };
 
   beforeEach(async () => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     webhook.handleEzpayCallback.mockResolvedValue({ acknowledged: true });
     module = await Test.createTestingModule({
       providers: [

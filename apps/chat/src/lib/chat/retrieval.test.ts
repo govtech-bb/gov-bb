@@ -59,6 +59,26 @@ test("considers only the top source, not lower-ranked ones", () => {
   assert.equal(topHandoffCandidateSlug(sources), null);
 });
 
+test("prefers the source's formId over the doc-id slug", () => {
+  // The landing folder name ("apply-to-be-a-project-protege-mentor") is NOT
+  // the forms-API id ("project-protege-mentor") — the frontmatter form_id
+  // carried on the source is the real identity (#1265).
+  const top: Source = {
+    ...src("service-apply-to-be-a-project-protege-mentor", 0.7),
+    formId: "project-protege-mentor",
+  };
+  assert.equal(topHandoffCandidateSlug([top]), "project-protege-mentor");
+});
+
+test("falls back to the doc-id slug for legacy sources without formId", () => {
+  // Pre-#1265 documents have no formId in metadata until the next full
+  // re-ingest; the slug fallback keeps the coincidentally-matching forms live.
+  assert.equal(
+    topHandoffCandidateSlug([src("service-get-birth-certificate", 0.7)]),
+    "get-birth-certificate",
+  );
+});
+
 // decideRagFallback — the post-matcher branch: do nothing, hand off a fresh
 // form, or continue an already-handed-off form. run-turn folds the "no form
 // pinned" gates into producing `candidate` (null = do nothing).

@@ -1,3 +1,4 @@
+import type { Mock, MockedFunction } from "vitest";
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -7,8 +8,8 @@ import type { ClientPrimitive } from "@forms/types";
 // ---------------------------------------------------------------------------
 // Mock @forms/lib so we can control checkConditionalOn's return value
 // ---------------------------------------------------------------------------
-jest.mock("@forms/lib", () => ({
-  checkConditionalOn: jest.fn(),
+vi.mock("@forms/lib", () => ({
+  checkConditionalOn: vi.fn(),
   // Mirror the real helper: digits only, empty -> undefined, never NaN.
   parseDatePart: (raw: string) => {
     const digits = raw.replace(/\D/g, "");
@@ -18,7 +19,7 @@ jest.mock("@forms/lib", () => ({
 
 import { checkConditionalOn } from "@forms/lib";
 
-const mockCheckConditionalOn = checkConditionalOn as jest.MockedFunction<
+const mockCheckConditionalOn = checkConditionalOn as MockedFunction<
   typeof checkConditionalOn
 >;
 
@@ -34,8 +35,8 @@ const mockFieldApi = {
   get state() {
     return mockState;
   },
-  handleBlur: jest.fn(),
-  handleChange: jest.fn(),
+  handleBlur: vi.fn(),
+  handleChange: vi.fn(),
 };
 
 const mockForm = {
@@ -46,7 +47,7 @@ const mockForm = {
     validators?: unknown;
     children: (f: typeof mockFieldApi) => React.ReactNode;
   }) => <>{children(mockFieldApi)}</>,
-  getFieldValue: jest.fn().mockReturnValue(undefined),
+  getFieldValue: vi.fn().mockReturnValue(undefined),
 };
 
 function primitive(
@@ -93,7 +94,7 @@ function renderField(
 describe("FieldRenderer", () => {
   beforeEach(() => {
     mockState = { value: undefined, meta: { isValid: true, errors: [] } };
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     // Default: checkConditionalOn returns "required" (field is shown)
     mockCheckConditionalOn.mockReturnValue("required");
   });
