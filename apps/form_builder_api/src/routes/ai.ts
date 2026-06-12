@@ -9,6 +9,7 @@ import {
   generateRecipeResponse,
   type RecipeResponse,
 } from "../ai/recipe-generation.js";
+import { createJobStore, toStatusResponse } from "../ai/job-store.js";
 import { presignHandler, processHandler, statusHandler } from "./ai-upload.js";
 
 export const aiRouter = Router();
@@ -70,30 +71,13 @@ aiRouter.get("/status", async (_req, res) => {
 // immediately and kicks off Bedrock fire-and-forget; the client polls
 // /edit/status/:jobId until the generation finishes.
 //
-// State lives in an in-memory Map keyed by jobId. The form_builder_api runs a
-// single ECS task in sandbox/staging, so no cross-task coordination is needed.
-// Unlike the PDF path (which can re-derive from Textract's 7-day result), an
-// edit job is pure Bedrock with no external anchor — if the task restarts
-// mid-edit the in-flight job is lost and the next poll 404s, which the client
-// surfaces as "that was interrupted — try again". State is ephemeral; the sweep
-// below caps memory.
-type EditState =
-  | { kind: "running"; startedAt: number }
-  | { kind: "done"; result: RecipeResponse; finishedAt: number }
-  | { kind: "failed"; reason: string; finishedAt: number };
-
-const editStateByJobId = new Map<string, EditState>();
-
-// Sweep entries older than 1 hour, every 5 minutes. Mirrors ai-upload.ts.
-const ONE_HOUR_MS = 60 * 60 * 1000;
-const SWEEP_INTERVAL_MS = 5 * 60 * 1000;
-setInterval(() => {
-  const cutoff = Date.now() - ONE_HOUR_MS;
-  for (const [k, v] of editStateByJobId) {
-    const ts = "startedAt" in v ? v.startedAt : v.finishedAt;
-    if (ts < cutoff) editStateByJobId.delete(k);
-  }
-}, SWEEP_INTERVAL_MS).unref(); // unref so the interval doesn't keep the process alive
+// State lives in an in-memory job-store keyed by jobId (see ai/job-store.ts for
+// the shared single-ECS-task / ephemeral-state rationale and the sweep that
+// caps memory). Unlike the PDF path (which can re-derive from Textract's 7-day
+// result), an edit job is pure Bedrock with no external anchor — if the task
+// restarts mid-edit the in-flight job is lost and the next poll 404s, which the
+// client surfaces as "that was interrupted — try again".
+const editStore = createJobStore<RecipeResponse>();
 
 async function runEditBedrock(
   jobId: string,
@@ -106,13 +90,13 @@ async function runEditBedrock(
     const result = await generateRecipeResponse(systemPrompt, [
       { role: "user", content: userText },
     ]);
-    editStateByJobId.set(jobId, {
+    editStore.set(jobId, {
       kind: "done",
       result,
       finishedAt: Date.now(),
     });
   } catch (err) {
-    editStateByJobId.set(jobId, {
+    editStore.set(jobId, {
       kind: "failed",
       reason: err instanceof Error ? err.message : "Edit generation failed",
       finishedAt: Date.now(),
@@ -145,7 +129,7 @@ export async function startEditHandler(
     }
 
     const jobId = randomUUID();
-    editStateByJobId.set(jobId, { kind: "running", startedAt: Date.now() });
+    editStore.set(jobId, { kind: "running", startedAt: Date.now() });
     // Fire-and-forget. runEditBedrock catches its own errors into the map.
     void runEditBedrock(jobId, message, recipeJson);
     res.json({ jobId });
@@ -158,8 +142,7 @@ export async function startEditHandler(
 // "failed", … }. An unknown id (expired/swept, or lost to a restart) → 404.
 export function statusEditHandler(req: Request, res: Response): void {
   const jobId = req.params.jobId;
-  const state =
-    typeof jobId === "string" ? editStateByJobId.get(jobId) : undefined;
+  const state = typeof jobId === "string" ? editStore.get(jobId) : undefined;
 
   if (!state) {
     res
@@ -167,15 +150,7 @@ export function statusEditHandler(req: Request, res: Response): void {
       .json({ error: "This edit session expired — please try again." });
     return;
   }
-  if (state.kind === "running") {
-    res.json({ status: "generating" });
-    return;
-  }
-  if (state.kind === "done") {
-    res.json({ status: "done", ...state.result });
-    return;
-  }
-  res.json({ status: "failed", reason: state.reason });
+  res.json(toStatusResponse(state));
 }
 
 aiRouter.post("/edit/start", startEditHandler);
