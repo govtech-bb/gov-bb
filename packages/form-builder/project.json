@@ -8,9 +8,10 @@
       "executor": "@nx/js:tsc",
       "outputs": ["{options.outputPath}"],
       "options": {
-        "outputPath": "dist/packages/form-builder",
+        "outputPath": "packages/form-builder/dist",
         "tsConfig": "packages/form-builder/tsconfig.json",
-        "main": "packages/form-builder/src/index.ts"
+        "main": "packages/form-builder/src/index.ts",
+        "rootDir": "packages/form-builder"
       }
     },
     "test": {

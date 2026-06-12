@@ -29,75 +29,28 @@ COPY --chown=app:app packages/ packages/
 
 # Build the API and all workspace deps (Nx handles the dependency graph via dependsOn: ["^build"])
 RUN pnpm exec nx build form-builder-api
-# Graft each workspace package's isolated node_modules into its compiled
-# dist copy so the runner's COPY of dist/packages carries the deps along
-# (their ../../node_modules/.pnpm symlinks resolve at the runner root).
-RUN for p in packages/*; do \
-      [ -d "$p/node_modules" ] || continue; \
-      cp -R -P "$p/node_modules" "dist/$p/"; \
-    done
+
+# Self-contained production tree via pnpm's purpose-built command: app
+# source + compiled dist + node_modules with workspace packages
+# materialized. --prod: no migrate-task here, runtime deps suffice.
+# --legacy: this workspace doesn't use injected workspace packages.
+RUN pnpm --filter=@govtech-bb/form-builder-api deploy --legacy --prod /home/app/deployed
 
 # ---- runner ----------------------------------------------------------------
-# Matches the main API's runner pattern exactly.
 FROM node:24-alpine AS runner
 
-RUN corepack enable && corepack prepare pnpm@11.6.0 --activate
 RUN addgroup -S -g 1001 app && adduser -S -u 1001 -G app app
 
 WORKDIR /app
 
-# Download AWS RDS CA bundle for TLS connections
+# AWS RDS CA bundle for TLS connections to RDS (must run before USER app)
 RUN wget -O /app/rds-ca-bundle.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem && \
     chown app:app /app/rds-ca-bundle.pem
 
 RUN chown app:app /app
 USER app
 
-# Compiled API output
-COPY --from=builder --chown=app:app /app/apps/form_builder_api/dist/ ./dist/
-
-# Compiled workspace packages (built by nx via dependsOn — emitted to dist/packages/{name}/src/*.js).
-# Matches main API pattern: each workspace package's package.json declares main: "./src/index.js",
-# so dist/packages/{name}/src/index.js lands at packages/{name}/src/index.js to resolve correctly.
-COPY --from=builder --chown=app:app /app/dist/packages/ ./packages/
-
-# node_modules from builder (has all deps resolved)
-COPY --from=builder --chown=app:app /app/node_modules/ ./node_modules/
-# pnpm's isolated linker keeps this app's declared deps in its own
-# node_modules; expose them at the root where dist/main.js's lookup walks.
-COPY --from=builder --chown=app:app /app/apps/form_builder_api/node_modules/ ./apps/form_builder_api/node_modules/
-RUN for dep in apps/form_builder_api/node_modules/* apps/form_builder_api/node_modules/@*/*; do \
-      [ -e "$dep" ] || continue; \
-      name="${dep#apps/form_builder_api/node_modules/}"; \
-      case "$name" in .*|@govtech-bb/*) continue;; esac; \
-      case "$name" in @*/*) mkdir -p "node_modules/${name%/*}"; up="../../apps/form_builder_api/node_modules/$name";; *) up="../apps/form_builder_api/node_modules/$name";; esac; \
-      [ -e "node_modules/$name" ] || ln -sfn "$up" "node_modules/$name"; \
-    done
-
-# Workspace package symlinks so require("@govtech-bb/database") resolves
-RUN mkdir -p node_modules/@govtech-bb && \
-    ln -sfn ../../packages/database node_modules/@govtech-bb/database && \
-    ln -sfn ../../packages/form-builder node_modules/@govtech-bb/form-builder && \
-    ln -sfn ../../packages/form-types node_modules/@govtech-bb/form-types && \
-    ln -sfn ../../packages/form-conditions node_modules/@govtech-bb/form-conditions && \
-    ln -sfn ../../packages/form-validation node_modules/@govtech-bb/form-validation && \
-    ln -sfn ../../packages/expressions node_modules/@govtech-bb/expressions && \
-    ln -sfn ../../packages/registry node_modules/@govtech-bb/registry
-
-# Package manifests needed for module resolution
-COPY --from=builder --chown=app:app /app/packages/database/package.json ./packages/database/
-COPY --from=builder --chown=app:app /app/packages/form-builder/package.json ./packages/form-builder/
-COPY --from=builder --chown=app:app /app/packages/form-types/package.json ./packages/form-types/
-COPY --from=builder --chown=app:app /app/packages/form-conditions/package.json ./packages/form-conditions/
-COPY --from=builder --chown=app:app /app/packages/form-validation/package.json ./packages/form-validation/
-COPY --from=builder --chown=app:app /app/packages/expressions/package.json ./packages/expressions/
-COPY --from=builder --chown=app:app /app/packages/registry/package.json ./packages/registry/
-
-# Root package.json + tsconfig for path resolution
-COPY --from=builder --chown=app:app /app/package.json ./
-COPY --from=builder --chown=app:app /app/tsconfig.base.json ./
-COPY --from=builder --chown=app:app /app/apps/form_builder_api/package.json ./apps/form_builder_api/
-COPY --from=builder --chown=app:app /app/apps/form_builder_api/tsconfig.json ./apps/form_builder_api/
+COPY --from=builder --chown=app:app /home/app/deployed/ ./
 
 ENV NODE_ENV=production
 ENV NODE_EXTRA_CA_CERTS=/app/rds-ca-bundle.pem

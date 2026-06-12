@@ -2,15 +2,16 @@
   "name": "@govtech-bb/expressions",
   "version": "0.0.0",
   "private": true,
-  "main": "./src/index.js",
-  "types": "./src/index.d.ts",
+  "main": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
   "scripts": {
     "test": "vitest run"
   },
   "dependencies": {
     "@govtech-bb/registry": "workspace:*",
     "json-logic-js": "^2.0.5",
-    "luxon": "^3.7.2"
+    "luxon": "^3.7.2",
+    "tslib": "^2.8.1"
   },
   "devDependencies": {
     "@types/json-logic-js": "^2.0.7",

@@ -2,10 +2,11 @@
   "name": "@govtech-bb/form-builder",
   "version": "0.0.0",
   "private": true,
-  "main": "./src/index.js",
-  "types": "./src/index.d.ts",
+  "main": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
   "dependencies": {
     "@govtech-bb/form-types": "workspace:*",
-    "@govtech-bb/registry": "workspace:*"
+    "@govtech-bb/registry": "workspace:*",
+    "tslib": "^2.8.1"
   }
 }

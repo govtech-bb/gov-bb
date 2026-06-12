@@ -8,7 +8,7 @@
       "executor": "@nx/js:tsc",
       "outputs": ["{options.outputPath}"],
       "options": {
-        "outputPath": "dist/apps/api",
+        "outputPath": "apps/api/dist",
         "tsConfig": "apps/api/tsconfig.json",
         "main": "apps/api/src/main.ts",
         "assets": [
@@ -22,7 +22,8 @@
             "glob": "**/*.hbs",
             "output": "src/email/templates"
           }
-        ]
+        ],
+        "rootDir": "apps/api"
       },
       "dependsOn": ["^build"]
     },

@@ -11,9 +11,12 @@
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.1057.0",
-    "@tanstack/ai": "catalog:"
+    "@tanstack/ai": "catalog:",
+    "tslib": "^2.8.1"
   },
   "lint-staged": {
     "*.ts": "npx prettier --write"
-  }
+  },
+  "main": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts"
 }
