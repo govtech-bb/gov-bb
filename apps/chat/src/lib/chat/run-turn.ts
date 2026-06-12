@@ -315,10 +315,15 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     retrievalBoostSlug,
   );
 
-  const { block: contextBlock, citations } = buildCitedContext(
+  const {
+    block: contextBlock,
+    citations,
+    linkTokens,
+  } = buildCitedContext(
     contexts,
     rawSources,
     query,
+    getServerEnv().LANDING_URL,
   );
 
   // A zero-value chat-feedback pin is an open offer, not active collection — but
@@ -474,7 +479,7 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     modelOptions: { maxTokens: 600, temperature: 0 },
     abortController,
     middleware: [
-      citationsMiddleware(citations),
+      citationsMiddleware(citations, linkTokens),
       turnLogMiddleware(
         {
           ts: new Date().toISOString(),

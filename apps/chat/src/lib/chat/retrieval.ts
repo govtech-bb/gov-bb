@@ -4,6 +4,11 @@ import {
   SCORE_THRESHOLD,
   TOP_K,
 } from "#/lib/rag/config";
+import {
+  newTokenizeState,
+  tokenizeLinks,
+  type LinkTokenMap,
+} from "./link-tokens";
 import type {
   Citation,
   RetrievedContext,
@@ -214,21 +219,30 @@ export async function retrieve(
 export interface CitedContext {
   block: string;
   citations: Citation[];
+  linkTokens: LinkTokenMap;
 }
+
+const EMPTY_CONTEXT: CitedContext = {
+  block: "(no relevant context found)",
+  citations: [],
+  linkTokens: {},
+};
 
 export function buildCitedContext(
   contexts: RetrievedContext[],
   sources: Source[],
   query: string,
+  landingOrigin: string,
 ): CitedContext {
   const lastLine = query.split("\n").pop()?.trim() ?? "";
   if (isGreetingOrTooShort(lastLine) || !contexts.length) {
-    return { block: "(no relevant context found)", citations: [] };
+    return EMPTY_CONTEXT;
   }
 
   const seen = new Set<string>();
   const blockParts: string[] = [];
   const citations: Citation[] = [];
+  const tokenState = newTokenizeState();
   let total = 0;
 
   for (let i = 0; i < contexts.length && citations.length < MAX_SOURCES; i++) {
@@ -240,7 +254,13 @@ export function buildCitedContext(
     const head = c.section ? `${c.title} — ${c.section}` : c.title;
     const idx = citations.length + 1;
     const linkUrl = withTextFragment(s.url, s.excerpt);
-    const block = `[${idx}] ${head}\nURL: ${linkUrl}\n${c.text}`;
+    // The model sees NO raw URLs (#1270): the source url stays out of the
+    // block entirely (citations are annotated client-side from the [N]
+    // markers), and links inside the chunk text become opaque link_N tokens
+    // the client restores at render time. A URL the model types can only be
+    // fabricated, and a token it invents maps to nothing and is stripped.
+    const text = tokenizeLinks(c.text, tokenState, landingOrigin);
+    const block = `[${idx}] ${head}\n${text}`;
     if (total + block.length > MAX_CONTEXT_CHARS) break;
     seen.add(key);
     blockParts.push(block);
@@ -254,9 +274,13 @@ export function buildCitedContext(
   }
 
   if (!citations.length) {
-    return { block: "(no relevant context found)", citations: [] };
+    return EMPTY_CONTEXT;
   }
-  return { block: blockParts.join("\n\n---\n\n"), citations };
+  return {
+    block: blockParts.join("\n\n---\n\n"),
+    citations,
+    linkTokens: tokenState.map,
+  };
 }
 
 // text-fragment links (#:~:text=) require an exact substring of the rendered
