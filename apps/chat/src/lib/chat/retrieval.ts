@@ -113,6 +113,11 @@ export function topHandoffCandidateSlug(sources: Source[]): string | null {
   const top = sources[0];
   if (!top || top.score < SCORE_THRESHOLD) return null;
   if (!top.id.startsWith(SERVICE_ID_PREFIX)) return null;
+  // The frontmatter form_id is the real forms-API identity (#1265). The doc-id
+  // slug is the landing folder name — it matches a form_id only by
+  // coincidence, so it survives purely as a FALLBACK for documents ingested
+  // before formId landed in metadata (a full re-ingest retires it).
+  if (top.formId) return top.formId;
   const slug = top.id.slice(SERVICE_ID_PREFIX.length);
   if (!slug) return null;
   return slug;

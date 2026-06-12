@@ -159,6 +159,22 @@ export function chunkService(entity: ServiceEntity): PlannedEntity {
     section: entity.section,
     serviceType: entity.service_type,
     stage: entity.stage,
+    // Retrieval's rollout gate reads metadata->>'status' (#1267); the form
+    // linkage lets the chat resolve a retrieved service straight to its
+    // forms-API recipe instead of guessing from the landing slug (#1265).
+    status: entity.visibility,
+    ...(entity.form_id ? { formId: entity.form_id } : {}),
+    // Freshness signal (normalised to YYYY-MM-DD; gray-matter parses YAML
+    // dates as Date objects). Unused by retrieval today — carried so recency
+    // weighting / "is this current" can be added without another re-ingest.
+    ...(entity.publish_date
+      ? {
+          publishDate:
+            entity.publish_date instanceof Date
+              ? entity.publish_date.toISOString().slice(0, 10)
+              : entity.publish_date,
+        }
+      : {}),
   };
 
   const payloadHash = hash(

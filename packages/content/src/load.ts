@@ -46,54 +46,107 @@ async function readFileSafe(path: string): Promise<string | null> {
   }
 }
 
+// The landing "Start now" anchor is baked client-side from form_id; in plain
+// markdown it's just a dangling tag — strip it so chunks stay prose.
+const START_LINK_RE = /<a[^>]*data-start-link[^>]*>.*?<\/a>/g;
+
+function parseService(
+  raw: string,
+  slug: string,
+  filePath: string,
+  warnings: string[],
+): ServiceEntity | null {
+  const { data, content } = matter(raw);
+  const parsed = serviceFrontmatterSchema.safeParse(data);
+  if (!parsed.success) {
+    warnings.push(
+      `[service] ${slug}: ${parsed.error.issues[0]?.message ?? "invalid frontmatter"}`,
+    );
+    return null;
+  }
+  return {
+    ...parsed.data,
+    slug,
+    body: content.trim(),
+    filePath,
+  };
+}
+
+// Walks the content tree the same way landing's registry glob does
+// (`./**/*.md`), so nothing live on the site is invisible to RAG (#1266):
+//   - `<dir>/index.md`        → a service; slug = the dir's relative path
+//   - `<dir>/start.md`        → folded into that service as a "Before you
+//                               start" section ("what you will need" etc.)
+//   - a dir WITHOUT index.md  → a category grouping; recurse into it
+//   - any other `*.md`        → a service; slug = relative path minus `.md`
+// Top-level slugs are unchanged from the old single-level loader, so existing
+// document ids (and their embeddings) stay stable.
+async function loadDir(
+  dir: string,
+  relPrefix: string,
+  warnings: string[],
+  out: ServiceEntity[],
+): Promise<void> {
+  let entries: string[];
+  try {
+    entries = await readdir(dir);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return;
+    throw err;
+  }
+
+  for (const name of entries) {
+    const path = join(dir, name);
+    const s = await stat(path);
+
+    if (s.isDirectory()) {
+      const indexPath = join(path, "index.md");
+      const raw = await readFileSafe(indexPath);
+      if (raw === null) {
+        await loadDir(path, `${relPrefix}${name}/`, warnings, out);
+        continue;
+      }
+      const entity = parseService(
+        raw,
+        `${relPrefix}${name}`,
+        indexPath,
+        warnings,
+      );
+      if (!entity) continue;
+      const startRaw = await readFileSafe(join(path, "start.md"));
+      if (startRaw) {
+        const startBody = matter(startRaw)
+          .content.replace(START_LINK_RE, "")
+          .trim();
+        if (startBody) {
+          // A synthetic heading keeps the start page's lead-in prose from
+          // bleeding into whatever section happens to end the index body.
+          entity.body = `${entity.body}\n\n## Before you start\n\n${startBody}`;
+        }
+      }
+      out.push(entity);
+      continue;
+    }
+
+    if (!name.endsWith(".md")) continue;
+    if (name === "index.md" || name === "start.md") continue; // handled above
+    const raw = await readFile(path, "utf8");
+    const entity = parseService(
+      raw,
+      `${relPrefix}${name.slice(0, -3)}`,
+      path,
+      warnings,
+    );
+    if (entity) out.push(entity);
+  }
+}
+
 async function loadServices(
   rootDir: string,
   warnings: string[],
 ): Promise<ServiceEntity[]> {
-  let entries: string[];
-  try {
-    entries = await readdir(rootDir);
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === "ENOENT") return [];
-    throw err;
-  }
-
   const out: ServiceEntity[] = [];
-  for (const name of entries) {
-    const path = join(rootDir, name);
-    const s = await stat(path);
-
-    let slug: string;
-    let raw: string | null;
-    let filePath: string;
-
-    if (s.isDirectory()) {
-      slug = name;
-      filePath = join(path, "index.md");
-      raw = await readFileSafe(filePath);
-      if (!raw) continue;
-    } else {
-      if (!name.endsWith(".md")) continue;
-      slug = name.slice(0, -3);
-      filePath = path;
-      raw = await readFile(path, "utf8");
-    }
-
-    const { data, content } = matter(raw);
-    const parsed = serviceFrontmatterSchema.safeParse(data);
-    if (!parsed.success) {
-      warnings.push(
-        `[service] ${name}: ${parsed.error.issues[0]?.message ?? "invalid frontmatter"}`,
-      );
-      continue;
-    }
-    out.push({
-      ...parsed.data,
-      slug,
-      body: content.trim(),
-      filePath,
-    });
-  }
+  await loadDir(rootDir, "", warnings, out);
   return out;
 }
 
