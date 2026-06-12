@@ -15,7 +15,10 @@ const STUB_CTX: EmailTemplateContext = {
   formTitle: "Test Form",
   submissionId: "sub-test-001",
   submittedAt: "2026-05-12T10:00:00.000Z",
+  submittedDate: "12/05/2026",
+  submittedTime: "06:00",
   processedAt: "2026-05-12T10:00:01.000Z",
+  year: "2026",
   sections: [
     {
       title: "Personal Information",

@@ -100,7 +100,10 @@ const STUB_CTX: EmailTemplateContext = {
   formTitle: "Test Form",
   submissionId: "sub-001",
   submittedAt: "2026-04-29T10:00:00.000Z",
+  submittedDate: "29/04/2026",
+  submittedTime: "06:00",
   processedAt: "2026-04-29T10:00:01.000Z",
+  year: "2026",
   sections: [
     {
       title: "Personal",
@@ -144,9 +147,11 @@ function makeFilesService(): Mocked<FilesService> {
  * models "no row / no contact" (sandbox, or a freshly-migrated recipe). */
 function makeFormConfigService(
   mdaEmail: string | null = null,
+  departmentName: string | null = null,
 ): Mocked<FormConfigService> {
   return {
     resolveMdaEmail: vi.fn().mockResolvedValue(mdaEmail),
+    resolveDepartmentName: vi.fn().mockResolvedValue(departmentName),
   } as unknown as Mocked<FormConfigService>;
 }
 
@@ -217,6 +222,37 @@ describe("EmailProcessor", () => {
 
       const subject = getSentInput().Content?.Simple?.Subject?.Data ?? "";
       expect(subject.length).toBeGreaterThan(0);
+    });
+
+    it("defaults the citizen (submitted) subject when none is configured", async () => {
+      await processor.process(makePayload());
+
+      expect(getSentInput().Content?.Simple?.Subject?.Data).toBe(
+        "Your form submission has been received",
+      );
+    });
+
+    it("defaults the MDA (config) subject to include the form title when none is configured", async () => {
+      await processor.process(
+        makePayload({ recipientField: "config.mdaEmail" }),
+      );
+
+      expect(getSentInput().Content?.Simple?.Subject?.Data).toBe(
+        "A new submission has been received for Test Form",
+      );
+    });
+
+    it("still respects a configured MDA subject over the default", async () => {
+      await processor.process(
+        makePayload({
+          recipientField: "config.mdaEmail",
+          subject: "Custom MDA subject",
+        }),
+      );
+
+      expect(getSentInput().Content?.Simple?.Subject?.Data).toBe(
+        "Custom MDA subject",
+      );
     });
 
     it("tags the send with submissionId for SES event stream traceability", async () => {
@@ -549,8 +585,11 @@ describe("EmailProcessor — dynamic template rendering", () => {
     );
   }
 
-  it("renders the submission-confirmation template for every form", async () => {
-    const templateSvc = makeTemplateService("<h1>Confirmation</h1>");
+  it("renders the lightweight submission-received template for the citizen (submitted) recipient", async () => {
+    // The default payload's recipientField "personal.email" is a
+    // submitted-value path → the citizen, who gets the lightweight
+    // acknowledgement rather than the detailed reviewer summary.
+    const templateSvc = makeTemplateService("<h1>Received</h1>");
     const processor = new EmailProcessor(
       makeConfig(),
       templateSvc,
@@ -562,7 +601,7 @@ describe("EmailProcessor — dynamic template rendering", () => {
     await processor.process(makePayload());
 
     expect(templateSvc.render).toHaveBeenCalledWith(
-      "submission-confirmation",
+      "submission-received",
       expect.objectContaining({
         formTitle: "Test Form",
         submissionId: "sub-001",
@@ -570,7 +609,61 @@ describe("EmailProcessor — dynamic template rendering", () => {
     );
     const html =
       (getSentInput().Content?.Simple?.Body?.Html?.Data as string) ?? "";
-    expect(html).toContain("Confirmation");
+    expect(html).toContain("Received");
+  });
+
+  it("injects the department name and coat-of-arms URL into the citizen context", async () => {
+    const templateSvc = makeTemplateService("<h1>Received</h1>");
+    const processor = new EmailProcessor(
+      makeConfig({ "email.assetBaseUrl": "https://forms.example.gov" }),
+      templateSvc,
+      makeBodyBuilder(),
+      makeFilesService(),
+      makeFormConfigService(null, "Registration Department"),
+    );
+
+    await processor.process(makePayload());
+
+    expect(templateSvc.render).toHaveBeenCalledWith(
+      "submission-received",
+      expect.objectContaining({
+        departmentName: "Registration Department",
+        coatOfArmsUrl: "https://forms.example.gov/images/coat-of-arms.png",
+      }),
+    );
+  });
+
+  it("does not resolve a department name for the MDA (config) email", async () => {
+    const formConfig = makeFormConfigService("mda@dept.gov.bb", "Dept");
+    const processor = new EmailProcessor(
+      makeConfig(),
+      makeTemplateService(),
+      makeBodyBuilder(),
+      makeFilesService(),
+      formConfig,
+    );
+
+    await processor.process(makePayload({ recipientField: "config.mdaEmail" }));
+
+    expect(formConfig.resolveDepartmentName).not.toHaveBeenCalled();
+  });
+
+  it("renders the detailed submission-confirmation template for an MDA (config) recipient", async () => {
+    const templateSvc = makeTemplateService("<h1>Confirmation</h1>");
+    const processor = new EmailProcessor(
+      makeConfig(),
+      templateSvc,
+      makeBodyBuilder(),
+      makeFilesService(),
+      makeFormConfigService("mda@dept.gov.bb"),
+    );
+
+    await processor.process(makePayload({ recipientField: "config.mdaEmail" }));
+
+    expect(templateSvc.render).toHaveBeenCalledWith(
+      "submission-confirmation",
+      expect.objectContaining({ submissionId: "sub-001" }),
+    );
   });
 
   it("delegates contract fetching and context building to EmailBodyBuilder", async () => {

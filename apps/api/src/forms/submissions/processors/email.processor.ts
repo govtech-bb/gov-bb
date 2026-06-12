@@ -21,7 +21,16 @@ import type {
 import type { SubmissionCreatedEvent } from "../submissions.types";
 import { FormConfigService } from "../../form-config/form-config.service";
 
+// The detailed reviewer/MDA email: full field-by-field summary of the
+// submission. Used for every recipient kind except the citizen.
 const CONFIRMATION_TEMPLATE = "submission-confirmation";
+
+// The citizen acknowledgement (the "submitted" recipient): a lightweight
+// "we received your submission" with the reference and a short what-happens-next
+// note, deliberately omitting the field-by-field dump that the reviewer copy
+// carries — email is forwardable and retained, so the applicant's own answers
+// don't need to ride along.
+const RECEIVED_TEMPLATE = "submission-received";
 
 // SESv2 SendEmail accepts messages up to 40 MB (after base64), but messages
 // over 10 MB are bandwidth-throttled. Base64 inflates attachment bytes by
@@ -45,6 +54,10 @@ export class EmailProcessor implements ISubmissionProcessor {
   private readonly from: string;
   private readonly configurationSet: string | undefined;
   private readonly defaultRecipient: string;
+  // Absolute URL of the coat-of-arms image for the citizen email's branding,
+  // derived from the public forms-site base (email.assetBaseUrl). Undefined
+  // when unset (e.g. local dev) — the template then omits the image.
+  private readonly coatOfArmsUrl: string | undefined;
 
   constructor(
     config: ConfigService,
@@ -57,6 +70,10 @@ export class EmailProcessor implements ISubmissionProcessor {
     this.configurationSet = config.get<string>("email.configurationSet");
     this.defaultRecipient =
       config.get<string>("email.defaultRecipient") ?? "testing@govtech.bb";
+    const assetBaseUrl = config.get<string>("email.assetBaseUrl");
+    this.coatOfArmsUrl = assetBaseUrl
+      ? `${assetBaseUrl.replace(/\/+$/, "")}/images/coat-of-arms.png`
+      : undefined;
     // endpoint is set only in local dev (SES_ENDPOINT → aws-ses-v2-local); in
     // every deployed environment it is undefined, so the SDK resolves the real
     // AWS SES endpoint exactly as before.
@@ -135,9 +152,23 @@ export class EmailProcessor implements ISubmissionProcessor {
         throw new Error(`Could not resolve recipient at "${recipientField}"`);
       }
 
-      const subject =
-        (cfg["subject"] as string | undefined) ??
-        "Your form submission has been received";
+      // A recipe can set its own subject; otherwise the default depends on the
+      // audience. The citizen ("submitted") gets a generic acknowledgement; the
+      // MDA/reviewer gets a notification naming the form (matching the detailed
+      // template's heading). resolveContract is cached, so naming the form here
+      // costs no extra fetch on the MDA path (uploads/body already resolve it).
+      let subject = cfg["subject"] as string | undefined;
+      if (!subject) {
+        if (kind === "submitted") {
+          subject = "Your form submission has been received";
+        } else {
+          const contract = await this.emailBodyBuilder.resolveContract(
+            payload.formId,
+            payload.formVersion,
+          );
+          subject = `A new submission has been received for ${contract.title}`;
+        }
+      }
 
       // Uploaded files travel only on MDA/reviewer emails. The citizen
       // confirmation ("submitted" recipient) stays lightweight: the citizen
@@ -147,7 +178,15 @@ export class EmailProcessor implements ISubmissionProcessor {
           ? await this.collectUploads(payload)
           : { attachments: [], fileLinks: [] };
 
-      const htmlBody = await this.resolveHtmlBody(payload, fileLinks);
+      // Citizen ("submitted") gets the lightweight acknowledgement; every
+      // other recipient (MDA/reviewer) gets the detailed summary.
+      const templateId =
+        kind === "submitted" ? RECEIVED_TEMPLATE : CONFIRMATION_TEMPLATE;
+      const htmlBody = await this.resolveHtmlBody(
+        payload,
+        templateId,
+        fileLinks,
+      );
       const textBody = this.buildTextBody(payload, fileLinks);
 
       // Content.Simple cannot carry attachments, so sends with attachments
@@ -352,24 +391,36 @@ export class EmailProcessor implements ISubmissionProcessor {
    * Builds the HTML body for the confirmation email.
    *
    * Delegates to EmailBodyBuilder (which handles form contract fetching and
-   * caching) then renders the shared `submission-confirmation` template.
+   * caching) then renders the given template (`templateId` — the citizen
+   * acknowledgement or the detailed reviewer summary, chosen by recipient kind).
    * Falls back to a minimal inline table if either dependency is unavailable
    * or an error is thrown — ensuring the email is always sent.
    */
   private async resolveHtmlBody(
     payload: SubmissionCreatedEvent,
+    templateId: string,
     fileLinks: EmailFileLink[] = [],
   ): Promise<string> {
     try {
       const ctx = await this.emailBodyBuilder.build(payload);
       if (fileLinks.length > 0) ctx.fileLinks = fileLinks;
+      // Both templates carry the coat-of-arms branding. The department name is
+      // only used by the citizen acknowledgement, so resolve that directory
+      // lookup only for that template.
+      ctx.coatOfArmsUrl = this.coatOfArmsUrl;
+      if (templateId === RECEIVED_TEMPLATE) {
+        ctx.departmentName =
+          (await this.formConfigService.resolveDepartmentName(
+            payload.formId,
+          )) ?? undefined;
+      }
       const rendered = this.templateService.render(
-        CONFIRMATION_TEMPLATE,
+        templateId,
         ctx as unknown as Record<string, unknown>,
       );
       if (rendered !== null) return rendered;
       this.logger.warn(
-        `[email] Template render returned null for "${CONFIRMATION_TEMPLATE}"`,
+        `[email] Template render returned null for "${templateId}"`,
       );
     } catch (err) {
       this.logger.warn(

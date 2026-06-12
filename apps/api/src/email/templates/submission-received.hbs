@@ -1,0 +1,202 @@
+<html>
+  <head>
+    <meta charset='utf-8' />
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+        line-height: 1.55;
+        color: #1a202c;
+        margin: 0;
+        padding: 0;
+        background-color: #ffffff;
+      }
+      .wrapper {
+        max-width: 720px;
+        margin: 0 auto;
+        background: #ffffff;
+      }
+      .header {
+        background-color: #ffc726;
+        padding: 22px 48px;
+      }
+      .header-brand {
+        display: flex;
+        align-items: center;
+      }
+      .header-brand img {
+        height: 34px;
+        width: auto;
+        margin-right: 12px;
+        display: inline-block;
+        vertical-align: middle;
+      }
+      .header-brand span {
+        font-size: 22px;
+        font-weight: 700;
+        color: #1a202c;
+        vertical-align: middle;
+      }
+      .body {
+        padding: 12px 48px 40px;
+      }
+      .title {
+        font-size: 40px;
+        font-weight: 800;
+        color: #1a202c;
+        margin: 28px 0 24px;
+        line-height: 1.15;
+      }
+      .intro {
+        font-size: 17px;
+        color: #1a202c;
+        margin: 0 0 28px;
+      }
+      .reference {
+        background-color: #a8e6e0;
+        padding: 22px 28px;
+        margin: 0 0 36px;
+      }
+      .reference-label {
+        font-size: 18px;
+        font-weight: 400;
+        color: #00267f;
+        margin: 0 0 4px;
+      }
+      .reference-number {
+        font-size: 26px;
+        font-weight: 800;
+        color: #00267f;
+        margin: 0 0 12px;
+      }
+      .reference-note {
+        font-size: 15px;
+        color: #1a202c;
+        margin: 0;
+      }
+      .next-title {
+        font-size: 28px;
+        font-weight: 800;
+        color: #1a202c;
+        margin: 0 0 18px;
+      }
+      .next-list {
+        margin: 0;
+        padding-left: 22px;
+      }
+      .next-list li {
+        font-size: 16px;
+        color: #1a202c;
+        margin: 0 0 14px;
+      }
+      .next-content h2 {
+        font-size: 28px;
+        font-weight: 800;
+        color: #1a202c;
+        margin: 0 0 18px;
+      }
+      .next-content h3 {
+        font-size: 20px;
+        font-weight: 700;
+        color: #1a202c;
+        margin: 22px 0 10px;
+      }
+      .next-content p {
+        font-size: 16px;
+        color: #1a202c;
+        margin: 0 0 14px;
+      }
+      .next-content ul {
+        margin: 0 0 14px;
+        padding-left: 22px;
+      }
+      .next-content li {
+        font-size: 16px;
+        color: #1a202c;
+        margin: 0 0 10px;
+      }
+      .footer {
+        background-color: #00267f;
+        color: #ffffff;
+        padding: 32px 48px;
+      }
+      .footer p {
+        font-size: 14px;
+        color: #ffffff;
+        margin: 0 0 16px;
+        max-width: 75%;
+      }
+      .footer .copyright {
+        font-size: 14px;
+        margin: 0;
+        opacity: 0.9;
+      }
+      .footer-crest {
+        float: right;
+        height: 80px;
+        width: auto;
+        margin-left: 24px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class='wrapper'>
+      <div class='header'>
+        <div class='header-brand'>
+          {{#if coatOfArmsUrl}}
+            <img src='{{coatOfArmsUrl}}' alt='' />
+          {{/if}}
+          <span>Government of Barbados</span>
+        </div>
+      </div>
+
+      <div class='body'>
+        <h1 class='title'>{{formTitle}} Submission</h1>
+
+        <p class='intro'>
+          Thank you for your submission. It has been received and is now being
+          processed.
+        </p>
+
+        <div class='reference'>
+          <p class='reference-label'>Reference Number:</p>
+          <p class='reference-number'>{{submissionId}}</p>
+          <p class='reference-note'>
+            Please retain this reference number for tracking and follow-up
+            purposes.
+          </p>
+        </div>
+
+        {{#if markdownHtml}}
+          <div class='next-content'>{{{markdownHtml}}}</div>
+        {{else}}
+          <h2 class='next-title'>What Happens Next?</h2>
+          <ul class='next-list'>
+            {{#if departmentName}}
+              <li>Your submission will be processed by {{departmentName}}.</li>
+            {{/if}}
+            <li>
+              Your submission will be reviewed and you will be contacted if any
+              further information is needed.
+            </li>
+          </ul>
+        {{/if}}
+      </div>
+
+      <div class='footer'>
+        {{#if coatOfArmsUrl}}
+          <img class='footer-crest' src='{{coatOfArmsUrl}}' alt='' />
+        {{/if}}
+        <p>This is an automated confirmation email from the Government of Barbados.</p>
+        <p>
+          If you have any questions about your submission, please contact
+          {{#if departmentName}}{{departmentName}}{{else}}the relevant
+            government department{{/if}}
+          and include your reference number: {{submissionId}}
+        </p>
+        <p>Please do not reply to this email.</p>
+        <p class='copyright'>&copy; {{year}} Government of Barbados</p>
+      </div>
+    </div>
+  </body>
+</html>
