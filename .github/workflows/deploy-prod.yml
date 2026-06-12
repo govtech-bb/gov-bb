@@ -6,7 +6,6 @@ on:
   workflow_dispatch:
 
 permissions:
-  id-token: write
   contents: read
 
 # Queue deploys; never cancel one mid-flight. Especially important for prod:
@@ -37,19 +36,20 @@ jobs:
       amplify-config: ${{ steps.affected.outputs.amplify-config }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
         with:
           fetch-depth: 0
+          persist-credentials: false
 
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v5
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version-file: ".nvmrc"
           cache: "pnpm"
       - run: pnpm install --frozen-lockfile
 
       - name: Derive base/head SHAs
-        uses: nrwl/nx-set-shas@v4
+        uses: nrwl/nx-set-shas@3e9ad7370203c1e93d109be57f3b72eb0eb511b1 # v4
         with:
           main-branch-name: prod
           workflow-id: deploy-prod.yml
@@ -93,23 +93,28 @@ jobs:
           fi
 
   deploy-api:
+    permissions:
+      id-token: write
+      contents: read
     name: Build, Push & Deploy API
     needs: setup
     if: needs.setup.outputs.api == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          persist-credentials: false
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v6
+        uses: aws-actions/configure-aws-credentials@e7f100cf4c008499ea8adda475de1042d6975c7b # v6
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN_PROD }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to ECR
         id: ecr-login
-        uses: aws-actions/amazon-ecr-login@v2
+        uses: aws-actions/amazon-ecr-login@fa648b43de3d4d023bcb3f89ed6940096949c419 # v2
 
       - name: Build and push image
         id: build
@@ -139,7 +144,7 @@ jobs:
 
       - name: Update task definition with new image
         id: new-task-def
-        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        uses: aws-actions/amazon-ecs-render-task-definition@6853cfae8c3a7d978fbf68b5a55453395541dfbb # v1
         with:
           task-definition: task-def.json
           container-name: api
@@ -149,7 +154,7 @@ jobs:
         if: needs.setup.outputs.migrations == 'true'
         run: |
           TASK_DEF_ARN=$(aws ecs register-task-definition \
-            --cli-input-json "$(cat ${{ steps.new-task-def.outputs.task-definition }} | \
+            --cli-input-json "$(cat ${STEPS_NEW_TASK_DEF_OUTPUTS_TASK_DEFINITION} | \
               jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)')" \
             --region $AWS_REGION \
             --query taskDefinition.taskDefinitionArn \
@@ -187,9 +192,11 @@ jobs:
             exit 1
           fi
           echo "✅ Migrations completed successfully"
+        env:
+          STEPS_NEW_TASK_DEF_OUTPUTS_TASK_DEFINITION: ${{ steps.new-task-def.outputs.task-definition }}
 
       - name: Deploy to ECS
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        uses: aws-actions/amazon-ecs-deploy-task-definition@a310a830f5c14e583e35d84e4e1ec7dd177c3c9c # v2
         with:
           task-definition: ${{ steps.new-task-def.outputs.task-definition }}
           service: ${{ env.ECS_SERVICE }}
@@ -197,13 +204,16 @@ jobs:
           wait-for-service-stability: true
 
   amplify-forms:
+    permissions:
+      id-token: write
+      contents: read
     name: Amplify build (frontend)
     needs: setup
     if: needs.setup.outputs.frontend == 'true' || needs.setup.outputs.amplify-config == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v6
+        uses: aws-actions/configure-aws-credentials@e7f100cf4c008499ea8adda475de1042d6975c7b # v6
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN_PROD }}
           aws-region: ${{ env.AWS_REGION }}
@@ -258,11 +268,15 @@ jobs:
             echo ""
             echo "| Target | Result |"
             echo "|--------|--------|"
-            echo "| API | $(gate '${{ needs.setup.outputs.api }}') |"
-            echo "| API migrations | $(gate '${{ needs.setup.outputs.migrations }}') |"
-            echo "| Amplify frontend | $(gate '${{ needs.setup.outputs.frontend }}') |"
+            echo "| API | $(gate '${NEEDS_SETUP_OUTPUTS_API}') |"
+            echo "| API migrations | $(gate '${NEEDS_SETUP_OUTPUTS_MIGRATIONS}') |"
+            echo "| Amplify frontend | $(gate '${NEEDS_SETUP_OUTPUTS_FRONTEND}') |"
             echo ""
             echo "**API URL:** https://forms.alpha.gov.bb"
             echo ""
             echo "Check API logs: \`aws logs tail /ecs/simple-service-builder-prod-api --follow\`"
           } >> "$GITHUB_STEP_SUMMARY"
+        env:
+          NEEDS_SETUP_OUTPUTS_API: ${{ needs.setup.outputs.api }}
+          NEEDS_SETUP_OUTPUTS_MIGRATIONS: ${{ needs.setup.outputs.migrations }}
+          NEEDS_SETUP_OUTPUTS_FRONTEND: ${{ needs.setup.outputs.frontend }}
