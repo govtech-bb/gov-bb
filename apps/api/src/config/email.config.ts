@@ -6,6 +6,12 @@ export default registerAs("email", () => ({
   region:
     process.env.SES_REGION ?? process.env.AWS_DEFAULT_REGION ?? "us-east-1",
 
+  // Optional SES endpoint override. Unset in every deployed environment, so
+  // the SDK resolves the real AWS SES endpoint as before. In local dev it
+  // points the client at aws-ses-v2-local (see docker-compose.yml), which
+  // captures sends in a viewable inbox instead of delivering real mail.
+  endpoint: process.env.SES_ENDPOINT,
+
   // Verified SES sender identity — must be verified in the AWS account.
   from: process.env.SES_FROM_ADDRESS ?? "noreply@gov.bb",
 

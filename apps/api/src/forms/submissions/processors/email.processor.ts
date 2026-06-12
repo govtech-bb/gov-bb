@@ -57,8 +57,13 @@ export class EmailProcessor implements ISubmissionProcessor {
     this.configurationSet = config.get<string>("email.configurationSet");
     this.defaultRecipient =
       config.get<string>("email.defaultRecipient") ?? "testing@govtech.bb";
+    // endpoint is set only in local dev (SES_ENDPOINT → aws-ses-v2-local); in
+    // every deployed environment it is undefined, so the SDK resolves the real
+    // AWS SES endpoint exactly as before.
+    const endpoint = config.get<string>("email.endpoint");
     this.client = new SESv2Client({
       region: config.get<string>("email.region") ?? "us-east-1",
+      ...(endpoint && { endpoint }),
     });
   }
 
