@@ -243,6 +243,125 @@ describe("SpreadsheetProcessor", () => {
       expect(writtenPath).not.toContain("..");
     });
 
+    it("serializes concurrent appends to the same file (critical section never overlaps)", async () => {
+      // Two submissions append to the SAME file concurrently. The per-path lock
+      // must keep their read-modify-write sections from interleaving, so an
+      // "active" counter never exceeds 1 and both rows are added.
+      let active = 0;
+      let maxActive = 0;
+      let addRowCount = 0;
+      const delay = (ms: number) =>
+        new Promise((resolve) => setTimeout(resolve, ms));
+
+      (ExcelJS.Workbook as jest.Mock).mockImplementation(() => {
+        const sheet = {
+          rowCount: 0,
+          getRow: () => ({ getCell: () => ({ value: null }) }),
+          addRow: jest.fn(() => {
+            addRowCount++;
+          }),
+        };
+        return {
+          getWorksheet: jest.fn().mockReturnValue(undefined),
+          addWorksheet: jest.fn().mockReturnValue(sheet),
+          xlsx: {
+            readFile: jest.fn().mockImplementation(async () => {
+              active++;
+              maxActive = Math.max(maxActive, active);
+              await delay(10);
+            }),
+            writeFile: jest.fn().mockImplementation(async () => {
+              await delay(10);
+              active--;
+            }),
+          },
+        };
+      });
+
+      // Both use the default "passport-renewals" filename → same resolved path.
+      await Promise.all([
+        processor.process(makePayload("sub-A")),
+        processor.process(makePayload("sub-B")),
+      ]);
+
+      expect(maxActive).toBe(1);
+      // Each fresh sheet writes a header + a data row → 2 rows per call.
+      expect(addRowCount).toBe(4);
+    });
+
+    it("isolates a failed turn: the next queued turn for the same file still runs", async () => {
+      // A turn that throws must propagate to ITS caller (so the consumer NACKs)
+      // but must not break the chain — the next waiter for the same file runs.
+      let writeCount = 0;
+
+      (ExcelJS.Workbook as jest.Mock).mockImplementation(() => {
+        const sheet = {
+          rowCount: 0,
+          getRow: () => ({ getCell: () => ({ value: null }) }),
+          addRow: jest.fn(),
+        };
+        return {
+          getWorksheet: jest.fn().mockReturnValue(undefined),
+          addWorksheet: jest.fn().mockReturnValue(sheet),
+          xlsx: {
+            readFile: jest.fn().mockRejectedValue(new Error("ENOENT")),
+            writeFile: jest.fn().mockImplementation(async () => {
+              writeCount++;
+              if (writeCount === 1) throw new Error("disk full");
+            }),
+          },
+        };
+      });
+
+      // p1 acquires the lock first and its write throws; p2 is queued behind it.
+      const p1 = processor.process(makePayload("sub-A"));
+      const p2 = processor.process(makePayload("sub-B"));
+
+      await expect(p1).rejects.toThrow("disk full");
+      await expect(p2).resolves.toEqual({ kind: "completed" });
+      expect(writeCount).toBe(2);
+    });
+
+    it("does not serialize appends to different files (distinct paths stay parallel)", async () => {
+      // Two concurrent appends to DIFFERENT files must overlap — the per-path
+      // lock only serializes calls that resolve to the same file.
+      let active = 0;
+      let maxActive = 0;
+      const delay = (ms: number) =>
+        new Promise((resolve) => setTimeout(resolve, ms));
+
+      (ExcelJS.Workbook as jest.Mock).mockImplementation(() => {
+        const sheet = {
+          rowCount: 0,
+          getRow: () => ({ getCell: () => ({ value: null }) }),
+          addRow: jest.fn(),
+        };
+        return {
+          getWorksheet: jest.fn().mockReturnValue(undefined),
+          addWorksheet: jest.fn().mockReturnValue(sheet),
+          xlsx: {
+            readFile: jest.fn().mockImplementation(async () => {
+              active++;
+              maxActive = Math.max(maxActive, active);
+              await delay(10);
+            }),
+            writeFile: jest.fn().mockImplementation(async () => {
+              await delay(10);
+              active--;
+            }),
+          },
+        };
+      });
+
+      await Promise.all([
+        processor.process(makePayload("sub-A", { filename: "file-one" })),
+        processor.process(makePayload("sub-B", { filename: "file-two" })),
+      ]);
+
+      // Different files → both critical sections run at once.
+      expect(maxActive).toBe(2);
+    });
+
     it("skips repeatable/array-valued steps when flattening values", async () => {
       // Branch: `if (Array.isArray(fields)) continue`
       const { sheet } = buildWorkbookMock();
