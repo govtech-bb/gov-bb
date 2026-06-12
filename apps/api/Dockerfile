@@ -49,6 +49,14 @@ COPY --chown=app:app apps/api/ apps/api/
 COPY --chown=app:app packages/ packages/
 
 RUN pnpm exec nx build api
+# Graft each workspace package's isolated node_modules into its compiled
+# dist copy. The runner's `COPY dist/packages/ ./packages/` then carries the
+# deps along, and their relative symlinks (../../node_modules/.pnpm) resolve
+# against the runner's root node_modules. Loop, not a hand-list (see #412).
+RUN for p in packages/*; do \
+      [ -d "$p/node_modules" ] || continue; \
+      cp -R -P "$p/node_modules" "dist/$p/"; \
+    done
 
 # ---- dev ----------------------------------------------------------------
 # Hot-reload image used by docker-compose for local iteration. Reuses the
@@ -99,25 +107,34 @@ COPY --from=builder --chown=app:app /app/dist/packages/ ./packages/
 COPY --from=builder --chown=app:app /app/packages/form-types/src/ ./packages/form-types/src/
 COPY --from=builder --chown=app:app /app/packages/database/src/ ./packages/database/src/
 COPY --from=builder --chown=app:app /app/node_modules/ ./node_modules/
+# pnpm's isolated linker keeps api's declared deps in apps/api/node_modules
+# (symlinks two levels up into node_modules/.pnpm, which survives the COPY).
+COPY --from=builder --chown=app:app /app/apps/api/node_modules/ ./apps/api/node_modules/
 
-# pnpm (hoisted mode) keeps workspace-package symlinks in the consumer's
-# own node_modules (apps/api/node_modules/@govtech-bb/*). The runtime
-# entry is /app/dist/src/main.js, and Node's module-lookup walks up from
-# there — it never enters apps/api/. Expose the workspace packages at the
-# root so `require("@govtech-bb/form-types")` resolves.
+# The runtime entry is /app/dist/src/main.js, and Node's module-lookup walks
+# up from there — it never enters apps/api/. Expose both the workspace
+# packages and api's own isolated deps at the root so they resolve.
 #
-# Symlinks are generated from whatever's actually in packages/ rather than
-# from a hand-maintained list. The previous hard-coded list silently broke
-# (#412) when `registry` was added without updating the Dockerfile — the
-# API crash-looped on MODULE_NOT_FOUND and ECS's circuit breaker rolled
-# back to the prior image, masking the failure as a "successful" deploy.
+# Symlinks are generated from whatever's actually present rather than from a
+# hand-maintained list. The previous hard-coded list silently broke (#412)
+# when `registry` was added without updating the Dockerfile — the API
+# crash-looped on MODULE_NOT_FOUND and ECS's circuit breaker rolled back to
+# the prior image, masking the failure as a "successful" deploy.
 RUN mkdir -p node_modules/@govtech-bb && \
     for pkg_dir in packages/*/; do \
       pkg_name=$(basename "$pkg_dir"); \
       [ -f "$pkg_dir/package.json" ] || continue; \
       ln -sfn "../../packages/$pkg_name" "node_modules/@govtech-bb/$pkg_name"; \
       echo "  symlinked @govtech-bb/$pkg_name"; \
-    done
+    done && \
+    for dep in apps/api/node_modules/* apps/api/node_modules/@*/*; do \
+      [ -e "$dep" ] || continue; \
+      name="${dep#apps/api/node_modules/}"; \
+      case "$name" in .*|@govtech-bb/*) continue;; esac; \
+      case "$name" in @*/*) mkdir -p "node_modules/${name%/*}"; up="../../apps/api/node_modules/$name";; *) up="../apps/api/node_modules/$name";; esac; \
+      [ -e "node_modules/$name" ] || ln -sfn "$up" "node_modules/$name"; \
+    done && \
+    echo "  exposed apps/api deps at root node_modules"
 COPY --from=builder --chown=app:app /app/package.json ./
 COPY --from=builder --chown=app:app /app/pnpm-lock.yaml ./
 COPY --from=builder --chown=app:app /app/pnpm-workspace.yaml ./

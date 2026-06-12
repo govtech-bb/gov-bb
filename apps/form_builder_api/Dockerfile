@@ -29,6 +29,13 @@ COPY --chown=app:app packages/ packages/
 
 # Build the API and all workspace deps (Nx handles the dependency graph via dependsOn: ["^build"])
 RUN pnpm exec nx build form-builder-api
+# Graft each workspace package's isolated node_modules into its compiled
+# dist copy so the runner's COPY of dist/packages carries the deps along
+# (their ../../node_modules/.pnpm symlinks resolve at the runner root).
+RUN for p in packages/*; do \
+      [ -d "$p/node_modules" ] || continue; \
+      cp -R -P "$p/node_modules" "dist/$p/"; \
+    done
 
 # ---- runner ----------------------------------------------------------------
 # Matches the main API's runner pattern exactly.
@@ -56,6 +63,16 @@ COPY --from=builder --chown=app:app /app/dist/packages/ ./packages/
 
 # node_modules from builder (has all deps resolved)
 COPY --from=builder --chown=app:app /app/node_modules/ ./node_modules/
+# pnpm's isolated linker keeps this app's declared deps in its own
+# node_modules; expose them at the root where dist/main.js's lookup walks.
+COPY --from=builder --chown=app:app /app/apps/form_builder_api/node_modules/ ./apps/form_builder_api/node_modules/
+RUN for dep in apps/form_builder_api/node_modules/* apps/form_builder_api/node_modules/@*/*; do \
+      [ -e "$dep" ] || continue; \
+      name="${dep#apps/form_builder_api/node_modules/}"; \
+      case "$name" in .*|@govtech-bb/*) continue;; esac; \
+      case "$name" in @*/*) mkdir -p "node_modules/${name%/*}"; up="../../apps/form_builder_api/node_modules/$name";; *) up="../apps/form_builder_api/node_modules/$name";; esac; \
+      [ -e "node_modules/$name" ] || ln -sfn "$up" "node_modules/$name"; \
+    done
 
 # Workspace package symlinks so require("@govtech-bb/database") resolves
 RUN mkdir -p node_modules/@govtech-bb && \

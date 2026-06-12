@@ -11,7 +11,7 @@ import { publishRouter } from "./routes/publish";
 import { presenceRouter } from "./routes/presence";
 import { authMiddleware } from "./middleware/auth";
 
-export const app = express();
+export const app: express.Express = express();
 
 app.use(cors({ origin: process.env.CORS_ORIGIN?.split(",") ?? "*" }));
 app.use(express.json({ limit: "10mb" }));

@@ -8,7 +8,7 @@ import { getDataSource } from "../db.js";
 import { holdsFreshClaim } from "./presence.js";
 import { validateRecipeFully } from "./validate-recipe.js";
 
-export const publishRouter = Router();
+export const publishRouter: Router = Router();
 
 const REPO_OWNER = "govtech-bb";
 const REPO_NAME = "gov-bb";
