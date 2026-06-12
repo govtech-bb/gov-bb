@@ -7,7 +7,7 @@
     "strictPropertyInitialization": false,
     "module": "commonjs",
     "lib": ["ES2022"],
-    "types": ["jest", "node"]
+    "types": ["vitest/globals", "node"]
   },
   "include": ["src/**/*"],
   "references": [{ "path": "../form-types" }, { "path": "../registry" }]

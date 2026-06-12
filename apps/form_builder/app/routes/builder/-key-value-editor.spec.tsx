@@ -1,5 +1,5 @@
 /**
- * @jest-environment jsdom
+ * @vitest-environment jsdom
  */
 import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
@@ -17,7 +17,7 @@ it("renders a row per existing entry", () => {
 });
 
 it("emits the updated record when a value changes", async () => {
-  const onChange = jest.fn();
+  const onChange = vi.fn();
   render(<KeyValueEditor value={{ sheetId: "abc" }} onChange={onChange} />);
   const valueInput = screen.getByDisplayValue("abc");
   await userEvent.clear(valueInput);
@@ -26,7 +26,7 @@ it("emits the updated record when a value changes", async () => {
 });
 
 it("adds a new key/value row", async () => {
-  const onChange = jest.fn();
+  const onChange = vi.fn();
   render(<KeyValueEditor value={{}} onChange={onChange} />);
   await userEvent.click(screen.getByRole("button", { name: /add/i }));
   const keyInput = screen.getByPlaceholderText(/key/i);
@@ -37,7 +37,7 @@ it("adds a new key/value row", async () => {
 });
 
 it("removes a row and emits the remaining record", async () => {
-  const onChange = jest.fn();
+  const onChange = vi.fn();
   render(<KeyValueEditor value={{ a: "1", b: "2" }} onChange={onChange} />);
   const removeButtons = screen.getAllByRole("button", { name: /remove/i });
   await userEvent.click(removeButtons[0]);
@@ -45,7 +45,7 @@ it("removes a row and emits the remaining record", async () => {
 });
 
 it("skips rows with a blank key when assembling the record", async () => {
-  const onChange = jest.fn();
+  const onChange = vi.fn();
   render(<KeyValueEditor value={{ a: "1" }} onChange={onChange} />);
   await userEvent.click(screen.getByRole("button", { name: /add/i }));
   // a blank row exists but contributes nothing until it gets a key

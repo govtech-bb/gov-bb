@@ -15,6 +15,9 @@ export class MetricsService implements OnModuleInit {
   private httpErrorsCounter!: ReturnType<
     ReturnType<typeof metrics.getMeter>["createCounter"]
   >;
+  private feedbackEmailFailuresCounter!: ReturnType<
+    ReturnType<typeof metrics.getMeter>["createCounter"]
+  >;
 
   onModuleInit() {
     const meter = metrics.getMeter("modular-forms-api");
@@ -41,6 +44,14 @@ export class MetricsService implements OnModuleInit {
     this.httpErrorsCounter = meter.createCounter("http.errors.total", {
       description: "Total number of HTTP errors by status code",
     });
+
+    this.feedbackEmailFailuresCounter = meter.createCounter(
+      "feedback.email.failures",
+      {
+        description:
+          "Site feedback emails that failed to send after all retries",
+      },
+    );
   }
 
   recordSubmission(
@@ -64,5 +75,9 @@ export class MetricsService implements OnModuleInit {
       "http.method": method,
       "http.route": path,
     });
+  }
+
+  recordFeedbackEmailFailure() {
+    this.feedbackEmailFailuresCounter.add(1);
   }
 }

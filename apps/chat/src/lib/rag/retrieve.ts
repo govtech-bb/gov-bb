@@ -1,8 +1,10 @@
 import { sql } from "drizzle-orm";
+import { getServerEnv } from "#/config/env";
 import { SIMILARITY_THRESHOLD, weightForKind } from "./config";
 import type { RetrievedContext, Source } from "#/lib/chat/types";
 import { getDb } from "#/lib/db";
 import { embed } from "./embed";
+import { rewriteLandingHost } from "./landing-host";
 
 export interface RetrieveResult {
   contexts: RetrievedContext[];
@@ -16,6 +18,7 @@ interface V2Row extends Record<string, unknown> {
   title: string;
   url: string;
   source_url: string | null;
+  form_id: string | null;
   chunk_kind: string;
   chunk_text: string;
   payload: Record<string, unknown> | null;
@@ -48,6 +51,7 @@ export async function search(
         d.title       AS title,
         d.url         AS url,
         d.source_url  AS source_url,
+        d.metadata->>'formId' AS form_id,
         c.kind        AS chunk_kind,
         c.text        AS chunk_text,
         c.payload     AS payload,
@@ -59,9 +63,10 @@ export async function search(
       FROM chunks c
       JOIN documents d ON c.document_id = d.id
       WHERE d.metadata->>'status' IS DISTINCT FROM 'draft'
+        AND d.metadata->>'status' IS DISTINCT FROM 'preview'
     )
     SELECT chunk_id, document_id, doc_kind, title, url, source_url,
-           chunk_kind, chunk_text, payload, sim
+           form_id, chunk_kind, chunk_text, payload, sim
     FROM ranked
     WHERE rank <= 2 AND sim > ${SIMILARITY_THRESHOLD}
     ORDER BY sim DESC
@@ -77,14 +82,16 @@ export async function search(
           d.title       AS title,
           d.url         AS url,
           d.source_url  AS source_url,
+          d.metadata->>'formId' AS form_id,
           c.kind        AS chunk_kind,
           c.text        AS chunk_text,
           c.payload     AS payload,
           1 - (c.embedding <=> ${literal}::vector) AS sim
         FROM chunks c
         JOIN documents d ON c.document_id = d.id
-        WHERE d.slug = ${boostSlug}
+        WHERE (d.slug = ${boostSlug} OR d.metadata->>'formId' = ${boostSlug})
           AND d.metadata->>'status' IS DISTINCT FROM 'draft'
+          AND d.metadata->>'status' IS DISTINCT FROM 'preview'
         ORDER BY sim DESC
         LIMIT ${PINNED_LIMIT}
       `)
@@ -118,13 +125,16 @@ export async function search(
     text: r.chunk_text,
   }));
 
+  // Citations must point at the viewer's landing site, not hardcoded prod.
+  const landingUrl = getServerEnv().LANDING_URL;
   const sources: Source[] = rows.map((r) => ({
     id: r.document_id,
-    url: r.url,
+    url: rewriteLandingHost(r.url, landingUrl),
     title: r.title,
     section: friendlySection(r),
     score: Number(r.sim),
     excerpt: r.chunk_text.slice(0, 160),
+    ...(r.form_id ? { formId: r.form_id } : {}),
   }));
 
   return { contexts, sources };

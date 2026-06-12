@@ -76,7 +76,7 @@ describe("FormError", () => {
 
   it('renders a "Try again" button that calls reset when clicked', async () => {
     const user = userEvent.setup();
-    const reset = jest.fn();
+    const reset = vi.fn();
     const error = new Error("Oops");
     render(<FormError error={error} reset={reset} />);
     await user.click(screen.getByRole("button", { name: "Try again" }));

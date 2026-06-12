@@ -1,3 +1,4 @@
+import type { Mock } from "vitest";
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -6,7 +7,7 @@ import FileUpload from "./file-upload";
 import type { FileUploadProps, UploadedFile } from "@forms/types";
 
 // Mock the presigned-upload client so tests don't hit the network.
-jest.mock("../lib/api/files", () => {
+vi.mock("../lib/api/files", () => {
   class FileUploadError extends Error {
     constructor(
       message: string,
@@ -16,11 +17,11 @@ jest.mock("../lib/api/files", () => {
       this.name = "FileUploadError";
     }
   }
-  return { uploadFile: jest.fn(), FileUploadError };
+  return { uploadFile: vi.fn(), FileUploadError };
 });
 import { uploadFile, FileUploadError } from "../lib/api/files";
 
-const mockUploadFile = uploadFile as jest.Mock;
+const mockUploadFile = uploadFile as Mock;
 
 function makeFile(name: string, type: string, sizeBytes: number): File {
   return new File(["x".repeat(sizeBytes)], name, { type });
@@ -60,7 +61,7 @@ const baseSharedProps: FileUploadProps["sharedProps"] = {
 };
 
 function renderComponent(overrides: Partial<FileUploadProps> = {}) {
-  const onFileChange = jest.fn();
+  const onFileChange = vi.fn();
   const props: FileUploadProps = {
     field: baseField,
     sharedProps: baseSharedProps,
@@ -83,7 +84,7 @@ function renderComponent(overrides: Partial<FileUploadProps> = {}) {
 
 describe("FileUpload", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockUploadFile.mockResolvedValue(makeUploaded("default.pdf"));
   });
 

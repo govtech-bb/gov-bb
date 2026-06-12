@@ -1,34 +1,35 @@
+import type { Mock } from "vitest";
 import { FormDefinitionsController } from "./form-definitions.controller";
 
 const mockService = {
-  findAll: jest.fn(),
-  findByFormId: jest.fn(),
+  findAll: vi.fn(),
+  findByFormId: vi.fn(),
 };
 
 const mockOverridesService = {
   // Default: no override → short-circuit never fires.
-  find: jest.fn().mockResolvedValue(null),
+  find: vi.fn().mockResolvedValue(null),
   // Default: nothing disabled → getAll filters nothing out.
-  findAllFormIds: jest.fn().mockResolvedValue([]),
-  disable: jest.fn(),
-  enable: jest.fn(),
+  findAllFormIds: vi.fn().mockResolvedValue([]),
+  disable: vi.fn(),
+  enable: vi.fn(),
 };
 
 const mockConfigService = {
-  get: jest.fn(),
+  get: vi.fn(),
 };
 
 describe("FormDefinitionsController", () => {
   let controller: FormDefinitionsController;
-  let res: { setHeader: jest.Mock };
+  let res: { setHeader: Mock };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockOverridesService.find.mockResolvedValue(null);
     mockOverridesService.findAllFormIds.mockResolvedValue([]);
     // Default: feature disabled (empty token) so existing tests exercise non-preview path.
     mockConfigService.get.mockReturnValue("");
-    res = { setHeader: jest.fn() };
+    res = { setHeader: vi.fn() };
     controller = new FormDefinitionsController(
       mockService as never,
       mockOverridesService as never,

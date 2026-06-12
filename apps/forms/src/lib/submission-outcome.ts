@@ -51,8 +51,27 @@ export function resolveSubmissionOutcome(
       };
 
     case "processing":
+      // An idempotency-key replay of an in-flight submission (HTTP 202,
+      // wrapped in ApiResponse.success). The submission is genuinely in hand —
+      // commit a state carrying the `processing` flag so the confirmation step
+      // shows a neutral "we're processing your submission" panel with the
+      // reference number, instead of leaving submissionState undefined and
+      // letting form-renderer bounce the citizen to check-your-answers (#463).
+      // Stay silent on analytics: this is a duplicate of an already-tracked
+      // submit, so there is no new event to fire.
+      return {
+        subState: {
+          ...base,
+          processing: true,
+          submissionSuccess: true,
+          hasPayment: false,
+        },
+      };
+
     case "draft":
-      // Intentionally silent: nothing to confirm yet, nothing to report.
+      // Intentionally silent: a saved draft is effectively unreachable from the
+      // public submit flow (drafts come from a different path), so there is
+      // nothing to confirm yet and nothing to report.
       return {};
 
     case "pending_payment": {

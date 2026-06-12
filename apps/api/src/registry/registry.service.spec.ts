@@ -13,7 +13,7 @@ function makeService(
   customComponents: Partial<CustomComponent>[] = [],
 ): RegistryService {
   const mockRepo = {
-    find: jest.fn().mockResolvedValue(customComponents),
+    find: vi.fn().mockResolvedValue(customComponents),
   } as unknown as Repository<CustomComponent>;
   return new RegistryService(mockRepo);
 }
@@ -172,7 +172,7 @@ describe("hydrateStep", () => {
   const blockEntry = BUILTIN_REGISTRY["blocks/personal-information"] as Block;
 
   it("resolves all elements in a step", async () => {
-    const resolver = jest.fn().mockResolvedValue(primitiveEntry);
+    const resolver = vi.fn().mockResolvedValue(primitiveEntry);
     const result = await hydrateStep(
       {
         stepId: "step-1",
@@ -186,7 +186,7 @@ describe("hydrateStep", () => {
   });
 
   it("flattens a block ref into its constituent primitives", async () => {
-    const resolver = jest.fn().mockResolvedValue(blockEntry);
+    const resolver = vi.fn().mockResolvedValue(blockEntry);
     const result = await hydrateStep(
       {
         stepId: "step-1",
@@ -201,7 +201,7 @@ describe("hydrateStep", () => {
   });
 
   it("throws UnresolvableComponentError for an unknown ref", async () => {
-    const resolver = jest.fn().mockResolvedValue(null);
+    const resolver = vi.fn().mockResolvedValue(null);
     await expect(
       hydrateStep(
         {
@@ -215,7 +215,7 @@ describe("hydrateStep", () => {
   });
 
   it("carries markdownContent through to the served step", async () => {
-    const resolver = jest.fn().mockResolvedValue(primitiveEntry);
+    const resolver = vi.fn().mockResolvedValue(primitiveEntry);
     const result = await hydrateStep(
       {
         stepId: "submission-confirmation",
@@ -231,7 +231,7 @@ describe("hydrateStep", () => {
   });
 
   it("leaves markdownContent undefined when the step has none", async () => {
-    const resolver = jest.fn().mockResolvedValue(primitiveEntry);
+    const resolver = vi.fn().mockResolvedValue(primitiveEntry);
     const result = await hydrateStep(
       {
         stepId: "step-1",
@@ -244,7 +244,7 @@ describe("hydrateStep", () => {
   });
 
   it("carries conditionalTitle through to the served step (#871)", async () => {
-    const resolver = jest.fn().mockResolvedValue(primitiveEntry);
+    const resolver = vi.fn().mockResolvedValue(primitiveEntry);
     const conditionalTitle = [
       {
         targetStepId: "applying-for-yourself",
@@ -267,7 +267,7 @@ describe("hydrateStep", () => {
   });
 
   it("leaves conditionalTitle undefined when the step has none", async () => {
-    const resolver = jest.fn().mockResolvedValue(primitiveEntry);
+    const resolver = vi.fn().mockResolvedValue(primitiveEntry);
     const result = await hydrateStep(
       {
         stepId: "step-1",
@@ -283,7 +283,7 @@ describe("hydrateStep", () => {
 // ─── hydrateForm ───────────────────────────────────────────────────────────
 
 describe("hydrateForm", () => {
-  const resolver = jest
+  const resolver = vi
     .fn()
     .mockResolvedValue(BUILTIN_REGISTRY["components/first-name"]);
 
@@ -383,7 +383,7 @@ describe("RegistryService", () => {
     it("uses the in-memory cache and skips the database on the second call", async () => {
       // Branch: `if (this.cache.has(CACHE_LOADED_KEY)) return` — cache already warm
       const mockRepo = {
-        find: jest.fn().mockResolvedValue([
+        find: vi.fn().mockResolvedValue([
           {
             namespace: "barbados",
             type: "passport-type",

@@ -280,7 +280,7 @@ Both are documented in `.env.example`:
 
 | Variable             | When used   | Purpose                                                                                                   |
 | -------------------- | ----------- | --------------------------------------------------------------------------------------------------------- |
-| `VITE_FORMS_API_URL` | build time  | Where the prebuild script fetches `/form-definitions`. Default: `https://forms.api.sandbox.alpha.gov.bb`. |
+| `VITE_FORMS_API_URL` | server (build-baked) | Forms API base. Server-side: resolves `/form-definitions` for Start buttons and POSTs the `/feedback` form. Baked into the Nitro runtime config at build (see `vite.config.ts`). Default: `https://forms.api.sandbox.alpha.gov.bb`. |
 | `VITE_FORMS_URL`     | render time | Base URL used in resolved button hrefs. Default: `https://forms.sandbox.alpha.gov.bb`.                    |
 
 Set these per environment in the deploy console (Amplify) to point

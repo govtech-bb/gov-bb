@@ -1,21 +1,22 @@
+import type { Mock } from "vitest";
 import type { Request, Response } from "express";
 
-jest.mock("@govtech-bb/database", () => ({ CustomComponent: class {} }));
-jest.mock("../db.js", () => ({ getDataSource: jest.fn() }));
-jest.mock("../ai/system-prompt.js", () => ({
+vi.mock("@govtech-bb/database", () => ({ CustomComponent: class {} }));
+vi.mock("../db.js", () => ({ getDataSource: vi.fn() }));
+vi.mock("../ai/system-prompt.js", () => ({
   getSystemPrompt: () => "BASE_PROMPT",
 }));
-jest.mock("../ai/client.js", () => ({
-  chat: jest.fn(),
-  isAvailable: jest.fn().mockResolvedValue(true),
+vi.mock("../ai/client.js", () => ({
+  chat: vi.fn(),
+  isAvailable: vi.fn().mockResolvedValue(true),
 }));
-jest.mock("../ai/recipe-extractor.js", () => ({ extractRecipe: jest.fn() }));
-jest.mock("../ai/textract.js", () => ({
-  startAnalysis: jest.fn(),
-  getAnalysisResult: jest.fn(),
-  blocksToText: jest.fn(),
+vi.mock("../ai/recipe-extractor.js", () => ({ extractRecipe: vi.fn() }));
+vi.mock("../ai/textract.js", () => ({
+  startAnalysis: vi.fn(),
+  getAnalysisResult: vi.fn(),
+  blocksToText: vi.fn(),
 }));
-jest.mock("../storage/s3-uploads.js", () => ({ presignUpload: jest.fn() }));
+vi.mock("../storage/s3-uploads.js", () => ({ presignUpload: vi.fn() }));
 
 import { chat, isAvailable } from "../ai/client.js";
 import { extractRecipe } from "../ai/recipe-extractor.js";
@@ -27,12 +28,12 @@ import {
 import { presignUpload } from "../storage/s3-uploads.js";
 import { presignHandler, processHandler, statusHandler } from "./ai-upload";
 
-const chatMock = chat as jest.Mock;
-const extractRecipeMock = extractRecipe as jest.Mock;
-const startAnalysisMock = startAnalysis as jest.Mock;
-const getAnalysisResultMock = getAnalysisResult as jest.Mock;
-const blocksToTextMock = blocksToText as jest.Mock;
-const presignUploadMock = presignUpload as jest.Mock;
+const chatMock = chat as Mock;
+const extractRecipeMock = extractRecipe as Mock;
+const startAnalysisMock = startAnalysis as Mock;
+const getAnalysisResultMock = getAnalysisResult as Mock;
+const blocksToTextMock = blocksToText as Mock;
+const presignUploadMock = presignUpload as Mock;
 
 const mockReq = (
   body: unknown = {},
@@ -64,7 +65,7 @@ beforeEach(() => {
   getAnalysisResultMock.mockReset();
   blocksToTextMock.mockReset();
   presignUploadMock.mockReset();
-  (isAvailable as jest.Mock).mockResolvedValue(true);
+  (isAvailable as Mock).mockResolvedValue(true);
   process.env.S3_BUCKET = "form-builder-uploads-sandbox-7922";
 });
 
@@ -384,7 +385,7 @@ describe("statusHandler", () => {
   });
 
   it("503s on done when AI service is unavailable", async () => {
-    (isAvailable as jest.Mock).mockResolvedValueOnce(false);
+    (isAvailable as Mock).mockResolvedValueOnce(false);
     getAnalysisResultMock.mockResolvedValue({
       status: "done",
       blocks: [{ BlockType: "PAGE" }],
@@ -398,7 +399,7 @@ describe("statusHandler", () => {
   });
 
   it("still returns processing even when AI service is unavailable (no Bedrock needed yet)", async () => {
-    (isAvailable as jest.Mock).mockResolvedValueOnce(false);
+    (isAvailable as Mock).mockResolvedValueOnce(false);
     getAnalysisResultMock.mockResolvedValue({ status: "processing" });
     const res = mockRes();
     await statusHandler(mockReq({}, { jobId: "j-1" }), res);

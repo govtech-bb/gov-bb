@@ -2,9 +2,9 @@ import { renderHook, act } from "@testing-library/react";
 import { useStepGuard } from "./use-step-guard";
 import type { ClientFormStep } from "@forms/types";
 
-const mockNavigate = jest.fn();
+const mockNavigate = vi.fn();
 
-jest.mock("@tanstack/react-router", () => ({
+vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
 }));
 

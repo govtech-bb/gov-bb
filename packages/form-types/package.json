@@ -5,10 +5,10 @@
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
   "scripts": {
-    "test": "jest --config jest.config.ts"
+    "test": "vitest run"
   },
   "dependencies": {
-    "zod": "^4.3.6"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "lint-staged": "^16.4.0"

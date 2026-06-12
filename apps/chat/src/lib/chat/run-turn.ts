@@ -3,6 +3,7 @@ import { chat } from "@tanstack/ai";
 import { bedrockText } from "@govtech-bb/ai-bedrock";
 import { childController } from "#/lib/abort";
 import { getServerEnv } from "#/config/env";
+import { landingStartPath } from "#/lib/rag/start-page";
 import {
   applyRagFallback,
   buildEndOfChatTools,
@@ -13,6 +14,7 @@ import {
   consumeOfferReply,
   funnelPhase,
   getOrCreateSession,
+  matchChangeField,
   matchFormsFromText,
   matchPendingOption,
   nextAskableField,
@@ -21,10 +23,12 @@ import {
   pinSessionForm,
   recordMissOutcome,
   recordOptionValue,
+  resetFieldForChange,
   resolveActiveForm,
   withThreadLock,
   type FormResolution,
   type FormTurnContext,
+  type PinResult,
 } from "./form";
 import { representChoicesStream } from "./represent-choices-stream";
 import { representFieldStream } from "./represent-field-stream";
@@ -44,7 +48,11 @@ import {
   looksLikeFeedbackIntent,
   looksLikeJailbreak,
 } from "./guards";
-import { citationsMiddleware, turnLogMiddleware } from "./middleware";
+import {
+  citationsMiddleware,
+  toolCallGuardMiddleware,
+  turnLogMiddleware,
+} from "./middleware";
 import { capMessageHistory, lastAssistantText, lastUserText } from "./messages";
 import { buildSystemPrompts } from "./prompt-builder";
 import {
@@ -105,11 +113,20 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
   // link" parks it — code, not model interpretation (ADR 0048). Any other
   // reply lapses the offer and falls through to normal routing.
   const offerReply = consumeOfferReply(session, latest);
+  // Same link policy as resolveActiveForm's handoff: prefer the landing start
+  // page over the bare forms-app URL, so an offer's "just send me the link"
+  // matches what a handoff would have given.
+  const offerStartPath =
+    offerReply?.kind === "link"
+      ? await landingStartPath(offerReply.slug)
+      : null;
   const linkRequested =
     offerReply?.kind === "link"
       ? {
           title: offerReply.title,
-          url: `${getServerEnv().FORMS_URL}/forms/${encodeURIComponent(offerReply.slug)}`,
+          url: offerStartPath
+            ? `${getServerEnv().LANDING_URL}${offerStartPath}`
+            : `${getServerEnv().FORMS_URL}/forms/${encodeURIComponent(offerReply.slug)}`,
         }
       : undefined;
 
@@ -160,8 +177,13 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
 
   // serviceFeedback short-circuits matching: the user deliberately asked for the
   // general feedback link, so don't let the rolling-window matcher re-pin a
-  // service topic and override it.
-  if (!serviceFeedback) await pinSessionForm(session, messages);
+  // service topic and override it. When the matcher finds the request names
+  // several forms about equally well it pins NONE and hands the titles back, so
+  // the disambiguation below can ask which one instead of guessing (#1296).
+  const pinResult: PinResult = serviceFeedback
+    ? {}
+    : await pinSessionForm(session, messages);
+  const matcherAmbiguousTitles = pinResult.ambiguousTitles;
 
   let resolution: FormResolution =
     !serviceFeedback && session.slug
@@ -212,7 +234,32 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
         };
       }
     } else if (pinnedBefore === session.slug) {
-      // (2) The user re-invoked the form they're already in (e.g. the banner
+      // (2) The user clicked "Change" on a check-your-answers row — re-present
+      // that one field deterministically. Routing it through the model made it
+      // emit present_choices AND ask_field for the same field, rendering the
+      // question twice (#1255). Reset the field (keeping it presented, so a
+      // re-picked choice is recorded by the option path above; a free-text
+      // re-answer falls to the model), then re-render it.
+      const change = matchChangeField(form, session, latest);
+      if (change) {
+        resetFieldForChange(session, change.field.fieldId);
+        session.askedFieldIds.add(change.field.fieldId);
+        return {
+          kind: "ok",
+          stream: representFieldStream(
+            buildFieldSpec(
+              form.contract,
+              change.field,
+              session.values,
+              session.askedFieldIds,
+            ),
+            { runId, threadId, model },
+          ),
+          abortController: childController(signal),
+          activeFormSlug: session.slug ?? undefined,
+        };
+      }
+      // (3) The user re-invoked the form they're already in (e.g. the banner
       // "Give feedback" link clicked again) with a REQUIRED question still
       // unanswered — re-render that question and its options. Gated on a real
       // re-match of the active form so a field answer or a side question can't
@@ -305,10 +352,15 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     retrievalBoostSlug,
   );
 
-  const { block: contextBlock, citations } = buildCitedContext(
+  const {
+    block: contextBlock,
+    citations,
+    linkTokens,
+  } = buildCitedContext(
     contexts,
     rawSources,
     query,
+    getServerEnv().LANDING_URL,
   );
 
   // A zero-value chat-feedback pin is an open offer, not active collection — but
@@ -340,10 +392,17 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
   // whose topic the conversation already established.
   const serviceCandidates =
     resolution.kind === "none" && !session.slug ? serviceCandidatesRaw : [];
+  // Prefer the title matcher's tied set when it has one: the user's wording
+  // lexically named several forms (a high-signal ambiguity), so disambiguate on
+  // those exact forms rather than the fuzzier RAG service candidates (#1296).
+  // A matcher tie pins nothing, so resolution is "none" and the session stays
+  // unpinned — the same gating the RAG path relies on.
   const disambiguation =
-    serviceCandidates.length >= 2
-      ? { titles: serviceCandidates.map((c) => c.title) }
-      : undefined;
+    matcherAmbiguousTitles && matcherAmbiguousTitles.length >= 2
+      ? { titles: matcherAmbiguousTitles }
+      : serviceCandidates.length >= 2
+        ? { titles: serviceCandidates.map((c) => c.title) }
+        : undefined;
 
   const ragFallback = disambiguation
     ? { resolution }
@@ -464,7 +523,10 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     modelOptions: { maxTokens: 600, temperature: 0 },
     abortController,
     middleware: [
-      citationsMiddleware(citations),
+      // First, so everything downstream (citations, turn log, the wire) sees
+      // the cleaned text.
+      toolCallGuardMiddleware(),
+      citationsMiddleware(citations, linkTokens),
       turnLogMiddleware(
         {
           ts: new Date().toISOString(),

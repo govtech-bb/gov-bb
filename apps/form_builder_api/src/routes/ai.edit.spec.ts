@@ -1,15 +1,16 @@
-jest.mock("@govtech-bb/database", () => ({
+import type { Mock } from "vitest";
+vi.mock("@govtech-bb/database", () => ({
   CustomComponent: class CustomComponent {},
 }));
-jest.mock("../db.js", () => ({ getDataSource: jest.fn() }));
-jest.mock("../ai/system-prompt.js", () => ({
+vi.mock("../db.js", () => ({ getDataSource: vi.fn() }));
+vi.mock("../ai/system-prompt.js", () => ({
   getSystemPrompt: () => "BASE_PROMPT",
 }));
-jest.mock("../ai/client.js", () => ({
-  chat: jest.fn(),
-  isAvailable: jest.fn().mockResolvedValue(true),
+vi.mock("../ai/client.js", () => ({
+  chat: vi.fn(),
+  isAvailable: vi.fn().mockResolvedValue(true),
 }));
-jest.mock("../ai/recipe-extractor.js", () => ({ extractRecipe: jest.fn() }));
+vi.mock("../ai/recipe-extractor.js", () => ({ extractRecipe: vi.fn() }));
 
 import { chat, isAvailable } from "../ai/client.js";
 import { extractRecipe } from "../ai/recipe-extractor.js";
@@ -17,15 +18,15 @@ import { getDataSource } from "../db.js";
 import { mockReq, mockRes } from "../test-helpers/express-mocks";
 import { startEditHandler, statusEditHandler } from "./ai";
 
-const chatMock = chat as jest.Mock;
-const isAvailableMock = isAvailable as jest.Mock;
-const extractRecipeMock = extractRecipe as jest.Mock;
-const getDataSourceMock = getDataSource as jest.Mock;
+const chatMock = chat as Mock;
+const isAvailableMock = isAvailable as Mock;
+const extractRecipeMock = extractRecipe as Mock;
+const getDataSourceMock = getDataSource as Mock;
 
 // getDataSource().getRepository(CustomComponent).find() → custom components.
 function mockDataSource(customs: unknown[]) {
   getDataSourceMock.mockResolvedValue({
-    getRepository: () => ({ find: jest.fn().mockResolvedValue(customs) }),
+    getRepository: () => ({ find: vi.fn().mockResolvedValue(customs) }),
   });
 }
 
@@ -46,7 +47,7 @@ async function startEdit(body: unknown): Promise<string> {
 
 describe("POST /builder/ai/edit/start", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     isAvailableMock.mockResolvedValue(true);
     chatMock.mockResolvedValue("assistant reply");
     extractRecipeMock.mockReturnValue({ formId: "f", steps: [] });
@@ -109,7 +110,7 @@ describe("POST /builder/ai/edit/start", () => {
 
 describe("GET /builder/ai/edit/status/:jobId", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     isAvailableMock.mockResolvedValue(true);
     chatMock.mockResolvedValue("assistant reply");
     extractRecipeMock.mockReturnValue({ formId: "f", steps: [] });

@@ -49,12 +49,34 @@ describe("resolveSubmissionOutcome", () => {
     },
   );
 
-  it.each(["processing", "draft"])(
-    "maps '%s' to no state and no event",
-    (status) => {
-      expect(resolveSubmissionOutcome(response(status))).toEqual({});
-    },
-  );
+  it("maps 'processing' to a no-payment success state with processing flag and no event", () => {
+    // An idempotency-key replay of an in-flight submission comes back
+    // `data.status: "processing"` (HTTP 202, wrapped in ApiResponse.success).
+    // It must commit a state so the citizen sees a "being processed" panel
+    // with their reference number, not get bounced to check-your-answers.
+    // Stays silent on analytics (no event).
+    expect(resolveSubmissionOutcome(response("processing"))).toEqual({
+      subState: {
+        ...base,
+        processing: true,
+        submissionSuccess: true,
+        hasPayment: false,
+      },
+    });
+  });
+
+  it("carries the referenceCode into the processing state", () => {
+    const outcome = resolveSubmissionOutcome(
+      response("processing", undefined, "JPP-20260604-130732-9JZRZC"),
+    );
+    expect(outcome.subState?.referenceNumber).toBe(
+      "JPP-20260604-130732-9JZRZC",
+    );
+  });
+
+  it("maps 'draft' to no state and no event (unreachable from public submit)", () => {
+    expect(resolveSubmissionOutcome(response("draft"))).toEqual({});
+  });
 
   it("maps 'pending_payment' with deferred meta to a payment state and success event", () => {
     const outcome = resolveSubmissionOutcome(

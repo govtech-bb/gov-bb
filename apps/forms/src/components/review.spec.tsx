@@ -1,3 +1,4 @@
+import type { Mock } from "vitest";
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -7,8 +8,8 @@ import type { ClientFormStep, FormMeta } from "@forms/types";
 
 // Mock TanStack Router — Review calls useNavigate({ from: "/forms/$formId/" })
 // which requires a router context unavailable in jsdom unit tests.
-const mockNavigate = jest.fn();
-jest.mock("@tanstack/react-router", () => ({
+const mockNavigate = vi.fn();
+vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
 }));
 
@@ -50,7 +51,7 @@ function makeMockForm(values: Record<string, unknown> = {}) {
     // getVisibleFields evaluates fieldConditionalOn behaviours against the
     // composite-keyed value map in `state.values` (#737).
     state: { values },
-    getFieldValue: jest.fn((fieldId: string) => values[fieldId]),
+    getFieldValue: vi.fn((fieldId: string) => values[fieldId]),
   };
 }
 
@@ -59,7 +60,7 @@ function makeMockForm(values: Record<string, unknown> = {}) {
 // ---------------------------------------------------------------------------
 
 describe("Review", () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   // -------------------------------------------------------------------------
   // Basic rendering

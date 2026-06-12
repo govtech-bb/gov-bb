@@ -1,5 +1,5 @@
 import type { StreamChunk } from "@tanstack/ai";
-import { EventType } from "@tanstack/ai";
+import { EventType, normalizeToolResult } from "@tanstack/ai";
 import type { AskFieldSpec } from "./form/field-spec";
 
 export interface RepresentStreamContext {
@@ -29,7 +29,7 @@ export async function* representFieldStream(
   const { threadId, model } = ctx;
   // ask_field's tool RESULT is what the client renders from (bubble.tsx reads
   // part.output), so the widget data rides on the result, not the args.
-  const result = JSON.stringify({ ok: true, field });
+  const result = normalizeToolResult({ ok: true, field });
 
   yield {
     type: EventType.RUN_STARTED,

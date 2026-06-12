@@ -282,8 +282,18 @@ export const formatDataForSubmission = (
     collapsedRepeatables[stepId] = [];
 
     const sharedData = currentRepeatSettings.sharedData;
+    // sharedData is populated (one key per shared fieldId) exactly when the
+    // step has a sharedFields behaviour. In that case the base step is a
+    // separate "shared values" page, NOT an instance — see setupRepeatSteps.
+    const hasSharedFields = Object.keys(sharedData ?? {}).length > 0;
 
     for (const orderedStepId of currentRepeatSettings.orderedStepIds) {
+      // Don't fold the base step as an instance for a shared-fields step: its
+      // only fields are the shared ones (folded into each ~N instance via
+      // `sharedData` below). Including it would emit an incomplete instance
+      // missing the per-instance required fields → POST /submissions 422 (#1257).
+      if (hasSharedFields && orderedStepId === stepId) continue;
+
       if (orderedStepId !== stepId) {
         const hasVisibleValues = Object.keys(values).filter((stepFieldID) =>
           stepFieldID.startsWith(orderedStepId),

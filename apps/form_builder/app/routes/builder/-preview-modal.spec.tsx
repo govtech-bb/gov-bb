@@ -1,5 +1,6 @@
+import type { Mock, MockInstance } from "vitest";
 /**
- * @jest-environment jsdom
+ * @vitest-environment jsdom
  */
 import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
@@ -16,7 +17,7 @@ function renderModal(
       isLoading={false}
       error={null}
       previewUrl={null}
-      onClose={jest.fn()}
+      onClose={vi.fn()}
       {...props}
     />,
   );
@@ -55,14 +56,14 @@ describe("PreviewModal view recipe JSON action", () => {
   const realCreateObjectURL = URL.createObjectURL;
   const realRevokeObjectURL = URL.revokeObjectURL;
   const RealBlob = globalThis.Blob;
-  let createObjectURL: jest.Mock;
-  let revokeObjectURL: jest.Mock;
-  let windowOpen: jest.SpyInstance;
+  let createObjectURL: Mock;
+  let revokeObjectURL: Mock;
+  let windowOpen: MockInstance;
   // jsdom's Blob has no .text(), so capture the construction input instead.
   let blobParts: BlobPart[] | undefined;
 
   beforeEach(() => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     blobParts = undefined;
     globalThis.Blob = class extends RealBlob {
       constructor(parts?: BlobPart[], opts?: BlobPropertyBag) {
@@ -70,15 +71,15 @@ describe("PreviewModal view recipe JSON action", () => {
         blobParts = parts;
       }
     };
-    createObjectURL = jest.fn().mockReturnValue("blob:mock-recipe-url");
-    revokeObjectURL = jest.fn();
+    createObjectURL = vi.fn().mockReturnValue("blob:mock-recipe-url");
+    revokeObjectURL = vi.fn();
     URL.createObjectURL = createObjectURL;
     URL.revokeObjectURL = revokeObjectURL;
-    windowOpen = jest.spyOn(window, "open").mockReturnValue(null);
+    windowOpen = vi.spyOn(window, "open").mockReturnValue(null);
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
     globalThis.Blob = RealBlob;
     URL.createObjectURL = realCreateObjectURL;
     URL.revokeObjectURL = realRevokeObjectURL;
@@ -102,7 +103,7 @@ describe("PreviewModal view recipe JSON action", () => {
   });
 
   it("opens the pretty-printed recipe as a JSON blob URL in a new tab", async () => {
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderModal({ recipe });
 
     await user.click(screen.getByRole("button", { name: /view recipe json/i }));
@@ -119,13 +120,13 @@ describe("PreviewModal view recipe JSON action", () => {
   });
 
   it("revokes the blob URL after opening", async () => {
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderModal({ recipe });
 
     await user.click(screen.getByRole("button", { name: /view recipe json/i }));
 
     expect(revokeObjectURL).not.toHaveBeenCalled();
-    jest.runAllTimers();
+    vi.runAllTimers();
     expect(revokeObjectURL).toHaveBeenCalledWith("blob:mock-recipe-url");
   });
 });

@@ -5,6 +5,7 @@ import type {
 } from "@govtech-bb/form-types";
 import { evaluateFormConditions } from "@govtech-bb/form-conditions";
 import { getServerEnv } from "#/config/env";
+import { landingStartPath } from "#/lib/rag/start-page";
 import { isAutoConfirmedField } from "./auto-confirm";
 import { getFormDefinition } from "./defs";
 import { isForcedHandoff } from "./policy";
@@ -291,12 +292,19 @@ export async function resolveActiveForm(
   if (!contract) return { kind: "none" };
 
   if (needsHandoff(contract)) {
-    const base = getServerEnv().FORMS_URL;
+    // Hand off to the landing START PAGE (service context + the Start now
+    // button) when the RAG document for this form knows one — derived from
+    // content frontmatter at ingest, no hand-maintained URL map. Forms with
+    // no public landing page fall back to the direct forms-app link.
+    const env = getServerEnv();
+    const startPath = await landingStartPath(contract.formId);
     return {
       kind: "handoff",
       slug,
       title: contract.title,
-      url: `${base}/forms/${encodeURIComponent(slug)}`,
+      url: startPath
+        ? `${env.LANDING_URL}${startPath}`
+        : `${env.FORMS_URL}/forms/${encodeURIComponent(slug)}`,
     };
   }
 

@@ -402,15 +402,15 @@ export default function FieldRenderer({
                 true,
               );
             } else {
+              // Immutable updates: TanStack's store dedupes by reference, so a
+              // mutated-in-place array passed back to handleChange can be
+              // dropped as "unchanged". Always commit a fresh array.
               const addAnotherField = (values: string[]) => {
-                // Pushes a new empty field, that a user can fill in
-                values.push("");
-                commitChange(values);
+                commitChange([...values, ""]);
               };
 
               const removeField = (values: string[]) => {
-                values.pop();
-                commitChange(values);
+                commitChange(values.slice(0, -1));
               };
 
               const updateField = (
@@ -418,8 +418,9 @@ export default function FieldRenderer({
                 index: number,
                 value: string,
               ) => {
-                values[index] = value;
-                commitChange(values);
+                const next = [...values];
+                next[index] = value;
+                commitChange(next);
               };
 
               const values = (f.state.value as string[] | undefined) ?? [
@@ -535,7 +536,7 @@ export default function FieldRenderer({
                   </select>
                   <span className="govbb-select__chevron" aria-hidden="true">
                     <svg viewBox="0 0 12 8">
-                      <path d="M6 8 0 0h12z" />
+                      <path d="M0 8 6 0 12 8z" />
                     </svg>
                   </span>
                 </div>

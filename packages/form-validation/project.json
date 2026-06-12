@@ -6,7 +6,9 @@
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",
-      "outputs": ["{options.outputPath}"],
+      "outputs": [
+        "{options.outputPath}"
+      ],
       "options": {
         "outputPath": "dist/packages/form-validation",
         "tsConfig": "packages/form-validation/tsconfig.json",
@@ -14,15 +16,18 @@
       }
     },
     "test": {
-      "executor": "@nx/jest:jest",
+      "executor": "nx:run-commands",
       "options": {
-        "jestConfig": "packages/form-validation/jest.config.ts"
+        "command": "vitest run",
+        "cwd": "packages/form-validation"
       }
     },
     "lint": {
       "executor": "@nx/eslint:lint",
       "options": {
-        "lintFilePatterns": ["packages/form-validation/**/*.ts"]
+        "lintFilePatterns": [
+          "packages/form-validation/**/*.ts"
+        ]
       }
     }
   },
