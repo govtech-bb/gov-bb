@@ -31,8 +31,13 @@ function userMessage(text: string): UIMessage {
   } as unknown as UIMessage;
 }
 
-const entry = (formId: string): FormIndexEntry =>
-  ({ formId, titleToks: new Set() }) as unknown as FormIndexEntry;
+const entry = (formId: string, title = formId): FormIndexEntry =>
+  ({ formId, title, titleToks: new Set() }) as unknown as FormIndexEntry;
+
+// matchCandidates returns best-first; a single-element list is an unambiguous
+// match, two or more is a near-tie the caller must disambiguate.
+const one = (formId: string, title?: string) => [entry(formId, title)];
+const none: FormIndexEntry[] = [];
 
 // ---------------------------------------------------------------------------
 // pinSessionForm
@@ -42,9 +47,9 @@ test("pinSessionForm leaves an active unsubmitted form pinned (matcher not consu
   const s = session({ slug: "mail-redirect", values: { a: "1" } });
   let called = 0;
   await pinSessionForm(s, [userMessage("birth certificate please")], {
-    match: async () => {
+    matchCandidates: async () => {
       called++;
-      return entry("get-birth-certificate");
+      return one("get-birth-certificate");
     },
   });
   assert.equal(s.slug, "mail-redirect");
@@ -60,9 +65,9 @@ test("pinSessionForm pins chat-feedback by id for the banner phrase, ignoring th
   const s = session();
   let called = 0;
   await pinSessionForm(s, [userMessage(FEEDBACK_TRIGGER_PHRASE)], {
-    match: async () => {
+    matchCandidates: async () => {
       called++;
-      return entry("some-future-assistant-feedback-form");
+      return one("some-future-assistant-feedback-form");
     },
   });
   assert.equal(s.slug, FEEDBACK_FORM_ID);
@@ -78,7 +83,7 @@ test("pinSessionForm pins chat-feedback by id for the banner phrase, ignoring th
 test("pinSessionForm does not pin a free-typed feedback request (run-turn disambiguates first)", async () => {
   const s = session();
   await pinSessionForm(s, [userMessage("i wan to feedback")], {
-    match: async () => null,
+    matchCandidates: async () => none,
   });
   assert.equal(s.slug, null);
 });
@@ -90,12 +95,128 @@ test("pinSessionForm pins a window match and resets prior state on a switch", as
     values: { a: "1" },
     referenceNumber: "R1",
   });
-  await pinSessionForm(s, [userMessage("post office redirection")], {
-    match: async () => entry("post-office-redirection-individual"),
-  });
+  const result = await pinSessionForm(
+    s,
+    [userMessage("post office redirection")],
+    { matchCandidates: async () => one("post-office-redirection-individual") },
+  );
   assert.equal(s.slug, "post-office-redirection-individual");
   assert.deepEqual(s.values, {});
   assert.equal(s.referenceNumber, undefined);
+  // An unambiguous match pins — nothing to disambiguate.
+  assert.equal(result.ambiguousTitles, undefined);
+});
+
+// #1296: a broad request ("redirect mail") whose wording names several forms
+// about equally well must NOT be pinned to one. pinSessionForm leaves the
+// session unpinned and returns the tied titles so run-turn can disambiguate.
+test("pinSessionForm does not pin an ambiguous window match — returns the tied titles", async () => {
+  const s = session();
+  const result = await pinSessionForm(s, [userMessage("redirect mail")], {
+    matchCandidates: async () => [
+      entry("redirect-personal-mail", "Redirect personal mail"),
+      entry("redirect-mail-individual", "Redirect mail for an individual"),
+      entry("redirect-mail-deceased", "Redirect mail for a deceased person"),
+    ],
+  });
+  assert.equal(s.slug, null);
+  assert.deepEqual(result.ambiguousTitles, [
+    "Redirect personal mail",
+    "Redirect mail for an individual",
+    "Redirect mail for a deceased person",
+  ]);
+  // The candidates are recorded so the next turn's tap resolves deterministically.
+  assert.deepEqual(s.disambiguationForms, [
+    { slug: "redirect-personal-mail", title: "Redirect personal mail" },
+    {
+      slug: "redirect-mail-individual",
+      title: "Redirect mail for an individual",
+    },
+    {
+      slug: "redirect-mail-deceased",
+      title: "Redirect mail for a deceased person",
+    },
+  ]);
+});
+
+// #1296: tapping a presented choice pins that exact form BEFORE the matcher
+// runs — the matcher would re-tie on the shared "redirect"/"mail" tokens and
+// re-disambiguate, trapping the user. The stub returns the tie to prove the
+// deterministic consume short-circuits it (it is never consulted).
+test("pinSessionForm resolves a disambiguation tap deterministically, not via the matcher", async () => {
+  const s = session({
+    disambiguationForms: [
+      { slug: "redirect-personal-mail", title: "Redirect personal mail" },
+      {
+        slug: "redirect-mail-deceased",
+        title: "Redirect mail for a deceased person",
+      },
+    ],
+  });
+  let called = 0;
+  const result = await pinSessionForm(
+    s,
+    [userMessage("Redirect mail for a deceased person")],
+    {
+      matchCandidates: async () => {
+        called++;
+        return [
+          entry("redirect-personal-mail", "Redirect personal mail"),
+          entry(
+            "redirect-mail-deceased",
+            "Redirect mail for a deceased person",
+          ),
+        ];
+      },
+    },
+  );
+  assert.equal(s.slug, "redirect-mail-deceased");
+  assert.equal(s.disambiguationForms, undefined);
+  assert.equal(result.ambiguousTitles, undefined);
+  assert.equal(called, 0); // matcher never consulted on a deterministic tap
+});
+
+// #1296: "Something else" must ESCAPE, not loop. The lapse matches the LATEST
+// message only ("Something else" → no form), not the rolling window (which
+// still names "redirect mail" and would re-offer the same set). The stub
+// returns the tie for the window text but nothing for the latest, proving the
+// matcher ran against the latest message.
+test("pinSessionForm does not re-offer after a disambiguation lapses on 'Something else'", async () => {
+  const s = session({
+    disambiguationForms: [
+      { slug: "redirect-personal-mail", title: "Redirect personal mail" },
+      {
+        slug: "redirect-mail-deceased",
+        title: "Redirect mail for a deceased person",
+      },
+    ],
+  });
+  const seen: string[] = [];
+  const result = await pinSessionForm(
+    s,
+    [userMessage("redirect mail"), userMessage("Something else")],
+    {
+      matchCandidates: async (text) => {
+        seen.push(text);
+        // The rolling window still names "redirect mail" → would re-tie; the
+        // latest message ("Something else") names no form.
+        return text.includes("redirect mail")
+          ? [
+              entry("redirect-personal-mail", "Redirect personal mail"),
+              entry(
+                "redirect-mail-deceased",
+                "Redirect mail for a deceased person",
+              ),
+            ]
+          : none;
+      },
+    },
+  );
+  assert.equal(s.slug, null);
+  assert.equal(result.ambiguousTitles, undefined); // no re-offer
+  assert.equal(s.disambiguationForms, undefined);
+  // Matched the latest message only — never the rolling window.
+  assert.deepEqual(seen, ["Something else"]);
 });
 
 // The cancel/handoff suppression: a rolling-window match for the parked form
@@ -105,10 +226,10 @@ test("pinSessionForm defers a window match of the parked slug to the latest mess
   const s = session({ handedOffSlug: "conductor-licence" });
   const calls: string[] = [];
   await pinSessionForm(s, [userMessage("thanks, bye")], {
-    match: async (text) => {
+    matchCandidates: async (text) => {
       calls.push(text);
       // Window text still names the parked form; the latest message doesn't.
-      return calls.length === 1 ? entry("conductor-licence") : null;
+      return calls.length === 1 ? one("conductor-licence") : none;
     },
   });
   assert.equal(s.slug, null);
@@ -130,7 +251,7 @@ test("pinSessionForm auto-pins feedback after a submitted real form", async () =
     referenceNumber: "R1",
   });
   await pinSessionForm(s, [userMessage("yes please")], {
-    match: async () => null,
+    matchCandidates: async () => none,
   });
   assert.equal(s.slug, FEEDBACK_FORM_ID);
   assert.equal(s.feedbackOffered, true);
@@ -151,10 +272,10 @@ test("pinSessionForm parks (no re-offer) a submitted real form when feedback was
   });
   const calls: string[] = [];
   await pinSessionForm(s, [userMessage("thanks, that's all")], {
-    match: async (text) => {
+    matchCandidates: async (text) => {
       calls.push(text);
       // Window text still names the just-submitted form; the latest doesn't.
-      return calls.length === 1 ? entry("mail-redirect") : null;
+      return calls.length === 1 ? one("mail-redirect") : none;
     },
   });
   assert.equal(s.slug, null);
@@ -170,7 +291,7 @@ test("pinSessionForm resets a submitted feedback session instead of wedging", as
     values: { rating: "5" },
   });
   await pinSessionForm(s, [userMessage("ok thanks")], {
-    match: async () => null,
+    matchCandidates: async () => none,
   });
   assert.equal(s.slug, null);
   assert.equal(s.status, "collecting");
@@ -190,7 +311,7 @@ test("pinSessionForm releases a zero-value feedback pin on an info-question topi
     values: {},
   });
   await pinSessionForm(s, [userMessage("how do I renew my passport?")], {
-    match: async () => null,
+    matchCandidates: async () => none,
   });
   // Released to normal no-form routing, so RAG can answer the new question.
   assert.equal(s.slug, null);
@@ -206,7 +327,7 @@ test("pinSessionForm re-pins a zero-value feedback pin to a form the latest mess
     values: {},
   });
   await pinSessionForm(s, [userMessage("I want to apply for a passport")], {
-    match: async () => entry("get-passport"),
+    matchCandidates: async () => one("get-passport"),
   });
   assert.equal(s.slug, "get-passport");
   assert.equal(s.feedbackOffered, true);
@@ -220,7 +341,7 @@ test("pinSessionForm keeps a zero-value feedback pin for a yes/no-shaped reply",
     values: {},
   });
   await pinSessionForm(s, [userMessage("no thanks")], {
-    match: async () => null,
+    matchCandidates: async () => none,
   });
   // Not a topic switch — collect-feedback handles the decline next.
   assert.equal(s.slug, "chat-feedback");
@@ -235,9 +356,9 @@ test("pinSessionForm keeps an in-progress feedback form pinned despite a questio
   });
   let called = 0;
   await pinSessionForm(s, [userMessage("what happens to my feedback?")], {
-    match: async () => {
+    matchCandidates: async () => {
       called++;
-      return null;
+      return none;
     },
   });
   // Mid-collection (a value captured): grounded via retrievalBoostSlug, not a

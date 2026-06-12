@@ -18,7 +18,7 @@ export {
   recordMissOutcome,
   type FunnelPhase,
 } from "./funnel";
-export { applyRagFallback, pinSessionForm } from "./routing";
+export { applyRagFallback, pinSessionForm, type PinResult } from "./routing";
 export {
   buildFieldIndex,
   nextAskableField,
