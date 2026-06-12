@@ -4,7 +4,7 @@
 
 FROM node:24-alpine AS builder
 
-RUN corepack enable && corepack prepare pnpm@10.33.4 --activate
+RUN corepack enable && corepack prepare pnpm@11.6.0 --activate
 RUN addgroup -S -g 1001 app && adduser -S -u 1001 -G app app
 
 WORKDIR /app
@@ -34,7 +34,7 @@ RUN pnpm exec nx build form-builder-api
 # Matches the main API's runner pattern exactly.
 FROM node:24-alpine AS runner
 
-RUN corepack enable && corepack prepare pnpm@10.33.4 --activate
+RUN corepack enable && corepack prepare pnpm@11.6.0 --activate
 RUN addgroup -S -g 1001 app && adduser -S -u 1001 -G app app
 
 WORKDIR /app
