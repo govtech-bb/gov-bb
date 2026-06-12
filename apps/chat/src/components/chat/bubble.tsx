@@ -10,6 +10,7 @@ import {
   findToolCall,
   stripLeakedToolCalls,
 } from "#/lib/chat/messages";
+import { restoreLinks } from "#/lib/chat/link-tokens";
 import { normalizeMarkdown } from "#/lib/chat/normalize-markdown";
 import type { Citation } from "#/lib/chat/types";
 import {
@@ -44,12 +45,14 @@ function BubbleImpl({
   onApproval,
   choicesDisabled = false,
   citations,
+  linkTokens,
 }: {
   message: UIMessage;
   onChoice: (choice: string) => void;
   onApproval: (id: string, approved: boolean) => void;
   choicesDisabled?: boolean;
   citations?: Citation[];
+  linkTokens?: Record<string, string>;
 }) {
   const text = useMemo(
     () => stripLeakedToolCalls(extractText(message)),
@@ -100,9 +103,15 @@ function BubbleImpl({
     [text, hasChoices, fieldSpec],
   );
   const renderedMarkdown = useMemo(() => {
-    const normalized = normalizeMarkdown(displayText);
+    // Restore opaque link_N tokens to real URLs before anything else (#1270):
+    // the model only ever saw tokens, so any URL in the rendered output comes
+    // from this map. Unknown tokens (hallucinated) are stripped. Runs on the
+    // full accumulated text each render, so streaming chunk boundaries can't
+    // split a token permanently.
+    const restored = restoreLinks(displayText, linkTokens ?? {});
+    const normalized = normalizeMarkdown(restored);
     return annotateCitations(normalized, citations ?? []);
-  }, [displayText, citations]);
+  }, [displayText, citations, linkTokens]);
   const markdownComponents = useMemo(
     () => buildMarkdownComponents(citations ?? []),
     [citations],
