@@ -28,6 +28,7 @@ import {
   withThreadLock,
   type FormResolution,
   type FormTurnContext,
+  type PinResult,
 } from "./form";
 import { representChoicesStream } from "./represent-choices-stream";
 import { representFieldStream } from "./represent-field-stream";
@@ -172,8 +173,13 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
 
   // serviceFeedback short-circuits matching: the user deliberately asked for the
   // general feedback link, so don't let the rolling-window matcher re-pin a
-  // service topic and override it.
-  if (!serviceFeedback) await pinSessionForm(session, messages);
+  // service topic and override it. When the matcher finds the request names
+  // several forms about equally well it pins NONE and hands the titles back, so
+  // the disambiguation below can ask which one instead of guessing (#1296).
+  const pinResult: PinResult = serviceFeedback
+    ? {}
+    : await pinSessionForm(session, messages);
+  const matcherAmbiguousTitles = pinResult.ambiguousTitles;
 
   let resolution: FormResolution =
     !serviceFeedback && session.slug
@@ -382,10 +388,17 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
   // whose topic the conversation already established.
   const serviceCandidates =
     resolution.kind === "none" && !session.slug ? serviceCandidatesRaw : [];
+  // Prefer the title matcher's tied set when it has one: the user's wording
+  // lexically named several forms (a high-signal ambiguity), so disambiguate on
+  // those exact forms rather than the fuzzier RAG service candidates (#1296).
+  // A matcher tie pins nothing, so resolution is "none" and the session stays
+  // unpinned — the same gating the RAG path relies on.
   const disambiguation =
-    serviceCandidates.length >= 2
-      ? { titles: serviceCandidates.map((c) => c.title) }
-      : undefined;
+    matcherAmbiguousTitles && matcherAmbiguousTitles.length >= 2
+      ? { titles: matcherAmbiguousTitles }
+      : serviceCandidates.length >= 2
+        ? { titles: serviceCandidates.map((c) => c.title) }
+        : undefined;
 
   const ragFallback = disambiguation
     ? { resolution }

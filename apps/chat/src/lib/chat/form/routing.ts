@@ -12,9 +12,15 @@ import {
   topHandoffCandidateSlug,
 } from "#/lib/chat/retrieval";
 import type { Source } from "#/lib/chat/types";
-import { matchFormsFromText } from "./detect";
+import { matchFormCandidates } from "./detect";
 import { getAllFormSlugs, getFormSlugs } from "./defs";
-import { offerForm, parkHandoff, pinForm } from "./funnel";
+import {
+  consumeDisambiguationChoice,
+  offerDisambiguation,
+  offerForm,
+  parkHandoff,
+  pinForm,
+} from "./funnel";
 import { resolveActiveForm, type FormResolution } from "./schema";
 import { resetSessionForNewForm, type FormSession } from "./session";
 
@@ -22,7 +28,14 @@ import { resetSessionForNewForm, type FormSession } from "./session";
 // contract resolution) so the routing decisions are unit-testable. Defaults
 // are the real implementations — production callers pass nothing.
 interface PinDeps {
-  match: typeof matchFormsFromText;
+  matchCandidates: typeof matchFormCandidates;
+}
+
+export interface PinResult {
+  // The user's wording named SEVERAL forms about equally well and none was
+  // pinned: their titles, for run-turn to surface as a disambiguation choice
+  // list rather than guessing one form (#1296). Absent on the common path.
+  ambiguousTitles?: string[];
 }
 
 interface RagFallbackDeps {
@@ -41,8 +54,8 @@ interface RagFallbackDeps {
 export async function pinSessionForm(
   session: FormSession,
   messages: UIMessage[],
-  deps: PinDeps = { match: matchFormsFromText },
-): Promise<void> {
+  deps: PinDeps = { matchCandidates: matchFormCandidates },
+): Promise<PinResult> {
   // A submitted form is terminal — the application is done, nothing more to
   // collect — so unpin it; otherwise the matcher re-pins it from the rolling
   // window (which still names the just-completed form) and traps the user.
@@ -84,10 +97,14 @@ export async function pinSessionForm(
     session.status !== "submitted" &&
     Object.keys(session.values).length === 0
   ) {
-    const switchMatch = await deps.match(lastUserText(messages));
+    // Single best is enough here: this only asks "did the user switch to some
+    // other form" to release the open feedback offer; the full disambiguation
+    // happens on the cold-start window match below.
+    const switchMatch =
+      (await deps.matchCandidates(lastUserText(messages)))[0] ?? null;
     if (switchMatch && switchMatch.formId !== FEEDBACK_FORM_ID) {
       pinForm(session, switchMatch.formId);
-      return;
+      return {};
     }
     if (isInfoQuestion(lastUserText(messages))) {
       resetSessionForNewForm(session);
@@ -95,10 +112,17 @@ export async function pinSessionForm(
       // the implicit-decline invariant holds no matter how we reached a
       // zero-value feedback pin — the offer is never repeated this session.
       session.feedbackOffered = true;
-      return;
+      return {};
     }
   }
-  if (session.slug && session.status !== "submitted") return;
+  if (session.slug && session.status !== "submitted") return {};
+  // A tap on a disambiguation choice (#1296) resolves deterministically before
+  // the matcher runs: the pill sends its title verbatim, so we pin that exact
+  // form. Re-running the margin matcher instead would re-tie on the shared-token
+  // variants and loop. "Something else" / a topic switch LAPSES — see below.
+  const choice = consumeDisambiguationChoice(session, lastUserText(messages));
+  if (choice?.kind === "pinned") return {};
+  const disambiguationLapsed = choice?.kind === "lapsed";
   // The notice banner's "Give feedback" link sends the EXACT
   // FEEDBACK_TRIGGER_PHRASE. Pin chat-feedback by EXPLICIT id, not via the
   // title-token matcher: the matcher only picked it up because
@@ -117,20 +141,42 @@ export async function pinSessionForm(
   if (lastUserText(messages) === FEEDBACK_TRIGGER_PHRASE) {
     pinForm(session, FEEDBACK_FORM_ID);
     session.feedbackOffered = true;
-    return;
+    return {};
   }
-  const windowMatch = await deps.match(recentUserText(messages));
-  const matched =
-    windowMatch && windowMatch.formId === session.handedOffSlug
-      ? await deps.match(lastUserText(messages))
-      : windowMatch;
+  // Normally match the rolling window (carries multi-turn context). But when a
+  // disambiguation just lapsed, the window still names the ambiguous phrase and
+  // would re-offer the same set — so match the LATEST message only, letting
+  // "Something else" (no match → fall through to RAG/no-form) or a topic switch
+  // escape instead of looping.
+  const windowCandidates = await deps.matchCandidates(
+    disambiguationLapsed ? lastUserText(messages) : recentUserText(messages),
+  );
+  const candidates =
+    !disambiguationLapsed &&
+    windowCandidates[0] &&
+    windowCandidates[0].formId === session.handedOffSlug
+      ? await deps.matchCandidates(lastUserText(messages))
+      : windowCandidates;
+  const matched = candidates[0] ?? null;
   if (matched) {
+    // Two or more near-tied candidates: the user's wording names several forms
+    // about equally well ("redirect mail" → personal / individual / deceased).
+    // Don't guess — leave the session UNPINNED, record the candidates as a
+    // pending disambiguation (so the next turn's tap resolves deterministically,
+    // not via the still-tied matcher), and hand the titles back so run-turn
+    // surfaces them as a choice list (#1296).
+    if (candidates.length >= 2) {
+      const forms = candidates.map((c) => ({ slug: c.formId, title: c.title }));
+      offerDisambiguation(session, forms);
+      return { ambiguousTitles: forms.map((f) => f.title) };
+    }
     pinForm(session, matched.formId);
     // A genuine free-text mention of the feedback form (rare, but possible) is
     // also a manual start, so mark the offer spent — same as the banner path
     // above — so the model never also offers feedback later this session.
     if (matched.formId === FEEDBACK_FORM_ID) session.feedbackOffered = true;
   }
+  return {};
 }
 
 export interface RagFallbackResult {
