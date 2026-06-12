@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getServerEnv } from "#/config/env";
+import { applyAutoConfirmedValues } from "./auto-confirm";
 import { getFormDefinition } from "./defs";
 import { getActiveFieldIds } from "./schema";
 import { validateAndReshape } from "./values";
@@ -48,10 +49,17 @@ export async function submitFormUpstream(
     };
   }
 
+  // Confirm any auto-confirmed fields (the feedback form's declaration) on the
+  // user's behalf, on a copy — they were never asked or shown, but the forms
+  // API still requires them. Done here, at the submission boundary, so the
+  // value never enters session.values and stays out of the review summary.
+  const submitFields = { ...fields };
+  applyAutoConfirmedValues(contract, submitFields);
+
   // Conditional fields the user was never asked about must not trigger
   // 'required' errors — only validate fields active given current values.
-  const { flat: activeFieldIds } = getActiveFieldIds(contract, fields);
-  const validation = validateAndReshape(contract, fields, activeFieldIds);
+  const { flat: activeFieldIds } = getActiveFieldIds(contract, submitFields);
+  const validation = validateAndReshape(contract, submitFields, activeFieldIds);
   if (!validation.ok) {
     return { ok: false, errors: validation.errors };
   }

@@ -16,9 +16,10 @@
       }
     },
     "test": {
-      "executor": "@nx/jest:jest",
+      "executor": "nx:run-commands",
       "options": {
-        "jestConfig": "packages/form-types/jest.config.ts"
+        "command": "vitest run",
+        "cwd": "packages/form-types"
       }
     },
     "lint": {

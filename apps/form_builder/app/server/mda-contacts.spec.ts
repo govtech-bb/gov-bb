@@ -1,16 +1,17 @@
+import type { Mock } from "vitest";
 /**
- * @jest-environment node
+ * @vitest-environment node
  */
 import type { MdaContact } from "../types/index";
 
 // Mock the auth surface before importing the SUT — mirrors forms.spec.ts.
-jest.mock("./session-cipher.server", () => ({
-  getSession: jest.fn(),
+vi.mock("./session-cipher.server", () => ({
+  getSession: vi.fn(),
 }));
-jest.mock("@tanstack/react-start/server", () => ({
+vi.mock("@tanstack/react-start/server", () => ({
   getRequestHeaders: () => new Headers({ cookie: "fb_session=opaque" }),
 }));
-jest.mock("./api-client", () => {
+vi.mock("./api-client", () => {
   const ApiError = class extends Error {
     constructor(
       public readonly status: number,
@@ -20,7 +21,7 @@ jest.mock("./api-client", () => {
     }
   };
   return {
-    api: { get: jest.fn(), post: jest.fn(), put: jest.fn(), del: jest.fn() },
+    api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), del: vi.fn() },
     ApiError,
   };
 });
@@ -35,13 +36,13 @@ const SESSION = {
   expiresAt: Date.now() + 3600_000,
 };
 
-const apiGet = api.get as jest.Mock;
-const apiPost = api.post as jest.Mock;
+const apiGet = api.get as Mock;
+const apiPost = api.post as Mock;
 
 beforeEach(() => {
-  jest.resetAllMocks();
+  vi.resetAllMocks();
   process.env.SESSION_SECRET = Buffer.alloc(32).toString("base64");
-  (getSession as jest.Mock).mockReturnValue(SESSION);
+  (getSession as Mock).mockReturnValue(SESSION);
 });
 
 afterEach(() => {
@@ -112,7 +113,7 @@ describe("createMdaContact", () => {
 describe("getFormConfig", () => {
   it("reads the per-environment config for a form", async () => {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { getFormConfig } = require("./forms");
+    const { getFormConfig } = await import("./forms");
     apiGet.mockResolvedValue({ mdaContactId: "contact-1" });
 
     const result = await getFormConfig({

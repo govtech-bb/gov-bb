@@ -1,5 +1,5 @@
 /**
- * @jest-environment jsdom
+ * @vitest-environment jsdom
  */
 import "@testing-library/jest-dom";
 import { render, screen, within } from "@testing-library/react";
@@ -69,10 +69,10 @@ async function addProcessor(type: string) {
 }
 
 beforeEach(() => {
-  jest.spyOn(window, "confirm").mockReturnValue(true);
+  vi.spyOn(window, "confirm").mockReturnValue(true);
 });
 afterEach(() => {
-  jest.restoreAllMocks();
+  vi.restoreAllMocks();
 });
 
 it("adds a processor of each authorable type", async () => {

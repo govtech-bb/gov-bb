@@ -26,6 +26,17 @@
 // recipe republish can't silently open inline collection (#965).
 export type ChatFormMode = "collect" | "handoff";
 
+// RELEASE GATE — inline collection is parked for the initial release. While
+// this is true, EVERY surfaceable government form hands off as a link
+// regardless of its map mode below; the chat just gives the user the form.
+// The inline-"collect" machinery (funnel/tools/ask_field and the collect
+// modes below) stays in the tree, only switched off here — flip to false to
+// re-enable per-form collection, no other change needed (#1273). The
+// chat-feedback form is exempt (#1272, decided 2026-06-11): it's the
+// assistant's own feedback mechanism, not a government service, and has no
+// landing page to hand off to.
+export const HANDOFF_ALL_FORMS = true;
+
 export const CHAT_FORM_POLICY: ReadonlyMap<string, ChatFormMode> = new Map([
   // Certificates: paid services. NOTE the latest recipes (birth 1.6.0, death
   // 1.5.0, marriage 1.6.0) no longer carry a payment processor, so the
@@ -65,6 +76,12 @@ export function isSurfaceableForm(formId: string): boolean {
 }
 
 // The policy says link-only, regardless of what the live contract looks like.
+// During the release gate (HANDOFF_ALL_FORMS) every surfaceable form is forced
+// off too, except chat-feedback — a non-surfaceable form (no map entry) is
+// still never forced, so the chat stays silent about it.
 export function isForcedHandoff(formId: string): boolean {
-  return CHAT_FORM_POLICY.get(formId) === "handoff";
+  const mode = CHAT_FORM_POLICY.get(formId);
+  if (mode === undefined) return false;
+  if (HANDOFF_ALL_FORMS && formId !== "chat-feedback") return true;
+  return mode === "handoff";
 }

@@ -16,7 +16,7 @@ import { FormDefinitionsService } from "./form-definitions.service";
 import { FormDisabledOverridesService } from "../form-disabled-overrides/form-disabled-overrides.service";
 import { GetFormDefinitionDocs } from "./form-definitions.docs";
 import { ApiResponse as AppApiResponse } from "../../common/response";
-import { isValidPreviewToken } from "./recipe-preview-token";
+import { isValidSecretToken } from "../../common/secret-token";
 import type { ApiResponseShape } from "../../common/response";
 import type { ServiceContract } from "@govtech-bb/form-types";
 
@@ -73,7 +73,7 @@ export class FormDefinitionsController {
       );
     }
 
-    const preview = isValidPreviewToken(
+    const preview = isValidSecretToken(
       this.configService.get<string>("RECIPE_PREVIEW_TOKEN", ""),
       previewToken,
     );

@@ -1,25 +1,26 @@
+import type { Mock } from "vitest";
 import type { Request, Response } from "express";
 
-jest.mock("@govtech-bb/database", () => ({
+vi.mock("@govtech-bb/database", () => ({
   FormDefinitionEntity: class FormDefinitionEntity {},
 }));
-jest.mock("../db.js", () => ({ getDataSource: jest.fn() }));
+vi.mock("../db.js", () => ({ getDataSource: vi.fn() }));
 
 import { getDataSource } from "../db.js";
 import { listDisabledHandler } from "./forms";
 
-const getDataSourceMock = getDataSource as jest.Mock;
+const getDataSourceMock = getDataSource as Mock;
 
 function mockRes() {
   const res = { body: undefined as unknown, statusCode: 200 } as Response & {
     body: unknown;
     statusCode: number;
   };
-  res.status = jest.fn((code: number) => {
+  res.status = vi.fn((code: number) => {
     res.statusCode = code;
     return res;
   }) as unknown as Response["status"];
-  res.json = jest.fn((payload: unknown) => {
+  res.json = vi.fn((payload: unknown) => {
     res.body = payload;
     return res;
   }) as unknown as Response["json"];
@@ -27,11 +28,11 @@ function mockRes() {
 }
 
 describe("GET /builder/forms/disabled", () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it("returns the tombstoned form_ids as a string array", async () => {
     const ds = {
-      query: jest
+      query: vi
         .fn()
         .mockResolvedValue([{ form_id: "passport" }, { form_id: "licence" }]),
     };
@@ -47,7 +48,7 @@ describe("GET /builder/forms/disabled", () => {
   });
 
   it("returns an empty array when nothing is tombstoned", async () => {
-    const ds = { query: jest.fn().mockResolvedValue([]) };
+    const ds = { query: vi.fn().mockResolvedValue([]) };
     getDataSourceMock.mockResolvedValue(ds);
     const res = mockRes();
 

@@ -1,15 +1,13 @@
-import type { InferToolInput, UIMessage } from "@tanstack/ai";
-import { Allow, parse as parsePartialJson } from "partial-json";
+import { parsePartialJSON, type InferToolInput, type UIMessage } from "@tanstack/ai";
 import { memo, useCallback, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { presentChoicesDef } from "#/lib/chat-tools";
 import { TridentAvatar } from "#/components/trident-avatar";
-import {
-  extractText,
-  findToolCall,
-  stripLeakedToolCalls,
-} from "#/lib/chat/messages";
+import { extractText, findToolCall } from "#/lib/chat/messages";
+import { stripLeakedToolCalls } from "#/lib/chat/leaked-tool-calls";
+import { formatChangeRequest } from "#/lib/chat/change-field";
+import { restoreLinks } from "#/lib/chat/link-tokens";
 import { normalizeMarkdown } from "#/lib/chat/normalize-markdown";
 import type { Citation } from "#/lib/chat/types";
 import {
@@ -24,11 +22,7 @@ type ChoicesArgs = Partial<InferToolInput<typeof presentChoicesDef>>;
 
 function parseChoiceArgs(raw: string | undefined): ChoicesArgs | undefined {
   if (!raw) return undefined;
-  try {
-    return parsePartialJson(raw, Allow.ALL) as ChoicesArgs;
-  } catch {
-    return undefined;
-  }
+  return parsePartialJSON(raw) as ChoicesArgs | undefined;
 }
 
 // The model tends to narrate the question as text AND call present_choices.
@@ -44,12 +38,14 @@ function BubbleImpl({
   onApproval,
   choicesDisabled = false,
   citations,
+  linkTokens,
 }: {
   message: UIMessage;
   onChoice: (choice: string) => void;
   onApproval: (id: string, approved: boolean) => void;
   choicesDisabled?: boolean;
   citations?: Citation[];
+  linkTokens?: Record<string, string>;
 }) {
   const text = useMemo(
     () => stripLeakedToolCalls(extractText(message)),
@@ -82,6 +78,12 @@ function BubbleImpl({
       ? (askFieldPart.output as AskFieldOutput | undefined)
       : undefined;
   const fieldSpec = askFieldOutput?.ok ? askFieldOutput.field : undefined;
+  // ask_field IS the field widget (label + pills); a present_choices in the
+  // same turn is the redundant one. The model sometimes emits both for one
+  // field, which renders the question twice (#1255) — suppress the pills when
+  // the widget is present. (Sibling guard to stripTrailingQuestion above, which
+  // dedupes a text question against the pills.)
+  const showChoices = hasChoices && !fieldSpec;
 
   const reviewPart = findToolCall(message, "review_form");
   const reviewOutput =
@@ -100,9 +102,15 @@ function BubbleImpl({
     [text, hasChoices, fieldSpec],
   );
   const renderedMarkdown = useMemo(() => {
-    const normalized = normalizeMarkdown(displayText);
+    // Restore opaque link_N tokens to real URLs before anything else (#1270):
+    // the model only ever saw tokens, so any URL in the rendered output comes
+    // from this map. Unknown tokens (hallucinated) are stripped. Runs on the
+    // full accumulated text each render, so streaming chunk boundaries can't
+    // split a token permanently.
+    const restored = restoreLinks(displayText, linkTokens ?? {});
+    const normalized = normalizeMarkdown(restored);
     return annotateCitations(normalized, citations ?? []);
-  }, [displayText, citations]);
+  }, [displayText, citations, linkTokens]);
   const markdownComponents = useMemo(
     () => buildMarkdownComponents(citations ?? []),
     [citations],
@@ -184,7 +192,7 @@ function BubbleImpl({
             </div>
           )}
 
-          {hasChoices && (
+          {showChoices && (
             <ChoicePills
               questionId={`choices-q-${message.id}`}
               question={choicesArgs?.question}
@@ -207,7 +215,7 @@ function BubbleImpl({
             <ReviewSummary
               items={reviewItems}
               disabled={controlsDisabled}
-              onChange={(label) => handleChoice(`I'd like to change ${label}`)}
+              onChange={(label) => handleChoice(formatChangeRequest(label))}
             />
           )}
 

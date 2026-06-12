@@ -27,6 +27,7 @@ import {
   chatPersistence,
   citationsStore,
   getSessionThreadId,
+  linkTokensStore,
   resetSessionThreadId,
 } from "#/lib/chat/persistence";
 import { shouldShowThinking } from "#/lib/chat/thinking";
@@ -73,10 +74,18 @@ function ChatPage() {
   const [citationsByMessageId, setCitationsByMessageId] = useState<
     Record<string, Citation[]>
   >(citationsStore.load);
+  // Link-token maps keyed the same way (#1270): the assistant's text carries
+  // opaque link_N tokens; the map restores them to real URLs at render time.
+  const [linkTokensByMessageId, setLinkTokensByMessageId] = useState<
+    Record<string, Record<string, string>>
+  >(linkTokensStore.load);
 
   useEffect(() => {
     citationsStore.save(citationsByMessageId);
   }, [citationsByMessageId]);
+  useEffect(() => {
+    linkTokensStore.save(linkTokensByMessageId);
+  }, [linkTokensByMessageId]);
 
   const connection = useMemo(() => fetchServerSentEvents("/api/chat"), []);
 
@@ -100,7 +109,11 @@ function ChatPage() {
     onCustomEvent: (eventType, data) => {
       if (eventType === "citations") {
         const payload = data as
-          | { messageId?: string; citations?: Citation[] }
+          | {
+              messageId?: string;
+              citations?: Citation[];
+              linkTokens?: Record<string, string>;
+            }
           | undefined;
         if (payload?.messageId && Array.isArray(payload.citations)) {
           const id = payload.messageId;
@@ -108,6 +121,12 @@ function ChatPage() {
           setCitationsByMessageId((prev) =>
             prev[id] ? prev : { ...prev, [id]: cs },
           );
+          const tokens = payload.linkTokens;
+          if (tokens && Object.keys(tokens).length) {
+            setLinkTokensByMessageId((prev) =>
+              prev[id] ? prev : { ...prev, [id]: tokens },
+            );
+          }
         }
         return;
       }
@@ -312,6 +331,7 @@ function ChatPage() {
             onApproval={onApproval}
             choicesDisabled={row.index < lastInteractiveIndex}
             citations={citationsByMessageId[row.message.id]}
+            linkTokens={linkTokensByMessageId[row.message.id]}
           />
         );
     }

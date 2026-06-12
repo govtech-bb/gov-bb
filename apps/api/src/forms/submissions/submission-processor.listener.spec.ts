@@ -1,3 +1,4 @@
+import type { Mock, Mocked } from "vitest";
 import { SubmissionProcessorListener } from "./submission-processor.listener";
 import type { ProcessorFactory } from "./processors/processor-factory.service";
 import type { ISubmissionProcessor } from "./processors/submission-processor.interface";
@@ -8,8 +9,8 @@ import type { ExpressionsService } from "../../expressions/expressions.service";
 
 /* Default expressions stub — resolveProcessors is a pass-through */
 const expressions = {
-  resolveConfig: jest.fn((cfg: Record<string, unknown>) => cfg),
-  resolveProcessors: jest.fn(
+  resolveConfig: vi.fn((cfg: Record<string, unknown>) => cfg),
+  resolveProcessors: vi.fn(
     (processors: Array<{ type: string; config: Record<string, unknown> }>) =>
       processors,
   ),
@@ -52,7 +53,7 @@ function entry(type: string): Processor {
 function makeProcessor(
   type: string,
   gates = false,
-  process: jest.Mock = jest.fn().mockResolvedValue({ kind: "completed" }),
+  process: Mock = vi.fn().mockResolvedValue({ kind: "completed" }),
 ): ISubmissionProcessor {
   return {
     type,
@@ -67,35 +68,29 @@ function makeFactory(handlers: ISubmissionProcessor[]): ProcessorFactory {
     handlers.map((h) => [h.type, h]),
   );
   return {
-    resolveByType: jest.fn((type: string) => registry.get(type)),
+    resolveByType: vi.fn((type: string) => registry.get(type)),
   } as unknown as ProcessorFactory;
 }
 
-function makeProducer(): jest.Mocked<SqsProducerService> {
-  return { enqueue: jest.fn().mockResolvedValue(undefined) } as any;
+function makeProducer(): Mocked<SqsProducerService> {
+  return { enqueue: vi.fn().mockResolvedValue(undefined) } as any;
 }
 
 function makeSqsConfig(enabled: boolean) {
   return { enabled };
 }
 
-function makeEmailConfig(qaNotifyRecipient?: string) {
-  return { qaNotifyRecipient } as any;
-}
-
 function makeListener(
   factory: ProcessorFactory,
-  producer: jest.Mocked<SqsProducerService>,
+  producer: Mocked<SqsProducerService>,
   sqsEnabled: boolean,
   exprs: ExpressionsService = expressions,
-  emailConf: ReturnType<typeof makeEmailConfig> = makeEmailConfig(),
 ): SubmissionProcessorListener {
   return new SubmissionProcessorListener(
     factory,
     producer,
     makeSqsConfig(sqsEnabled) as any,
     exprs,
-    emailConf,
   );
 }
 
@@ -123,7 +118,7 @@ describe("SubmissionProcessorListener — SQS disabled", () => {
     );
 
     expect(email.process).toHaveBeenCalledTimes(2);
-    const indices = (email.process as jest.Mock).mock.calls.map(
+    const indices = (email.process as Mock).mock.calls.map(
       ([e]) => e.processorIndex,
     );
     expect(indices).toEqual([0, 1]);
@@ -161,7 +156,7 @@ describe("SubmissionProcessorListener — SQS disabled", () => {
     const failing = makeProcessor(
       "email",
       false,
-      jest.fn().mockRejectedValue(new Error("smtp down")),
+      vi.fn().mockRejectedValue(new Error("smtp down")),
     );
     const succeeding = makeProcessor("spreadsheet");
     const listener = makeListener(
@@ -310,7 +305,7 @@ describe("SubmissionProcessorListener — SQS enabled", () => {
 describe("SubmissionProcessorListener — expressions resolution", () => {
   it("resolves processor configs and dispatches the resolved, indexed payload", async () => {
     const transformingExpressions = {
-      resolveProcessors: jest.fn((processors: Array<{ type: string }>) =>
+      resolveProcessors: vi.fn((processors: Array<{ type: string }>) =>
         processors.map((p) => ({ ...p, config: { resolved: true } })),
       ),
     } as unknown as ExpressionsService;
@@ -322,7 +317,6 @@ describe("SubmissionProcessorListener — expressions resolution", () => {
       makeProducer(),
       makeSqsConfig(false) as any,
       transformingExpressions,
-      makeEmailConfig(),
     );
 
     await l.handleSubmissionCreated({
@@ -333,7 +327,7 @@ describe("SubmissionProcessorListener — expressions resolution", () => {
     });
 
     expect(
-      transformingExpressions.resolveProcessors as jest.Mock,
+      transformingExpressions.resolveProcessors as Mock,
     ).toHaveBeenCalledWith(
       [{ type: "email", config: { recipientField: "personal.email" } }],
       expect.objectContaining({
@@ -351,7 +345,7 @@ describe("SubmissionProcessorListener — expressions resolution", () => {
 
   it("short-circuits dispatch when resolveProcessors throws", async () => {
     const failingExpressions = {
-      resolveProcessors: jest.fn().mockImplementation(() => {
+      resolveProcessors: vi.fn().mockImplementation(() => {
         throw new Error("bad expression");
       }),
     } as unknown as ExpressionsService;
@@ -363,7 +357,6 @@ describe("SubmissionProcessorListener — expressions resolution", () => {
       producer,
       makeSqsConfig(false) as any,
       failingExpressions,
-      makeEmailConfig(),
     );
 
     await expect(
@@ -372,91 +365,5 @@ describe("SubmissionProcessorListener — expressions resolution", () => {
 
     expect(email.process).not.toHaveBeenCalled();
     expect(producer.enqueue).not.toHaveBeenCalled();
-  });
-});
-
-/* Tests — QA notify hook (non-prod scaffold) */
-
-describe("SubmissionProcessorListener — QA notify hook", () => {
-  function captureDispatched(email: ISubmissionProcessor) {
-    const captured: SubmissionCreatedEvent[] = [];
-    (email.process as jest.Mock).mockImplementation(
-      (p: SubmissionCreatedEvent) => {
-        captured.push(p);
-        return Promise.resolve({ kind: "completed" });
-      },
-    );
-    return captured;
-  }
-
-  it("appends one synthetic email entry per comma-separated QA recipient", async () => {
-    const email = makeProcessor("email");
-    const captured = captureDispatched(email);
-    const listener = makeListener(
-      makeFactory([email]),
-      makeProducer(),
-      false,
-      expressions,
-      makeEmailConfig("qa1@govtech.bb, qa2@govtech.bb"),
-    );
-
-    await listener.handleSubmissionCreated({ ...EVENT, processors: [] });
-
-    const emailEntries = captured[0].processors.filter(
-      (p) => p.type === "email",
-    );
-    expect(emailEntries).toHaveLength(2);
-    expect(
-      emailEntries.map(
-        (e) => (e.config as { recipientField: string }).recipientField,
-      ),
-    ).toEqual(["qa1@govtech.bb", "qa2@govtech.bb"]);
-  });
-
-  it("leaves the form's own recipients intact and only adds the QA entry", async () => {
-    const email = makeProcessor("email");
-    const captured = captureDispatched(email);
-    const listener = makeListener(
-      makeFactory([email]),
-      makeProducer(),
-      false,
-      expressions,
-      makeEmailConfig("qa@govtech.bb"),
-    );
-
-    await listener.handleSubmissionCreated({
-      ...EVENT,
-      processors: [
-        { type: "email", config: { recipientField: "applicant.email" } },
-      ],
-    });
-
-    const recipients = captured[0].processors
-      .filter((p) => p.type === "email")
-      .map((e) => (e.config as { recipientField: string }).recipientField);
-    expect(recipients).toEqual(["applicant.email", "qa@govtech.bb"]);
-  });
-
-  it("does not append anything when qaNotifyRecipient is unset", async () => {
-    const email = makeProcessor("email");
-    const captured = captureDispatched(email);
-    const listener = makeListener(
-      makeFactory([email]),
-      makeProducer(),
-      false,
-      expressions,
-      makeEmailConfig(),
-    );
-
-    await listener.handleSubmissionCreated({
-      ...EVENT,
-      processors: [
-        { type: "email", config: { recipientField: "applicant.email" } },
-      ],
-    });
-
-    expect(
-      captured[0].processors.filter((p) => p.type === "email"),
-    ).toHaveLength(1);
   });
 });

@@ -340,6 +340,7 @@
     transform var(--tt-out-dur) var(--tt-out-ease);
 }
 .t-tt-wrap:hover .t-tt,
+.t-tt-wrap:has(:focus-visible) .t-tt,
 .t-tt-trigger:focus-visible + .t-tt {
   opacity: 1;
   transform: translate(-50%, 0) scale(1);
@@ -352,6 +353,13 @@
   font-size: 12px;
   font-weight: 500;
   z-index: 60;
+}
+
+/* Below-trigger variant for triggers at the top of the viewport. */
+.t-tt-wrap[data-tt-place="bottom"] .t-tt {
+  bottom: auto;
+  top: calc(100% + 8px);
+  transform-origin: 50% 0;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -497,6 +505,14 @@
 .t-tab:not([aria-selected="true"]):hover,
 .t-tab[aria-selected="true"] {
   color: var(--tabs-text-active);
+}
+
+/* Tabs must stay transparent so the sliding pill shows through — outranks
+   app-global `button:hover` backgrounds (e.g. the builder's). Border keeps
+   its width (the cms-tabs divider) — only the colour is pinned. */
+button.t-tab:hover:not(:disabled) {
+  background: transparent;
+  border-color: var(--el-200);
 }
 
 .t-tabs-pill {

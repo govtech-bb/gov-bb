@@ -1,6 +1,6 @@
 import "../../styles/builder.global.css";
 import { createFileRoute } from "@tanstack/react-router";
-import { useReducer, useState, useMemo, useRef } from "react";
+import { useReducer, useState, useMemo, useRef, useEffect } from "react";
 import { getCatalogFn } from "../../server/registry";
 import { submitRecipe, updateRecipe, rekeyRecipe, deleteForm, disableForm, enableForm } from "../../server/forms";
 import { createMdaContact } from "../../server/mda-contacts";
@@ -12,6 +12,20 @@ import type { ServiceContract, ServiceContractRecipe } from "@govtech-bb/form-ty
 import { KEBAB_ID_PATTERN, KEBAB_ID_ERROR } from "@govtech-bb/form-types";
 import type { RecipeDraft, ValidationResult, RecipeValidateResponse, ValidationIssue, UnknownRef } from "@govtech-bb/form-builder";
 
+import { Layers01Icon, Moon02Icon, Sun03Icon } from "hugeicons-react";
+
+/** Collapse repeated identical locations ("Declaration › Name; Declaration ›
+ *  Name; …") into one entry with a count ("Declaration › Name ×4"). */
+function formatCollisionLocations(items: string[]): string {
+  const counts = new Map<string, number>();
+  for (const item of items) counts.set(item, (counts.get(item) ?? 0) + 1);
+  return [...counts]
+    .map(([text, n]) => (n > 1 ? `${text} ×${n}` : text))
+    .join(", ");
+}
+import { SectionSwitch } from "../../components/section-switch";
+import { Tip } from "../content/-sliding-tabs";
+import { useTheme } from "../content/-use-theme";
 import { buildLoadArgs, draftsEqual } from "./-apply-recipe";
 import { AiSidebar, type ApplyRecipeResult } from "./-ai-sidebar";
 import { recipeReducer, EMPTY_DRAFT, nextStepId, REQUIRED_STEP_IDS, isRequiredStep, firstStepId } from "./-recipe-reducer";
@@ -71,6 +85,9 @@ function BuilderPage() {
     loadError: mdaContactsLoadError,
     upsertContact: upsertMdaContact,
   } = useMdaContacts();
+  // Shares the content CMS's persisted light/dark choice, so the theme
+  // follows the user across the section switch.
+  const { theme, toggleTheme } = useTheme();
   const [draft, dispatch] = useReducer(recipeReducer, EMPTY_DRAFT);
   // Snapshot of the last saved/loaded draft — the baseline that "unsaved
   // changes" is measured against. null for a brand-new form (no save/load yet);
@@ -147,6 +164,25 @@ function BuilderPage() {
       : !draftsEqual(draft, savedDraft, { comparePayments: true });
   const editableSteps = draft.steps.filter((s) => !isRequiredStep(s.stepId));
   const hasEditableSteps = editableSteps.length > 0;
+
+  // Any draft edit invalidates the last validate/save verdict in the header —
+  // otherwise "✓ Valid" sits beside "● Unsaved changes" and lies. Validation
+  // and saving never mutate `draft`, so the verdict survives until a real
+  // edit. (Same-value setState bails out, so per-keystroke runs are free.)
+  useEffect(() => {
+    setLastSaveStatus("idle");
+  }, [draft]);
+
+  // Cheap insurance against losing an unsaved draft to a closed/refreshed
+  // tab. The in-app section switch has its own confirm guard.
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [hasUnsavedChanges]);
   // Live recipe-wide uniqueness check over resolved field ids + step ids. Drives
   // the red duplicate-ID banner below the body; the collision pre-flight inside
   // runValidation re-checks it on every Save draft / Deploy click.
@@ -956,11 +992,40 @@ function BuilderPage() {
 
   return (
     <div className={styles.builderShell}>
-      <div className={styles.builderRoot}>
       {isReadOnly && presenceHolder && (
         <PresenceBanner holder={presenceHolder} />
       )}
+      {/* The header spans the full app width, above both the editor and the
+          AI sidebar, so toggling the sidebar never reflows it. */}
       <Toolbar
+        leading={
+          <>
+            <SectionSwitch
+              current="builder"
+              onBeforeNavigate={() =>
+                !hasUnsavedChanges ||
+                window.confirm("Unsaved changes will be lost. Continue?")
+              }
+            />
+            <Tip
+              label={theme === "light" ? "Dark mode" : "Light mode"}
+              placement="bottom"
+            >
+              <button
+                type="button"
+                className={styles.iconBtn}
+                aria-label={theme === "light" ? "Dark mode" : "Light mode"}
+                onClick={toggleTheme}
+              >
+                {theme === "light" ? (
+                  <Moon02Icon size={15} />
+                ) : (
+                  <Sun03Icon size={15} />
+                )}
+              </button>
+            </Tip>
+          </>
+        }
         formId={draft.formId}
         title={draft.title}
         version={version}
@@ -984,6 +1049,8 @@ function BuilderPage() {
         onDiscard={handleDiscard}
       />
 
+      <div className={styles.builderMain}>
+      <div className={styles.builderRoot}>
       <div className={styles.builderBody}>
         <StepList
           steps={draft.steps}
@@ -1024,28 +1091,40 @@ function BuilderPage() {
             onStepIdChange={handleStepIdChange}
           />
         ) : (
-          <div className={styles.noStepSelected}>Select or add a step to begin</div>
+          <div className={styles.noStepSelected}>
+            <div className={styles.emptyState}>
+              <Layers01Icon size={28} />
+              <p>Select or add a step to begin</p>
+            </div>
+          </div>
         )}
       </div>
 
+      {/* Floating over the canvas (not in-flow) so appearing/dismissing never
+          reflows the editor underneath. */}
+      <div className={styles.bannerStack}>
       {hasIdCollisions && (
-        <div className={styles.validationErrors} role="alert">
+        <div className={styles.errorBanner} role="alert">
           <strong>Duplicate IDs must be fixed before saving or deploying</strong>
-          <ul>
+          <ul className={styles.bannerList}>
             {idCollisions.fieldIdCollisions.map((c) => (
               <li key={`field-${c.id}`}>
                 Field ID <code>{c.id}</code> is used by {c.locations.length}{" "}
                 fields:{" "}
-                {c.locations
-                  .map((l) => `${l.stepTitle || l.stepId} › ${l.display}`)
-                  .join("; ")}
+                {formatCollisionLocations(
+                  c.locations.map(
+                    (l) => `${l.stepTitle || l.stepId} › ${l.display}`,
+                  ),
+                )}
               </li>
             ))}
             {idCollisions.stepIdCollisions.map((c) => (
               <li key={`step-${c.stepId}`}>
                 Step ID <code>{c.stepId}</code> is used by {c.locations.length}{" "}
                 steps:{" "}
-                {c.locations.map((l) => l.stepTitle || l.stepId).join("; ")}
+                {formatCollisionLocations(
+                  c.locations.map((l) => l.stepTitle || l.stepId),
+                )}
               </li>
             ))}
           </ul>
@@ -1053,6 +1132,7 @@ function BuilderPage() {
       )}
 
       <ValidationPanel result={validateResult} onDismiss={handleDismissValidation} />
+      </div>
 
       {isPickerOpen && (
         <FormPicker
@@ -1150,6 +1230,7 @@ function BuilderPage() {
         version={version}
         onApplyRecipe={applyAiRecipe}
       />
+      </div>
     </div>
   );
 }

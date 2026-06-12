@@ -1,3 +1,4 @@
+import type { Mock, Mocked } from "vitest";
 import { ConfigService } from "@nestjs/config";
 import {
   SESv2Client,
@@ -15,10 +16,17 @@ import type { FormConfigService } from "../../form-config/form-config.service";
 import type { ContactDetails, ServiceContract } from "@govtech-bb/form-types";
 import type { SubmissionCreatedEvent } from "../submissions.types";
 
-jest.mock("@aws-sdk/client-sesv2");
-
-const mockSend = jest.fn().mockResolvedValue({ MessageId: "ses-msg-001" });
-(SESv2Client as jest.Mock).mockImplementation(() => ({ send: mockSend }));
+const { mockSend } = vi.hoisted(() => ({
+  mockSend: vi.fn().mockResolvedValue({ MessageId: "ses-msg-001" }),
+}));
+vi.mock("@aws-sdk/client-sesv2", () => ({
+  SESv2Client: vi.fn(function (this: { send: typeof mockSend }) {
+    this.send = mockSend;
+  }),
+  SendEmailCommand: vi.fn(function (this: { input: unknown }, input: unknown) {
+    this.input = input;
+  }),
+}));
 
 function makeConfig(overrides: Record<string, unknown> = {}): ConfigService {
   const defaults: Record<string, unknown> = {
@@ -66,26 +74,26 @@ function makePayload(
 
 /** Extracts the SendEmailCommand input from the first constructor call.
  *
- * jest.mock() replaces SendEmailCommand with a mock constructor that records
+ * vi.mock() replaces SendEmailCommand with a mock constructor that records
  * every `new SendEmailCommand(input)` call. Reading mock.calls[0][0] gives us
  * the raw input object without relying on the real .input property (which is
  * absent from the auto-mocked class).
  */
 function getSentInput() {
-  // jest.mock() replaces SendEmailCommand with a mock constructor that records
+  // vi.mock() replaces SendEmailCommand with a mock constructor that records
   // every `new SendEmailCommand(input)` call. mock.calls[0][0] is the raw
   // input object — the real .input property is absent from the auto-mocked class.
-  const MockedCmd = SendEmailCommand as unknown as jest.Mock;
+  const MockedCmd = SendEmailCommand as unknown as Mock;
   return MockedCmd.mock.calls[0][0] as SendEmailCommandInput;
 }
 
 function makeTemplateService(
   html: string | null = "<h1>Confirmation</h1>",
-): jest.Mocked<EmailTemplateService> {
+): Mocked<EmailTemplateService> {
   return {
-    has: jest.fn().mockReturnValue(html !== null),
-    render: jest.fn().mockReturnValue(html),
-  } as unknown as jest.Mocked<EmailTemplateService>;
+    has: vi.fn().mockReturnValue(html !== null),
+    render: vi.fn().mockReturnValue(html),
+  } as unknown as Mocked<EmailTemplateService>;
 }
 
 const STUB_CTX: EmailTemplateContext = {
@@ -115,38 +123,38 @@ function makeBodyBuilder(
   ctx: EmailTemplateContext = STUB_CTX,
   contactDetails: ContactDetails | undefined = undefined,
   contract: ServiceContract = makeContract(),
-): jest.Mocked<EmailBodyBuilder> {
+): Mocked<EmailBodyBuilder> {
   return {
-    build: jest.fn().mockResolvedValue(ctx),
-    resolveContactDetails: jest.fn().mockResolvedValue(contactDetails),
-    resolveContract: jest.fn().mockResolvedValue(contract),
-  } as unknown as jest.Mocked<EmailBodyBuilder>;
+    build: vi.fn().mockResolvedValue(ctx),
+    resolveContactDetails: vi.fn().mockResolvedValue(contactDetails),
+    resolveContract: vi.fn().mockResolvedValue(contract),
+  } as unknown as Mocked<EmailBodyBuilder>;
 }
 
-function makeFilesService(): jest.Mocked<FilesService> {
+function makeFilesService(): Mocked<FilesService> {
   return {
-    getObjectBytes: jest.fn().mockResolvedValue(Buffer.from("file-bytes")),
-    getSignedReadUrl: jest
+    getObjectBytes: vi.fn().mockResolvedValue(Buffer.from("file-bytes")),
+    getSignedReadUrl: vi
       .fn()
       .mockResolvedValue("https://s3.test/signed/download-url"),
-  } as unknown as jest.Mocked<FilesService>;
+  } as unknown as Mocked<FilesService>;
 }
 
 /** FormConfigService stub. `mdaEmail` is what resolveMdaEmail returns — null
  * models "no row / no contact" (sandbox, or a freshly-migrated recipe). */
 function makeFormConfigService(
   mdaEmail: string | null = null,
-): jest.Mocked<FormConfigService> {
+): Mocked<FormConfigService> {
   return {
-    resolveMdaEmail: jest.fn().mockResolvedValue(mdaEmail),
-  } as unknown as jest.Mocked<FormConfigService>;
+    resolveMdaEmail: vi.fn().mockResolvedValue(mdaEmail),
+  } as unknown as Mocked<FormConfigService>;
 }
 
 describe("EmailProcessor", () => {
   let processor: EmailProcessor;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     processor = new EmailProcessor(
       makeConfig(),
       makeTemplateService(),
@@ -376,7 +384,7 @@ describe("EmailProcessor", () => {
       payload.processorIndex = 1;
       await processor.process(payload);
 
-      const recipients = (SendEmailCommand as unknown as jest.Mock).mock.calls
+      const recipients = (SendEmailCommand as unknown as Mock).mock.calls
         .map((c) => (c[0] as SendEmailCommandInput).Destination?.ToAddresses)
         .flat();
       expect(recipients).toEqual(["jane@example.com", "mda@gov.bb"]);
@@ -453,7 +461,7 @@ describe("EmailProcessor", () => {
 
 describe("EmailProcessor — config.* recipient resolution", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("resolves the recipient from form_config (config.mdaEmail), not submission values", async () => {
@@ -526,7 +534,7 @@ describe("EmailProcessor — config.* recipient resolution", () => {
 
 describe("EmailProcessor — dynamic template rendering", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   function makeProcessor(
@@ -587,7 +595,7 @@ describe("EmailProcessor — dynamic template rendering", () => {
 
   it("falls back to generic HTML when the builder throws (e.g. DB down)", async () => {
     const bodyBuilder = makeBodyBuilder();
-    (bodyBuilder.build as jest.Mock).mockRejectedValue(new Error("DB down"));
+    (bodyBuilder.build as Mock).mockRejectedValue(new Error("DB down"));
     const processor = new EmailProcessor(
       makeConfig(),
       makeTemplateService(),
@@ -638,7 +646,7 @@ describe("EmailProcessor — dynamic template rendering", () => {
 
 describe("EmailProcessor — reference code in plain-text and fallback HTML bodies", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("uses referenceCode in the plain-text body when the builder throws (fallback path)", async () => {
@@ -646,7 +654,7 @@ describe("EmailProcessor — reference code in plain-text and fallback HTML bodi
     // buildHtmlBody (inline) and the text body is always built from buildTextBody.
     // Both must show the referenceCode, not the raw UUID.
     const bodyBuilder = makeBodyBuilder();
-    (bodyBuilder.build as jest.Mock).mockRejectedValue(new Error("DB down"));
+    (bodyBuilder.build as Mock).mockRejectedValue(new Error("DB down"));
     const processor = new EmailProcessor(
       makeConfig(),
       makeTemplateService(),
@@ -673,7 +681,7 @@ describe("EmailProcessor — reference code in plain-text and fallback HTML bodi
     // The SQS consumer sets referenceCode = submissionId for pre-referenceCode
     // payloads; verify that coalesced value is rendered correctly in the email.
     const bodyBuilder = makeBodyBuilder();
-    (bodyBuilder.build as jest.Mock).mockRejectedValue(new Error("DB down"));
+    (bodyBuilder.build as Mock).mockRejectedValue(new Error("DB down"));
     const processor = new EmailProcessor(
       makeConfig(),
       makeTemplateService(),
@@ -739,12 +747,12 @@ describe("EmailProcessor — uploaded file attachments (issue #658)", () => {
     return Buffer.from(data as Uint8Array).toString("utf8");
   }
 
-  let filesService: jest.Mocked<FilesService>;
-  let templateService: jest.Mocked<EmailTemplateService>;
+  let filesService: Mocked<FilesService>;
+  let templateService: Mocked<EmailTemplateService>;
   let processor: EmailProcessor;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     filesService = makeFilesService();
     templateService = makeTemplateService();
     processor = new EmailProcessor(

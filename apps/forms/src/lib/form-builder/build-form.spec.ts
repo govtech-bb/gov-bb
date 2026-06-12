@@ -13,7 +13,7 @@
  *  - stepConditionalTargets is populated for steps with stepConditionalOn behaviours
  */
 
-jest.mock("uuid", () => ({ v4: () => "test-uuid-123" }));
+vi.mock("uuid", () => ({ v4: () => "test-uuid-123" }));
 
 import { buildForm } from "./build-form";
 import type { ClientServiceContract, ClientPrimitive } from "@forms/types";

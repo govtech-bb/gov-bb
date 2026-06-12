@@ -14,6 +14,8 @@ import {
   pinFeedbackForm,
   submitSuccessForModel,
 } from "#/lib/chat/feedback";
+import { isAutoConfirmedField } from "./auto-confirm";
+import { buildFieldSpec } from "./field-spec";
 import type { ActiveFormSchema } from "./schema";
 import {
   buildFieldIndex,
@@ -69,6 +71,11 @@ const askFieldTool = askFieldDef.server<FormTurnContext>(
       if (!info || !active.has(fieldId)) {
         return { ok: false, error: `unknown or inactive fieldId: ${fieldId}` };
       }
+      // Auto-confirmed fields (the feedback declaration) are filled for the
+      // user at submit — never asked, even if the model names one directly.
+      if (isAutoConfirmedField(form.contract, fieldId)) {
+        return { ok: false, error: `unknown or inactive fieldId: ${fieldId}` };
+      }
       f = info.field;
     } else {
       const next = nextAskableField(
@@ -86,40 +93,17 @@ const askFieldTool = askFieldDef.server<FormTurnContext>(
       f = next.field;
     }
     session.askedFieldIds.add(f.fieldId);
-    // A show-hide toggle has no options in the contract (it's a disclosure
-    // click in the forms UI). Synthesize Yes/No so the chat client renders
-    // the standard choice pills — no bespoke widget needed.
-    const options =
-      f.htmlType === "show-hide"
-        ? [
-            { label: "Yes", value: "yes" },
-            { label: "No", value: "no" },
-          ]
-        : f.options?.map((o) => ({ label: o.label, value: o.value }));
-    // Forms-UI parity for escape toggles: the toggle renders under its
-    // target field's input as an either/or affordance ("National ID — or
-    // use a passport instead"), not as a separate question. Moot once open.
-    const escape = findEscapeToggle(form.contract, f);
-    const alternative =
-      escape && session.values[escape.fieldId] !== "true"
-        ? {
-            fieldId: escape.fieldId,
-            label: escape.label,
-            hint: escape.hint ?? undefined,
-          }
-        : undefined;
+    // The canonical widget payload (label, options, escape alternative, section
+    // header) is built from the contract — shared with the deterministic
+    // re-present stream so a re-rendered question is the identical widget.
     return {
       ok: true,
-      field: {
-        fieldId: f.fieldId,
-        label: f.label,
-        htmlType: f.htmlType,
-        hint: f.hint ?? undefined,
-        multiple: f.multiple ?? undefined,
-        options,
-        validations: f.validations ?? undefined,
-        alternative,
-      },
+      field: buildFieldSpec(
+        form.contract,
+        f,
+        session.values,
+        session.askedFieldIds,
+      ),
     };
   },
 );
@@ -185,6 +169,7 @@ const setFieldTool = setFieldDef.server<FormTurnContext>(
     const revealed: string[] = [];
     for (const id of after) {
       if (active.has(id)) continue;
+      if (isAutoConfirmedField(form.contract, id)) continue;
       const f = idx.get(id)?.field;
       if (f && isChatCollectable(f)) revealed.push(describeField(f));
     }

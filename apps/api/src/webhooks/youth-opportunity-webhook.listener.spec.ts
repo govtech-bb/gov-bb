@@ -1,3 +1,4 @@
+import type { Mock } from "vitest";
 import { Logger } from "@nestjs/common";
 import { YouthOpportunityWebhookListener } from "./youth-opportunity-webhook.listener";
 import type { YouthOpportunityWebhookService } from "./youth-opportunity-webhook.service";
@@ -39,11 +40,11 @@ function makeEvent(
 }
 
 describe("YouthOpportunityWebhookListener", () => {
-  let dispatch: jest.Mock;
+  let dispatch: Mock;
   let listener: YouthOpportunityWebhookListener;
 
   beforeEach(() => {
-    dispatch = jest.fn().mockResolvedValue(undefined);
+    dispatch = vi.fn().mockResolvedValue(undefined);
     listener = new YouthOpportunityWebhookListener({
       dispatch,
     } as unknown as YouthOpportunityWebhookService);
@@ -67,7 +68,9 @@ describe("YouthOpportunityWebhookListener", () => {
   });
 
   it("ignores non-youth-opportunity submissions silently", async () => {
-    const warn = jest.spyOn(Logger.prototype, "warn").mockImplementation();
+    const warn = vi
+      .spyOn(Logger.prototype, "warn")
+      .mockImplementation(() => {});
     await listener.handleSubmissionCreated(
       makeEvent({ formId: "passport-renewal" }),
     );
@@ -77,12 +80,28 @@ describe("YouthOpportunityWebhookListener", () => {
   });
 
   it("warns but does not dispatch an unmapped youth-opportunity form", async () => {
-    const warn = jest.spyOn(Logger.prototype, "warn").mockImplementation();
+    const warn = vi
+      .spyOn(Logger.prototype, "warn")
+      .mockImplementation(() => {});
     await listener.handleSubmissionCreated(
       makeEvent({ formId: "youth-opportunity-mystery" }),
     );
     expect(dispatch).not.toHaveBeenCalled();
     expect(warn).toHaveBeenCalledWith(expect.stringContaining("Unmapped"));
+    warn.mockRestore();
+  });
+
+  it("does NOT dispatch a smoke submission, even for a mapped youth-opportunity form", async () => {
+    // This listener fires off formId, not processors[], so the service's
+    // processor-drop can't suppress it — it must honour isSmokeSubmission (#1252).
+    const warn = vi
+      .spyOn(Logger.prototype, "warn")
+      .mockImplementation(() => {});
+    await listener.handleSubmissionCreated(
+      makeEvent({ formId: "youth-opportunity-byac", isSmokeSubmission: true }),
+    );
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(warn).not.toHaveBeenCalled();
     warn.mockRestore();
   });
 });

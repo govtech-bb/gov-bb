@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { useState } from "react";
 import type { Citation } from "#/lib/chat/types";
 
 const CITATION_HREF_PREFIX = "#citation-";
@@ -12,42 +11,11 @@ function sourceHost(url: string): string {
   }
 }
 
-function faviconUrl(url: string): string | null {
-  try {
-    return new URL("/favicon.ico", url).toString();
-  } catch {
-    return null;
-  }
-}
-
-// Tiny favicon; falls back to a neutral dot when the icon 404s or the URL is
-// unparsable, so a missing favicon never renders a broken-image glyph.
-function Favicon({ url }: { url: string }) {
-  const [failed, setFailed] = useState(false);
-  const src = faviconUrl(url);
-  if (!src || failed) {
-    return (
-      <span aria-hidden="true" className="size-3.5 rounded-full bg-grey-00" />
-    );
-  }
-  return (
-    <img
-      alt=""
-      aria-hidden="true"
-      className="size-3.5 rounded-[3px]"
-      height={14}
-      onError={() => setFailed(true)}
-      src={src}
-      width={14}
-    />
-  );
-}
-
-// Claude.ai-style citation chip: a small favicon pill at the end of the
+// Claude.ai-style citation chip: a small coat-of-arms pill at the end of the
 // claim (consecutive markers are grouped into ONE chip by annotateCitations),
-// with a hover/focus card listing the cited pages as titled links. No
-// hostname text in the prose — the favicon carries the "this is sourced"
-// signal and the card carries the detail.
+// with a hover/focus card listing the cited pages as titled links. Every
+// source is an alpha.gov.bb page, so the chip always carries the coat of
+// arms — the same mark the header uses — rather than a fetched favicon.
 function CitationChip({ citations }: { citations: Citation[] }) {
   const first = citations[0];
   if (!first) return null;
@@ -63,7 +31,14 @@ function CitationChip({ citations }: { citations: Citation[] }) {
         rel="noopener noreferrer"
         target="_blank"
       >
-        <Favicon url={first.url} />
+        <img
+          alt=""
+          aria-hidden="true"
+          className="size-3.5"
+          height={14}
+          src="/coat-of-arms.png"
+          width={14}
+        />
         {citations.length > 1 && (
           <span className="font-medium text-[10px] text-mid-grey-00 leading-none">
             +{citations.length - 1}
@@ -75,7 +50,7 @@ function CitationChip({ citations }: { citations: Citation[] }) {
           and the card's links duplicate the chip's hrefs. */}
       <span
         aria-hidden="true"
-        className="invisible absolute bottom-full left-0 z-20 mb-1.5 flex w-64 flex-col gap-1.5 rounded-[8px] border border-grey-00 bg-white-00 p-3 opacity-0 shadow-md transition-opacity group-focus-within/cite:visible group-focus-within/cite:opacity-100 group-hover/cite:visible group-hover/cite:opacity-100"
+        className="invisible absolute bottom-full left-0 z-20 mb-1.5 flex w-64 flex-col gap-1.5 rounded-lg border border-grey-00 bg-white-00 p-3 opacity-0 shadow-md transition-opacity group-focus-within/cite:visible group-focus-within/cite:opacity-100 group-hover/cite:visible group-hover/cite:opacity-100"
       >
         {citations.map((c) => (
           <a

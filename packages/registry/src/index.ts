@@ -3,6 +3,7 @@ import { REGISTRY_BLOCKS } from "./blocks";
 import { REGISTRY_COMPONENTS } from "./components";
 
 export { REGISTRY_COMPONENTS, REGISTRY_PRIMITIVES } from "./components";
+export { SCHOOL_EMAILS, SCHOOL_EMAIL_FALLBACK } from "./components";
 export { REGISTRY_BLOCKS } from "./blocks";
 
 /** A resolvable builtin registry entry: a single primitive or a composite block. */

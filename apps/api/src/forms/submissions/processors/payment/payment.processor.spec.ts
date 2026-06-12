@@ -13,20 +13,20 @@ import type { SubmissionCreatedEvent } from "../../submissions.types";
 describe("PaymentProcessor.process", () => {
   let processor: PaymentProcessor;
   let module: TestingModule;
-  const ezpay = { createPayment: jest.fn() };
+  const ezpay = { createPayment: vi.fn() };
   const paymentRepo = {
-    create: jest.fn().mockImplementation((d) => d),
-    findOrCreate: jest.fn().mockImplementation(async (e: PaymentEntity) => ({
+    create: vi.fn().mockImplementation((d) => d),
+    findOrCreate: vi.fn().mockImplementation(async (e: PaymentEntity) => ({
       ...e,
       id: "pay-1",
       status: PaymentStatus.PENDING,
     })),
-    save: jest.fn().mockImplementation(async (e) => e),
+    save: vi.fn().mockImplementation(async (e) => e),
   };
   const deptKeys = new DepartmentKeyResolver({ education: "edu-key" });
 
   beforeEach(async () => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     paymentRepo.create.mockImplementation((d) => d);
     paymentRepo.findOrCreate.mockImplementation(async (e: PaymentEntity) => ({
       ...e,
@@ -223,7 +223,9 @@ describe("PaymentProcessor.process", () => {
   });
 
   it("warns and uses only the first config when multiple payment configs are present", async () => {
-    const warn = jest.spyOn(Logger.prototype, "warn").mockImplementation();
+    const warn = vi
+      .spyOn(Logger.prototype, "warn")
+      .mockImplementation(() => {});
     ezpay.createPayment.mockResolvedValue({
       token: "tok-1",
       url: "https://ezpay/p?token=tok-1",

@@ -6,7 +6,9 @@
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",
-      "outputs": ["{options.outputPath}"],
+      "outputs": [
+        "{options.outputPath}"
+      ],
       "options": {
         "outputPath": "dist/packages/database",
         "tsConfig": "packages/database/tsconfig.json",
@@ -14,15 +16,18 @@
       }
     },
     "test": {
-      "executor": "@nx/jest:jest",
+      "executor": "nx:run-commands",
       "options": {
-        "jestConfig": "packages/database/jest.config.ts"
+        "command": "vitest run",
+        "cwd": "packages/database"
       }
     },
     "lint": {
       "executor": "@nx/eslint:lint",
       "options": {
-        "lintFilePatterns": ["packages/database/**/*.ts"]
+        "lintFilePatterns": [
+          "packages/database/**/*.ts"
+        ]
       }
     }
   },

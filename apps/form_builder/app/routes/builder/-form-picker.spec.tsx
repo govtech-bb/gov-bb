@@ -1,5 +1,5 @@
 /**
- * @jest-environment jsdom
+ * @vitest-environment jsdom
  */
 import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
@@ -10,8 +10,8 @@ import type { RegistryCatalog } from "@govtech-bb/form-builder";
 
 // getRecipe is only invoked when a row is clicked; render-only tests never hit
 // it, but mocking keeps the module from attempting a real RPC.
-jest.mock("../../server/forms", () => ({
-  getRecipe: jest.fn(),
+vi.mock("../../server/forms", () => ({
+  getRecipe: vi.fn(),
 }));
 
 const CATALOG = {} as RegistryCatalog;
@@ -49,12 +49,12 @@ function renderPicker(props: Partial<React.ComponentProps<typeof FormPicker>> = 
       loadError={null}
       isDirty={false}
       catalog={CATALOG}
-      onLoad={jest.fn()}
-      onClose={jest.fn()}
-      onRequestDelete={jest.fn()}
-      onRequestDisable={jest.fn()}
-      onRequestErase={jest.fn()}
-      onEnable={jest.fn()}
+      onLoad={vi.fn()}
+      onClose={vi.fn()}
+      onRequestDelete={vi.fn()}
+      onRequestDisable={vi.fn()}
+      onRequestErase={vi.fn()}
+      onEnable={vi.fn()}
       {...props}
     />,
   );
@@ -87,7 +87,7 @@ describe("FormPicker", () => {
   });
 
   it("renders a Delete button for a draft (not published) and calls onRequestDelete", async () => {
-    const onRequestDelete = jest.fn();
+    const onRequestDelete = vi.fn();
     renderPicker({ forms: [DRAFT], onRequestDelete });
 
     const deleteBtn = screen.getByRole("button", { name: /delete/i });
@@ -102,8 +102,8 @@ describe("FormPicker", () => {
   });
 
   it("renders both Disable and Erase (not Delete) for a live published form and wires each", async () => {
-    const onRequestDisable = jest.fn();
-    const onRequestErase = jest.fn();
+    const onRequestDisable = vi.fn();
+    const onRequestErase = vi.fn();
     renderPicker({ forms: [LIVE_PUBLISHED], onRequestDisable, onRequestErase });
 
     const disableBtn = screen.getByRole("button", { name: /^disable$/i });
@@ -121,7 +121,7 @@ describe("FormPicker", () => {
   });
 
   it("renders a Disabled badge + Enable button (no Delete/Disable/Erase) for a disabled published form and calls onEnable", async () => {
-    const onEnable = jest.fn();
+    const onEnable = vi.fn();
     renderPicker({ forms: [DISABLED_PUBLISHED], onEnable });
 
     expect(screen.getByText(/disabled/i)).toBeInTheDocument();

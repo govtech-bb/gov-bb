@@ -54,6 +54,7 @@ export default function SubmissionConfirmation({
     quantity,
     submissionSuccess,
     paymentSuccess,
+    processing,
     referenceNumber,
     date,
     paymentUrl,
@@ -169,6 +170,42 @@ export default function SubmissionConfirmation({
     </>
   );
 
+  // Submission is in flight — an idempotency-key replay returned `processing`
+  // (#463). Show a neutral status panel with the reference number, but none of
+  // the finished-submission furniture: no Try again (nothing failed), no
+  // payment block, and no trailing next-steps/contact/feedback (it isn't a
+  // completed submission yet).
+  if (processing) {
+    return (
+      <>
+        <div className="form-page__panel form-page__panel--success">
+          <div className="container">
+            <div className="form-width form-page__panel-body">
+              <p className="form-page__panel-service-title">{serviceTitle}</p>
+              <h1 className="govbb-text-h1">
+                We're processing your submission
+              </h1>
+              <p className="form-page__panel-subheading">
+                We've received your submission and it's being processed. We'll
+                email you when it's complete.
+              </p>
+            </div>
+          </div>
+        </div>
+        {referenceNumber && (
+          <div className="container pb-8 lg:pb-16">
+            <div className="form-width form-page__confirmation">
+              <dl className="form-page__reference">
+                <dt>Submission ID</dt>
+                <dd>{referenceNumber}</dd>
+              </dl>
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }
+
   // Submission itself failed — nothing was saved. Show a focused error panel.
   if (!submissionSuccess) {
     return (
@@ -235,6 +272,14 @@ export default function SubmissionConfirmation({
           )}
         </div>
 
+        {referenceNumber &&
+          (paymentSuccess || isSafePaymentUrl(paymentUrl)) && (
+            <dl className="form-page__reference">
+              <dt>Submission ID</dt>
+              <dd>{referenceNumber}</dd>
+            </dl>
+          )}
+
         {paymentSuccess ? (
           <section className="govbb-payment govbb-payment--success">
             <div className="govbb-payment__header">
@@ -249,7 +294,6 @@ export default function SubmissionConfirmation({
             <div className="govbb-payment__items">
               {paymentItem("Service:", serviceLabel)}
               {paymentItem("Amount:", formattedAmount)}
-              {paymentItem("Submission ID:", referenceNumber)}
               {paymentItem("Date:", formattedDate)}
             </div>
           </section>

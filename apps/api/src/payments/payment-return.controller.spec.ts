@@ -1,14 +1,14 @@
 import { PaymentReturnController } from "./payment-return.controller";
 
 describe("PaymentReturnController", () => {
-  const service = { confirmReturn: jest.fn() };
+  const service = { confirmReturn: vi.fn() };
 
   const makeController = (env: Record<string, string | undefined>) => {
-    const config = { get: jest.fn((k: string) => env[k]) };
+    const config = { get: vi.fn((k: string) => env[k]) };
     return new PaymentReturnController(service as never, config as never);
   };
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it("confirms the payment and redirects to the form's confirmation page on success", async () => {
     service.confirmReturn.mockResolvedValue({

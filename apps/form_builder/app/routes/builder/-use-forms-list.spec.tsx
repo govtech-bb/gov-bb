@@ -1,16 +1,16 @@
 /**
- * @jest-environment jsdom
+ * @vitest-environment jsdom
  */
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { useFormsList } from "./-use-forms-list";
 import { listForms } from "../../server/forms";
 import type { FormDefinitionSummary } from "../../types/index";
 
-jest.mock("../../server/forms", () => ({
-  listForms: jest.fn(),
+vi.mock("../../server/forms", () => ({
+  listForms: vi.fn(),
 }));
 
-const mockListForms = jest.mocked(listForms);
+const mockListForms = vi.mocked(listForms);
 
 const FORMS: FormDefinitionSummary[] = [
   { id: "passport", formId: "passport", title: "Passport", version: "1.0.0", isPublished: true },

@@ -5,6 +5,7 @@ import {
   REGISTRY_BLOCKS,
   REGISTRY_PRIMITIVES,
 } from "@govtech-bb/registry";
+import { SlidingTabs } from "../content/-sliding-tabs";
 import styles from "../../styles/builder.module.css";
 
 interface FieldPickerProps {
@@ -88,18 +89,19 @@ export function FieldPicker({ catalog, onAddField }: FieldPickerProps) {
         )}
       </div>
 
-      <div className={styles.tabs}>
-        {TABS.map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            className={`${styles.tab} ${activeTab === tab ? styles.tabActive : ""}`}
-            onClick={() => setActiveTab(tab)}
-          >
-            {tab} ({counts[tab]})
-          </button>
-        ))}
-      </div>
+      <SlidingTabs
+        // Labels carry live counts; remount when they change so the active
+        // pill is re-measured (it only repositions on selection otherwise).
+        key={TABS.map((t) => counts[t]).join("-")}
+        options={TABS.map((tab) => ({
+          key: tab,
+          label: `${tab} (${counts[tab]})`,
+        }))}
+        value={activeTab}
+        onChange={setActiveTab}
+        ariaLabel="Field source"
+        className={styles.pickerTabs}
+      />
 
       {query && activeCount === 0 && otherTabsWithMatches.length > 0 && (
         <p style={{ color: "#888" }}>

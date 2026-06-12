@@ -17,7 +17,7 @@ function jsonResponse(data: unknown, ok = true, status = 200): Response {
 }
 
 describe("files API client", () => {
-  const fetchMock = jest.fn();
+  const fetchMock = vi.fn();
 
   beforeEach(() => {
     fetchMock.mockReset();

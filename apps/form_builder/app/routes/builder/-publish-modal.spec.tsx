@@ -1,5 +1,5 @@
 /**
- * @jest-environment jsdom
+ * @vitest-environment jsdom
  */
 import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
@@ -24,8 +24,8 @@ function renderModal(
       isPublishing={false}
       publishSuccess={null}
       publishError={null}
-      onPublish={jest.fn()}
-      onClose={jest.fn()}
+      onPublish={vi.fn()}
+      onClose={vi.fn()}
       {...props}
     />,
   );

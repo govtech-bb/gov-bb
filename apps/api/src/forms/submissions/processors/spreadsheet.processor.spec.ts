@@ -1,3 +1,4 @@
+import type { Mock } from "vitest";
 import { Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import * as ExcelJS from "exceljs";
@@ -6,10 +7,13 @@ import { join } from "node:path";
 import { SpreadsheetProcessor } from "./spreadsheet.processor";
 import type { SubmissionCreatedEvent } from "../submissions.types";
 
-jest.mock("exceljs");
-jest.mock("node:fs", () => ({
-  ...jest.requireActual("node:fs"),
-  mkdirSync: jest.fn(),
+vi.mock("exceljs", () => {
+  const Workbook = vi.fn();
+  return { Workbook, default: { Workbook } };
+});
+vi.mock("node:fs", async () => ({
+  ...(await vi.importActual("node:fs")),
+  mkdirSync: vi.fn(),
 }));
 
 function makeConfig(exportDir = "/tmp/test-exports"): ConfigService {
@@ -59,19 +63,21 @@ function buildWorkbookMock(existingRows: string[][] = []) {
   const sheet = {
     rowCount: rows.length,
     getRow: (r: number) => rows[r - 1] ?? { getCell: () => ({ value: null }) },
-    addRow: jest.fn(),
+    addRow: vi.fn(),
   };
 
   const workbook = {
-    getWorksheet: jest.fn().mockReturnValue(sheet),
-    addWorksheet: jest.fn().mockReturnValue(sheet),
+    getWorksheet: vi.fn().mockReturnValue(sheet),
+    addWorksheet: vi.fn().mockReturnValue(sheet),
     xlsx: {
-      readFile: jest.fn().mockResolvedValue(undefined),
-      writeFile: jest.fn().mockResolvedValue(undefined),
+      readFile: vi.fn().mockResolvedValue(undefined),
+      writeFile: vi.fn().mockResolvedValue(undefined),
     },
   };
 
-  (ExcelJS.Workbook as jest.Mock).mockImplementation(() => workbook);
+  (ExcelJS.Workbook as Mock).mockImplementation(function () {
+    return workbook;
+  });
 
   return { workbook, sheet };
 }
@@ -80,7 +86,7 @@ describe("SpreadsheetProcessor", () => {
   let processor: SpreadsheetProcessor;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     processor = new SpreadsheetProcessor(makeConfig());
   });
 
@@ -98,14 +104,16 @@ describe("SpreadsheetProcessor", () => {
       const { sheet } = buildWorkbookMock(); // no existing rows → isNew = false but sheet returned
       // Simulate a brand-new sheet (no getWorksheet result)
       const workbook = {
-        getWorksheet: jest.fn().mockReturnValue(undefined),
-        addWorksheet: jest.fn().mockReturnValue(sheet),
+        getWorksheet: vi.fn().mockReturnValue(undefined),
+        addWorksheet: vi.fn().mockReturnValue(sheet),
         xlsx: {
-          readFile: jest.fn().mockRejectedValue(new Error("ENOENT")),
-          writeFile: jest.fn().mockResolvedValue(undefined),
+          readFile: vi.fn().mockRejectedValue(new Error("ENOENT")),
+          writeFile: vi.fn().mockResolvedValue(undefined),
         },
       };
-      (ExcelJS.Workbook as jest.Mock).mockImplementation(() => workbook);
+      (ExcelJS.Workbook as Mock).mockImplementation(function () {
+        return workbook;
+      });
 
       await processor.process(makePayload());
 
@@ -143,7 +151,9 @@ describe("SpreadsheetProcessor", () => {
     });
 
     it("skips writing and warns when this entry's composite token already exists (retry safety)", async () => {
-      const warn = jest.spyOn(Logger.prototype, "warn").mockImplementation();
+      const warn = vi
+        .spyOn(Logger.prototype, "warn")
+        .mockImplementation(() => {});
 
       // The sheet already holds this entry's composite token — a retry.
       const { workbook } = buildWorkbookMock([
@@ -186,14 +196,16 @@ describe("SpreadsheetProcessor", () => {
     it("flattens step-scoped values into stepId.fieldId columns", async () => {
       const { sheet } = buildWorkbookMock();
       const workbook = {
-        getWorksheet: jest.fn().mockReturnValue(undefined),
-        addWorksheet: jest.fn().mockReturnValue(sheet),
+        getWorksheet: vi.fn().mockReturnValue(undefined),
+        addWorksheet: vi.fn().mockReturnValue(sheet),
         xlsx: {
-          readFile: jest.fn().mockRejectedValue(new Error("ENOENT")),
-          writeFile: jest.fn().mockResolvedValue(undefined),
+          readFile: vi.fn().mockRejectedValue(new Error("ENOENT")),
+          writeFile: vi.fn().mockResolvedValue(undefined),
         },
       };
-      (ExcelJS.Workbook as jest.Mock).mockImplementation(() => workbook);
+      (ExcelJS.Workbook as Mock).mockImplementation(function () {
+        return workbook;
+      });
 
       await processor.process(makePayload());
 
@@ -238,23 +250,144 @@ describe("SpreadsheetProcessor", () => {
       expect(workbook.xlsx.writeFile).toHaveBeenCalledWith(
         join("/tmp/test-exports", "passwd.xlsx"),
       );
-      const writtenPath = (workbook.xlsx.writeFile as jest.Mock).mock
+      const writtenPath = (workbook.xlsx.writeFile as Mock).mock
         .calls[0][0] as string;
       expect(writtenPath).not.toContain("..");
+    });
+
+    it("serializes concurrent appends to the same file (critical section never overlaps)", async () => {
+      // Two submissions append to the SAME file concurrently. The per-path lock
+      // must keep their read-modify-write sections from interleaving, so an
+      // "active" counter never exceeds 1 and both rows are added.
+      let active = 0;
+      let maxActive = 0;
+      let addRowCount = 0;
+      const delay = (ms: number) =>
+        new Promise((resolve) => setTimeout(resolve, ms));
+
+      (ExcelJS.Workbook as Mock).mockImplementation(function () {
+        const sheet = {
+          rowCount: 0,
+          getRow: () => ({ getCell: () => ({ value: null }) }),
+          addRow: vi.fn(() => {
+            addRowCount++;
+          }),
+        };
+        return {
+          getWorksheet: vi.fn().mockReturnValue(undefined),
+          addWorksheet: vi.fn().mockReturnValue(sheet),
+          xlsx: {
+            readFile: vi.fn().mockImplementation(async () => {
+              active++;
+              maxActive = Math.max(maxActive, active);
+              await delay(10);
+            }),
+            writeFile: vi.fn().mockImplementation(async () => {
+              await delay(10);
+              active--;
+            }),
+          },
+        };
+      });
+
+      // Both use the default "passport-renewals" filename → same resolved path.
+      await Promise.all([
+        processor.process(makePayload("sub-A")),
+        processor.process(makePayload("sub-B")),
+      ]);
+
+      expect(maxActive).toBe(1);
+      // Each fresh sheet writes a header + a data row → 2 rows per call.
+      expect(addRowCount).toBe(4);
+    });
+
+    it("isolates a failed turn: the next queued turn for the same file still runs", async () => {
+      // A turn that throws must propagate to ITS caller (so the consumer NACKs)
+      // but must not break the chain — the next waiter for the same file runs.
+      let writeCount = 0;
+
+      (ExcelJS.Workbook as Mock).mockImplementation(function () {
+        const sheet = {
+          rowCount: 0,
+          getRow: () => ({ getCell: () => ({ value: null }) }),
+          addRow: vi.fn(),
+        };
+        return {
+          getWorksheet: vi.fn().mockReturnValue(undefined),
+          addWorksheet: vi.fn().mockReturnValue(sheet),
+          xlsx: {
+            readFile: vi.fn().mockRejectedValue(new Error("ENOENT")),
+            writeFile: vi.fn().mockImplementation(async () => {
+              writeCount++;
+              if (writeCount === 1) throw new Error("disk full");
+            }),
+          },
+        };
+      });
+
+      // p1 acquires the lock first and its write throws; p2 is queued behind it.
+      const p1 = processor.process(makePayload("sub-A"));
+      const p2 = processor.process(makePayload("sub-B"));
+
+      await expect(p1).rejects.toThrow("disk full");
+      await expect(p2).resolves.toEqual({ kind: "completed" });
+      expect(writeCount).toBe(2);
+    });
+
+    it("does not serialize appends to different files (distinct paths stay parallel)", async () => {
+      // Two concurrent appends to DIFFERENT files must overlap — the per-path
+      // lock only serializes calls that resolve to the same file.
+      let active = 0;
+      let maxActive = 0;
+      const delay = (ms: number) =>
+        new Promise((resolve) => setTimeout(resolve, ms));
+
+      (ExcelJS.Workbook as Mock).mockImplementation(function () {
+        const sheet = {
+          rowCount: 0,
+          getRow: () => ({ getCell: () => ({ value: null }) }),
+          addRow: vi.fn(),
+        };
+        return {
+          getWorksheet: vi.fn().mockReturnValue(undefined),
+          addWorksheet: vi.fn().mockReturnValue(sheet),
+          xlsx: {
+            readFile: vi.fn().mockImplementation(async () => {
+              active++;
+              maxActive = Math.max(maxActive, active);
+              await delay(10);
+            }),
+            writeFile: vi.fn().mockImplementation(async () => {
+              await delay(10);
+              active--;
+            }),
+          },
+        };
+      });
+
+      await Promise.all([
+        processor.process(makePayload("sub-A", { filename: "file-one" })),
+        processor.process(makePayload("sub-B", { filename: "file-two" })),
+      ]);
+
+      // Different files → both critical sections run at once.
+      expect(maxActive).toBe(2);
     });
 
     it("skips repeatable/array-valued steps when flattening values", async () => {
       // Branch: `if (Array.isArray(fields)) continue`
       const { sheet } = buildWorkbookMock();
       const workbook = {
-        getWorksheet: jest.fn().mockReturnValue(undefined),
-        addWorksheet: jest.fn().mockReturnValue(sheet),
+        getWorksheet: vi.fn().mockReturnValue(undefined),
+        addWorksheet: vi.fn().mockReturnValue(sheet),
         xlsx: {
-          readFile: jest.fn().mockRejectedValue(new Error("ENOENT")),
-          writeFile: jest.fn().mockResolvedValue(undefined),
+          readFile: vi.fn().mockRejectedValue(new Error("ENOENT")),
+          writeFile: vi.fn().mockResolvedValue(undefined),
         },
       };
-      (ExcelJS.Workbook as jest.Mock).mockImplementation(() => workbook);
+      (ExcelJS.Workbook as Mock).mockImplementation(function () {
+        return workbook;
+      });
 
       const payload = makePayload();
       // Add an array-valued step to trigger the Array.isArray branch

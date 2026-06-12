@@ -73,25 +73,25 @@ describe("PaymentWebhookService", () => {
   let service: PaymentWebhookService;
   let module: TestingModule;
 
-  const ezpay = { verifyPayment: jest.fn() };
-  const paymentRepo = { findByReference: jest.fn(), save: jest.fn() };
-  const deptKeys = { get: jest.fn().mockReturnValue("api-key") };
-  const formDefs = { findByFormId: jest.fn() };
-  const events = { emit: jest.fn() };
+  const ezpay = { verifyPayment: vi.fn() };
+  const paymentRepo = { findByReference: vi.fn(), save: vi.fn() };
+  const deptKeys = { get: vi.fn().mockReturnValue("api-key") };
+  const formDefs = { findByFormId: vi.fn() };
+  const events = { emit: vi.fn() };
 
-  const submissionRepo = { findOne: jest.fn(), save: jest.fn() };
+  const submissionRepo = { findOne: vi.fn(), save: vi.fn() };
   const txRepo = {
-    findOne: jest.fn(),
-    save: jest.fn(),
-    create: jest.fn().mockImplementation((d) => d),
+    findOne: vi.fn(),
+    save: vi.fn(),
+    create: vi.fn().mockImplementation((d) => d),
   };
   const dataSource = {
-    getRepository: jest.fn((entity: unknown) => {
+    getRepository: vi.fn((entity: unknown) => {
       if (entity === PaymentTransactionEntity) return txRepo;
       if (entity === FormSubmissionEntity) return submissionRepo;
       throw new Error(`Unexpected entity in test: ${String(entity)}`);
     }),
-    transaction: jest.fn(async (cb: (mgr: unknown) => Promise<unknown>) => {
+    transaction: vi.fn(async (cb: (mgr: unknown) => Promise<unknown>) => {
       return cb({
         getRepository: (entity: unknown) => {
           if (entity === FormSubmissionEntity) return submissionRepo;
@@ -104,7 +104,7 @@ describe("PaymentWebhookService", () => {
   } as unknown as DataSource;
 
   beforeEach(async () => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     txRepo.create.mockImplementation((d) => d);
     deptKeys.get.mockReturnValue("api-key");
 

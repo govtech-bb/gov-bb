@@ -1,17 +1,18 @@
+import type { Mock, Mocked } from "vitest";
 import { NotFoundException } from "@nestjs/common";
 import { DraftArchiveService } from "./draft-archive.service";
 import { FormDefinitionRepository } from "./form-definition.repository";
 
-function makeRepo(): jest.Mocked<FormDefinitionRepository> {
+function makeRepo(): Mocked<FormDefinitionRepository> {
   return {
-    delete: jest.fn(),
-  } as unknown as jest.Mocked<FormDefinitionRepository>;
+    delete: vi.fn(),
+  } as unknown as Mocked<FormDefinitionRepository>;
 }
 
 describe("DraftArchiveService", () => {
   it("deletes the draft row matching (formId, version) and returns void on success", async () => {
     const repo = makeRepo();
-    (repo.delete as jest.Mock).mockResolvedValue({ affected: 1 });
+    (repo.delete as Mock).mockResolvedValue({ affected: 1 });
     const service = new DraftArchiveService(repo);
 
     await expect(
@@ -26,7 +27,7 @@ describe("DraftArchiveService", () => {
 
   it("throws NotFoundException when no row was deleted", async () => {
     const repo = makeRepo();
-    (repo.delete as jest.Mock).mockResolvedValue({ affected: 0 });
+    (repo.delete as Mock).mockResolvedValue({ affected: 0 });
     const service = new DraftArchiveService(repo);
 
     await expect(
@@ -36,7 +37,7 @@ describe("DraftArchiveService", () => {
 
   it("propagates repository errors", async () => {
     const repo = makeRepo();
-    (repo.delete as jest.Mock).mockRejectedValue(new Error("db down"));
+    (repo.delete as Mock).mockRejectedValue(new Error("db down"));
     const service = new DraftArchiveService(repo);
 
     await expect(

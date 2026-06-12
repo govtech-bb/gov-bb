@@ -1,3 +1,4 @@
+import type { Mocked } from "vitest";
 /**
  * Integration test — JSONLogic resolution through the full submission pipeline.
  *

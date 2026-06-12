@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import {
   DndContext,
   closestCenter,
@@ -19,10 +19,15 @@ import type {
 } from "@govtech-bb/form-builder";
 import type { Behaviour } from "@govtech-bb/form-types";
 import type { RecipeAction } from "./-recipe-reducer";
-import { isNoFieldsStep, isRequiredStep } from "./-recipe-reducer";
+import {
+  isConfirmationStep,
+  isNoFieldsStep,
+  isRequiredStep,
+} from "./-recipe-reducer";
 import { KEBAB_ID_PATTERN, kebabize } from "./-id-validation";
 import { getFieldRefs, getStepRefs } from "./-recipe-refs";
 import { BehavioursEditor } from "./-behaviours-editor";
+import { BodyEditor } from "../content/-body-editor";
 import { FieldPicker } from "./-field-picker";
 import { FieldEditPanel } from "./-field-edit-panel";
 import { SortableFieldRow } from "./-sortable-field-row";
@@ -75,6 +80,12 @@ export function StepEditor({
   // Fields section (list + picker) for them. See isNoFieldsStep.
   const noFields = isNoFieldsStep(step.stepId);
 
+  // The submission-confirmation step renders recipe-authored markdown ("What
+  // happens next") below the receipt — expose an editor for it here so the
+  // copy can be set in the builder instead of being dropped on republish
+  // (#1292).
+  const showMarkdownEditor = isConfirmationStep(step.stepId);
+
   function handleStepIdChange(newId: string) {
     setLocalStepId(newId);
     if (!KEBAB_ID_PATTERN.test(newId)) {
@@ -101,6 +112,29 @@ export function StepEditor({
   function handleAddField(field: Omit<RecipeFieldDraft, "id">) {
     dispatch({ type: "ADD_FIELD", stepId: step.stepId, field });
   }
+
+  // The add-field picker sits below the Fields list, so a newly added field
+  // lands off-screen above the click — scroll it into view and flash it.
+  // Keyed on stepId too so switching to a longer step doesn't false-trigger.
+  const fieldsSectionRef = useRef<HTMLElement>(null);
+  const prevFieldsRef = useRef({ stepId: step.stepId, count: step.fields.length });
+  useEffect(() => {
+    const prev = prevFieldsRef.current;
+    prevFieldsRef.current = { stepId: step.stepId, count: step.fields.length };
+    if (prev.stepId !== step.stepId || step.fields.length <= prev.count) return;
+    const rows = fieldsSectionRef.current?.querySelectorAll(
+      `.${styles.fieldRow}`,
+    );
+    const added = rows?.[rows.length - 1];
+    if (!(added instanceof HTMLElement)) return;
+    added.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+    added.classList.add(styles.fieldRowNew);
+    const timer = setTimeout(
+      () => added.classList.remove(styles.fieldRowNew),
+      1300,
+    );
+    return () => clearTimeout(timer);
+  }, [step.stepId, step.fields.length]);
 
   function handleRemoveField(fieldId: string) {
     if (!window.confirm("Remove this field?")) return;
@@ -155,6 +189,7 @@ export function StepEditor({
   return (
     <div className={styles.stepEditor}>
       {/* Step Metadata */}
+      <section className={styles.card}>
       <div className={styles.sectionTitle}>Step Metadata</div>
       <div className={styles.formGroup}>
         <label>Step ID</label>
@@ -231,12 +266,41 @@ export function StepEditor({
           rows={2}
         />
       </div>
+      </section>
+
+      {/* Confirmation-page copy. The submission-confirmation step renders this
+          markdown ("What happens next") below the submission receipt (#1292).
+          Authored here so it round-trips through publish instead of being
+          dropped. Reuses the content CMS's visual editor; linkType "none"
+          hides its Start-button tool, which has no meaning here. */}
+      {showMarkdownEditor && (
+        <section className={styles.card}>
+          <div className={styles.sectionTitle}>Confirmation page content</div>
+          <div className={styles.formGroup}>
+            <BodyEditor
+              value={step.markdownContent ?? ""}
+              onChange={(next) =>
+                dispatch({
+                  type: "UPDATE_STEP_META",
+                  stepId: step.stepId,
+                  meta: { markdownContent: next || undefined },
+                })
+              }
+              linkType="none"
+            />
+            <span className={styles.fieldHint}>
+              Shown on the confirmation page after the applicant submits, below
+              the submission receipt.
+            </span>
+          </div>
+        </section>
+      )}
 
       {/* Fields list — hidden for review/confirmation steps that accept no
           fields. The "Add field" picker is split into its own block below so
           Step Behaviours can render between the list and the picker (#566). */}
       {!noFields && (
-        <>
+        <section className={styles.card} ref={fieldsSectionRef}>
           <div className={styles.sectionTitle}>
             Fields ({step.fields.length})
           </div>
@@ -268,7 +332,7 @@ export function StepEditor({
               ))}
             </SortableContext>
           </DndContext>
-        </>
+        </section>
       )}
 
       {/* Inline field edit panel — stays attached to the Fields list above. */}
@@ -284,23 +348,25 @@ export function StepEditor({
       )}
 
       {/* Step behaviours */}
-      <div className={styles.sectionTitle}>Step Behaviours</div>
-      <BehavioursEditor
-        scope="step"
-        behaviours={step.behaviours}
-        fieldRefs={fieldRefs}
-        stepRefs={stepRefs}
-        onChange={handleSetBehaviours}
-        currentStepId={step.stepId}
-      />
+      <section className={styles.card}>
+        <div className={styles.sectionTitle}>Step Behaviours</div>
+        <BehavioursEditor
+          scope="step"
+          behaviours={step.behaviours}
+          fieldRefs={fieldRefs}
+          stepRefs={stepRefs}
+          onChange={handleSetBehaviours}
+          currentStepId={step.stepId}
+        />
+      </section>
 
       {/* Inline field picker palette — renders below Step Behaviours (#566),
           hidden for no-fields steps alongside the Fields list. */}
       {!noFields && (
-        <>
+        <section className={styles.card}>
           <div className={styles.sectionTitle}>Add field</div>
           <FieldPicker catalog={catalog} onAddField={handleAddField} />
-        </>
+        </section>
       )}
     </div>
   );
