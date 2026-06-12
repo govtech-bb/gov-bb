@@ -76,7 +76,7 @@ describe("SubmissionConfirmation", () => {
         serviceTitle="Passport"
         stepTitle="Submitted"
         submissionState={{ ...baseState, submissionSuccess: false }}
-        onTryAgain={jest.fn()}
+        onTryAgain={vi.fn()}
       />,
     );
     expect(
@@ -116,7 +116,7 @@ describe("SubmissionConfirmation", () => {
           serviceTitle="Passport"
           stepTitle="Submitted"
           submissionState={processingState}
-          onTryAgain={jest.fn()}
+          onTryAgain={vi.fn()}
         />,
       );
       expect(

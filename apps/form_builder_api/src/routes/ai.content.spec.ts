@@ -1,21 +1,22 @@
-jest.mock("@govtech-bb/database", () => ({
+import type { Mock } from "vitest";
+vi.mock("@govtech-bb/database", () => ({
   CustomComponent: class CustomComponent {},
 }));
-jest.mock("../db.js", () => ({ getDataSource: jest.fn() }));
-jest.mock("../ai/content-prompt.js", () => ({
+vi.mock("../db.js", () => ({ getDataSource: vi.fn() }));
+vi.mock("../ai/content-prompt.js", () => ({
   getContentSystemPrompt: () => "CONTENT_PROMPT",
 }));
-jest.mock("../ai/client.js", () => ({
-  chat: jest.fn(),
-  isAvailable: jest.fn().mockResolvedValue(true),
+vi.mock("../ai/client.js", () => ({
+  chat: vi.fn(),
+  isAvailable: vi.fn().mockResolvedValue(true),
 }));
 
 import { chat, isAvailable } from "../ai/client.js";
 import { mockReq, mockRes } from "../test-helpers/express-mocks";
 import { contentHandler, extractContentPage } from "./ai";
 
-const chatMock = chat as jest.Mock;
-const isAvailableMock = isAvailable as jest.Mock;
+const chatMock = chat as Mock;
+const isAvailableMock = isAvailable as Mock;
 
 describe("extractContentPage", () => {
   it("parses the first fenced JSON object", () => {
@@ -34,7 +35,7 @@ describe("extractContentPage", () => {
 
 describe("POST /builder/ai/content", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     isAvailableMock.mockResolvedValue(true);
     chatMock.mockResolvedValue('reply\n```json\n{"title":"T"}\n```');
   });

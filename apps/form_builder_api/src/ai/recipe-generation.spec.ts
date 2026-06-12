@@ -1,30 +1,31 @@
-jest.mock("@govtech-bb/database", () => ({
+import type { Mock } from "vitest";
+vi.mock("@govtech-bb/database", () => ({
   CustomComponent: class CustomComponent {},
 }));
-jest.mock("../db.js", () => ({ getDataSource: jest.fn() }));
-jest.mock("./client.js", () => ({ chat: jest.fn() }));
-jest.mock("./recipe-extractor.js", () => ({ extractRecipe: jest.fn() }));
+vi.mock("../db.js", () => ({ getDataSource: vi.fn() }));
+vi.mock("./client.js", () => ({ chat: vi.fn() }));
+vi.mock("./recipe-extractor.js", () => ({ extractRecipe: vi.fn() }));
 
 import { chat } from "./client.js";
 import { extractRecipe } from "./recipe-extractor.js";
 import { getDataSource } from "../db.js";
 import { generateRecipeResponse } from "./recipe-generation";
 
-const chatMock = chat as jest.Mock;
-const extractRecipeMock = extractRecipe as jest.Mock;
-const getDataSourceMock = getDataSource as jest.Mock;
+const chatMock = chat as Mock;
+const extractRecipeMock = extractRecipe as Mock;
+const getDataSourceMock = getDataSource as Mock;
 
 // getFullCatalog reads custom components from the DB; no customs keeps the
 // catalog to builtins + registry so the ref pre-check below is deterministic.
 function mockNoCustoms() {
   getDataSourceMock.mockResolvedValue({
-    getRepository: () => ({ find: jest.fn().mockResolvedValue([]) }),
+    getRepository: () => ({ find: vi.fn().mockResolvedValue([]) }),
   });
 }
 
 describe("generateRecipeResponse", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     chatMock.mockResolvedValue("assistant reply");
     extractRecipeMock.mockReturnValue({ formId: "f", steps: [] });
     mockNoCustoms();

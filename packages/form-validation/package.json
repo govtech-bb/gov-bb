@@ -5,7 +5,7 @@
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
   "scripts": {
-    "test": "jest --config jest.config.ts"
+    "test": "vitest run"
   },
   "lint-staged": {
     "*.ts": "npx prettier --write"

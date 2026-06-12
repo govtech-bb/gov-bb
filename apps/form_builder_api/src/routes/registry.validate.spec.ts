@@ -1,24 +1,25 @@
+import type { Mock } from "vitest";
 import type { Request, Response } from "express";
 import { getCatalog } from "@govtech-bb/form-builder";
 import { KEBAB_ID_ERROR } from "@govtech-bb/form-types";
 
-jest.mock("../catalog.js", () => ({ getFullCatalog: jest.fn() }));
+vi.mock("../catalog.js", () => ({ getFullCatalog: vi.fn() }));
 
 import { getFullCatalog } from "../catalog.js";
 import { validateHandler } from "./registry";
 
-const getFullCatalogMock = getFullCatalog as jest.Mock;
+const getFullCatalogMock = getFullCatalog as Mock;
 
 function mockRes() {
   const res = { body: undefined as unknown, statusCode: 200 } as Response & {
     body: unknown;
     statusCode: number;
   };
-  res.status = jest.fn((code: number) => {
+  res.status = vi.fn((code: number) => {
     res.statusCode = code;
     return res;
   }) as unknown as Response["status"];
-  res.json = jest.fn((payload: unknown) => {
+  res.json = vi.fn((payload: unknown) => {
     res.body = payload;
     return res;
   }) as unknown as Response["json"];
@@ -38,7 +39,7 @@ function makeRecipe(elements: { ref: string }[]) {
 
 describe("POST /builder/registry/validate — unknown ref check", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     getFullCatalogMock.mockResolvedValue(getCatalog());
   });
 
@@ -81,7 +82,7 @@ describe("POST /builder/registry/validate — unknown ref check", () => {
 // that the funnel can't be silently removed.
 describe("POST /builder/registry/validate — kebab-case id enforcement", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     getFullCatalogMock.mockResolvedValue(getCatalog());
   });
 

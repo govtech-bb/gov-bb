@@ -1,17 +1,20 @@
-jest.mock("@aws-sdk/s3-request-presigner", () => ({
-  getSignedUrl: jest.fn().mockResolvedValue("https://signed.example/put"),
+import type { Mock } from "vitest";
+vi.mock("@aws-sdk/s3-request-presigner", () => ({
+  getSignedUrl: vi.fn().mockResolvedValue("https://signed.example/put"),
 }));
-jest.mock("@aws-sdk/client-s3", () => ({
-  S3Client: jest.fn(),
-  PutObjectCommand: jest.fn().mockImplementation((args) => ({ args })),
+vi.mock("@aws-sdk/client-s3", () => ({
+  S3Client: vi.fn(),
+  PutObjectCommand: vi.fn(function (args) {
+    return { args };
+  }),
 }));
 
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { presignUpload } from "./s3-uploads";
 
-const getSignedUrlMock = getSignedUrl as jest.Mock;
-const PutObjectCommandMock = PutObjectCommand as unknown as jest.Mock;
+const getSignedUrlMock = getSignedUrl as Mock;
+const PutObjectCommandMock = PutObjectCommand as unknown as Mock;
 
 describe("presignUpload", () => {
   beforeEach(() => {

@@ -11,17 +11,17 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 
-jest.mock("@tanstack/react-router", () => ({
+vi.mock("@tanstack/react-router", () => ({
   createRootRouteWithContext: () => (routeConfig: any) => routeConfig,
   Outlet: () => <div data-testid="outlet" />,
   HeadContent: () => <div data-testid="head-content" />,
 }));
 
-jest.mock("@tanstack/react-router-devtools", () => ({
+vi.mock("@tanstack/react-router-devtools", () => ({
   TanStackRouterDevtools: () => null,
 }));
 
-jest.mock("@forms/components", () => ({
+vi.mock("@forms/components", () => ({
   NotFound: () => <div data-testid="not-found" />,
 }));
 
@@ -30,18 +30,18 @@ jest.mock("@forms/components", () => ({
 // implementation imports `Link` from @tanstack/react-router; mocking it
 // here avoids that import (the historical "Element type invalid in
 // SiteHeader" failure) while still letting us assert it was rendered.
-jest.mock("../components/site-header", () => ({
+vi.mock("../components/site-header", () => ({
   SiteHeader: () => <div data-testid="site-header" />,
 }));
 
-jest.mock("../components/official-banner", () => ({
+vi.mock("../components/official-banner", () => ({
   OfficialBanner: () => <div data-testid="official-banner" />,
 }));
 
 // The Footer mock captures its props so the RootLayout's wiring of links,
 // logoSrc, and copyrightText is asserted — not just "Footer rendered".
-const mockFooterProps = jest.fn();
-jest.mock("@govtech-bb/react", () => ({
+const mockFooterProps = vi.fn();
+vi.mock("@govtech-bb/react", () => ({
   Footer: (props: unknown) => {
     mockFooterProps(props);
     return <div data-testid="footer" />;
@@ -73,8 +73,8 @@ describe("__root Route", () => {
     it("wires the Footer with the expected links, logoSrc, and current-year copyright", () => {
       // Pin the clock so the copyrightText assertion is deterministic
       // (the layout reads new Date().getFullYear()).
-      jest.useFakeTimers();
-      jest.setSystemTime(new Date("2026-05-22T12:00:00Z"));
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-05-22T12:00:00Z"));
       try {
         render(<Route.component />);
         expect(mockFooterProps).toHaveBeenCalledTimes(1);
@@ -92,7 +92,7 @@ describe("__root Route", () => {
           copyrightText: "© 2026 Government of Barbados",
         });
       } finally {
-        jest.useRealTimers();
+        vi.useRealTimers();
       }
     });
   });

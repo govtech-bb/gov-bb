@@ -37,7 +37,7 @@ import type {
 // Global fetch mock
 // ---------------------------------------------------------------------------
 
-const mockFetch = jest.fn();
+const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 beforeEach(() => {

@@ -25,8 +25,8 @@ describe("createJobStore", () => {
   });
 
   describe("sweep", () => {
-    beforeEach(() => jest.useFakeTimers());
-    afterEach(() => jest.useRealTimers());
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
 
     it("evicts entries older than one hour and fires onEvict for each", () => {
       const evicted: string[] = [];
@@ -35,7 +35,7 @@ describe("createJobStore", () => {
       });
       store.set("old", { kind: "done", result: 1, finishedAt: Date.now() });
 
-      jest.advanceTimersByTime(ONE_HOUR_MS + SWEEP_INTERVAL_MS);
+      vi.advanceTimersByTime(ONE_HOUR_MS + SWEEP_INTERVAL_MS);
 
       expect(store.get("old")).toBeUndefined();
       expect(evicted).toEqual(["old"]);
@@ -45,11 +45,11 @@ describe("createJobStore", () => {
       const store = createJobStore<number>();
       // Move the clock forward so the entry's timestamp is well past 0 but the
       // entry itself is fresh relative to the next sweep.
-      jest.advanceTimersByTime(2 * ONE_HOUR_MS);
+      vi.advanceTimersByTime(2 * ONE_HOUR_MS);
       const startedAt = Date.now();
       store.set("fresh", { kind: "running", startedAt });
 
-      jest.advanceTimersByTime(SWEEP_INTERVAL_MS);
+      vi.advanceTimersByTime(SWEEP_INTERVAL_MS);
 
       expect(store.get("fresh")).toEqual({ kind: "running", startedAt });
     });

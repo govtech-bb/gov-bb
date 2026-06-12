@@ -6,7 +6,7 @@
     "dev": "TSX_TSCONFIG_PATH=tsconfig.dev.json tsx watch src/main.ts",
     "build": "tsc && tsc-alias",
     "start": "node dist/main.js",
-    "test": "jest --no-coverage"
+    "test": "vitest run"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.1057.0",
@@ -27,12 +27,9 @@
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
-    "@types/jest": "^30.0.0",
     "@types/node": "^24.0.0",
     "@types/supertest": "^7.2.0",
-    "jest": "^30.3.0",
     "supertest": "^7.2.2",
-    "ts-jest": "^29.4.6",
     "tsc-alias": "^1.8.10",
     "tsx": "^4.22.3",
     "typescript": "catalog:"
