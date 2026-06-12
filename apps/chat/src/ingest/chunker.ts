@@ -44,20 +44,32 @@ function sectionSlug(heading: string): string {
     .replace(/^-|-$/g, "");
 }
 
+// The canonical landing path: category (+ subcategory) + leaf, matching the
+// landing registry's urlParts. Nested slugs already ARE the full path; a bare
+// top-level slug needs its category prefix — the registry's leaf alias only
+// rewrites single-segment paths, so an unprefixed sub-page link like
+// `<slug>/start` 404s. Uncategorised pages live at the root.
+export function canonicalLandingPath(entity: ServiceEntity): string {
+  if (entity.slug.includes("/")) return `/${entity.slug}`;
+  const category = entity.category ?? entity.categories?.[0];
+  const parts = [category, entity.subcategory, entity.slug].filter(
+    (p): p is string => Boolean(p),
+  );
+  return `/${parts.join("/")}`;
+}
+
 function deriveServiceUrl(entity: ServiceEntity): {
   url: string;
   sourceUrl?: string;
 } {
+  const canonical = `https://alpha.gov.bb${canonicalLandingPath(entity)}`;
   if (entity.source_url) {
     const isAlpha = entity.source_url.includes("alpha.gov.bb");
     return isAlpha
       ? { url: entity.source_url }
-      : {
-          url: `https://alpha.gov.bb/${entity.slug}`,
-          sourceUrl: entity.source_url,
-        };
+      : { url: canonical, sourceUrl: entity.source_url };
   }
-  return { url: `https://alpha.gov.bb/${entity.slug}` };
+  return { url: canonical };
 }
 
 interface Section {
@@ -164,6 +176,10 @@ export function chunkService(entity: ServiceEntity): PlannedEntity {
     // forms-API recipe instead of guessing from the landing slug (#1265).
     status: entity.visibility,
     ...(entity.form_id ? { formId: entity.form_id } : {}),
+    // Landing serves <url>/start for this service — the chat's handoff links
+    // there (service context + the Start now button) instead of the bare
+    // forms-app URL.
+    ...(entity.hasStartPage ? { hasStartPage: true } : {}),
     // Freshness signal (normalised to YYYY-MM-DD; gray-matter parses YAML
     // dates as Date objects). Unused by retrieval today — carried so recency
     // weighting / "is this current" can be added without another re-ingest.

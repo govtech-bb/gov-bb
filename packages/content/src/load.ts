@@ -115,6 +115,7 @@ async function loadDir(
       if (!entity) continue;
       const startRaw = await readFileSafe(join(path, "start.md"));
       if (startRaw) {
+        entity.hasStartPage = true;
         const startBody = matter(startRaw)
           .content.replace(START_LINK_RE, "")
           .trim();
