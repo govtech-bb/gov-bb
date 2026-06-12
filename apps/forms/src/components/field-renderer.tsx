@@ -535,7 +535,7 @@ export default function FieldRenderer({
                   </select>
                   <span className="govbb-select__chevron" aria-hidden="true">
                     <svg viewBox="0 0 12 8">
-                      <path d="M6 8 0 0h12z" />
+                      <path d="M0 8 6 0 12 8z" />
                     </svg>
                   </span>
                 </div>
