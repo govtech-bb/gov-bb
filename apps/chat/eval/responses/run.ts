@@ -97,11 +97,20 @@ interface Verdict {
   reason: string;
 }
 
+interface TranscriptTurn {
+  role: "user" | "assistant";
+  text: string;
+}
+
 interface CaseResult {
   case: Case;
   reply: string;
   choices: string[];
   citations: Citation[];
+  // The full interleaved conversation (every user turn + the assistant reply
+  // it drew), so a multi-turn case reads as the thread it actually was rather
+  // than a lone final reply with no context.
+  transcript: TranscriptTurn[];
   error?: string;
   durationMs: number;
   verdict?: Verdict;
@@ -176,11 +185,21 @@ async function collectOne(c: Case): Promise<CaseResult> {
       }
     });
 
+  const transcript: TranscriptTurn[] = client
+    .getMessages()
+    .filter((m) => m.role === "user" || m.role === "assistant")
+    .map((m) => ({
+      role: m.role as "user" | "assistant",
+      text: extractText(m).trim(),
+    }))
+    .filter((t) => t.text.length > 0);
+
   return {
     case: c,
     reply,
     choices,
     citations,
+    transcript,
     ...(streamError !== undefined && { error: streamError }),
     durationMs: Date.now() - started,
   };
@@ -327,20 +346,73 @@ function esc(s: string): string {
     .replaceAll(">", "&gt;");
 }
 
+// The thread the case actually produced: user turns and the assistant replies
+// they drew, as chat bubbles. Falls back to the lone reply for older results
+// captured before transcripts were recorded.
+function threadHtml(r: CaseResult): string {
+  const turns =
+    r.transcript?.length > 0
+      ? r.transcript
+      : [{ role: "assistant" as const, text: r.reply }];
+  return `<div class="thread">${turns
+    .map(
+      (t) =>
+        `<div class="turn ${t.role}"><span class="who">${t.role === "user" ? "User" : "Bot"}</span><div class="msg">${esc(t.text || "(empty)")}</div></div>`,
+    )
+    .join("")}</div>`;
+}
+
+// What the case asserted, each line ticked or crossed against the final reply,
+// so the verdict is self-explanatory instead of a bare "cited a source".
+function checksHtml(r: CaseResult): string {
+  const e = r.case.expect;
+  if (!e) return "";
+  const reply = r.reply.toLowerCase();
+  const rows: string[] = [];
+  if (e.citationSlug) {
+    const hit = r.citations.some((c) => c.url.includes(e.citationSlug ?? ""));
+    rows.push(check(hit, `cites a <code>${esc(e.citationSlug)}</code> source`));
+  }
+  for (const kw of e.replyIncludes ?? []) {
+    rows.push(
+      check(reply.includes(kw.toLowerCase()), `reply mentions “${esc(kw)}”`),
+    );
+  }
+  for (const kw of e.replyExcludes ?? []) {
+    rows.push(
+      check(
+        !reply.includes(kw.toLowerCase()),
+        `reply avoids “${esc(kw)}”`,
+        true,
+      ),
+    );
+  }
+  return rows.length ? `<ul class="checks">${rows.join("")}</ul>` : "";
+}
+
+function check(ok: boolean, label: string, forbid = false): string {
+  const mark = ok ? "✓" : "✗";
+  const cls = ok ? "ok" : "bad";
+  const verb = forbid && !ok ? " (forbidden phrase present)" : "";
+  return `<li class="${cls}">${mark} ${label}${verb}</li>`;
+}
+
 function caseHtml(r: CaseResult, open: boolean): string {
   const v = r.verdict;
   const badge = v?.pass
     ? `<span class="badge pass">PASS</span>`
     : `<span class="badge fail">FAIL</span>`;
+  const tag = r.case.messages?.length
+    ? `<span class="tag">${r.case.messages.length}-turn</span>`
+    : "";
   return `<details${open ? " open" : ""}>
-<summary>${badge} <code>${esc(r.case.id)}</code> <em>${esc(r.case.category)}${r.case.dialect === "bajan" ? " · bajan" : ""}</em> — ${esc(caseTurns(r.case).join(" → "))}</summary>
-<dl>
-<dt>Verdict (${v?.kind ?? "?"})</dt><dd>${esc(v?.reason ?? "not judged")}</dd>
-<dt>Reply (${r.durationMs}ms)</dt><dd><pre>${esc(r.reply || "(empty)")}</pre></dd>
-${r.choices.length ? `<dt>Choices</dt><dd>${r.choices.map((c) => `<code>${esc(c)}</code>`).join(" ")}</dd>` : ""}
-${r.citations.length ? `<dt>Citations</dt><dd>${r.citations.map((c) => `<a href="${esc(c.url)}">${esc(c.title)}</a>`).join("<br>")}</dd>` : ""}
-${r.error ? `<dt>Error</dt><dd><pre>${esc(r.error)}</pre></dd>` : ""}
-</dl>
+<summary>${badge} <code>${esc(r.case.id)}</code> <span class="cat">${esc(r.case.category)}${r.case.dialect === "bajan" ? " · bajan" : ""}</span>${tag}</summary>
+<p class="verdict ${v?.pass ? "ok" : "bad"}">${v?.pass ? "Passed" : "Failed"} <span class="kind">(${v?.kind ?? "?"}, ${r.durationMs}ms)</span> — ${esc(v?.reason ?? "not judged")}</p>
+${checksHtml(r)}
+${threadHtml(r)}
+${r.choices.length ? `<p class="meta"><strong>Choice buttons:</strong> ${r.choices.map((c) => `<code>${esc(c)}</code>`).join(" ")}</p>` : ""}
+${r.citations.length ? `<p class="meta"><strong>Citations:</strong> ${r.citations.map((c) => `<a href="${esc(c.url)}">${esc(c.title)}</a>`).join(", ")}</p>` : ""}
+${r.error ? `<p class="meta err"><strong>Error:</strong> ${esc(r.error)}</p>` : ""}
 </details>`;
 }
 
@@ -363,16 +435,31 @@ function report(results: CaseResult[]): void {
   const html = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>Chat response evals</title>
 <style>
-body { font: 15px/1.5 system-ui, sans-serif; max-width: 60rem; margin: 2rem auto; padding: 0 1rem; }
-table { border-collapse: collapse; margin-block: 1rem; } td, th { border: 1px solid #ccc; padding: .3rem .8rem; }
-.badge { font-weight: 700; padding: .1rem .5rem; border-radius: .3rem; color: #fff; }
+body { font: 15px/1.55 system-ui, sans-serif; max-width: 60rem; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
+h1 { margin-bottom: .2rem; } h2 { margin-top: 2rem; }
+.sub { color: #666; margin-top: 0; }
+table { border-collapse: collapse; margin-block: 1rem; } td, th { border: 1px solid #ddd; padding: .35rem .9rem; text-align: left; }
+th { background: #f6f6f6; }
+.badge { font-weight: 700; padding: .1rem .5rem; border-radius: .3rem; color: #fff; font-size: .8rem; }
 .badge.pass { background: #1a7f37; } .badge.fail { background: #c1121f; }
-details { border: 1px solid #ddd; border-radius: .4rem; padding: .5rem .8rem; margin-block: .5rem; }
-summary { cursor: pointer; } pre { white-space: pre-wrap; background: #f6f6f6; padding: .5rem; }
-dt { font-weight: 600; margin-top: .5rem; }
+details { border: 1px solid #e2e2e2; border-radius: .5rem; padding: .6rem .9rem; margin-block: .6rem; }
+details[open] { border-color: #bbb; }
+summary { cursor: pointer; display: flex; align-items: center; gap: .5rem; }
+summary code { font-size: .9rem; } .cat { color: #666; font-style: italic; font-size: .85rem; }
+.tag { background: #eef; color: #339; border-radius: .3rem; padding: 0 .4rem; font-size: .75rem; font-weight: 600; }
+.verdict { font-weight: 600; margin: .6rem 0 .3rem; } .verdict .kind { font-weight: 400; color: #777; font-size: .85rem; }
+.verdict.ok { color: #1a7f37; } .verdict.bad { color: #c1121f; }
+.checks { list-style: none; padding: 0; margin: .3rem 0 .8rem; }
+.checks li { font-size: .9rem; } .checks .ok { color: #1a7f37; } .checks .bad { color: #c1121f; font-weight: 600; }
+.thread { display: flex; flex-direction: column; gap: .4rem; margin: .5rem 0; }
+.turn { display: flex; gap: .6rem; align-items: flex-start; }
+.turn .who { flex: 0 0 2.5rem; font-size: .7rem; font-weight: 700; text-transform: uppercase; color: #999; padding-top: .35rem; }
+.turn .msg { white-space: pre-wrap; border-radius: .5rem; padding: .45rem .7rem; flex: 1; }
+.turn.user .msg { background: #e7f0ff; } .turn.assistant .msg { background: #f4f4f4; }
+.meta { font-size: .85rem; color: #555; margin: .3rem 0; } .meta.err { color: #c1121f; }
 </style></head><body>
 <h1>Chat response evals</h1>
-<p>${esc(CHAT_URL)} — ${new Date().toISOString()}</p>
+<p class="sub">${esc(CHAT_URL)} — ${new Date().toISOString()}</p>
 <table><tr><th>Category</th><th>Pass</th><th>Rate</th></tr>
 ${statRows}
 <tr><th>total</th><th>${totalPass}/${results.length}</th><th>${Math.round((100 * totalPass) / results.length)}%</th></tr></table>
