@@ -159,6 +159,47 @@ describe("EmailBodyBuilder", () => {
       expect(typeof ctx.processedAt).toBe("string");
     });
 
+    it("renders the submission-confirmation step's markdownContent to HTML", async () => {
+      const base = makeContract();
+      const contract = makeContract({
+        steps: [
+          ...base.steps,
+          {
+            stepId: "submission-confirmation",
+            title: "Application submitted",
+            elements: [],
+            markdownContent:
+              "## What happens next\n\nWe will review your request.",
+          },
+        ] as unknown as ServiceContract["steps"],
+      });
+      builder = new EmailBodyBuilder(makeFormDefinitionsService(contract));
+
+      const ctx = await builder.build(makePayload());
+
+      expect(ctx.markdownHtml).toContain("<h2");
+      expect(ctx.markdownHtml).toContain("What happens next");
+      expect(ctx.markdownHtml).toContain("We will review your request.");
+    });
+
+    it("leaves markdownHtml undefined when the form authors none", async () => {
+      const ctx = await builder.build(makePayload());
+      expect(ctx.markdownHtml).toBeUndefined();
+    });
+
+    it("exposes the processed year (for the footer copyright)", async () => {
+      const ctx = await builder.build(makePayload());
+      expect(ctx.year).toMatch(/^\d{4}$/);
+      expect(ctx.year).toBe(ctx.processedAt.slice(0, 4));
+    });
+
+    it("splits submittedAt into Barbados-local date and time for the reviewer summary", async () => {
+      // submittedAt is "2026-05-12T10:00:00.000Z" → 06:00 in America/Barbados (UTC-4, no DST)
+      const ctx = await builder.build(makePayload());
+      expect(ctx.submittedDate).toBe("12/05/2026");
+      expect(ctx.submittedTime).toBe("06:00");
+    });
+
     it("uses referenceCode as the template submissionId when present", async () => {
       const ctx = await builder.build(
         makePayload({ referenceCode: "JPP-20260604-130732-9JZRZC" }),

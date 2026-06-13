@@ -1,5 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import NodeCache from "node-cache";
+import MarkdownIt from "markdown-it";
+import { DateTime } from "luxon";
 import type {
   ContactDetails,
   FormStep,
@@ -28,6 +30,12 @@ import type {
  * versions are processed over a long server lifetime.
  */
 const CONTRACT_CACHE_TTL_SECONDS = 600; // 10 minutes
+
+// Renders the form's authored confirmation markdown to HTML for the citizen
+// email. Default options escape raw HTML in the source (html: false) — the
+// content is trusted (recipe-authored) but there's no reason to allow inline
+// markup, and it keeps the output to the headings/lists/emphasis authors use.
+const markdownRenderer = new MarkdownIt();
 
 // Steps suppressed from the notification email, per form. The in-chat
 // `chat-feedback` form's declaration is auto-confirmed by the chat on the
@@ -62,11 +70,27 @@ export interface EmailTemplateContext {
   formTitle: string;
   submissionId: string;
   submittedAt: string;
+  /** submittedAt split into Barbados-local date (dd/MM/yyyy) and time (HH:mm)
+   * for the reviewer/MDA summary table. */
+  submittedDate: string;
+  submittedTime: string;
   processedAt: string;
+  /** Four-digit year of `processedAt`, for the footer copyright line. */
+  year: string;
   sections: EmailSection[];
+  /** The form's authored confirmation guidance (`markdownContent` on the
+   * submission-confirmation step) rendered to HTML — the same copy shown on
+   * the live confirmation page. Undefined when the form authors none. Emitted
+   * with a triple-stache: the source is trusted, recipe-authored content. */
+  markdownHtml?: string;
   /** Set by the email processor, not by `build` — link delivery is a
    * per-recipient decision the builder has no visibility into. */
   fileLinks?: EmailFileLink[];
+  /** Set by the email processor (config-derived), not by `build`: the public
+   * department name (citizen acknowledgement) and the absolute coat-of-arms
+   * image URL. */
+  departmentName?: string;
+  coatOfArmsUrl?: string;
 }
 
 /**
@@ -161,13 +185,38 @@ export class EmailBodyBuilder {
         return section.fields.length > 0 ? [section] : [];
       });
 
+    // Authored confirmation guidance lives on the submission-confirmation step
+    // regardless of step visibility, so read it straight off the contract
+    // rather than the filtered `sections` (which only carry answered fields).
+    // It's the same markdown the live confirmation page renders; parsing it
+    // synchronously (marked.parse returns a string when async isn't enabled)
+    // keeps the email copy in step with the page.
+    const markdownContent = contract.steps.find(
+      (s) => s.stepId === "submission-confirmation",
+    )?.markdownContent;
+    const markdownHtml = markdownContent
+      ? markdownRenderer.render(markdownContent)
+      : undefined;
+
+    const processedAt = new Date().toISOString();
+
+    // Reviewer/MDA summary shows the submission moment in Barbados local time
+    // (AST, UTC-4, no DST) split into date + time.
+    const submitted = DateTime.fromISO(meta.submittedAt, {
+      zone: "utc",
+    }).setZone("America/Barbados");
+
     return {
       formTitle: contract.title,
       // referenceCode is required on the event; ?? is defensive for payloads predating the field.
       submissionId: referenceCode ?? submissionId,
       submittedAt: meta.submittedAt,
-      processedAt: new Date().toISOString(),
+      submittedDate: submitted.toFormat("dd/MM/yyyy"),
+      submittedTime: submitted.toFormat("HH:mm"),
+      processedAt,
+      year: processedAt.slice(0, 4),
       sections,
+      ...(markdownHtml && { markdownHtml }),
     };
   }
 
