@@ -4,6 +4,7 @@ import {
   SCORE_THRESHOLD,
   TOP_K,
 } from "#/lib/rag/config";
+import { rewriteLandingHost } from "#/lib/rag/landing-host";
 import {
   newTokenizeState,
   tokenizeLinks,
@@ -253,7 +254,13 @@ export function buildCitedContext(
     if (seen.has(key)) continue;
     const head = c.section ? `${c.title} — ${c.section}` : c.title;
     const idx = citations.length + 1;
-    const linkUrl = withTextFragment(s.url, s.excerpt);
+    // The citation URL is env-aware: documents are ingested with canonical
+    // alpha.gov.bb URLs, so rewrite the host to this environment's LANDING_URL
+    // (identity in prod) before adding the text fragment.
+    const linkUrl = withTextFragment(
+      rewriteLandingHost(s.url, landingOrigin),
+      s.excerpt,
+    );
     // The model sees NO raw URLs (#1270): the source url stays out of the
     // block entirely (citations are annotated client-side from the [N]
     // markers), and links inside the chunk text become opaque link_N tokens
