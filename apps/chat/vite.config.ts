@@ -28,6 +28,9 @@ export default defineConfig(({ mode }) => {
       ),
       "process.env.FORM_API_URL": JSON.stringify(pick("FORM_API_URL")),
       "process.env.FORMS_URL": JSON.stringify(pick("FORMS_URL")),
+      "process.env.LANDING_URL": JSON.stringify(
+        pick("LANDING_URL", "https://alpha.gov.bb"),
+      ),
       "process.env.BEDROCK_REGION": JSON.stringify(
         pick("BEDROCK_REGION", "ca-central-1"),
       ),
