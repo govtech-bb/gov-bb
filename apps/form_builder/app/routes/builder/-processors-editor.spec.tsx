@@ -87,7 +87,9 @@ it("adds a processor of each authorable type", async () => {
     "spreadsheet",
     "opencrvs",
   ]);
-});
+  // Five sequential render+user-event cycles run slower under Vitest than the
+  // 5s default allows on a loaded CI runner (~1s locally); give it headroom.
+}, 15000);
 
 it("offers payment as an addable type (#716)", () => {
   render(<Harness initial={emptyDraft} />);

@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   CHAT_FORM_POLICY,
+  familyMembers,
+  FORM_FAMILIES,
   HANDOFF_ALL_FORMS,
   isForcedHandoff,
   isSurfaceableForm,
@@ -60,5 +62,36 @@ test("isForcedHandoff respects the release gate, chat-feedback exempt", () => {
           ? true
           : mode === "handoff";
     assert.equal(isForcedHandoff(id), expected, id);
+  }
+});
+
+// #1296: the post-office-redirection trio is declared a family so a broad
+// "redirect mail" disambiguates across all three instead of pinning one.
+test("declares the post-office-redirection family", () => {
+  const redirection = new Set([
+    "post-office-redirection-individual",
+    "post-office-redirection-business",
+    "post-office-redirection-deceased",
+  ]);
+  const match = FORM_FAMILIES.find((f) =>
+    f.has("post-office-redirection-individual"),
+  );
+  assert.ok(match, "redirection family must be declared");
+  assert.deepEqual(new Set(match), redirection);
+  // familyMembers resolves any member to the same set, and a non-member to null.
+  for (const id of redirection) {
+    assert.deepEqual(familyMembers(id), match, id);
+  }
+  assert.equal(familyMembers("apply-for-conductor-licence"), null);
+});
+
+// Every declared family member must be surfaceable — a non-surfaceable member
+// would silently never appear in a family disambiguation (expansion intersects
+// with the live, surfaceable-filtered index), masking a config mistake.
+test("every family member is a surfaceable form", () => {
+  for (const family of FORM_FAMILIES) {
+    for (const id of family) {
+      assert.equal(isSurfaceableForm(id), true, id);
+    }
   }
 });

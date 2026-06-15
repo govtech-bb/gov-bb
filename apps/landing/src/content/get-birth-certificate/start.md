@@ -3,6 +3,7 @@ title: "Get a copy of a birth certificate"
 stage: "alpha"
 publish_date: 2026-01-13
 form_id: get-birth-certificate
+visibility: preview
 ---
 
 You should complete your application in one go. At the moment, it is not possible to save your answers and come back to them later.
